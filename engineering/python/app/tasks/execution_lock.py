@@ -30,9 +30,7 @@ class ExecutionLock:
     agent_id: str
     status: LockStatus = LockStatus.ACTIVE
     created_at: float = field(default_factory=time.time)
-    expires_at: float = field(
-        default_factory=lambda: time.time() + DEFAULT_LOCK_TIMEOUT_HOURS * 3600
-    )
+    expires_at: float = field(default_factory=lambda: time.time() + DEFAULT_LOCK_TIMEOUT_HOURS * 3600)
     heartbeat_at: float = field(default_factory=time.time)
     released_at: Optional[float] = None
     release_reason: Optional[str] = None
@@ -51,9 +49,7 @@ class ExecutionLock:
             "created_at": datetime.fromtimestamp(self.created_at).isoformat(),
             "expires_at": datetime.fromtimestamp(self.expires_at).isoformat(),
             "heartbeat_at": datetime.fromtimestamp(self.heartbeat_at).isoformat(),
-            "released_at": datetime.fromtimestamp(self.released_at).isoformat()
-            if self.released_at
-            else None,
+            "released_at": datetime.fromtimestamp(self.released_at).isoformat() if self.released_at else None,
             "release_reason": self.release_reason,
             "is_expired": self.is_expired(),
             "time_remaining_seconds": self.time_remaining_seconds(),
@@ -100,9 +96,7 @@ class ExecutionLockStore:
         """)
         conn.commit()
 
-    def _record_history(
-        self, task_id: str, agent_id: str, action: str, reason: Optional[str] = None
-    ):
+    def _record_history(self, task_id: str, agent_id: str, action: str, reason: Optional[str] = None):
         conn = self._get_conn()
         conn.execute(
             "INSERT INTO lock_history (task_id, agent_id, action, reason, timestamp) VALUES (?, ?, ?, ?, ?)",
@@ -124,9 +118,7 @@ class ExecutionLockStore:
                 (task_id,),
             ).fetchone()
             if existing:
-                raise LockConflictError(
-                    f"Lock already exists for task '{task_id}' (status: {existing['status']})"
-                )
+                raise LockConflictError(f"Lock already exists for task '{task_id}' (status: {existing['status']})")
 
             now = time.time()
             lock = ExecutionLock(
@@ -162,9 +154,7 @@ class ExecutionLockStore:
 
     def get_lock(self, task_id: str) -> Optional[ExecutionLock]:
         conn = self._get_conn()
-        row = conn.execute(
-            "SELECT * FROM execution_locks WHERE task_id = ?", (task_id,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM execution_locks WHERE task_id = ?", (task_id,)).fetchone()
         if row is None:
             return None
         return self._row_to_lock(row)
@@ -179,15 +169,11 @@ class ExecutionLockStore:
             ).fetchone()
 
             if row is None:
-                raise LockNotFoundError(
-                    f"No active lock found for task '{task_id}' by agent '{agent_id}'"
-                )
+                raise LockNotFoundError(f"No active lock found for task '{task_id}' by agent '{agent_id}'")
 
             lock = self._row_to_lock(row)
             if lock.status != LockStatus.ACTIVE:
-                raise LockNotFoundError(
-                    f"Lock for task '{task_id}' is not active (status: {lock.status.value})"
-                )
+                raise LockNotFoundError(f"Lock for task '{task_id}' is not active (status: {lock.status.value})")
 
             if lock.is_expired():
                 conn.execute(
@@ -195,9 +181,7 @@ class ExecutionLockStore:
                     (LockStatus.EXPIRED.value, task_id),
                 )
                 conn.commit()
-                self._record_history(
-                    task_id, agent_id, "expired", "heartbeat on expired lock"
-                )
+                self._record_history(task_id, agent_id, "expired", "heartbeat on expired lock")
                 raise LockExpiredError(f"Lock for task '{task_id}' has expired")
 
             new_expires = time.time() + DEFAULT_LOCK_TIMEOUT_HOURS * 3600
@@ -218,24 +202,18 @@ class ExecutionLockStore:
             )
             return lock
 
-    def release_lock(
-        self, task_id: str, agent_id: str, reason: Optional[str] = None
-    ) -> ExecutionLock:
+    def release_lock(self, task_id: str, agent_id: str, reason: Optional[str] = None) -> ExecutionLock:
         with self._lock:
             conn = self._get_conn()
 
-            row = conn.execute(
-                "SELECT * FROM execution_locks WHERE task_id = ?", (task_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM execution_locks WHERE task_id = ?", (task_id,)).fetchone()
 
             if row is None:
                 raise LockNotFoundError(f"No lock found for task '{task_id}'")
 
             lock = self._row_to_lock(row)
             if lock.agent_id != agent_id:
-                raise LockOwnershipError(
-                    f"Lock for task '{task_id}' is held by '{lock.agent_id}', not '{agent_id}'"
-                )
+                raise LockOwnershipError(f"Lock for task '{task_id}' is held by '{lock.agent_id}', not '{agent_id}'")
 
             now = time.time()
             conn.execute(
@@ -262,9 +240,7 @@ class ExecutionLockStore:
         with self._lock:
             conn = self._get_conn()
 
-            row = conn.execute(
-                "SELECT * FROM execution_locks WHERE task_id = ?", (task_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM execution_locks WHERE task_id = ?", (task_id,)).fetchone()
 
             if row is None:
                 raise LockNotFoundError(f"No lock found for task '{task_id}'")
@@ -285,9 +261,7 @@ class ExecutionLockStore:
             lock.release_reason = reason
 
             self._record_history(task_id, lock.agent_id, "force_released", reason)
-            logger.warning(
-                "Execution lock force-released: task=%s by=%s", task_id, admin_id
-            )
+            logger.warning("Execution lock force-released: task=%s by=%s", task_id, admin_id)
             return lock
 
     def cleanup_expired_locks(self) -> List[ExecutionLock]:
@@ -309,9 +283,7 @@ class ExecutionLockStore:
                 lock = self._row_to_lock(row)
                 lock.status = LockStatus.EXPIRED
                 expired_locks.append(lock)
-                self._record_history(
-                    row["task_id"], row["agent_id"], "expired", "lock timeout"
-                )
+                self._record_history(row["task_id"], row["agent_id"], "expired", "lock timeout")
 
             conn.commit()
 
@@ -321,16 +293,12 @@ class ExecutionLockStore:
 
     def list_active_locks(self) -> List[ExecutionLock]:
         conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM execution_locks WHERE status = 'active' ORDER BY created_at DESC"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM execution_locks WHERE status = 'active' ORDER BY created_at DESC").fetchall()
         return [self._row_to_lock(row) for row in rows]
 
     def list_all_locks(self) -> List[ExecutionLock]:
         conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM execution_locks ORDER BY created_at DESC"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM execution_locks ORDER BY created_at DESC").fetchall()
         return [self._row_to_lock(row) for row in rows]
 
     def get_lock_history(self, task_id: str) -> List[dict]:
@@ -373,6 +341,7 @@ class ExecutionLockStore:
         except (OSError, RuntimeError, AttributeError) as close_err:
             # __del__ 中无法保证 logger 可用，使用 warnings 兜底
             import warnings
+
             warnings.warn(
                 f"ExecutionLock.__del__ close failed: {close_err}",
                 RuntimeWarning,

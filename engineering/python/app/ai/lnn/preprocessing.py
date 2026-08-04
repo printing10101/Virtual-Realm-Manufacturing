@@ -155,9 +155,7 @@ class DataPreprocessor:
                 values = X[:, col].copy()
                 for i in range(1, len(values)):
                     if np.isnan(values[i]):
-                        values[i] = (
-                            values[i - 1] if not np.isnan(values[i - 1]) else 0.0
-                        )
+                        values[i] = values[i - 1] if not np.isnan(values[i - 1]) else 0.0
                 X[:, col] = values
             elif self.missing_strategy == "mean":
                 fill_value = np.nanmean(X[:, col])
@@ -199,9 +197,7 @@ class DataPreprocessor:
 
                 lower_bound = col_mean - self.outlier_threshold * col_std
                 upper_bound = col_mean + self.outlier_threshold * col_std
-                X[outlier_mask, col] = np.clip(
-                    X[outlier_mask, col], lower_bound, upper_bound
-                )
+                X[outlier_mask, col] = np.clip(X[outlier_mask, col], lower_bound, upper_bound)
 
         elif self.outlier_method == "iqr":
             for col in range(X.shape[1]):
@@ -216,9 +212,7 @@ class DataPreprocessor:
                 outlier_mask = (col_data < lower_bound) | (col_data > upper_bound)
                 outlier_count += int(np.sum(outlier_mask))
 
-                X[outlier_mask, col] = np.clip(
-                    X[outlier_mask, col], lower_bound, upper_bound
-                )
+                X[outlier_mask, col] = np.clip(X[outlier_mask, col], lower_bound, upper_bound)
 
         return X, outlier_count
 

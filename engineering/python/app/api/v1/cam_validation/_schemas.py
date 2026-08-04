@@ -5,7 +5,7 @@ Pydantic 模型；端点实现见 routes.py。
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -53,8 +53,7 @@ class TaskCreateRequest(BaseModel):
     material_name: str = Field(
         default="45#钢",
         description=(
-            "材料名称（用于 disclaimer 显示 + 校准状态判断）。"
-            "HRC52 触发 pending_calibration 标注（继承自阶段 5/6）。"
+            "材料名称（用于 disclaimer 显示 + 校准状态判断）。HRC52 触发 pending_calibration 标注（继承自阶段 5/6）。"
         ),
     )
     safe_z: float = Field(
@@ -73,6 +72,7 @@ class TaskCreateRequest(BaseModel):
         ),
     )
 
+
 class TaskCreateResponse(BaseModel):
     task_id: str
     status: str
@@ -85,6 +85,7 @@ class TaskCreateResponse(BaseModel):
     cam_backend_requested: str
     cam_validation_required: bool
     cam_disclaimer: dict[str, Any]
+
 
 class TaskStatusResponse(BaseModel):
     """任务状态响应（含审核进度 + 校验统计）。"""
@@ -122,6 +123,7 @@ class TaskStatusResponse(BaseModel):
     errors: list[str]
     cam_disclaimer: dict[str, Any]
 
+
 class FeatureValidationResultResponse(BaseModel):
     """单条 CAM 校验结果的响应。"""
 
@@ -141,6 +143,7 @@ class FeatureValidationResultResponse(BaseModel):
     stable: bool
     safety_margin_ratio: float
     warning: str
+
 
 class TaskResultResponse(BaseModel):
     """CAM 校验任务结果摘要（含全部特征校验结果列表）。"""
@@ -164,6 +167,7 @@ class TaskResultResponse(BaseModel):
     error_message: str | None
     feature_results: list[FeatureValidationResultResponse]
     cam_disclaimer: dict[str, Any]
+
 
 class ReviewRequest(BaseModel):
     """工程师审核请求体。"""
@@ -193,6 +197,7 @@ class ReviewRequest(BaseModel):
         description="审核人标识。",
     )
 
+
 class ReviewResponse(BaseModel):
     """审核结果响应。"""
 
@@ -204,6 +209,7 @@ class ReviewResponse(BaseModel):
     all_reviewed: bool
     task_status: str
     cam_disclaimer: dict[str, Any]
+
 
 class ConfirmTaskResponse(BaseModel):
     """确认任务响应（导出 cam_report + internal_report JSON，状态置为 SUCCEEDED）。"""
@@ -222,4 +228,3 @@ class ConfirmTaskResponse(BaseModel):
     internal_report_download_url: str
     cam_validation_required: bool
     cam_disclaimer: dict[str, Any]
-

@@ -25,6 +25,7 @@
 阶段做标准化（z-score 或 min-max）。本模块假设输入已标准化，不做内置归一化，
 避免与数据加载器的归一化逻辑重复或冲突。
 """
+
 from __future__ import annotations
 
 import torch

@@ -27,9 +27,7 @@ class GitOperationError(ProjectSyncError):
         self.args_ = args
         self.returncode = returncode
         self.stderr = stderr
-        super().__init__(
-            f"git {' '.join(args)} 失败 (rc={returncode}): {stderr.strip()}"
-        )
+        super().__init__(f"git {' '.join(args)} 失败 (rc={returncode}): {stderr.strip()}")
 
 
 class ResourceRefNotFoundError(LookupError):

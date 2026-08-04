@@ -60,11 +60,11 @@ SIGNAL_FUSION_SOURCE = "signal_fusion"
 
 # 支持的信号类型（与 ToolWearPredictor sensor_features 对齐 + 扩展）
 SUPPORTED_SIGNAL_TYPES = (
-    "vibration",          # 振动 → vibration_rms
-    "cutting_force",      # 切削力 → cutting_force
-    "temperature",        # 温度 → temperature
+    "vibration",  # 振动 → vibration_rms
+    "cutting_force",  # 切削力 → cutting_force
+    "temperature",  # 温度 → temperature
     "acoustic_emission",  # 声发射 → acoustic_emission
-    "current",            # 电流（扩展，无对应 sensor_feature 字段）
+    "current",  # 电流（扩展，无对应 sensor_feature 字段）
 )
 
 # 信号类型 → sensor_features 字段映射
@@ -78,9 +78,15 @@ SIGNAL_TYPE_TO_SENSOR_FIELD: dict[str, Optional[str]] = {
 
 # 9 维特征名称（与 FeatureExtractor 对齐）
 FEATURE_NAMES: tuple[str, ...] = (
-    "rms", "peak", "peak_to_peak",
-    "shape_factor", "impulse_factor", "kurtosis",
-    "dominant_freq", "spectral_centroid", "spectral_energy",
+    "rms",
+    "peak",
+    "peak_to_peak",
+    "shape_factor",
+    "impulse_factor",
+    "kurtosis",
+    "dominant_freq",
+    "spectral_centroid",
+    "spectral_energy",
 )
 
 
@@ -125,12 +131,14 @@ class SignalSample:
         if self.signal_type not in SUPPORTED_SIGNAL_TYPES:
             logger.warning(
                 "信号类型 %r 不在标准列表 %s 中，仍允许入库但检索可能无法按类型过滤",
-                self.signal_type, SUPPORTED_SIGNAL_TYPES,
+                self.signal_type,
+                SUPPORTED_SIGNAL_TYPES,
             )
         if len(self.features) != len(FEATURE_NAMES):
             logger.warning(
                 "特征维度 %d 与标准 9 维不一致（signal_type=%s）",
-                len(self.features), self.signal_type,
+                len(self.features),
+                self.signal_type,
             )
 
     def to_document_text(self) -> str:
@@ -276,12 +284,14 @@ class SignalFusionKnowledgeBase:
     def _get_vector_store(self):
         if self._vector_store is None:
             from app.dependencies import get_vector_store
+
             self._vector_store = get_vector_store()
         return self._vector_store
 
     def _get_embedding_service(self):
         if self._embedding_service is None:
             from app.dependencies import get_embedding_service
+
             self._embedding_service = get_embedding_service()
         return self._embedding_service
 
@@ -289,6 +299,7 @@ class SignalFusionKnowledgeBase:
         if self._weighted_fusion is None:
             from app.data.pipeline.config import FusionConfig
             from app.data.pipeline.fusion import MultiModalFusion
+
             cfg = FusionConfig(
                 modality_weights={st: 1.0 for st in SUPPORTED_SIGNAL_TYPES},
                 target_dim=9,
@@ -300,6 +311,7 @@ class SignalFusionKnowledgeBase:
         if self._attention_fusion is None:
             from app.data.pipeline.config import FusionConfig
             from app.data.pipeline.fusion import CrossModalAttentionFusion
+
             cfg = FusionConfig(
                 modality_weights={st: 1.0 for st in SUPPORTED_SIGNAL_TYPES},
                 target_dim=9,
@@ -342,7 +354,10 @@ class SignalFusionKnowledgeBase:
             )
         logger.info(
             "注册信号样本: id=%s type=%s source=%s machine=%s",
-            sample.sample_id, sample.signal_type, sample.source, sample.machine_id,
+            sample.sample_id,
+            sample.signal_type,
+            sample.source,
+            sample.machine_id,
         )
         return sample.sample_id
 
@@ -398,9 +413,7 @@ class SignalFusionKnowledgeBase:
         es = self._get_embedding_service()
 
         # 用特征向量构造查询文本（与样本入库时的文档格式一致）
-        query_text = " ".join(
-            f"{name}={val:.6f}" for name, val in zip(FEATURE_NAMES, features)
-        )
+        query_text = " ".join(f"{name}={val:.6f}" for name, val in zip(FEATURE_NAMES, features))
         query_embedding = es.embed(query_text)
 
         where: dict[str, Any] = {"source": SIGNAL_FUSION_SOURCE}
@@ -443,7 +456,6 @@ class SignalFusionKnowledgeBase:
             limit=max(1, min(limit, 500)),
         )
         samples: list[SignalSample] = []
-        ids = result.get("ids", [])
         documents = result.get("documents", [])
         metadatas = result.get("metadatas", [])
         for doc, md in zip(documents, metadatas):
@@ -472,7 +484,7 @@ class SignalFusionKnowledgeBase:
                 samples.append(SignalSample.from_metadata(doc, md))
             except Exception as e:
                 logger.warning("反序列化样本失败: %s", e)
-        return samples[offset: offset + limit]
+        return samples[offset : offset + limit]
 
     # ------------------------------------------------------------------
     # 融合
@@ -513,9 +525,7 @@ class SignalFusionKnowledgeBase:
             fused = fusion.fuse(features_dict)
             # 注意力融合的权重提取（取均值作为各模态贡献度）
             attn_weights = fusion.get_attention_weights(features_dict)
-            modality_weights = {
-                m: float(np.mean(w)) for m, w in attn_weights.items()
-            }
+            modality_weights = {m: float(np.mean(w)) for m, w in attn_weights.items()}
         else:
             fusion = self._get_weighted_fusion()
             if weights:
@@ -523,10 +533,7 @@ class SignalFusionKnowledgeBase:
             fused = fusion.fuse(features_dict)
             # 加权融合的权重取实际使用值
             total = sum(fusion.weights.values()) or 1.0
-            modality_weights = {
-                m: float(fusion.weights.get(m, 0.0)) / total
-                for m in features_dict
-            }
+            modality_weights = {m: float(fusion.weights.get(m, 0.0)) / total for m in features_dict}
 
         return FusionResult(
             fused_vector=[float(x) for x in np.asarray(fused).flatten()],
@@ -628,9 +635,7 @@ class SignalFusionKnowledgeBase:
 
         # 从振动样本提取 dominant_freq（features[6]）作为机床固有频率估计
         freq_candidates = [
-            float(s.features[6])
-            for s in samples
-            if s.signal_type == "vibration" and len(s.features) > 6
+            float(s.features[6]) for s in samples if s.signal_type == "vibration" and len(s.features) > 6
         ]
         machine_freq = max(freq_candidates) if freq_candidates else 0.0
 
@@ -721,9 +726,7 @@ class SignalFusionKnowledgeBase:
             "total_signal_samples": total,
             "supported_signal_types": list(SUPPORTED_SIGNAL_TYPES),
             "type_counts": type_counts_out,
-            "nonzero_signal_types": {
-                st: cnt for st, cnt in type_counts_out.items() if cnt > 0
-            },
+            "nonzero_signal_types": {st: cnt for st, cnt in type_counts_out.items() if cnt > 0},
             "truncated": truncated,
             "fetch_limit": STATS_FETCH_LIMIT,
             "feature_dimension": len(FEATURE_NAMES),
@@ -758,7 +761,9 @@ class SignalFusionKnowledgeBase:
         except (RuntimeError, OSError, ValueError) as e:
             logger.warning(
                 "get_samples_by_ids 查询失败 (ids=%s): %s",
-                sample_ids[:5], e, exc_info=True,
+                sample_ids[:5],
+                e,
+                exc_info=True,
             )
             return []
 
@@ -786,13 +791,17 @@ class SignalFusionKnowledgeBase:
             except (KeyError, ValueError, TypeError, json.JSONDecodeError) as e:
                 logger.warning(
                     "反序列化样本失败 (sample_id=%s): %s",
-                    sid, e, exc_info=True,
+                    sid,
+                    e,
+                    exc_info=True,
                 )
 
         if missing_ids:
             logger.debug(
                 "get_samples_by_ids: %d/%d IDs 未命中 (前 5: %s)",
-                len(missing_ids), len(sample_ids), missing_ids[:5],
+                len(missing_ids),
+                len(sample_ids),
+                missing_ids[:5],
             )
 
         return samples

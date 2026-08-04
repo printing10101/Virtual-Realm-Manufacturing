@@ -139,6 +139,7 @@ class ToolRegistry:
         if ablation_mode == "no_toolset":
             if llm_router is not None:
                 from app.sharp.tools.llm_tools import LLMReasonTool
+
                 registry.register(LLMReasonTool(llm_router))
             else:
                 logger.warning("no_toolset 模式但未提供 llm_router，注册空工具集")
@@ -166,6 +167,7 @@ class ToolRegistry:
                 LLMExtractTool,
                 LLMReasonTool,
             )
+
             registry.register(LLMReasonTool(llm_router))
             registry.register(LLMExtractTool(llm_router))
         else:

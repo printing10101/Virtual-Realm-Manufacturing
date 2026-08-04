@@ -38,13 +38,11 @@ Reconstruction）的五项核心设计迁移到 LTC（液态神经网络）颤�
 from __future__ import annotations
 
 import logging
-import math
-import os
 import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Deque, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 
@@ -389,7 +387,7 @@ class KeyframeSelector:
             arr = np.asarray(features, dtype=np.float64)
             if arr.size == 0:
                 return 0.0
-            return float(np.mean(arr ** 2))
+            return float(np.mean(arr**2))
         except (ValueError, TypeError) as exc:
             logger.debug("能量计算失败: %s", exc)
             return 0.0
@@ -411,8 +409,7 @@ class KeyframeSelector:
             self._baseline_energy = energy
         else:
             self._baseline_energy = (
-                self._baseline_ema_alpha * self._baseline_energy
-                + (1 - self._baseline_ema_alpha) * energy
+                self._baseline_ema_alpha * self._baseline_energy + (1 - self._baseline_ema_alpha) * energy
             )
 
 
@@ -478,9 +475,7 @@ class AnchorContext:
             return hidden, 0.0
         with self._lock:
             drift = self._compute_drift(hidden, self._anchor)
-            corrected = self._apply_correction(
-                hidden, self._anchor, self._correction_strength
-            )
+            corrected = self._apply_correction(hidden, self._anchor, self._correction_strength)
             return corrected, drift
 
     def reset(self) -> None:
@@ -522,9 +517,7 @@ class AnchorContext:
             logger.debug("漂移量计算失败: %s", exc)
         return 0.0
 
-    def _apply_correction(
-        self, hidden: Any, anchor: Any, strength: float
-    ) -> Any:
+    def _apply_correction(self, hidden: Any, anchor: Any, strength: float) -> Any:
         """hidden_new = (1 - s) * hidden + s * anchor"""
         if HAS_TORCH and isinstance(hidden, torch.Tensor) and isinstance(anchor, torch.Tensor):
             return (1 - strength) * hidden + strength * anchor
@@ -732,9 +725,7 @@ class StreamingPredictor:
         features, _ = self._predictor._preprocess(frame_data)
         kf_decision = self._keyframe_selector.decide(features)
         if force_keyframe:
-            kf_decision = KeyframeDecision(
-                is_keyframe=True, reason="forced", energy=kf_decision.energy
-            )
+            kf_decision = KeyframeDecision(is_keyframe=True, reason="forced", energy=kf_decision.energy)
 
         # 执行基础预测
         base_result = self._predictor.predict(frame_data, return_confidence=True)
@@ -779,9 +770,7 @@ class StreamingPredictor:
                     if corrected_proxy.shape == base_result.value.shape:
                         pass  # 已在 correct 内部处理
                 # 稳态判定：非关键帧 + 低能量视为稳态，更新锚点
-                is_stable = (not kf_decision.is_keyframe) or (
-                    kf_decision.reason in ("interval", "energy_stable")
-                )
+                is_stable = (not kf_decision.is_keyframe) or (kf_decision.reason in ("interval", "energy_stable"))
                 self._anchor.update(proxy_hidden, is_stable=is_stable)
                 if anchor_drift > 0:
                     with self._stats_lock:
@@ -901,10 +890,7 @@ class StreamingPredictor:
             window_results = [self.predict_frame(d) for d in window]
             results.extend(window_results)
             # 取本窗口尾部关键帧作为下一窗口 carryover
-            kf_indices = [
-                i for i, r in enumerate(window_results)
-                if r.model_info.get("is_keyframe")
-            ]
+            kf_indices = [i for i, r in enumerate(window_results) if r.model_info.get("is_keyframe")]
             if kf_indices and end < total:
                 kf_tail = kf_indices[-okf:] if okf > 0 else []
                 carryover = [window[i] for i in kf_tail]
@@ -913,7 +899,10 @@ class StreamingPredictor:
             window_idx += 1
             logger.debug(
                 "窗口化推理: 窗口 %d [%d:%d], 处理 %d 帧, carryover=%d",
-                window_idx, start, end, len(window),
+                window_idx,
+                start,
+                end,
+                len(window),
                 len(carryover) if carryover else 0,
             )
 
@@ -953,15 +942,9 @@ class StreamingPredictor:
         stats["keyframe_interval"] = self._config.keyframe_interval
         stats["keyframe_mode"] = self._config.keyframe_mode
         stats["avg_inference_ms"] = (
-            stats["total_inference_ms"] / stats["total_frames"]
-            if stats["total_frames"] > 0
-            else 0.0
+            stats["total_inference_ms"] / stats["total_frames"] if stats["total_frames"] > 0 else 0.0
         )
-        stats["keyframe_ratio"] = (
-            stats["keyframes"] / stats["total_frames"]
-            if stats["total_frames"] > 0
-            else 0.0
-        )
+        stats["keyframe_ratio"] = stats["keyframes"] / stats["total_frames"] if stats["total_frames"] > 0 else 0.0
         return stats
 
 

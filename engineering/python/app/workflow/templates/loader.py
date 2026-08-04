@@ -16,12 +16,13 @@
     - 内置模板以 ``.yaml`` 后缀放在 ``builtin/`` 目录，按文件名（去后缀）
       作为 template_id
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 try:
     import yaml  # type: ignore
@@ -63,9 +64,7 @@ class WorkflowTemplate:
 
 def _ensure_yaml() -> None:
     if yaml is None:  # pragma: no cover
-        raise RuntimeError(
-            "PyYAML 未安装，无法加载 YAML 模板。请在 requirements.txt 中追加 'PyYAML'。"
-        )
+        raise RuntimeError("PyYAML 未安装，无法加载 YAML 模板。请在 requirements.txt 中追加 'PyYAML'。")
 
 
 def _coerce_artifact(name: str, raw: dict[str, Any]) -> Artifact:
@@ -163,9 +162,7 @@ def template_to_spec(template: WorkflowTemplate) -> WorkflowSpec:
     errors = spec.validate()
     if errors:
         # WorkflowValidationError 接收 list[str]，每条对应一个具体校验问题
-        raise WorkflowValidationError(
-            [f"模板 '{template.template_id}' DAG 校验失败: {err}" for err in errors]
-        )
+        raise WorkflowValidationError([f"模板 '{template.template_id}' DAG 校验失败: {err}" for err in errors])
     return spec
 
 

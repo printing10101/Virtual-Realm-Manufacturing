@@ -3,6 +3,7 @@
 聚合：
 - plugins — 插件系统统一入口
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

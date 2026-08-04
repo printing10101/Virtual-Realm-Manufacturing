@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Sequence
+from typing import Optional, Sequence
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -73,9 +73,7 @@ class GraphPersistence:
             return self._session_factory()
         factory = get_sync_sessionmaker()
         if factory is None:
-            raise RuntimeError(
-                "Database not configured: set DB_URL or inject session_factory"
-            )
+            raise RuntimeError("Database not configured: set DB_URL or inject session_factory")
         return factory()
 
     # ============================================================== schema ops
@@ -157,11 +155,7 @@ class GraphPersistence:
                     if not (0.0 <= confidence_f <= 1.0):
                         confidence_f = 0.5
                     # 避免 ``confidence`` 字段同时出现在 properties
-                    props_for_db = {
-                        key: val
-                        for key, val in properties.items()
-                        if key != "confidence"
-                    }
+                    props_for_db = {key: val for key, val in properties.items() if key != "confidence"}
                     # 查询现有边（不主动校验端点节点存在性，因为节点
                     # 已在同一事务内 upsert，外键约束会保证一致性）
                     stmt = select(KGEdge).where(
@@ -252,9 +246,7 @@ class GraphPersistence:
             # 边：使用 Repository 的按类型遍历方式以利用索引
             distinct_types = self._distinct_edge_types(session=session)
             for etype in distinct_types:
-                for orm_edge in self._repo.list_edges_by_type(
-                    etype, limit=edge_limit
-                ):
+                for orm_edge in self._repo.list_edges_by_type(etype, limit=edge_limit):
                     props = dict(orm_edge.properties or {})
                     props.setdefault("confidence", float(orm_edge.confidence))
                     # source / evidence 等附加字段保留

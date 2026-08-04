@@ -6,7 +6,7 @@ import json
 import logging
 import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -73,14 +73,13 @@ def cleanup_temp_file(temp_path: Path) -> None:
     try:
         temp_path.unlink(missing_ok=True)
     except OSError as cleanup_err:
-        logger.debug(
-            "临时文件清理失败 %s: %s", temp_path, cleanup_err, exc_info=True
-        )
+        logger.debug("临时文件清理失败 %s: %s", temp_path, cleanup_err, exc_info=True)
 
 
 # ============================================================
 # 路径安全工具函数 - 防止路径遍历攻击
 # ============================================================
+
 
 def safe_file_path(user_input: str, base_dir: str) -> Path:
     """验证文件路径，防止目录遍历攻击。
@@ -108,15 +107,14 @@ def safe_file_path(user_input: str, base_dir: str) -> Path:
     # str.startswith，修复前缀匹配的边界安全漏洞）
     if not target.is_relative_to(base):
         logger.warning(
-            "路径遍历检测: 用户输入 '%s' 试图访问基础目录 '%s' 之外的路径 '%s'",
-            user_input, base_dir, target
+            "路径遍历检测: 用户输入 '%s' 试图访问基础目录 '%s' 之外的路径 '%s'", user_input, base_dir, target
         )
         raise ValueError("非法的文件路径: 路径遍历被拒绝")
 
     return target
 
 
-def safe_open(file_path: str, base_dir: str, mode: str = 'r', **kwargs):
+def safe_open(file_path: str, base_dir: str, mode: str = "r", **kwargs):
     """安全文件打开，防止路径遍历攻击。
 
     在打开文件前验证路径合法性，确保不会访问基础目录之外的文件。
@@ -207,9 +205,7 @@ def validate_user_path(
     # 扩展名白名单预校验
     if allowed_extensions:
         if raw.suffix.lower() not in allowed_extensions:
-            raise ValueError(
-                f"不支持的文件扩展名: {raw.suffix!r}，仅允许: {sorted(allowed_extensions)}"
-            )
+            raise ValueError(f"不支持的文件扩展名: {raw.suffix!r}，仅允许: {sorted(allowed_extensions)}")
 
     resolved = raw.resolve(strict=False)
 
@@ -367,18 +363,14 @@ class MetricsCollector:
             if status_code is not None:
                 # 按状态码族分组（200/404/500 等），与告警规则 status=~"5.." 匹配
                 status_key = str(status_code)
-                self._http_requests_by_status[status_key] = (
-                    self._http_requests_by_status.get(status_key, 0) + 1
-                )
+                self._http_requests_by_status[status_key] = self._http_requests_by_status.get(status_key, 0) + 1
 
     def record_lnn_inference(self, model_name: str, duration_sec: float):
         with self._lock:
             times = self._lnn_inference_duration.setdefault(model_name, [])
             times.append(duration_sec)
             if len(times) > self._max_latency_entries:
-                self._lnn_inference_duration[model_name] = times[
-                    -self._max_latency_entries :
-                ]
+                self._lnn_inference_duration[model_name] = times[-self._max_latency_entries :]
 
     def record_lnn_model_load(self, model_name: str, duration_sec: float):
         with self._lock:
@@ -422,9 +414,7 @@ class MetricsCollector:
             for b in buckets:
                 cum += bucket_counts[b]
                 label = "+Inf" if b == float("inf") else str(b)
-                lines.append(
-                    f'{name}_bucket{{{label_name}="{label_val}",le="{label}"}} {cum:.0f}'
-                )
+                lines.append(f'{name}_bucket{{{label_name}="{label_val}",le="{label}"}} {cum:.0f}')
             total = sum(values)
             count = len(values)
             lines.append(f'{name}_sum{{{label_name}="{label_val}"}} {total:.6f}')
@@ -441,9 +431,7 @@ class MetricsCollector:
         lines = [f"# HELP {name} {help_text}", f"# TYPE {name} counter"]
         for label_val, status_counts in data.items():
             for status, count in status_counts.items():
-                lines.append(
-                    f'{name}{{{label_name}="{label_val}",status="{status}"}} {count}'
-                )
+                lines.append(f'{name}{{{label_name}="{label_val}",status="{status}"}} {count}')
         return lines
 
     def export(self) -> str:
@@ -474,18 +462,12 @@ class MetricsCollector:
             # P0-14/15 修复：按 status 标签输出，使告警规则
             # rate(http_requests_total{status=~"5.."}[5m]) 可正常工作。
             # 同时保留 method="total" 汇总序列，兼容既有查询。
-            lines.append(
-                f'http_requests_total{{method="total"}} {self._request_count}'
-            )
+            lines.append(f'http_requests_total{{method="total"}} {self._request_count}')
             for status_key, count in sorted(self._http_requests_by_status.items()):
-                lines.append(
-                    f'http_requests_total{{status="{status_key}"}} {count}'
-                )
+                lines.append(f'http_requests_total{{status="{status_key}"}} {count}')
             lines.append("")
 
-            lines.append(
-                "# HELP http_request_duration_seconds HTTP request duration in seconds"
-            )
+            lines.append("# HELP http_request_duration_seconds HTTP request duration in seconds")
             lines.append("# TYPE http_request_duration_seconds histogram")
             # 使用完整分位数桶输出，支持 PromQL histogram_quantile 计算 p50/p90/p95/p99
             lines.extend(
@@ -536,9 +518,7 @@ class MetricsCollector:
                 )
             )
             lines.append("")
-            lines.append(
-                "# HELP lnn_active_training_tasks Current number of active training tasks"
-            )
+            lines.append("# HELP lnn_active_training_tasks Current number of active training tasks")
             lines.append("# TYPE lnn_active_training_tasks gauge")
             lines.append(f"lnn_active_training_tasks {self._active_training_tasks}")
             lines.append("")
@@ -547,24 +527,14 @@ class MetricsCollector:
 
                 rlb = get_ring_log_buffer()
                 buf_stats = rlb.stats()
-                lines.append(
-                    "# HELP ring_buffer_entries Number of entries in ring buffer"
-                )
+                lines.append("# HELP ring_buffer_entries Number of entries in ring buffer")
                 lines.append("# TYPE ring_buffer_entries gauge")
                 for buf_type in buf_stats["buffers"]:
                     s = buf_stats["buffers"][buf_type]
-                    lines.append(
-                        f'ring_buffer_entries{{type="{buf_type}"}} {s["size"]}'
-                    )
-                    lines.append(
-                        f'ring_buffer_capacity{{type="{buf_type}"}} {s["capacity"]}'
-                    )
-                    lines.append(
-                        f'ring_buffer_appended_total{{type="{buf_type}"}} {s["total_appended"]}'
-                    )
-                    lines.append(
-                        f'ring_buffer_dropped_total{{type="{buf_type}"}} {s["total_dropped"]}'
-                    )
+                    lines.append(f'ring_buffer_entries{{type="{buf_type}"}} {s["size"]}')
+                    lines.append(f'ring_buffer_capacity{{type="{buf_type}"}} {s["capacity"]}')
+                    lines.append(f'ring_buffer_appended_total{{type="{buf_type}"}} {s["total_appended"]}')
+                    lines.append(f'ring_buffer_dropped_total{{type="{buf_type}"}} {s["total_dropped"]}')
             except (AttributeError, TypeError, ValueError) as metric_err:
                 # 单个 ring buffer 指标格式化失败不应阻塞其他指标输出
                 logger.debug(

@@ -50,67 +50,81 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
     # ========== 2. 机床行程极限验证 ==========
     # 定义典型机床行程限制（可根据实际机床配置调整）
     MACHINE_LIMITS = {
-        "x_min": -500.0, "x_max": 500.0,
-        "y_min": -400.0, "y_max": 400.0,
-        "z_min": -300.0, "z_max": 300.0,
+        "x_min": -500.0,
+        "x_max": 500.0,
+        "y_min": -400.0,
+        "y_max": 400.0,
+        "z_min": -300.0,
+        "z_max": 300.0,
     }
-    
+
     import re
+
     for line_num, line in enumerate(lines, 1):
         stripped = line.strip()
         if not stripped or stripped.startswith(";") or stripped.startswith("("):
             continue
-        
+
         # 提取坐标值
-        x_match = re.search(r'X([+-]?\d*\.?\d+)', stripped)
-        y_match = re.search(r'Y([+-]?\d*\.?\d+)', stripped)
-        z_match = re.search(r'Z([+-]?\d*\.?\d+)', stripped)
-        
+        x_match = re.search(r"X([+-]?\d*\.?\d+)", stripped)
+        y_match = re.search(r"Y([+-]?\d*\.?\d+)", stripped)
+        z_match = re.search(r"Z([+-]?\d*\.?\d+)", stripped)
+
         if x_match:
             x_val = float(x_match.group(1))
             if x_val < MACHINE_LIMITS["x_min"] or x_val > MACHINE_LIMITS["x_max"]:
-                errors.append(f"第{line_num}行: X坐标{x_val:.3f}超出机床行程范围[{MACHINE_LIMITS['x_min']}, {MACHINE_LIMITS['x_max']}]")
-        
+                errors.append(
+                    f"第{line_num}行: X坐标{x_val:.3f}超出机床行程范围[{MACHINE_LIMITS['x_min']}, {MACHINE_LIMITS['x_max']}]"
+                )
+
         if y_match:
             y_val = float(y_match.group(1))
             if y_val < MACHINE_LIMITS["y_min"] or y_val > MACHINE_LIMITS["y_max"]:
-                errors.append(f"第{line_num}行: Y坐标{y_val:.3f}超出机床行程范围[{MACHINE_LIMITS['y_min']}, {MACHINE_LIMITS['y_max']}]")
-        
+                errors.append(
+                    f"第{line_num}行: Y坐标{y_val:.3f}超出机床行程范围[{MACHINE_LIMITS['y_min']}, {MACHINE_LIMITS['y_max']}]"
+                )
+
         if z_match:
             z_val = float(z_match.group(1))
             if z_val < MACHINE_LIMITS["z_min"] or z_val > MACHINE_LIMITS["z_max"]:
-                errors.append(f"第{line_num}行: Z坐标{z_val:.3f}超出机床行程范围[{MACHINE_LIMITS['z_min']}, {MACHINE_LIMITS['z_max']}]")
+                errors.append(
+                    f"第{line_num}行: Z坐标{z_val:.3f}超出机床行程范围[{MACHINE_LIMITS['z_min']}, {MACHINE_LIMITS['z_max']}]"
+                )
 
     # ========== 3. 切削参数物理约束验证 ==========
     # 典型机床参数限制
     SPINDLE_LIMITS = {"min_rpm": 50, "max_rpm": 24000}
     FEED_LIMITS = {"min_rate": 10.0, "max_rate": 20000.0}
-    
+
     for line_num, line in enumerate(lines, 1):
         stripped = line.strip()
         if not stripped or stripped.startswith(";") or stripped.startswith("("):
             continue
-        
+
         # 检查主轴转速
-        s_match = re.search(r'S(\d+)', stripped)
+        s_match = re.search(r"S(\d+)", stripped)
         if s_match:
             rpm = int(s_match.group(1))
             if rpm < SPINDLE_LIMITS["min_rpm"] or rpm > SPINDLE_LIMITS["max_rpm"]:
-                errors.append(f"第{line_num}行: 主轴转速{rpm}RPM超出安全范围[{SPINDLE_LIMITS['min_rpm']}, {SPINDLE_LIMITS['max_rpm']}]")
-        
+                errors.append(
+                    f"第{line_num}行: 主轴转速{rpm}RPM超出安全范围[{SPINDLE_LIMITS['min_rpm']}, {SPINDLE_LIMITS['max_rpm']}]"
+                )
+
         # 检查进给速度
-        f_match = re.search(r'F([+-]?\d*\.?\d+)', stripped)
+        f_match = re.search(r"F([+-]?\d*\.?\d+)", stripped)
         if f_match:
             feed = float(f_match.group(1))
             if feed < FEED_LIMITS["min_rate"] or feed > FEED_LIMITS["max_rate"]:
-                errors.append(f"第{line_num}行: 进给速度{feed:.1f}mm/min超出安全范围[{FEED_LIMITS['min_rate']}, {FEED_LIMITS['max_rate']}]")
+                errors.append(
+                    f"第{line_num}行: 进给速度{feed:.1f}mm/min超出安全范围[{FEED_LIMITS['min_rate']}, {FEED_LIMITS['max_rate']}]"
+                )
 
     # ========== 4. 快速移动碰撞检测 ==========
     for line_num, line in enumerate(lines, 1):
         stripped = line.strip()
         if stripped.startswith("G00") or stripped.startswith("G0 "):
             # 检查G00快速移动是否进入工件区域（Z<0）
-            z_match = re.search(r'Z([+-]?\d*\.?\d+)', stripped)
+            z_match = re.search(r"Z([+-]?\d*\.?\d+)", stripped)
             if z_match:
                 z_val = float(z_match.group(1))
                 if z_val < 0:
@@ -120,9 +134,9 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
     g_codes: list[str] = []
     for line in lines:
         stripped = line.strip()
-        g_matches = re.findall(r'G\d+', stripped)
+        g_matches = re.findall(r"G\d+", stripped)
         g_codes.extend(g_matches)
-    
+
     if ("G41" in g_codes or "G42" in g_codes) and "G40" not in g_codes:
         errors.append("刀具半径补偿未取消：G41/G42缺少对应的G40取消指令")
 
@@ -133,7 +147,7 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
         for wcs in valid_wcs:
             if wcs in stripped:
                 break
-    
+
     return errors
 
 
@@ -235,36 +249,42 @@ def build_dry_run_preview(
         cut_params = op.cutting_params or {}
         depth = cut_params.get("depth", 0.0)
         if depth > 50.0:
-            preview_result["collision_risks"].append({
-                "op_seq": op.seq,
-                "op_name": op.name,
-                "risk_type": "deep_cavity",
-                "description": f"深腔加工 (深度={depth:.1f}mm)，建议分层铣削",
-                "severity": "medium",
-            })
+            preview_result["collision_risks"].append(
+                {
+                    "op_seq": op.seq,
+                    "op_name": op.name,
+                    "risk_type": "deep_cavity",
+                    "description": f"深腔加工 (深度={depth:.1f}mm)，建议分层铣削",
+                    "severity": "medium",
+                }
+            )
 
     # 检查快速移动距离（可能碰撞）
     for i, path in enumerate(preview_result["tool_path_summary"]):
         if path["travel_distance"] > 100.0:
-            preview_result["collision_risks"].append({
-                "op_seq": path["op_seq"],
-                "op_name": path["op_name"],
-                "risk_type": "long_rapid_move",
-                "description": f"长距离快速移动 ({path['travel_distance']:.1f}mm)，注意避障",
-                "severity": "low",
-            })
+            preview_result["collision_risks"].append(
+                {
+                    "op_seq": path["op_seq"],
+                    "op_name": path["op_name"],
+                    "risk_type": "long_rapid_move",
+                    "description": f"长距离快速移动 ({path['travel_distance']:.1f}mm)，注意避障",
+                    "severity": "low",
+                }
+            )
 
     # 5. 断点位置
     checkpoint_counter = 0
     for op_index, op in enumerate(operation_plan.operations):
         checkpoint_counter += 1
-        preview_result["checkpoint_positions"].append({
-            "checkpoint_id": f"CP{checkpoint_counter:03d}",
-            "op_index": op_index,
-            "op_name": op.name,
-            "feature_name": op.feature_name,
-            "estimated_line": checkpoint_counter * 100,
-        })
+        preview_result["checkpoint_positions"].append(
+            {
+                "checkpoint_id": f"CP{checkpoint_counter:03d}",
+                "op_index": op_index,
+                "op_name": op.name,
+                "feature_name": op.feature_name,
+                "estimated_line": checkpoint_counter * 100,
+            }
+        )
 
     # 6. 警告信息
     if tool_changes > 10:
@@ -290,7 +310,7 @@ def validate_gcode(gcode: str) -> dict:
         errors.append("G代码为空")
         return {"valid": False, "errors": errors, "warnings": warnings}
 
-    lines = gcode.strip().split('\n')
+    lines = gcode.strip().split("\n")
     line_count = len(lines)
 
     # 检查基本结构
@@ -303,41 +323,42 @@ def validate_gcode(gcode: str) -> dict:
         line = line.strip()
 
         # 跳过空行和注释
-        if not line or line.startswith(';') or line.startswith('('):
+        if not line or line.startswith(";") or line.startswith("("):
             continue
 
         # 检查程序开始
-        if line.startswith('O') or line.startswith('%'):
+        if line.startswith("O") or line.startswith("%"):
             has_program_start = True
 
         # 检查程序结束
-        if 'M02' in line or 'M30' in line or line.endswith('%'):
+        if "M02" in line or "M30" in line or line.endswith("%"):
             has_program_end = True
 
         # 检查进给率
-        if 'F' in line and any(c.isdigit() for c in line):
+        if "F" in line and any(c.isdigit() for c in line):
             has_feed_rate = True
 
         # 检查主轴启动
-        if 'M03' in line or 'M04' in line:
+        if "M03" in line or "M04" in line:
             has_spindle = True
 
         # 检查快速移动进入工件（潜在碰撞）
-        if line.startswith('G00') and 'Z' in line:
+        if line.startswith("G00") and "Z" in line:
             # 检查Z值是否为负（进入工件）
             import re
-            z_match = re.search(r'Z([+-]?\d*\.?\d+)', line)
+
+            z_match = re.search(r"Z([+-]?\d*\.?\d+)", line)
             if z_match:
                 z_val = float(z_match.group(1))
                 if z_val < 0:
                     warnings.append(f"第{i}行: G00快速移动到Z{z_val}，可能导致碰撞")
 
         # 检查刀具半径补偿配对
-        if 'G41' in line or 'G42' in line:
+        if "G41" in line or "G42" in line:
             # 检查后续是否有G40取消
             has_cancel = False
             for j in range(i, min(i + 50, line_count)):
-                if j < line_count and 'G40' in lines[j]:
+                if j < line_count and "G40" in lines[j]:
                     has_cancel = True
                     break
             if not has_cancel:
@@ -361,28 +382,84 @@ def validate_gcode(gcode: str) -> dict:
         line = line.strip()
 
         # 跳过空行和注释
-        if not line or line.startswith(';') or line.startswith('('):
+        if not line or line.startswith(";") or line.startswith("("):
             continue
 
         # 检查G代码格式
         import re
-        g_codes = re.findall(r'G(\d+)', line)
+
+        g_codes = re.findall(r"G(\d+)", line)
         for g_code in g_codes:
             # 检查常见G代码
-            if g_code in ['00', '01', '02', '03', '04', '17', '18', '19',
-                         '20', '21', '28', '40', '41', '42', '43', '49',
-                         '53', '54', '55', '56', '57', '58', '59',
-                         '80', '81', '82', '83', '84', '85', '86', '87', '88', '89',
-                         '90', '91', '92', '94', '95', '96', '97', '98', '99']:
+            if g_code in [
+                "00",
+                "01",
+                "02",
+                "03",
+                "04",
+                "17",
+                "18",
+                "19",
+                "20",
+                "21",
+                "28",
+                "40",
+                "41",
+                "42",
+                "43",
+                "49",
+                "53",
+                "54",
+                "55",
+                "56",
+                "57",
+                "58",
+                "59",
+                "80",
+                "81",
+                "82",
+                "83",
+                "84",
+                "85",
+                "86",
+                "87",
+                "88",
+                "89",
+                "90",
+                "91",
+                "92",
+                "94",
+                "95",
+                "96",
+                "97",
+                "98",
+                "99",
+            ]:
                 continue
             else:
                 warnings.append(f"第{i}行: 不常见的G代码 G{g_code}")
 
         # 检查M代码格式
-        m_codes = re.findall(r'M(\d+)', line)
+        m_codes = re.findall(r"M(\d+)", line)
         for m_code in m_codes:
-            if m_code in ['00', '01', '02', '03', '04', '05', '06', '07', '08',
-                         '09', '10', '11', '19', '30', '98', '99']:
+            if m_code in [
+                "00",
+                "01",
+                "02",
+                "03",
+                "04",
+                "05",
+                "06",
+                "07",
+                "08",
+                "09",
+                "10",
+                "11",
+                "19",
+                "30",
+                "98",
+                "99",
+            ]:
                 continue
             else:
                 warnings.append(f"第{i}行: 不常见的M代码 M{m_code}")

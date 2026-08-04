@@ -7,6 +7,7 @@
     - trace: ITraceSink / IMetricSink / ILogSink 实现（内存 + JSONL）
     - snapshot: ISnapshotStore 实现（SQLite + 一键复现）
 """
+
 from app.observability.git_collector import (
     GitCollector,
     GitInfo,

@@ -16,12 +16,8 @@ import logging
 # 注意：本模块原为 app/config.py 单文件，现已重构为 app/config/ 包。
 # __file__ 路径由 app/config.py 变为 app/config/_utils.py，需多向上一级目录。
 # _utils.py 与 __init__.py 同级，因此 parent 层数与原 __init__.py 一致。
-PROJECT_ROOT: str = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
-PYTHON_DIR: str = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+PYTHON_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 _ROOT_DIR = PROJECT_ROOT
 

@@ -50,15 +50,15 @@ legacy plugin.json 继续支持（PluginDiscovery 兼容），
 plugin.yaml 是契约层推荐的官方格式。两者通过 adapt_metadata_to_manifest
 统一适配到 PluginManifest 契约。
 """
+
 from __future__ import annotations
 
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from app.contracts.plugin import (
-    BUILTIN_CAPABILITIES,
     PluginManifest,
     validate_capability_request,
 )
@@ -152,9 +152,7 @@ def validate_manifest_dict(data: Dict[str, Any]) -> List[str]:
 
     # id 格式
     if not _ID_PATTERN.match(str(data["id"])):
-        errors.append(
-            f"id 格式错误（应为小写字母/数字/下划线，开头非数字）: {data['id']}"
-        )
+        errors.append(f"id 格式错误（应为小写字母/数字/下划线，开头非数字）: {data['id']}")
 
     # version semver
     if not _SEMVER_PATTERN.match(str(data["version"])):
@@ -163,9 +161,7 @@ def validate_manifest_dict(data: Dict[str, Any]) -> List[str]:
     # entrypoint 格式
     entrypoint = str(data["entrypoint"])
     if not _ENTRYPOINT_PATTERN.match(entrypoint):
-        errors.append(
-            f"entrypoint 格式错误（应为 module.path:ClassName）: {entrypoint}"
-        )
+        errors.append(f"entrypoint 格式错误（应为 module.path:ClassName）: {entrypoint}")
 
     # required_contracts 格式
     for req in data.get("required_contracts", []) or []:
@@ -257,10 +253,7 @@ def load_manifest_from_yaml(path: str | Path) -> PluginManifest:
     try:
         import yaml
     except ImportError as e:
-        raise ImportError(
-            "PyYAML is required to load plugin.yaml manifests. "
-            "Install it via: pip install pyyaml"
-        ) from e
+        raise ImportError("PyYAML is required to load plugin.yaml manifests. Install it via: pip install pyyaml") from e
 
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
@@ -292,9 +285,7 @@ def load_manifest_from_dir(plugin_dir: str | Path) -> PluginManifest:
         if yml_path.exists():
             yaml_path = yml_path
         else:
-            raise FileNotFoundError(
-                f"No plugin.yaml found in plugin directory: {plugin_dir}"
-            )
+            raise FileNotFoundError(f"No plugin.yaml found in plugin directory: {plugin_dir}")
 
     return load_manifest_from_yaml(yaml_path)
 
@@ -326,9 +317,7 @@ def manifest_to_yaml(manifest: PluginManifest) -> str:
     try:
         import yaml
     except ImportError as e:
-        raise ImportError(
-            "PyYAML is required to serialize plugin.yaml manifests."
-        ) from e
+        raise ImportError("PyYAML is required to serialize plugin.yaml manifests.") from e
 
     return yaml.safe_dump(
         manifest_to_dict(manifest),

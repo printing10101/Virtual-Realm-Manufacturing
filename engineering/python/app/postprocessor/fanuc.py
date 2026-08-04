@@ -91,10 +91,7 @@ class FanucPostProcessor(BasePostProcessor):
         g_code = "G02" if clockwise else "G03"
         radius = self._calc_arc_radius(end, center)
         feed = self._fmt(self.get_feed_rate(self.rapid_feed))
-        return (
-            f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} "
-            f"R{self._fmt(radius)} F{feed}"
-        )
+        return f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} R{self._fmt(radius)} F{feed}"
 
     def format_tool_compensation(
         self,
@@ -170,9 +167,7 @@ class FanucPostProcessor(BasePostProcessor):
 
         lines = [
             f"{spindle_dir} S{int(rpm)}",
-            f"G99 G84 X{self._fmt(x)} Y{self._fmt(y)} "
-            f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
-            f"F{self._fmt(tap_feed)}",
+            f"G99 G84 X{self._fmt(x)} Y{self._fmt(y)} Z{self._fmt(z)} R{self._fmt(r_plane)} F{self._fmt(tap_feed)}",
         ]
         if dwell_ms > 0:
             lines[-1] += f" P{dwell_ms}"
@@ -199,9 +194,7 @@ class FanucPostProcessor(BasePostProcessor):
         lines = []
         if cycle_type == "G86":
             lines.append(
-                f"{retract_mode} G86 X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
-                f"F{bore_feed}"
+                f"{retract_mode} G86 X{self._fmt(x)} Y{self._fmt(y)} Z{self._fmt(z)} R{self._fmt(r_plane)} F{bore_feed}"
             )
             if dwell_ms > 0:
                 lines[-1] += f" P{dwell_ms}"
@@ -213,9 +206,7 @@ class FanucPostProcessor(BasePostProcessor):
             )
         else:
             lines.append(
-                f"{retract_mode} G86 X{self._fmt(x)} Y{self._fmt(y)} "
-                f"Z{self._fmt(z)} R{self._fmt(r_plane)} "
-                f"F{bore_feed}"
+                f"{retract_mode} G86 X{self._fmt(x)} Y{self._fmt(y)} Z{self._fmt(z)} R{self._fmt(r_plane)} F{bore_feed}"
             )
 
         lines.append("G80")
@@ -292,7 +283,6 @@ class FanucPostProcessor(BasePostProcessor):
         retract_val = cfg.get("retract_amount", retract)
         finish_allow = cfg.get("finish_allowance", finish_allowance)
 
-        r_plane = self.safe_z_height
         groove_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.1))
 
         # G75 外径切槽循环格式
@@ -338,9 +328,6 @@ class FanucPostProcessor(BasePostProcessor):
         Returns:
             G92螺纹循环NC代码
         """
-        cfg = self.get_cycle_config("threading", "G92")
-        r_plane = self.safe_z_height
-
         # G92 螺纹切削循环格式
         # G92 X(U) Z(W) F_
         # 多次切削需要多行G92指令
@@ -350,7 +337,6 @@ class FanucPostProcessor(BasePostProcessor):
         ]
 
         # 计算每次切深
-        current_depth = first_depth
         current_x = x + 2.0 * depth  # 从外径开始
 
         for i in range(passes):
@@ -367,15 +353,11 @@ class FanucPostProcessor(BasePostProcessor):
                 # 最后一次切削到目标深度
                 current_x = x
 
-            lines.append(
-                f"G92 X{self._fmt(current_x)} Z{self._fmt(z)} F{self._fmt(pitch)}"
-            )
+            lines.append(f"G92 X{self._fmt(current_x)} Z{self._fmt(z)} F{self._fmt(pitch)}")
 
         # 精加工
         for _ in range(finishing_passes):
-            lines.append(
-                f"G92 X{self._fmt(x)} Z{self._fmt(z)} F{self._fmt(pitch)}"
-            )
+            lines.append(f"G92 X{self._fmt(x)} Z{self._fmt(z)} F{self._fmt(pitch)}")
 
         lines.append("G80")
         return "\n".join(lines)

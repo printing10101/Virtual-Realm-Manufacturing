@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 class SecurityError(Exception):
     """沙箱安全异常 - 当检测到代码试图绕过安全沙箱时抛出。"""
+
     pass
 
 
@@ -119,6 +120,7 @@ except (RuntimeError, ValueError, TypeError, OSError, NameError, AttributeError,
             return self._worker_path
         import atexit
         import tempfile
+
         tmp_dir = tempfile.mkdtemp(prefix="skill_worker_")
         # 注册进程退出时清理，覆盖子进程超时/崩溃/JSON 解析失败等异常路径，
         # 避免 mkdtemp 创建的临时目录在系统 temp 中无限堆积。
@@ -160,17 +162,13 @@ except (RuntimeError, ValueError, TypeError, OSError, NameError, AttributeError,
         except subprocess.TimeoutExpired as e:
             logger.error(
                 "Skill '%s' subprocess timed out after %.1fs",
-                self.skill_id, self.timeout,
+                self.skill_id,
+                self.timeout,
             )
-            raise TimeoutError(
-                f"Skill '{self.skill_id}' execution timed out after {self.timeout}s"
-            ) from e
+            raise TimeoutError(f"Skill '{self.skill_id}' execution timed out after {self.timeout}s") from e
 
         if not proc.stdout:
-            raise RuntimeError(
-                f"Skill '{self.skill_id}' subprocess produced no output. "
-                f"stderr: {proc.stderr}"
-            )
+            raise RuntimeError(f"Skill '{self.skill_id}' subprocess produced no output. stderr: {proc.stderr}")
 
         try:
             result = _json.loads(proc.stdout)

@@ -19,6 +19,7 @@ DynamicsEncoder / FusionLayer）。在此之前，生产代码中 ``UnifiedState
 
 对应 ADR：ADR-020 思路 1（P0-3 组装桥接）/ ADR-017 / ADR-007 / ADR-013
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -85,10 +86,7 @@ class AssemblerResult:
     @property
     def is_complete(self) -> bool:
         """两侧都完整（无任何中性值填充）."""
-        return (
-            self.geometry_result.is_complete
-            and self.dynamics_result.is_complete
-        )
+        return self.geometry_result.is_complete and self.dynamics_result.is_complete
 
     @property
     def completeness_ratio(self) -> float:
@@ -97,10 +95,7 @@ class AssemblerResult:
         几何侧 4 字段、动力学侧 6 字段，各自 ``completeness_ratio`` 已归一化
         到 [0, 1]，这里取算术平均作为整体完整性指标.
         """
-        return (
-            self.geometry_result.completeness_ratio
-            + self.dynamics_result.completeness_ratio
-        ) / 2.0
+        return (self.geometry_result.completeness_ratio + self.dynamics_result.completeness_ratio) / 2.0
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典（供 MLflow 记录与日志输出）."""
@@ -190,9 +185,7 @@ class UnifiedStateAssembler:
         AssemblerResult
             含组装后的 ``UnifiedState`` 与聚合诊断.
         """
-        unified = cls.assemble(
-            geometry_result.geometry, dynamics_result.dynamics
-        )
+        unified = cls.assemble(geometry_result.geometry, dynamics_result.dynamics)
         geometry_degraded = GeometryFeaturesDeriver.should_degrade(geometry_result)
         dynamics_degraded = DynamicsStateBridge.should_degrade(dynamics_result)
         return AssemblerResult(

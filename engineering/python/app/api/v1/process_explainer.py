@@ -14,7 +14,6 @@
 7. POST /cleanup               清理过期会话
 """
 
-
 import logging
 from typing import Any, Optional
 
@@ -24,6 +23,7 @@ from pydantic import BaseModel, Field
 from app.core.response import success
 from app.core.endpoint_handler import safe_endpoint
 from app.auth.permissions import require_permission
+
 # P2-4-5 修复：引入共享速率限制器，LLM 对话解释消耗大量推理资源，需速率限制防止 DoS。
 from app.middleware.rate_limiter import limiter
 from app.ai.process_explainer import get_process_explainer
@@ -41,6 +41,7 @@ router = APIRouter(
 # 请求模型
 # =====================================================================
 
+
 class ExplainProcessRequest(BaseModel):
     """工艺规划解释请求。"""
 
@@ -48,9 +49,7 @@ class ExplainProcessRequest(BaseModel):
     user_question: str = Field(default="", description="用户上下文问题")
     material: str = Field(default="", description="工件材料")
     blank_size: str = Field(default="", description="毛坯尺寸描述")
-    feature_count: Optional[int] = Field(
-        default=None, ge=0, description="加工特征数（None 自动推断）"
-    )
+    feature_count: Optional[int] = Field(default=None, ge=0, description="加工特征数（None 自动推断）")
     session_id: Optional[str] = Field(default=None, description="会话 ID（None 新建）")
 
 
@@ -58,9 +57,7 @@ class ExplainNCRequest(BaseModel):
     """NC 代码解释请求。"""
 
     nc_code: str = Field(..., min_length=1, description="NC/G 代码文本")
-    controller_type: str = Field(
-        default="fanuc", description="控制器类型（fanuc/siemens/heidenhain 等）"
-    )
+    controller_type: str = Field(default="fanuc", description="控制器类型（fanuc/siemens/heidenhain 等）")
     user_question: str = Field(default="", description="用户上下文问题")
     session_id: Optional[str] = Field(default=None, description="会话 ID（None 新建）")
 
@@ -75,6 +72,7 @@ class ChatRequest(BaseModel):
 # =====================================================================
 # 1. 解释工艺规划
 # =====================================================================
+
 
 @router.post("/explain-process", dependencies=[Depends(require_permission("explainer:read"))])
 # P2-4-5 修复：LLM 对话解释消耗推理资源，限制为 20/minute。
@@ -101,6 +99,7 @@ async def explain_process(request: Request, req: ExplainProcessRequest):
 # 2. 解释 NC 代码
 # =====================================================================
 
+
 @router.post("/explain-nc", dependencies=[Depends(require_permission("explainer:read"))])
 # P2-4-5 修复：LLM 对话解释消耗推理资源，限制为 20/minute。
 @limiter.limit("20/minute")
@@ -124,6 +123,7 @@ async def explain_nc(request: Request, req: ExplainNCRequest):
 # 3. 多轮对话
 # =====================================================================
 
+
 @router.post("/chat", dependencies=[Depends(require_permission("explainer:read"))])
 # P2-4-5 修复：LLM 多轮对话消耗推理资源，限制为 20/minute。
 @limiter.limit("20/minute")
@@ -145,6 +145,7 @@ async def chat(request: Request, req: ChatRequest):
 # 4. 创建新会话
 # =====================================================================
 
+
 @router.post("/sessions", dependencies=[Depends(require_permission("explainer:write"))])
 @safe_endpoint(context="process_explainer.create_session", fallback="创建会话失败")
 async def create_session():
@@ -161,6 +162,7 @@ async def create_session():
 # =====================================================================
 # 5. 获取会话历史
 # =====================================================================
+
 
 @router.get("/sessions/{session_id}")
 @safe_endpoint(context="process_explainer.get_session", fallback="获取历史失败")
@@ -185,6 +187,7 @@ async def get_session(
 # 6. 清空会话
 # =====================================================================
 
+
 @router.delete("/sessions/{session_id}", dependencies=[Depends(require_permission("explainer:write"))])
 @safe_endpoint(context="process_explainer.clear_session", fallback="清空会话失败")
 async def clear_session(session_id: str):
@@ -200,6 +203,7 @@ async def clear_session(session_id: str):
 # =====================================================================
 # 7. 清理过期会话
 # =====================================================================
+
 
 @router.post("/cleanup", dependencies=[Depends(require_permission("explainer:write"))])
 @safe_endpoint(context="process_explainer.cleanup_expired", fallback="清理失败")

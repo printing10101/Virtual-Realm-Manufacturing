@@ -39,7 +39,6 @@ from typing import Optional
 from app.models.knowledge_graph import RelationSource
 from app.sharp.schema.domain_schema import (
     DomainSchema,
-    EntityType,
     RelationType,
     Triple,
     DEFAULT_SCHEMA,
@@ -110,21 +109,21 @@ class VerificationStrategy:
 # ---------------------------------------------------------------------------
 
 # KG 工具（基于 KnowledgeGraphQueryAPI）
-TOOL_KG_QUERY_ENTITY = "kg.query_entity"          # 查询实体属性
-TOOL_KG_QUERY_RELATION = "kg.query_relation"      # 查询关系是否存在
-TOOL_KG_QUERY_NEIGHBORS = "kg.query_neighbors"    # 查询邻居（多跳）
-TOOL_KG_QUERY_PATH = "kg.query_path"              # 查询路径
+TOOL_KG_QUERY_ENTITY = "kg.query_entity"  # 查询实体属性
+TOOL_KG_QUERY_RELATION = "kg.query_relation"  # 查询关系是否存在
+TOOL_KG_QUERY_NEIGHBORS = "kg.query_neighbors"  # 查询邻居（多跳）
+TOOL_KG_QUERY_PATH = "kg.query_path"  # 查询路径
 
 # 文本工具（基于 RagRetrievalEngine）
-TOOL_TEXT_RETRIEVE = "text.retrieve"              # 文档检索
-TOOL_TEXT_ENTITY_LOOKUP = "text.entity_lookup"    # 实体倒排索引查询
+TOOL_TEXT_RETRIEVE = "text.retrieve"  # 文档检索
+TOOL_TEXT_ENTITY_LOOKUP = "text.entity_lookup"  # 实体倒排索引查询
 
 # LLM 工具（基于 LLM Router）
-TOOL_LLM_REASON = "llm.reason"                    # LLM 推理
-TOOL_LLM_EXTRACT = "llm.extract"                  # LLM 实体/关系抽取
+TOOL_LLM_REASON = "llm.reason"  # LLM 推理
+TOOL_LLM_EXTRACT = "llm.extract"  # LLM 实体/关系抽取
 
 # 聚合工具
-TOOL_AGGREGATE_EVIDENCE = "aggregate.evidence"    # 证据聚合
+TOOL_AGGREGATE_EVIDENCE = "aggregate.evidence"  # 证据聚合
 
 
 # ---------------------------------------------------------------------------
@@ -169,9 +168,7 @@ class StrategicPlanner:
         # 消融模式校验
         valid_modes = {None, "no_schema", "no_memory", "no_react", "no_toolset"}
         if ablation_mode not in valid_modes:
-            raise ValueError(
-                f"ablation_mode 必须是 {valid_modes} 之一，实际: {ablation_mode}"
-            )
+            raise ValueError(f"ablation_mode 必须是 {valid_modes} 之一，实际: {ablation_mode}")
 
     # ------------------------------------------------------------------
     # 公共入口
@@ -214,16 +211,18 @@ class StrategicPlanner:
             # (Tool)-[SUITABLE_FOR]->(Material)
             # 领域先验：刀具-材料适配有丰富的工艺手册与文献支撑
             strategy.tool_sequence = [
-                TOOL_KG_QUERY_ENTITY,        # 先拉取 Tool/Material 属性
-                TOOL_KG_QUERY_RELATION,      # 查询 KG 中是否已存在该关系
-                TOOL_TEXT_RETRIEVE,           # 检索材料加工性能文献
-                TOOL_LLM_REASON,              # LLM 综合推理
-                TOOL_AGGREGATE_EVIDENCE,      # 证据聚合
+                TOOL_KG_QUERY_ENTITY,  # 先拉取 Tool/Material 属性
+                TOOL_KG_QUERY_RELATION,  # 查询 KG 中是否已存在该关系
+                TOOL_TEXT_RETRIEVE,  # 检索材料加工性能文献
+                TOOL_LLM_REASON,  # LLM 综合推理
+                TOOL_AGGREGATE_EVIDENCE,  # 证据聚合
             ]
-            strategy.focus_dimensions.extend([
-                "tool_material_compatibility",   # 刀具材料与工件材料兼容性
-                "cutting_performance_match",     # 切削性能匹配度
-            ])
+            strategy.focus_dimensions.extend(
+                [
+                    "tool_material_compatibility",  # 刀具材料与工件材料兼容性
+                    "cutting_performance_match",  # 切削性能匹配度
+                ]
+            )
 
         elif rel == RelationType.SUITABLE_FOR_FEATURE:
             # (Tool)-[SUITABLE_FOR]->(Feature)
@@ -234,24 +233,28 @@ class StrategicPlanner:
                 TOOL_LLM_REASON,
                 TOOL_AGGREGATE_EVIDENCE,
             ]
-            strategy.focus_dimensions.extend([
-                "tool_geometry_match",           # 刀具几何与特征匹配
-                "application_scenario",          # 应用场景一致性
-            ])
+            strategy.focus_dimensions.extend(
+                [
+                    "tool_geometry_match",  # 刀具几何与特征匹配
+                    "application_scenario",  # 应用场景一致性
+                ]
+            )
 
         elif rel == RelationType.APPLIED_TO:
             # (Process)-[APPLIED_TO]->(Feature)
             strategy.tool_sequence = [
                 TOOL_KG_QUERY_ENTITY,
                 TOOL_KG_QUERY_RELATION,
-                TOOL_TEXT_RETRIEVE,           # 检索工艺规则文档
+                TOOL_TEXT_RETRIEVE,  # 检索工艺规则文档
                 TOOL_LLM_REASON,
                 TOOL_AGGREGATE_EVIDENCE,
             ]
-            strategy.focus_dimensions.extend([
-                "process_feature_applicability",  # 工艺对特征的适用性
-                "process_rule_validity",           # 工艺规则有效性
-            ])
+            strategy.focus_dimensions.extend(
+                [
+                    "process_feature_applicability",  # 工艺对特征的适用性
+                    "process_rule_validity",  # 工艺规则有效性
+                ]
+            )
 
         elif rel == RelationType.USED:
             # (Process)-[USED]->(Tool)
@@ -262,10 +265,12 @@ class StrategicPlanner:
                 TOOL_LLM_REASON,
                 TOOL_AGGREGATE_EVIDENCE,
             ]
-            strategy.focus_dimensions.extend([
-                "process_tool_usage",             # 工艺是否实际使用该刀具
-                "tool_capability_match",          # 刀具能力匹配
-            ])
+            strategy.focus_dimensions.extend(
+                [
+                    "process_tool_usage",  # 工艺是否实际使用该刀具
+                    "tool_capability_match",  # 刀具能力匹配
+                ]
+            )
 
     def _apply_confidence_rule(self, triple: Triple, strategy: VerificationStrategy) -> None:
         """根据已知 confidence 调整验证深度。"""

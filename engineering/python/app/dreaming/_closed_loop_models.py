@@ -36,14 +36,13 @@ class ClosedLoopDecision:
     conflict: float = 0.0
     ds_mass: float = 0.0
     sample_count: int = 0
-    evaluated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    evaluated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     applied: bool = False
     apply_error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
 
 @dataclass
 class RuleOutcomeRecord:
@@ -61,9 +60,8 @@ class RuleOutcomeRecord:
     success: bool
     confidence: float
     source: str = "manual"
-    recorded_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    recorded_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
 
 def run_closed_loop(
     rule_ids: Optional[List[str]] = None,
@@ -82,6 +80,7 @@ def run_closed_loop(
 
     loop = ClosedLoop()
     return loop.run_closed_loop_iteration(rule_ids=rule_ids, apply=apply)
+
 
 def record_rule_outcome(
     rule_id: str,
@@ -106,4 +105,3 @@ def record_rule_outcome(
         confidence=confidence,
         source=source,
     )
-

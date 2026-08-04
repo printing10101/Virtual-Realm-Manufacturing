@@ -79,9 +79,7 @@ class WearCurvePredictor:
         feed_correction = 1.0 + (feed_rate - 0.2) * 0.8
         depth_correction = 1.0 + (depth_of_cut - 1.0) * 0.15
         corrected_speed = cutting_speed * feed_correction * depth_correction
-        equivalent_life = (effective_C / max(corrected_speed, 1.0)) ** (
-            1.0 / effective_n
-        )
+        equivalent_life = (effective_C / max(corrected_speed, 1.0)) ** (1.0 / effective_n)
         wear_progress = current_vb / self.default_replacement_threshold
         acceleration = 1.0 + 2.0 * (wear_progress**2)
         effective_vb = max(current_vb, 0.001)
@@ -145,34 +143,22 @@ class WearCurvePredictor:
         time_to_threshold = None
 
         while time <= max_time and current_vb < wear_threshold:
-            temperature = self._get_temperature(
-                cutting_speed, feed_rate, depth_of_cut, material
-            )
+            temperature = self._get_temperature(cutting_speed, feed_rate, depth_of_cut, material)
 
             if current_vb < self.USUI_TAYLOR_SWITCH_THRESHOLD:
-                usui_rate = self._usui_wear_rate(
-                    cutting_speed, feed_rate, depth_of_cut, temperature, material, tool
-                )
-                taylor_rate = self._taylor_wear_rate(
-                    current_vb, cutting_speed, feed_rate, depth_of_cut, material, tool
-                )
+                usui_rate = self._usui_wear_rate(cutting_speed, feed_rate, depth_of_cut, temperature, material, tool)
+                taylor_rate = self._taylor_wear_rate(current_vb, cutting_speed, feed_rate, depth_of_cut, material, tool)
                 usui_weight = 1.0 - (current_vb / self.USUI_TAYLOR_SWITCH_THRESHOLD)
                 usui_weight = max(0.3, min(0.9, usui_weight))
                 wear_rate = usui_weight * usui_rate + (1.0 - usui_weight) * taylor_rate
             else:
-                taylor_rate = self._taylor_wear_rate(
-                    current_vb, cutting_speed, feed_rate, depth_of_cut, material, tool
-                )
-                usui_rate = self._usui_wear_rate(
-                    cutting_speed, feed_rate, depth_of_cut, temperature, material, tool
-                )
+                taylor_rate = self._taylor_wear_rate(current_vb, cutting_speed, feed_rate, depth_of_cut, material, tool)
+                usui_rate = self._usui_wear_rate(cutting_speed, feed_rate, depth_of_cut, temperature, material, tool)
                 progress = (current_vb - self.USUI_TAYLOR_SWITCH_THRESHOLD) / (
                     wear_threshold - self.USUI_TAYLOR_SWITCH_THRESHOLD
                 )
                 taylor_weight = max(0.6, min(0.95, 0.5 + 0.45 * progress))
-                wear_rate = (
-                    taylor_weight * taylor_rate + (1.0 - taylor_weight) * usui_rate
-                )
+                wear_rate = taylor_weight * taylor_rate + (1.0 - taylor_weight) * usui_rate
 
             phase = self._determine_phase(current_vb)
 
@@ -211,9 +197,7 @@ class WearCurvePredictor:
             },
         )
 
-    def predict_remaining_life(
-        self, current_wear: float, input_parameters: dict
-    ) -> float:
+    def predict_remaining_life(self, current_wear: float, input_parameters: dict) -> float:
         input_parameters.get("material_type", "steel_45")
         tool_type = input_parameters.get("tool_type", "carbide")
 
@@ -237,11 +221,7 @@ class WearCurvePredictor:
             elapsed = point.time
 
         # time_to_threshold 存储在 model_info 中（参见 WearCurve 数据类定义）
-        t_threshold = (
-            simulated_curve.model_info.get("time_to_threshold", 0.0)
-            if simulated_curve.model_info
-            else 0.0
-        )
+        t_threshold = simulated_curve.model_info.get("time_to_threshold", 0.0) if simulated_curve.model_info else 0.0
         return max(0.0, round(t_threshold - elapsed, 2))
 
     def get_replacement_threshold(self, material_type: Optional[str] = None) -> float:

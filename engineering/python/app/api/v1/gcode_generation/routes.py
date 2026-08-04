@@ -36,7 +36,6 @@ from app.api.v1._shared.task_infra import (
 )
 from app.api.v1.gcode_generation.schemas import (
     ConfirmTaskResponse,
-    FeatureGCodeResultResponse,
     ReviewRequest,
     ReviewResponse,
     TaskCreateRequest,
@@ -51,18 +50,12 @@ from app.core.safe_errors import safe_error_message
 from app.contracts._shared import TaskListResponse
 
 from app.gcode_generation import (
-    ChatterReportLoadError,
-    FeatureGCodeResult,
     GCodeGenerationError,
-    GCodeGenerationPipeline,
     GCodeGenerationPipelineError,
-    GCodeGenerationTask,
     GCodeGenerationTaskStatus,
     GCodeReviewError,
     GCodeReviewStatus,
-    OperationPlanLoadError,
     ReviewError,
-    build_gcode_disclaimer,
     get_file_extension,
     get_task_store,
 )
@@ -136,22 +129,15 @@ async def get_precision_info() -> dict[str, Any]:
             "gcode_disclaimer": _disclaimer_dict(),
             "workflow_summary": {
                 "step_1": (
-                    "POST /tasks 创建任务（输入 ChatterReport 路径 + OperationPlan 路径 "
-                    "+ 控制器类型 + 材料名称）"
+                    "POST /tasks 创建任务（输入 ChatterReport 路径 + OperationPlan 路径 + 控制器类型 + 材料名称）"
                 ),
                 "step_2": "POST /tasks/{task_id}/run 异步触发 G 代码生成流水线",
                 "step_3": "GET /tasks/{task_id} 轮询状态（PENDING → RUNNING → GENERATED）",
-                "step_4": (
-                    "POST /tasks/{task_id}/review?feature_id=... 工程师逐条审核 G 代码段"
-                ),
+                "step_4": ("POST /tasks/{task_id}/review?feature_id=... 工程师逐条审核 G 代码段"),
                 "step_5": (
-                    "POST /tasks/{task_id}/confirm 确认任务（REVIEWED → SUCCEEDED + "
-                    "导出 G 代码文件 + 报告 JSON）"
+                    "POST /tasks/{task_id}/confirm 确认任务（REVIEWED → SUCCEEDED + 导出 G 代码文件 + 报告 JSON）"
                 ),
-                "step_6": (
-                    "GET /tasks/{task_id}/gcode/download 下载 G 代码文件，"
-                    "手动加载到 CAM 软件进行二次校验"
-                ),
+                "step_6": ("GET /tasks/{task_id}/gcode/download 下载 G 代码文件，手动加载到 CAM 软件进行二次校验"),
             },
         },
     )
@@ -185,14 +171,10 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
         upstream_prediction_method,
         upstream_pending_calibration,
         upstream_default_controller,
-    ) = _resolve_upstream_chatter_report(
-        body.source_chatter_prediction_task_id
-    )
+    ) = _resolve_upstream_chatter_report(body.source_chatter_prediction_task_id)
 
     # 从上游阶段 3 任务追溯 OperationPlan 路径
-    upstream_operation_plan_path = _resolve_upstream_operation_plan(
-        body.source_parametric_geometry_task_id
-    )
+    upstream_operation_plan_path = _resolve_upstream_operation_plan(body.source_parametric_geometry_task_id)
 
     # 解析 chatter_report_path（显式 > 上游 > 报错）
     chatter_report_path = body.chatter_report_path or upstream_chatter_report_path
@@ -205,8 +187,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
                 f"{body.source_chatter_prediction_task_id}"
             ),
             suggestion=(
-                "请显式提供 chatter_report_path，或确认上游阶段 5 任务已 SUCCEEDED "
-                "且已导出 ChatterReport JSON。"
+                "请显式提供 chatter_report_path，或确认上游阶段 5 任务已 SUCCEEDED 且已导出 ChatterReport JSON。"
             ),
         )
 
@@ -229,8 +210,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
                 f"{body.source_parametric_geometry_task_id}"
             ),
             suggestion=(
-                "请显式提供 operation_plan_path，或确认上游阶段 3 任务已 SUCCEEDED "
-                "且已导出 OperationPlan JSON。"
+                "请显式提供 operation_plan_path，或确认上游阶段 3 任务已 SUCCEEDED 且已导出 OperationPlan JSON。"
             ),
         )
 
@@ -247,9 +227,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
 
     # 解析 controller_type（显式 > 上游 > 配置默认值）
     controller_type = (
-        body.controller_type
-        or upstream_default_controller
-        or config.gcode_generation.default_controller_type
+        body.controller_type or upstream_default_controller or config.gcode_generation.default_controller_type
     )
 
     try:
@@ -292,10 +270,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
             "cam_validation_required": task.cam_validation_required,
             "gcode_disclaimer": _disclaimer_dict(task=task),
         },
-        message=(
-            f"任务已创建 task_id={task.task_id}，"
-            f"请调用 POST /tasks/{task.task_id}/run 触发执行"
-        ),
+        message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
 
@@ -332,10 +307,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
     ):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态不允许执行当前操作 status={task.status}。"
-                "仅 PENDING / FAILED 状态可触发执行。"
-            ),
+            message=(f"任务状态不允许执行当前操作 status={task.status}。仅 PENDING / FAILED 状态可触发执行。"),
         )
 
     # 重试场景：清空错误信息
@@ -381,21 +353,11 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
 
     # 统计审核进度
     pending_review_count = sum(
-        1 for r in task.feature_gcode_results
-        if r.review_status == GCodeReviewStatus.PENDING.value
+        1 for r in task.feature_gcode_results if r.review_status == GCodeReviewStatus.PENDING.value
     )
-    confirmed_count = sum(
-        1 for r in task.feature_gcode_results
-        if r.review_status == GCodeReviewStatus.CONFIRMED.value
-    )
-    rejected_count = sum(
-        1 for r in task.feature_gcode_results
-        if r.review_status == GCodeReviewStatus.REJECTED.value
-    )
-    edited_count = sum(
-        1 for r in task.feature_gcode_results
-        if r.review_status == GCodeReviewStatus.EDITED.value
-    )
+    confirmed_count = sum(1 for r in task.feature_gcode_results if r.review_status == GCodeReviewStatus.CONFIRMED.value)
+    rejected_count = sum(1 for r in task.feature_gcode_results if r.review_status == GCodeReviewStatus.REJECTED.value)
+    edited_count = sum(1 for r in task.feature_gcode_results if r.review_status == GCodeReviewStatus.EDITED.value)
 
     gcode_file_exported = bool(task.gcode_file_path)
 
@@ -429,9 +391,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
             "reviewed_at": task.reviewed_at,
             "warnings": list(task.warnings),
             "errors": list(task.errors),
-            "gcode_disclaimer": _disclaimer_dict(
-                task=task, gcode_file_exported=gcode_file_exported
-            ),
+            "gcode_disclaimer": _disclaimer_dict(task=task, gcode_file_exported=gcode_file_exported),
         },
     )
 
@@ -522,10 +482,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
     if task.status not in allowed_states:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许获取结果，"
-                f"仅 {sorted(allowed_states)} 状态可获取。"
-            ),
+            message=(f"任务状态 {task.status} 不允许获取结果，仅 {sorted(allowed_states)} 状态可获取。"),
             suggestion="请等待状态变为 generated 后再调用此端点",
         )
 
@@ -568,9 +525,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
             "gcode_report_path": task.gcode_report_path or None,
             "error_message": task.error_message or None,
             "feature_results": feature_results_data,
-            "gcode_disclaimer": _disclaimer_dict(
-                task=task, gcode_file_exported=gcode_file_exported
-            ),
+            "gcode_disclaimer": _disclaimer_dict(task=task, gcode_file_exported=gcode_file_exported),
         },
     )
 
@@ -619,10 +574,7 @@ async def review_feature(
     if task.status != GCodeGenerationTaskStatus.GENERATED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许审核，"
-                f"仅 {GCodeGenerationTaskStatus.GENERATED.value} 状态可审核"
-            ),
+            message=(f"任务状态 {task.status} 不允许审核，仅 {GCodeGenerationTaskStatus.GENERATED.value} 状态可审核"),
             suggestion="请等待流水线执行完成（状态变为 generated）后再审核",
         )
 
@@ -643,10 +595,7 @@ async def review_feature(
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message="action=edited 时必须提供 edited_params",
-            suggestion=(
-                "请提供编辑后的参数（字段可为 axial_depth_mm / limit_depth_mm "
-                "/ stable（bool）的子集）"
-            ),
+            suggestion=("请提供编辑后的参数（字段可为 axial_depth_mm / limit_depth_mm / stable（bool）的子集）"),
         )
 
     try:
@@ -665,9 +614,7 @@ async def review_feature(
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="gcode_generation.review_feature"
-        )
+        safe = safe_error_message(e, context="gcode_generation.review_feature")
         logger.error(
             "审核特征失败 task_id=%s feature_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -690,10 +637,7 @@ async def review_feature(
             message="审核后任务丢失，请检查任务存储",
         )
 
-    all_reviewed = all(
-        r.review_status != GCodeReviewStatus.PENDING.value
-        for r in task_after.feature_gcode_results
-    )
+    all_reviewed = all(r.review_status != GCodeReviewStatus.PENDING.value for r in task_after.feature_gcode_results)
 
     return success(
         data={
@@ -709,8 +653,7 @@ async def review_feature(
         message=(
             f"特征 {feature_id} 已审核（action={body.action}）。"
             + (
-                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/confirm "
-                "导出 G 代码文件。"
+                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/confirm 导出 G 代码文件。"
                 if all_reviewed
                 else " 仍有特征待审核。"
             )
@@ -758,10 +701,7 @@ async def confirm_task(
     if task.status != GCodeGenerationTaskStatus.REVIEWED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许确认，"
-                f"仅 {GCodeGenerationTaskStatus.REVIEWED.value} 状态可确认"
-            ),
+            message=(f"任务状态 {task.status} 不允许确认，仅 {GCodeGenerationTaskStatus.REVIEWED.value} 状态可确认"),
             suggestion="请先完成所有特征的审核（状态变为 reviewed）后再确认导出",
         )
 
@@ -780,9 +720,7 @@ async def confirm_task(
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="gcode_generation.confirm_task"
-        )
+        safe = safe_error_message(e, context="gcode_generation.confirm_task")
         logger.error(
             "确认任务失败 task_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -805,19 +743,17 @@ async def confirm_task(
         )
 
     exported_features = sum(
-        1 for r in task_after.feature_gcode_results
-        if r.review_status in (
+        1
+        for r in task_after.feature_gcode_results
+        if r.review_status
+        in (
             GCodeReviewStatus.CONFIRMED.value,
             GCodeReviewStatus.EDITED.value,
         )
     )
 
-    download_url = (
-        f"/api/v1/gcode-generation/tasks/{task_id}/gcode/download"
-    )
-    report_download_url = (
-        f"/api/v1/gcode-generation/tasks/{task_id}/report/download"
-    )
+    download_url = f"/api/v1/gcode-generation/tasks/{task_id}/gcode/download"
+    report_download_url = f"/api/v1/gcode-generation/tasks/{task_id}/report/download"
 
     return success(
         data={
@@ -833,9 +769,7 @@ async def confirm_task(
             "download_url": download_url,
             "report_download_url": report_download_url,
             "cam_validation_required": task_after.cam_validation_required,
-            "gcode_disclaimer": _disclaimer_dict(
-                task=task_after, gcode_file_exported=True
-            ),
+            "gcode_disclaimer": _disclaimer_dict(task=task_after, gcode_file_exported=True),
         },
         message=(
             f"G 代码已导出 gcode_file={result.gcode_file_path}。"
@@ -962,10 +896,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     if task.status == GCodeGenerationTaskStatus.SUCCEEDED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务 {task_id} 已 SUCCEEDED，禁止删除。"
-                "G 代码产物可能已被阶段 7 CAM 校验引用。"
-            ),
+            message=(f"任务 {task_id} 已 SUCCEEDED，禁止删除。G 代码产物可能已被阶段 7 CAM 校验引用。"),
             suggestion="如确需删除，请先手动清理下游引用，再删除任务",
         )
 
@@ -980,9 +911,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
         try:
             store.update_task(task)
         except Exception as e:
-            safe = safe_error_message(
-                e, context="gcode_generation.delete_task.cancel"
-            )
+            safe = safe_error_message(e, context="gcode_generation.delete_task.cancel")
             logger.error(
                 "取消任务失败 task_id=%s | error_id=%s | exc=%s",
                 task_id,
@@ -1005,9 +934,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="gcode_generation.delete_task"
-        )
+        safe = safe_error_message(e, context="gcode_generation.delete_task")
         logger.error(
             "删除任务失败 task_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -1024,10 +951,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
         data={
             "task_id": task_id,
             "deleted": True,
-            "note": (
-                "任务元信息已删除，G 代码文件与 workspace 目录未自动清理，"
-                "避免误删下游链路已引用的资源。"
-            ),
+            "note": ("任务元信息已删除，G 代码文件与 workspace 目录未自动清理，避免误删下游链路已引用的资源。"),
         },
         message=f"任务 {task_id} 已删除",
     )

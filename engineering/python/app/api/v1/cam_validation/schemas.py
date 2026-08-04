@@ -5,7 +5,6 @@ V3.0 split: 从 ``routes.py`` 提取，保持文件聚焦。
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -83,9 +82,7 @@ class TaskStatusResponse(BaseModel):
     material_name: str
     precision_tier: str
     pending_calibration: bool
-    validation_progress: dict[str, int] = Field(
-        default_factory=lambda: {"pending": 0, "validated": 0, "reviewed": 0}
-    )
+    validation_progress: dict[str, int] = Field(default_factory=lambda: {"pending": 0, "validated": 0, "reviewed": 0})
     validation_summary: dict[str, int] = Field(
         default_factory=lambda: {
             "pass": 0,

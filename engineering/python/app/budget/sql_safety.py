@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -107,23 +106,17 @@ def validate_column(
 
 def validate_cost_dimension_column(column: str) -> str:
     """校验成本维度列名。"""
-    return validate_column(
-        column, _COST_DIMENSION_COLUMNS, context="CostDimension"
-    )
+    return validate_column(column, _COST_DIMENSION_COLUMNS, context="CostDimension")
 
 
 def validate_budget_update_column(column: str) -> str:
     """校验预算更新 SET 子句中的列名。"""
-    return validate_column(
-        column, _BUDGET_UPDATE_ALLOWED_COLUMNS, context="BudgetUpdate"
-    )
+    return validate_column(column, _BUDGET_UPDATE_ALLOWED_COLUMNS, context="BudgetUpdate")
 
 
 def validate_sort_column(column: str) -> str:
     """校验排序字段。"""
-    return validate_column(
-        column, _SORT_ALLOWED_COLUMNS, context="SortColumn"
-    )
+    return validate_column(column, _SORT_ALLOWED_COLUMNS, context="SortColumn")
 
 
 def safe_order_clause(

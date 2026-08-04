@@ -109,11 +109,7 @@ async def get_equipment(equipment_id: str) -> Optional[dict]:
     """获取单台设备详情，未找到返回 None。"""
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        equip = (
-            await session.execute(
-                select(Equipment).where(Equipment.id == equipment_id)
-            )
-        ).scalar_one_or_none()
+        equip = (await session.execute(select(Equipment).where(Equipment.id == equipment_id))).scalar_one_or_none()
         if not equip:
             return None
         return equip.to_dict()
@@ -129,11 +125,7 @@ async def update_equipment(equipment_id: str, body: dict) -> Optional[dict]:
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         try:
-            equip = (
-                await session.execute(
-                    select(Equipment).where(Equipment.id == equipment_id)
-                )
-            ).scalar_one_or_none()
+            equip = (await session.execute(select(Equipment).where(Equipment.id == equipment_id))).scalar_one_or_none()
             if not equip:
                 return None
 
@@ -208,9 +200,7 @@ async def update_alarm_status(alarm_id: str, body: dict) -> Optional[dict]:
     async with sessionmaker() as session:
         try:
             alarm = (
-                await session.execute(
-                    select(EquipmentAlarm).where(EquipmentAlarm.id == alarm_id)
-                )
+                await session.execute(select(EquipmentAlarm).where(EquipmentAlarm.id == alarm_id))
             ).scalar_one_or_none()
             if not alarm:
                 return None
@@ -274,9 +264,7 @@ async def update_maintenance_plan(plan_id: str, body: dict) -> Optional[dict]:
     async with sessionmaker() as session:
         try:
             plan = (
-                await session.execute(
-                    select(MaintenancePlan).where(MaintenancePlan.id == plan_id)
-                )
+                await session.execute(select(MaintenancePlan).where(MaintenancePlan.id == plan_id))
             ).scalar_one_or_none()
             if not plan:
                 return None

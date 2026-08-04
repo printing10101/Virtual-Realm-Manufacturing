@@ -25,6 +25,7 @@ URI 约定
   ``build_canonical_weights_path`` 写入 checkpoint，plugin 层按本模块的
   ``resolve_world_model_weights_path`` 读取，形成闭环。
 """
+
 from __future__ import annotations
 
 import logging
@@ -88,9 +89,7 @@ def build_canonical_weights_path(
         版本字符串含非法字符（可能造成路径穿越）。
     """
     if not _is_safe_version(version):
-        raise WeightsResolutionError(
-            f"版本字符串不安全（仅允许 [A-Za-z0-9_.-]）: {version!r}"
-        )
+        raise WeightsResolutionError(f"版本字符串不安全（仅允许 [A-Za-z0-9_.-]）: {version!r}")
     base = Path(models_dir) if models_dir else Path(DEFAULT_MODELS_DIR)
     return str(base.resolve() / "world_model" / f"{version}.pt")
 
@@ -122,25 +121,20 @@ def resolve_world_model_weights_path(
     WeightsResolutionError
         URI 匹配前缀但版本字符串非法（提示调用方修正 URI，而非静默降级）。
     """
-    if not isinstance(model_uri, str) or not model_uri.startswith(
-        _WORLD_MODEL_URI_PREFIX
-    ):
+    if not isinstance(model_uri, str) or not model_uri.startswith(_WORLD_MODEL_URI_PREFIX):
         # 非 world_model URI：交由调用方继续走其他解析路径（如 ModelRegistry）
         return None
 
     version = model_uri[len(_WORLD_MODEL_URI_PREFIX) :]
     if not _is_safe_version(version):
         raise WeightsResolutionError(
-            f"world_model URI 版本字符串不安全（仅允许 [A-Za-z0-9_.-]）: "
-            f"uri={model_uri!r} version={version!r}"
+            f"world_model URI 版本字符串不安全（仅允许 [A-Za-z0-9_.-]）: uri={model_uri!r} version={version!r}"
         )
 
     base = Path(models_dir) if models_dir else Path(DEFAULT_MODELS_DIR)
     candidate = base.resolve() / "world_model" / f"{version}.pt"
     if candidate.is_file():
-        logger.debug(
-            "world_model 权重路径解析成功: uri=%s path=%s", model_uri, candidate
-        )
+        logger.debug("world_model 权重路径解析成功: uri=%s path=%s", model_uri, candidate)
         return str(candidate)
     logger.debug(
         "world_model 权重文件不存在（使用随机初始化）: uri=%s expected=%s",

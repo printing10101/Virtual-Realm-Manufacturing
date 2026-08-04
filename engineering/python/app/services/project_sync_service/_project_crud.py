@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 623-933 迁移而来。
 """
+
 from __future__ import annotations
 
 import logging
@@ -78,12 +79,8 @@ class _ProjectCrudMixin:
 
         lock = self._get_project_lock(project_id)
         with lock:
-            head_sha = self._init_project_repo_on_disk(
-                project_orm, repo_path, branch, remote_url, initial_commit, name
-            )
-            await self._record_project_init(
-                project_id, name, branch, remote_url, head_sha
-            )
+            head_sha = self._init_project_repo_on_disk(project_orm, repo_path, branch, remote_url, initial_commit, name)
+            await self._record_project_init(project_id, name, branch, remote_url, head_sha)
 
         logger.info("Created project_sync project: %s (%s)", name, project_id)
         return await self.get_project(project_id, include_refs=False)
@@ -118,9 +115,7 @@ class _ProjectCrudMixin:
         async with await self._get_session() as session:
             # 检查同名项目是否已存在
             existing_stmt = select(ProjectRepo).where(ProjectRepo.name == name)
-            existing = (
-                await session.execute(existing_stmt)
-            ).scalar_one_or_none()
+            existing = (await session.execute(existing_stmt)).scalar_one_or_none()
             if existing is not None:
                 raise ProjectAlreadyExistsError(f"项目名已存在: {name}")
 
@@ -140,9 +135,7 @@ class _ProjectCrudMixin:
                 await session.commit()
             except IntegrityError as e:
                 await session.rollback()
-                raise ProjectAlreadyExistsError(
-                    f"项目创建失败（可能 name 冲突）: {name}"
-                ) from e
+                raise ProjectAlreadyExistsError(f"项目创建失败（可能 name 冲突）: {name}") from e
 
             # 刷新以获取 project_id（default 已触发）
             await session.refresh(project_orm)
@@ -190,9 +183,7 @@ class _ProjectCrudMixin:
 
         # 配置远端（若提供）
         if remote_url:
-            self._run_git(
-                ["remote", "add", "origin", remote_url], cwd=repo_path
-            )
+            self._run_git(["remote", "add", "origin", remote_url], cwd=repo_path)
 
         # 写入初始清单
         manifest_dict = self._build_manifest_dict(project_orm, refs=[])
@@ -219,9 +210,7 @@ class _ProjectCrudMixin:
     ) -> None:
         """更新 DB current_commit + status + 写入 init SyncRecord（独立 commit）."""
         async with await self._get_session() as session:
-            stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(stmt)).scalar_one()
             project_orm.current_commit = head_sha or None
             project_orm.status = SYNC_STATUS.CLEAN
@@ -249,9 +238,7 @@ class _ProjectCrudMixin:
             ProjectNotFoundError: 项目不存在
         """
         async with await self._get_session() as session:
-            stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(stmt)).scalar_one_or_none()
             if project_orm is None:
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")
@@ -286,15 +273,8 @@ class _ProjectCrudMixin:
                 count_stmt = count_stmt.where(ProjectRepo.author == author)
 
             total = (await session.execute(count_stmt)).scalar() or 0
-            stmt = (
-                stmt.order_by(desc(ProjectRepo.updated_at))
-                .limit(limit)
-                .offset(offset)
-            )
-            items = [
-                row.to_dict()
-                for row in (await session.execute(stmt)).scalars().all()
-            ]
+            stmt = stmt.order_by(desc(ProjectRepo.updated_at)).limit(limit).offset(offset)
+            items = [row.to_dict() for row in (await session.execute(stmt)).scalars().all()]
             return {
                 "items": items,
                 "total": total,
@@ -302,9 +282,7 @@ class _ProjectCrudMixin:
                 "offset": offset,
             }
 
-    async def delete_project(
-        self, project_id: str, *, delete_repo_dir: bool = True
-    ) -> dict[str, Any]:
+    async def delete_project(self, project_id: str, *, delete_repo_dir: bool = True) -> dict[str, Any]:
         """删除项目（DB 记录 + 可选删除仓库目录）.
 
         Args:
@@ -316,9 +294,7 @@ class _ProjectCrudMixin:
         """
         # 先获取 repo_path 用于后续删除
         async with await self._get_session() as session:
-            stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(stmt)).scalar_one_or_none()
             if project_orm is None:
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")

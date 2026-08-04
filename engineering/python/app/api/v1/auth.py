@@ -1,17 +1,14 @@
-
 import hmac
-import os
 import uuid
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 
 from app.models.user import UserCreate, UserLogin, UserResponse
 from app.dependencies import get_user_store
-from app.auth.dependencies import get_current_user, security_scheme
+from app.auth.dependencies import get_current_user
 from app.dependencies import get_token_ban_list
 
 from app.dependencies import get_config
@@ -21,6 +18,7 @@ from app.middleware.rate_limiter import limiter
 from app.core.request_id import get_request_id as _get_request_id
 from app.core.safe_errors import safe_error_message
 from app.audit.audit_log import get_audit_log, OperationStatus
+
 # 修复（2026-08-03 任务B）：补 token/密码工具导入（原缺失，mypy 报 8 条 name-defined，
 # 且为真实运行时缺陷——登录/刷新/鉴权路径调用这些工具）。
 from app.auth.security import (
@@ -46,9 +44,7 @@ def _extract_request_meta(request: Request) -> dict[str, str]:
     3. 不记录密码、token 等敏感字段
     """
     forwarded = request.headers.get("X-Forwarded-For", "")
-    client_ip = forwarded.split(",")[0].strip() if forwarded else (
-        request.client.host if request.client else "unknown"
-    )
+    client_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
     user_agent = request.headers.get("User-Agent", "")[:200]
     return {
         "client_ip": client_ip,
@@ -103,6 +99,7 @@ def _audit_auth_event(
 # B13 安全修复：Pydantic 请求模型替换 body: dict 弱验证
 # ---------------------------------------------------------------------------
 
+
 class TokenRequest(BaseModel):
     """令牌请求模型。
 
@@ -110,6 +107,7 @@ class TokenRequest(BaseModel):
     两个字段均默认空字符串以兼容 logout 端点的可选语义；
     refresh_token 端点会在函数体内显式校验非空。
     """
+
     refresh_token: str = Field("", description="刷新令牌")
     access_token: str = Field("", description="访问令牌")
 
@@ -124,6 +122,7 @@ def require_role(*roles: str):
         if current_user["role"] not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="权限不足")
         return current_user
+
     return role_checker
 
 
@@ -210,7 +209,12 @@ async def register(request: Request, body: UserCreate, config: AppConfig = Depen
         )
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
-            content={"code": 1009, "message": safe["message"], "request_id": _get_request_id(), "error_id": safe["error_id"]},
+            content={
+                "code": 1009,
+                "message": safe["message"],
+                "request_id": _get_request_id(),
+                "error_id": safe["error_id"],
+            },
         )
 
 
@@ -356,9 +360,7 @@ async def logout(request: Request, body: TokenRequest):
             # P1-5 修复：token 已失效或无效时无法解析用户名，仅记录匿名登出。
             # 不得静默 pass——JWT 库异常可能暗示密钥配置错误或 token 格式篡改，
             # debug 级日志便于安全审计回溯，但不影响登出主流程。
-            logger.debug(
-                "logout token 解析失败，匿名登出: %s", exc, exc_info=True
-            )
+            logger.debug("logout token 解析失败，匿名登出: %s", exc, exc_info=True)
 
     ban_list = get_token_ban_list()
     if access_token_str:

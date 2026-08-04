@@ -19,7 +19,7 @@ from app.config.dreaming import DreamingConfig
 from app.config.environment import EnvironmentConfig
 from app.config.feature_extraction import FeatureExtractionConfig
 from app.config.gcode_generation import GCodeGenerationConfig
-from app.config.image_to_3d import ImageTo3DConfig, PartPriorConfig
+from app.config.image_to_3d import ImageTo3DConfig
 from app.config.logging_config import LoggingConfig
 from app.config.parametric_geometry import ParametricGeometryConfig
 from app.config.paths import PathsConfig
@@ -37,9 +37,7 @@ from app.config.token import MESConfig, TokenConfig
 class AppConfig:
     app_name: str = field(default_factory=lambda: _env("APP_NAME", "灵境制造"))
     app_version: str = field(default_factory=lambda: _env("APP_VERSION", "2.7.0"))
-    offline_mode: bool = field(
-        default_factory=lambda: _bool_env("OFFLINE_MODE", False)
-    )
+    offline_mode: bool = field(default_factory=lambda: _bool_env("OFFLINE_MODE", False))
     environment: EnvironmentConfig = field(default_factory=EnvironmentConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
     ai: AIConfig = field(default_factory=AIConfig)
@@ -54,30 +52,16 @@ class AppConfig:
     token: TokenConfig = field(default_factory=TokenConfig)
     tasks: TaskSystemConfig = field(default_factory=TaskSystemConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
-    process_planning: ProcessPlanningConfig = field(
-        default_factory=ProcessPlanningConfig
-    )
+    process_planning: ProcessPlanningConfig = field(default_factory=ProcessPlanningConfig)
     mes: MESConfig = field(default_factory=MESConfig)
     sharp: SharpConfig = field(default_factory=SharpConfig)
     image_to_3d: ImageTo3DConfig = field(default_factory=ImageTo3DConfig)
-    feature_extraction: FeatureExtractionConfig = field(
-        default_factory=FeatureExtractionConfig
-    )
-    parametric_geometry: ParametricGeometryConfig = field(
-        default_factory=ParametricGeometryConfig
-    )
-    cutting_parameters: CuttingParametersConfig = field(
-        default_factory=CuttingParametersConfig
-    )
-    chatter_prediction: ChatterPredictionConfig = field(
-        default_factory=ChatterPredictionConfig
-    )
-    gcode_generation: GCodeGenerationConfig = field(
-        default_factory=GCodeGenerationConfig
-    )
-    cam_validation: CamValidationConfig = field(
-        default_factory=CamValidationConfig
-    )
+    feature_extraction: FeatureExtractionConfig = field(default_factory=FeatureExtractionConfig)
+    parametric_geometry: ParametricGeometryConfig = field(default_factory=ParametricGeometryConfig)
+    cutting_parameters: CuttingParametersConfig = field(default_factory=CuttingParametersConfig)
+    chatter_prediction: ChatterPredictionConfig = field(default_factory=ChatterPredictionConfig)
+    gcode_generation: GCodeGenerationConfig = field(default_factory=GCodeGenerationConfig)
+    cam_validation: CamValidationConfig = field(default_factory=CamValidationConfig)
     dreaming: DreamingConfig = field(default_factory=DreamingConfig)
 
 

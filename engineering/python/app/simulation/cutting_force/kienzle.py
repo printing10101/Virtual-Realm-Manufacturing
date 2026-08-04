@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -39,19 +39,64 @@ DEFAULT_MATERIAL_COEFFICIENTS: Dict[str, Dict[str, float]] = {
 
 # 力方向比例系数
 FORCE_DIRECTION_RATIOS: Dict[str, float] = {
-    "Fx_ratio": 0.3,   # 进给力 / 主切削力
-    "Fy_ratio": 0.4,   # 径向力 / 主切削力
+    "Fx_ratio": 0.3,  # 进给力 / 主切削力
+    "Fy_ratio": 0.4,  # 径向力 / 主切削力
 }
+
+# 材料名规范化：中文名 / materials.json ID / 常见别名 → 标准系数表 ID
+# （真实输入常为中文材料名或数据库 ID，如 "45#钢"、"steel_45"、"TC4"）
+MATERIAL_ALIASES: Dict[str, str] = {
+    # 碳钢
+    "45#钢": "45steel",
+    "45钢": "45steel",
+    "45": "45steel",
+    "steel_45": "45steel",
+    "steel_q235": "45steel",
+    "steel_40cr": "45steel",
+    # 铝合金
+    "6061": "aluminum_6061",
+    "6061铝": "aluminum_6061",
+    "6061-t6": "aluminum_6061",
+    "al_6061": "aluminum_6061",
+    "al_7075": "aluminum_6061",
+    # 不锈钢
+    "304不锈钢": "stainless_304",
+    "不锈钢": "stainless_304",
+    "ss_304": "stainless_304",
+    # 灰铸铁
+    "灰铸铁": "cast_iron_ht200",
+    "ht200": "cast_iron_ht200",
+    "cast_iron_ht250": "cast_iron_ht200",
+    # 钛合金
+    "钛合金": "titanium_tc4",
+    "tc4": "titanium_tc4",
+    "ti_tc4": "titanium_tc4",
+    # 铜及铜合金
+    "铜": "copper",
+    "紫铜": "copper",
+    "brass_c36000": "copper",
+    "copper_c11000": "copper",
+}
+
+
+def _normalize_material(material: str) -> str:
+    """规范化材料名：去空白、转小写后查别名表，未命中返回原串。"""
+    candidate = material.strip().lower()
+    if candidate in DEFAULT_MATERIAL_COEFFICIENTS:
+        return candidate
+    alias = MATERIAL_ALIASES.get(material.strip()) or MATERIAL_ALIASES.get(candidate)
+    return alias or material.strip()
 
 
 @dataclass
 class KienzleParams:
     """Kienzle 公式计算参数。"""
+
     material: str = "45steel"
-    width: float = 10.0       # 切削宽度 b (mm)
+    width: float = 10.0  # 切削宽度 b (mm)
     chip_thickness: float = 0.1  # 未变形切屑厚度 h (mm)
     kc1_1: Optional[float] = None  # 比切削力，None 时从配置读取
-    mc: Optional[float] = None      # 切削力指数，None 时从配置读取
+    mc: Optional[float] = None  # 切削力指数，None 时从配置读取
 
     def __post_init__(self) -> None:
         if self.width <= 0:
@@ -69,10 +114,10 @@ def get_kienzle_coefficients(material: str) -> Dict[str, float]:
     """获取材料的 Kienzle 系数。
 
     优先从 process_rules.json 读取，若不存在则使用硬编码默认值。
+    材料名支持中文名 / 材料库 ID / 别名（见 MATERIAL_ALIASES）。
     """
-    config_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "data", "process_rules.json"
-    )
+    material = _normalize_material(material)
+    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "process_rules.json")
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             rules = json.load(f)
@@ -87,10 +132,7 @@ def get_kienzle_coefficients(material: str) -> Dict[str, float]:
     if material in DEFAULT_MATERIAL_COEFFICIENTS:
         return DEFAULT_MATERIAL_COEFFICIENTS[material]
 
-    raise ValueError(
-        f"未找到材料 '{material}' 的 Kienzle 系数。"
-        f"可用材料: {list(DEFAULT_MATERIAL_COEFFICIENTS.keys())}"
-    )
+    raise ValueError(f"未找到材料 '{material}' 的 Kienzle 系数。可用材料: {list(DEFAULT_MATERIAL_COEFFICIENTS.keys())}")
 
 
 def compute_cutting_force_fz(

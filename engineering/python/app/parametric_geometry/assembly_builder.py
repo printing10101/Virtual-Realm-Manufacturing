@@ -122,8 +122,12 @@ class BoundingBox:
         """返回扩大 margin 的新 bbox。"""
         if self.is_empty or margin_mm <= 0:
             return BoundingBox(
-                min_x=self.min_x, min_y=self.min_y, min_z=self.min_z,
-                max_x=self.max_x, max_y=self.max_y, max_z=self.max_z,
+                min_x=self.min_x,
+                min_y=self.min_y,
+                min_z=self.min_z,
+                max_x=self.max_x,
+                max_y=self.max_y,
+                max_z=self.max_z,
             )
         return BoundingBox(
             min_x=self.min_x - margin_mm,
@@ -183,7 +187,9 @@ def _shape_volume_mm3(shape: BrepShape) -> float:
     except (TypeError, ValueError) as e:
         logger.warning(
             "估算形状体积失败 shape_id=%s type=%s: %s",
-            shape.shape_id, shape.shape_type, e,
+            shape.shape_id,
+            shape.shape_type,
+            e,
         )
     return 0.0
 
@@ -228,16 +234,20 @@ def _shape_bbox(shape: BrepShape) -> BoundingBox:
         except (IndexError, TypeError, ValueError):
             dx, dy, dz = 0.0, 0.0, 1.0
         half = h / 2
-        bbox.union_point([
-            ox - r - dx * half,
-            oy - r - dy * half,
-            oz - r - dz * half,
-        ])
-        bbox.union_point([
-            ox + r + dx * half,
-            oy + r + dy * half,
-            oz + r + dz * half,
-        ])
+        bbox.union_point(
+            [
+                ox - r - dx * half,
+                oy - r - dy * half,
+                oz - r - dz * half,
+            ]
+        )
+        bbox.union_point(
+            [
+                ox + r + dx * half,
+                oy + r + dy * half,
+                oz + r + dz * half,
+            ]
+        )
     elif shape.shape_type == "box":
         try:
             w = float(p.get("width_mm", 0.0))
@@ -250,7 +260,8 @@ def _shape_bbox(shape: BrepShape) -> BoundingBox:
     else:
         logger.warning(
             "未知 shape_type=%s shape_id=%s，bbox 计算跳过",
-            shape.shape_type, shape.shape_id,
+            shape.shape_type,
+            shape.shape_id,
         )
 
     return bbox
@@ -345,9 +356,7 @@ def build_assembly_plan(
         elif s.operation == "subtract":
             subtract_shapes.append(s)
         else:
-            plan.assembly_notes.append(
-                f"忽略未知 operation={s.operation} 的形状 {s.shape_id}"
-            )
+            plan.assembly_notes.append(f"忽略未知 operation={s.operation} 的形状 {s.shape_id}")
 
     # 2. 分离 plane 与非 plane
     planes = [s for s in add_shapes if s.shape_type == "plane"]
@@ -356,28 +365,20 @@ def build_assembly_plan(
     # 3. 选择 base shape：plane 优先（按面积最大）
     if planes:
         planes.sort(
-            key=lambda s: float(s.params.get("width_mm", 0.0))
-            * float(s.params.get("height_mm", 0.0)),
+            key=lambda s: float(s.params.get("width_mm", 0.0)) * float(s.params.get("height_mm", 0.0)),
             reverse=True,
         )
         plan.base_shape = planes[0]
         try:
             w_b = float(planes[0].params.get("width_mm", 0.0))
             h_b = float(planes[0].params.get("height_mm", 0.0))
-            plan.assembly_notes.append(
-                f"基准形状：平面 {planes[0].shape_id} "
-                f"({w_b:.2f}×{h_b:.2f}mm)"
-            )
+            plan.assembly_notes.append(f"基准形状：平面 {planes[0].shape_id} ({w_b:.2f}×{h_b:.2f}mm)")
         except (TypeError, ValueError):
-            plan.assembly_notes.append(
-                f"基准形状：平面 {planes[0].shape_id}（参数非法）"
-            )
+            plan.assembly_notes.append(f"基准形状：平面 {planes[0].shape_id}（参数非法）")
         # 其余 plane 作为辅助参考（不参与布尔）
         for p in planes[1:]:
             plan.auxiliary_shapes.append(p)
-            plan.assembly_notes.append(
-                f"辅助参考平面：{p.shape_id}（不参与布尔运算）"
-            )
+            plan.assembly_notes.append(f"辅助参考平面：{p.shape_id}（不参与布尔运算）")
 
     # 4. 非平面 add 形状按体积从大到小排序
     if non_plane_adds:
@@ -388,24 +389,19 @@ def build_assembly_plan(
             plan.add_shapes = non_plane_adds[1:]
             vol = _shape_volume_mm3(non_plane_adds[0])
             plan.assembly_notes.append(
-                f"基准形状：{non_plane_adds[0].shape_type} "
-                f"{non_plane_adds[0].shape_id}（体积={vol:.2f}mm³）"
+                f"基准形状：{non_plane_adds[0].shape_type} {non_plane_adds[0].shape_id}（体积={vol:.2f}mm³）"
             )
         else:
             plan.add_shapes = non_plane_adds
             for s in non_plane_adds:
                 vol = _shape_volume_mm3(s)
-                plan.assembly_notes.append(
-                    f"附加形状：{s.shape_type} {s.shape_id}（体积={vol:.2f}mm³）"
-                )
+                plan.assembly_notes.append(f"附加形状：{s.shape_type} {s.shape_id}（体积={vol:.2f}mm³）")
 
     # 5. subtract 形状按 shape_id 排序（保持稳定）
     subtract_shapes.sort(key=lambda s: s.shape_id)
     plan.subtract_shapes = subtract_shapes
     for s in subtract_shapes:
-        plan.assembly_notes.append(
-            f"减运算形状：{s.shape_type} {s.shape_id}（孔/凹槽）"
-        )
+        plan.assembly_notes.append(f"减运算形状：{s.shape_type} {s.shape_id}（孔/凹槽）")
 
     # 6. 计算 blank_bbox
     bbox = BoundingBox()
@@ -440,18 +436,12 @@ def build_assembly_plan(
 
     # 8. 工程师审核提示（项目记忆硬约束：human-in-the-loop）
     if plan.base_shape is None:
-        plan.assembly_notes.append(
-            "⚠ 无基准形状，STEP 输出将仅包含辅助几何，不可直接用于 CAM"
-        )
+        plan.assembly_notes.append("⚠ 无基准形状，STEP 输出将仅包含辅助几何，不可直接用于 CAM")
 
     if not plan.has_solid:
-        plan.assembly_notes.append(
-            "⚠ 装配计划无可写入实体的形状，STEP 输出将仅含 construction geometry"
-        )
+        plan.assembly_notes.append("⚠ 装配计划无可写入实体的形状，STEP 输出将仅含 construction geometry")
 
-    plan.assembly_notes.append(
-        "工程师必须审核装配顺序与基准选择后再生成最终 STEP"
-    )
+    plan.assembly_notes.append("工程师必须审核装配顺序与基准选择后再生成最终 STEP")
 
     return plan
 
@@ -476,11 +466,7 @@ def get_assembly_summary(plan: AssemblyPlan) -> dict[str, Any]:
             if not plan.blank_bbox.is_empty
             else None
         ),
-        "blank_center_mm": (
-            [round(c, 3) for c in plan.blank_bbox.center]
-            if not plan.blank_bbox.is_empty
-            else None
-        ),
+        "blank_center_mm": ([round(c, 3) for c in plan.blank_bbox.center] if not plan.blank_bbox.is_empty else None),
         "assembly_order": list(plan.assembly_order),
         "notes_count": len(plan.assembly_notes),
     }

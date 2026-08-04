@@ -17,6 +17,16 @@ from app.plugins.plugin_metadata import (
     PluginDependency,
     PluginMetadata,
 )
+from app.plugins.plugin_manager import (
+    DependencyResolver,
+    PluginDiscovery,
+    PluginLifecycleManager,
+    PluginLoader,
+    PluginRegistry,
+    get_dependency_resolver,
+    init_plugin_system,
+    shutdown_plugin_system,
+)
 from app.plugins.plugin_types import (
     CAPABILITY_DATA_SOURCE,
     CAPABILITY_FILE_ACCESS,

@@ -105,20 +105,14 @@ class CompensationRecommender:
                 spindle_speed = (new_speed * 1000.0) / (math.pi * tool_diameter)
                 max_spindle = machine_capabilities.get("max_spindle_speed", 24000)
                 if spindle_speed > max_spindle:
-                    warnings.append(
-                        f"调整后主轴转速{spindle_speed:.0f}RPM超过机床最大值{max_spindle}RPM，"
-                        "已自动限制"
-                    )
+                    warnings.append(f"调整后主轴转速{spindle_speed:.0f}RPM超过机床最大值{max_spindle}RPM，已自动限制")
                     spindle_speed = max_spindle
                     new_speed = (spindle_speed * math.pi * tool_diameter) / 1000.0
 
         max_feed = machine_capabilities.get("max_feed_rate", 20000)
         new_feed_mm_min = new_feed * 1000.0  # 转换为 mm/min
         if new_feed_mm_min > max_feed:
-            warnings.append(
-                f"调整后进给速度{new_feed_mm_min:.0f}mm/min超过机床最大值{max_feed}mm/min，"
-                "已自动限制"
-            )
+            warnings.append(f"调整后进给速度{new_feed_mm_min:.0f}mm/min超过机床最大值{max_feed}mm/min，已自动限制")
             new_feed = max_feed / 1000.0
 
         # 计算预期寿命延长
@@ -132,41 +126,49 @@ class CompensationRecommender:
         suggestions: list[dict[str, Any]] = []
 
         if speed_reduction > 0:
-            suggestions.append({
-                "param": "cutting_speed",
-                "current": round(cutting_speed, 2),
-                "recommended": round(new_speed, 2),
-                "change_percent": round(-speed_reduction * 100, 1),
-                "reason": f"磨损率{wear_ratio*100:.0f}%，降低切削速度以延长寿命",
-                "expected_life_extension_percent": round(life_extension, 1),
-            })
+            suggestions.append(
+                {
+                    "param": "cutting_speed",
+                    "current": round(cutting_speed, 2),
+                    "recommended": round(new_speed, 2),
+                    "change_percent": round(-speed_reduction * 100, 1),
+                    "reason": f"磨损率{wear_ratio * 100:.0f}%，降低切削速度以延长寿命",
+                    "expected_life_extension_percent": round(life_extension, 1),
+                }
+            )
 
         if feed_reduction > 0:
-            suggestions.append({
-                "param": "feed_rate",
-                "current": round(feed_rate, 3),
-                "recommended": round(new_feed, 3),
-                "change_percent": round(-feed_reduction * 100, 1),
-                "reason": "降低进给量以减少切削力",
-            })
+            suggestions.append(
+                {
+                    "param": "feed_rate",
+                    "current": round(feed_rate, 3),
+                    "recommended": round(new_feed, 3),
+                    "change_percent": round(-feed_reduction * 100, 1),
+                    "reason": "降低进给量以减少切削力",
+                }
+            )
 
         if depth_reduction > 0:
-            suggestions.append({
-                "param": "depth_of_cut",
-                "current": round(depth_of_cut, 2),
-                "recommended": round(new_depth, 2),
-                "change_percent": round(-depth_reduction * 100, 1),
-                "reason": "降低切深以改善散热",
-            })
+            suggestions.append(
+                {
+                    "param": "depth_of_cut",
+                    "current": round(depth_of_cut, 2),
+                    "recommended": round(new_depth, 2),
+                    "change_percent": round(-depth_reduction * 100, 1),
+                    "reason": "降低切深以改善散热",
+                }
+            )
 
         if strategy == "replace_tool":
-            suggestions.append({
-                "param": "tool_replacement",
-                "current": "current_tool",
-                "recommended": "new_tool",
-                "change_percent": 0,
-                "reason": "刀具磨损已达临界值，必须立即更换",
-            })
+            suggestions.append(
+                {
+                    "param": "tool_replacement",
+                    "current": "current_tool",
+                    "recommended": "new_tool",
+                    "change_percent": 0,
+                    "reason": "刀具磨损已达临界值，必须立即更换",
+                }
+            )
 
         return {
             "current_wear": round(current_wear, 4),

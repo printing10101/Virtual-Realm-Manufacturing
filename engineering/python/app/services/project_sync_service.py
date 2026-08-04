@@ -8,7 +8,5 @@
 
 新代码应直接从包导入；本 shim 仅为兼容旧调用点保留。
 """
+
 from __future__ import annotations
-
-from app.dependencies import get_project_sync_service
-

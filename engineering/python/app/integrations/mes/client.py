@@ -9,7 +9,7 @@ error handling and logging.
 
 Example::
 
-    client = MESClient(base_url="https://mes.example.com", api_key="secret")
+    client = MESClient(base_url="https://mes.example.com", api_key="<your-api-key>")  # 请替换为实际 API Key
     result = await client.sync_work_order(work_order_data)
     if result.success:
         # Synced with ID: {result.data_id}
@@ -349,7 +349,7 @@ class MESClient:
                     )
                 # 5xx 错误可重试
                 if attempt < max_retries - 1:
-                    delay = base_delay * (2 ** attempt)
+                    delay = base_delay * (2**attempt)
                     logger.warning(
                         "工单同步失败 (HTTP %d)，%0.1f秒后重试...",
                         e.response.status_code,
@@ -372,7 +372,7 @@ class MESClient:
 
             except httpx.RequestError as e:
                 if attempt < max_retries - 1:
-                    delay = base_delay * (2 ** attempt)
+                    delay = base_delay * (2**attempt)
                     logger.warning(
                         "工单同步请求失败，%0.1f秒后重试: %s",
                         delay,

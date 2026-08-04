@@ -10,19 +10,17 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Iterator
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database.models.machining_record import Base, MachiningRecord
 from app.database.repository.machining_record_repo import MachiningRecordRepository
 from app.models.machining_record import (
-    MachiningRecordBase,
     MachiningRecordCreate,
     MachiningRecordRead,
     MachiningRecordUpdate,
@@ -235,11 +233,7 @@ class TestSQLAlchemyModelSchema:
         assert pk_cols == ["record_id"]
 
     def test_not_null_columns(self) -> None:
-        not_nullable = {
-            c.name
-            for c in MachiningRecord.__table__.columns
-            if not c.nullable
-        }
+        not_nullable = {c.name for c in MachiningRecord.__table__.columns if not c.nullable}
         expected = {
             "record_id",
             "machine_id",
@@ -269,9 +263,7 @@ class TestSQLAlchemyModelSchema:
         assert expected.issubset(index_names)
 
     def test_unique_constraint(self) -> None:
-        constraint_names = {
-            con.name for con in MachiningRecord.__table__.constraints
-        }
+        constraint_names = {con.name for con in MachiningRecord.__table__.constraints}
         assert "uq_machining_records_machine_tool_ts" in constraint_names
 
     def test_to_dict_serializable(self) -> None:
@@ -347,12 +339,8 @@ class TestRepositoryCRUD:
         assert rid.startswith("mrec_")
         assert len(rid) == len("mrec_") + 32
 
-    def test_create_with_explicit_record_id(
-        self, repo: MachiningRecordRepository
-    ) -> None:
-        rid = repo.create(
-            MachiningRecordCreate(record_id="mrec_custom_001", **self._payload())
-        )
+    def test_create_with_explicit_record_id(self, repo: MachiningRecordRepository) -> None:
+        rid = repo.create(MachiningRecordCreate(record_id="mrec_custom_001", **self._payload()))
         assert rid == "mrec_custom_001"
 
     def test_get_returns_record(self, repo: MachiningRecordRepository) -> None:
@@ -364,9 +352,7 @@ class TestRepositoryCRUD:
         assert record.spindle_speed == 4500.0
         assert record.process_params["coolant"] is True
 
-    def test_get_missing_returns_none(
-        self, repo: MachiningRecordRepository
-    ) -> None:
+    def test_get_missing_returns_none(self, repo: MachiningRecordRepository) -> None:
         assert repo.get("mrec_does_not_exist") is None
 
     def test_update_modifies_field(self, repo: MachiningRecordRepository) -> None:
@@ -383,9 +369,7 @@ class TestRepositoryCRUD:
         rid = repo.create(MachiningRecordCreate(**self._payload()))
         updated = repo.update(
             rid,
-            MachiningRecordUpdate(
-                process_params={"depth_of_cut": 3.0, "operation": "drilling"}
-            ),
+            MachiningRecordUpdate(process_params={"depth_of_cut": 3.0, "operation": "drilling"}),
         )
         assert updated is not None
         assert updated.process_params == {
@@ -393,32 +377,22 @@ class TestRepositoryCRUD:
             "operation": "drilling",
         }
 
-    def test_update_no_change_returns_record(
-        self, repo: MachiningRecordRepository
-    ) -> None:
+    def test_update_no_change_returns_record(self, repo: MachiningRecordRepository) -> None:
         rid = repo.create(MachiningRecordCreate(**self._payload()))
         updated = repo.update(rid, MachiningRecordUpdate())  # 空 patch
         assert updated is not None
         assert updated.record_id == rid
 
-    def test_update_missing_returns_none(
-        self, repo: MachiningRecordRepository
-    ) -> None:
-        result = repo.update(
-            "mrec_missing", MachiningRecordUpdate(spindle_speed=5500.0)
-        )
+    def test_update_missing_returns_none(self, repo: MachiningRecordRepository) -> None:
+        result = repo.update("mrec_missing", MachiningRecordUpdate(spindle_speed=5500.0))
         assert result is None
 
-    def test_delete_existing_returns_true(
-        self, repo: MachiningRecordRepository
-    ) -> None:
+    def test_delete_existing_returns_true(self, repo: MachiningRecordRepository) -> None:
         rid = repo.create(MachiningRecordCreate(**self._payload()))
         assert repo.delete(rid) is True
         assert repo.get(rid) is None
 
-    def test_delete_missing_returns_false(
-        self, repo: MachiningRecordRepository
-    ) -> None:
+    def test_delete_missing_returns_false(self, repo: MachiningRecordRepository) -> None:
         assert repo.delete("mrec_does_not_exist") is False
 
     def test_list_by_machine(self, repo: MachiningRecordRepository) -> None:
@@ -471,9 +445,7 @@ class TestRepositoryCRUD:
 
     def test_get_by_triple(self, repo: MachiningRecordRepository) -> None:
         ts = datetime(2026, 6, 11, 10, 0, 0, tzinfo=timezone.utc)
-        rid = repo.create(
-            MachiningRecordCreate(**self._payload(timestamp=ts))
-        )
+        rid = repo.create(MachiningRecordCreate(**self._payload(timestamp=ts)))
         found = repo.get_by_triple("CNC-01", "T-EM-10", ts)
         assert found is not None
         assert found.record_id == rid
@@ -481,9 +453,7 @@ class TestRepositoryCRUD:
         not_found = repo.get_by_triple("CNC-01", "T-EM-10", ts + timedelta(hours=1))
         assert not_found is None
 
-    def test_unique_constraint_enforced(
-        self, repo: MachiningRecordRepository
-    ) -> None:
+    def test_unique_constraint_enforced(self, repo: MachiningRecordRepository) -> None:
         ts = datetime(2026, 6, 11, 10, 0, 0, tzinfo=timezone.utc)
         repo.create(MachiningRecordCreate(**self._payload(timestamp=ts)))
         with pytest.raises(Exception):  # IntegrityError
@@ -499,9 +469,7 @@ class TestRepositoryCRUD:
         assert record is not None
         assert record.machine_id == "CNC-01"
 
-        updated = repo.update(
-            record_id, MachiningRecordUpdate(spindle_speed=5000.0)
-        )
+        updated = repo.update(record_id, MachiningRecordUpdate(spindle_speed=5000.0))
         assert updated is not None
         assert updated.spindle_speed == 5000.0
 

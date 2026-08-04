@@ -22,7 +22,7 @@ import json
 import logging
 import threading
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -32,18 +32,20 @@ logger = logging.getLogger(__name__)
 
 class ReconstructionTaskStatus(str, Enum):
     """任务状态枚举（继承 str 便于 JSON 序列化）。"""
-    PENDING = "pending"           # 已创建，等待执行
-    RUNNING = "running"           # 执行中
-    COLMAP_DONE = "colmap_done"   # COLMAP 完成，OpenMVS 进行中
-    SUCCEEDED = "succeeded"       # 全部完成
-    FAILED = "failed"             # 失败
-    CANCELLED = "cancelled"       # 已取消
-    TIMEOUT = "timeout"           # 超时
+
+    PENDING = "pending"  # 已创建，等待执行
+    RUNNING = "running"  # 执行中
+    COLMAP_DONE = "colmap_done"  # COLMAP 完成，OpenMVS 进行中
+    SUCCEEDED = "succeeded"  # 全部完成
+    FAILED = "failed"  # 失败
+    CANCELLED = "cancelled"  # 已取消
+    TIMEOUT = "timeout"  # 超时
 
 
 @dataclass
 class ReconstructionTask:
     """单次重建任务。"""
+
     task_id: str
     created_at: float
     updated_at: float
@@ -149,12 +151,16 @@ class TaskStore:
         with self._lock:
             to_delete = []
             for tid, task in self._tasks.items():
-                if task.status in (
-                    ReconstructionTaskStatus.SUCCEEDED.value,
-                    ReconstructionTaskStatus.FAILED.value,
-                    ReconstructionTaskStatus.CANCELLED.value,
-                    ReconstructionTaskStatus.TIMEOUT.value,
-                ) and task.updated_at < cutoff:
+                if (
+                    task.status
+                    in (
+                        ReconstructionTaskStatus.SUCCEEDED.value,
+                        ReconstructionTaskStatus.FAILED.value,
+                        ReconstructionTaskStatus.CANCELLED.value,
+                        ReconstructionTaskStatus.TIMEOUT.value,
+                    )
+                    and task.updated_at < cutoff
+                ):
                     to_delete.append(tid)
             for tid in to_delete:
                 del self._tasks[tid]
@@ -192,6 +198,7 @@ def get_task_store() -> TaskStore:
     with _singleton_lock:
         if _task_store is None:
             from app.config import config
+
             persist_dir = Path(config.image_to_3d.output_dir) / "tasks"
             _task_store = TaskStore(persist_dir=persist_dir)
         return _task_store

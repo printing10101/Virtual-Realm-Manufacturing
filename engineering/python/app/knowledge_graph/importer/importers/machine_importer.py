@@ -66,18 +66,14 @@ def import_machines(
                 continue
             if not nid:
                 stats.failed += 1
-                stats.error_messages.append(
-                    f"machine skipped: missing id ({raw.get('name', '?')})"
-                )
+                stats.error_messages.append(f"machine skipped: missing id ({raw.get('name', '?')})")
                 continue
             if is_dup or nid in local_seen or graph.has_node(nid):
                 stats.duplicate += 1
                 continue
 
             properties: dict[str, Any] = {
-                "raw_id": nid.split("machine-", 1)[-1]
-                if nid.startswith("machine-")
-                else nid,
+                "raw_id": nid.split("machine-", 1)[-1] if nid.startswith("machine-") else nid,
                 "name": str(raw.get("name", "")).strip(),
                 "type": str(raw.get("type", "")).strip(),
                 "description": str(raw.get("description", "")).strip()
@@ -102,14 +98,10 @@ def import_machines(
             graph.add_node(NODE_TYPE_MACHINE, nid, properties)
             local_seen.add(nid)
             stats.success += 1
-            stats.node_type_breakdown[NODE_TYPE_MACHINE] = (
-                stats.node_type_breakdown.get(NODE_TYPE_MACHINE, 0) + 1
-            )
+            stats.node_type_breakdown[NODE_TYPE_MACHINE] = stats.node_type_breakdown.get(NODE_TYPE_MACHINE, 0) + 1
 
     try:
-        _retry_with_backoff(
-            _do_import, retries=retries, label="import_machines"
-        )
+        _retry_with_backoff(_do_import, retries=retries, label="import_machines")
     except (OSError, RuntimeError, ValueError, KeyError) as exc:
         stats.failed += 1
         stats.error_messages.append(f"machines import aborted: {exc}")

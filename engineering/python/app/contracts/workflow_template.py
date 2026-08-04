@@ -14,10 +14,11 @@ app/api/v1/workflow_templates.py（路由层）。
     4. 市场统计字段（downloads/avg_rating/rating_count）由服务层维护，不在 manifest 中
     5. 通过 BUILTIN_EXTENSION_POINTS.WORKFLOW_TEMPLATE 扩展点接入插件系统
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -80,18 +81,14 @@ class WorkflowTemplateManifest:
         if not self.spec:
             raise ValueError("WorkflowTemplateManifest.spec 不能为空")
         if not isinstance(self.spec, dict):
-            raise TypeError(
-                f"WorkflowTemplateManifest.spec 必须是 dict，实际: {type(self.spec).__name__}"
-            )
+            raise TypeError(f"WorkflowTemplateManifest.spec 必须是 dict，实际: {type(self.spec).__name__}")
         # spec 必须包含 nodes（与 WorkflowSpec 契约对齐）
         if not self.spec.get("nodes"):
             raise ValueError("WorkflowTemplateManifest.spec.nodes 不能为空")
         # required_contracts 格式校验
         for req in self.required_contracts:
             if "@" not in req:
-                raise ValueError(
-                    f"required_contracts 条目格式错误（应为 name@version）: {req}"
-                )
+                raise ValueError(f"required_contracts 条目格式错误（应为 name@version）: {req}")
 
 
 # ---------------------------------------------------------------------------

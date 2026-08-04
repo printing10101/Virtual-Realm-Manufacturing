@@ -11,44 +11,51 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import sys
 import time
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 from app.simulation.cutting_force.kienzle import (
-    DEFAULT_MATERIAL_COEFFICIENTS,
     compute_cutting_forces,
-    FORCE_DIRECTION_RATIOS,
 )
 from app.simulation.cutting_force.pinn import (
     CuttingForcePINN,
     PINNLoss,
 )
+
 # P0#3 解耦: 通过 research_bridge 延迟导入，fallback 到 numpy random
 try:
     from app.ai.lnn._research_bridge import get_set_global_seed
+
     _seed_func = get_set_global_seed()
-    set_global_seed = _seed_func if _seed_func is not None else (
-        lambda seed=42: (__import__('random').seed(seed), __import__('numpy').random.seed(seed))
+    set_global_seed = (
+        _seed_func
+        if _seed_func is not None
+        else (lambda seed=42: (__import__("random").seed(seed), __import__("numpy").random.seed(seed)))
     )
 except ImportError:
+
     def set_global_seed(seed: int = 42) -> None:
         import random
         import numpy as np
+
         random.seed(seed)
         np.random.seed(seed)
 
+
 def get_worker_init_fn(seed: int = 42):
     """Worker 初始化函数（纯 numpy，不依赖 torch）。"""
+
     def _init(worker_id: int) -> None:
         import numpy as np
+
         np.random.seed(seed + worker_id)
+
     return _init
+
 
 logger = logging.getLogger(__name__)
 
@@ -86,17 +93,17 @@ class SyntheticCuttingForceDataset(Dataset):
         self.depths = rng.uniform(ranges["depth"][0], ranges["depth"][1], num_samples)
 
         # 归一化输入
-        self.inputs_norm = np.stack([
-            (self.speeds - ranges["speed"][0]) / (ranges["speed"][1] - ranges["speed"][0]),
-            (self.feeds - ranges["feed"][0]) / (ranges["feed"][1] - ranges["feed"][0]),
-            (self.depths - ranges["depth"][0]) / (ranges["depth"][1] - ranges["depth"][0]),
-        ], axis=1).astype(np.float32)
+        self.inputs_norm = np.stack(
+            [
+                (self.speeds - ranges["speed"][0]) / (ranges["speed"][1] - ranges["speed"][0]),
+                (self.feeds - ranges["feed"][0]) / (ranges["feed"][1] - ranges["feed"][0]),
+                (self.depths - ranges["depth"][0]) / (ranges["depth"][1] - ranges["depth"][0]),
+            ],
+            axis=1,
+        ).astype(np.float32)
 
         # 使用 Kienzle 公式计算目标力（切屑厚度取 depth 的简化映射）
-        coeffs = DEFAULT_MATERIAL_COEFFICIENTS[material]
-        kc1_1 = coeffs["kc1_1"]
-        mc = coeffs["mc"]
-
+        # 注：系数在下方逐样本查询，避免整表引用
         forces = np.zeros((num_samples, 3), dtype=np.float32)
         for i in range(num_samples):
             # 简化映射: 切屑厚度 h 与切深 depth 正相关
@@ -165,15 +172,11 @@ class CuttingForceTrainer:
         self.model = model.to(self.device)
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode="min", factor=0.5, patience=10
-        )
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode="min", factor=0.5, patience=10)
         self.criterion = PINNLoss(physics_weight=physics_weight)
 
         if save_dir is None:
-            save_dir = os.path.join(
-                os.path.dirname(__file__), "checkpoints"
-            )
+            save_dir = os.path.join(os.path.dirname(__file__), "checkpoints")
         self.save_dir = save_dir
         os.makedirs(self.save_dir, exist_ok=True)
 
@@ -201,9 +204,7 @@ class CuttingForceTrainer:
         if train_dataset is None:
             train_dataset = SyntheticCuttingForceDataset(num_samples=5000)
         if val_dataset is None:
-            val_dataset = SyntheticCuttingForceDataset(
-                num_samples=1000, seed=123
-            )
+            val_dataset = SyntheticCuttingForceDataset(num_samples=1000, seed=123)
 
         train_loader = DataLoader(
             train_dataset,
@@ -291,17 +292,20 @@ class CuttingForceTrainer:
     def _save_checkpoint(self, filename: str) -> None:
         """保存模型检查点。"""
         path = os.path.join(self.save_dir, filename)
-        torch.save({
-            "model_state_dict": self.model.state_dict(),
-            "model_config": {
-                "input_dim": 3,
-                "hidden_dim": 64,
-                "num_blocks": 3,
-                "output_dim": 3,
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "model_config": {
+                    "input_dim": 3,
+                    "hidden_dim": 64,
+                    "num_blocks": 3,
+                    "output_dim": 3,
+                },
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "history": self.history,
             },
-            "optimizer_state_dict": self.optimizer.state_dict(),
-            "history": self.history,
-        }, path)
+            path,
+        )
 
 
 def main() -> None:
@@ -336,12 +340,8 @@ def main() -> None:
         seed=args.seed,
     )
 
-    train_ds = SyntheticCuttingForceDataset(
-        num_samples=args.samples, material=args.material
-    )
-    val_ds = SyntheticCuttingForceDataset(
-        num_samples=max(500, args.samples // 5), material=args.material, seed=123
-    )
+    train_ds = SyntheticCuttingForceDataset(num_samples=args.samples, material=args.material)
+    val_ds = SyntheticCuttingForceDataset(num_samples=max(500, args.samples // 5), material=args.material, seed=123)
 
     start = time.time()
     history = trainer.train(train_ds, val_ds)

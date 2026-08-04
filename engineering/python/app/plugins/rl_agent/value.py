@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -111,21 +111,14 @@ else:
             # 避免污染调用方的全局随机状态
             rng = np.random.RandomState(config.seed)
 
-            self._w1 = rng.randn(
-                config.state_dim, config.hidden_dim
-            ).astype(np.float32) * 0.1
+            self._w1 = rng.randn(config.state_dim, config.hidden_dim).astype(np.float32) * 0.1
             self._b1 = np.zeros(config.hidden_dim, dtype=np.float32)
-            self._w2 = rng.randn(
-                config.hidden_dim, config.hidden_dim
-            ).astype(np.float32) * 0.1
+            self._w2 = rng.randn(config.hidden_dim, config.hidden_dim).astype(np.float32) * 0.1
             self._b2 = np.zeros(config.hidden_dim, dtype=np.float32)
             self._w_v = rng.randn(config.hidden_dim, 1).astype(np.float32) * 0.1
             self._b_v = np.zeros(1, dtype=np.float32)
 
-            logger.warning(
-                "ValueNet: torch 不可用，使用 NumPy 回退实现。"
-                "输出价值仅用于接口验证，不具备训练意义。"
-            )
+            logger.warning("ValueNet: torch 不可用，使用 NumPy 回退实现。输出价值仅用于接口验证，不具备训练意义。")
 
         def __call__(self, state: Any) -> np.ndarray:
             state_arr = np.asarray(state, dtype=np.float32)

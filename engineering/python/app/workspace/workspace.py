@@ -65,9 +65,7 @@ class ModelSelector:
     }
 
     @classmethod
-    def select_model(
-        cls, task_type: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> ModelType:
+    def select_model(cls, task_type: str, metadata: Optional[Dict[str, Any]] = None) -> ModelType:
         """
         根据任务类型选择模型
 
@@ -82,9 +80,7 @@ class ModelSelector:
             try:
                 return ModelType(metadata["model_type"])
             except ValueError:
-                logger.warning(
-                    "Invalid model_type in metadata: %s", metadata["model_type"]
-                )
+                logger.warning("Invalid model_type in metadata: %s", metadata["model_type"])
 
         return cls.MODEL_TYPE_MAP.get(task_type, ModelType.CFC)
 
@@ -104,9 +100,7 @@ class ModelSelector:
         return str(Path(base_dir) / relative_path)
 
     @classmethod
-    def find_best_model(
-        cls, model_type: ModelType, base_dir: str, machine_id: Optional[str] = None
-    ) -> Optional[str]:
+    def find_best_model(cls, model_type: ModelType, base_dir: str, machine_id: Optional[str] = None) -> Optional[str]:
         """
         查找最佳匹配模型文件
 
@@ -174,9 +168,7 @@ class DatasetMatcher:
         Returns:
             数据集路径，未找到返回None
         """
-        dataset_dir = Path(base_dir) / cls.DATASET_STRUCTURE.get(
-            dataset_type, "datasets"
-        )
+        dataset_dir = Path(base_dir) / cls.DATASET_STRUCTURE.get(dataset_type, "datasets")
 
         if not dataset_dir.exists():
             logger.warning("Dataset directory not found: %s", dataset_dir)
@@ -194,15 +186,11 @@ class DatasetMatcher:
                 logger.info("Matched dataset: %s for machine %s", selected, machine_id)
                 return str(selected)
 
-        logger.warning(
-            "No dataset matched for machine %s, material %s", machine_id, material_type
-        )
+        logger.warning("No dataset matched for machine %s, material %s", machine_id, material_type)
         return None
 
     @classmethod
-    def load_dataset_config(
-        cls, machine_id: str, base_dir: str = "data"
-    ) -> Dict[str, Any]:
+    def load_dataset_config(cls, machine_id: str, base_dir: str = "data") -> Dict[str, Any]:
         """
         加载机床数据集配置
 
@@ -233,9 +221,7 @@ class EnvironmentInjector:
     """环境变量与配置注入器"""
 
     @classmethod
-    def load_machine_config(
-        cls, machine_id: str, base_dir: str = "config"
-    ) -> Dict[str, Any]:
+    def load_machine_config(cls, machine_id: str, base_dir: str = "config") -> Dict[str, Any]:
         """
         加载机床配置
 
@@ -283,9 +269,7 @@ class EnvironmentInjector:
             "LNN_WORKSPACE": workspace_dir,
             "LNN_TASK_ID": task_context.task_id,
             "LNN_TASK_TYPE": task_context.task_type,
-            "LNN_MODEL_TYPE": task_context.model_type.value
-            if task_context.model_type
-            else "",
+            "LNN_MODEL_TYPE": task_context.model_type.value if task_context.model_type else "",
             "LNN_MODEL_PATH": task_context.model_path or "",
             "LNN_DATASET_PATH": task_context.dataset_path or "",
         }
@@ -330,9 +314,7 @@ class WorkspaceResolver:
         os.makedirs(self.workspace_base, exist_ok=True)
         logger.info("WorkspaceResolver initialized with base: %s", self.workspace_base)
 
-    def resolve(
-        self, task_id: str, task_type: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> WorkspaceContext:
+    def resolve(self, task_id: str, task_type: str, metadata: Optional[Dict[str, Any]] = None) -> WorkspaceContext:
         """
         解析任务工作空间
 
@@ -357,9 +339,7 @@ class WorkspaceResolver:
         )
 
         context.model_type = ModelSelector.select_model(task_type, metadata)
-        context.model_path = ModelSelector.find_best_model(
-            context.model_type, self.base_dir, machine_id
-        )
+        context.model_path = ModelSelector.find_best_model(context.model_type, self.base_dir, machine_id)
 
         if task_type in (
             "lnn_train",
@@ -380,14 +360,10 @@ class WorkspaceResolver:
 
         machine_config = {}
         if machine_id:
-            machine_config = EnvironmentInjector.load_machine_config(
-                machine_id, self.base_dir
-            )
+            machine_config = EnvironmentInjector.load_machine_config(machine_id, self.base_dir)
             context.config_path = str(Path(self.base_dir) / f"{machine_id}.json")
 
-        context.environment = EnvironmentInjector.inject_environment(
-            workspace_dir, machine_config, context
-        )
+        context.environment = EnvironmentInjector.inject_environment(workspace_dir, machine_config, context)
 
         logger.info(
             "Workspace resolved for task %s: model=%s, dataset=%s",
@@ -441,9 +417,7 @@ class WorkspaceResolver:
                 if os.path.exists(d):
                     shutil.rmtree(d)
 
-            logger.info(
-                "Task workspace partially cleaned (outputs kept): %s", workspace_dir
-            )
+            logger.info("Task workspace partially cleaned (outputs kept): %s", workspace_dir)
         else:
             shutil.rmtree(workspace_dir)
             logger.info("Task workspace cleaned: %s", workspace_dir)

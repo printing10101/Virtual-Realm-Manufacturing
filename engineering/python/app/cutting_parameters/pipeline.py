@@ -43,7 +43,6 @@ from app.cutting_parameters.cutting_store import (
     CuttingReviewStatus,
     MaterialNotFoundError,
     RecommendedCuttingParams,
-    ReviewError,
     generate_task_id,
     get_task_store,
 )
@@ -156,9 +155,7 @@ class CuttingParametersPipeline:
         self._cfg = cfg
         self._store = get_task_store()
         self._resolver = resolver if resolver is not None else get_material_resolver()
-        self._recommender = (
-            recommender if recommender is not None else CuttingParamRecommender(self._resolver)
-        )
+        self._recommender = recommender if recommender is not None else CuttingParamRecommender(self._resolver)
 
     # -------------------------------------------------------------------------
     # 创建任务
@@ -213,7 +210,10 @@ class CuttingParametersPipeline:
         self._store.create_task(task)
         logger.info(
             "创建切削参数任务 task_id=%s source_pg_task_id=%s material=%s tier=%s",
-            task_id, source_parametric_geometry_task_id, material_id, precision_tier,
+            task_id,
+            source_parametric_geometry_task_id,
+            material_id,
+            precision_tier,
         )
         return task
 
@@ -241,9 +241,7 @@ class CuttingParametersPipeline:
             CuttingParametersTaskStatus.PENDING.value,
             CuttingParametersTaskStatus.FAILED.value,
         ):
-            raise CuttingParametersPipelineError(
-                f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）"
-            )
+            raise CuttingParametersPipelineError(f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）")
 
         # 标记为 RUNNING
         task.status = CuttingParametersTaskStatus.RUNNING.value
@@ -256,21 +254,14 @@ class CuttingParametersPipeline:
             # 1. 校验材料 ID（提前失败，避免无效推荐）
             try:
                 # H10 修复：get_material 涉及文件/网络 I/O，转移到线程池。
-                material = await asyncio.to_thread(
-                    self._resolver.get_material, task.material_id
-                )
+                material = await asyncio.to_thread(self._resolver.get_material, task.material_id)
             except MaterialResolverError as e:
                 raise MaterialNotFoundError(str(e)) from e
 
             # 2. 加载阶段 2 confirmed_features.json
-            features = await asyncio.to_thread(
-                self._load_input_features, task.input_features_path
-            )
+            features = await asyncio.to_thread(self._load_input_features, task.input_features_path)
             if not features:
-                raise FeaturesLoadError(
-                    f"阶段 2 confirmed_features.json 中无任何特征: "
-                    f"{task.input_features_path}"
-                )
+                raise FeaturesLoadError(f"阶段 2 confirmed_features.json 中无任何特征: {task.input_features_path}")
 
             # 3. 为每个特征推荐切削参数
             recommended: list[RecommendedCuttingParams] = []
@@ -290,20 +281,22 @@ class CuttingParametersPipeline:
                     )
                     recommended.append(params)
                 except (FeatureNotSupportedError, RecommendationError) as e:
-                    skipped.append({
-                        "feature_id": feat.get("feature_id", ""),
-                        "feature_type": feat.get("feature_type", ""),
-                        "error": str(e),
-                    })
+                    skipped.append(
+                        {
+                            "feature_id": feat.get("feature_id", ""),
+                            "feature_type": feat.get("feature_type", ""),
+                            "error": str(e),
+                        }
+                    )
                     logger.warning(
                         "任务 %s 特征 %s 推荐失败: %s",
-                        task_id, feat.get("feature_id", ""), e,
+                        task_id,
+                        feat.get("feature_id", ""),
+                        e,
                     )
 
             if not recommended:
-                raise CuttingParametersPipelineError(
-                    f"所有特征切削参数推荐均失败，skipped={len(skipped)}"
-                )
+                raise CuttingParametersPipelineError(f"所有特征切削参数推荐均失败，skipped={len(skipped)}")
 
             # 4. 状态置为 PARAMS_RECOMMENDED（等待工程师审核）
             task.recommended_params = recommended
@@ -318,7 +311,10 @@ class CuttingParametersPipeline:
 
             logger.info(
                 "任务 %s 推荐完成 recommended=%d skipped=%d material=%s",
-                task_id, len(recommended), len(skipped), task.material_id,
+                task_id,
+                len(recommended),
+                len(skipped),
+                task.material_id,
             )
 
             return CuttingParametersResult(
@@ -335,15 +331,15 @@ class CuttingParametersPipeline:
             )
 
         except Exception as e:
-            safe = safe_error_message(
-                e, context="cutting_parameters.run_pipeline"
-            )
+            safe = safe_error_message(e, context="cutting_parameters.run_pipeline")
             task.status = CuttingParametersTaskStatus.FAILED.value
             task.error_message = safe.get("message", "")
             self._store.update_task(task)
             logger.error(
                 "任务 %s 执行失败 error_id=%s message=%s",
-                task_id, safe.get("error_id"), safe.get("message"),
+                task_id,
+                safe.get("error_id"),
+                safe.get("message"),
             )
             return CuttingParametersResult(
                 task_id=task_id,
@@ -392,9 +388,7 @@ class CuttingParametersPipeline:
             raise CuttingReviewError(f"任务不存在: {task_id}")
 
         if task.status != CuttingParametersTaskStatus.PARAMS_RECOMMENDED.value:
-            raise CuttingReviewError(
-                f"任务状态不允许审核: {task.status}（仅 params_recommended 可审核）"
-            )
+            raise CuttingReviewError(f"任务状态不允许审核: {task.status}（仅 params_recommended 可审核）")
 
         # 校验 review_status
         valid_statuses = {
@@ -403,16 +397,12 @@ class CuttingParametersPipeline:
             CuttingReviewStatus.EDITED.value,
         }
         if review_status not in valid_statuses:
-            raise CuttingReviewError(
-                f"无效审核状态: {review_status}，合法值: {sorted(valid_statuses)}"
-            )
+            raise CuttingReviewError(f"无效审核状态: {review_status}，合法值: {sorted(valid_statuses)}")
 
         # edited 必须提供 edited_params
         if review_status == CuttingReviewStatus.EDITED.value:
             if not edited_params:
-                raise CuttingReviewError(
-                    "review_status=edited 时必须提供 edited_params"
-                )
+                raise CuttingReviewError("review_status=edited 时必须提供 edited_params")
 
         # 查找特征
         target: RecommendedCuttingParams | None = None
@@ -421,9 +411,7 @@ class CuttingParametersPipeline:
                 target = params
                 break
         if target is None:
-            raise CuttingReviewError(
-                f"特征 ID 不存在于推荐列表中: {feature_id}"
-            )
+            raise CuttingReviewError(f"特征 ID 不存在于推荐列表中: {feature_id}")
 
         # 应用审核
         target.review_status = review_status
@@ -434,10 +422,7 @@ class CuttingParametersPipeline:
             target.edited_params = dict(edited_params)
 
         # 检查是否全部审核完毕 → REVIEWED
-        all_reviewed = all(
-            p.review_status != CuttingReviewStatus.PENDING.value
-            for p in task.recommended_params
-        )
+        all_reviewed = all(p.review_status != CuttingReviewStatus.PENDING.value for p in task.recommended_params)
         if all_reviewed:
             task.status = CuttingParametersTaskStatus.REVIEWED.value
             task.reviewed_by = reviewed_by
@@ -446,7 +431,10 @@ class CuttingParametersPipeline:
         self._store.update_task(task)
         logger.info(
             "任务 %s 特征 %s 审核为 %s by %s",
-            task_id, feature_id, review_status, reviewed_by,
+            task_id,
+            feature_id,
+            review_status,
+            reviewed_by,
         )
         return target
 
@@ -471,23 +459,20 @@ class CuttingParametersPipeline:
             raise CuttingParametersPipelineError(f"任务不存在: {task_id}")
 
         if task.status != CuttingParametersTaskStatus.REVIEWED.value:
-            raise CuttingParametersPipelineError(
-                f"任务状态不允许导出: {task.status}（仅 reviewed 可导出）"
-            )
+            raise CuttingParametersPipelineError(f"任务状态不允许导出: {task.status}（仅 reviewed 可导出）")
 
         # 仅导出 confirmed + edited 的特征（rejected 排除）
         exportable = [
-            p for p in task.recommended_params
-            if p.review_status in (
+            p
+            for p in task.recommended_params
+            if p.review_status
+            in (
                 CuttingReviewStatus.CONFIRMED.value,
                 CuttingReviewStatus.EDITED.value,
             )
         ]
         if not exportable:
-            raise CuttingParametersPipelineError(
-                f"任务 {task_id} 无可导出的特征参数"
-                f"（所有特征均被 rejected）"
-            )
+            raise CuttingParametersPipelineError(f"任务 {task_id} 无可导出的特征参数（所有特征均被 rejected）")
 
         # 转换为 ChatterParams dict 列表
         chatter_params_list: list[dict[str, Any]] = []
@@ -498,24 +483,26 @@ class CuttingParametersPipeline:
                     resolver=self._resolver,
                     machine_id=task.machine_type,
                 )
-                chatter_params_list.append({
-                    "feature_id": params.feature_id,
-                    "feature_type": params.feature_type,
-                    "operation": params.operation,
-                    "chatter_params": cp_dict,
-                    "material_id": params.material_id,
-                    "k_s_n_per_mm2": cp_dict["tool"]["cutting_force_coeff"],
-                })
+                chatter_params_list.append(
+                    {
+                        "feature_id": params.feature_id,
+                        "feature_type": params.feature_type,
+                        "operation": params.operation,
+                        "chatter_params": cp_dict,
+                        "material_id": params.material_id,
+                        "k_s_n_per_mm2": cp_dict["tool"]["cutting_force_coeff"],
+                    }
+                )
             except (MaterialNotFoundError, RecommendationError) as e:
                 logger.warning(
                     "任务 %s 特征 %s ChatterParams 转换失败: %s",
-                    task_id, params.feature_id, e,
+                    task_id,
+                    params.feature_id,
+                    e,
                 )
 
         if not chatter_params_list:
-            raise CuttingParametersPipelineError(
-                f"任务 {task_id} 无可导出的 ChatterParams"
-            )
+            raise CuttingParametersPipelineError(f"任务 {task_id} 无可导出的 ChatterParams")
 
         # 写入 JSON
         export_path = Path(task.workspace_dir) / f"{task_id}_chatter_params.json"
@@ -543,9 +530,7 @@ class CuttingParametersPipeline:
                 encoding="utf-8",
             )
         except OSError as e:
-            raise CuttingParametersPipelineError(
-                f"ChatterParams 写入失败: {e}"
-            ) from e
+            raise CuttingParametersPipelineError(f"ChatterParams 写入失败: {e}") from e
 
         # 状态置为 SUCCEEDED
         task.status = CuttingParametersTaskStatus.SUCCEEDED.value
@@ -555,7 +540,9 @@ class CuttingParametersPipeline:
 
         logger.info(
             "任务 %s ChatterParams 导出完成 path=%s features=%d",
-            task_id, export_path, len(chatter_params_list),
+            task_id,
+            export_path,
+            len(chatter_params_list),
         )
         return str(export_path)
 
@@ -578,9 +565,7 @@ class CuttingParametersPipeline:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as e:
-            raise FeaturesLoadError(
-                f"confirmed_features.json 解析失败: {e}"
-            ) from e
+            raise FeaturesLoadError(f"confirmed_features.json 解析失败: {e}") from e
 
         if isinstance(data, list):
             return data
@@ -589,8 +574,7 @@ class CuttingParametersPipeline:
                 if key in data and isinstance(data[key], list):
                     return data[key]
         raise FeaturesLoadError(
-            f"confirmed_features.json 格式不支持，"
-            f"应为 list 或含 'features'/'confirmed_features' 键的 dict"
+            "confirmed_features.json 格式不支持，应为 list 或含 'features'/'confirmed_features' 键的 dict"
         )
 
     def _build_disclaimer(
@@ -612,9 +596,7 @@ class CuttingParametersPipeline:
             chatter_params_ready=chatter_params_ready,
         )
 
-    def _persist_skipped_features(
-        self, task_id: str, skipped: list[dict[str, Any]]
-    ) -> None:
+    def _persist_skipped_features(self, task_id: str, skipped: list[dict[str, Any]]) -> None:
         """持久化跳过的特征列表（便于工程师回溯）。"""
         task = self._store.get_task(task_id)
         if task is None:

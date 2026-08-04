@@ -155,9 +155,7 @@ class ConcurrencyPerfBenchmark:
                     times.append(elapsed)
                     request_count += 1
                 except Exception as e:
-                    logging.getLogger(__name__).warning(
-                        "concurrency_bench worker error: %s", e
-                    )
+                    logging.getLogger(__name__).warning("concurrency_bench worker error: %s", e)
                     error_count += 1
 
         threads = []
@@ -185,9 +183,9 @@ class ConcurrencyPerfBenchmark:
             "sustained_avg_ms": round(sum(times) / n, 2),
             "sustained_p50_ms": round(times[int(n * 0.50)], 2),
             "sustained_p95_ms": round(times[min(int(n * 0.95), n - 1)], 2),
-            "sustained_success_rate": round(
-                (request_count - error_count) / request_count * 100, 1
-            ) if request_count > 0 else 0,
+            "sustained_success_rate": round((request_count - error_count) / request_count * 100, 1)
+            if request_count > 0
+            else 0,
         }
         self._results.update(result)
         return result

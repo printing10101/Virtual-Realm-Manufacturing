@@ -12,6 +12,7 @@
     - 返回结构与 GraphStore 保持一致（dict 字段稳定）
     - 不会修改图，只读
 """
+
 from __future__ import annotations
 
 import logging
@@ -79,9 +80,7 @@ class KnowledgeGraphQueryAPI:
         """按 ID 精确取节点。"""
         return self._store.get_node(node_id)
 
-    def nodes_by_type(
-        self, node_type: str, limit: int = 1000
-    ) -> list[dict[str, Any]]:
+    def nodes_by_type(self, node_type: str, limit: int = 1000) -> list[dict[str, Any]]:
         """按类型列出节点（按 node_id 排序）。"""
         return self._store.list_nodes_by_type(node_type)[:limit]
 
@@ -145,9 +144,15 @@ class KnowledgeGraphQueryAPI:
                 return []
             conf = (edge.get("properties") or {}).get("confidence", 0.5)
             if min_confidence <= conf <= max_confidence:
-                return [{"source_id": source_id, "target_id": target_id,
-                         "edge_type": edge_type, "confidence": conf,
-                         "properties": edge.get("properties", {})}]
+                return [
+                    {
+                        "source_id": source_id,
+                        "target_id": target_id,
+                        "edge_type": edge_type,
+                        "confidence": conf,
+                        "properties": edge.get("properties", {}),
+                    }
+                ]
             return []
         # 多条查询
         out = self._store.list_edges_by_confidence(
@@ -161,9 +166,7 @@ class KnowledgeGraphQueryAPI:
             out = [e for e in out if e.get("target_id") == target_id]
         return out[:limit]
 
-    def neighbors(
-        self, node_id: str, max_hops: int = 1, limit: int = 200
-    ) -> list[dict[str, Any]]:
+    def neighbors(self, node_id: str, max_hops: int = 1, limit: int = 200) -> list[dict[str, Any]]:
         """取节点 N 跳邻居（BFS，按 node_id 去重）。"""
         if not self._store.has_node(node_id):
             return []
@@ -240,9 +243,7 @@ class KnowledgeGraphQueryAPI:
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """业务查询：某材料适配的所有刀具（SUITABLE_FOR 关系反向）。"""
-        edges = self._store.list_edges_by_target(
-            material_id, edge_type="SUITABLE_FOR"
-        )
+        edges = self._store.list_edges_by_target(material_id, edge_type="SUITABLE_FOR")
         out = []
         for e in edges:
             conf = (e.get("properties") or {}).get("confidence", 0.5)
@@ -268,9 +269,7 @@ class KnowledgeGraphQueryAPI:
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """业务查询：某刀具能加工的所有材料（SUITABLE_FOR 关系正向）。"""
-        edges = self._store.list_edges_by_source(
-            tool_id, edge_type="SUITABLE_FOR"
-        )
+        edges = self._store.list_edges_by_source(tool_id, edge_type="SUITABLE_FOR")
         out = []
         for e in edges:
             conf = (e.get("properties") or {}).get("confidence", 0.5)
@@ -289,9 +288,7 @@ class KnowledgeGraphQueryAPI:
         out.sort(key=lambda x: x.get("confidence", 0.0), reverse=True)
         return out[:limit]
 
-    def process_chain(
-        self, feature_id: str, max_hops: int = 3
-    ) -> list[dict[str, Any]]:
+    def process_chain(self, feature_id: str, max_hops: int = 3) -> list[dict[str, Any]]:
         """业务查询：从 feature 出发走 USED / APPLIED_TO 关系得到工艺链。
 
         返回的是有序的中间节点 + 关系列表。
@@ -301,9 +298,7 @@ class KnowledgeGraphQueryAPI:
         chain: list[dict[str, Any]] = []
         # 优先沿 USED 出边
         edges = self._store.list_edges_by_source(feature_id, edge_type="USED")
-        edges += self._store.list_edges_by_source(
-            feature_id, edge_type="APPLIED_TO"
-        )
+        edges += self._store.list_edges_by_source(feature_id, edge_type="APPLIED_TO")
         for e in edges:
             tgt = self._store.get_node(e["target_id"])
             if tgt is None:
@@ -313,15 +308,13 @@ class KnowledgeGraphQueryAPI:
                     "from": feature_id,
                     "to": tgt["node_id"],
                     "edge_type": e["edge_type"],
-                    "confidence": (e.get("properties") or {}).get(
-                        "confidence", 0.5
-                    ),
+                    "confidence": (e.get("properties") or {}).get("confidence", 0.5),
                     "target_type": tgt["node_type"],
                     "target_props": tgt["properties"],
                 }
             )
         chain.sort(key=lambda x: x.get("confidence", 0.0), reverse=True)
-        return chain[:max_hops * 4]
+        return chain[: max_hops * 4]
 
     # ============================================================== 入口
 

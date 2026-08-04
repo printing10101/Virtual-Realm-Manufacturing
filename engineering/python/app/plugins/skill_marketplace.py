@@ -210,11 +210,7 @@ class SkillMarketplace:
     ) -> Optional[Dict[str, Any]]:
         loader = get_skill_loader()
 
-        matching_files = [
-            f
-            for f in os.listdir(self.market_dir)
-            if f.startswith(f"{skill_id}_") and f.endswith(".skz")
-        ]
+        matching_files = [f for f in os.listdir(self.market_dir) if f.startswith(f"{skill_id}_") and f.endswith(".skz")]
         if not matching_files:
             logger.warning("Package not found for download: %s", skill_id)
             return None
@@ -251,9 +247,7 @@ class SkillMarketplace:
             "sub_id": target_sub_id,
         }
 
-    def rate_skill(
-        self, skill_id: str, rating: float, agent_id: str = ""
-    ) -> Dict[str, Any]:
+    def rate_skill(self, skill_id: str, rating: float, agent_id: str = "") -> Dict[str, Any]:
         loader = get_skill_loader()
         result = loader.rate_skill(skill_id, rating)
 
@@ -277,9 +271,7 @@ class SkillMarketplace:
             del self._listings[skill_id]
             self._save_listings()
             matching_files = [
-                f
-                for f in os.listdir(self.market_dir)
-                if f.startswith(f"{skill_id}_") and f.endswith(".skz")
+                f for f in os.listdir(self.market_dir) if f.startswith(f"{skill_id}_") and f.endswith(".skz")
             ]
             for f in matching_files:
                 try:
@@ -295,12 +287,8 @@ class SkillMarketplace:
         with self._lock:
             listings_view = self._listings.values()
             total = len(self._listings)
-            most_downloaded = max(
-                listings_view, key=lambda x: x.downloads, default=None
-            )
-            highest_rated = max(
-                listings_view, key=lambda x: x.avg_rating, default=None
-            )
+            most_downloaded = max(listings_view, key=lambda x: x.downloads, default=None)
+            highest_rated = max(listings_view, key=lambda x: x.avg_rating, default=None)
         return {
             "total_listings": total,
             "market_dir": self.market_dir,

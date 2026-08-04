@@ -47,10 +47,7 @@ class RFBaseline:
     def get_params_count(self) -> int:
         if not self._fitted:
             return 0
-        total = sum(
-            tree.tree_.node_count if hasattr(tree, "tree_") else 0
-            for tree in self.model.estimators_
-        )
+        total = sum(tree.tree_.node_count if hasattr(tree, "tree_") else 0 for tree in self.model.estimators_)
         return total * 3
 
     def get_model_size_mb(self) -> float:
@@ -60,5 +57,6 @@ class RFBaseline:
             return measure_model_size_mb(self.model)
         except (ImportError, OSError, AttributeError) as e:
             import logging
+
             logging.getLogger(__name__).debug("RF model size measurement failed: %s", e)
             return 0.0

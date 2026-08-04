@@ -166,9 +166,7 @@ class ChainMixin:
             # 原子替换：os.replace 在同一文件系统上是原子的
             os.replace(str(tmp_file), str(self._chain_state_file))
 
-    def _compute_entry_hash(
-        self, entry: AuditLogEntry, prev_hash: str
-    ) -> str:
+    def _compute_entry_hash(self, entry: AuditLogEntry, prev_hash: str) -> str:
         """
         计算条目的 SHA-256 哈希。
 
@@ -211,15 +209,11 @@ class ChainMixin:
                             try:
                                 data = json.loads(line)
                             except json.JSONDecodeError:
-                                breaks.append(
-                                    f"{log_file}:{line_no}: invalid JSON (line skipped)"
-                                )
+                                breaks.append(f"{log_file}:{line_no}: invalid JSON (line skipped)")
                                 continue
                             seq = data.get("chain_seq")
                             if seq is None:
-                                breaks.append(
-                                    f"{log_file}:{line_no}: missing chain_seq field"
-                                )
+                                breaks.append(f"{log_file}:{line_no}: missing chain_seq field")
                                 continue
                             entries.append((int(seq), log_file, line_no, data))
                 except (OSError, IOError) as e:
@@ -234,10 +228,7 @@ class ChainMixin:
             for seq, log_file, line_no, data in entries:
                 # 检查 chain_seq 连续性
                 if seq != expected_seq:
-                    breaks.append(
-                        f"{log_file}:{line_no}: chain_seq gap, "
-                        f"expected {expected_seq}, got {seq}"
-                    )
+                    breaks.append(f"{log_file}:{line_no}: chain_seq gap, expected {expected_seq}, got {seq}")
                 # 检查 prev_hash 链接
                 stored_prev = data.get("prev_hash")
                 if stored_prev != expected_prev:
@@ -258,9 +249,7 @@ class ChainMixin:
                             f"recomputed {recomputed[:16]}"
                         )
                 except Exception as e:
-                    breaks.append(
-                        f"{log_file}:{line_no}: failed to recompute hash: {e}"
-                    )
+                    breaks.append(f"{log_file}:{line_no}: failed to recompute hash: {e}")
                 # 更新期望值为当前条目的 entry_hash
                 if stored_hash:
                     expected_prev = stored_hash

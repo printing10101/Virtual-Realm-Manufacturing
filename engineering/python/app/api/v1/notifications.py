@@ -70,9 +70,7 @@ async def get_notifications():
                         "notification_id": f"task-{d.get('job_id', '')}",
                         "title": f"任务 {d.get('job_id', '')} 状态：{status}",
                         "created_at": d.get("created_at_iso")
-                        or datetime.fromtimestamp(
-                            float(d.get("created_at", 0) or 0)
-                        ).isoformat(),
+                        or datetime.fromtimestamp(float(d.get("created_at", 0) or 0)).isoformat(),
                         "priority": _priority_for(status),
                     }
                 )
@@ -81,9 +79,7 @@ async def get_notifications():
 
     # 2. 设备告警（未解决）
     try:
-        alarms = await equipment_service.list_alarms(
-            status=None, page=1, page_size=20
-        )
+        alarms = await equipment_service.list_alarms(status=None, page=1, page_size=20)
         for a in (alarms.get("items") or [])[:10]:
             severity = str(a.get("severity", ""))
             alarms_status = str(a.get("status", ""))
@@ -102,9 +98,7 @@ async def get_notifications():
     # 3. 物料库存预警（缺货 / 低库存）
     try:
         for status_key in ("缺货", "低库存"):
-            mats = await materials_service.list_materials(
-                status=status_key, page=1, page_size=10
-            )
+            mats = await materials_service.list_materials(status=status_key, page=1, page_size=10)
             for m in (mats.get("items") or [])[:5]:
                 notifications.append(
                     {
@@ -119,9 +113,7 @@ async def get_notifications():
 
     # 4. 质量异常（待处理）
     try:
-        anomalies = await quality_service.list_anomalies(
-            status=None, limit=20, offset=0
-        )
+        anomalies = await quality_service.list_anomalies(status=None, limit=20, offset=0)
         for a in (anomalies.get("anomalies") or [])[:10]:
             a_status = str(a.get("status", ""))
             if a_status in ("待处理", "处理中"):
@@ -162,14 +154,14 @@ async def get_system_status():
 
         sessionmaker = get_sessionmaker()
         components["database"] = "ok" if sessionmaker is not None else "unavailable"
-    except Exception as e:
+    except Exception:
         components["database"] = "error"
 
     # 任务管理器
     try:
         await task_manager.list_tasks(limit=1)
         components["tasks"] = "ok"
-    except Exception as e:
+    except Exception:
         components["tasks"] = "error"
 
     # 插件系统
@@ -178,7 +170,7 @@ async def get_system_status():
 
         get_plugin_manager()
         components["plugins"] = "ok"
-    except Exception as e:
+    except Exception:
         components["plugins"] = "error"
 
     return success(
@@ -210,12 +202,10 @@ async def get_activity_brief():
         tasks = await task_manager.list_tasks(limit=100)
         brief["task_total"] = len(tasks)
         brief["task_running"] = sum(
-            1 for t in tasks if getattr(t, "status", None) is not None
-            and getattr(t, "status").value == "running"
+            1 for t in tasks if getattr(t, "status", None) is not None and getattr(t, "status").value == "running"
         )
         brief["task_failed"] = sum(
-            1 for t in tasks if getattr(t, "status", None) is not None
-            and getattr(t, "status").value == "failed"
+            1 for t in tasks if getattr(t, "status", None) is not None and getattr(t, "status").value == "failed"
         )
     except Exception as e:
         logger.warning("聚合任务简报失败: %s", e, exc_info=True)

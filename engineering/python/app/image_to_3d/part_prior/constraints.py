@@ -16,6 +16,7 @@
 - 约束项权重必须通过 MLflow 记录，保证消融实验可复现
 - 默认权重值在此冻结，不允许运行时隐式修改
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -55,9 +56,7 @@ class GeometryConstraints:
 
     symmetry_axes: list[str] = field(default_factory=list)
     mating_planes: list[tuple[str, int, int]] = field(default_factory=list)
-    nominal_values: list[tuple[str, float, tuple[float, float, float]]] = field(
-        default_factory=list
-    )
+    nominal_values: list[tuple[str, float, tuple[float, float, float]]] = field(default_factory=list)
     weights: dict[str, float] = field(
         default_factory=lambda: {
             "symmetry": DEFAULT_SYMMETRY_WEIGHT,
@@ -71,10 +70,7 @@ class GeometryConstraints:
         return {
             "symmetry_axes": list(self.symmetry_axes),
             "mating_planes": [list(p) for p in self.mating_planes],
-            "nominal_values": [
-                [name, target, list(bbox)]
-                for name, target, bbox in self.nominal_values
-            ],
+            "nominal_values": [[name, target, list(bbox)] for name, target, bbox in self.nominal_values],
             "weights": dict(self.weights),
         }
 

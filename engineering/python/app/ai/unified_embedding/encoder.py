@@ -241,9 +241,7 @@ class JEPAProjector(EmbeddingEncoder):
         seed: int = 42,
     ):
         super().__init__("JEPAProjector", input_dim)
-        self._projection = LinearProjection(
-            input_dim, TOTAL_DIMS, use_bias=True, activation="tanh", seed=seed
-        )
+        self._projection = LinearProjection(input_dim, TOTAL_DIMS, use_bias=True, activation="tanh", seed=seed)
 
     def encode(self, visual_features: np.ndarray) -> np.ndarray:
         if visual_features.ndim == 1:

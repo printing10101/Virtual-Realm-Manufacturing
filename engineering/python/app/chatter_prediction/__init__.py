@@ -47,18 +47,21 @@ from app.chatter_prediction.chatter_store import (
     generate_task_id,
     get_task_store,
 )
+
 # 精度告知
 from app.chatter_prediction.chatter_disclaimer import (
     ChatterDisclaimer,
     INDUSTRIAL_HARD_GATES,
     build_chatter_disclaimer,
 )
+
 # 双路径预测适配器
 from app.chatter_prediction.predictor_adapter import (
     ChatterPredictorAdapter,
     PredictorAdapterError,
     check_ltc_model_available,
 )
+
 # 流水线编排器
 from app.chatter_prediction.pipeline import (
     ChatterPredictionPipeline,

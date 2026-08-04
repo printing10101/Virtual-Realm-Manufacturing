@@ -6,6 +6,7 @@ Xmaker 文件传输集成模块
 2. 加工状态监控
 3. 加工参数下发
 """
+
 from __future__ import annotations
 
 import json
@@ -26,16 +27,18 @@ logger = logging.getLogger(__name__)
 
 class MachineStatus(Enum):
     """机床状态"""
-    IDLE = "idle"           # 空闲
-    RUNNING = "running"     # 加工中
-    PAUSED = "paused"       # 暂停
-    ERROR = "error"         # 错误
-    OFFLINE = "offline"     # 离线
+
+    IDLE = "idle"  # 空闲
+    RUNNING = "running"  # 加工中
+    PAUSED = "paused"  # 暂停
+    ERROR = "error"  # 错误
+    OFFLINE = "offline"  # 离线
 
 
 @dataclass
 class UploadResult:
     """上传结果"""
+
     success: bool
     file_id: str = ""
     file_url: str = ""
@@ -46,6 +49,7 @@ class UploadResult:
 @dataclass
 class MachineStatusInfo:
     """机床状态信息"""
+
     status: MachineStatus = MachineStatus.OFFLINE
     current_job_id: str = ""
     progress_percent: float = 0.0
@@ -59,13 +63,13 @@ class MachineStatusInfo:
 
 class XmakerIntegration:
     """Xmaker 集成客户端
-    
+
     用于与 Xmaker 平台交互，支持：
     - G-code 文件上传
     - 加工任务管理
     - 实时状态监控
     """
-    
+
     def __init__(
         self,
         # 默认 endpoint 通过环境变量 XMAKER_API_ENDPOINT 覆盖；
@@ -96,10 +100,12 @@ class XmakerIntegration:
 
         # 认证
         if self.api_key:
-            session.headers.update({
-                "Authorization": f"Bearer {self.api_key}",
-                "X-API-Key": self.api_key,
-            })
+            session.headers.update(
+                {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "X-API-Key": self.api_key,
+                }
+            )
 
         # 重试策略：对 5xx / 连接错误进行幂等重试
         retry_strategy = Retry(
@@ -150,7 +156,10 @@ class XmakerIntegration:
 
         logger.debug(
             "Xmaker API %s %s  params=%s  json=%s",
-            method, url, params, json_body,
+            method,
+            url,
+            params,
+            json_body,
         )
 
         resp = session.request(
@@ -166,7 +175,9 @@ class XmakerIntegration:
 
         logger.debug(
             "Xmaker API 响应: %s %s -> %d  (%d bytes)",
-            method, url, resp.status_code,
+            method,
+            url,
+            resp.status_code,
             len(resp.content) if not stream else 0,
         )
 
@@ -180,30 +191,30 @@ class XmakerIntegration:
         metadata: Optional[dict] = None,
     ) -> UploadResult:
         """上传 G-code 文件到 Xmaker 平台
-        
+
         Args:
             file_path: G-code 文件路径
             job_name: 加工任务名称（可选）
             metadata: 附加元数据（可选）
-            
+
         Returns:
             UploadResult: 上传结果
         """
         t0 = time.perf_counter()
         path = Path(file_path)
-        
+
         if not path.exists():
             return UploadResult(
                 success=False,
                 error_message=f"文件不存在: {file_path}",
             )
-        
-        if not path.suffix.lower() in (".gcode", ".nc", ".tap"):
+
+        if path.suffix.lower() not in (".gcode", ".nc", ".tap"):
             return UploadResult(
                 success=False,
                 error_message=f"不支持的文件格式: {path.suffix}",
             )
-        
+
         # 调用 Xmaker REST API 上传文件
         try:
             upload_name = job_name or path.stem
@@ -275,13 +286,13 @@ class XmakerIntegration:
                 error_message="G-code 上传失败，请检查网络或机床连接",
                 upload_time_ms=latency_ms,
             )
-    
+
     def get_machine_status(self, machine_id: str = "default") -> MachineStatusInfo:
         """获取机床状态
-        
+
         Args:
             machine_id: 机床 ID
-            
+
         Returns:
             MachineStatusInfo: 机床状态信息
         """
@@ -290,9 +301,9 @@ class XmakerIntegration:
                 "GET",
                 f"/machines/{machine_id}/status",
             )
-            
+
             body = resp.json()
-            
+
             # 映射 API 响应到 MachineStatus 枚举
             status_map = {
                 "idle": MachineStatus.IDLE,
@@ -301,12 +312,12 @@ class XmakerIntegration:
                 "error": MachineStatus.ERROR,
                 "offline": MachineStatus.OFFLINE,
             }
-            
+
             status_str = body.get("status", "offline").lower()
             status = status_map.get(status_str, MachineStatus.OFFLINE)
-            
+
             logger.debug("机床状态: machine_id=%s, status=%s", machine_id, status.value)
-            
+
             return MachineStatusInfo(
                 status=status,
                 current_job_id=body.get("current_job_id", ""),
@@ -318,7 +329,7 @@ class XmakerIntegration:
                 error_code=body.get("error_code", ""),
                 error_message=body.get("error_message", ""),
             )
-            
+
         except requests.exceptions.Timeout:
             logger.error("获取机床状态超时: machine_id=%s (timeout=%ss)", machine_id, self.timeout_sec)
             return MachineStatusInfo(
@@ -344,7 +355,7 @@ class XmakerIntegration:
                 status=MachineStatus.OFFLINE,
                 error_message="机床状态查询失败，请检查网络或机床连接",
             )
-    
+
     def start_job(
         self,
         file_id: str,
@@ -352,12 +363,12 @@ class XmakerIntegration:
         parameters: Optional[dict] = None,
     ) -> bool:
         """启动加工任务
-        
+
         Args:
             file_id: 文件 ID
             machine_id: 机床 ID
             parameters: 加工参数（可选）
-            
+
         Returns:
             bool: 是否启动成功
         """
@@ -368,26 +379,26 @@ class XmakerIntegration:
             }
             if parameters:
                 payload["parameters"] = parameters
-            
+
             logger.info("启动加工任务: file_id=%s, machine_id=%s", file_id, machine_id)
-            
+
             resp = self._request(
                 "POST",
                 "/jobs/start",
                 json_body=payload,
             )
-            
+
             body = resp.json()
             success = body.get("success", resp.status_code in (200, 201, 202))
-            
+
             if success:
                 logger.info("加工任务启动成功: file_id=%s, machine_id=%s", file_id, machine_id)
             else:
                 error_msg = body.get("error_message", body.get("message", "未知错误"))
                 logger.warning("加工任务启动失败: file_id=%s, error=%s", file_id, error_msg)
-            
+
             return success
-            
+
         except requests.exceptions.Timeout:
             logger.error("启动加工任务超时: file_id=%s (timeout=%ss)", file_id, self.timeout_sec)
             return False
@@ -401,35 +412,35 @@ class XmakerIntegration:
         except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
             logger.error("启动加工任务失败: file_id=%s, error=%s", file_id, e, exc_info=True)
             return False
-    
+
     def pause_job(self, machine_id: str = "default") -> bool:
         """暂停加工任务
-        
+
         Args:
             machine_id: 机床 ID
-            
+
         Returns:
             bool: 是否暂停成功
         """
         try:
             logger.info("暂停加工任务: machine_id=%s", machine_id)
-            
+
             resp = self._request(
                 "POST",
                 f"/machines/{machine_id}/pause",
             )
-            
+
             body = resp.json()
             success = body.get("success", resp.status_code in (200, 201, 202))
-            
+
             if success:
                 logger.info("加工任务暂停成功: machine_id=%s", machine_id)
             else:
                 error_msg = body.get("error_message", body.get("message", "未知错误"))
                 logger.warning("加工任务暂停失败: machine_id=%s, error=%s", machine_id, error_msg)
-            
+
             return success
-            
+
         except requests.exceptions.Timeout:
             logger.error("暂停加工任务超时: machine_id=%s (timeout=%ss)", machine_id, self.timeout_sec)
             return False
@@ -443,35 +454,35 @@ class XmakerIntegration:
         except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
             logger.error("暂停加工任务失败: machine_id=%s, error=%s", machine_id, e, exc_info=True)
             return False
-    
+
     def resume_job(self, machine_id: str = "default") -> bool:
         """恢复加工任务
-        
+
         Args:
             machine_id: 机床 ID
-            
+
         Returns:
             bool: 是否恢复成功
         """
         try:
             logger.info("恢复加工任务: machine_id=%s", machine_id)
-            
+
             resp = self._request(
                 "POST",
                 f"/machines/{machine_id}/resume",
             )
-            
+
             body = resp.json()
             success = body.get("success", resp.status_code in (200, 201, 202))
-            
+
             if success:
                 logger.info("加工任务恢复成功: machine_id=%s", machine_id)
             else:
                 error_msg = body.get("error_message", body.get("message", "未知错误"))
                 logger.warning("加工任务恢复失败: machine_id=%s, error=%s", machine_id, error_msg)
-            
+
             return success
-            
+
         except requests.exceptions.Timeout:
             logger.error("恢复加工任务超时: machine_id=%s (timeout=%ss)", machine_id, self.timeout_sec)
             return False
@@ -485,35 +496,35 @@ class XmakerIntegration:
         except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
             logger.error("恢复加工任务失败: machine_id=%s, error=%s", machine_id, e, exc_info=True)
             return False
-    
+
     def stop_job(self, machine_id: str = "default") -> bool:
         """停止加工任务
-        
+
         Args:
             machine_id: 机床 ID
-            
+
         Returns:
             bool: 是否停止成功
         """
         try:
             logger.info("停止加工任务: machine_id=%s", machine_id)
-            
+
             resp = self._request(
                 "POST",
                 f"/machines/{machine_id}/stop",
             )
-            
+
             body = resp.json()
             success = body.get("success", resp.status_code in (200, 201, 202))
-            
+
             if success:
                 logger.info("加工任务停止成功: machine_id=%s", machine_id)
             else:
                 error_msg = body.get("error_message", body.get("message", "未知错误"))
                 logger.warning("加工任务停止失败: machine_id=%s, error=%s", machine_id, error_msg)
-            
+
             return success
-            
+
         except requests.exceptions.Timeout:
             logger.error("停止加工任务超时: machine_id=%s (timeout=%ss)", machine_id, self.timeout_sec)
             return False
@@ -527,43 +538,43 @@ class XmakerIntegration:
         except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
             logger.error("停止加工任务失败: machine_id=%s, error=%s", machine_id, e, exc_info=True)
             return False
-    
+
     def download_gcode(
         self,
         file_id: str,
         output_path: str | Path,
     ) -> bool:
         """从 Xmaker 平台下载 G-code 文件
-        
+
         Args:
             file_id: 文件 ID
             output_path: 输出路径
-            
+
         Returns:
             bool: 是否下载成功
         """
         try:
             logger.info("下载 G-code: file_id=%s -> %s", file_id, output_path)
-            
+
             resp = self._request(
                 "GET",
                 f"/files/{file_id}/download",
                 stream=True,
             )
-            
+
             # 确保输出目录存在
             out_path = Path(output_path)
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # 流式写入文件
             with open(out_path, "wb") as f:
                 for chunk in resp.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-            
+
             logger.info("G-code 下载成功: file_id=%s -> %s", file_id, output_path)
             return True
-            
+
         except requests.exceptions.Timeout:
             logger.error("下载 G-code 超时: file_id=%s (timeout=%ss)", file_id, self.timeout_sec)
             return False

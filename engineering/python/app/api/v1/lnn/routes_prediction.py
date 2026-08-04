@@ -69,9 +69,7 @@ def _validate_predict_request(body: LNNPredictRequest, model_info) -> Optional[d
             code=ErrorCode.INVALID_REQUEST,
             message="输入数据必须为数值类型",
         )
-    expected_dim = (
-        len(model_info.input_features) if model_info.input_features else None
-    )
+    expected_dim = len(model_info.input_features) if model_info.input_features else None
     if expected_dim:
         input_len = len(body.input_data)
         if input_len != expected_dim and input_len % expected_dim != 0:
@@ -229,9 +227,7 @@ def _log_predict_success(
         data={
             "model": body.model_name,
             "inference_time_ms": inference_time,
-            "input_size": len(body.input_data)
-            if isinstance(body.input_data, list)
-            else 1,
+            "input_size": len(body.input_data) if isinstance(body.input_data, list) else 1,
         },
     )
 
@@ -258,13 +254,11 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
         if err:
             return err
 
-        response_data, value, confidence, inference_time, alternatives, reasoning = (
-            _format_predict_response(result, body, model_info)
+        response_data, value, confidence, inference_time, alternatives, reasoning = _format_predict_response(
+            result, body, model_info
         )
 
-        _log_predict_success(
-            body, value, confidence, alternatives, inference_time, reasoning
-        )
+        _log_predict_success(body, value, confidence, alternatives, inference_time, reasoning)
 
         return success(data=response_data, message="Prediction completed successfully")
 
@@ -335,9 +329,7 @@ async def batch_inference(
             )
 
         # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
-        batch_task = asyncio.create_task(
-            task_manager.execute_task(record.job_id, batch_executor)
-        )
+        batch_task = asyncio.create_task(task_manager.execute_task(record.job_id, batch_executor))
         _active_batch_tasks.add(batch_task)
 
         def _on_batch_done(t: asyncio.Task) -> None:
@@ -353,9 +345,7 @@ async def batch_inference(
         )
 
     except (ValueError, TypeError, OSError, RuntimeError) as e:
-        safe = safe_error_message(
-            e, context=f"lnn.batch_inference_init[{body.model_name}]"
-        )
+        safe = safe_error_message(e, context=f"lnn.batch_inference_init[{body.model_name}]")
         logger.warning("Batch inference init failed: %s", e)
         return error(
             code=ErrorCode.INTERNAL_ERROR,

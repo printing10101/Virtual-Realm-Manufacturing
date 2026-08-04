@@ -87,13 +87,13 @@ class CollisionChecker:
             碰撞检测结果
         """
         result = CollisionResult()
-        
+
         # 获取刀具包围盒
         tool_bbox = self._extract_bbox(tool_geometry, tool_position)
         if tool_bbox is None:
             logger.warning("Cannot extract tool geometry bbox, skipping collision check")
             return result
-        
+
         # 检查刀具与工件的碰撞
         if self._workpiece is not None:
             workpiece_bbox = self._extract_bbox(self._workpiece)
@@ -102,7 +102,7 @@ class CollisionChecker:
                 result.collision_points.append(tool_position)
                 result.severity = "critical"
                 logger.warning("Tool collided with workpiece at %s", tool_position)
-        
+
         # 检查刀具与夹具的碰撞
         for i, fixture in enumerate(self._fixtures):
             fixture_bbox = self._extract_bbox(fixture)
@@ -111,7 +111,7 @@ class CollisionChecker:
                 result.collision_points.append(tool_position)
                 result.severity = "critical"
                 logger.warning("Tool collided with fixture %d at %s", i, tool_position)
-        
+
         # 检查刀柄与工件的碰撞
         if self._tool_holder is not None and self._workpiece is not None:
             holder_bbox = self._extract_bbox(self._tool_holder)
@@ -121,7 +121,7 @@ class CollisionChecker:
                 result.collision_points.append(tool_position)
                 result.severity = "warning"
                 logger.warning("Tool holder collided with workpiece at %s", tool_position)
-        
+
         return result
 
     def check_toolpath(
@@ -143,41 +143,43 @@ class CollisionChecker:
             碰撞检测结果
         """
         result = CollisionResult()
-        
+
         # 提取路径点
         points = self._extract_toolpath_points(toolpath)
         if not points:
             logger.warning("No points extracted from toolpath")
             return result
-        
+
         # 在每个采样点检查碰撞
         sample_step = max(1, len(points) // 100)  # 最多采样100个点
         for i in range(0, len(points), sample_step):
             point = points[i]
             point_result = self.check_collision(point, tool_geometry)
-            
+
             if point_result.collided:
                 result.collided = True
                 result.collision_points.extend(point_result.collision_points)
                 result.collision_segments.append(i)
-                
+
                 # 升级严重程度
                 if point_result.severity == "critical":
                     result.severity = "critical"
                 elif result.severity != "critical" and point_result.severity == "warning":
                     result.severity = "warning"
-        
+
         if result.collided:
             logger.warning(
                 "Toolpath collision detected: %d collision points, severity=%s",
                 len(result.collision_points),
                 result.severity,
             )
-        
+
         return result
 
     @staticmethod
-    def _extract_bbox(geometry: Any, position: tuple[float, float, float] | None = None) -> tuple[float, float, float, float, float, float] | None:
+    def _extract_bbox(
+        geometry: Any, position: tuple[float, float, float] | None = None
+    ) -> tuple[float, float, float, float, float, float] | None:
         """从几何体对象提取包围盒。
 
         支持多种几何体格式:
@@ -194,7 +196,7 @@ class CollisionChecker:
             包围盒 (x_min, y_min, z_min, x_max, y_max, z_max) 或 None
         """
         bbox = None
-        
+
         # 尝试不同的属性/方法
         if hasattr(geometry, "bbox"):
             bbox = geometry.bbox
@@ -208,23 +210,21 @@ class CollisionChecker:
                 pass
         elif isinstance(geometry, dict):
             bbox = geometry.get("bbox") or (
-                (*geometry["min"], *geometry["max"])
-                if "min" in geometry and "max" in geometry
-                else None
+                (*geometry["min"], *geometry["max"]) if "min" in geometry and "max" in geometry else None
             )
         elif isinstance(geometry, (list, tuple)) and len(geometry) == 6:
             # 直接是包围盒元组
             bbox = geometry
-        
+
         if bbox is None:
             return None
-        
+
         # 转换为元组
         try:
             x_min, y_min, z_min, x_max, y_max, z_max = (float(v) for v in bbox)
         except (TypeError, ValueError):
             return None
-        
+
         # 应用位置偏移
         if position is not None:
             dx, dy, dz = position
@@ -234,7 +234,7 @@ class CollisionChecker:
             x_max += dx
             y_max += dy
             z_max += dz
-        
+
         return x_min, y_min, z_min, x_max, y_max, z_max
 
     @staticmethod
@@ -253,12 +253,15 @@ class CollisionChecker:
         """
         x1_min, y1_min, z1_min, x1_max, y1_max, z1_max = bbox1
         x2_min, y2_min, z2_min, x2_max, y2_max, z2_max = bbox2
-        
+
         # AABB 相交条件: 所有轴都有重叠
         return not (
-            x1_max < x2_min or x2_max < x1_min or
-            y1_max < y2_min or y2_max < y1_min or
-            z1_max < z2_min or z2_max < z1_min
+            x1_max < x2_min
+            or x2_max < x1_min
+            or y1_max < y2_min
+            or y2_max < y1_min
+            or z1_max < z2_min
+            or z2_max < z1_min
         )
 
     @staticmethod
@@ -277,7 +280,7 @@ class CollisionChecker:
             位置点列表 [(x,y,z), ...]
         """
         points = []
-        
+
         # 尝试不同的属性
         if hasattr(toolpath, "points"):
             raw_points = toolpath.points
@@ -289,7 +292,7 @@ class CollisionChecker:
             raw_points = toolpath
         else:
             return points
-        
+
         # 转换点
         for point in raw_points:
             try:
@@ -300,7 +303,7 @@ class CollisionChecker:
                     points.append((float(point.x), float(point.y), float(point.z)))
             except (TypeError, ValueError, IndexError):
                 continue
-        
+
         return points
 
     def clear(self) -> None:

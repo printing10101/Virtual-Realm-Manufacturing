@@ -37,25 +37,15 @@ class PartPriorConfig:
     """
 
     # 预训练 VAE 权重路径（.pt/.pth）。空字符串表示未配置，part_prior 路径不可用
-    pretrained_model_path: str = field(
-        default_factory=lambda: _env("LNN_I2T3D_PART_PRIOR_MODEL_PATH", "")
-    )
+    pretrained_model_path: str = field(default_factory=lambda: _env("LNN_I2T3D_PART_PRIOR_MODEL_PATH", ""))
     # 体素网格维度（必须与预训练 VAE 一致，默认 64³）
-    voxel_dim: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_PART_PRIOR_VOXEL_DIM", 64)
-    )
+    voxel_dim: int = field(default_factory=lambda: _int_env("LNN_I2T3D_PART_PRIOR_VOXEL_DIM", 64))
     # latent 维度（必须与预训练 VAE 一致）
-    latent_dim: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_PART_PRIOR_LATENT_DIM", 256)
-    )
+    latent_dim: int = field(default_factory=lambda: _int_env("LNN_I2T3D_PART_PRIOR_LATENT_DIM", 256))
     # 基础通道数（必须与预训练 VAE 一致）
-    base_channels: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_PART_PRIOR_BASE_CHANNELS", 32)
-    )
+    base_channels: int = field(default_factory=lambda: _int_env("LNN_I2T3D_PART_PRIOR_BASE_CHANNELS", 32))
     # 推理随机种子（D-2 学术诚信硬约束：固定种子保证可复现）
-    inference_seed: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_PART_PRIOR_SEED", 42)
-    )
+    inference_seed: int = field(default_factory=lambda: _int_env("LNN_I2T3D_PART_PRIOR_SEED", 42))
     # marching cubes 阈值（体素占据概率，0-1）
     marching_cubes_threshold: float = field(
         default_factory=lambda: _float_env("LNN_I2T3D_PART_PRIOR_MC_THRESHOLD", 0.5)
@@ -65,29 +55,25 @@ class PartPriorConfig:
         """校验 part_prior 配置合法性。"""
         if self.voxel_dim <= 0:
             logger.warning(
-                "LNN_I2T3D_PART_PRIOR_VOXEL_DIM=%s invalid, must be > 0. "
-                "Setting to 64.",
+                "LNN_I2T3D_PART_PRIOR_VOXEL_DIM=%s invalid, must be > 0. Setting to 64.",
                 self.voxel_dim,
             )
             self.voxel_dim = 64
         if self.latent_dim <= 0:
             logger.warning(
-                "LNN_I2T3D_PART_PRIOR_LATENT_DIM=%s invalid, must be > 0. "
-                "Setting to 256.",
+                "LNN_I2T3D_PART_PRIOR_LATENT_DIM=%s invalid, must be > 0. Setting to 256.",
                 self.latent_dim,
             )
             self.latent_dim = 256
         if self.base_channels <= 0:
             logger.warning(
-                "LNN_I2T3D_PART_PRIOR_BASE_CHANNELS=%s invalid, must be > 0. "
-                "Setting to 32.",
+                "LNN_I2T3D_PART_PRIOR_BASE_CHANNELS=%s invalid, must be > 0. Setting to 32.",
                 self.base_channels,
             )
             self.base_channels = 32
         if not 0.0 < self.marching_cubes_threshold < 1.0:
             logger.warning(
-                "LNN_I2T3D_PART_PRIOR_MC_THRESHOLD=%s invalid, must be in (0, 1). "
-                "Setting to 0.5.",
+                "LNN_I2T3D_PART_PRIOR_MC_THRESHOLD=%s invalid, must be in (0, 1). Setting to 0.5.",
                 self.marching_cubes_threshold,
             )
             self.marching_cubes_threshold = 0.5
@@ -101,91 +87,60 @@ class ImageTo3DConfig:
     """
 
     # 总开关：桌面轻量档位下可关闭，避免冷启动延迟
-    enabled: bool = field(
-        default_factory=lambda: _bool_env("LNN_I2T3D_ENABLED", True)
-    )
+    enabled: bool = field(default_factory=lambda: _bool_env("LNN_I2T3D_ENABLED", True))
     # 默认 pipeline：colmap_openmvs（无需 GPU）或 hunyuan3d（需 GPU）
-    pipeline: str = field(
-        default_factory=lambda: _env("LNN_I2T3D_PIPELINE", "colmap_openmvs")
-    )
+    pipeline: str = field(default_factory=lambda: _env("LNN_I2T3D_PIPELINE", "colmap_openmvs"))
 
     # COLMAP 二进制路径：用户需单独安装 COLMAP（https://colmap.github.io/install.html）
     # Windows 默认安装路径示例：C:/Program Files/COLMAP/colmap.exe
     # Linux/macOS：通常在 PATH 中可直接调用 colmap
-    colmap_bin: str = field(
-        default_factory=lambda: _env("LNN_I2T3D_COLMAP_BIN", "colmap")
-    )
+    colmap_bin: str = field(default_factory=lambda: _env("LNN_I2T3D_COLMAP_BIN", "colmap"))
     # OpenMVS 二进制路径：用户需单独安装 OpenMVS（https://github.com/cdcseacave/openMVS）
     # 默认 DensifyMesh 是 OpenMVS 的网格稠密化命令
-    openmvs_bin: str = field(
-        default_factory=lambda: _env("LNN_I2T3D_OPENMVS_BIN", "DensifyMesh")
-    )
+    openmvs_bin: str = field(default_factory=lambda: _env("LNN_I2T3D_OPENMVS_BIN", "DensifyMesh"))
 
     # 输出目录：存放每次重建任务的中间产物和最终 GLB/PLY
     output_dir: str = field(
-        default_factory=lambda: _path(
-            "LNN_I2T3D_OUTPUT_DIR", os.path.join("output", "image_to_3d")
-        )
+        default_factory=lambda: _path("LNN_I2T3D_OUTPUT_DIR", os.path.join("output", "image_to_3d"))
     )
 
     # 照片数量约束：少则重建失败，多则 SfM 慢
-    min_photos: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_MIN_PHOTOS", 8)
-    )
-    max_photos: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_MAX_PHOTOS", 200)
-    )
+    min_photos: int = field(default_factory=lambda: _int_env("LNN_I2T3D_MIN_PHOTOS", 8))
+    max_photos: int = field(default_factory=lambda: _int_env("LNN_I2T3D_MAX_PHOTOS", 200))
 
     # 标定块实际边长（mm）：用户拍照时在场景中放置已知尺寸的标定块（如 30mm 量块），
     # 重建后据此做尺度归一化。无标定块时输出无单位 mesh（仅相对几何，不可生产用）
-    calibration_block_mm: float = field(
-        default_factory=lambda: _float_env("LNN_I2T3D_CALIBRATION_BLOCK_MM", 30.0)
-    )
+    calibration_block_mm: float = field(default_factory=lambda: _float_env("LNN_I2T3D_CALIBRATION_BLOCK_MM", 30.0))
 
     # 精度档位：影响 COLMAP SfM 的特征点数量阈值与 OpenMVS 网格密度
     #   coarse  : 快，0.5-2mm，适合工艺理解/可视化
     #   standard: 默认，0.1-1mm，适合非配合面尺寸复核
     #   high    : 慢，0.1-0.5mm，小零件细节，仍达不到配合面公差
-    precision_tier: str = field(
-        default_factory=lambda: _env("LNN_I2T3D_PRECISION_TIER", "standard")
-    )
+    precision_tier: str = field(default_factory=lambda: _env("LNN_I2T3D_PRECISION_TIER", "standard"))
 
     # 并发约束：重建任务重 IO+CPU，桌面模式默认串行
-    max_concurrent: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_MAX_CONCURRENT", 1)
-    )
+    max_concurrent: int = field(default_factory=lambda: _int_env("LNN_I2T3D_MAX_CONCURRENT", 1))
 
     # 任务超时（秒）：COLMAP 在 200 张照片 + high 档位下单次约 30-60 分钟
-    task_timeout_seconds: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_TASK_TIMEOUT", 3600)
-    )
+    task_timeout_seconds: int = field(default_factory=lambda: _int_env("LNN_I2T3D_TASK_TIMEOUT", 3600))
 
     # Hunyuan3D-2 备选 pipeline 配置（需 GPU）
-    hunyuan3d_model_dir: str = field(
-        default_factory=lambda: _env("LNN_I2T3D_HUNYUAN3D_MODEL_DIR", "")
-    )
-    hunyuan3d_device: str = field(
-        default_factory=lambda: _env("LNN_I2T3D_HUNYUAN3D_DEVICE", "cuda")
-    )
-    hunyuan3d_dtype: str = field(
-        default_factory=lambda: _env("LNN_I2T3D_HUNYUAN3D_DTYPE", "float16")
-    )
+    hunyuan3d_model_dir: str = field(default_factory=lambda: _env("LNN_I2T3D_HUNYUAN3D_MODEL_DIR", ""))
+    hunyuan3d_device: str = field(default_factory=lambda: _env("LNN_I2T3D_HUNYUAN3D_DEVICE", "cuda"))
+    hunyuan3d_dtype: str = field(default_factory=lambda: _env("LNN_I2T3D_HUNYUAN3D_DTYPE", "float16"))
 
     # Part Prior 备选 pipeline 配置（ADR-020 思路 2，需预训练 VAE 权重）
     part_prior: PartPriorConfig = field(default_factory=PartPriorConfig)
 
     # 任务历史保留时长（小时）：超过自动清理
-    task_retention_hours: int = field(
-        default_factory=lambda: _int_env("LNN_I2T3D_TASK_RETENTION_HOURS", 72)
-    )
+    task_retention_hours: int = field(default_factory=lambda: _int_env("LNN_I2T3D_TASK_RETENTION_HOURS", 72))
 
     def __post_init__(self) -> None:
         """启动时校验配置合法性。"""
         valid_pipelines = {"colmap_openmvs", "hunyuan3d", "part_prior"}
         if self.pipeline not in valid_pipelines:
             logger.warning(
-                "Invalid LNN_I2T3D_PIPELINE='%s', expected one of %s. "
-                "Falling back to 'colmap_openmvs'.",
+                "Invalid LNN_I2T3D_PIPELINE='%s', expected one of %s. Falling back to 'colmap_openmvs'.",
                 self.pipeline,
                 sorted(valid_pipelines),
             )
@@ -202,8 +157,7 @@ class ImageTo3DConfig:
         valid_tiers = {"coarse", "standard", "high", "part_prior"}
         if self.precision_tier not in valid_tiers:
             logger.warning(
-                "Invalid LNN_I2T3D_PRECISION_TIER='%s', expected one of %s. "
-                "Falling back to 'standard'.",
+                "Invalid LNN_I2T3D_PRECISION_TIER='%s', expected one of %s. Falling back to 'standard'.",
                 self.precision_tier,
                 sorted(valid_tiers),
             )
@@ -211,8 +165,7 @@ class ImageTo3DConfig:
 
         if self.min_photos < 3:
             logger.warning(
-                "LNN_I2T3D_MIN_PHOTOS=%s too small, SfM requires >= 3. "
-                "Setting to 3.",
+                "LNN_I2T3D_MIN_PHOTOS=%s too small, SfM requires >= 3. Setting to 3.",
                 self.min_photos,
             )
             self.min_photos = 3
@@ -227,8 +180,7 @@ class ImageTo3DConfig:
 
         if self.calibration_block_mm <= 0:
             logger.warning(
-                "LNN_I2T3D_CALIBRATION_BLOCK_MM=%s invalid, must be > 0. "
-                "Setting to 30.0 (default gauge block).",
+                "LNN_I2T3D_CALIBRATION_BLOCK_MM=%s invalid, must be > 0. Setting to 30.0 (default gauge block).",
                 self.calibration_block_mm,
             )
             self.calibration_block_mm = 30.0

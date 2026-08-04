@@ -306,21 +306,19 @@ class ContrastiveAligner:
         metrics = {f"infonce_{k}": v for k, v in infonce_metrics.items()}
 
         if negative_embeddings is not None:
-            triplet_loss, triplet_metrics = self.compute_triplet_loss(
-                embeddings_a, embeddings_b, negative_embeddings
-            )
+            triplet_loss, triplet_metrics = self.compute_triplet_loss(embeddings_a, embeddings_b, negative_embeddings)
             total_loss += cfg.alignment_weight * 0.3 * triplet_loss
             metrics.update({f"triplet_{k}": v for k, v in triplet_metrics.items()})
 
         if original_embeddings is not None and updated_embeddings is not None:
-            preserve_loss, compatibility = self.compute_preservation_loss(
-                original_embeddings, updated_embeddings
-            )
+            preserve_loss, compatibility = self.compute_preservation_loss(original_embeddings, updated_embeddings)
             total_loss += cfg.preservation_weight * preserve_loss
-            metrics.update({
-                "preservation_loss": preserve_loss,
-                "compatibility": compatibility,
-            })
+            metrics.update(
+                {
+                    "preservation_loss": preserve_loss,
+                    "compatibility": compatibility,
+                }
+            )
 
         metrics["total_loss"] = float(total_loss)
 
@@ -397,14 +395,13 @@ class ContrastiveAligner:
         updated_target = self._space.normalize(updated_target)
 
         loss, metrics = self.compute_total_loss(
-            updated_source, updated_target,
+            updated_source,
+            updated_target,
             original_embeddings=original_source.copy(),
             updated_embeddings=updated_source.copy(),
         )
 
-        preserve_loss, compatibility = self.compute_preservation_loss(
-            original_source, updated_source
-        )
+        preserve_loss, compatibility = self.compute_preservation_loss(original_source, updated_source)
         metrics["compatibility"] = float(compatibility)
 
         self._iteration += 1
@@ -412,8 +409,12 @@ class ContrastiveAligner:
 
         logger.debug(
             "Align step %d: %s->%s, loss=%.4f, compat=%.4f, temp=%.4f",
-            self._iteration, source_modality, target_modality,
-            loss, compatibility, self._temperature,
+            self._iteration,
+            source_modality,
+            target_modality,
+            loss,
+            compatibility,
+            self._temperature,
         )
 
         return metrics
@@ -473,7 +474,7 @@ class ContrastiveAligner:
         if self._iteration % 10 == 0 and len(self._loss_history) >= 2:
             recent_loss = np.mean(self._loss_history[-10:])
             earlier_loss = np.mean(
-                self._loss_history[max(0, len(self._loss_history) - 20):len(self._loss_history) - 10]
+                self._loss_history[max(0, len(self._loss_history) - 20) : len(self._loss_history) - 10]
             )
             if recent_loss < earlier_loss * 0.95:
                 self._temperature = max(
@@ -493,6 +494,7 @@ class ContrastiveAligner:
             "current_temperature": self._temperature,
             "mean_loss": float(np.mean(self._loss_history[-100:])) if self._loss_history else 0.0,
             "recent_compatibility": float(np.mean(self._compatibility_scores[-10:]))
-            if self._compatibility_scores else 1.0,
+            if self._compatibility_scores
+            else 1.0,
             "compatibility_check": float(self.check_compatibility()),
         }

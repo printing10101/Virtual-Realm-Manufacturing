@@ -54,8 +54,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/explainability", tags=["Explainability"])
 
 
-
-
 # ---------------------------------------------------------------------------
 # Pydantic 请求模型
 # ---------------------------------------------------------------------------
@@ -64,59 +62,37 @@ router = APIRouter(prefix="/api/v1/explainability", tags=["Explainability"])
 class GenerateHiddenStateRequest(BaseModel):
     """生成隐状态投影解释请求体."""
 
-    model_uri: str = Field(
-        ..., min_length=1, max_length=256, description="模型 URI"
-    )
-    source_snapshot_id: Optional[str] = Field(
-        default=None, max_length=64, description="关联实验快照 ID（可选）"
-    )
+    model_uri: str = Field(..., min_length=1, max_length=256, description="模型 URI")
+    source_snapshot_id: Optional[str] = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
     projection_method: str = Field(
         default=ProjectionMethod.PCA,
         description=f"降维方法（{ProjectionMethod.all()}，默认 pca）",
     )
-    projection_dim: int = Field(
-        default=2, ge=2, le=3, description="投影维度（2 或 3，默认 2）"
-    )
-    max_frames: int = Field(
-        default=1000, ge=1, le=10000, description="最大帧数（超过则均匀采样）"
-    )
-    created_by: Optional[str] = Field(
-        default=None, max_length=128, description="创建者（user_id 或 plugin_id）"
-    )
+    projection_dim: int = Field(default=2, ge=2, le=3, description="投影维度（2 或 3，默认 2）")
+    max_frames: int = Field(default=1000, ge=1, le=10000, description="最大帧数（超过则均匀采样）")
+    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 class GenerateGateDynamicsRequest(BaseModel):
     """生成门控动力学解释请求体."""
 
-    model_uri: str = Field(
-        ..., min_length=1, max_length=256, description="模型 URI"
-    )
-    source_snapshot_id: Optional[str] = Field(
-        default=None, max_length=64, description="关联实验快照 ID（可选）"
-    )
+    model_uri: str = Field(..., min_length=1, max_length=256, description="模型 URI")
+    source_snapshot_id: Optional[str] = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
     anomaly_sigma: float = Field(
         default=2.0,
         ge=1.0,
         le=5.0,
         description="异常检测阈值（门控值超过 mean ± sigma*std 的帧，默认 2.0）",
     )
-    created_by: Optional[str] = Field(
-        default=None, max_length=128, description="创建者（user_id 或 plugin_id）"
-    )
+    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 class GenerateCounterfactualRequest(BaseModel):
     """生成反事实解释请求体."""
 
-    model_uri: str = Field(
-        ..., min_length=1, max_length=256, description="模型 URI"
-    )
-    base_input: dict[str, float] = Field(
-        ..., description="基准输入（特征名 → 值），至少 1 个特征"
-    )
-    perturbed_feature: str = Field(
-        ..., min_length=1, max_length=64, description="被扰动的特征名"
-    )
+    model_uri: str = Field(..., min_length=1, max_length=256, description="模型 URI")
+    base_input: dict[str, float] = Field(..., description="基准输入（特征名 → 值），至少 1 个特征")
+    perturbed_feature: str = Field(..., min_length=1, max_length=64, description="被扰动的特征名")
     perturbation_range: Optional[list[float]] = Field(
         default=None,
         description="扰动值序列（如为空则按 perturbation_step 生成）",
@@ -127,50 +103,30 @@ class GenerateCounterfactualRequest(BaseModel):
         le=0.5,
         description="扰动步长（相对基准值的比例，默认 0.05 即 5%）",
     )
-    source_snapshot_id: Optional[str] = Field(
-        default=None, max_length=64, description="关联实验快照 ID（可选）"
-    )
-    created_by: Optional[str] = Field(
-        default=None, max_length=128, description="创建者（user_id 或 plugin_id）"
-    )
+    source_snapshot_id: Optional[str] = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
+    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 class GenerateConfidenceRequest(BaseModel):
     """生成置信度分布解释请求体."""
 
-    model_uri: str = Field(
-        ..., min_length=1, max_length=256, description="模型 URI"
-    )
-    input_data: dict[str, Any] = Field(
-        ..., description="输入数据（特征名 → 值）"
-    )
-    sample_count: int = Field(
-        default=30, ge=5, le=200, description="MC dropout 采样次数（默认 30）"
-    )
-    source_snapshot_id: Optional[str] = Field(
-        default=None, max_length=64, description="关联实验快照 ID（可选）"
-    )
-    created_by: Optional[str] = Field(
-        default=None, max_length=128, description="创建者（user_id 或 plugin_id）"
-    )
+    model_uri: str = Field(..., min_length=1, max_length=256, description="模型 URI")
+    input_data: dict[str, Any] = Field(..., description="输入数据（特征名 → 值）")
+    sample_count: int = Field(default=30, ge=5, le=200, description="MC dropout 采样次数（默认 30）")
+    source_snapshot_id: Optional[str] = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
+    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 class CompareExplanationsRequest(BaseModel):
     """对比两个解释请求体."""
 
-    base_explanation_id: str = Field(
-        ..., min_length=1, max_length=64, description="基准解释记录 ID"
-    )
-    compared_explanation_id: str = Field(
-        ..., min_length=1, max_length=64, description="对比解释记录 ID"
-    )
+    base_explanation_id: str = Field(..., min_length=1, max_length=64, description="基准解释记录 ID")
+    compared_explanation_id: str = Field(..., min_length=1, max_length=64, description="对比解释记录 ID")
     comparison_type: str = Field(
         default=ComparisonType.SAME_MODEL_DIFF_INPUT,
         description=f"对比类型（{ComparisonType.all()}，默认 same_model_diff_input）",
     )
-    created_by: Optional[str] = Field(
-        default=None, max_length=128, description="创建者（user_id 或 plugin_id）"
-    )
+    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 # ---------------------------------------------------------------------------
@@ -202,22 +158,19 @@ def _handle_service_exception(e: Exception, *, action: str):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=str(e),
-            suggestion="降维投影失败：样本数可能不足或隐向量维度不匹配，"
-            "请尝试减少 max_frames 或更换降维方法",
+            suggestion="降维投影失败：样本数可能不足或隐向量维度不匹配，请尝试减少 max_frames 或更换降维方法",
         )
     if isinstance(e, SamplingError):
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=str(e),
-            suggestion="MC dropout 采样失败：模型可能未启用 dropout 层，"
-            "请确认模型权重支持 MC dropout",
+            suggestion="MC dropout 采样失败：模型可能未启用 dropout 层，请确认模型权重支持 MC dropout",
         )
     if isinstance(e, ComparisonMismatchError):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=str(e),
-            suggestion="两条解释的 explanation_type 不一致，无法对比。"
-            "请选择相同类型的解释进行对比",
+            suggestion="两条解释的 explanation_type 不一致，无法对比。请选择相同类型的解释进行对比",
         )
     if isinstance(e, ValueError):
         # 参数校验失败
@@ -259,8 +212,7 @@ async def generate_hidden_state_explanation(request: GenerateHiddenStateRequest)
     if not ProjectionMethod.is_valid(request.projection_method):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"projection_method 不支持: {request.projection_method}"
-            f"（支持: {ProjectionMethod.all()}）",
+            message=f"projection_method 不支持: {request.projection_method}（支持: {ProjectionMethod.all()}）",
         )
 
     service = get_explainability_service()
@@ -454,8 +406,7 @@ async def list_explanations(
     if explanation_type is not None and not ExplanationType.is_valid(explanation_type):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"explanation_type 不支持: {explanation_type}"
-            f"（支持: {ExplanationType.all()}）",
+            message=f"explanation_type 不支持: {explanation_type}（支持: {ExplanationType.all()}）",
         )
 
     service = get_explainability_service()
@@ -489,9 +440,7 @@ async def list_explanations(
 @router.get("/{explanation_id}")
 async def get_explanation(
     explanation_id: str,
-    include_payload: bool = Query(
-        False, description="为 true 时加载完整 payload 内容（含大型数组）"
-    ),
+    include_payload: bool = Query(False, description="为 true 时加载完整 payload 内容（含大型数组）"),
 ):
     """查询解释详情.
 
@@ -502,9 +451,7 @@ async def get_explanation(
     """
     service = get_explainability_service()
     try:
-        record_dict = await service.get_explanation(
-            explanation_id, include_payload=include_payload
-        )
+        record_dict = await service.get_explanation(explanation_id, include_payload=include_payload)
     except Exception as e:
         return _handle_service_exception(e, action="查询解释详情")
 
@@ -560,8 +507,7 @@ async def compare_explanations(request: CompareExplanationsRequest):
     if not ComparisonType.is_valid(request.comparison_type):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"comparison_type 不支持: {request.comparison_type}"
-            f"（支持: {ComparisonType.all()}）",
+            message=f"comparison_type 不支持: {request.comparison_type}（支持: {ComparisonType.all()}）",
         )
 
     # 前置校验：base 与 compared 不能相同

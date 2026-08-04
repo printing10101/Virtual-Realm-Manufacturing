@@ -23,6 +23,7 @@ class DatumCandidate:
         stability_score: Score based on geometric stability (0-100).
         accessibility_score: Score based on tool accessibility (0-100).
     """
+
     feature: MachiningFeature
     area: float
     accuracy_score: float
@@ -59,6 +60,7 @@ class DatumSelection:
         degrees_constrained: Total degrees of freedom constrained.
         reasoning: List of reasoning strings explaining the selection.
     """
+
     primary_datum: DatumCandidate | None = None
     secondary_datum: DatumCandidate | None = None
     tertiary_datum: DatumCandidate | None = None
@@ -75,15 +77,9 @@ class DatumSelection:
             total score, degrees constrained, and reasoning.
         """
         return {
-            "primary_datum": self.primary_datum.feature.name
-            if self.primary_datum
-            else None,
-            "secondary_datum": self.secondary_datum.feature.name
-            if self.secondary_datum
-            else None,
-            "tertiary_datum": self.tertiary_datum.feature.name
-            if self.tertiary_datum
-            else None,
+            "primary_datum": self.primary_datum.feature.name if self.primary_datum else None,
+            "secondary_datum": self.secondary_datum.feature.name if self.secondary_datum else None,
+            "tertiary_datum": self.tertiary_datum.feature.name if self.tertiary_datum else None,
             "locating_method": self.locating_method,
             "total_score": round(self.total_score, 2),
             "degrees_constrained": self.degrees_constrained,
@@ -98,6 +94,7 @@ class DatumSelector:
     and area, then selects primary/secondary/tertiary datums following
     the 3-2-1 locating principle. Supports both shaft and prismatic parts.
     """
+
     def select_datums(
         self,
         features: list[MachiningFeature],
@@ -124,9 +121,7 @@ class DatumSelector:
             if not f.is_datum_candidate:
                 continue
 
-            area = f.dimensions.get(
-                "area", f.dimensions.get("diameter", 10) ** 2 * 0.785
-            )
+            area = f.dimensions.get("area", f.dimensions.get("diameter", 10) ** 2 * 0.785)
 
             acc = 0.0
             grade_map = {
@@ -197,40 +192,29 @@ class DatumSelector:
             if len(centers) >= 2:
                 result.secondary_datum = centers[1]
                 result.degrees_constrained += 2
-                result.reasoning.append(
-                    f"选择{centers[1].feature.name}作为第二基准：尾座顶尖配合限制轴向自由度"
-                )
+                result.reasoning.append(f"选择{centers[1].feature.name}作为第二基准：尾座顶尖配合限制轴向自由度")
         elif end_faces:
             result.primary_datum = end_faces[0]
             result.degrees_constrained += 3
             result.reasoning.append(
-                f"选择{end_faces[0].feature.name}作为主基准：端面提供轴向定位，"
-                f"面积{end_faces[0].area:.0f}mm²"
+                f"选择{end_faces[0].feature.name}作为主基准：端面提供轴向定位，面积{end_faces[0].area:.0f}mm²"
             )
 
         if cyls and not result.secondary_datum:
             result.secondary_datum = cyls[0]
             result.degrees_constrained += 2
-            result.reasoning.append(
-                f"选择{cyls[0].feature.name}作为辅助基准：外圆提供径向定位"
-            )
+            result.reasoning.append(f"选择{cyls[0].feature.name}作为辅助基准：外圆提供径向定位")
 
         if result.degrees_constrained < 6:
-            remaining = [
-                c
-                for c in candidates
-                if c not in ([result.primary_datum, result.secondary_datum])
-            ]
+            remaining = [c for c in candidates if c not in ([result.primary_datum, result.secondary_datum])]
             if remaining:
                 result.tertiary_datum = remaining[0]
                 result.degrees_constrained += 1
 
         result.total_score = (
             (result.primary_datum.total_score() if result.primary_datum else 0) * 0.5
-            + (result.secondary_datum.total_score() if result.secondary_datum else 0)
-            * 0.3
-            + (result.tertiary_datum.total_score() if result.tertiary_datum else 0)
-            * 0.2
+            + (result.secondary_datum.total_score() if result.secondary_datum else 0) * 0.3
+            + (result.tertiary_datum.total_score() if result.tertiary_datum else 0) * 0.2
         )
         return result
 
@@ -247,11 +231,7 @@ class DatumSelector:
             result.primary_datum = planes[0]
             result.secondary_datum = planes[1]
             result.tertiary_datum = planes[2]
-            result.locating_method = (
-                "一面两销"
-                if part_type in ("plate", "flange", "bracket")
-                else "三面定位"
-            )
+            result.locating_method = "一面两销" if part_type in ("plate", "flange", "bracket") else "三面定位"
             result.degrees_constrained = 6
 
             result.reasoning.append(
@@ -259,32 +239,22 @@ class DatumSelector:
                 f"最大平面，限制3个自由度(Z移动, X转动, Y转动)"
             )
             result.reasoning.append(
-                f"选择{planes[1].feature.name}(面积{planes[1].area:.0f}mm²)作为第二基准："
-                f"限制2个自由度(X移动, Z转动)"
+                f"选择{planes[1].feature.name}(面积{planes[1].area:.0f}mm²)作为第二基准：限制2个自由度(X移动, Z转动)"
             )
-            result.reasoning.append(
-                f"选择{planes[2].feature.name}作为第三基准：限制1个自由度(Y移动)"
-            )
+            result.reasoning.append(f"选择{planes[2].feature.name}作为第三基准：限制1个自由度(Y移动)")
         elif planes:
             result.primary_datum = planes[0]
             result.degrees_constrained += 3
             result.locating_method = "一面两销"
             result.reasoning.append(
-                f"选择{planes[0].feature.name}作为主基准，平面不足3个，"
-                f"建议采用一面两销方式补充定位"
+                f"选择{planes[0].feature.name}作为主基准，平面不足3个，建议采用一面两销方式补充定位"
             )
 
-            holes = [
-                c
-                for c in candidates
-                if c.feature.is_hole() and c.feature.is_datum_candidate
-            ]
+            holes = [c for c in candidates if c.feature.is_hole() and c.feature.is_datum_candidate]
             if holes:
                 result.secondary_datum = holes[0]
                 result.degrees_constrained += 2
-                result.reasoning.append(
-                    f"选择{result.secondary_datum.feature.name}作为第二基准：销孔定位"
-                )
+                result.reasoning.append(f"选择{result.secondary_datum.feature.name}作为第二基准：销孔定位")
         else:
             result.locating_method = "虎钳装夹"
             if candidates:
@@ -294,10 +264,8 @@ class DatumSelector:
 
         result.total_score = (
             (result.primary_datum.total_score() if result.primary_datum else 0) * 0.5
-            + (result.secondary_datum.total_score() if result.secondary_datum else 0)
-            * 0.3
-            + (result.tertiary_datum.total_score() if result.tertiary_datum else 0)
-            * 0.2
+            + (result.secondary_datum.total_score() if result.secondary_datum else 0) * 0.3
+            + (result.tertiary_datum.total_score() if result.tertiary_datum else 0) * 0.2
         )
         return result
 
@@ -310,10 +278,7 @@ class DatumSelector:
         warnings: list[str] = []
 
         if selection.degrees_constrained < 6:
-            warnings.append(
-                f"定位方案仅限制{selection.degrees_constrained}个自由度，"
-                f"建议限制全部6个自由度"
-            )
+            warnings.append(f"定位方案仅限制{selection.degrees_constrained}个自由度，建议限制全部6个自由度")
 
         if selection.primary_datum is None:
             issues.append("未选择主定位基准")
@@ -321,8 +286,7 @@ class DatumSelector:
             pf = selection.primary_datum.feature
             if pf.tolerance_grade not in ("IT5", "IT6", "IT7"):
                 warnings.append(
-                    f"主基准{selection.primary_datum.feature.name}精度等级为"
-                    f"{pf.tolerance_grade}，建议使用IT7以上精度"
+                    f"主基准{selection.primary_datum.feature.name}精度等级为{pf.tolerance_grade}，建议使用IT7以上精度"
                 )
 
         feature_names = {f.name for f in features}

@@ -14,6 +14,8 @@ P2 整改：本模块原为独立的 ``AgentRateLimiter`` 实现（无锁版）�
 
 from __future__ import annotations
 
+# ruff: noqa: F822  # re-export shim：__all__ 符号经 __getattr__ 惰性解析（见模块 docstring）
+
 __all__ = ["AgentRateLimiter", "agent_rate_limiter"]
 
 

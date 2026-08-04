@@ -34,10 +34,7 @@ def validate_sort_field(
     if field not in allowed:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"不支持的排序字段: {field}，"
-                f"允许: {', '.join(sorted(allowed))}"
-            ),
+            detail=(f"不支持的排序字段: {field}，允许: {', '.join(sorted(allowed))}"),
         )
 
     return field

@@ -7,6 +7,7 @@
 - 业务数据：仅保留结构化字段
 - 不收集：用户姓名、IP、设备指纹
 """
+
 from __future__ import annotations
 
 import hashlib

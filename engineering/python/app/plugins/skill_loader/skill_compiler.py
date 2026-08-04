@@ -31,23 +31,66 @@ class SkillCompilerMixin:
     """
 
     _SAFE_BUILTINS = {
-        "True": True, "False": False, "None": None,
-        "bool": bool, "float": float, "int": int, "str": str,
-        "abs": abs, "divmod": divmod, "max": max, "min": min,
-        "pow": pow, "round": round, "sum": sum,
-        "all": all, "any": any, "enumerate": enumerate, "len": len,
-        "list": list, "range": range, "sorted": sorted,
+        "True": True,
+        "False": False,
+        "None": None,
+        "bool": bool,
+        "float": float,
+        "int": int,
+        "str": str,
+        "abs": abs,
+        "divmod": divmod,
+        "max": max,
+        "min": min,
+        "pow": pow,
+        "round": round,
+        "sum": sum,
+        "all": all,
+        "any": any,
+        "enumerate": enumerate,
+        "len": len,
+        "list": list,
+        "range": range,
+        "sorted": sorted,
     }
 
-    _FORBIDDEN_BUILTINS = frozenset({
-        "__import__", "exec", "eval", "compile", "open",
-        "input", "breakpoint",
-        "type", "vars", "dir", "getattr", "setattr", "delattr", "hasattr",
-        "object", "super", "callable", "isinstance", "issubclass",
-        "print", "memoryview", "property", "staticmethod",
-        "classmethod", "ascii", "repr", "hash",
-        "iter", "next", "map", "filter", "bytes", "bytearray",
-    })
+    _FORBIDDEN_BUILTINS = frozenset(
+        {
+            "__import__",
+            "exec",
+            "eval",
+            "compile",
+            "open",
+            "input",
+            "breakpoint",
+            "type",
+            "vars",
+            "dir",
+            "getattr",
+            "setattr",
+            "delattr",
+            "hasattr",
+            "object",
+            "super",
+            "callable",
+            "isinstance",
+            "issubclass",
+            "print",
+            "memoryview",
+            "property",
+            "staticmethod",
+            "classmethod",
+            "ascii",
+            "repr",
+            "hash",
+            "iter",
+            "next",
+            "map",
+            "filter",
+            "bytes",
+            "bytearray",
+        }
+    )
 
     def _compile_code(self, code: str, skill_id: str) -> Optional[Callable]:
         self._audit_code_security(code, skill_id)
@@ -94,10 +137,12 @@ class SkillCompilerMixin:
 
         try:
             exec(byte_code, restricted_globals)
-        except (SyntaxError, NameError, AttributeError, TypeError,
-                ValueError, RuntimeError, OSError) as e:
+        except (SyntaxError, NameError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
             logger.error(
-                "Skill '%s' execution error: %s", skill_id, e, exc_info=True,
+                "Skill '%s' execution error: %s",
+                skill_id,
+                e,
+                exc_info=True,
             )
             return None
 
@@ -108,7 +153,7 @@ class SkillCompilerMixin:
 
         安全警告：此方法不提供与 compile_restricted 相同级别的安全保护，
         仅通过限制 __builtins__ 和 AST 审计来降低风险。
-        
+
         P0 修复要求：
         - RestrictedPython 已列为生产强制依赖（requirements.txt），此降级路径
           仅在极端异常情况下触发（如 Python 版本不兼容 RestrictedPython）
@@ -121,7 +166,7 @@ class SkillCompilerMixin:
             "This is less secure. Install RestrictedPython: pip install RestrictedPython",
             skill_id,
         )
-        
+
         # 安全修复 [P0-1]：降级路径同样必须经过 AST 审计，
         # 与主路径 _compile_code 保持一致的安全基线。
         # 防止攻击者通过直接调用本方法绕过 _audit_code_security。
@@ -137,24 +182,25 @@ class SkillCompilerMixin:
         namespace: Dict[str, Any] = {"__builtins__": self._SAFE_BUILTINS}
         try:
             exec(compiled, namespace)
-        except (SyntaxError, NameError, AttributeError, TypeError,
-                ValueError, RuntimeError, OSError) as e:
+        except (SyntaxError, NameError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
             logger.error(
-                "Skill '%s' execution error: %s", skill_id, e, exc_info=True,
+                "Skill '%s' execution error: %s",
+                skill_id,
+                e,
+                exc_info=True,
             )
             return None
 
         # P0 修复: 记录降级路径使用，包含时间戳用于审计追踪
         logger.warning(
             "Skill '%s' executed via downgraded path at %s — audit this periodically",
-            skill_id, time.strftime("%Y-%m-%dT%H:%M:%S"),
+            skill_id,
+            time.strftime("%Y-%m-%dT%H:%M:%S"),
         )
 
         return self._extract_callable(namespace, skill_id)
 
-    def _extract_callable(
-        self, namespace: Dict[str, Any], skill_id: str
-    ) -> Optional[Callable]:
+    def _extract_callable(self, namespace: Dict[str, Any], skill_id: str) -> Optional[Callable]:
         for name in ("execute", "run", "main", "handler"):
             if name in namespace and callable(namespace[name]):
                 return namespace[name]
@@ -166,7 +212,8 @@ class SkillCompilerMixin:
             except (TypeError, ValueError, RuntimeError, OSError) as e:
                 logger.debug(
                     "SkillExecutor instantiation failed, fallback to attribute scan: %s",
-                    e, exc_info=True,
+                    e,
+                    exc_info=True,
                 )
 
         for attr_name, attr_val in namespace.items():
@@ -220,8 +267,7 @@ class SkillCompilerMixin:
         for pattern, description in dangerous_patterns:
             if re.search(pattern, code):
                 raise SecurityError(
-                    f"技能 '{skill_id}' 包含危险的代码模式: {description}。"
-                    f"该模式可能用于沙箱逃逸，已被拒绝执行。"
+                    f"技能 '{skill_id}' 包含危险的代码模式: {description}。该模式可能用于沙箱逃逸，已被拒绝执行。"
                 )
 
     @staticmethod

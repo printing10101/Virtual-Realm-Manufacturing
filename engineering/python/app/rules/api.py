@@ -11,7 +11,6 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
@@ -50,7 +49,11 @@ VALID_STATUSES = {"active", "inactive", "draft"}
 # [P0-16] sort_by 白名单：防止 SQL 注入（列名拼接）
 # 与 rule_db.list_rules 的 valid_sort 保持一致
 _ALLOWED_SORT_FIELDS = {
-    "name", "created_at", "updated_at", "priority", "status",
+    "name",
+    "created_at",
+    "updated_at",
+    "priority",
+    "status",
 }
 _ALLOWED_SORT_ORDERS = {"ASC", "DESC"}
 
@@ -101,9 +104,7 @@ class GroupUpdateRequest(BaseModel):
     description: Optional[str] = None
 
 
-def _validate_rule_data(
-    conditions: List[ConditionItem], result: ResultItem, logic_operator: str
-) -> Optional[str]:
+def _validate_rule_data(conditions: List[ConditionItem], result: ResultItem, logic_operator: str) -> Optional[str]:
     if not conditions:
         return "规则条件不能为空"
 
@@ -199,9 +200,7 @@ def _group_to_dict(group: RuleGroup, rule_count: int = 0) -> dict:
 
 @router.post("/create", dependencies=[Depends(require_permission("rule:write"))])
 async def create_rule(request: RuleCreateRequest):
-    err = _validate_rule_data(
-        request.conditions, request.result, request.logic_operator
-    )
+    err = _validate_rule_data(request.conditions, request.result, request.logic_operator)
     if err:
         return error(ErrorCode.INVALID_REQUEST, message=err, detail=err)
 
@@ -249,10 +248,7 @@ async def list_rules(
     if sort_by not in _ALLOWED_SORT_FIELDS:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"不支持的排序字段: {sort_by}，"
-                f"允许: {', '.join(sorted(_ALLOWED_SORT_FIELDS))}"
-            ),
+            detail=(f"不支持的排序字段: {sort_by}，允许: {', '.join(sorted(_ALLOWED_SORT_FIELDS))}"),
         )
     if sort_order.upper() not in _ALLOWED_SORT_ORDERS:
         raise HTTPException(
@@ -306,40 +302,26 @@ async def update_rule(rule_id: int, request: RuleUpdateRequest):
     updated_rule = ProcessRule(
         id=rule_id,
         name=request.name if request.name is not None else existing.name,
-        description=request.description
-        if request.description is not None
-        else existing.description,
-        group_id=request.group_id
-        if request.group_id is not None
-        else existing.group_id,
+        description=request.description if request.description is not None else existing.description,
+        group_id=request.group_id if request.group_id is not None else existing.group_id,
         conditions=[RuleCondition(**c.model_dump()) for c in request.conditions]
         if request.conditions is not None
         else existing.conditions,
-        logic_operator=request.logic_operator
-        if request.logic_operator is not None
-        else existing.logic_operator,
-        result=RuleResult(**request.result.model_dump())
-        if request.result is not None
-        else existing.result,
+        logic_operator=request.logic_operator if request.logic_operator is not None else existing.logic_operator,
+        result=RuleResult(**request.result.model_dump()) if request.result is not None else existing.result,
         status=request.status if request.status is not None else existing.status,
-        priority=request.priority
-        if request.priority is not None
-        else existing.priority,
+        priority=request.priority if request.priority is not None else existing.priority,
         created_at=existing.created_at,
         updated_at=None,
     )
 
     if updated_rule.conditions and updated_rule.result:
-        err = _validate_rule_data(
-            updated_rule.conditions, updated_rule.result, updated_rule.logic_operator
-        )
+        err = _validate_rule_data(updated_rule.conditions, updated_rule.result, updated_rule.logic_operator)
         if err:
             return error(ErrorCode.INVALID_REQUEST, message=err, detail=err)
 
     if updated_rule.status not in VALID_STATUSES:
-        return error(
-            ErrorCode.INVALID_REQUEST, message=f"状态'{updated_rule.status}'无效"
-        )
+        return error(ErrorCode.INVALID_REQUEST, message=f"状态'{updated_rule.status}'无效")
 
     if updated_rule.group_id and updated_rule.group_id != existing.group_id:
         group = db.get_group(updated_rule.group_id)
@@ -394,9 +376,7 @@ async def create_group(request: GroupCreateRequest):
     db = get_rule_db()
     existing = db._find_group_by_name(request.name)
     if existing:
-        return error(
-            ErrorCode.INVALID_REQUEST, message=f"分组名称'{request.name}'已存在"
-        )
+        return error(ErrorCode.INVALID_REQUEST, message=f"分组名称'{request.name}'已存在")
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     group = RuleGroup(
@@ -420,9 +400,7 @@ async def update_group(group_id: int, request: GroupUpdateRequest):
     updated = RuleGroup(
         id=group_id,
         name=request.name if request.name is not None else existing.name,
-        description=request.description
-        if request.description is not None
-        else existing.description,
+        description=request.description if request.description is not None else existing.description,
         created_at=existing.created_at,
         updated_at=None,
     )

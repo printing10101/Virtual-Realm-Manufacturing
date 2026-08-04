@@ -1,14 +1,9 @@
 """RAG 评估数据模型（V3.0 自 evaluation.py 拆分）。"""
+
 from __future__ import annotations
 
-import json
-import logging
-import math
-import os
-import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
+
 
 @dataclass
 class EvaluationQuery:
@@ -162,9 +157,7 @@ class EvaluationDataset:
                 "钻孔工艺",
                 "easy",
             ),
-            EvaluationQuery(
-                "EQ004", "铜合金焊接方法", ["ext_mat_cu_010"], "焊接工艺", "medium"
-            ),
+            EvaluationQuery("EQ004", "铜合金焊接方法", ["ext_mat_cu_010"], "焊接工艺", "medium"),
             EvaluationQuery(
                 "EQ005",
                 "磨削烧伤防止措施",
@@ -179,173 +172,63 @@ class EvaluationDataset:
                 "电火花加工",
                 "medium",
             ),
-            EvaluationQuery(
-                "EQ007", "PTFE塑料加工特性", ["ext_mat_pl_001"], "工程塑料", "easy"
-            ),
-            EvaluationQuery(
-                "EQ008", "CBN刀具适用范围", ["ext_tool_005"], "刀具选择", "medium"
-            ),
-            EvaluationQuery(
-                "EQ009", "细长轴车削工艺", ["ext_proc_turn_010"], "车削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ010", "高速铣削技术要点", ["ext_proc_mill_005"], "铣削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ011", "304不锈钢材料参数", ["ext_mat_ss_001"], "材料参数", "easy"
-            ),
-            EvaluationQuery(
-                "EQ012", "6061铝合金参数", ["ext_mat_al_002"], "材料参数", "easy"
-            ),
-            EvaluationQuery(
-                "EQ013", "螺纹车削方法", ["ext_proc_turn_005"], "车削工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ014", "深孔钻孔工艺", ["ext_proc_drill_004"], "钻孔工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ015", "无心磨削加工", ["ext_proc_grind_008"], "磨削工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ016", "内圆磨削特点", ["ext_proc_grind_005"], "磨削工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ017", "PCD刀具加工铝", ["ext_tool_006"], "刀具选择", "medium"
-            ),
-            EvaluationQuery(
-                "EQ018", "陶瓷刀具应用", ["ext_tool_004"], "刀具选择", "medium"
-            ),
-            EvaluationQuery(
-                "EQ019", "切削液选择指南", ["ext_tool_017"], "切削液", "medium"
-            ),
-            EvaluationQuery(
-                "EQ020", "刀具磨损形式", ["ext_tool_008"], "刀具磨损", "medium"
-            ),
-            EvaluationQuery(
-                "EQ021", "G代码编程基础", ["ext_proc_turn_007"], "数控编程", "easy"
-            ),
-            EvaluationQuery(
-                "EQ022", "型腔铣削策略", ["ext_proc_mill_012"], "铣削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ023", "五轴铣削加工", ["ext_proc_mill_014"], "铣削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ024", "铰孔加工精度", ["ext_proc_drill_007"], "钻孔工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ025", "表面粗糙度等级", ["ext_proc_turn_008"], "质量控制", "easy"
-            ),
-            EvaluationQuery(
-                "EQ026", "公差配合选择", ["ext_tool_018"], "精度公差", "medium"
-            ),
-            EvaluationQuery(
-                "EQ027", "转位刀片型号识别", ["ext_tool_015"], "刀具管理", "medium"
-            ),
-            EvaluationQuery(
-                "EQ028", "模具铣削加工", ["ext_proc_mill_007"], "铣削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ029", "薄壁件车削工艺", ["ext_proc_turn_011"], "车削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ030", "振动控制方法", ["ext_proc_mill_004"], "铣削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ031", "黄铜加工特性", ["ext_mat_cu_001"], "材料特性", "easy"
-            ),
-            EvaluationQuery(
-                "EQ032", "紫铜加工难点", ["ext_mat_cu_006"], "材料特性", "medium"
-            ),
-            EvaluationQuery(
-                "EQ033", "铍青铜材料参数", ["ext_mat_cu_005"], "材料参数", "medium"
-            ),
-            EvaluationQuery(
-                "EQ034", "铝青铜应用", ["ext_mat_cu_008"], "材料应用", "medium"
-            ),
-            EvaluationQuery(
-                "EQ035", "白铜耐腐蚀性", ["ext_mat_cu_009"], "材料特性", "easy"
-            ),
-            EvaluationQuery(
-                "EQ036", "POM塑料加工", ["ext_mat_pl_003"], "工程塑料", "easy"
-            ),
-            EvaluationQuery(
-                "EQ037", "PEEK材料特性", ["ext_mat_pl_005"], "工程塑料", "medium"
-            ),
-            EvaluationQuery(
-                "EQ038", "有机玻璃加工", ["ext_mat_pl_006"], "工程塑料", "easy"
-            ),
-            EvaluationQuery(
-                "EQ039", "ABS塑料切削", ["ext_mat_pl_007"], "工程塑料", "easy"
-            ),
-            EvaluationQuery(
-                "EQ040", "PC聚碳酸酯加工", ["ext_mat_pl_008"], "工程塑料", "medium"
-            ),
-            EvaluationQuery(
-                "EQ041", "增强塑料加工", ["ext_mat_pl_010"], "工程塑料", "hard"
-            ),
-            EvaluationQuery(
-                "EQ042", "面铣刀加工参数", ["ext_proc_mill_003"], "铣削工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ043", "立铣刀选择", ["ext_proc_mill_002"], "铣削工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ044", "顺铣逆铣区别", ["ext_proc_mill_001"], "铣削工艺", "easy"
-            ),
-            EvaluationQuery(
-                "EQ045", "钻头刃磨技术", ["ext_tool_011"], "刀具维护", "medium"
-            ),
-            EvaluationQuery(
-                "EQ046", "中心钻定心", ["ext_proc_drill_006"], "钻孔工艺", "easy"
-            ),
-            EvaluationQuery(
-                "EQ047", "数控钻孔循环", ["ext_proc_drill_009"], "数控编程", "medium"
-            ),
-            EvaluationQuery(
-                "EQ048", "砂轮选择要素", ["ext_proc_grind_002"], "磨削工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ049", "砂轮修整技术", ["ext_proc_grind_007"], "磨削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ050", "超精密磨削", ["ext_proc_grind_009"], "磨削工艺", "hard"
-            ),
-            EvaluationQuery(
-                "EQ051", "成形电火花工艺", ["ext_proc_edm_002"], "电火花加工", "hard"
-            ),
-            EvaluationQuery(
-                "EQ052", "小孔电火花加工", ["ext_proc_edm_007"], "电火花加工", "hard"
-            ),
-            EvaluationQuery(
-                "EQ053", "电极设计要点", ["ext_proc_edm_005"], "电火花加工", "hard"
-            ),
-            EvaluationQuery(
-                "EQ054", "车削效率提升", ["ext_proc_turn_015"], "车削工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ055", "铣削效率优化", ["ext_proc_mill_015"], "铣削工艺", "medium"
-            ),
-            EvaluationQuery(
-                "EQ056", "904L超级不锈钢", ["ext_mat_ss_011"], "材料参数", "hard"
-            ),
-            EvaluationQuery(
-                "EQ057", "2205双相不锈钢", ["ext_mat_ss_005"], "材料参数", "hard"
-            ),
-            EvaluationQuery(
-                "EQ058", "17-4PH不锈钢", ["ext_mat_ss_012"], "材料参数", "hard"
-            ),
-            EvaluationQuery(
-                "EQ059", "不锈钢攻丝工艺", ["ext_mat_ss_010"], "不锈钢加工", "hard"
-            ),
-            EvaluationQuery(
-                "EQ060", "不锈钢表面处理", ["ext_mat_ss_014"], "不锈钢加工", "medium"
-            ),
+            EvaluationQuery("EQ007", "PTFE塑料加工特性", ["ext_mat_pl_001"], "工程塑料", "easy"),
+            EvaluationQuery("EQ008", "CBN刀具适用范围", ["ext_tool_005"], "刀具选择", "medium"),
+            EvaluationQuery("EQ009", "细长轴车削工艺", ["ext_proc_turn_010"], "车削工艺", "hard"),
+            EvaluationQuery("EQ010", "高速铣削技术要点", ["ext_proc_mill_005"], "铣削工艺", "hard"),
+            EvaluationQuery("EQ011", "304不锈钢材料参数", ["ext_mat_ss_001"], "材料参数", "easy"),
+            EvaluationQuery("EQ012", "6061铝合金参数", ["ext_mat_al_002"], "材料参数", "easy"),
+            EvaluationQuery("EQ013", "螺纹车削方法", ["ext_proc_turn_005"], "车削工艺", "medium"),
+            EvaluationQuery("EQ014", "深孔钻孔工艺", ["ext_proc_drill_004"], "钻孔工艺", "hard"),
+            EvaluationQuery("EQ015", "无心磨削加工", ["ext_proc_grind_008"], "磨削工艺", "medium"),
+            EvaluationQuery("EQ016", "内圆磨削特点", ["ext_proc_grind_005"], "磨削工艺", "medium"),
+            EvaluationQuery("EQ017", "PCD刀具加工铝", ["ext_tool_006"], "刀具选择", "medium"),
+            EvaluationQuery("EQ018", "陶瓷刀具应用", ["ext_tool_004"], "刀具选择", "medium"),
+            EvaluationQuery("EQ019", "切削液选择指南", ["ext_tool_017"], "切削液", "medium"),
+            EvaluationQuery("EQ020", "刀具磨损形式", ["ext_tool_008"], "刀具磨损", "medium"),
+            EvaluationQuery("EQ021", "G代码编程基础", ["ext_proc_turn_007"], "数控编程", "easy"),
+            EvaluationQuery("EQ022", "型腔铣削策略", ["ext_proc_mill_012"], "铣削工艺", "hard"),
+            EvaluationQuery("EQ023", "五轴铣削加工", ["ext_proc_mill_014"], "铣削工艺", "hard"),
+            EvaluationQuery("EQ024", "铰孔加工精度", ["ext_proc_drill_007"], "钻孔工艺", "medium"),
+            EvaluationQuery("EQ025", "表面粗糙度等级", ["ext_proc_turn_008"], "质量控制", "easy"),
+            EvaluationQuery("EQ026", "公差配合选择", ["ext_tool_018"], "精度公差", "medium"),
+            EvaluationQuery("EQ027", "转位刀片型号识别", ["ext_tool_015"], "刀具管理", "medium"),
+            EvaluationQuery("EQ028", "模具铣削加工", ["ext_proc_mill_007"], "铣削工艺", "hard"),
+            EvaluationQuery("EQ029", "薄壁件车削工艺", ["ext_proc_turn_011"], "车削工艺", "hard"),
+            EvaluationQuery("EQ030", "振动控制方法", ["ext_proc_mill_004"], "铣削工艺", "hard"),
+            EvaluationQuery("EQ031", "黄铜加工特性", ["ext_mat_cu_001"], "材料特性", "easy"),
+            EvaluationQuery("EQ032", "紫铜加工难点", ["ext_mat_cu_006"], "材料特性", "medium"),
+            EvaluationQuery("EQ033", "铍青铜材料参数", ["ext_mat_cu_005"], "材料参数", "medium"),
+            EvaluationQuery("EQ034", "铝青铜应用", ["ext_mat_cu_008"], "材料应用", "medium"),
+            EvaluationQuery("EQ035", "白铜耐腐蚀性", ["ext_mat_cu_009"], "材料特性", "easy"),
+            EvaluationQuery("EQ036", "POM塑料加工", ["ext_mat_pl_003"], "工程塑料", "easy"),
+            EvaluationQuery("EQ037", "PEEK材料特性", ["ext_mat_pl_005"], "工程塑料", "medium"),
+            EvaluationQuery("EQ038", "有机玻璃加工", ["ext_mat_pl_006"], "工程塑料", "easy"),
+            EvaluationQuery("EQ039", "ABS塑料切削", ["ext_mat_pl_007"], "工程塑料", "easy"),
+            EvaluationQuery("EQ040", "PC聚碳酸酯加工", ["ext_mat_pl_008"], "工程塑料", "medium"),
+            EvaluationQuery("EQ041", "增强塑料加工", ["ext_mat_pl_010"], "工程塑料", "hard"),
+            EvaluationQuery("EQ042", "面铣刀加工参数", ["ext_proc_mill_003"], "铣削工艺", "medium"),
+            EvaluationQuery("EQ043", "立铣刀选择", ["ext_proc_mill_002"], "铣削工艺", "medium"),
+            EvaluationQuery("EQ044", "顺铣逆铣区别", ["ext_proc_mill_001"], "铣削工艺", "easy"),
+            EvaluationQuery("EQ045", "钻头刃磨技术", ["ext_tool_011"], "刀具维护", "medium"),
+            EvaluationQuery("EQ046", "中心钻定心", ["ext_proc_drill_006"], "钻孔工艺", "easy"),
+            EvaluationQuery("EQ047", "数控钻孔循环", ["ext_proc_drill_009"], "数控编程", "medium"),
+            EvaluationQuery("EQ048", "砂轮选择要素", ["ext_proc_grind_002"], "磨削工艺", "medium"),
+            EvaluationQuery("EQ049", "砂轮修整技术", ["ext_proc_grind_007"], "磨削工艺", "hard"),
+            EvaluationQuery("EQ050", "超精密磨削", ["ext_proc_grind_009"], "磨削工艺", "hard"),
+            EvaluationQuery("EQ051", "成形电火花工艺", ["ext_proc_edm_002"], "电火花加工", "hard"),
+            EvaluationQuery("EQ052", "小孔电火花加工", ["ext_proc_edm_007"], "电火花加工", "hard"),
+            EvaluationQuery("EQ053", "电极设计要点", ["ext_proc_edm_005"], "电火花加工", "hard"),
+            EvaluationQuery("EQ054", "车削效率提升", ["ext_proc_turn_015"], "车削工艺", "medium"),
+            EvaluationQuery("EQ055", "铣削效率优化", ["ext_proc_mill_015"], "铣削工艺", "medium"),
+            EvaluationQuery("EQ056", "904L超级不锈钢", ["ext_mat_ss_011"], "材料参数", "hard"),
+            EvaluationQuery("EQ057", "2205双相不锈钢", ["ext_mat_ss_005"], "材料参数", "hard"),
+            EvaluationQuery("EQ058", "17-4PH不锈钢", ["ext_mat_ss_012"], "材料参数", "hard"),
+            EvaluationQuery("EQ059", "不锈钢攻丝工艺", ["ext_mat_ss_010"], "不锈钢加工", "hard"),
+            EvaluationQuery("EQ060", "不锈钢表面处理", ["ext_mat_ss_014"], "不锈钢加工", "medium"),
         ]
 
-    def get_queries(
-        self, category: str | None = None, difficulty: str | None = None
-    ) -> list[EvaluationQuery]:
+    def get_queries(self, category: str | None = None, difficulty: str | None = None) -> list[EvaluationQuery]:
         queries = self.queries
         if category:
             queries = [q for q in queries if q.category == category]
@@ -372,5 +255,3 @@ class EvaluationDataset:
             "categories": categories,
             "difficulties": difficulties,
         }
-
-

@@ -187,9 +187,7 @@ class KnowledgeRetriever:
             )
 
             self._delegation_success += 1
-            hybrid_result = self._convert_to_hybrid_result(
-                result_dict, query, task_type
-            )
+            hybrid_result = self._convert_to_hybrid_result(result_dict, query, task_type)
 
         except (RuntimeError, OSError, ValueError, KeyError, ImportError) as e:
             # 委托失败时降级为直接 kb.query()，保证可用性
@@ -199,17 +197,14 @@ class KnowledgeRetriever:
                 e,
                 exc_info=True,
             )
-            hybrid_result = await self._fallback_retrieve(
-                query, task_type, actual_top_k
-            )
+            hybrid_result = await self._fallback_retrieve(query, task_type, actual_top_k)
 
         elapsed = (time.perf_counter() - start_time) * 1000
         self._total_latency_ms += elapsed
         hybrid_result.latency_ms = elapsed
 
         logger.info(
-            "检索完成: query='%s', task=%s, intent=%s, pipeline=%s, "
-            "candidates=%d, results=%d, %.1fms",
+            "检索完成: query='%s', task=%s, intent=%s, pipeline=%s, candidates=%d, results=%d, %.1fms",
             query[:50],
             task_type.label,
             intent_value,
@@ -254,17 +249,13 @@ class KnowledgeRetriever:
             rag_mod.ENABLE_HYDE = False
             rag_mod.ENABLE_RERANKER = False
             try:
-                return engine.retrieve(
-                    query=query, intent=intent_enum, n_results=n_results
-                )
+                return engine.retrieve(query=query, intent=intent_enum, n_results=n_results)
             finally:
                 rag_mod.ENABLE_QUERY_REWRITE = original_flags["rewrite"]
                 rag_mod.ENABLE_HYDE = original_flags["hyde"]
                 rag_mod.ENABLE_RERANKER = original_flags["reranker"]
 
-        return engine.retrieve(
-            query=query, intent=intent_enum, n_results=n_results
-        )
+        return engine.retrieve(query=query, intent=intent_enum, n_results=n_results)
 
     @staticmethod
     def _convert_to_hybrid_result(
@@ -316,15 +307,17 @@ class KnowledgeRetriever:
             else:
                 final_score = vector_score
 
-            documents.append(RetrievalDocument(
-                id=doc_id,
-                content=content,
-                metadata=metadata,
-                vector_score=vector_score,
-                keyword_score=0.0,
-                final_score=final_score,
-                source=source,
-            ))
+            documents.append(
+                RetrievalDocument(
+                    id=doc_id,
+                    content=content,
+                    metadata=metadata,
+                    vector_score=vector_score,
+                    keyword_score=0.0,
+                    final_score=final_score,
+                    source=source,
+                )
+            )
 
         return HybridRetrievalResult(
             query=query,
@@ -346,13 +339,9 @@ class KnowledgeRetriever:
             from app.dependencies import get_knowledge_base
 
             kb = get_knowledge_base()
-            raw = await asyncio.to_thread(
-                kb.query, query_text=query, n_results=top_k
-            )
+            raw = await asyncio.to_thread(kb.query, query_text=query, n_results=top_k)
         except (RuntimeError, OSError, ValueError, ImportError) as e:
-            logger.error(
-                "Fallback retrieve also failed: %s", e, exc_info=True
-            )
+            logger.error("Fallback retrieve also failed: %s", e, exc_info=True)
             return HybridRetrievalResult(
                 query=query,
                 task_type=task_type,
@@ -381,14 +370,16 @@ class KnowledgeRetriever:
             except (TypeError, ValueError):
                 vector_score = 0.0
 
-            documents.append(RetrievalDocument(
-                id=doc_id,
-                content=content,
-                metadata=metadata,
-                vector_score=vector_score,
-                final_score=vector_score,
-                source=metadata.get("source", "unknown"),
-            ))
+            documents.append(
+                RetrievalDocument(
+                    id=doc_id,
+                    content=content,
+                    metadata=metadata,
+                    vector_score=vector_score,
+                    final_score=vector_score,
+                    source=metadata.get("source", "unknown"),
+                )
+            )
 
         return HybridRetrievalResult(
             query=query,
@@ -403,16 +394,10 @@ class KnowledgeRetriever:
         """获取检索器性能统计。"""
         return {
             "total_queries": self._total_queries,
-            "avg_latency_ms": (
-                self._total_latency_ms / self._total_queries
-                if self._total_queries > 0
-                else 0.0
-            ),
+            "avg_latency_ms": (self._total_latency_ms / self._total_queries if self._total_queries > 0 else 0.0),
             "delegation_success": self._delegation_success,
             "delegation_fallback": self._delegation_fallback,
             "delegation_success_rate": (
-                self._delegation_success / self._total_queries
-                if self._total_queries > 0
-                else 0.0
+                self._delegation_success / self._total_queries if self._total_queries > 0 else 0.0
             ),
         }

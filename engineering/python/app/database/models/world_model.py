@@ -14,10 +14,10 @@
     - 与 explainability.py 风格对齐：uuid 前缀生成器 + to_dict() + __repr__
     - 不存放大数组（轨迹预测结果在调用时按需生成，不入库）
 """
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Any
 
 from app.utils.time import utcnow

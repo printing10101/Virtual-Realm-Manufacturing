@@ -70,9 +70,9 @@ class RelationType(str, Enum):
     """
 
     SUITABLE_FOR_MATERIAL = "SUITABLE_FOR_MATERIAL"  # (Tool) -[SUITABLE_FOR]-> (Material)
-    SUITABLE_FOR_FEATURE = "SUITABLE_FOR_FEATURE"    # (Tool) -[SUITABLE_FOR]-> (Feature)
-    APPLIED_TO = "APPLIED_TO"                        # (Process) -[APPLIED_TO]-> (Feature)
-    USED = "USED"                                    # (Process) -[USED]-> (Tool)
+    SUITABLE_FOR_FEATURE = "SUITABLE_FOR_FEATURE"  # (Tool) -[SUITABLE_FOR]-> (Feature)
+    APPLIED_TO = "APPLIED_TO"  # (Process) -[APPLIED_TO]-> (Feature)
+    USED = "USED"  # (Process) -[USED]-> (Tool)
 
 
 # 关系类型 → Pydantic 关系模型映射
@@ -164,9 +164,7 @@ class Triple:
     def short_repr(self) -> str:
         """三元组的简短文本表示，用于 LLM prompt。"""
         return (
-            f"({self.head_type.value}:{self.head_id})"
-            f"-[{self.relation.value}]->"
-            f"({self.tail_type.value}:{self.tail_id})"
+            f"({self.head_type.value}:{self.head_id})-[{self.relation.value}]->({self.tail_type.value}:{self.tail_id})"
         )
 
 
@@ -184,13 +182,9 @@ class DomainSchema:
     """
 
     # 实体类型集合
-    entity_types: frozenset[EntityType] = field(
-        default_factory=lambda: frozenset(ENTITY_TYPE_TO_MODEL.keys())
-    )
+    entity_types: frozenset[EntityType] = field(default_factory=lambda: frozenset(ENTITY_TYPE_TO_MODEL.keys()))
     # 关系类型集合
-    relation_types: frozenset[RelationType] = field(
-        default_factory=lambda: frozenset(RELATION_TYPE_TO_MODEL.keys())
-    )
+    relation_types: frozenset[RelationType] = field(default_factory=lambda: frozenset(RELATION_TYPE_TO_MODEL.keys()))
     # 关系 → (头实体类型, 尾实体类型) 的合法映射
     relation_domains: dict[RelationType, tuple[EntityType, EntityType]] = field(
         default_factory=lambda: {
@@ -221,9 +215,7 @@ class DomainSchema:
         """获取关系类型对应的 Pydantic 关系模型类。"""
         return RELATION_TYPE_TO_MODEL.get(relation)
 
-    def get_relation_domain(
-        self, relation: RelationType
-    ) -> Optional[tuple[EntityType, EntityType]]:
+    def get_relation_domain(self, relation: RelationType) -> Optional[tuple[EntityType, EntityType]]:
         """获取关系的合法 (头类型, 尾类型)。"""
         return self.relation_domains.get(relation)
 

@@ -193,9 +193,7 @@ class PackageResourceEntry:
         if not self.path_in_package:
             raise ValueError("PackageResourceEntry.path_in_package 不能为空")
         if self.size_bytes < 0:
-            raise ValueError(
-                f"PackageResourceEntry.size_bytes 不能为负数: {self.size_bytes}"
-            )
+            raise ValueError(f"PackageResourceEntry.size_bytes 不能为负数: {self.size_bytes}")
 
     @property
     def has_content(self) -> bool:
@@ -345,9 +343,7 @@ class ImportResourceRecord:
         if not self.resource_uri:
             raise ValueError("ImportResourceRecord.resource_uri 不能为空")
         if self.action not in ("imported", "skipped", "renamed", "failed"):
-            raise ValueError(
-                f"ImportResourceRecord.action 不合法: {self.action}"
-            )
+            raise ValueError(f"ImportResourceRecord.action 不合法: {self.action}")
         if not self.target_uri:
             # 默认 target_uri = resource_uri（rename 策略下由服务层覆盖）
             object.__setattr__(self, "target_uri", self.resource_uri)
@@ -399,13 +395,9 @@ class ValidationResult:
         if not self.package_path:
             raise ValueError("ValidationResult.package_path 不能为空")
         if self.resource_count < 0:
-            raise ValueError(
-                f"ValidationResult.resource_count 不能为负数: {self.resource_count}"
-            )
+            raise ValueError(f"ValidationResult.resource_count 不能为负数: {self.resource_count}")
         if self.verified_count < 0 or self.verified_count > self.resource_count:
-            raise ValueError(
-                f"ValidationResult.verified_count 不合法: {self.verified_count}"
-            )
+            raise ValueError(f"ValidationResult.verified_count 不合法: {self.verified_count}")
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为 dict（用于 API 响应）."""

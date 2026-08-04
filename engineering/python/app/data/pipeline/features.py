@@ -86,6 +86,7 @@ class CNNFeatureExtractor:
 
         if self._model is not None and self.use_torch:
             import torch
+
             if img.ndim == 3:
                 img = np.transpose(img, (2, 0, 1))
                 img_tensor = torch.tensor(img, dtype=torch.float32).unsqueeze(0)
@@ -109,7 +110,7 @@ class CNNFeatureExtractor:
             if len(avg) == 3:
                 padded = np.pad(avg, (0, feat_dim - 3), mode="constant")
                 return padded
-        return np.random.randn(feat_dim) / (feat_dim ** 0.5)
+        return np.random.randn(feat_dim) / (feat_dim**0.5)
 
 
 class TimeSeriesFeatureEngineer:
@@ -133,37 +134,40 @@ class TimeSeriesFeatureEngineer:
         # 改为：优先用 scipy.stats，scipy 不可用时用 numpy 手动实现。
         try:
             from scipy.stats import skew as _scipy_skew, kurtosis as _scipy_kurtosis
+
             _skew_val = float(_scipy_skew(window))
             _kurt_val = float(_scipy_kurtosis(window))
         except ImportError:
             # numpy 手动实现（无 scipy 依赖时的降级方案）
             if std > 0:
                 _norm = (window - mean) / std
-                _skew_val = float(np.mean(_norm ** 3))
-                _kurt_val = float(np.mean(_norm ** 4) - 3.0)
+                _skew_val = float(np.mean(_norm**3))
+                _kurt_val = float(np.mean(_norm**4) - 3.0)
             else:
                 _skew_val = 0.0
                 _kurt_val = 0.0
-        features.extend([
-            mean,
-            std,
-            np.min(window),
-            np.max(window),
-            np.median(window),
-            np.var(window),
-            np.percentile(window, 25),
-            np.percentile(window, 75),
-            _skew_val,
-            _kurt_val,
-            np.max(window) - np.min(window),
-            np.sum(np.abs(window - mean)),
-            np.sum((window - mean) ** 2),
-            np.sqrt(np.mean(window ** 2)),
-            np.max(np.abs(window)),
-            np.mean(np.abs(np.diff(window))),
-            np.std(np.abs(np.diff(window))),
-        ])
-        return np.array(features[:self.n_features], dtype=np.float32)
+        features.extend(
+            [
+                mean,
+                std,
+                np.min(window),
+                np.max(window),
+                np.median(window),
+                np.var(window),
+                np.percentile(window, 25),
+                np.percentile(window, 75),
+                _skew_val,
+                _kurt_val,
+                np.max(window) - np.min(window),
+                np.sum(np.abs(window - mean)),
+                np.sum((window - mean) ** 2),
+                np.sqrt(np.mean(window**2)),
+                np.max(np.abs(window)),
+                np.mean(np.abs(np.diff(window))),
+                np.std(np.abs(np.diff(window))),
+            ]
+        )
+        return np.array(features[: self.n_features], dtype=np.float32)
 
     def extract_frequency_domain(self, window: np.ndarray) -> np.ndarray:
         """提取频域特征"""
@@ -172,21 +176,24 @@ class TimeSeriesFeatureEngineer:
         features = []
         try:
             from scipy.fftpack import fft
+
             yf = fft(window)
             # M5 bug 修复：删除 np.linspace(...) 死代码（结果未赋值给任何变量）。
-            amplitudes = 2.0 / len(window) * np.abs(yf[0:len(window) // 2])
+            amplitudes = 2.0 / len(window) * np.abs(yf[0 : len(window) // 2])
 
             if len(amplitudes) > 0:
-                features.extend([
-                    np.mean(amplitudes),
-                    np.std(amplitudes),
-                    np.max(amplitudes),
-                    np.argmax(amplitudes),
-                    np.sum(amplitudes),
-                    np.percentile(amplitudes, 50),
-                    np.percentile(amplitudes, 90),
-                    np.var(amplitudes),
-                ])
+                features.extend(
+                    [
+                        np.mean(amplitudes),
+                        np.std(amplitudes),
+                        np.max(amplitudes),
+                        np.argmax(amplitudes),
+                        np.sum(amplitudes),
+                        np.percentile(amplitudes, 50),
+                        np.percentile(amplitudes, 90),
+                        np.var(amplitudes),
+                    ]
+                )
         except ImportError as imp_err:
             # numpy 高级统计不可用时仅使用基础特征，记录以便排查
             logger.debug(
@@ -207,7 +214,7 @@ class TimeSeriesFeatureEngineer:
                 freq_feat = self.extract_frequency_domain(window)
                 combined = np.concatenate([time_feat, freq_feat])
                 if len(combined) > self.config.ts_feature_count:
-                    combined = combined[:self.config.ts_feature_count]
+                    combined = combined[: self.config.ts_feature_count]
                 elif len(combined) < self.config.ts_feature_count:
                     pad = self.config.ts_feature_count - len(combined)
                     combined = np.pad(combined, (0, pad), mode="constant")
@@ -218,7 +225,7 @@ class TimeSeriesFeatureEngineer:
         freq_feat = self.extract_frequency_domain(window)
         combined = np.concatenate([time_feat, freq_feat])
         if len(combined) > self.config.ts_feature_count:
-            combined = combined[:self.config.ts_feature_count]
+            combined = combined[: self.config.ts_feature_count]
         elif len(combined) < self.config.ts_feature_count:
             pad = self.config.ts_feature_count - len(combined)
             combined = np.pad(combined, (0, pad), mode="constant")
@@ -240,10 +247,12 @@ class BGEEmbedder:
             return
         try:
             from app.dependencies import get_embedding_service
+
             self._embedding_service = get_embedding_service()
             logger.info("使用全局 embedding service")
         except ImportError:
             from sentence_transformers import SentenceTransformer
+
             self._model = SentenceTransformer(self.config.bge_model_name)
             logger.info("BGE模型加载完成: %s", self.config.bge_model_name)
         self._is_loaded = True
@@ -265,9 +274,7 @@ class BGEEmbedder:
         if self._embedding_service is not None:
             return self._embedding_service.embed_batch(texts)
         elif self._model is not None:
-            return self._model.encode(
-                texts, normalize_embeddings=True, show_progress_bar=False
-            ).tolist()
+            return self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False).tolist()
         else:
             dim = self.config.bge_embedding_dim
             return [[0.0] * dim for _ in texts]
@@ -306,12 +313,11 @@ class GCodeEmbedder:
         # P1 学术诚信修复：移除 np.random.seed(42) 全局污染（影响其他模块的随机性），
         # 改用局部 Generator。注意：此嵌入矩阵仍为随机占位实现，见类 docstring 警告。
         rng = np.random.default_rng(42)
-        self._embeddings = rng.standard_normal(
-            (self._vocab_size, self.output_dim)
-        ).astype(np.float32) / np.sqrt(self.output_dim)
+        self._embeddings = rng.standard_normal((self._vocab_size, self.output_dim)).astype(np.float32) / np.sqrt(
+            self.output_dim
+        )
         logger.warning(
-            "GCodeEmbedder 使用随机占位嵌入矩阵（未经训练），"
-            "下游 RAG 检索结果不可信，禁止用于生产或学术论文实验"
+            "GCodeEmbedder 使用随机占位嵌入矩阵（未经训练），下游 RAG 检索结果不可信，禁止用于生产或学术论文实验"
         )
 
     def embed(self, encoded: np.ndarray) -> np.ndarray:

@@ -16,11 +16,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import logging.config
 import os
-import signal
 import sys
 from pathlib import Path
 
@@ -32,30 +30,28 @@ if str(_REPO_ROOT) not in sys.path:
 
 import uvicorn
 from fastapi import FastAPI
-from starlette.responses import JSONResponse
 
 from app.api.v1.sse import sse_manager
 from app.middleware.cors_config import (
     cors_settings,
     enforce_startup_security,
-    validate_cors_config,
     CorsConfigError,
 )
 from app.core.exception_handlers import register_exception_handlers
-from app.core.request_id import get_request_id
 from app.core.logging_config import configure_logging
 from app.utils.utils import get_metrics_collector
 from app.sidecar.sidecar_lifecycle import GracefulShutdownHandler
+
 # 修复：使用支持 base_dir 参数的 ring_buffer 版本（dependencies 单例版无参，
 # 与 L120 的 base_dir= 调用不匹配——2026-08-03 安装验证发现）
-from app.utils.ring_buffer import BUFFER_TYPES, get_ring_log_buffer
+from app.utils.ring_buffer import get_ring_log_buffer
 from app.config import config
 from app.config.limits import LOG_MAX_BYTES
 from app.startup_hooks import (
     run_alembic_upgrade,
     verify_critical_dependencies,
 )
-from app.version import get_version_info, VERSION as PY_VERSION
+from app.version import VERSION as PY_VERSION
 
 # =============================================================================
 # 阶段 1 装配拆分：路由注册与中间件装配已迁移至独立模块
@@ -200,9 +196,7 @@ async def startup_event():
     try:
         await ring_log.start()
     except Exception as ring_log_err:
-        logger.error(
-            "ring_log.start() 失败，环形日志将不可用: %s", ring_log_err, exc_info=True
-        )
+        logger.error("ring_log.start() 失败，环形日志将不可用: %s", ring_log_err, exc_info=True)
 
     # 权限检查机制状态检查
     if not config.security.permission_enforced:
@@ -322,9 +316,9 @@ async def shutdown_event():
     # 1) HeartbeatScheduler：取消心跳 asyncio.Task 并关闭 WakeupQueue 连接
     try:
         from app.dependencies import get_scheduler
+
         await get_scheduler().stop()
-    except (OSError, RuntimeError, ValueError, AttributeError,
-            ImportError, TypeError) as e:
+    except (OSError, RuntimeError, ValueError, AttributeError, ImportError, TypeError) as e:
         logger.warning("HeartbeatScheduler stop failed during shutdown: %s", e)
 
     # 2) AsyncTaskManager：取消所有运行中任务，清空订阅者与 cancel events
@@ -335,30 +329,30 @@ async def shutdown_event():
     #    各模块独立 try/except，避免一处失败影响其他资源的释放。
     try:
         from app.dependencies import get_budget_manager
+
         get_budget_manager().close()
-    except (OSError, RuntimeError, ValueError, AttributeError,
-            ImportError, TypeError) as e:
+    except (OSError, RuntimeError, ValueError, AttributeError, ImportError, TypeError) as e:
         logger.warning("BudgetManager close failed during shutdown: %s", e)
 
     try:
         from app.dependencies import get_cost_tracker
+
         get_cost_tracker().close()
-    except (OSError, RuntimeError, ValueError, AttributeError,
-            ImportError, TypeError) as e:
+    except (OSError, RuntimeError, ValueError, AttributeError, ImportError, TypeError) as e:
         logger.warning("CostTracker close failed during shutdown: %s", e)
 
     try:
         from app.dependencies import get_rule_db
+
         get_rule_db().close()
-    except (OSError, RuntimeError, ValueError, AttributeError,
-            ImportError, TypeError) as e:
+    except (OSError, RuntimeError, ValueError, AttributeError, ImportError, TypeError) as e:
         logger.warning("RuleDatabase close failed during shutdown: %s", e)
 
     try:
         from app.dependencies import get_goal_chain_store
+
         get_goal_chain_store().close()
-    except (OSError, RuntimeError, ValueError, AttributeError,
-            ImportError, TypeError) as e:
+    except (OSError, RuntimeError, ValueError, AttributeError, ImportError, TypeError) as e:
         logger.warning("GoalChainStore close failed during shutdown: %s", e)
 
     # AgentAuditLog：关闭审计日志文件句柄
@@ -367,6 +361,7 @@ async def shutdown_event():
     # ``get_agent_audit_log()`` 返回同一实例，close 一次即可。
     try:
         from app.agent.middleware import get_agent_audit_log
+
         get_agent_audit_log().close()
     except (OSError, ValueError, AttributeError, ImportError) as e:
         logger.warning("AgentAuditLog close failed: %s", e)
@@ -382,9 +377,9 @@ async def shutdown_event():
     # 避免 Windows 文件句柄锁定导致下次启动失败。
     try:
         from app.dependencies import get_vector_store
+
         get_vector_store().close()
-    except (OSError, RuntimeError, ValueError, AttributeError,
-            ImportError, TypeError) as e:
+    except (OSError, RuntimeError, ValueError, AttributeError, ImportError, TypeError) as e:
         # Q1 修复：收窄为可预期的关闭阶段异常。OSError 覆盖文件句柄/SQLite
         # 关闭错误；ImportError 覆盖 vector_store 模块缺失场景。
         logger.warning("VectorStore close failed during shutdown: %s", e)
@@ -408,8 +403,6 @@ register_middleware_stack(
     idle_auto_shutdown_enabled=_IDLE_AUTO_SHUTDOWN_ENABLED,
     idle_timeout_seconds=IDLE_TIMEOUT_SECONDS,
 )
-
-
 
 
 # =============================================================================

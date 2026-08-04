@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -69,8 +69,7 @@ def _try_import_pyransac3d() -> Any:
         return pyransac3d
     except ImportError:
         logger.info(
-            "pyransac3d 未安装，圆柱提取退化为纯 numpy RANSAC 实现。"
-            "如需更稳定的拟合，请安装：pip install pyransac3d"
+            "pyransac3d 未安装，圆柱提取退化为纯 numpy RANSAC 实现。如需更稳定的拟合，请安装：pip install pyransac3d"
         )
         return None
 
@@ -176,10 +175,7 @@ class CylinderExtractor:
 
             # 半径范围校验
             radius = cyl_params["radius_mm"]
-            if (
-                radius < self._cfg.cylinder_min_radius_mm
-                or radius > self._cfg.cylinder_max_radius_mm
-            ):
+            if radius < self._cfg.cylinder_min_radius_mm or radius > self._cfg.cylinder_max_radius_mm:
                 logger.debug(
                     "圆柱半径 %.3fmm 超出范围 [%.3f, %.3f]，跳过",
                     radius,
@@ -350,9 +346,7 @@ class CylinderExtractor:
                 continue
 
             # 计算每个点到圆心的 2D 距离
-            dist_to_center = np.sqrt(
-                (coords_2d[:, 0] - cx_2d) ** 2 + (coords_2d[:, 1] - cy_2d) ** 2
-            )
+            dist_to_center = np.sqrt((coords_2d[:, 0] - cx_2d) ** 2 + (coords_2d[:, 1] - cy_2d) ** 2)
             # 点到圆柱面的距离 = |dist_to_center - radius|
             dist_to_surface = np.abs(dist_to_center - radius)
             inlier_mask = dist_to_surface < threshold

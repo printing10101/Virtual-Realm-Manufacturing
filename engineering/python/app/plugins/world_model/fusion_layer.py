@@ -29,6 +29,7 @@ v1 选择 Concat+MLP 而非 Cross-Attention 的理由：
 3. Cross-Attention 在小数据上易过拟合，与 ADR-017 v1 仅离线 RL 的定位不符
 4. 后续 v2 如需升级，可在保持本接口不变的前提下替换为 Cross-Attention
 """
+
 from __future__ import annotations
 
 import torch

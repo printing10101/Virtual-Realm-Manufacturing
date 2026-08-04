@@ -22,6 +22,7 @@
 - 所有可训练参数初始化使用固定种子（学术可复现性）
 - 推理路径不修改模型状态（线程安全）
 """
+
 from __future__ import annotations
 
 import logging
@@ -105,32 +106,20 @@ class WorldModelConfig:
         if self.hidden_dim <= 0:
             raise ValueError(f"hidden_dim 必须为正数: {self.hidden_dim}")
         if self.num_lstm_layers <= 0:
-            raise ValueError(
-                f"num_lstm_layers 必须为正数: {self.num_lstm_layers}"
-            )
+            raise ValueError(f"num_lstm_layers 必须为正数: {self.num_lstm_layers}")
         if self.num_ltc_layers <= 0:
-            raise ValueError(
-                f"num_ltc_layers 必须为正数: {self.num_ltc_layers}"
-            )
+            raise ValueError(f"num_ltc_layers 必须为正数: {self.num_ltc_layers}")
         if not 0.0 <= self.dropout < 1.0:
             raise ValueError(f"dropout 必须在 [0, 1): {self.dropout}")
         if self.max_trajectory_length <= 0:
-            raise ValueError(
-                f"max_trajectory_length 必须为正数: {self.max_trajectory_length}"
-            )
+            raise ValueError(f"max_trajectory_length 必须为正数: {self.max_trajectory_length}")
         if self.use_fusion:
             if self.feature_dim <= 0:
-                raise ValueError(
-                    f"use_fusion=True 时 feature_dim 必须为正数: {self.feature_dim}"
-                )
+                raise ValueError(f"use_fusion=True 时 feature_dim 必须为正数: {self.feature_dim}")
             if self.d_model <= 0:
-                raise ValueError(
-                    f"use_fusion=True 时 d_model 必须为正数: {self.d_model}"
-                )
+                raise ValueError(f"use_fusion=True 时 d_model 必须为正数: {self.d_model}")
             if self.fused_dim <= 0:
-                raise ValueError(
-                    f"use_fusion=True 时 fused_dim 必须为正数: {self.fused_dim}"
-                )
+                raise ValueError(f"use_fusion=True 时 fused_dim 必须为正数: {self.fused_dim}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -250,13 +239,9 @@ if HAS_TORCH:
                 from app.plugins.world_model.fusion_layer import FusionLayer
 
                 encoder_input_dim = config.fused_dim + config.action_dim
-                self.geometry_encoder = GeometryEncoder(
-                    feature_dim=config.feature_dim, d_model=config.d_model
-                )
+                self.geometry_encoder = GeometryEncoder(feature_dim=config.feature_dim, d_model=config.d_model)
                 self.dynamics_encoder = DynamicsEncoder(d_model=config.d_model)
-                self.fusion_layer = FusionLayer(
-                    d_model=config.d_model, fused_dim=config.fused_dim
-                )
+                self.fusion_layer = FusionLayer(d_model=config.d_model, fused_dim=config.fused_dim)
             else:
                 encoder_input_dim = config.state_dim + config.action_dim
 
@@ -308,12 +293,8 @@ if HAS_TORCH:
             geometry_tensor, dynamics_tensor = unified_states
             # (batch, T, input_dim) → (batch*T, input_dim) 以复用 MLP
             batch, T, _ = geometry_tensor.shape
-            geo_emb = self.geometry_encoder(
-                geometry_tensor.reshape(batch * T, -1)
-            )
-            dyn_emb = self.dynamics_encoder(
-                dynamics_tensor.reshape(batch * T, -1)
-            )
+            geo_emb = self.geometry_encoder(geometry_tensor.reshape(batch * T, -1))
+            dyn_emb = self.dynamics_encoder(dynamics_tensor.reshape(batch * T, -1))
             fused = self.fusion_layer(geo_emb, dyn_emb)
             return fused.reshape(batch, T, -1)
 
@@ -322,9 +303,7 @@ if HAS_TORCH:
             states: Optional["torch.Tensor"],
             actions: "torch.Tensor",
             horizon: int,
-            unified_states: Optional[
-                tuple["torch.Tensor", "torch.Tensor"]
-            ] = None,
+            unified_states: Optional[tuple["torch.Tensor", "torch.Tensor"]] = None,
         ) -> dict[str, "torch.Tensor"]:
             """前向传播：预测未来 ``horizon`` 步的状态轨迹.
 
@@ -351,34 +330,26 @@ if HAS_TORCH:
                 - ``final_hidden``: shape ``[batch, hidden_dim]``（用于 RL value 估计）
             """
             if horizon <= 0 or horizon > self.config.max_trajectory_length:
-                raise ValueError(
-                    f"horizon 必须在 [1, {self.config.max_trajectory_length}], 当前: {horizon}"
-                )
+                raise ValueError(f"horizon 必须在 [1, {self.config.max_trajectory_length}], 当前: {horizon}")
 
             # 推断 batch / T 与构造 LSTM 输入
-            if self.config.use_fusion:
-                if unified_states is None:
-                    raise ValueError(
-                        "use_fusion=True 时必须传入 unified_states"
-                    )
+            # ADR-020 P3：按输入类型判定路径，而非仅依赖 config.use_fusion——
+            # use_fusion=True 但收到 legacy states（无 unified_states）时
+            # 降级到非融合分支，保证 use_fusion 开启后 legacy 调用不崩溃。
+            if self.config.use_fusion and unified_states is not None:
                 geometry_tensor, dynamics_tensor = unified_states
                 T = geometry_tensor.size(1)
                 fused = self._fuse_unified_states(unified_states)
-                encoder_input = torch.cat(
-                    [fused, actions[:, :T, :]], dim=-1
-                )
-            else:
-                if states is None:
-                    raise ValueError("非融合模式必须传入 states")
+                encoder_input = torch.cat([fused, actions[:, :T, :]], dim=-1)
+            elif states is not None:
                 T = states.size(1)
                 encoder_input = torch.cat([states, actions[:, :T, :]], dim=-1)
+            else:
+                raise ValueError("必须提供 unified_states（融合模式）或 states（非融合模式）")
 
             # 输入校验
             if actions.size(1) != T + horizon:
-                raise ValueError(
-                    f"actions 时间维度 ({actions.size(1)}) 必须等于 "
-                    f"T + horizon ({T + horizon})"
-                )
+                raise ValueError(f"actions 时间维度 ({actions.size(1)}) 必须等于 T + horizon ({T + horizon})")
 
             # 1. LSTM 编码历史
             _, (h_n, c_n) = self.encoder(encoder_input)
@@ -411,14 +382,18 @@ if HAS_TORCH:
             trajectory = torch.stack(predicted_states, dim=1)  # [batch, horizon, state_dim]
             metrics_stack = torch.stack(metrics_accumulator, dim=1)  # [batch, horizon, 3]
             # 轨迹指标：颤振峰值 / 最大磨损 / 平均质量
-            trajectory_metrics = torch.stack(
-                [
-                    trajectory[:, :, 0].max(dim=1).values,  # 颤振概率峰值
-                    trajectory[:, :, 1].max(dim=1).values,  # 最大磨损
-                    trajectory[:, :, 2].mean(dim=1).values,  # 平均质量
-                ],
-                dim=-1,
-            ) if trajectory.size(-1) >= 3 else metrics_stack.mean(dim=1)
+            trajectory_metrics = (
+                torch.stack(
+                    [
+                        trajectory[:, :, 0].max(dim=1).values,  # 颤振概率峰值
+                        trajectory[:, :, 1].max(dim=1).values,  # 最大磨损
+                        trajectory[:, :, 2].mean(dim=1),  # 平均质量（mean 返回 Tensor，无 .values）
+                    ],
+                    dim=-1,
+                )
+                if trajectory.size(-1) >= 3
+                else metrics_stack.mean(dim=1)
+            )
 
             return {
                 "predicted_trajectory": trajectory,
@@ -449,19 +424,11 @@ else:
                 )
             self._rng = np.random.default_rng(config.seed)
             # 用随机权重初始化（仅满足接口契约，精度无意义）
-            self._W_enc = self._rng.standard_normal(
-                (config.state_dim + config.action_dim, config.hidden_dim)
-            ) * 0.1
-            self._W_dec = self._rng.standard_normal(
-                (config.state_dim + config.action_dim, config.hidden_dim)
-            ) * 0.1
-            self._W_state = self._rng.standard_normal(
-                (config.hidden_dim, config.state_dim)
-            ) * 0.1
+            self._W_enc = self._rng.standard_normal((config.state_dim + config.action_dim, config.hidden_dim)) * 0.1
+            self._W_dec = self._rng.standard_normal((config.state_dim + config.action_dim, config.hidden_dim)) * 0.1
+            self._W_state = self._rng.standard_normal((config.hidden_dim, config.state_dim)) * 0.1
             logger.warning(
-                "WorldModelNet 运行在 NumPy 回退模式，"
-                "仅用于接口验证，预测结果无实际意义。"
-                "请安装 torch 以启用完整功能。"
+                "WorldModelNet 运行在 NumPy 回退模式，仅用于接口验证，预测结果无实际意义。请安装 torch 以启用完整功能。"
             )
 
         def forward(
@@ -482,13 +449,9 @@ else:
             ``_predict_numpy()`` 路径，不会传入 ``unified_states``。
             """
             if horizon <= 0 or horizon > self.config.max_trajectory_length:
-                raise ValueError(
-                    f"horizon 必须在 [1, {self.config.max_trajectory_length}]"
-                )
+                raise ValueError(f"horizon 必须在 [1, {self.config.max_trajectory_length}]")
             batch_size = states.shape[0]
-            trajectory = self._rng.standard_normal(
-                (batch_size, horizon, self.config.state_dim)
-            ) * 0.01
+            trajectory = self._rng.standard_normal((batch_size, horizon, self.config.state_dim)) * 0.01
             metrics = np.zeros((batch_size, 3))
             if trajectory.shape[-1] >= 3:
                 metrics[:, 0] = trajectory[:, :, 0].max(axis=1)

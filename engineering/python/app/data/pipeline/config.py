@@ -37,11 +37,13 @@ class TimeSeriesProcessorConfig:
     sample_rate_max: float = 10000.0
     denoising_algorithm: str = "butterworth"
     ts_feature_count: int = 24
-    denoise_params: Dict[str, Any] = field(default_factory=lambda: {
-        "order": 4,
-        "cutoff_ratio": 0.1,
-        "btype": "low",
-    })
+    denoise_params: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "order": 4,
+            "cutoff_ratio": 0.1,
+            "btype": "low",
+        }
+    )
 
 
 @dataclass
@@ -60,11 +62,19 @@ class ToolStateProcessorConfig:
     encoding_method: str = "one_hot"
     anomaly_detection_method: str = "iqr"
     anomaly_threshold: float = 3.0
-    state_fields: List[str] = field(default_factory=lambda: [
-        "wear_level", "cutting_time", "tool_life_remaining",
-        "spindle_load", "temperature", "vibration_amplitude",
-        "cutting_force_x", "cutting_force_y", "cutting_force_z",
-    ])
+    state_fields: List[str] = field(
+        default_factory=lambda: [
+            "wear_level",
+            "cutting_time",
+            "tool_life_remaining",
+            "spindle_load",
+            "temperature",
+            "vibration_amplitude",
+            "cutting_force_x",
+            "cutting_force_y",
+            "cutting_force_z",
+        ]
+    )
 
 
 @dataclass
@@ -72,9 +82,13 @@ class GCodeProcessorConfig:
     gcode_embedding_dim: int = 256
     max_instructions_per_segment: int = 500
     segment_by_operation: bool = True
-    supported_controllers: List[str] = field(default_factory=lambda: [
-        "fanuc", "siemens", "heidenhain",
-    ])
+    supported_controllers: List[str] = field(
+        default_factory=lambda: [
+            "fanuc",
+            "siemens",
+            "heidenhain",
+        ]
+    )
 
 
 @dataclass
@@ -95,13 +109,15 @@ class FusionConfig:
     target_dim: int = 512
     attention_heads: int = 8
     dropout: float = 0.1
-    modality_weights: Dict[str, float] = field(default_factory=lambda: {
-        "image": 0.25,
-        "time_series": 0.25,
-        "text": 0.20,
-        "tool_state": 0.15,
-        "gcode": 0.15,
-    })
+    modality_weights: Dict[str, float] = field(
+        default_factory=lambda: {
+            "image": 0.25,
+            "time_series": 0.25,
+            "text": 0.20,
+            "tool_state": 0.15,
+            "gcode": 0.15,
+        }
+    )
 
 
 @dataclass
@@ -138,10 +154,7 @@ class PipelineConfig:
             if isinstance(value, (int, float, str, bool, list, dict, tuple)):
                 result[key] = value
             elif hasattr(value, "__dataclass_fields__"):
-                result[key] = {
-                    k: v for k, v in value.__dict__.items()
-                    if not k.startswith("_")
-                }
+                result[key] = {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
         return result
 
 
@@ -200,8 +213,7 @@ def load_config(config_path: str) -> PipelineConfig:
     path = Path(config_path)
     if not path.exists():
         raise FileNotFoundError(
-            f"配置文件不存在: {config_path}\n"
-            f"请确保配置文件路径正确，或调用 get_default_config() 获取默认配置。"
+            f"配置文件不存在: {config_path}\n请确保配置文件路径正确，或调用 get_default_config() 获取默认配置。"
         )
 
     with open(path, "r", encoding="utf-8") as f:
@@ -228,8 +240,13 @@ def load_config(config_path: str) -> PipelineConfig:
             kwargs[name] = cls()
 
     for key in [
-        "memory_limit", "performance_test_env_spec", "test_data_path",
-        "enable_async", "enable_cache", "cache_ttl_seconds", "log_level",
+        "memory_limit",
+        "performance_test_env_spec",
+        "test_data_path",
+        "enable_async",
+        "enable_cache",
+        "cache_ttl_seconds",
+        "log_level",
     ]:
         if key in raw:
             kwargs[key] = raw[key]

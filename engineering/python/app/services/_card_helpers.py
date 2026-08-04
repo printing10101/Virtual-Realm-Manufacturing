@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from app.contracts.resource_card import DatasetReadme, ModelArtifact
 from app.database.models.resource_card import (
@@ -15,11 +15,13 @@ from app.database.models.resource_card import (
     DatasetReadme as DatasetReadmeORM,
 )
 
+
 def _json_dumps(value: Any) -> str:
     """安全 JSON 序列化."""
     if value is None:
         return "[]"
     return json.dumps(value, ensure_ascii=False, default=str)
+
 
 def _json_loads(value: Optional[str], default: Any) -> Any:
     """安全 JSON 反序列化."""
@@ -29,6 +31,7 @@ def _json_loads(value: Optional[str], default: Any) -> Any:
         return json.loads(value)
     except (json.JSONDecodeError, TypeError):
         return default
+
 
 def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:
     """ORM → dataclass."""
@@ -50,6 +53,7 @@ def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:
         updated_at=orm.updated_at,
     )
 
+
 def _orm_to_dataset_readme(orm: DatasetReadmeORM) -> DatasetReadme:
     """ORM → dataclass."""
     return DatasetReadme(
@@ -61,6 +65,7 @@ def _orm_to_dataset_readme(orm: DatasetReadmeORM) -> DatasetReadme:
         updated_at=orm.updated_at,
     )
 
+
 def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
     """解析 ISO 字符串为 datetime（失败返回 None）."""
     if not value:
@@ -69,6 +74,7 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(value)
     except (ValueError, TypeError):
         return None
+
 
 def _build_layers(
     target_uri: str,
@@ -134,6 +140,7 @@ def _build_layers(
 
     return layers
 
+
 def _collect_unique_nodes(records: list, target_uri: str) -> set[str]:
     """从 LineageRecord 列表收集所有唯一节点 URI（不含 target_uri 自身）."""
     nodes: set[str] = set()
@@ -148,6 +155,7 @@ def _collect_unique_nodes(records: list, target_uri: str) -> set[str]:
     # target_uri 自身可能出现在 records 的 target 中（作为下游的"上游"）
     nodes.discard(target_uri)
     return nodes
+
 
 def _extract_key_path(target_uri: str, upstream_records: list) -> list[str]:
     """提取 target → 根节点的最短路径（用于卡片侧栏展示）.
@@ -186,4 +194,3 @@ def _extract_key_path(target_uri: str, upstream_records: list) -> list[str]:
 
     # 未找到根节点（可能存在环），返回当前最长路径
     return [target_uri]
-

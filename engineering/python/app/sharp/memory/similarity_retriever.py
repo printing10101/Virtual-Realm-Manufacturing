@@ -159,7 +159,8 @@ class SimilarityRetriever:
             except Exception as e:
                 logger.debug(
                     "Skip malformed trajectory %s: %s",
-                    record.verification_id, e,
+                    record.verification_id,
+                    e,
                 )
                 continue
 
@@ -174,9 +175,7 @@ class SimilarityRetriever:
     # 相似度计算
     # ------------------------------------------------------------------
 
-    def _compute_similarity(
-        self, triple: Triple, record: StoredTrajectory
-    ) -> SimilarityScore:
+    def _compute_similarity(self, triple: Triple, record: StoredTrajectory) -> SimilarityScore:
         """计算单个历史轨迹与当前三元组的相似度。"""
         score = SimilarityScore()
         reasons: list[str] = []
@@ -205,11 +204,7 @@ class SimilarityRetriever:
         cur_tail_type = triple.tail_type.value if hasattr(triple.tail_type, "value") else str(triple.tail_type)
         rec_head_type = str(record_triple.get("head_type", ""))
         rec_tail_type = str(record_triple.get("tail_type", ""))
-        if (
-            cur_head_type and cur_tail_type
-            and cur_head_type == rec_head_type
-            and cur_tail_type == rec_tail_type
-        ):
+        if cur_head_type and cur_tail_type and cur_head_type == rec_head_type and cur_tail_type == rec_tail_type:
             score.type_match = WEIGHT_TYPE_COMBO
             reasons.append(f"类型组合相同 ({cur_head_type},{cur_tail_type})")
 
@@ -230,12 +225,7 @@ class SimilarityRetriever:
                 reasons.append(f"关系属性重合 {len(overlap)}/{len(union)}")
 
         # 总分
-        score.total_score = (
-            score.relation_match
-            + score.entity_match
-            + score.type_match
-            + score.property_match
-        )
+        score.total_score = score.relation_match + score.entity_match + score.type_match + score.property_match
         score.reasons = reasons
         return score
 

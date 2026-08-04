@@ -5,7 +5,6 @@ Provides RESTful interfaces for skill CRUD, hot-reload,
 version management, and skill marketplace operations.
 """
 
-
 import logging
 import os
 from typing import Any, Dict, List, Optional
@@ -250,9 +249,7 @@ async def get_skill(skill_id: str):
                 "active": skill.active,
                 "source_path": skill.metadata.source_path,
                 "body": skill.body[:5000] if skill.body else "",
-                "code_blocks": [
-                    (lang, code[:500]) for lang, code in skill.code_blocks[:5]
-                ],
+                "code_blocks": [(lang, code[:500]) for lang, code in skill.code_blocks[:5]],
                 "version_count": len(skill.versions),
             },
             message="技能详情",
@@ -377,9 +374,7 @@ async def inject_skills_endpoint(
     task_type: str = Query(..., description="任务类型"),
     project_id: Optional[str] = Query(None, description="项目ID"),
     agent_id: Optional[str] = Query(None, description="代理ID"),
-    available_context: Optional[List[str]] = Query(
-        None, description="可用上下文键列表"
-    ),
+    available_context: Optional[List[str]] = Query(None, description="可用上下文键列表"),
 ):
     try:
         ctx_set = set(available_context) if available_context else set()
@@ -470,9 +465,7 @@ async def marketplace_download(request: SkillDownloadRequest):
 async def marketplace_rate(request: SkillMarketplaceRateRequest):
     try:
         marketplace = get_marketplace()
-        result = marketplace.rate_skill(
-            request.skill_id, request.rating, request.agent_id
-        )
+        result = marketplace.rate_skill(request.skill_id, request.rating, request.agent_id)
         return success(data=result, message="评分已记录")
     except KeyError as e:
         # 使用安全错误消息，避免泄露内部异常详情

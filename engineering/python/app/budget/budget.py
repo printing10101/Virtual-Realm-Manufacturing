@@ -112,10 +112,8 @@ class ResourceTracker:
             process = psutil.Process()
             mem_info = process.memory_info()
             with self._lock:
-                self._memory_peak_mb = max(
-                    self._memory_peak_mb, mem_info.rss / (1024 * 1024)
-                )
-        except (RuntimeError, OSError, AttributeError) as e:
+                self._memory_peak_mb = max(self._memory_peak_mb, mem_info.rss / (1024 * 1024))
+        except (RuntimeError, OSError, AttributeError):
             logger.warning("Failed to update memory metrics", exc_info=True)
 
     def get_gpu_memory_available(self) -> float:
@@ -348,9 +346,7 @@ class BudgetManager:
             budget.limit_value,
         )
 
-    def check_budget(
-        self, agent_id: str, resource_types: Optional[List[ResourceType]] = None
-    ) -> BudgetCheckResult:
+    def check_budget(self, agent_id: str, resource_types: Optional[List[ResourceType]] = None) -> BudgetCheckResult:
         """
         执行预算检查
 
@@ -380,11 +376,7 @@ class BudgetManager:
             if budget_limit is None:
                 continue
 
-            usage_ratio = (
-                current_usage / budget_limit.limit_value
-                if budget_limit.limit_value > 0
-                else 0.0
-            )
+            usage_ratio = current_usage / budget_limit.limit_value if budget_limit.limit_value > 0 else 0.0
 
             if usage_ratio >= budget_limit.hard_stop_threshold:
                 status = BudgetStatus.EXCEEDED
@@ -411,9 +403,7 @@ class BudgetManager:
                 if overall_status == BudgetStatus.OK:
                     overall_status = BudgetStatus.WARNING
 
-                self._record_notification(
-                    agent_id, "warning", warnings[-1], res_type.value, usage_ratio
-                )
+                self._record_notification(agent_id, "warning", warnings[-1], res_type.value, usage_ratio)
             else:
                 status = BudgetStatus.OK
 
@@ -439,14 +429,10 @@ class BudgetManager:
             )
 
         if warnings:
-            logger.warning(
-                "Budget warnings for agent %s: %s", agent_id, "; ".join(warnings)
-            )
+            logger.warning("Budget warnings for agent %s: %s", agent_id, "; ".join(warnings))
 
         if blocked_reasons:
-            logger.error(
-                "Budget exceeded for agent %s: %s", agent_id, "; ".join(blocked_reasons)
-            )
+            logger.error("Budget exceeded for agent %s: %s", agent_id, "; ".join(blocked_reasons))
 
         return BudgetCheckResult(
             passed=passed,
@@ -456,9 +442,7 @@ class BudgetManager:
             blocked_reasons=blocked_reasons,
         )
 
-    def _get_budget_limit(
-        self, resource_type: ResourceType, agent_id: str
-    ) -> Optional[BudgetLimit]:
+    def _get_budget_limit(self, resource_type: ResourceType, agent_id: str) -> Optional[BudgetLimit]:
         """获取预算限制（按代理级、项目级、全局级优先级）"""
         with self._lock:
             for level, scope in [
@@ -504,7 +488,7 @@ class BudgetManager:
                     (agent_id, resource_type.value, usage, limit, ratio, status.value),
                 )
                 self._conn.commit()
-        except (OSError, IOError, sqlite3.Error) as e:
+        except (OSError, IOError, sqlite3.Error):
             logger.warning("Failed to log budget usage", exc_info=True)
 
     def _record_notification(
@@ -525,7 +509,7 @@ class BudgetManager:
                     (agent_id, notification_type, message, resource_type, usage_ratio),
                 )
                 self._conn.commit()
-        except (OSError, IOError, sqlite3.Error) as e:
+        except (OSError, IOError, sqlite3.Error):
             logger.warning("Failed to record budget notification", exc_info=True)
 
     def get_agent_budget_status(self, agent_id: str) -> Dict[str, Any]:
@@ -557,12 +541,10 @@ class BudgetManager:
                     )
 
             self._record_notification(agent_id, "suspended", reason)
-        except (RuntimeError, ValueError, TypeError, AttributeError, OSError) as e:
+        except (RuntimeError, ValueError, TypeError, AttributeError, OSError):
             logger.error("Failed to suspend agent tasks", exc_info=True)
 
-    def get_notifications(
-        self, agent_id: Optional[str] = None, limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    def get_notifications(self, agent_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         """获取预算通知列表"""
         with self._lock:
             if agent_id:

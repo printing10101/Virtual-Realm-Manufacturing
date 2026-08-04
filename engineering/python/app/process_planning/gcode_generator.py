@@ -14,7 +14,6 @@ G代码生成的设计原则：
 工序规划结果 → 指令序列生成 → 后处理器格式化 → 语法校验 → 最终G代码文本
 """
 
-
 from __future__ import annotations
 
 import logging
@@ -27,15 +26,15 @@ from app.postprocessor.siemens import SiemensPostProcessor
 from app.postprocessor.heidenhain import HeidenhainPostProcessor
 from app.postprocessor.xmachine import XMachineXM100PostProcessor
 from app.postprocessor.registry import PostProcessorRegistry
-from app.toolpath.five_axis_planner import FiveAxisToolpathPlanner, FiveAxisStrategy, FiveAxisParams
+from app.toolpath.five_axis_planner import FiveAxisToolpathPlanner
 from app.postprocessor.config_loader import ConfigLimiter
-from app.cutting_params_db import get_cutting_params, get_material_list
+from app.cutting_params_db import get_cutting_params
 
 logger = logging.getLogger(__name__)
 
 from app.process_planning._schemas import GCodeResult
 from app.process_planning._validation import (
-    validate_gcode,
+    validate_gcode,  # noqa: F401  # re-export：兼容历史导入路径（拆分前位于本模块）
     validate_gcode_syntax,
     build_dry_run_preview,
 )
@@ -124,9 +123,7 @@ class GCodeGenerator:
 
         if controller_type not in self.CONTROLLER_MAP:
             available = list(self.CONTROLLER_MAP.keys())
-            raise ValueError(
-                f"不支持的控制器类型: '{controller_type}'。可用类型: {available}"
-            )
+            raise ValueError(f"不支持的控制器类型: '{controller_type}'。可用类型: {available}")
 
         postprocessor = self._registry.get_processor(controller_type)
         warnings: list[str] = []
@@ -145,7 +142,9 @@ class GCodeGenerator:
                 if safe_z > max_safe_z:
                     logger.warning(
                         "safe_z=%.1f 超过 XM-100 Z 行程上限 ±%.0fmm，自动 clamp 到 %.1fmm",
-                        safe_z, travel_z / 2, max_safe_z,
+                        safe_z,
+                        travel_z / 2,
+                        max_safe_z,
                     )
                     safe_z = max_safe_z
 
@@ -157,14 +156,10 @@ class GCodeGenerator:
 
         # 程序注释
         lines.append(postprocessor._comment(f"材料: {material_name}"))
-        lines.append(postprocessor._comment(
-            f"工序数: {len(operation_plan.operations)} | "
-            f"装夹次数: {len(operation_plan.setups)}"
-        ))
-        lines.append(postprocessor._comment(
-            f"控制器: {controller_type} | "
-            f"生成日期: {postprocessor._date_string()}"
-        ))
+        lines.append(
+            postprocessor._comment(f"工序数: {len(operation_plan.operations)} | 装夹次数: {len(operation_plan.setups)}")
+        )
+        lines.append(postprocessor._comment(f"控制器: {controller_type} | 生成日期: {postprocessor._date_string()}"))
         if is_five_axis:
             lines.append(postprocessor._comment("五轴加工模式: A/C轴联动"))
         lines.append("")
@@ -178,17 +173,17 @@ class GCodeGenerator:
         # 根据控制器类型启用对应的特殊功能模式
         if controller_type == "fanuc_0i":
             # Fanuc: 启用高精度加工模式 (G05.1 Q1)
-            if hasattr(postprocessor, 'format_high_precision_mode'):
+            if hasattr(postprocessor, "format_high_precision_mode"):
                 lines.append(postprocessor._comment("启用AI高精度轮廓控制"))
                 lines.append(postprocessor.format_high_precision_mode(enable=True, mode=1))
         elif controller_type == "siemens_840d":
             # Siemens: 五轴模式时启用 TRAORI
-            if is_five_axis and hasattr(postprocessor, 'format_five_axis_mode'):
+            if is_five_axis and hasattr(postprocessor, "format_five_axis_mode"):
                 lines.append(postprocessor._comment("启用五轴联动模式 TRAORI"))
                 lines.append(postprocessor.format_five_axis_mode(enable=True))
         elif controller_type == "heidenhain_tnc":
             # Heidenhain: 启用高精度模式 (M128)
-            if hasattr(postprocessor, 'format_high_precision_mode'):
+            if hasattr(postprocessor, "format_high_precision_mode"):
                 lines.append(postprocessor._comment("启用高精度加工模式 M128"))
                 lines.append(postprocessor.format_high_precision_mode(enable=True))
 
@@ -218,15 +213,17 @@ class GCodeGenerator:
         tool_count = 0
         for tool_key, info in tool_info.items():
             tool_count += 1
-            diameter_str = f"Φ{info['diameter']:.1f}" if info['diameter'] > 0 else "N/A"
-            methods_str = "/".join(sorted(info['methods']))
-            features_str = ", ".join(sorted(info['features'])[:3])  # 最多显示3个特征
-            if len(info['features']) > 3:
+            diameter_str = f"Φ{info['diameter']:.1f}" if info["diameter"] > 0 else "N/A"
+            methods_str = "/".join(sorted(info["methods"]))
+            features_str = ", ".join(sorted(info["features"])[:3])  # 最多显示3个特征
+            if len(info["features"]) > 3:
                 features_str += f"...等{len(info['features'])}个"
-            lines.append(postprocessor._comment(
-                f"T{tool_count:02d} | {tool_key:<20} | {diameter_str:<8} | "
-                f"{methods_str:<15} | {info['op_count']}次 | {features_str}"
-            ))
+            lines.append(
+                postprocessor._comment(
+                    f"T{tool_count:02d} | {tool_key:<20} | {diameter_str:<8} | "
+                    f"{methods_str:<15} | {info['op_count']}次 | {features_str}"
+                )
+            )
         lines.append(postprocessor._comment(f"总计: {tool_count} 把刀具"))
         lines.append(postprocessor._comment("=" * 50))
         lines.append("")
@@ -248,9 +245,7 @@ class GCodeGenerator:
                 _current_tool = tool_key
 
                 lines.append("")
-                lines.append(postprocessor._comment(
-                    f"---- OP{op.seq:02d} {op.name} - {op.machining_method} ----"
-                ))
+                lines.append(postprocessor._comment(f"---- OP{op.seq:02d} {op.name} - {op.machining_method} ----"))
 
                 # 生成换刀指令 - 传递整数编号
                 tool_change_code = postprocessor.format_tool_change(
@@ -261,15 +256,13 @@ class GCodeGenerator:
                 lines.append(tool_change_code)
             else:
                 lines.append("")
-                lines.append(postprocessor._comment(
-                    f"---- OP{op.seq:02d} {op.name} (复用{tool_key}) ----"
-                ))
+                lines.append(postprocessor._comment(f"---- OP{op.seq:02d} {op.name} (复用{tool_key}) ----"))
 
             # 插入断点标记（每道工序开始前）
             checkpoint_counter += 1
             checkpoint_label = f"CP{checkpoint_counter:03d}"
             checkpoint_line = len(lines)
-            
+
             # 根据控制器类型生成断点标记
             if controller_type == "fanuc_0i":
                 # Fanuc 使用 N 行号 + 注释
@@ -283,17 +276,19 @@ class GCodeGenerator:
             else:
                 # 默认使用注释格式
                 lines.append(postprocessor._comment(f"BREAKPOINT: {checkpoint_label}"))
-            
+
             # 记录断点信息
-            checkpoints.append({
-                "checkpoint_id": checkpoint_label,
-                "op_index": op_index,
-                "op_name": op.name,
-                "feature_name": op.feature_name,
-                "line_number": checkpoint_line,
-                "tool_key": tool_key,
-                "tool_index": tool_index,
-            })
+            checkpoints.append(
+                {
+                    "checkpoint_id": checkpoint_label,
+                    "op_index": op_index,
+                    "op_name": op.name,
+                    "feature_name": op.feature_name,
+                    "line_number": checkpoint_line,
+                    "tool_key": tool_key,
+                    "tool_index": tool_index,
+                }
+            )
 
             # 冷却液控制
             if use_coolant:
@@ -357,12 +352,9 @@ class GCodeGenerator:
             metadata={
                 "material": material_name,
                 "setups": [
-                    {"name": s.name, "surface": s.surface, "fixture": s.fixture_type}
-                    for s in operation_plan.setups
+                    {"name": s.name, "surface": s.surface, "fixture": s.fixture_type} for s in operation_plan.setups
                 ],
-                "cutting_parameter_count": sum(
-                    1 for op in operation_plan.operations if op.cutting_params
-                ),
+                "cutting_parameter_count": sum(1 for op in operation_plan.operations if op.cutting_params),
             },
             checkpoints=checkpoints,
         )
@@ -402,9 +394,7 @@ class GCodeGenerator:
             raise ValueError("孔位置列表不能为空")
 
         if controller_type not in self.CONTROLLER_MAP:
-            raise ValueError(
-                f"不支持的控制器类型: '{controller_type}'"
-            )
+            raise ValueError(f"不支持的控制器类型: '{controller_type}'")
 
         postprocessor = self._registry.get_processor(controller_type)
         lines: list[str] = []
@@ -417,11 +407,13 @@ class GCodeGenerator:
         lines.append(f"G00 Z{safe_z:.3f}")
 
         # 单刀具设置
-        lines.append(postprocessor.format_tool_change(
-            tool_id=tool_number,
-            length_comp=float(tool_number),
-            radius_comp=float(tool_number),
-        ))
+        lines.append(
+            postprocessor.format_tool_change(
+                tool_id=tool_number,
+                length_comp=float(tool_number),
+                radius_comp=float(tool_number),
+            )
+        )
         lines.append(f"S{spindle_speed} M03")
         lines.append(postprocessor.format_coolant("on"))
 
@@ -499,7 +491,6 @@ class GCodeGenerator:
 
         # 获取切削参数中的进给率
         cut_params = op.cutting_params or {}
-        feed_factor = cut_params.get("feed_rate_factor", 1.0)
         recommended_feed = str(cut_params.get("recommended_feed", "0.1 mm/r"))
         recommended_speed = str(cut_params.get("recommended_speed", "80 m/min"))
 
@@ -544,12 +535,8 @@ class GCodeGenerator:
 
             # ConfigLimiter 限幅
             if self._config_limiter:
-                spindle_speed = self._config_limiter.limit_spindle_rpm(
-                    spindle_speed, context=f"钻孔-{op.feature_name}"
-                )
-                feed_rate = self._config_limiter.limit_feed_rate(
-                    feed_rate, context=f"钻孔-{op.feature_name}"
-                )
+                spindle_speed = self._config_limiter.limit_spindle_rpm(spindle_speed, context=f"钻孔-{op.feature_name}")
+                feed_rate = self._config_limiter.limit_feed_rate(feed_rate, context=f"钻孔-{op.feature_name}")
 
             lines.append(f"S{spindle_speed} M03")
             lines.append(postprocessor._comment(f"进给: {recommended_feed}, 切速: {recommended_speed}"))
@@ -562,11 +549,15 @@ class GCodeGenerator:
             # 使用后处理器的钻孔固定循环 - 使用实际坐标
             # Z 坐标基于 stock_top_z 向下计算（避免负值触发过切误报）
             drill_z = stock_top_z - abs(depth)
-            lines.append(postprocessor.format_cycle_drill(
-                x=x_pos, y=y_pos, z=drill_z,
-                depth=depth,
-                dwell=0.5 if depth > 15 else 0.0,
-            ))
+            lines.append(
+                postprocessor.format_cycle_drill(
+                    x=x_pos,
+                    y=y_pos,
+                    z=drill_z,
+                    depth=depth,
+                    dwell=0.5 if depth > 15 else 0.0,
+                )
+            )
             lines.append("G80")  # 取消固定循环
 
             # 五轴模式：关闭 RTCP
@@ -589,12 +580,8 @@ class GCodeGenerator:
 
             # ConfigLimiter 限幅
             if self._config_limiter:
-                spindle_speed = self._config_limiter.limit_spindle_rpm(
-                    spindle_speed, context=f"铣削-{op.feature_name}"
-                )
-                feed_rate = self._config_limiter.limit_feed_rate(
-                    feed_rate, context=f"铣削-{op.feature_name}"
-                )
+                spindle_speed = self._config_limiter.limit_spindle_rpm(spindle_speed, context=f"铣削-{op.feature_name}")
+                feed_rate = self._config_limiter.limit_feed_rate(feed_rate, context=f"铣削-{op.feature_name}")
 
             lines.append(f"S{spindle_speed} M03")
             lines.append(postprocessor._comment(f"参数来自数据库: 材料={material}, 直径={tool_diameter}mm"))
@@ -624,29 +611,41 @@ class GCodeGenerator:
             if is_five_axis and hasattr(postprocessor, "format_rtcp_on"):
                 # 五轴铣削：RTCP + FiveAxisToolpathPlanner 生成 A/C 轴联动
                 lines.append(postprocessor.format_rtcp_on())
-                
+
                 # 使用五轴规划器生成刀具姿态序列
                 start_x, start_y, start_z = x_pos, y_pos, mill_depth
                 end_x, end_y, end_z = x_pos + mill_length, y_pos + mill_width, mill_depth
-                
+
                 orientations = self._five_axis_planner.plan_lead_angle_toolpath(
-                    start_x=start_x, start_y=start_y, start_z=start_z,
-                    end_x=end_x, end_y=end_y, end_z=end_z,
-                    surface_normal_i=0.0, surface_normal_j=0.0, surface_normal_k=1.0,
-                    num_points=4
+                    start_x=start_x,
+                    start_y=start_y,
+                    start_z=start_z,
+                    end_x=end_x,
+                    end_y=end_y,
+                    end_z=end_z,
+                    surface_normal_i=0.0,
+                    surface_normal_j=0.0,
+                    surface_normal_k=1.0,
+                    num_points=4,
                 )
-                
+
                 # 根据刀具姿态生成带 A/C 轴的直线插补
                 for idx, orient in enumerate(orientations):
                     t = idx / max(1, len(orientations) - 1)
                     interp_x = start_x + t * (end_x - start_x)
                     interp_y = start_y + t * (end_y - start_y)
-                    
-                    lines.append(postprocessor.format_linear_move(
-                        x=interp_x, y=interp_y, z=mill_depth, feed=feed_rate,
-                        a=orient.a_angle, c=orient.c_angle,
-                    ))
-                
+
+                    lines.append(
+                        postprocessor.format_linear_move(
+                            x=interp_x,
+                            y=interp_y,
+                            z=mill_depth,
+                            feed=feed_rate,
+                            a=orient.a_angle,
+                            c=orient.c_angle,
+                        )
+                    )
+
                 lines.append(postprocessor.format_rtcp_off())
             else:
                 # 三轴铣削 - 使用实际坐标
@@ -655,12 +654,22 @@ class GCodeGenerator:
                     lines.append(f"G00 Z{safe_z:.3f}")
                     lines.append(f"G00 X{x_pos:.3f} Y{y_pos:.3f}")
                     lines.append(f"G01 Z{mill_depth:.3f} F{feed_rate}")
-                lines.append(postprocessor.format_linear_move(
-                    x=x_pos + mill_length, y=y_pos, z=mill_depth, feed=feed_rate,
-                ))
-                lines.append(postprocessor.format_linear_move(
-                    x=x_pos + mill_length, y=y_pos + mill_width, z=mill_depth, feed=feed_rate,
-                ))
+                lines.append(
+                    postprocessor.format_linear_move(
+                        x=x_pos + mill_length,
+                        y=y_pos,
+                        z=mill_depth,
+                        feed=feed_rate,
+                    )
+                )
+                lines.append(
+                    postprocessor.format_linear_move(
+                        x=x_pos + mill_length,
+                        y=y_pos + mill_width,
+                        z=mill_depth,
+                        feed=feed_rate,
+                    )
+                )
 
             # 取消刀具半径补偿
             if radius_comp in ["G41", "G42"]:
@@ -683,12 +692,8 @@ class GCodeGenerator:
 
             # ConfigLimiter 限幅
             if self._config_limiter:
-                spindle_speed = self._config_limiter.limit_spindle_rpm(
-                    spindle_speed, context=f"车削-{op.feature_name}"
-                )
-                feed_rate = self._config_limiter.limit_feed_rate(
-                    feed_rate, context=f"车削-{op.feature_name}"
-                )
+                spindle_speed = self._config_limiter.limit_spindle_rpm(spindle_speed, context=f"车削-{op.feature_name}")
+                feed_rate = self._config_limiter.limit_feed_rate(feed_rate, context=f"车削-{op.feature_name}")
 
             lines.append(f"S{spindle_speed} M03")
             lines.append(postprocessor._comment(f"参数来自数据库: 材料={material}, 直径={tool_diameter}mm"))
@@ -723,12 +728,8 @@ class GCodeGenerator:
 
             # ConfigLimiter 限幅
             if self._config_limiter:
-                spindle_speed = self._config_limiter.limit_spindle_rpm(
-                    spindle_speed, context=f"镗孔-{op.feature_name}"
-                )
-                feed_rate = self._config_limiter.limit_feed_rate(
-                    feed_rate, context=f"镗孔-{op.feature_name}"
-                )
+                spindle_speed = self._config_limiter.limit_spindle_rpm(spindle_speed, context=f"镗孔-{op.feature_name}")
+                feed_rate = self._config_limiter.limit_feed_rate(feed_rate, context=f"镗孔-{op.feature_name}")
 
             lines.append(f"S{spindle_speed} M03")
             lines.append(postprocessor._comment(f"参数来自数据库: 材料={material}, 直径={tool_diameter}mm"))
@@ -758,12 +759,8 @@ class GCodeGenerator:
 
             # ConfigLimiter 限幅
             if self._config_limiter:
-                spindle_speed = self._config_limiter.limit_spindle_rpm(
-                    spindle_speed, context=f"五轴-{op.feature_name}"
-                )
-                feed_rate = self._config_limiter.limit_feed_rate(
-                    feed_rate, context=f"五轴-{op.feature_name}"
-                )
+                spindle_speed = self._config_limiter.limit_spindle_rpm(spindle_speed, context=f"五轴-{op.feature_name}")
+                feed_rate = self._config_limiter.limit_feed_rate(feed_rate, context=f"五轴-{op.feature_name}")
 
             lines.append(f"S{spindle_speed} M03")
             lines.append(postprocessor._comment(f"参数来自数据库: 材料={material}, 直径={tool_diameter}mm"))
@@ -776,20 +773,26 @@ class GCodeGenerator:
 
             if is_five_axis and hasattr(postprocessor, "format_rtcp_on"):
                 lines.append(postprocessor.format_rtcp_on())
-                
+
                 # 使用 FiveAxisToolpathPlanner 生成刀具姿态
                 # 定义加工路径起点和终点
                 start_x, start_y, start_z = x_pos, y_pos, work_depth
                 end_x, end_y, end_z = x_pos + work_length, y_pos + work_width, work_depth
-                
+
                 # 调用五轴规划器生成刀具姿态序列
                 orientations = self._five_axis_planner.plan_lead_angle_toolpath(
-                    start_x=start_x, start_y=start_y, start_z=start_z,
-                    end_x=end_x, end_y=end_y, end_z=end_z,
-                    surface_normal_i=0.0, surface_normal_j=0.0, surface_normal_k=1.0,
-                    num_points=5
+                    start_x=start_x,
+                    start_y=start_y,
+                    start_z=start_z,
+                    end_x=end_x,
+                    end_y=end_y,
+                    end_z=end_z,
+                    surface_normal_i=0.0,
+                    surface_normal_j=0.0,
+                    surface_normal_k=1.0,
+                    num_points=5,
                 )
-                
+
                 # 根据刀具姿态生成 A/C 轴命令
                 for i, orient in enumerate(orientations):
                     # 计算路径点位置（线性插值）
@@ -797,13 +800,19 @@ class GCodeGenerator:
                     interp_x = start_x + t * (end_x - start_x)
                     interp_y = start_y + t * (end_y - start_y)
                     interp_z = work_depth
-                    
+
                     # 生成带 A/C 轴的直线插补
-                    lines.append(postprocessor.format_linear_move(
-                        x=interp_x, y=interp_y, z=interp_z, feed=feed_rate,
-                        a=orient.a_angle, c=orient.c_angle,
-                    ))
-                
+                    lines.append(
+                        postprocessor.format_linear_move(
+                            x=interp_x,
+                            y=interp_y,
+                            z=interp_z,
+                            feed=feed_rate,
+                            a=orient.a_angle,
+                            c=orient.c_angle,
+                        )
+                    )
+
                 lines.append(postprocessor.format_rtcp_off())
             else:
                 lines.append(postprocessor._comment("警告: 五轴工序需要 xmachine_xm100 控制器"))
@@ -820,7 +829,6 @@ class GCodeGenerator:
             lines.append(f"G00 Z{safe_z:.3f}")
 
         return lines
-
 
     def _validate_syntax(
         self,
@@ -849,8 +857,6 @@ class GCodeGenerator:
             stock_top_z=stock_top_z,
         )
 
-
     def list_available_controllers(self) -> list[str]:
         """列出所有可用的控制器类型"""
         return list(self.CONTROLLER_MAP.keys())
-

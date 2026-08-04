@@ -253,11 +253,7 @@ class CuttingConstraintValidator:
             tool_hi *= tool.flutes
 
         lo = max(mat_lo, tool_lo) if (mat_lo > 0 or tool_lo > 0) else 0
-        hi = (
-            min(mat_hi, tool_hi)
-            if (mat_hi > 0 and tool_hi > 0)
-            else max(mat_hi, tool_hi)
-        )
+        hi = min(mat_hi, tool_hi) if (mat_hi > 0 and tool_hi > 0) else max(mat_hi, tool_hi)
 
         if lo > 0 and feed < lo:
             violations.append(
@@ -338,21 +334,11 @@ class CuttingConstraintValidator:
         if spindle == 0.0:
             return adjusted, violations
 
-        key = (
-            "spindle_speed"
-            if "spindle_speed" in params
-            else "n"
-            if "n" in params
-            else "rpm"
-        )
+        key = "spindle_speed" if "spindle_speed" in params else "n" if "n" in params else "rpm"
 
         if machine and machine.spindle_speed_rpm:
             lo = machine.spindle_speed_rpm[0]
-            hi = (
-                machine.spindle_speed_rpm[1]
-                if len(machine.spindle_speed_rpm) > 1
-                else _UNBOUNDED_UPPER
-            )
+            hi = machine.spindle_speed_rpm[1] if len(machine.spindle_speed_rpm) > 1 else _UNBOUNDED_UPPER
             if spindle < lo:
                 violations.append(
                     ConstraintViolation(
@@ -392,9 +378,7 @@ class CuttingConstraintValidator:
 
         fc = material.specific_cutting_force * doc * feed
         if tool.max_cutting_force_n > 0 and fc > tool.max_cutting_force_n:
-            warnings.append(
-                f"估算切削力 {fc:.0f} N 超过刀具承受范围 ({tool.max_cutting_force_n} N)"
-            )
+            warnings.append(f"估算切削力 {fc:.0f} N 超过刀具承受范围 ({tool.max_cutting_force_n} N)")
         return warnings
 
     def check_cutting_power(
@@ -414,14 +398,10 @@ class CuttingConstraintValidator:
         power_kw = (fc * vc) / 60000
         if power_kw > machine.spindle_power_kw * 0.85:
             warnings.append(
-                f"估算切削功率 {power_kw:.2f} kW 超过机床额定功率 85% "
-                f"({machine.spindle_power_kw * 0.85:.2f} kW)"
+                f"估算切削功率 {power_kw:.2f} kW 超过机床额定功率 85% ({machine.spindle_power_kw * 0.85:.2f} kW)"
             )
         if power_kw > machine.spindle_power_kw:
-            warnings.append(
-                f"估算切削功率 {power_kw:.2f} kW 超过机床额定功率 "
-                f"({machine.spindle_power_kw} kW)"
-            )
+            warnings.append(f"估算切削功率 {power_kw:.2f} kW 超过机床额定功率 ({machine.spindle_power_kw} kW)")
         return warnings
 
     def check_surface_roughness(
@@ -436,9 +416,7 @@ class CuttingConstraintValidator:
 
         ra = (feed**2) / (32 * tool.nose_radius)
         if ra > 0.0063:
-            warnings.append(
-                f"估算表面粗糙度 Ra={ra * 1000:.2f} μm，超出精加工要求 (Ra 6.3μm)"
-            )
+            warnings.append(f"估算表面粗糙度 Ra={ra * 1000:.2f} μm，超出精加工要求 (Ra 6.3μm)")
         return warnings
 
     def check_tool_life(
@@ -459,14 +437,10 @@ class CuttingConstraintValidator:
 
         if t < tool.tool_life_minutes * 0.5:
             warnings.append(
-                f"Taylor寿命估算 {t:.1f} min 远低于刀具额定寿命 "
-                f"({tool.tool_life_minutes} min)，建议降低切削速度"
+                f"Taylor寿命估算 {t:.1f} min 远低于刀具额定寿命 ({tool.tool_life_minutes} min)，建议降低切削速度"
             )
         elif t < tool.tool_life_minutes:
-            warnings.append(
-                f"Taylor寿命估算 {t:.1f} min 低于刀具额定寿命 "
-                f"({tool.tool_life_minutes} min)"
-            )
+            warnings.append(f"Taylor寿命估算 {t:.1f} min 低于刀具额定寿命 ({tool.tool_life_minutes} min)")
         return warnings
 
     def _check_machine_force(
@@ -484,8 +458,5 @@ class CuttingConstraintValidator:
 
         fc = material.specific_cutting_force * doc * feed
         if machine.max_cutting_force_n > 0 and fc > machine.max_cutting_force_n:
-            warnings.append(
-                f"估算切削力 {fc:.0f} N 超过机床最大切削力 "
-                f"({machine.max_cutting_force_n} N)"
-            )
+            warnings.append(f"估算切削力 {fc:.0f} N 超过机床最大切削力 ({machine.max_cutting_force_n} N)")
         return warnings

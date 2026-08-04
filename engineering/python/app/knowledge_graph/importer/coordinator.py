@@ -78,33 +78,21 @@ def import_all(
     report.finished_at = time.time()
 
     # 落库（可选）
-    db_written = False
     db_message = ""
     if flush_to_db:
         try:
             stats = graph.flush_to_repository(clear_first=db_clear_first)
-            db_written = True
-            db_message = (
-                f"flushed to DB: nodes={stats.get('nodes_written', 0)}, "
-                f"edges={stats.get('edges_written', 0)}"
-            )
+            db_message = f"flushed to DB: nodes={stats.get('nodes_written', 0)}, edges={stats.get('edges_written', 0)}"
             logger.info(db_message)
         except (OSError, RuntimeError) as exc:
-            db_written = False
             db_message = f"flush_to_repository skipped/failed: {exc}"
             logger.warning(db_message)
 
-    total_failed = (
-        report.materials.failed
-        + report.tools.failed
-        + report.machines.failed
-        + report.process_rules.failed
-    )
+    total_failed = report.materials.failed + report.tools.failed + report.machines.failed + report.process_rules.failed
     report.overall_success = total_failed == 0
     report.overall_message = (
         f"导入完成：{report.total_nodes} 节点 {report.total_edges} 关系。"
-        f"失败 {total_failed} 条。"
-        + (db_message if db_message else "")
+        f"失败 {total_failed} 条。" + (db_message if db_message else "")
     )
 
     # 控制台输出固定格式
@@ -115,9 +103,7 @@ def import_all(
     return report
 
 
-def load_graph_from_repository(
-    *, replace: bool = True
-) -> GraphStore:
+def load_graph_from_repository(*, replace: bool = True) -> GraphStore:
     """从 PostgreSQL 加载已有图数据到新的 :class:`GraphStore` 实例。"""
     g = GraphStore(auto_load=False)
     try:

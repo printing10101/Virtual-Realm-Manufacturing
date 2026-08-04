@@ -68,12 +68,13 @@ WorkflowSpec（nodes/edges/inputs/outputs/metadata）组成。
 加载器在插件 on_load 时调用 load_template_from_yaml 逐个加载，再由
 IExtensionRegistry.register 注册到 core.workflow_template 扩展点。
 """
+
 from __future__ import annotations
 
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from app.contracts.workflow_template import (
     TEMPLATE_CATEGORIES,
@@ -167,9 +168,7 @@ def validate_template_dict(data: Dict[str, Any]) -> List[str]:
 
     # id 格式
     if not _ID_PATTERN.match(str(data["id"])):
-        errors.append(
-            f"id 格式错误（应为小写字母/数字/下划线，开头非数字）: {data['id']}"
-        )
+        errors.append(f"id 格式错误（应为小写字母/数字/下划线，开头非数字）: {data['id']}")
 
     # version semver
     if not _SEMVER_PATTERN.match(str(data["version"])):
@@ -178,9 +177,7 @@ def validate_template_dict(data: Dict[str, Any]) -> List[str]:
     # category 校验
     category = str(data.get("category", "general") or "general")
     if category not in TEMPLATE_CATEGORIES.all():
-        errors.append(
-            f"category 不在合法清单中（{TEMPLATE_CATEGORIES.all()}）: {category}"
-        )
+        errors.append(f"category 不在合法清单中（{TEMPLATE_CATEGORIES.all()}）: {category}")
 
     # spec 必须是 dict 且包含 nodes
     spec = data.get("spec")
@@ -272,10 +269,7 @@ def load_template_from_yaml(path: str | Path) -> WorkflowTemplateManifest:
     try:
         import yaml
     except ImportError as e:
-        raise ImportError(
-            "PyYAML is required to load template.yaml files. "
-            "Install it via: pip install pyyaml"
-        ) from e
+        raise ImportError("PyYAML is required to load template.yaml files. Install it via: pip install pyyaml") from e
 
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
@@ -283,9 +277,7 @@ def load_template_from_yaml(path: str | Path) -> WorkflowTemplateManifest:
     if data is None:
         raise TemplateValidationError(["template.yaml 文件为空"])
     if not isinstance(data, dict):
-        raise TemplateValidationError(
-            [f"template.yaml 顶层应为 dict，实际: {type(data).__name__}"]
-        )
+        raise TemplateValidationError([f"template.yaml 顶层应为 dict，实际: {type(data).__name__}"])
 
     return load_template_from_dict(data)
 
@@ -310,9 +302,7 @@ def load_templates_from_dir(
 
     results: List[WorkflowTemplateManifest] = []
     # 优先 template.yaml，兼容 .yml；也支持任意 *.yaml 文件
-    yaml_files = sorted(
-        list(templates_dir.glob("*.yaml")) + list(templates_dir.glob("*.yml"))
-    )
+    yaml_files = sorted(list(templates_dir.glob("*.yaml")) + list(templates_dir.glob("*.yml")))
 
     for yaml_path in yaml_files:
         try:
@@ -325,9 +315,7 @@ def load_templates_from_dir(
                 manifest.version,
             )
         except Exception as e:
-            logger.warning(
-                "Failed to load workflow template from %s: %s", yaml_path, e
-            )
+            logger.warning("Failed to load workflow template from %s: %s", yaml_path, e)
 
     return results
 
@@ -427,9 +415,7 @@ def template_to_yaml(manifest: WorkflowTemplateManifest) -> str:
     try:
         import yaml
     except ImportError as e:
-        raise ImportError(
-            "PyYAML is required to serialize template.yaml files."
-        ) from e
+        raise ImportError("PyYAML is required to serialize template.yaml files.") from e
 
     return yaml.safe_dump(
         template_to_dict(manifest),

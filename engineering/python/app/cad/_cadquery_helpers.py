@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 import ast
-import asyncio
-import atexit
 import ctypes
 import json
 import logging
 import os
 import struct
-import subprocess
-import sys
-import tempfile
 import threading
 from pathlib import Path
 from typing import Any
@@ -27,7 +22,6 @@ import cadquery as cq
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
 
-from app.cad.advanced_features import AdvancedFeatureBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +39,10 @@ logger = logging.getLogger(__name__)
 _CADQUERY_TEMP_DIRS: set[Path] = set()
 
 
-
-
 def _cleanup_cadquery_temp_dirs() -> None:
     """进程退出时清理所有 CadQuery 临时输出目录。"""
     import shutil as _shutil
+
     for d in list(_CADQUERY_TEMP_DIRS):
         try:
             _shutil.rmtree(d, ignore_errors=True)
@@ -183,23 +176,17 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
     # （AST 审计器只能拦截 `obj.__class__` 直接访问，无法拦截 `getattr(obj, "__class__")`）
     def _safe_getattr(obj: Any, name: str, *default: Any) -> Any:
         if isinstance(name, str) and name in _DANGEROUS_ATTRS:
-            raise CadQueryScriptError(
-                f"Access to dangerous attribute '{name}' is forbidden via getattr()"
-            )
+            raise CadQueryScriptError(f"Access to dangerous attribute '{name}' is forbidden via getattr()")
         return getattr(obj, name, *default) if default else getattr(obj, name)
 
     def _safe_setattr(obj: Any, name: str, value: Any) -> None:
         if isinstance(name, str) and name in _DANGEROUS_ATTRS:
-            raise CadQueryScriptError(
-                f"Setting dangerous attribute '{name}' is forbidden via setattr()"
-            )
+            raise CadQueryScriptError(f"Setting dangerous attribute '{name}' is forbidden via setattr()")
         setattr(obj, name, value)
 
     def _safe_delattr(obj: Any, name: str) -> None:
         if isinstance(name, str) and name in _DANGEROUS_ATTRS:
-            raise CadQueryScriptError(
-                f"Deleting dangerous attribute '{name}' is forbidden via delattr()"
-            )
+            raise CadQueryScriptError(f"Deleting dangerous attribute '{name}' is forbidden via delattr()")
         delattr(obj, name)
 
     # 创建受控的执行环境
@@ -267,9 +254,7 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
                 mem_bytes = memory_limit_mb * 1024 * 1024
                 if hasattr(_resource, "setrlimit") and hasattr(_resource, "RLIMIT_AS"):
                     _resource.setrlimit(_resource.RLIMIT_AS, (mem_bytes, mem_bytes))  # type: ignore[attr-defined]
-                logger.debug(
-                    "Set RLIMIT_AS=%d MB for task %s", memory_limit_mb, task_id
-                )
+                logger.debug("Set RLIMIT_AS=%d MB for task %s", memory_limit_mb, task_id)
             except (ValueError, OSError) as e:
                 # setrlimit 失败不应阻断执行，仅记录警告
                 logger.warning(
@@ -279,8 +264,17 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
                 )
         try:
             exec(script, safe_globals)
-        except (ValueError, KeyError, TypeError, OSError, RuntimeError,
-                SyntaxError, NameError, KeyboardInterrupt, MemoryError) as e:
+        except (
+            ValueError,
+            KeyError,
+            TypeError,
+            OSError,
+            RuntimeError,
+            SyntaxError,
+            NameError,
+            KeyboardInterrupt,
+            MemoryError,
+        ) as e:
             result_holder["exc"] = e
         except BaseException as e:
             result_holder["exc"] = e
@@ -298,10 +292,7 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
         _async_raise_thread(worker, KeyboardInterrupt)
         # 给子线程短暂时间清理
         worker.join(timeout=2.0)
-        error_msg = (
-            f"CadQuery script execution timed out after {timeout_seconds}s "
-            f"(task {task_id})"
-        )
+        error_msg = f"CadQuery script execution timed out after {timeout_seconds}s (task {task_id})"
         logger.error(error_msg)
         raise CadQueryScriptError(error_msg)
 
@@ -309,34 +300,25 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
     exc = result_holder.get("exc")
     if exc is not None:
         if isinstance(exc, MemoryError):
-            error_msg = (
-                f"Script execution exceeded memory limit {memory_limit_mb}MB "
-                f"(task {task_id}): {exc}"
-            )
+            error_msg = f"Script execution exceeded memory limit {memory_limit_mb}MB (task {task_id}): {exc}"
             logger.error(error_msg, exc_info=True)
             from app.cad.cadquery_gen import CadQueryScriptError
 
         raise CadQueryScriptError(error_msg) from exc
         if isinstance(exc, KeyboardInterrupt):
-            error_msg = (
-                f"Script execution interrupted (task {task_id}): {exc}"
-            )
+            error_msg = f"Script execution interrupted (task {task_id}): {exc}"
             logger.error(error_msg, exc_info=True)
             from app.cad.cadquery_gen import CadQueryScriptError
 
         raise CadQueryScriptError(error_msg) from exc
-        if isinstance(exc, (ValueError, KeyError, TypeError, OSError,
-                             RuntimeError, SyntaxError, NameError)):
+        if isinstance(exc, (ValueError, KeyError, TypeError, OSError, RuntimeError, SyntaxError, NameError)):
             error_msg = f"Script execution failed (task {task_id}): {exc}"
             logger.error(error_msg, exc_info=True)
             from app.cad.cadquery_gen import CadQueryScriptError
 
         raise CadQueryScriptError(error_msg) from exc
         # 其他未预期异常
-        error_msg = (
-            f"Script execution failed with unexpected exception "
-            f"(task {task_id}): {exc}"
-        )
+        error_msg = f"Script execution failed with unexpected exception (task {task_id}): {exc}"
         logger.error(error_msg, exc_info=True)
         from app.cad.cadquery_gen import CadQueryScriptError
 
@@ -365,20 +347,17 @@ def _async_raise_thread(thread: threading.Thread, exc_type: type) -> None:
         # _async_raise(exc_type) → set async exception
         # PyThreadState_SetAsyncExc(tid, exc_type) 返回线程数
         # 0 表示线程已退出；>1 表示异常状态异常（罕见，重置为 0）
-        ret = ctypes.pythonapi.PyThreadState_SetAsyncExc(
-            ctypes.c_long(tid), ctypes.py_object(exc_type)
-        )
+        ret = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), ctypes.py_object(exc_type))
         if ret == 0:
             # 线程已退出，无需中断
             return
         if ret > 1:
             # 异常状态：多个线程被标记，需要重置
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(
-                ctypes.c_long(tid), ctypes.c_long(0)
-            )
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), ctypes.c_long(0))
             logger.warning(
                 "PyThreadState_SetAsyncExc returned %d for thread %s; reset",
-                ret, thread.name,
+                ret,
+                thread.name,
             )
     except (ValueError, OSError, AttributeError) as e:
         logger.warning("Failed to async-raise in thread %s: %s", thread.name, e)
@@ -492,9 +471,7 @@ def _find_connected_regions(binary: np.ndarray) -> list[dict[str, Any]]:
     return regions
 
 
-def _classify_shape_from_region(
-    region: dict[str, Any], binary: np.ndarray
-) -> tuple[str, float]:
+def _classify_shape_from_region(region: dict[str, Any], binary: np.ndarray) -> tuple[str, float]:
     """Heuristic shape classifier for a single connected region.
 
     Uses geometric cues derived from the binary silhouette:
@@ -517,13 +494,7 @@ def _classify_shape_from_region(
     # A pixel is on the perimeter if it is foreground and touches a border
     # or a background pixel.
     padded = np.pad(sub, 1, mode="constant", constant_values=0)
-    interior = (
-        padded[1:-1, 1:-1]
-        & padded[:-2, 1:-1]
-        & padded[2:, 1:-1]
-        & padded[1:-1, :-2]
-        & padded[1:-1, 2:]
-    )
+    interior = padded[1:-1, 1:-1] & padded[:-2, 1:-1] & padded[2:, 1:-1] & padded[1:-1, :-2] & padded[1:-1, 2:]
     perimeter_px = int(area - interior.sum())
     perimeter = max(perimeter_px, 4)
     circularity = (4.0 * np.pi * area) / (perimeter * perimeter)
@@ -674,10 +645,7 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
         while i < len(data) - 9:
             _iter += 1
             if _iter > 1000:
-                raise ValueError(
-                    "JPEG 图像解析失败：解析循环超过最大迭代次数（1000），"
-                    "可能存在损坏或恶意构造的数据。"
-                )
+                raise ValueError("JPEG 图像解析失败：解析循环超过最大迭代次数（1000），可能存在损坏或恶意构造的数据。")
             if data[i] != 0xFF:
                 i += 1
                 continue
@@ -716,4 +684,3 @@ def _get_image_dimensions(filepath: Path) -> tuple[int, int]:
         "支持的图像格式包括：PNG、JPEG、BMP。"
         "请将图像转换为支持的格式后重试。"
     )
-

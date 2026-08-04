@@ -29,6 +29,7 @@
   每个 batch 的 horizon 必须一致，由 ``fusion_collate_fn`` 保证）。
 - 不实现 R² / accuracy（融合路径是回归任务，仅记录 loss）。
 """
+
 from __future__ import annotations
 
 import logging
@@ -145,13 +146,10 @@ class FusionWorldModelTrainer:
     ) -> None:
         if not HAS_TORCH:
             raise RuntimeError(
-                "FusionWorldModelTrainer 需要 torch，当前环境未安装。"
-                "请安装 torch 后再执行融合权重训练。"
+                "FusionWorldModelTrainer 需要 torch，当前环境未安装。请安装 torch 后再执行融合权重训练。"
             )
         if not isinstance(model, nn.Module):
-            raise TypeError(
-                f"model 必须为 nn.Module，实际={type(model).__name__}"
-            )
+            raise TypeError(f"model 必须为 nn.Module，实际={type(model).__name__}")
         # 融合路径硬约束：模型必须启用 use_fusion
         model_config = getattr(model, "config", None)
         if model_config is None or not getattr(model_config, "use_fusion", False):
@@ -229,9 +227,7 @@ class FusionWorldModelTrainer:
             )
         if opt_type == "rmsprop":
             return torch.optim.RMSprop(params, lr=self.learning_rate, weight_decay=self.weight_decay)
-        raise FusionTrainerError(
-            f"不支持的优化器类型: {self.optimizer_type}（支持 adam/adamw/sgd/rmsprop）"
-        )
+        raise FusionTrainerError(f"不支持的优化器类型: {self.optimizer_type}（支持 adam/adamw/sgd/rmsprop）")
 
     def _build_lr_scheduler(self) -> Optional[Any]:
         """构造学习率调度器."""
@@ -264,8 +260,7 @@ class FusionWorldModelTrainer:
                 gamma=params.get("gamma", DEFAULT_EXPONENTIAL_GAMMA),
             )
         raise FusionTrainerError(
-            f"不支持的 LR 调度器类型: {self.lr_scheduler_type}"
-            "（支持 cosine/step/reduce_on_plateau/exponential/none）"
+            f"不支持的 LR 调度器类型: {self.lr_scheduler_type}（支持 cosine/step/reduce_on_plateau/exponential/none）"
         )
 
     # ------------------------------------------------------------------
@@ -310,6 +305,7 @@ class FusionWorldModelTrainer:
             get_mlflow_log_params,
             get_mlflow_log_metrics,
         )
+
         set_global_seed = get_set_global_seed()
         mlflow_start_run = get_mlflow_start_run()
         mlflow_log_params = get_mlflow_log_params()
@@ -317,6 +313,7 @@ class FusionWorldModelTrainer:
         if set_global_seed is None:
             import random
             import numpy as np
+
             def set_global_seed(seed: int = 42) -> None:
                 random.seed(seed)
                 np.random.seed(seed)
@@ -362,9 +359,7 @@ class FusionWorldModelTrainer:
                 # 记录历史
                 self.training_history["train_loss"].append(train_loss)
                 self.training_history["val_loss"].append(val_loss)
-                self.training_history["learning_rate"].append(
-                    self.optimizer.param_groups[0]["lr"]
-                )
+                self.training_history["learning_rate"].append(self.optimizer.param_groups[0]["lr"])
 
                 # MLflow 指标记录
                 mlflow_log_metrics(
@@ -419,8 +414,7 @@ class FusionWorldModelTrainer:
                             epoch=self.current_epoch,
                             metrics={"train_loss": train_loss, "val_loss": val_loss},
                         )
-                    except (OSError, RuntimeError, ValueError, KeyError,
-                            TypeError, AttributeError) as exc:
+                    except (OSError, RuntimeError, ValueError, KeyError, TypeError, AttributeError) as exc:
                         # Q1 修复：收窄为可预期的 IO/序列化/状态异常。
                         # OSError 覆盖磁盘满/权限问题；RuntimeError 覆盖 PyTorch
                         # state_dict 序列化失败；其他覆盖 metrics 字典访问异常。
@@ -472,9 +466,7 @@ class FusionWorldModelTrainer:
 
                 if self.gradient_clip_value is not None:
                     self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.gradient_clip_value
-                    )
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clip_value)
 
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
@@ -491,9 +483,7 @@ class FusionWorldModelTrainer:
                 loss.backward()
 
                 if self.gradient_clip_value is not None:
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.gradient_clip_value
-                    )
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clip_value)
 
                 self.optimizer.step()
 
@@ -595,9 +585,7 @@ class FusionWorldModelTrainer:
             "device": str(self.device),
             "use_amp": self.use_amp,
             "scaler_state_dict": self.scaler.state_dict() if self.scaler is not None else None,
-            "lr_scheduler_state_dict": self.lr_scheduler.state_dict()
-            if self.lr_scheduler is not None
-            else None,
+            "lr_scheduler_state_dict": self.lr_scheduler.state_dict() if self.lr_scheduler is not None else None,
             # 融合训练专属字段，便于加载时校验
             "model_uri": self.model_uri,
             "trainer_type": "FusionWorldModelTrainer",
@@ -630,10 +618,7 @@ class FusionWorldModelTrainer:
             文件不存在。
         """
         if not os.path.exists(path):
-            raise FileNotFoundError(
-                f"融合模型 checkpoint 加载失败：找不到文件 '{path}'。"
-                "请确认路径正确或重新训练。"
-            )
+            raise FileNotFoundError(f"融合模型 checkpoint 加载失败：找不到文件 '{path}'。请确认路径正确或重新训练。")
 
         # 安全加载：优先 weights_only=True
         try:
@@ -646,17 +631,12 @@ class FusionWorldModelTrainer:
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.current_epoch = checkpoint.get("epoch", 0)
         self.best_val_loss = checkpoint.get("best_val_loss", float("inf"))
-        self.training_history = checkpoint.get(
-            "training_history", self.training_history
-        )
+        self.training_history = checkpoint.get("training_history", self.training_history)
 
         if self.scaler is not None and checkpoint.get("scaler_state_dict") is not None:
             self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
 
-        if (
-            self.lr_scheduler is not None
-            and checkpoint.get("lr_scheduler_state_dict") is not None
-        ):
+        if self.lr_scheduler is not None and checkpoint.get("lr_scheduler_state_dict") is not None:
             self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
 
         logger.info("融合模型 checkpoint 已加载: %s", path)
@@ -728,9 +708,7 @@ class FusionWorldModelTrainer:
             "final_train_loss": self.training_history["train_loss"][-1]
             if self.training_history["train_loss"]
             else None,
-            "final_val_loss": self.training_history["val_loss"][-1]
-            if self.training_history["val_loss"]
-            else None,
+            "final_val_loss": self.training_history["val_loss"][-1] if self.training_history["val_loss"] else None,
             "optimizer": self.optimizer_type,
             "loss_function": "mse",
             "device": str(self.device),

@@ -1,4 +1,5 @@
 """管理员端点（优雅关闭等）。"""
+
 import asyncio
 import logging
 
@@ -18,7 +19,5 @@ async def admin_shutdown():
         return {"status": "skipped", "reason": "idle auto shutdown is active"}
 
     shutdown_task = asyncio.create_task(_async_shutdown())
-    shutdown_task.add_done_callback(
-        lambda t: logger.info("[shutdown] backend shutdown completed")
-    )
+    shutdown_task.add_done_callback(lambda t: logger.info("[shutdown] backend shutdown completed"))
     return {"status": "shutting_down"}

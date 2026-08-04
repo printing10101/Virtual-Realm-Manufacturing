@@ -15,7 +15,7 @@ from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -166,13 +166,8 @@ class BaseTool(ABC):
 
     def to_prompt_text(self) -> str:
         """生成工具描述文本，用于 LLM prompt。"""
-        args_doc = "\n".join(
-            f"    - {k}: {v}" for k, v in self.arguments_schema.items()
-        )
-        return (
-            f"- {self.name}: {self.description}\n"
-            f"  参数:\n{args_doc}"
-        )
+        args_doc = "\n".join(f"    - {k}: {v}" for k, v in self.arguments_schema.items())
+        return f"- {self.name}: {self.description}\n  参数:\n{args_doc}"
 
 
 __all__ = ["BaseTool", "ToolCall", "ToolResult"]

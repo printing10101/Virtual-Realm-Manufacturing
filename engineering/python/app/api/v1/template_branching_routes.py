@@ -123,9 +123,7 @@ async def delete_branch(
         success = manager.delete_branch(branch_id)
         if not success:
             logger.info("Branch not found: %s", branch_id)
-            raise HTTPException(
-                status_code=404, detail="Branch not found"
-            )
+            raise HTTPException(status_code=404, detail="Branch not found")
         return {"message": "Branch deleted"}
     except ValueError:
         # 修复：避免将内部异常细节（可能含路径/对象结构）泄露给客户端

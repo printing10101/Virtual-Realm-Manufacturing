@@ -42,27 +42,19 @@ def get_current_user(
     token = credentials.credentials
     ban_list = get_token_ban_list()
     if ban_list.is_banned(token):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token已被撤销"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token已被撤销")
 
     payload = decode_token_strict(token, expected_type="access")
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="无效或过期的Token"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效或过期的Token")
 
     username = payload.get("sub")
     if not username:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token载荷无效"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token载荷无效")
 
     store = get_user_store()
     user = store.get_user(username)
     if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
 
     return {"username": username, "role": user.role}

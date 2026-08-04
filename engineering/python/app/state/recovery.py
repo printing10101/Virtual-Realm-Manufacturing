@@ -15,25 +15,18 @@ References Paperclip's Persistent Agent State design:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
-import time
-import zlib
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 # shared imports moved to state/__init__.py
-from app.state.exceptions import StatePersistenceError, StateConflictError, StateNotFoundError
+from app.state.exceptions import StatePersistenceError
+
+# F821 修复：StatePersistenceManager 定义于 manager.py（本模块运行期依赖）
+from app.state.manager import StatePersistenceManager
 from app.models.agent_state import (
     AgentState,
     AgentStatus,
     Checkpoint,
-    MemoryEntry,
-    SessionContext,
-    StateVersion,
-    CURRENT_SCHEMA_VERSION,
-    migrate_state,
 )
 
 HEARTBEAT_INTERVAL_SECONDS = 15 * 60
@@ -104,17 +97,13 @@ class StateRecoveryManager:
             if not task:
                 state.current_task_id = None
                 state.status = AgentStatus.IDLE
-                await self._persistence.save_state(
-                    state, trigger="recovery_task_not_found"
-                )
+                await self._persistence.save_state(state, trigger="recovery_task_not_found")
                 result["recovered"] = True
                 result["action"] = "idle_task_gone"
                 result["state"] = state
                 return result
             task_status = getattr(task, "status", None)
-            task_status_str = (
-                task_status.value if hasattr(task_status, "value") else str(task_status)
-            )
+            task_status_str = task_status.value if hasattr(task_status, "value") else str(task_status)
             result["task"] = {
                 "task_id": state.current_task_id,
                 "status": task_status_str,
@@ -128,9 +117,7 @@ class StateRecoveryManager:
                             else task_runner(state.current_task_id, state.checkpoint)
                         )
                         state.status = AgentStatus.BUSY
-                        await self._persistence.save_state(
-                            state, trigger="recovery_resumed"
-                        )
+                        await self._persistence.save_state(state, trigger="recovery_resumed")
                         result["recovered"] = True
                         result["action"] = "resumed_with_checkpoint"
                         result["checkpoint_used"] = state.checkpoint.checkpoint_id
@@ -166,9 +153,7 @@ class StateRecoveryManager:
                             else task_runner(state.current_task_id, None)
                         )
                         state.status = AgentStatus.BUSY
-                        await self._persistence.save_state(
-                            state, trigger="recovery_restarted"
-                        )
+                        await self._persistence.save_state(state, trigger="recovery_restarted")
                         result["recovered"] = True
                         result["action"] = "restarted_without_checkpoint"
                         result["state"] = state
@@ -196,18 +181,14 @@ class StateRecoveryManager:
                         result["error_id"] = safe["error_id"]
                         logger.warning("Unexpected error in task_runner during restart: %s", e, exc_info=True)
                 state.status = AgentStatus.IDLE
-                await self._persistence.save_state(
-                    state, trigger="recovery_fallback_idle"
-                )
+                await self._persistence.save_state(state, trigger="recovery_fallback_idle")
                 result["recovered"] = True
                 result["action"] = "fallback_idle"
                 result["state"] = state
                 return result
             else:
                 state.status = AgentStatus.IDLE
-                await self._persistence.save_state(
-                    state, trigger="recovery_task_complete"
-                )
+                await self._persistence.save_state(state, trigger="recovery_task_complete")
                 result["recovered"] = True
                 result["action"] = "idle_task_done"
                 result["state"] = state
@@ -226,9 +207,7 @@ class StateRecoveryManager:
             try:
                 fallback_state = AgentState(agent_id=agent_id)
                 fallback_state.status = AgentStatus.IDLE
-                await self._persistence.save_state(
-                    fallback_state, trigger="recovery_fallback"
-                )
+                await self._persistence.save_state(fallback_state, trigger="recovery_fallback")
                 result["state"] = fallback_state
             except (OSError, RuntimeError, AttributeError) as e:
                 # 恢复回退状态失败时仅记录，仍返回已有恢复信息
@@ -253,9 +232,7 @@ class StateRecoveryManager:
             try:
                 fallback_state = AgentState(agent_id=agent_id)
                 fallback_state.status = AgentStatus.IDLE
-                await self._persistence.save_state(
-                    fallback_state, trigger="recovery_fallback"
-                )
+                await self._persistence.save_state(fallback_state, trigger="recovery_fallback")
                 result["state"] = fallback_state
             except (OSError, RuntimeError, AttributeError) as e:
                 logger.warning(
@@ -317,9 +294,7 @@ async def create_state_persistence(
 
             async_url = db_url
             if async_url.startswith("postgresql://"):
-                async_url = async_url.replace(
-                    "postgresql://", "postgresql+asyncpg://", 1
-                )
+                async_url = async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
             elif async_url.startswith("sqlite://"):
                 async_url = async_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
 
@@ -353,14 +328,10 @@ async def create_state_persistence(
                     )
                 )
                 await conn.execute(
-                    sa.text(
-                        "CREATE INDEX IF NOT EXISTS idx_agent_states_status ON agent_states (status)"
-                    )
+                    sa.text("CREATE INDEX IF NOT EXISTS idx_agent_states_status ON agent_states (status)")
                 )
                 await conn.execute(
-                    sa.text(
-                        "CREATE INDEX IF NOT EXISTS idx_agent_states_heartbeat ON agent_states (last_heartbeat)"
-                    )
+                    sa.text("CREATE INDEX IF NOT EXISTS idx_agent_states_heartbeat ON agent_states (last_heartbeat)")
                 )
             db_session_factory = session_factory
         except (ImportError, OSError, RuntimeError, ValueError, TypeError) as e:
@@ -371,9 +342,7 @@ async def create_state_persistence(
 
                 sync_url = db_url
                 if sync_url.startswith("postgresql+asyncpg://"):
-                    sync_url = sync_url.replace(
-                        "postgresql+asyncpg://", "postgresql://", 1
-                    )
+                    sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://", 1)
                 sync_engine = create_engine(sync_url, echo=False)
                 with sync_engine.begin() as conn:
                     conn.execute(

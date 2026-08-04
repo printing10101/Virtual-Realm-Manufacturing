@@ -34,13 +34,13 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.dreaming.rule_synthesizer import RuleDraft
-from app.dreaming.rule_validator import RuleValidator, ValidationResult
+from app.dreaming.rule_validator import RuleValidator
 
 logger = logging.getLogger(__name__)
 
@@ -186,23 +186,24 @@ class RuleApplicator:
 
             # 检查节点是否已存在（幂等性）
             if graph.has_node(node_id):
-                logger.info(
-                    "规则节点已存在，更新属性：node_id=%s", node_id
+                logger.info("规则节点已存在，更新属性：node_id=%s", node_id)
+                graph.update_node_properties(
+                    node_id,
+                    {
+                        "description": rule.description,
+                        "condition": rule.condition,
+                        "action": rule.action,
+                        "confidence": rule.confidence,
+                        "status": RULE_STATUS_APPLIED,
+                        "applied_at": applied_at,
+                        "rule_type": rule.rule_type,
+                        "source_insight_category": rule.source_insight_category,
+                        "supporting_sessions_count": len(rule.supporting_sessions),
+                        "respects_cam_validation": rule.respects_cam_validation,
+                        "respects_succeeded_lock": rule.respects_succeeded_lock,
+                        "adr": "ADR-021",
+                    },
                 )
-                graph.update_node_properties(node_id, {
-                    "description": rule.description,
-                    "condition": rule.condition,
-                    "action": rule.action,
-                    "confidence": rule.confidence,
-                    "status": RULE_STATUS_APPLIED,
-                    "applied_at": applied_at,
-                    "rule_type": rule.rule_type,
-                    "source_insight_category": rule.source_insight_category,
-                    "supporting_sessions_count": len(rule.supporting_sessions),
-                    "respects_cam_validation": rule.respects_cam_validation,
-                    "respects_succeeded_lock": rule.respects_succeeded_lock,
-                    "adr": "ADR-021",
-                })
             else:
                 graph.add_node(
                     node_type="dreaming_rule",
@@ -217,9 +218,7 @@ class RuleApplicator:
                         "rule_type": rule.rule_type,
                         "source_insight_category": rule.source_insight_category,
                         "supporting_sessions_count": len(rule.supporting_sessions),
-                        "supporting_sessions": json.dumps(
-                            rule.supporting_sessions[:10]
-                        ),
+                        "supporting_sessions": json.dumps(rule.supporting_sessions[:10]),
                         "respects_cam_validation": rule.respects_cam_validation,
                         "respects_succeeded_lock": rule.respects_succeeded_lock,
                         "created_at": rule.created_at,
@@ -296,15 +295,16 @@ class RuleApplicator:
             if graph.has_node(node_id):
                 node = graph.get_node(node_id)
                 if node:
-                    previous_status = node.properties.get(
-                        "status", RULE_STATUS_APPLIED
-                    )
+                    previous_status = node.properties.get("status", RULE_STATUS_APPLIED)
 
                 # 更新状态为 deprecated
-                graph.update_node_properties(node_id, {
-                    "status": RULE_STATUS_DEPRECATED,
-                    "rolled_back_at": rolled_back_at,
-                })
+                graph.update_node_properties(
+                    node_id,
+                    {
+                        "status": RULE_STATUS_DEPRECATED,
+                        "rolled_back_at": rolled_back_at,
+                    },
+                )
                 logger.info("规则已回滚（知识图谱）：node_id=%s", node_id)
             else:
                 return RollbackResult(
@@ -367,14 +367,16 @@ class RuleApplicator:
             graph = self._get_graph_store()
             nodes = graph.list_nodes_by_type("dreaming_rule")
             for node in nodes:
-                rules.append({
-                    "rule_id": node.node_id.replace("rule_", ""),
-                    "description": node.properties.get("description", ""),
-                    "status": node.properties.get("status", ""),
-                    "applied_at": node.properties.get("applied_at", ""),
-                    "confidence": node.properties.get("confidence", 0.0),
-                    "rule_type": node.properties.get("rule_type", ""),
-                })
+                rules.append(
+                    {
+                        "rule_id": node.node_id.replace("rule_", ""),
+                        "description": node.properties.get("description", ""),
+                        "status": node.properties.get("status", ""),
+                        "applied_at": node.properties.get("applied_at", ""),
+                        "confidence": node.properties.get("confidence", 0.0),
+                        "rule_type": node.properties.get("rule_type", ""),
+                    }
+                )
         except Exception as e:
             logger.error("列出已应用规则失败：%s", e)
         return rules

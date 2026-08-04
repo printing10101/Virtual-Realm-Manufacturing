@@ -11,7 +11,6 @@
 - GET    /api/projects/download/{filename} — 下载工程文件
 """
 
-
 import logging
 import os
 import tempfile
@@ -27,7 +26,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
 from app.core.response import error, ErrorCode, success
 from app.core.safe_errors import safe_error_message
-from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file, validate_user_path
+from app.utils.utils import get_output_dir, get_upload_dir, validate_user_path
 from app.utils.upload_security import validate_upload
 from app.projects.project_store import (
     ProjectStore,
@@ -136,9 +135,7 @@ class SaveRequest(BaseModel):
 
 class OpenRequest(BaseModel):
     file_path: str = Field(default="", description="要打开的 .ljm 文件路径")
-    upload_data: str | None = Field(
-        default=None, description="Base64编码的.ljm文件数据"
-    )
+    upload_data: str | None = Field(default=None, description="Base64编码的.ljm文件数据")
 
 
 class ResourceUploadMeta(BaseModel):
@@ -498,8 +495,11 @@ async def download_project(project_name: str) -> FileResponse:
 ALLOWED_UPLOAD_EXTENSIONS = {".step", ".stp", ".dxf", ".igs", ".iges", ".stl", ".obj"}
 # 各扩展名对应的允许 MIME 集合（由 upload_security.EXTENSION_TO_MIME 推导）
 _ALLOWED_UPLOAD_MIMES = {
-    "application/step", "application/iges", "application/dxf",
-    "application/sla", "application/octet-stream",
+    "application/step",
+    "application/iges",
+    "application/dxf",
+    "application/sla",
+    "application/octet-stream",
 }
 
 

@@ -44,6 +44,7 @@ router = APIRouter(prefix="/agents", tags=["Agent State Management"])
 # 篡改不该被 API 修改的字段。仅暴露业务可写字段。
 # ---------------------------------------------------------------------------
 
+
 class AgentStateSaveRequest(BaseModel):
     """保存 Agent 状态的请求体（白名单字段）。
 
@@ -63,6 +64,7 @@ class AgentStateSaveRequest(BaseModel):
 # CheckpointType(payload.get(...)) 接收非法值抛未处理 ValueError
 # ---------------------------------------------------------------------------
 
+
 class CheckpointSaveRequest(BaseModel):
     """保存 Checkpoint 的请求体（白名单字段）。
 
@@ -77,9 +79,7 @@ class CheckpointSaveRequest(BaseModel):
     state_dict_path: str = Field("", description="状态字典存储路径")
     optimizer_state_path: str = Field("", description="优化器状态存储路径")
     rng_state: Optional[dict[str, Any]] = Field(None, description="随机数生成器状态")
-    checkpoint_type: CheckpointType = Field(
-        CheckpointType.MANUAL, description="检查点类型"
-    )
+    checkpoint_type: CheckpointType = Field(CheckpointType.MANUAL, description="检查点类型")
     metrics: dict[str, Any] = Field(default_factory=dict, description="指标字典")
     metadata: dict[str, Any] = Field(default_factory=dict, description="元数据")
 
@@ -164,9 +164,7 @@ def get_persistence() -> StatePersistenceManager:
     """
     persistence = _holder.get_persistence()
     if persistence is None:
-        raise HTTPException(
-            status_code=503, detail="State persistence not initialized"
-        )
+        raise HTTPException(status_code=503, detail="State persistence not initialized")
     return persistence
 
 
@@ -181,9 +179,7 @@ def get_recovery() -> StateRecoveryManager:
     """
     recovery = _holder.get_recovery()
     if recovery is None:
-        raise HTTPException(
-            status_code=503, detail="State recovery not initialized"
-        )
+        raise HTTPException(status_code=503, detail="State recovery not initialized")
     return recovery
 
 
@@ -398,13 +394,9 @@ async def rollback_checkpoint(
     success = state.rollback_to_checkpoint(checkpoint_id)
     if not success:
         logger.info("Checkpoint not found: %s", checkpoint_id)
-        raise HTTPException(
-            status_code=404, detail="Checkpoint not found"
-        )
+        raise HTTPException(status_code=404, detail="Checkpoint not found")
     await persistence.save_state(state, trigger="rollback")
-    return api_response(
-        data=state.to_dict(), message=f"Rolled back to checkpoint '{checkpoint_id}'"
-    )
+    return api_response(data=state.to_dict(), message=f"Rolled back to checkpoint '{checkpoint_id}'")
 
 
 @router.post(
@@ -575,12 +567,8 @@ async def clone_agent(
     clone = await recovery.clone_agent_state(agent_id, target_id)
     if not clone:
         logger.info("Source agent not found: %s", agent_id)
-        raise HTTPException(
-            status_code=404, detail="Source agent not found"
-        )
-    return api_response(
-        data=clone.to_dict(), message=f"Cloned agent '{agent_id}' to '{target_id}'"
-    )
+        raise HTTPException(status_code=404, detail="Source agent not found")
+    return api_response(data=clone.to_dict(), message=f"Cloned agent '{agent_id}' to '{target_id}'")
 
 
 @router.post(

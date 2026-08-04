@@ -25,7 +25,6 @@ router = APIRouter(
 )
 
 
-
 # 内置插件包目录（源码内嵌，作为本地市场的真实条目来源）
 _MARKET_BUILTIN_DIR = Path(__file__).resolve().parents[2] / "plugins"
 
@@ -97,10 +96,9 @@ def list_marketplace_plugins(
     if query:
         q = query.lower()
         entries = [
-            e for e in entries
-            if q in e["id"].lower()
-            or q in e["name"].lower()
-            or q in e.get("description", "").lower()
+            e
+            for e in entries
+            if q in e["id"].lower() or q in e["name"].lower() or q in e.get("description", "").lower()
         ]
     if plugin_type:
         entries = [e for e in entries if e.get("plugin_type") == plugin_type]

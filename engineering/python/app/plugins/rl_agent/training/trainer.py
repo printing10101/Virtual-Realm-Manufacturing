@@ -44,7 +44,7 @@ from typing import Any, Callable, Optional
 import numpy as np
 
 from .replay_buffer import Experience, ReplayBuffer, ReplayBufferStats
-from .reward import RewardBreakdown, RewardConfig, RewardFunction
+from .reward import RewardConfig, RewardFunction
 
 try:
     import torch
@@ -135,19 +135,13 @@ class TrainingConfig:
         if self.hidden_dim < 1:
             raise ValueError(f"hidden_dim 必须 >= 1: {self.hidden_dim}")
         if self.learning_rate <= 0:
-            raise ValueError(
-                f"learning_rate 必须为正数: {self.learning_rate}"
-            )
+            raise ValueError(f"learning_rate 必须为正数: {self.learning_rate}")
         if not 0.0 < self.gamma <= 1.0:
             raise ValueError(f"gamma 必须在 (0, 1]: {self.gamma}")
         if not 0.0 < self.gae_lambda <= 1.0:
-            raise ValueError(
-                f"gae_lambda 必须在 (0, 1]: {self.gae_lambda}"
-            )
+            raise ValueError(f"gae_lambda 必须在 (0, 1]: {self.gae_lambda}")
         if self.clip_epsilon <= 0:
-            raise ValueError(
-                f"clip_epsilon 必须为正数: {self.clip_epsilon}"
-            )
+            raise ValueError(f"clip_epsilon 必须为正数: {self.clip_epsilon}")
         if self.batch_size < 1:
             raise ValueError(f"batch_size 必须 >= 1: {self.batch_size}")
         if self.n_epochs < 1:
@@ -156,14 +150,10 @@ class TrainingConfig:
             raise ValueError(f"max_steps 必须 >= 1: {self.max_steps}")
         if not 0.0 <= self.epsilon_end <= self.epsilon_start <= 1.0:
             raise ValueError(
-                f"epsilon 需满足 0 <= end <= start <= 1, "
-                f"start={self.epsilon_start}, end={self.epsilon_end}"
+                f"epsilon 需满足 0 <= end <= start <= 1, start={self.epsilon_start}, end={self.epsilon_end}"
             )
         if self.epsilon_decay_steps < 1:
-            raise ValueError(
-                f"epsilon_decay_steps 必须 >= 1: "
-                f"{self.epsilon_decay_steps}"
-            )
+            raise ValueError(f"epsilon_decay_steps 必须 >= 1: {self.epsilon_decay_steps}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -347,9 +337,7 @@ class OfflineEnvironment:
         """
         raise NotImplementedError
 
-    def step(
-        self, action: np.ndarray
-    ) -> tuple[np.ndarray, float, bool, dict[str, Any]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, dict[str, Any]]:
         """执行一步环境交互.
 
         Args:
@@ -507,9 +495,7 @@ class PPOTrainer:
     # episode 收集
     # ------------------------------------------------------------------
 
-    def collect_episode(
-        self, max_steps: int = 200
-    ) -> list[Experience]:
+    def collect_episode(self, max_steps: int = 200) -> list[Experience]:
         """收集单个 episode.
 
         Args:
@@ -556,12 +542,8 @@ class PPOTrainer:
 
             # 4. 更新指标
             self._metrics.episode += 1 if done else 0
-            self._metrics.mean_reward = (
-                0.99 * self._metrics.mean_reward + 0.01 * reward
-            )
-            self._metrics.mean_value = (
-                0.99 * self._metrics.mean_value + 0.01 * value
-            )
+            self._metrics.mean_reward = 0.99 * self._metrics.mean_reward + 0.01 * reward
+            self._metrics.mean_value = 0.99 * self._metrics.mean_value + 0.01 * value
 
             state = next_state
             if done:
@@ -569,9 +551,7 @@ class PPOTrainer:
 
         return experiences
 
-    def _select_action(
-        self, state: np.ndarray, epsilon: float
-    ) -> tuple[np.ndarray, float, float]:
+    def _select_action(self, state: np.ndarray, epsilon: float) -> tuple[np.ndarray, float, float]:
         """ε-greedy 选动作.
 
         Args:
@@ -585,9 +565,7 @@ class PPOTrainer:
         """
         # ε 概率随机探索
         if random.random() < epsilon:
-            action = np.random.uniform(
-                -1.0, 1.0, size=self._config.action_dim
-            ).astype(np.float32)
+            action = np.random.uniform(-1.0, 1.0, size=self._config.action_dim).astype(np.float32)
             log_prob = 0.0
         else:
             # 策略网络选动作
@@ -597,9 +575,7 @@ class PPOTrainer:
         value = self._value_forward(state)
         return action, float(log_prob), float(value)
 
-    def _policy_forward(
-        self, state: np.ndarray
-    ) -> tuple[np.ndarray, float]:
+    def _policy_forward(self, state: np.ndarray) -> tuple[np.ndarray, float]:
         """策略网络前向传播."""
         if HAS_TORCH and isinstance(self._policy_net, nn.Module):
             with torch.no_grad():
@@ -676,16 +652,10 @@ class PPOTrainer:
                 self._train_step()
 
                 # 3. 评估
-                if (
-                    self._metrics.step > 0
-                    and self._metrics.step % self._config.eval_interval == 0
-                ):
-                    self._metrics.elapsed_seconds = (
-                        time.perf_counter() - start_time
-                    )
+                if self._metrics.step > 0 and self._metrics.step % self._config.eval_interval == 0:
+                    self._metrics.elapsed_seconds = time.perf_counter() - start_time
                     logger.info(
-                        "训练评估: step=%d episode=%d reward=%.4f "
-                        "policy_loss=%.4f value_loss=%.4f",
+                        "训练评估: step=%d episode=%d reward=%.4f policy_loss=%.4f value_loss=%.4f",
                         self._metrics.step,
                         self._metrics.episode,
                         self._metrics.mean_reward,
@@ -702,24 +672,17 @@ class PPOTrainer:
                                 )
                                 break
                         except Exception as exc:
-                            logger.warning(
-                                "评估回调异常: %s", exc, exc_info=True
-                            )
+                            logger.warning("评估回调异常: %s", exc, exc_info=True)
 
                 # 4. snapshot
-                if (
-                    self._metrics.step > 0
-                    and self._metrics.step % self._config.snapshot_interval == 0
-                ):
+                if self._metrics.step > 0 and self._metrics.step % self._config.snapshot_interval == 0:
                     snapshot = self._create_snapshot()
                     snapshots.append(snapshot)
                     if snapshot_callback is not None:
                         try:
                             snapshot_callback(snapshot)
                         except Exception as exc:
-                            logger.warning(
-                                "snapshot 回调异常: %s", exc, exc_info=True
-                            )
+                            logger.warning("snapshot 回调异常: %s", exc, exc_info=True)
 
                 self._metrics.step += 1
 
@@ -755,9 +718,7 @@ class PPOTrainer:
             self._update_policy(batch, advantages)
             self._update_value(batch, returns)
 
-    def _compute_gae(
-        self, batch: dict[str, np.ndarray]
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def _compute_gae(self, batch: dict[str, np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
         """计算 GAE（Generalized Advantage Estimation）优势与回报.
 
         Args:
@@ -780,11 +741,7 @@ class PPOTrainer:
         advantages = np.zeros_like(rewards, dtype=np.float32)
         last_gae = 0.0
         for t in reversed(range(len(rewards))):
-            delta = (
-                rewards[t]
-                + cfg.gamma * next_values[t] * (1.0 - dones[t])
-                - values[t]
-            )
+            delta = rewards[t] + cfg.gamma * next_values[t] * (1.0 - dones[t]) - values[t]
             last_gae = delta + cfg.gamma * cfg.gae_lambda * (1.0 - dones[t]) * last_gae
             advantages[t] = last_gae
 
@@ -795,9 +752,7 @@ class PPOTrainer:
         advantages = (advantages - adv_mean) / adv_std
         return advantages, returns
 
-    def _update_policy(
-        self, batch: dict[str, np.ndarray], advantages: np.ndarray
-    ) -> None:
+    def _update_policy(self, batch: dict[str, np.ndarray], advantages: np.ndarray) -> None:
         """PPO clipped objective 更新策略网络."""
         if not (HAS_TORCH and isinstance(self._policy_net, nn.Module)):
             # NumPy 回退：无实际更新
@@ -823,19 +778,14 @@ class PPOTrainer:
 
         # 高斯策略 log_prob
         std = log_std.exp()
-        new_log_probs = -0.5 * (
-            ((actions - action_mean) / (std + 1e-8)) ** 2
-            + 2 * log_std
-            + np.log(2 * np.pi)
-        ).sum(dim=-1)
+        new_log_probs = -0.5 * (((actions - action_mean) / (std + 1e-8)) ** 2 + 2 * log_std + np.log(2 * np.pi)).sum(
+            dim=-1
+        )
 
         # PPO clipped objective
         ratio = (new_log_probs - old_log_probs).exp()
         surr1 = ratio * advantages_t
-        surr2 = (
-            torch.clamp(ratio, 1.0 - cfg.clip_epsilon, 1.0 + cfg.clip_epsilon)
-            * advantages_t
-        )
+        surr2 = torch.clamp(ratio, 1.0 - cfg.clip_epsilon, 1.0 + cfg.clip_epsilon) * advantages_t
         policy_loss = -torch.min(surr1, surr2).mean()
 
         # 策略熵（探索度指标）
@@ -845,15 +795,11 @@ class PPOTrainer:
         approx_kl = (old_log_probs - new_log_probs).mean().item()
 
         # clip 触发比例
-        clip_fraction = (
-            ((ratio - 1.0).abs() > cfg.clip_epsilon).float().mean().item()
-        )
+        clip_fraction = ((ratio - 1.0).abs() > cfg.clip_epsilon).float().mean().item()
 
         # 反向传播
         if not hasattr(self, "_policy_optimizer"):
-            self._policy_optimizer = torch.optim.Adam(
-                self._policy_net.parameters(), lr=cfg.learning_rate
-            )
+            self._policy_optimizer = torch.optim.Adam(self._policy_net.parameters(), lr=cfg.learning_rate)
         self._policy_optimizer.zero_grad()
         (policy_loss - 0.01 * entropy).backward()
         torch.nn.utils.clip_grad_norm_(self._policy_net.parameters(), 0.5)
@@ -864,9 +810,7 @@ class PPOTrainer:
         self._metrics.approx_kl = float(approx_kl)
         self._metrics.clip_fraction = float(clip_fraction)
 
-    def _update_value(
-        self, batch: dict[str, np.ndarray], returns: np.ndarray
-    ) -> None:
+    def _update_value(self, batch: dict[str, np.ndarray], returns: np.ndarray) -> None:
         """TD 误差更新价值网络."""
         if not (HAS_TORCH and isinstance(self._value_net, nn.Module)):
             self._metrics.value_loss = 0.0
@@ -880,9 +824,7 @@ class PPOTrainer:
         value_loss = F.mse_loss(predicted_values, returns_t)
 
         if not hasattr(self, "_value_optimizer"):
-            self._value_optimizer = torch.optim.Adam(
-                self._value_net.parameters(), lr=cfg.learning_rate
-            )
+            self._value_optimizer = torch.optim.Adam(self._value_net.parameters(), lr=cfg.learning_rate)
         self._value_optimizer.zero_grad()
         value_loss.backward()
         torch.nn.utils.clip_grad_norm_(self._value_net.parameters(), 0.5)

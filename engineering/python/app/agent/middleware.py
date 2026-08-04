@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from app.auth.permissions import PERMISSION_HIERARCHY, PermissionLevel
+from app.auth.permissions import PermissionLevel
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,7 @@ class AgentAuditLog:
         if log_path is None:
             # 使用项目根目录下的 logs/audit 目录
             from app.utils.utils import get_project_root
+
             log_path = get_project_root() / "logs" / "audit" / "agent_audit.log"
         self._log_path = Path(log_path)
         self._log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -127,8 +128,7 @@ class AgentAuditLog:
                 self._chain_seq = int(state.get("chain_seq", 0))
             except (OSError, IOError, json.JSONDecodeError, ValueError, TypeError) as e:
                 logger.warning(
-                    "Failed to load agent audit chain state from %s: %s, "
-                    "rebuilding from log file",
+                    "Failed to load agent audit chain state from %s: %s, rebuilding from log file",
                     self._chain_state_file,
                     e,
                     exc_info=True,
@@ -143,8 +143,7 @@ class AgentAuditLog:
             # 否则下次 log() 会用 stale 的 _last_hash 导致链断裂。
             if self._is_log_file_ahead_of_state():
                 logger.info(
-                    "Agent audit chain state file is behind log file "
-                    "(state_seq=%d), rebuilding from log",
+                    "Agent audit chain state file is behind log file (state_seq=%d), rebuilding from log",
                     self._chain_seq,
                 )
                 self._last_hash = "GENESIS"
@@ -304,15 +303,11 @@ class AgentAuditLog:
                         try:
                             data = json.loads(line)
                         except json.JSONDecodeError:
-                            breaks.append(
-                                f"{self._log_path}:{line_no}: invalid JSON (line skipped)"
-                            )
+                            breaks.append(f"{self._log_path}:{line_no}: invalid JSON (line skipped)")
                             continue
                         seq = data.get("chain_seq")
                         if seq is None:
-                            breaks.append(
-                                f"{self._log_path}:{line_no}: missing chain_seq field"
-                            )
+                            breaks.append(f"{self._log_path}:{line_no}: missing chain_seq field")
                             continue
                         entries.append((int(seq), line_no, data))
             except (OSError, IOError) as e:
@@ -325,10 +320,7 @@ class AgentAuditLog:
 
             for seq, line_no, data in entries:
                 if seq != expected_seq:
-                    breaks.append(
-                        f"{self._log_path}:{line_no}: chain_seq gap, "
-                        f"expected {expected_seq}, got {seq}"
-                    )
+                    breaks.append(f"{self._log_path}:{line_no}: chain_seq gap, expected {expected_seq}, got {seq}")
                 stored_prev = data.get("prev_hash")
                 if stored_prev != expected_prev:
                     breaks.append(
@@ -357,9 +349,7 @@ class AgentAuditLog:
                             f"recomputed {recomputed[:16]}"
                         )
                 except (KeyError, TypeError, ValueError) as e:
-                    breaks.append(
-                        f"{self._log_path}:{line_no}: failed to recompute hash: {e}"
-                    )
+                    breaks.append(f"{self._log_path}:{line_no}: failed to recompute hash: {e}")
                 if stored_hash:
                     expected_prev = stored_hash
                 expected_seq = seq + 1
@@ -442,10 +432,7 @@ class AgentAuditLog:
                         e = json.loads(line)
                         if agent_id and e.get("agent_id") != agent_id:
                             continue
-                        if (
-                            permission_class
-                            and e.get("permission_class") != permission_class
-                        ):
+                        if permission_class and e.get("permission_class") != permission_class:
                             continue
                         entries.append(e)
                     except json.JSONDecodeError as e:
@@ -495,9 +482,7 @@ class AgentRateLimiter:
         now = time.time()
         cutoff = now - 60
         with self._lock:
-            self._request_log[agent_id] = [
-                t for t in self._request_log[agent_id] if t > cutoff
-            ]
+            self._request_log[agent_id] = [t for t in self._request_log[agent_id] if t > cutoff]
             if len(self._request_log[agent_id]) >= self._max_rpm:
                 return False
             self._request_log[agent_id].append(now)
@@ -512,9 +497,7 @@ class AgentRateLimiter:
 
     def release_task(self, agent_id: str):
         with self._lock:
-            self._active_tasks[agent_id] = max(
-                0, self._active_tasks.get(agent_id, 0) - 1
-            )
+            self._active_tasks[agent_id] = max(0, self._active_tasks.get(agent_id, 0) - 1)
 
     def get_active_tasks(self, agent_id: str) -> int:
         with self._lock:

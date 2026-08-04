@@ -32,8 +32,7 @@ import csv
 import json
 import logging
 import os
-import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -140,9 +139,7 @@ def extract_streaming_metrics(
             is_keyframe[i] = bool(info.get("is_keyframe", False))
             energies[i] = float(info.get("frame_energy", 0.0) or 0.0)
             anchor_drifts[i] = float(info.get("anchor_drift", 0.0) or 0.0)
-            trajectory_deviations[i] = float(
-                info.get("trajectory_deviation", 0.0) or 0.0
-            )
+            trajectory_deviations[i] = float(info.get("trajectory_deviation", 0.0) or 0.0)
 
     return {
         "values": np.asarray(values, dtype=np.float64),
@@ -228,9 +225,7 @@ class StreamingReportRenderer:
                     exc_info=True,
                 )
         else:
-            logger.warning(
-                "StreamingReportRenderer: matplotlib 不可用，跳过 PNG 渲染。"
-            )
+            logger.warning("StreamingReportRenderer: matplotlib 不可用，跳过 PNG 渲染。")
 
         # CSV/JSON 转储（无外部依赖，始终执行）
         base = os.path.splitext(output_path)[0]
@@ -240,18 +235,14 @@ class StreamingReportRenderer:
                 self._dump_csv(metrics, csv_path, model_name)
                 outputs["csv_path"] = csv_path
             except (ValueError, TypeError, OSError) as exc:
-                logger.error(
-                    "StreamingReportRenderer: CSV 转储失败: %s", exc
-                )
+                logger.error("StreamingReportRenderer: CSV 转储失败: %s", exc)
         if dump_json:
             json_path = f"{base}.json"
             try:
                 self._dump_json(metrics, json_path, model_name)
                 outputs["json_path"] = json_path
             except (ValueError, TypeError, OSError) as exc:
-                logger.error(
-                    "StreamingReportRenderer: JSON 转储失败: %s", exc
-                )
+                logger.error("StreamingReportRenderer: JSON 转储失败: %s", exc)
 
         return outputs
 
@@ -266,9 +257,7 @@ class StreamingReportRenderer:
     ) -> Any:
         """构造 4 子图 matplotlib figure."""
         cfg = self._config
-        fig, axes = plt.subplots(
-            4, 1, figsize=cfg.figsize, sharex=True
-        )
+        fig, axes = plt.subplots(4, 1, figsize=cfg.figsize, sharex=True)
         fig.suptitle(
             cfg.title + (f" - {model_name}" if model_name else ""),
             fontsize=13,
@@ -285,9 +274,7 @@ class StreamingReportRenderer:
         # 子图 1: 预测值 + 置信带 + 关键帧标记
         ax1 = axes[0]
         # 置信带：用 1 - confidence 作为半宽
-        half_width = np.clip(1.0 - confidences, 0.0, 1.0) * (
-            np.nanstd(values) + 1e-6
-        )
+        half_width = np.clip(1.0 - confidences, 0.0, 1.0) * (np.nanstd(values) + 1e-6)
         ax1.fill_between(
             frame_ids,
             values - half_width,
@@ -352,9 +339,7 @@ class StreamingReportRenderer:
             linewidth=1.2,
             label="anchor drift",
         )
-        ax3.axhline(
-            0.0, color="gray", linestyle="--", linewidth=0.8, alpha=0.5
-        )
+        ax3.axhline(0.0, color="gray", linestyle="--", linewidth=0.8, alpha=0.5)
         ax3.set_ylabel("Anchor Drift")
         ax3.legend(loc="upper right", fontsize=8)
         ax3.grid(True, alpha=0.3)
@@ -368,9 +353,7 @@ class StreamingReportRenderer:
             linewidth=1.2,
             label="trajectory deviation",
         )
-        ax4.axhline(
-            0.0, color="gray", linestyle="--", linewidth=0.8, alpha=0.5
-        )
+        ax4.axhline(0.0, color="gray", linestyle="--", linewidth=0.8, alpha=0.5)
         ax4.set_ylabel("Trajectory Deviation")
         ax4.set_xlabel("Frame ID")
         ax4.legend(loc="upper right", fontsize=8)
@@ -406,9 +389,7 @@ class StreamingReportRenderer:
                 writer.writerow(
                     [
                         int(metrics["frame_ids"][i]),
-                        float(metrics["values"][i])
-                        if not np.isnan(metrics["values"][i])
-                        else "",
+                        float(metrics["values"][i]) if not np.isnan(metrics["values"][i]) else "",
                         float(metrics["confidences"][i]),
                         bool(metrics["is_keyframe"][i]),
                         float(metrics["energies"][i]),
@@ -434,35 +415,21 @@ class StreamingReportRenderer:
                 "mean_confidence": float(metrics["confidences"].mean()),
                 "mean_anchor_drift": float(metrics["anchor_drifts"].mean()),
                 "max_anchor_drift": float(metrics["anchor_drifts"].max()),
-                "mean_trajectory_deviation": float(
-                    metrics["trajectory_deviations"].mean()
-                ),
-                "max_trajectory_deviation": float(
-                    metrics["trajectory_deviations"].max()
-                ),
-                "mean_inference_time_ms": float(
-                    metrics["inference_times"].mean()
-                ),
-                "total_inference_time_ms": float(
-                    metrics["inference_times"].sum()
-                ),
+                "mean_trajectory_deviation": float(metrics["trajectory_deviations"].mean()),
+                "max_trajectory_deviation": float(metrics["trajectory_deviations"].max()),
+                "mean_inference_time_ms": float(metrics["inference_times"].mean()),
+                "total_inference_time_ms": float(metrics["inference_times"].sum()),
             },
             "frames": [
                 {
                     "frame_id": int(metrics["frame_ids"][i]),
-                    "value": float(metrics["values"][i])
-                    if not np.isnan(metrics["values"][i])
-                    else None,
+                    "value": float(metrics["values"][i]) if not np.isnan(metrics["values"][i]) else None,
                     "confidence": float(metrics["confidences"][i]),
                     "is_keyframe": bool(metrics["is_keyframe"][i]),
                     "frame_energy": float(metrics["energies"][i]),
                     "anchor_drift": float(metrics["anchor_drifts"][i]),
-                    "trajectory_deviation": float(
-                        metrics["trajectory_deviations"][i]
-                    ),
-                    "inference_time_ms": float(
-                        metrics["inference_times"][i]
-                    ),
+                    "trajectory_deviation": float(metrics["trajectory_deviations"][i]),
+                    "inference_time_ms": float(metrics["inference_times"][i]),
                 }
                 for i in range(len(metrics["frame_ids"]))
             ],

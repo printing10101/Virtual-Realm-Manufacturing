@@ -5,7 +5,6 @@ import json
 import logging
 import math
 import os
-import sqlite3
 import threading
 import time
 import uuid
@@ -246,10 +245,7 @@ class ABTestingFramework:
             control = exp.metrics.get("control", {})
             candidate = exp.metrics.get("candidate", {})
 
-            if (
-                control["count"] < self.MIN_SAMPLE_SIZE
-                or candidate["count"] < self.MIN_SAMPLE_SIZE
-            ):
+            if control["count"] < self.MIN_SAMPLE_SIZE or candidate["count"] < self.MIN_SAMPLE_SIZE:
                 return {
                     "status": "insufficient_data",
                     "control_count": control["count"],
@@ -273,9 +269,7 @@ class ABTestingFramework:
 
         control_mean = sum(control_times) / len(control_times)
         candidate_mean = sum(candidate_times) / len(candidate_times)
-        improvement = (
-            (control_mean - candidate_mean) / control_mean if control_mean > 0 else 0
-        )
+        improvement = (control_mean - candidate_mean) / control_mean if control_mean > 0 else 0
 
         control_success = control.get("success_count", 0)
         candidate_success = candidate.get("success_count", 0)
@@ -284,10 +278,7 @@ class ABTestingFramework:
 
         confidence = self._compute_confidence(control_times, candidate_times)
 
-        if (
-            improvement > self.IMPROVEMENT_THRESHOLD
-            and confidence > self.CONFIDENCE_THRESHOLD
-        ):
+        if improvement > self.IMPROVEMENT_THRESHOLD and confidence > self.CONFIDENCE_THRESHOLD:
             verdict = "winner_candidate"
         elif improvement < 0:
             verdict = "winner_control"
@@ -305,9 +296,7 @@ class ABTestingFramework:
             "candidate_success_rate": round(candidate_rate, 4),
         }
 
-    def _compute_confidence(
-        self, control: List[float], candidate: List[float]
-    ) -> float:
+    def _compute_confidence(self, control: List[float], candidate: List[float]) -> float:
         if len(control) < 2 or len(candidate) < 2:
             return 0.0
 
@@ -405,9 +394,7 @@ class ABTestingFramework:
                 return None
             return exp.to_dict()
 
-    def list_experiments(
-        self, status_filter: Optional[str] = None
-    ) -> List[ABExperiment]:
+    def list_experiments(self, status_filter: Optional[str] = None) -> List[ABExperiment]:
         with self._lock:
             exps = list(self._experiments.values())
             if status_filter:

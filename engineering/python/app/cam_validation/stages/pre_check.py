@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from app.cam_validation.cam_disclaimer import (
     CamDisclaimer,
@@ -33,16 +33,14 @@ from app.cam_validation.cam_store import (
     CamValidationPipelineError,
     CamValidationTask,
     CamValidationTaskStatus,
-    ReviewError,
     generate_task_id,
-    get_task_store,
     is_valid_cam_backend,
 )
 
 from ._common import CamValidationResult, logger
 
 if TYPE_CHECKING:
-    from app.config import CamValidationConfig
+    pass
 
 
 class PreCheckMixin:
@@ -95,13 +93,10 @@ class PreCheckMixin:
                 workspace 创建失败
         """
         if not source_gcode_report_path:
-            raise CamValidationPipelineError(
-                "source_gcode_report_path 不能为空"
-            )
+            raise CamValidationPipelineError("source_gcode_report_path 不能为空")
         if not is_valid_cam_backend(cam_backend):
             raise CamValidationPipelineError(
-                f"非法 CAM 后端：{cam_backend}，"
-                f"合法值：internal_only / pycam / nx_open / powermill / manual"
+                f"非法 CAM 后端：{cam_backend}，合法值：internal_only / pycam / nx_open / powermill / manual"
             )
 
         # 确定实际使用的 cam_backend（来自 config.default_cam_backend 或入参）
@@ -110,9 +105,7 @@ class PreCheckMixin:
         if self._cfg is not None:
             # 允许 config 覆盖默认（仅当入参为默认 internal_only 时）
             if cam_backend == "internal_only":
-                requested_backend = getattr(
-                    self._cfg, "default_cam_backend", cam_backend
-                )
+                requested_backend = getattr(self._cfg, "default_cam_backend", cam_backend)
 
         task_id = generate_task_id()
         output_dir = self._resolve_output_dir()
@@ -120,9 +113,7 @@ class PreCheckMixin:
         try:
             workspace_dir.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            raise CamValidationPipelineError(
-                f"创建 workspace 失败: {e}"
-            ) from e
+            raise CamValidationPipelineError(f"创建 workspace 失败: {e}") from e
 
         task = CamValidationTask(
             task_id=task_id,
@@ -141,10 +132,12 @@ class PreCheckMixin:
         )
         self._store.add_task(task)
         logger.info(
-            "创建 CAM 校验任务 task_id=%s controller=%s material=%s "
-            "gcode_report=%s cam_backend=%s",
-            task_id, controller_type, material_name,
-            source_gcode_report_path, requested_backend,
+            "创建 CAM 校验任务 task_id=%s controller=%s material=%s gcode_report=%s cam_backend=%s",
+            task_id,
+            controller_type,
+            material_name,
+            source_gcode_report_path,
+            requested_backend,
         )
         return task
 
@@ -198,9 +191,7 @@ class PreCheckMixin:
         error_message: str | None = None,
     ) -> CamValidationResult:
         """构造任务结果摘要（含 disclaimer）。"""
-        disclaimer = self._build_disclaimer(
-            task, cam_report_exported=bool(task.cam_report_path)
-        )
+        disclaimer = self._build_disclaimer(task, cam_report_exported=bool(task.cam_report_path))
         return CamValidationResult(
             task_id=task.task_id,
             status=task.status,
@@ -236,18 +227,12 @@ class PreCheckMixin:
             - warning_message 永远非空
         """
         # HRC52 材料校准状态（继承阶段 5/6）
-        material_calibration_status = (
-            "pending_calibration" if task.pending_calibration else "calibrated"
-        )
+        material_calibration_status = "pending_calibration" if task.pending_calibration else "calibrated"
         # LTC 实验性路径：prediction_method 包含 neural_network 时为 True
-        ltc_experiment_used = (
-            task.prediction_method in ("neural_network", "mixed")
-        )
+        ltc_experiment_used = task.prediction_method in ("neural_network", "mixed")
         # 精度档位（继承上游，本模块不引入新档位）
         precision_tier = (
-            getattr(self._cfg, "precision_tier", "mesh_calibrated")
-            if self._cfg is not None
-            else "mesh_calibrated"
+            getattr(self._cfg, "precision_tier", "mesh_calibrated") if self._cfg is not None else "mesh_calibrated"
         )
 
         return build_cam_disclaimer(

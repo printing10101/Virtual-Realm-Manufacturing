@@ -58,9 +58,7 @@ class MachineEntry:
         for field_name, (low, high) in self._PHYSICAL_CONSTRAINTS.items():
             value = getattr(self, field_name)
             if value < low or value > high:
-                raise ValueError(
-                    f"MachineEntry.{field_name}={value}超出物理约束范围[{low}, {high}]"
-                )
+                raise ValueError(f"MachineEntry.{field_name}={value}超出物理约束范围[{low}, {high}]")
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MachineEntry:
@@ -124,7 +122,10 @@ class MachineEntry:
         self, spindle_speed: float, feed_rate: float, depth_of_cut: float
     ) -> tuple[bool, str]:
         if spindle_speed < self.spindle_speed_rpm_range[0] or spindle_speed > self.spindle_speed_rpm_range[1]:
-            return False, f"主轴转速{spindle_speed}RPM超出[{self.spindle_speed_rpm_range[0]}, {self.spindle_speed_rpm_range[1]}]"
+            return (
+                False,
+                f"主轴转速{spindle_speed}RPM超出[{self.spindle_speed_rpm_range[0]}, {self.spindle_speed_rpm_range[1]}]",
+            )
         if feed_rate < 0 or feed_rate > self.feed_cutting_max_mmmin:
             return False, f"进给率{feed_rate}mm/min超出最大值{self.feed_cutting_max_mmmin}"
         return True, "OK"
@@ -136,9 +137,8 @@ class MachineDatabase:
             data_dir = Path(__file__).resolve().parent / "data"
             data_path = str(data_dir / "machines.json")
         from app.database.repository import JsonRepository
-        self._repo: JsonRepository[MachineEntry] = JsonRepository(
-            data_path, MachineEntry.from_dict, lambda m: m.id
-        )
+
+        self._repo: JsonRepository[MachineEntry] = JsonRepository(data_path, MachineEntry.from_dict, lambda m: m.id)
 
     def get(self, machine_id: str) -> MachineEntry:
         return self._repo.get(machine_id)

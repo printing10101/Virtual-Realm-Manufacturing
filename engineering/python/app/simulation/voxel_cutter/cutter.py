@@ -25,13 +25,14 @@ import sys
 
 try:
     import numba
+
     HAS_NUMBA = True
 except ImportError:
     HAS_NUMBA = False
 
 # PyInstaller onefile 打包后源文件路径不存在于文件系统，numba 的 cache=True
 # 会报 "no locator available for file ..."。仅在非冻结环境下启用缓存。
-_NUMBA_CACHE = not (getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'))
+_NUMBA_CACHE = not (getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"))
 
 logger = logging.getLogger(__name__)
 
@@ -212,9 +213,7 @@ if HAS_NUMBA:
             y = points[i, 1]
             z = points[i, 2]
 
-            tip_idx = np.round(
-                np.array([x, y, z]) - bbox_min + padding
-            ) / voxel_size
+            tip_idx = np.round(np.array([x, y, z]) - bbox_min + padding) / voxel_size
             tip_idx = tip_idx.astype(np.int32)
 
             tx, ty, tz = tip_idx[0], tip_idx[1], tip_idx[2]
@@ -265,8 +264,15 @@ else:
         for i in range(points.shape[0]):
             x, y, z = points[i, 0], points[i, 1], points[i, 2]
             total_removed += _apply_tool_mask_single(
-                voxel_grid, tool_mask, mask_center,
-                x, y, z, bbox_min, voxel_size, padding,
+                voxel_grid,
+                tool_mask,
+                mask_center,
+                x,
+                y,
+                z,
+                bbox_min,
+                voxel_size,
+                padding,
             )
         return total_removed
 
@@ -286,9 +292,7 @@ def _apply_tool_mask_single(
     grid_shape = np.array(voxel_grid.shape)
     tool_shape = np.array(tool_mask.shape)
 
-    tip_idx = np.round(
-        (np.array([x, y, z]) - bbox_min + padding) / voxel_size
-    ).astype(int)
+    tip_idx = np.round((np.array([x, y, z]) - bbox_min + padding) / voxel_size).astype(int)
 
     half_mask = tool_shape // 2
     gx_min = max(0, tip_idx[0] - half_mask[0])
@@ -407,9 +411,7 @@ def _check_rapid_collisions(
             if z > bbox_min[2] + safe_z_height:
                 continue
 
-            idx = np.round(
-                (np.array([x, y, z]) - bbox_min + padding) / voxel_size
-            ).astype(int)
+            idx = np.round((np.array([x, y, z]) - bbox_min + padding) / voxel_size).astype(int)
 
             if (
                 0 <= idx[0] < voxel_grid.shape[0]
@@ -516,13 +518,9 @@ class VoxelCutter:
                 )
 
                 if suffix in (".step", ".stp"):
-                    gen_result = _generate_stl_from_step(
-                        source_path, stl_path, output_dir
-                    )
+                    gen_result = _generate_stl_from_step(source_path, stl_path, output_dir)
                 elif suffix == ".dxf":
-                    gen_result = _generate_stl_from_dxf(
-                        source_path, stl_path, output_dir
-                    )
+                    gen_result = _generate_stl_from_dxf(source_path, stl_path, output_dir)
                 else:
                     gen_result = {
                         "success": False,
@@ -611,23 +609,17 @@ class VoxelCutter:
         try:
             import trimesh
         except ImportError:
-            return self._generate_fallback_result(
-                task_id, output_dir, segments, start_time, "trimesh未安装"
-            )
+            return self._generate_fallback_result(task_id, output_dir, segments, start_time, "trimesh未安装")
 
         try:
             stock_mesh = trimesh.load(str(stock_stl_path), file_type="stl")
             if not isinstance(stock_mesh, trimesh.Trimesh):
                 stock_mesh = stock_mesh if hasattr(stock_mesh, "geometry") else None
                 if stock_mesh is None or not isinstance(stock_mesh, trimesh.Trimesh):
-                    return self._generate_fallback_result(
-                        task_id, output_dir, segments, start_time, "STL解析失败"
-                    )
+                    return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL解析失败")
         except (OSError, ValueError, TypeError, RuntimeError) as load_err:
             logger.warning("STL文件加载失败: %s", load_err, exc_info=True)
-            return self._generate_fallback_result(
-                task_id, output_dir, segments, start_time, "STL文件加载失败"
-            )
+            return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL文件加载失败")
 
         bbox_min, bbox_max = (
             stock_mesh.bounds[0].copy(),
@@ -679,20 +671,14 @@ class VoxelCutter:
             )
 
         if collision_info.collided:
-            severity = (
-                "critical" if len(collision_info.collision_positions) > 3 else "warning"
-            )
+            severity = "critical" if len(collision_info.collision_positions) > 3 else "warning"
             collision_info.collision_severity = severity
 
-        rapid_check = _check_rapid_collisions(
-            segments, voxel_grid, bbox_min, safe_z_height, self._voxel_size
-        )
+        rapid_check = _check_rapid_collisions(segments, voxel_grid, bbox_min, safe_z_height, self._voxel_size)
         if rapid_check.collided:
             collision_info.collided = True
             collision_info.collision_positions.extend(rapid_check.collision_positions)
-            collision_info.collision_segment_indices.extend(
-                rapid_check.collision_segment_indices
-            )
+            collision_info.collision_segment_indices.extend(rapid_check.collision_segment_indices)
             if rapid_check.collision_severity == "critical":
                 collision_info.collision_severity = "critical"
             elif collision_info.collision_severity == "none":

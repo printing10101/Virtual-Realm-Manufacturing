@@ -20,6 +20,7 @@
     resource_card:read   —— 查询卡片 / lineage 摘要 / 指标
     resource_card:write  —— 更新 README / 注册/更新/删除模型 / 追加指标
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,7 +36,14 @@ from app.contracts.resource_card import (
     ModelArtifactType,
 )
 from app.dependencies import get_resource_card_service
-from app.services.resource_card_service import DatasetReadmeNotFoundError, InvalidModelStatusTransitionError, LineageSummaryError, ModelArtifactAlreadyExistsError, ModelArtifactNotFoundError, ResourceCardError
+from app.services.resource_card_service import (
+    DatasetReadmeNotFoundError,
+    InvalidModelStatusTransitionError,
+    LineageSummaryError,
+    ModelArtifactAlreadyExistsError,
+    ModelArtifactNotFoundError,
+    ResourceCardError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +63,8 @@ router = APIRouter(
 class UpsertDatasetReadmeRequest(BaseModel):
     """更新数据集 README 请求体（upsert 语义）."""
 
-    readme_md: str = Field(
-        ..., min_length=1, max_length=200000, description="markdown README 内容"
-    )
-    updated_by: str = Field(
-        ..., min_length=1, max_length=128, description="最后更新者（user_id 或 plugin_id）"
-    )
+    readme_md: str = Field(..., min_length=1, max_length=200000, description="markdown README 内容")
+    updated_by: str = Field(..., min_length=1, max_length=128, description="最后更新者（user_id 或 plugin_id）")
     version: Optional[str] = Field(
         None,
         description="版本号（如 1.0.0），不传则更新数据集级 README",
@@ -81,21 +85,13 @@ class RegisterModelRequest(BaseModel):
         ...,
         description=f"模型类型（{ModelArtifactType.all()}）",
     )
-    version: str = Field(
-        ..., min_length=1, max_length=32, description="semver 版本号（如 1.0.0）"
-    )
-    framework: str = Field(
-        ..., min_length=1, max_length=64, description="框架版本（如 torch-2.1.0）"
-    )
-    storage_uri: str = Field(
-        ..., min_length=1, max_length=512, description="模型文件存储位置"
-    )
+    version: str = Field(..., min_length=1, max_length=32, description="semver 版本号（如 1.0.0）")
+    framework: str = Field(..., min_length=1, max_length=64, description="框架版本（如 torch-2.1.0）")
+    storage_uri: str = Field(..., min_length=1, max_length=512, description="模型文件存储位置")
     owner_id: str = Field(..., min_length=1, max_length=128, description="所有者 ID")
     readme_md: str = Field(default="", max_length=200000, description="markdown README")
     tags: list[str] = Field(default_factory=list, description="标签数组")
-    metrics: dict[str, Any] = Field(
-        default_factory=dict, description="初始指标快照（如 accuracy/loss）"
-    )
+    metrics: dict[str, Any] = Field(default_factory=dict, description="初始指标快照（如 accuracy/loss）")
     status: str = Field(
         default=ModelArtifactStatus.DRAFT,
         description=f"初始状态（{ModelArtifactStatus.all()}，默认 draft）",
@@ -105,9 +101,7 @@ class RegisterModelRequest(BaseModel):
 class UpdateModelRequest(BaseModel):
     """更新模型卡片请求体（部分更新，仅非 None 字段被写入）."""
 
-    readme_md: Optional[str] = Field(
-        None, min_length=1, max_length=200000, description="markdown README"
-    )
+    readme_md: Optional[str] = Field(None, min_length=1, max_length=200000, description="markdown README")
     tags: Optional[list[str]] = Field(None, description="标签数组")
     status: Optional[str] = Field(
         None,
@@ -116,20 +110,14 @@ class UpdateModelRequest(BaseModel):
     metrics: Optional[dict[str, Any]] = Field(
         None, description="覆盖当前指标快照（不会追加到 history，请用 POST /metrics 追加）"
     )
-    framework: Optional[str] = Field(
-        None, min_length=1, max_length=64, description="框架版本"
-    )
-    storage_uri: Optional[str] = Field(
-        None, min_length=1, max_length=512, description="模型文件存储位置"
-    )
+    framework: Optional[str] = Field(None, min_length=1, max_length=64, description="框架版本")
+    storage_uri: Optional[str] = Field(None, min_length=1, max_length=512, description="模型文件存储位置")
 
 
 class AppendModelMetricsRequest(BaseModel):
     """追加模型指标记录请求体."""
 
-    metrics: dict[str, Any] = Field(
-        ..., description="指标字典（如 {'accuracy': 0.95, 'loss': 0.05}）"
-    )
+    metrics: dict[str, Any] = Field(..., description="指标字典（如 {'accuracy': 0.95, 'loss': 0.05}）")
     timestamp: Optional[str] = Field(
         None,
         description="自定义时间戳（ISO8601），不传则使用服务器当前时间",
@@ -194,9 +182,7 @@ def _handle_service_exception(e: Exception, *, action: str):
 async def get_dataset_card(
     dataset_id: str,
     include_lineage: bool = Query(True, description="是否包含 lineage 摘要"),
-    lineage_depth: int = Query(
-        3, ge=1, le=10, description="lineage 摘要深度（1-10，默认 3）"
-    ),
+    lineage_depth: int = Query(3, ge=1, le=10, description="lineage 摘要深度（1-10，默认 3）"),
 ):
     """获取数据集卡片（聚合元数据 + 最新版本指标 + README + lineage 摘要）.
 
@@ -250,10 +236,7 @@ async def upsert_dataset_readme(
 
     return success(
         data=readme.to_dict(),
-        message=(
-            f"数据集 README 已更新（dataset={dataset_id}, "
-            f"version={request.version or '<dataset_level>'}）"
-        ),
+        message=(f"数据集 README 已更新（dataset={dataset_id}, version={request.version or '<dataset_level>'}）"),
     )
 
 
@@ -265,9 +248,7 @@ async def get_dataset_lineage(
         description="版本号（如 1.0.0），不传则使用最新 published 版本",
     ),
     depth: int = Query(3, ge=1, le=10, description="lineage 深度（1-10，默认 3）"),
-    max_nodes_per_layer: int = Query(
-        10, ge=1, le=100, description="每层保留的最大节点数（1-100，默认 10）"
-    ),
+    max_nodes_per_layer: int = Query(10, ge=1, le=100, description="每层保留的最大节点数（1-100，默认 10）"),
 ):
     """获取数据集的 lineage 摘要（按层分组 + 关键路径）.
 
@@ -437,14 +418,12 @@ async def register_model(request: RegisterModelRequest):
     if not ModelArtifactType.is_valid(request.model_type):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"model_type 不支持: {request.model_type}"
-            f"（支持: {ModelArtifactType.all()}）",
+            message=f"model_type 不支持: {request.model_type}（支持: {ModelArtifactType.all()}）",
         )
     if not ModelArtifactStatus.is_valid(request.status):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"status 不支持: {request.status}"
-            f"（支持: {ModelArtifactStatus.all()}）",
+            message=f"status 不支持: {request.status}（支持: {ModelArtifactStatus.all()}）",
         )
 
     service = get_resource_card_service()
@@ -475,9 +454,7 @@ async def register_model(request: RegisterModelRequest):
 async def get_model_card(
     model_id: str,
     include_lineage: bool = Query(True, description="是否包含 lineage 摘要"),
-    lineage_depth: int = Query(
-        3, ge=1, le=10, description="lineage 摘要深度（1-10，默认 3）"
-    ),
+    lineage_depth: int = Query(3, ge=1, le=10, description="lineage 摘要深度（1-10，默认 3）"),
 ):
     """获取模型卡片详情（聚合 ModelArtifact + Snapshot 数 + lineage 摘要）.
 
@@ -522,8 +499,7 @@ async def update_model(
     if request.status is not None and not ModelArtifactStatus.is_valid(request.status):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"status 不支持: {request.status}"
-            f"（支持: {ModelArtifactStatus.all()}）",
+            message=f"status 不支持: {request.status}（支持: {ModelArtifactStatus.all()}）",
         )
 
     service = get_resource_card_service()
@@ -573,9 +549,7 @@ async def delete_model(model_id: str):
 async def get_model_lineage(
     model_id: str,
     depth: int = Query(3, ge=1, le=10, description="lineage 深度（1-10，默认 3）"),
-    max_nodes_per_layer: int = Query(
-        10, ge=1, le=100, description="每层保留的最大节点数（1-100，默认 10）"
-    ),
+    max_nodes_per_layer: int = Query(10, ge=1, le=100, description="每层保留的最大节点数（1-100，默认 10）"),
 ):
     """获取模型的 lineage 摘要（按层分组 + 关键路径）.
 

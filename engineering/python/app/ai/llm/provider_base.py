@@ -93,9 +93,7 @@ class ProviderConfig:
     enabled: bool = True  # 是否启用
     is_active: bool = False  # 是否为当前激活 Provider
     priority: int = 0  # 路由优先级（数字越大优先级越高）
-    capabilities: list[ProviderCapability] = field(
-        default_factory=lambda: [ProviderCapability.CHAT]
-    )
+    capabilities: list[ProviderCapability] = field(default_factory=lambda: [ProviderCapability.CHAT])
     extra: dict[str, Any] = field(default_factory=dict)  # 扩展配置
 
     def to_dict(self) -> dict[str, Any]:
@@ -223,16 +221,12 @@ class LLMProvider:
     # 共享工具方法
     # ------------------------------------------------------------------
 
-    async def _http_get(
-        self, url: str, headers: dict[str, str] | None = None
-    ) -> httpx.Response:
+    async def _http_get(self, url: str, headers: dict[str, str] | None = None) -> httpx.Response:
         """发起 GET 请求（复用共享连接池）。"""
         from app.ai.llm_client import get_shared_http_client
 
         client = await get_shared_http_client()
-        return await client.get(
-            url, headers=headers, timeout=self.config.timeout
-        )
+        return await client.get(url, headers=headers, timeout=self.config.timeout)
 
     async def _http_post(
         self,

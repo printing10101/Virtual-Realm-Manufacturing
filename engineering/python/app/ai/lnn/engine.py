@@ -156,9 +156,7 @@ class HybridInferenceEngine:
         if not model_name:
             raise ValueError("model_name must be a non-empty string")
         self._lnn_predictors[model_name] = predictor
-        logger.info(
-            "HybridInferenceEngine: 注册 LNN 预测器 %r", model_name
-        )
+        logger.info("HybridInferenceEngine: 注册 LNN 预测器 %r", model_name)
 
     def register_streaming_predictor(
         self,
@@ -185,8 +183,7 @@ class HybridInferenceEngine:
             raise ValueError("model_name must be a non-empty string")
         if not _HAS_STREAMING:
             raise ValueError(
-                "StreamingPredictor 模块不可用，无法注册流式预测器。"
-                "请确认 app.ai.lnn.inference.streaming 可正常导入。"
+                "StreamingPredictor 模块不可用，无法注册流式预测器。请确认 app.ai.lnn.inference.streaming 可正常导入。"
             )
         self._streaming_predictors[model_name] = streaming_predictor
         # 将流式预测器内部封装的 LNNPredictor 同步注册到普通路径，
@@ -225,15 +222,10 @@ class HybridInferenceEngine:
             当 ``model_name`` 未注册或流式模块不可用时抛出。
         """
         if not _HAS_STREAMING:
-            raise ValueError(
-                "StreamingPredictor 模块不可用，无法构造流式预测器。"
-            )
+            raise ValueError("StreamingPredictor 模块不可用，无法构造流式预测器。")
         base = self._lnn_predictors.get(model_name)
         if base is None:
-            raise ValueError(
-                f"LNN 预测器 {model_name!r} 未注册，"
-                "请先调用 register_lnn_predictor。"
-            )
+            raise ValueError(f"LNN 预测器 {model_name!r} 未注册，请先调用 register_lnn_predictor。")
         streaming_predictor = StreamingPredictor(
             predictor=base,
             config=config,
@@ -396,8 +388,7 @@ class HybridInferenceEngine:
         for frame in data_stream:
             try:
                 pr = streaming_predictor.predict_frame(frame)
-            except (ValueError, TypeError, RuntimeError, OSError,
-                    AttributeError, KeyError) as exc:
+            except (ValueError, TypeError, RuntimeError, OSError, AttributeError, KeyError) as exc:
                 logger.error(
                     "HybridInferenceEngine: 流式推理 frame 失败 (%s): %s",
                     model_name,
@@ -461,8 +452,7 @@ class HybridInferenceEngine:
                 window_size=window_size,
                 overlap_keyframes=overlap_keyframes,
             )
-        except (ValueError, TypeError, RuntimeError, OSError,
-                AttributeError, KeyError) as exc:
+        except (ValueError, TypeError, RuntimeError, OSError, AttributeError, KeyError) as exc:
             logger.error(
                 "HybridInferenceEngine: 窗口化推理失败 (%s): %s",
                 model_name,
@@ -491,9 +481,7 @@ class HybridInferenceEngine:
         self._engine_stats["streaming_windows_processed"] += 1
         self._engine_stats["streaming_frames_processed"] += len(pr_list)
         self._engine_stats["successful_inferences"] += len(pr_list)
-        return [
-            self._streaming_result_to_inference(pr, model_name) for pr in pr_list
-        ]
+        return [self._streaming_result_to_inference(pr, model_name) for pr in pr_list]
 
     def reset_streaming(self, model_name: str) -> None:
         """重置指定流式预测器的状态（新工序/新工件开始时调用）.
@@ -521,9 +509,7 @@ class HybridInferenceEngine:
     def _require_streaming_predictor(self, model_name: str) -> Any:
         """获取流式预测器实例，不存在时抛出 ValueError。"""
         if not _HAS_STREAMING:
-            raise ValueError(
-                "StreamingPredictor 模块不可用，流式推理功能未启用。"
-            )
+            raise ValueError("StreamingPredictor 模块不可用，流式推理功能未启用。")
         sp = self._streaming_predictors.get(model_name)
         if sp is None:
             available = list(self._streaming_predictors.keys())
@@ -565,9 +551,7 @@ class HybridInferenceEngine:
                 "epistemic": max(0.0, 1.0 - confidence),
                 "source": "streaming_predictor",
                 "anchor_drift": model_info.get("anchor_drift", 0.0),
-                "trajectory_deviation": model_info.get(
-                    "trajectory_deviation", 0.0
-                ),
+                "trajectory_deviation": model_info.get("trajectory_deviation", 0.0),
             },
         )
 
@@ -586,17 +570,13 @@ class HybridInferenceEngine:
         start_ts = time.perf_counter()
         try:
             if engine == EngineType.LNN:
-                prediction, confidence, uncertainty, meta = self._invoke_lnn(
-                    model_name, task
-                )
+                prediction, confidence, uncertainty, meta = self._invoke_lnn(model_name, task)
             elif engine == EngineType.RULE:
                 prediction, confidence, uncertainty, meta = self._invoke_rule(task)
             elif engine == EngineType.LLM:
                 prediction, confidence, uncertainty, meta = self._invoke_llm(task)
             elif engine == EngineType.HYBRID:
-                prediction, confidence, uncertainty, meta = self._invoke_hybrid(
-                    model_name, task
-                )
+                prediction, confidence, uncertainty, meta = self._invoke_hybrid(model_name, task)
             else:
                 logger.warning("HybridInferenceEngine: 未知引擎类型 %s", engine)
                 return None
@@ -629,9 +609,7 @@ class HybridInferenceEngine:
             uncertainty=uncertainty,
         )
 
-    def _invoke_lnn(
-        self, model_name: Optional[str], task: TaskInput
-    ) -> tuple:
+    def _invoke_lnn(self, model_name: Optional[str], task: TaskInput) -> tuple:
         """调用 LNN 预测器；若未注册则回退到规则引擎。"""
         predictor = self._lnn_predictors.get(model_name or "")
         if predictor is None:
@@ -672,9 +650,7 @@ class HybridInferenceEngine:
         }
         return value, confidence, uncertainty, meta
 
-    def _invoke_rule(
-        self, task: TaskInput, source: str = "rule_engine"
-    ) -> tuple:
+    def _invoke_rule(self, task: TaskInput, source: str = "rule_engine") -> tuple:
         """规则引擎：基于输入数据的统计特征给出确定性回退预测。
 
         当无任何模型可用时使用，确保引擎始终返回非 None 预测，
@@ -683,11 +659,7 @@ class HybridInferenceEngine:
         data = task.input_data
         try:
             if isinstance(data, dict):
-                numeric_vals = [
-                    float(v)
-                    for v in data.values()
-                    if isinstance(v, (int, float))
-                ]
+                numeric_vals = [float(v) for v in data.values() if isinstance(v, (int, float))]
                 prediction = float(np.mean(numeric_vals)) if numeric_vals else 0.0
                 std = float(np.std(numeric_vals)) if len(numeric_vals) > 1 else 0.0
             elif isinstance(data, (list, tuple)):
@@ -698,9 +670,7 @@ class HybridInferenceEngine:
                 prediction = 0.0
                 std = 0.0
         except (ValueError, TypeError, RuntimeError) as exc:
-            logger.warning(
-                "HybridInferenceEngine: 规则引擎特征提取失败: %s", exc
-            )
+            logger.warning("HybridInferenceEngine: 规则引擎特征提取失败: %s", exc)
             prediction = 0.0
             std = 1.0
 
@@ -732,9 +702,7 @@ class HybridInferenceEngine:
             else:
                 return self._invoke_rule(task, source="llm_no_callable")
         except (ValueError, TypeError, RuntimeError, OSError, AttributeError, KeyError) as exc:
-            logger.warning(
-                "HybridInferenceEngine: LLM 调用失败，回退到规则: %s", exc
-            )
+            logger.warning("HybridInferenceEngine: LLM 调用失败，回退到规则: %s", exc)
             return self._invoke_rule(task, source="llm_error_fallback")
 
         content = output.get("content") if isinstance(output, dict) else output
@@ -746,17 +714,13 @@ class HybridInferenceEngine:
         uncertainty = {"epistemic": 0.4, "source": "llm_default"}
         return content, confidence, uncertainty, meta
 
-    def _invoke_hybrid(
-        self, model_name: Optional[str], task: TaskInput
-    ) -> tuple:
+    def _invoke_hybrid(self, model_name: Optional[str], task: TaskInput) -> tuple:
         """混合引擎：先 LNN 再规则融合，给出更稳健的预测。"""
         lnn_value, lnn_conf, lnn_unc, lnn_meta = self._invoke_lnn(model_name, task)
         if lnn_meta.get("fallback"):
             return lnn_value, lnn_conf, lnn_unc, lnn_meta
 
-        rule_value, rule_conf, rule_unc, rule_meta = self._invoke_rule(
-            task, source="hybrid_rule_branch"
-        )
+        rule_value, rule_conf, rule_unc, rule_meta = self._invoke_rule(task, source="hybrid_rule_branch")
 
         try:
             lnn_f = float(lnn_value) if lnn_value is not None else 0.0
@@ -765,10 +729,9 @@ class HybridInferenceEngine:
             w_rule = rule_conf / (lnn_conf + rule_conf + 1e-6)
             prediction = w_lnn * lnn_f + w_rule * rule_f
             uncertainty = {
-                "epistemic": float(np.sqrt(
-                    w_lnn * lnn_unc.get("epistemic", 0.0) ** 2
-                    + w_rule * rule_unc.get("epistemic", 0.0) ** 2
-                )),
+                "epistemic": float(
+                    np.sqrt(w_lnn * lnn_unc.get("epistemic", 0.0) ** 2 + w_rule * rule_unc.get("epistemic", 0.0) ** 2)
+                ),
                 "source": "hybrid_weighted",
             }
             confidence = float(w_lnn * lnn_conf + w_rule * rule_conf)
@@ -779,12 +742,8 @@ class HybridInferenceEngine:
                 "weights": {"lnn": w_lnn, "rule": w_rule},
             }
         except (ValueError, TypeError) as exc:
-            logger.warning(
-                "HybridInferenceEngine: 混合融合失败，使用 LNN 单分支: %s", exc
-            )
-            prediction, confidence, uncertainty, meta = (
-                lnn_value, lnn_conf, lnn_unc, lnn_meta
-            )
+            logger.warning("HybridInferenceEngine: 混合融合失败，使用 LNN 单分支: %s", exc)
+            prediction, confidence, uncertainty, meta = (lnn_value, lnn_conf, lnn_unc, lnn_meta)
 
         return prediction, confidence, uncertainty, meta
 
@@ -792,9 +751,7 @@ class HybridInferenceEngine:
     # 工具方法
     # ------------------------------------------------------------------
 
-    def _lookup_custom_model(
-        self, task_description: str, model_type: Optional[str]
-    ) -> Optional[Any]:
+    def _lookup_custom_model(self, task_description: str, model_type: Optional[str]) -> Optional[Any]:
         """根据任务描述和模型类型查找自定义模型实例。"""
         if not self._custom_models:
             return None
@@ -816,9 +773,7 @@ class HybridInferenceEngine:
         routing_ms: float,
     ) -> InferenceResult:
         """最终回退：当所有引擎都不可用时调用规则引擎保证非 None 输出。"""
-        value, confidence, uncertainty, meta = self._invoke_rule(
-            task, source="all_engines_unavailable"
-        )
+        value, confidence, uncertainty, meta = self._invoke_rule(task, source="all_engines_unavailable")
         return InferenceResult(
             prediction=value,
             confidence=confidence,
@@ -828,11 +783,7 @@ class HybridInferenceEngine:
             metadata={
                 **meta,
                 "reasoning": decision.reasoning,
-                "input_keys": (
-                    list(task.input_data.keys())
-                    if isinstance(task.input_data, dict)
-                    else None
-                ),
+                "input_keys": (list(task.input_data.keys()) if isinstance(task.input_data, dict) else None),
             },
             evidence=[
                 {

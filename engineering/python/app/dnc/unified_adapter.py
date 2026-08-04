@@ -43,9 +43,10 @@ class UnifiedMachineStatus:
     所有字段均为 Optional，因为不同协议能采集到的字段不完全一致。
     缺失字段统一返回 None，上层代码通过 ``status.is_available`` 判断有效性。
     """
+
     machine_id: str
-    protocol: str                       # "mtconnect" / "opcua"
-    timestamp: str                      # ISO 8601
+    protocol: str  # "mtconnect" / "opcua"
+    timestamp: str  # ISO 8601
     connected: bool = False
     # 加工状态
     spindle_speed_rpm: Optional[float] = None
@@ -55,11 +56,11 @@ class UnifiedMachineStatus:
     y_position: Optional[float] = None
     z_position: Optional[float] = None
     # 运行状态
-    execution_mode: Optional[str] = None     # ACTIVE / FEED_HOLD / STOPPED
-    controller_mode: Optional[str] = None    # AUTOMATIC / MANUAL / MDI
+    execution_mode: Optional[str] = None  # ACTIVE / FEED_HOLD / STOPPED
+    controller_mode: Optional[str] = None  # AUTOMATIC / MANUAL / MDI
     machine_mode: Optional[str] = None
     alarm_active: Optional[bool] = None
-    availability: Optional[str] = None       # AVAILABLE / UNAVAILABLE
+    availability: Optional[str] = None  # AVAILABLE / UNAVAILABLE
     # 协议特有原始数据
     raw: dict = field(default_factory=dict)
 
@@ -80,26 +81,19 @@ class MachineAdapter(abc.ABC):
     """机床协议适配器抽象基类。"""
 
     @abc.abstractmethod
-    async def connect(self, timeout: float = 10.0) -> bool:
-        ...
+    async def connect(self, timeout: float = 10.0) -> bool: ...
 
     @abc.abstractmethod
-    async def disconnect(self) -> None:
-        ...
+    async def disconnect(self) -> None: ...
 
     @abc.abstractmethod
-    async def get_status(self) -> UnifiedMachineStatus:
-        ...
+    async def get_status(self) -> UnifiedMachineStatus: ...
 
     @abc.abstractmethod
-    async def send_nc_program(
-        self, program_path: str, program_name: str
-    ) -> bool:
-        ...
+    async def send_nc_program(self, program_path: str, program_name: str) -> bool: ...
 
     @abc.abstractmethod
-    def is_connected(self) -> bool:
-        ...
+    def is_connected(self) -> bool: ...
 
 
 class MTConnectAdapter(MachineAdapter):
@@ -133,13 +127,9 @@ class MTConnectAdapter(MachineAdapter):
             raw=raw,
         )
 
-    async def send_nc_program(
-        self, program_path: str, program_name: str
-    ) -> bool:
+    async def send_nc_program(self, program_path: str, program_name: str) -> bool:
         # MTConnect 标准不支持 NC 传输
-        logger.warning(
-            "MTConnect 协议不支持 NC 程序传输，请配置 OPC UA 通道或厂商扩展"
-        )
+        logger.warning("MTConnect 协议不支持 NC 程序传输，请配置 OPC UA 通道或厂商扩展")
         return False
 
     def is_connected(self) -> bool:
@@ -157,9 +147,7 @@ class OPCUAAdapter(MachineAdapter):
         machine_id: str = "",
     ):
         self.machine_id = machine_id or endpoint
-        self.client = OPCUAClient(
-            endpoint=endpoint, username=username, password=password
-        )
+        self.client = OPCUAClient(endpoint=endpoint, username=username, password=password)
 
     async def connect(self, timeout: float = 10.0) -> bool:
         return await self.client.connect(timeout=timeout)
@@ -184,9 +172,7 @@ class OPCUAAdapter(MachineAdapter):
             raw=raw,
         )
 
-    async def send_nc_program(
-        self, program_path: str, program_name: str
-    ) -> bool:
+    async def send_nc_program(self, program_path: str, program_name: str) -> bool:
         return await self.client.send_nc_program(program_path, program_name)
 
     def is_connected(self) -> bool:
@@ -235,9 +221,7 @@ class UnifiedDNCAdapter:
         for ep in endpoints:
             ep_lower = ep.lower()
             if ep_lower.startswith("http://") or ep_lower.startswith("https://"):
-                candidates.append(
-                    MTConnectAdapter(agent_url=ep, machine_id=self.machine_id)
-                )
+                candidates.append(MTConnectAdapter(agent_url=ep, machine_id=self.machine_id))
             elif ep_lower.startswith("opc.tcp://"):
                 candidates.append(
                     OPCUAAdapter(
@@ -260,7 +244,8 @@ class UnifiedDNCAdapter:
             except Exception as e:
                 logger.warning(
                     "连接 %s 失败: %s",
-                    adapter.__class__.__name__, e,
+                    adapter.__class__.__name__,
+                    e,
                 )
 
         if not connected_adapters:
@@ -277,9 +262,7 @@ class UnifiedDNCAdapter:
 
         return {
             "primary_protocol": self._protocol_name(self.primary),
-            "fallback_protocol": (
-                self._protocol_name(self.fallback) if self.fallback else None
-            ),
+            "fallback_protocol": (self._protocol_name(self.fallback) if self.fallback else None),
         }
 
     async def connect_single(
@@ -292,9 +275,7 @@ class UnifiedDNCAdapter:
         """单协议连接（兼容旧 DNCManager 用法）。"""
         credentials = credentials or {}
         if protocol == ProtocolType.MTCONNECT:
-            self.primary = MTConnectAdapter(
-                agent_url=endpoint, machine_id=self.machine_id
-            )
+            self.primary = MTConnectAdapter(agent_url=endpoint, machine_id=self.machine_id)
         elif protocol == ProtocolType.OPC_UA:
             self.primary = OPCUAAdapter(
                 endpoint=endpoint,
@@ -303,8 +284,7 @@ class UnifiedDNCAdapter:
                 machine_id=self.machine_id,
             )
         else:
-            return await self.connect_auto([endpoint], credentials, timeout) \
-                and self.primary is not None
+            return await self.connect_auto([endpoint], credentials, timeout) and self.primary is not None
 
         ok = await self.primary.connect(timeout=timeout)
         if ok:
@@ -327,7 +307,8 @@ class UnifiedDNCAdapter:
         except Exception as e:
             logger.warning(
                 "主协议 %s 获取状态失败: %s，尝试故障切换",
-                self._protocol_name(self._active), e,
+                self._protocol_name(self._active),
+                e,
             )
             if await self._failover():
                 return await self._active.get_status()
@@ -339,9 +320,7 @@ class UnifiedDNCAdapter:
                 connected=False,
             )
 
-    async def send_nc_program(
-        self, program_path: str, program_name: str
-    ) -> bool:
+    async def send_nc_program(self, program_path: str, program_name: str) -> bool:
         """发送 NC 程序（自动选择支持该操作的协议）。"""
         # 优先使用 OPC UA（MTConnect 标准不支持 NC 传输）
         if isinstance(self._active, OPCUAAdapter):
@@ -402,7 +381,8 @@ class UnifiedDNCAdapter:
             self._failover_count += 1
             logger.warning(
                 "已故障切换到 %s（累计切换 %d 次）",
-                self._protocol_name(self.fallback), self._failover_count,
+                self._protocol_name(self.fallback),
+                self._failover_count,
             )
             return True
         except Exception as e:
@@ -446,6 +426,7 @@ class UnifiedDNCAdapter:
 # 资产发现：扫描局域网内 MTConnect/OPC UA 服务
 # =====================================================================
 
+
 async def discover_machines(
     subnet: str = "192.168.1",
     timeout: float = 0.3,
@@ -471,20 +452,16 @@ async def discover_machines(
         try:
             # 使用 get_running_loop 替代 get_event_loop，避免在已有事件循环中
             # 触发 DeprecationWarning，并确保协程运行在正确的循环上。
-            future = asyncio.get_running_loop().run_in_executor(
-                None, _socket_check, ip, port, timeout
-            )
+            future = asyncio.get_running_loop().run_in_executor(None, _socket_check, ip, port, timeout)
             if await future:
-                discovered.append({
-                    "ip": ip,
-                    "port": port,
-                    "protocol": port_protocol.get(port, "unknown"),
-                    "endpoint": (
-                        f"http://{ip}:{port}"
-                        if port == 5000
-                        else f"opc.tcp://{ip}:{port}"
-                    ),
-                })
+                discovered.append(
+                    {
+                        "ip": ip,
+                        "port": port,
+                        "protocol": port_protocol.get(port, "unknown"),
+                        "endpoint": (f"http://{ip}:{port}" if port == 5000 else f"opc.tcp://{ip}:{port}"),
+                    }
+                )
         except Exception as e:
             # 网络扫描中单点失败不阻断整体发现，但保留诊断能力以便排障。
             # 使用 debug 级别避免在 254×N 次扫描中产生噪声。
@@ -505,9 +482,7 @@ async def discover_machines(
 
     # [A-H14] 添加 return_exceptions=True，避免单个探测任务抛异常
     # 中断整个 gather（_check 内部已有 try/except，此处为防御性兜底）
-    results = await asyncio.gather(
-        *[_bounded(t) for t in tasks], return_exceptions=True
-    )
+    results = await asyncio.gather(*[_bounded(t) for t in tasks], return_exceptions=True)
     for r in results:
         if isinstance(r, Exception):
             logger.debug("DNC discovery task failed: %s", r)
@@ -533,6 +508,7 @@ def _socket_check(ip: str, port: int, timeout: float) -> bool:
 # =====================================================================
 # 辅助函数
 # =====================================================================
+
 
 def _safe_float(value: Any) -> Optional[float]:
     """安全转换为 float，失败返回 None。"""

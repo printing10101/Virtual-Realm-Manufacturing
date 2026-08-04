@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import datetime, timezone
+from typing import Optional
 
 from app.knowledge_graph.graph_store import GraphStore
 import time
@@ -68,9 +68,7 @@ class HealthCheckResult:
     isolated_nodes: list[IsolatedNodeResult] = field(default_factory=list)
     contradictory_edges: list[ContradictoryEdgeResult] = field(default_factory=list)
     stale_nodes: list[StaleNodeResult] = field(default_factory=list)
-    check_timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    check_timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     total_nodes: int = 0
     total_edges: int = 0
     check_duration_seconds: float = 0.0
@@ -78,11 +76,7 @@ class HealthCheckResult:
     @property
     def issue_count(self) -> int:
         """问题总数。"""
-        return (
-            len(self.isolated_nodes)
-            + len(self.contradictory_edges)
-            + len(self.stale_nodes)
-        )
+        return len(self.isolated_nodes) + len(self.contradictory_edges) + len(self.stale_nodes)
 
 
 # ---------------------------------------------------------------------------
@@ -130,17 +124,14 @@ class HealthChecker:
 
         result.isolated_nodes = self.check_isolated_nodes()
         result.contradictory_edges = self.check_contradictory_edges()
-        result.stale_nodes = self.check_stale_nodes(
-            threshold_years=stale_threshold_years
-        )
+        result.stale_nodes = self.check_stale_nodes(threshold_years=stale_threshold_years)
 
         elapsed = time.monotonic() - start
         result.check_duration_seconds = round(elapsed, 3)
         result.check_timestamp = datetime.now(timezone.utc).isoformat()
 
         logger.info(
-            "Health check completed in %.2fs: %d isolated nodes, "
-            "%d contradictory edges, %d stale nodes",
+            "Health check completed in %.2fs: %d isolated nodes, %d contradictory edges, %d stale nodes",
             elapsed,
             len(result.isolated_nodes),
             len(result.contradictory_edges),
@@ -224,12 +215,8 @@ class HealthChecker:
                             target_id=v,
                             edge_type_forward=key_u_v,
                             edge_type_reverse=key_v_u,
-                            forward_created_at=data_u_v.get("properties", {}).get(
-                                "created_at"
-                            ),
-                            reverse_created_at=data_v_u.get("properties", {}).get(
-                                "created_at"
-                            ),
+                            forward_created_at=data_u_v.get("properties", {}).get("created_at"),
+                            reverse_created_at=data_v_u.get("properties", {}).get("created_at"),
                         )
                     )
 
@@ -253,16 +240,13 @@ class HealthChecker:
         """
         results: list[StaleNodeResult] = []
         now = datetime.now(timezone.utc)
-        threshold_date = now - timedelta(days=threshold_years * 365)
 
         for node_id, data in self._graph.graph().nodes(data=True):
             node_type = data.get("type", "")
             properties = data.get("properties", {})
 
             # 尝试从 properties 或节点属性中获取更新时间
-            updated_at_str = properties.get("updated_at") or properties.get(
-                "last_updated"
-            )
+            updated_at_str = properties.get("updated_at") or properties.get("last_updated")
 
             age_days = 0
             last_updated = updated_at_str

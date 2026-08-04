@@ -38,9 +38,7 @@ router = APIRouter(
 
 @router.get("/approval-requests")
 async def list_approval_requests(
-    status: Optional[str] = Query(
-        None, description="筛选状态: pending/under_review/approved/rejected/escalated"
-    ),
+    status: Optional[str] = Query(None, description="筛选状态: pending/under_review/approved/rejected/escalated"),
     requester: Optional[str] = Query(None, description="请求人"),
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
@@ -317,6 +315,7 @@ async def get_risk_categories():
 
 class EmergencyOverrideRequest(BaseModel):
     """紧急覆盖请求模型。"""
+
     request_id: str = Field(..., description="关联的审批请求ID")
     task_id: str = Field(..., description="任务ID")
     operator_id: str = Field(..., description="操作员ID")
@@ -377,9 +376,7 @@ async def get_delegations(user_id: str = Query(..., description="用户ID")):
     return {
         "ok": True,
         "data": {
-            "active_delegation": active_delegation.to_dict()
-            if active_delegation
-            else None,
+            "active_delegation": active_delegation.to_dict() if active_delegation else None,
             "delegates_for": delegates_for,
         },
     }
@@ -430,9 +427,7 @@ async def get_governance_report(
     now = time.time()
     period_start = now - days * 24 * 3600
 
-    report = engine.generate_governance_report(
-        period_start=period_start, period_end=now
-    )
+    report = engine.generate_governance_report(period_start=period_start, period_end=now)
     return {"ok": True, "data": report.to_dict()}
 
 

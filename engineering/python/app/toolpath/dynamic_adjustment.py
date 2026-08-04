@@ -192,11 +192,7 @@ class DynamicAdjustmentOrchestrator:
         #    集成点 1：打通 calibrate_with_real_time_data → decide_adjustment 闭环
         calibration_info: dict[str, Any] = {}
         effective_wear = wear
-        if (
-            real_time_wear is not None
-            and sensor_features is not None
-            and elapsed_time is not None
-        ):
+        if real_time_wear is not None and sensor_features is not None and elapsed_time is not None:
             try:
                 calibration = self.wear_predictor.calibrate_with_real_time_data(
                     real_time_wear=real_time_wear,
@@ -238,9 +234,7 @@ class DynamicAdjustmentOrchestrator:
                     calibration.get("sensor_adjustment", 1.0),
                 )
             except Exception as exc:
-                logger.warning(
-                    "实时磨损校正失败，降级到原始磨损值决策: %s", exc
-                )
+                logger.warning("实时磨损校正失败，降级到原始磨损值决策: %s", exc)
                 calibration_info = {"error": f"calibration failed: {exc}"}
 
         # 1) 调用 ToolWearPredictor 获取补偿建议（含机床能力粗校验）
@@ -299,21 +293,14 @@ class DynamicAdjustmentOrchestrator:
         clamped_feed_mm_min = post.get_feed_rate(feed_mm_min)
 
         # 反算最终 mm/rev
-        final_feed_per_rev = (
-            clamped_feed_mm_min / clamped_rpm if clamped_rpm > 0 else new_feed_rate
-        )
+        final_feed_per_rev = clamped_feed_mm_min / clamped_rpm if clamped_rpm > 0 else new_feed_rate
 
         # 5) 收集 warnings / reasoning
         warnings: list[str] = list(compensation.get("warnings", []))
         if clamped_rpm < spindle_rpm - 1e-3:
-            warnings.append(
-                f"主轴转速 {spindle_rpm:.0f} RPM 超出机床限幅，已降至 {clamped_rpm:.0f} RPM"
-            )
+            warnings.append(f"主轴转速 {spindle_rpm:.0f} RPM 超出机床限幅，已降至 {clamped_rpm:.0f} RPM")
         if clamped_feed_mm_min < feed_mm_min - 1e-3:
-            warnings.append(
-                f"进给速度 {feed_mm_min:.0f} mm/min 超出机床限幅，"
-                f"已降至 {clamped_feed_mm_min:.0f} mm/min"
-            )
+            warnings.append(f"进给速度 {feed_mm_min:.0f} mm/min 超出机床限幅，已降至 {clamped_feed_mm_min:.0f} mm/min")
 
         reasoning: list[str] = [
             f"当前磨损比 {effective_wear.wear_ratio:.1%}（阈值 {effective_wear.wear_threshold:.3f} mm）",
@@ -403,9 +390,7 @@ class DynamicAdjustmentOrchestrator:
         original_lines = gcode_text.splitlines()
 
         # 构建按 block_number 索引的段映射
-        seg_by_block: dict[int, ToolpathSegment] = {
-            seg.block_number: seg for seg in segments
-        }
+        seg_by_block: dict[int, ToolpathSegment] = {seg.block_number: seg for seg in segments}
 
         for line in original_lines:
             stripped = line.strip()
@@ -438,9 +423,7 @@ class DynamicAdjustmentOrchestrator:
 
             # 进给改写（仅切削段）
             if is_motion and old_feed is not None:
-                new_line = self._replace_word(
-                    new_line, "F", decision.new_feed_rate_mm_min
-                )
+                new_line = self._replace_word(new_line, "F", decision.new_feed_rate_mm_min)
 
             if new_line != line:
                 adjusted_count += 1
@@ -480,9 +463,7 @@ class DynamicAdjustmentOrchestrator:
             return 0.0
         return (cutting_speed_m_min * 1000.0) / (math.pi * tool_diameter)
 
-    def _get_postprocessor(
-        self, machine_capabilities: Optional[dict[str, float]]
-    ) -> Any:
+    def _get_postprocessor(self, machine_capabilities: Optional[dict[str, float]]) -> Any:
         """获取限幅器实例（鸭子类型：仅需 get_spindle_rpm / get_feed_rate）。
 
         优先使用 PostProcessorRegistry 中的 fanuc_0i 后处理器；

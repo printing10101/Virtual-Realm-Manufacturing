@@ -30,7 +30,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import numpy as np
@@ -236,9 +236,7 @@ class ReplayBuffer:
             for exp in experiences:
                 self._buffer.append(exp)
 
-    def sample(
-        self, batch_size: int = 64, seed: Optional[int] = None
-    ) -> list[Experience]:
+    def sample(self, batch_size: int = 64, seed: Optional[int] = None) -> list[Experience]:
         """随机采样 mini-batch.
 
         Args:
@@ -268,9 +266,7 @@ class ReplayBuffer:
             buffer_list = list(self._buffer)
             return [buffer_list[i] for i in indices]
 
-    def sample_arrays(
-        self, batch_size: int = 64, seed: Optional[int] = None
-    ) -> dict[str, np.ndarray]:
+    def sample_arrays(self, batch_size: int = 64, seed: Optional[int] = None) -> dict[str, np.ndarray]:
         """随机采样并返回数组形式（便于 PPO 训练器批量计算）.
 
         Args:
@@ -309,9 +305,7 @@ class ReplayBuffer:
             "rewards": np.array([e.reward for e in batch], dtype=np.float32),
             "next_states": np.stack([e.next_state for e in batch]),
             "dones": np.array([e.done for e in batch], dtype=np.bool_),
-            "log_probs": np.array(
-                [e.log_prob for e in batch], dtype=np.float32
-            ),
+            "log_probs": np.array([e.log_prob for e in batch], dtype=np.float32),
             "values": np.array([e.value for e in batch], dtype=np.float32),
         }
 

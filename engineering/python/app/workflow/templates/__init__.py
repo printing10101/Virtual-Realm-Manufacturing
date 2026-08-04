@@ -30,6 +30,7 @@
       max_concurrent: <int>           # 可选，runner 并发上限
       tags: [<str>, ...]
 """
+
 from app.workflow.templates.loader import (
     TemplateNotFoundError,
     WorkflowTemplate,

@@ -15,9 +15,9 @@
 
 契约稳定性：本实现属于"实现层"，不进入契约目录，可独立演进。
 """
+
 from __future__ import annotations
 
-import asyncio
 import inspect
 import logging
 import threading
@@ -149,20 +149,18 @@ class ExtensionRegistry(IExtensionRegistry):
 
             logger.debug(
                 "Registered contribution: plugin='%s' ext_point='%s' order=%d",
-                plugin_id, extension_point, reg.order,
+                plugin_id,
+                extension_point,
+                reg.order,
             )
 
-    def register_contribution(
-        self, contribution: ExtensionPointContribution
-    ) -> None:
+    def register_contribution(self, contribution: ExtensionPointContribution) -> None:
         """从 ExtensionPointContribution 数据类注册（便捷方法）.
 
         适用于插件 on_load 时批量注册扩展点贡献的场景。
         """
         if contribution.handler is None:
-            raise ValueError(
-                "ExtensionPointContribution.handler 不能为空（component_url 模式请用 register_component）"
-            )
+            raise ValueError("ExtensionPointContribution.handler 不能为空（component_url 模式请用 register_component）")
         self.register(
             extension_point=contribution.extension_point,
             plugin_id=contribution.plugin_id,
@@ -208,9 +206,7 @@ class ExtensionRegistry(IExtensionRegistry):
 
     # ----- 取消注册 -----
 
-    def unregister(
-        self, plugin_id: str, extension_point: Optional[str] = None
-    ) -> int:
+    def unregister(self, plugin_id: str, extension_point: Optional[str] = None) -> int:
         """取消注册.
 
         Args:
@@ -252,7 +248,9 @@ class ExtensionRegistry(IExtensionRegistry):
         if removed > 0:
             logger.debug(
                 "Unregistered %d contribution(s): plugin='%s' ext_point='%s'",
-                removed, plugin_id, extension_point,
+                removed,
+                plugin_id,
+                extension_point,
             )
         return removed
 
@@ -301,9 +299,7 @@ class ExtensionRegistry(IExtensionRegistry):
 
     # ----- 调用 -----
 
-    async def invoke(
-        self, extension_point: str, payload: Dict[str, Any]
-    ) -> List[Any]:
+    async def invoke(self, extension_point: str, payload: Dict[str, Any]) -> List[Any]:
         """调用某扩展点的所有贡献，返回结果列表（按注册顺序）.
 
         同步 handler 直接调用，异步 handler 自动 await。
@@ -328,7 +324,10 @@ class ExtensionRegistry(IExtensionRegistry):
                 # 单个 handler 失败不阻塞其他 handler
                 logger.warning(
                     "Extension handler failed: plugin='%s' ext_point='%s': %s",
-                    reg.plugin_id, extension_point, e, exc_info=True,
+                    reg.plugin_id,
+                    extension_point,
+                    e,
+                    exc_info=True,
                 )
                 results.append(None)
 
@@ -361,7 +360,10 @@ class ExtensionRegistry(IExtensionRegistry):
         except (RuntimeError, ValueError, OSError, TypeError, KeyError) as e:
             logger.warning(
                 "Extension handler failed: plugin='%s' ext_point='%s': %s",
-                reg.plugin_id, extension_point, e, exc_info=True,
+                reg.plugin_id,
+                extension_point,
+                e,
+                exc_info=True,
             )
             return default
 

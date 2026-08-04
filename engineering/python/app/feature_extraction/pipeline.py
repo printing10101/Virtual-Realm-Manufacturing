@@ -32,7 +32,7 @@ import json
 import logging
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -100,8 +100,7 @@ def _try_import_trimesh() -> Any:
         return trimesh
     except ImportError:
         logger.info(
-            "trimesh 未安装，mesh 加载退化为简易 PLY 解析。"
-            "如需支持 STL/GLB/OBJ 等格式，请安装：pip install trimesh"
+            "trimesh 未安装，mesh 加载退化为简易 PLY 解析。如需支持 STL/GLB/OBJ 等格式，请安装：pip install trimesh"
         )
         return None
 
@@ -270,15 +269,11 @@ class FeatureExtractionPipeline:
 
             # ============= 阶段 2: 平面提取 =============
             t_plane_start = time.time()
-            plane_result = await asyncio.to_thread(
-                self._plane_extractor.extract, vertices, faces
-            )
+            plane_result = await asyncio.to_thread(self._plane_extractor.extract, vertices, faces)
             plane_duration = time.time() - t_plane_start
 
             if not plane_result.success:
-                raise FeatureExtractionError(
-                    f"平面提取失败: {plane_result.error_message}"
-                )
+                raise FeatureExtractionError(f"平面提取失败: {plane_result.error_message}")
 
             logger.info(
                 "任务 %s 平面提取完成: %d 个平面（method=%s）",
@@ -289,9 +284,7 @@ class FeatureExtractionPipeline:
 
             # ============= 阶段 3: 圆柱提取 =============
             t_cyl_start = time.time()
-            cyl_result = await asyncio.to_thread(
-                self._cylinder_extractor.extract, vertices, faces
-            )
+            cyl_result = await asyncio.to_thread(self._cylinder_extractor.extract, vertices, faces)
             cyl_duration = time.time() - t_cyl_start
 
             if not cyl_result.success:
@@ -350,8 +343,7 @@ class FeatureExtractionPipeline:
                 error_message="",
             )
             logger.info(
-                "任务 %s 特征提取完成: 共 %d 个特征（平面=%d 圆柱=%d 孔/凸台=%d）"
-                "总耗时 %.1fs，等待工程师审核",
+                "任务 %s 特征提取完成: 共 %d 个特征（平面=%d 圆柱=%d 孔/凸台=%d）总耗时 %.1fs，等待工程师审核",
                 task_id,
                 len(all_features),
                 plane_result.extracted_count,
@@ -445,9 +437,7 @@ class FeatureExtractionPipeline:
             FeatureReviewStatus.EDITED.value,
         }
         if action not in valid_actions:
-            raise FeatureReviewError(
-                f"非法 action: {action}，应为 {valid_actions}"
-            )
+            raise FeatureReviewError(f"非法 action: {action}，应为 {valid_actions}")
 
         # 查找特征
         target_feature: ExtractedFeature | None = None
@@ -456,18 +446,14 @@ class FeatureExtractionPipeline:
                 target_feature = f
                 break
         if target_feature is None:
-            raise FeatureReviewError(
-                f"特征不存在: feature_id={feature_id}"
-            )
+            raise FeatureReviewError(f"特征不存在: feature_id={feature_id}")
 
         # 更新特征审核字段
         target_feature.review_status = action
         target_feature.engineer_notes = engineer_notes
         if action == FeatureReviewStatus.EDITED.value:
             if not edited_params:
-                raise FeatureReviewError(
-                    "action=edited 时必须提供 edited_params"
-                )
+                raise FeatureReviewError("action=edited 时必须提供 edited_params")
             target_feature.edited_params = dict(edited_params)
 
         # 持久化整个任务（features 列表已更新）
@@ -516,9 +502,7 @@ class FeatureExtractionPipeline:
         pending_actions = {
             FeatureReviewStatus.PENDING.value,
         }
-        all_reviewed = all(
-            f.review_status not in pending_actions for f in task.features
-        )
+        all_reviewed = all(f.review_status not in pending_actions for f in task.features)
         if all_reviewed:
             self._store.update(
                 task_id,
@@ -562,23 +546,20 @@ class FeatureExtractionPipeline:
             FeatureExtractionTaskStatus.REVIEWED.value,
         }
         if task.status not in allowed_states:
-            raise FeatureReviewError(
-                f"任务状态 {task.status} 不允许导出，"
-                f"仅 {allowed_states} 状态可导出"
-            )
+            raise FeatureReviewError(f"任务状态 {task.status} 不允许导出，仅 {allowed_states} 状态可导出")
 
         # 筛选已确认特征（confirmed + edited）
         confirmed_features = [
-            f for f in task.features
-            if f.review_status in (
+            f
+            for f in task.features
+            if f.review_status
+            in (
                 FeatureReviewStatus.CONFIRMED.value,
                 FeatureReviewStatus.EDITED.value,
             )
         ]
         if not confirmed_features:
-            raise FeatureReviewError(
-                f"任务 {task_id} 无已确认特征（confirmed/edited），无法导出"
-            )
+            raise FeatureReviewError(f"任务 {task_id} 无已确认特征（confirmed/edited），无法导出")
 
         # 构造导出数据（使用 effective_params）
         export_data = {
@@ -640,18 +621,10 @@ class FeatureExtractionPipeline:
             return None
 
         # 统计各类特征数量
-        plane_count = sum(
-            1 for f in task.features if f.feature_type == "plane"
-        )
-        cylinder_count = sum(
-            1 for f in task.features if f.feature_type == "cylinder"
-        )
-        hole_count = sum(
-            1 for f in task.features if f.feature_type == "hole"
-        )
-        boss_count = sum(
-            1 for f in task.features if f.feature_type == "boss"
-        )
+        plane_count = sum(1 for f in task.features if f.feature_type == "plane")
+        cylinder_count = sum(1 for f in task.features if f.feature_type == "cylinder")
+        hole_count = sum(1 for f in task.features if f.feature_type == "hole")
+        boss_count = sum(1 for f in task.features if f.feature_type == "boss")
 
         return FeatureExtractionResult(
             task_id=task.task_id,
@@ -737,9 +710,7 @@ def _load_mesh(
                 # mesh 抽稀（如果顶点数过多）
                 # 注意：抽稀由调用方决定，这里只做加载
                 return vertices, faces
-            raise MeshLoadError(
-                f"trimesh 加载结果不是 mesh 类型: {type(mesh).__name__}"
-            )
+            raise MeshLoadError(f"trimesh 加载结果不是 mesh 类型: {type(mesh).__name__}")
         except Exception as e:
             # trimesh 失败时退化为简易解析（仅支持 PLY）
             if suffix == ".ply":
@@ -755,9 +726,7 @@ def _load_mesh(
     if suffix == ".ply":
         return _load_ply_simple(mesh_path)
     if suffix in (".stl", ".glb", ".gltf", ".obj"):
-        raise MeshLoadError(
-            f"格式 {suffix} 需要 trimesh 支持，请安装：pip install trimesh"
-        )
+        raise MeshLoadError(f"格式 {suffix} 需要 trimesh 支持，请安装：pip install trimesh")
     raise MeshLoadError(f"不支持的 mesh 格式: {suffix}")
 
 
@@ -781,7 +750,6 @@ def _load_ply_simple(mesh_path: Path) -> tuple[np.ndarray, np.ndarray | None]:
     vertex_count = 0
     face_count = 0
     in_header = True
-    current_section = ""
     for i, line in enumerate(lines):
         stripped = line.strip()
         if in_header:
@@ -791,8 +759,7 @@ def _load_ply_simple(mesh_path: Path) -> tuple[np.ndarray, np.ndarray | None]:
                 fmt = stripped.split()
                 if len(fmt) >= 2 and fmt[1] != "ascii":
                     raise MeshLoadError(
-                        f"简易 PLY 解析仅支持 ASCII 格式，实际 {fmt[1]}。"
-                        "请安装 trimesh 以支持 binary PLY"
+                        f"简易 PLY 解析仅支持 ASCII 格式，实际 {fmt[1]}。请安装 trimesh 以支持 binary PLY"
                     )
                 continue
             if stripped.startswith("element"):
@@ -800,10 +767,8 @@ def _load_ply_simple(mesh_path: Path) -> tuple[np.ndarray, np.ndarray | None]:
                 if len(parts) >= 3:
                     if parts[1] == "vertex":
                         vertex_count = int(parts[2])
-                        current_section = "vertex"
                     elif parts[1] == "face":
                         face_count = int(parts[2])
-                        current_section = "face"
                 continue
             if stripped == "end_header":
                 header_end = i + 1
@@ -828,9 +793,7 @@ def _load_ply_simple(mesh_path: Path) -> tuple[np.ndarray, np.ndarray | None]:
         if len(vertices) < vertex_count:
             if len(parts) >= 3:
                 try:
-                    vertices.append(
-                        (float(parts[0]), float(parts[1]), float(parts[2]))
-                    )
+                    vertices.append((float(parts[0]), float(parts[1]), float(parts[2])))
                 except ValueError:
                     continue
         # 面片行：3 idx1 idx2 idx3（首字段是顶点数）
@@ -839,9 +802,7 @@ def _load_ply_simple(mesh_path: Path) -> tuple[np.ndarray, np.ndarray | None]:
                 try:
                     n_verts = int(parts[0])
                     if n_verts == 3:
-                        faces.append(
-                            (int(parts[1]), int(parts[2]), int(parts[3]))
-                        )
+                        faces.append((int(parts[1]), int(parts[2]), int(parts[3])))
                 except ValueError:
                     continue
 

@@ -4,18 +4,14 @@ import logging
 import threading
 import time
 import sqlite3
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 from app.tasks.execution_lock import (
     ExecutionLockStore,
-    ExecutionLock,
     LockConflictError,
     LockNotFoundError,
     get_execution_lock_store,
-    DEFAULT_LOCK_TIMEOUT_HOURS,
 )
 from app.tasks._checkout_models import (
     CheckoutStatus,
@@ -40,28 +36,8 @@ GPU_RETRY_DELAY_MINUTES = 5
 CONFLICT_RETRY_DELAY_MINUTES = 1
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class TaskCheckoutManager:
-    def __init__(
-        self, lock_store: ExecutionLockStore, db_path: Optional[str] = None
-    ):
+    def __init__(self, lock_store: ExecutionLockStore, db_path: Optional[str] = None):
         self._lock_store = lock_store
         if db_path is None:
             db_path = str(get_output_dir("data") / "task_checkout.db")
@@ -161,9 +137,7 @@ class TaskCheckoutManager:
 
     def get_task(self, task_id: str) -> Optional[TaskRecord]:
         conn = self._get_conn()
-        row = conn.execute(
-            "SELECT * FROM checkout_tasks WHERE id = ?", (task_id,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM checkout_tasks WHERE id = ?", (task_id,)).fetchone()
         if row is None:
             return None
         return self._row_to_task(row)
@@ -239,10 +213,7 @@ class TaskCheckoutManager:
                 retry=False,
             )
 
-        if (
-            task.status == TaskStatus.IN_PROGRESS.value
-            and task.assigned_to != request.agent_id
-        ):
+        if task.status == TaskStatus.IN_PROGRESS.value and task.assigned_to != request.agent_id:
             return self._checkout_fail(
                 request,
                 CheckoutFailureReason.ASSIGNED_TO_OTHER,
@@ -328,9 +299,7 @@ class TaskCheckoutManager:
             )
 
         now_iso = datetime.now(timezone.utc).isoformat()
-        expires_iso = (
-            datetime.now(timezone.utc) + timedelta(hours=request.timeout_hours)
-        ).isoformat()
+        expires_iso = (datetime.now(timezone.utc) + timedelta(hours=request.timeout_hours)).isoformat()
 
         conn = self._get_conn()
         conn.execute(
@@ -419,9 +388,7 @@ class TaskCheckoutManager:
             message="Task completed successfully",
         )
 
-    def fail_task(
-        self, task_id: str, agent_id: str, reason: str = ""
-    ) -> CheckoutResult:
+    def fail_task(self, task_id: str, agent_id: str, reason: str = "") -> CheckoutResult:
         task = self.get_task(task_id)
         if task is None:
             return CheckoutResult(
@@ -453,13 +420,9 @@ class TaskCheckoutManager:
         )
         conn.commit()
 
-        self._record_failure(
-            task_id, agent_id, CheckoutFailureReason.TASK_FAILED, reason
-        )
+        self._record_failure(task_id, agent_id, CheckoutFailureReason.TASK_FAILED, reason)
 
-        logger.warning(
-            "Task failed: task=%s agent=%s reason=%s", task_id, agent_id, reason
-        )
+        logger.warning("Task failed: task=%s agent=%s reason=%s", task_id, agent_id, reason)
         return CheckoutResult(
             status=CheckoutStatus.SUCCESS,
             task_id=task_id,
@@ -507,9 +470,7 @@ class TaskCheckoutManager:
 
     def get_task_board(self) -> Dict[str, List[dict]]:
         conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM checkout_tasks ORDER BY priority ASC, created_at ASC"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM checkout_tasks ORDER BY priority ASC, created_at ASC").fetchall()
 
         board: Dict[str, List[dict]] = {
             "pending": [],
@@ -570,12 +531,8 @@ class TaskCheckoutManager:
     def get_agent_status(self, agent_id: str) -> Dict[str, Any]:
         active_lock = self._lock_store.get_active_lock_by_agent(agent_id)
         pending_count = self._count_tasks_by_agent(agent_id, TaskStatus.PENDING.value)
-        in_progress_count = self._count_tasks_by_agent(
-            agent_id, TaskStatus.IN_PROGRESS.value
-        )
-        completed_count = self._count_tasks_by_agent(
-            agent_id, TaskStatus.COMPLETED.value
-        )
+        in_progress_count = self._count_tasks_by_agent(agent_id, TaskStatus.IN_PROGRESS.value)
+        completed_count = self._count_tasks_by_agent(agent_id, TaskStatus.COMPLETED.value)
 
         return {
             "agent_id": agent_id,
@@ -597,9 +554,7 @@ class TaskCheckoutManager:
     def get_all_locks(self) -> List[dict]:
         return [lock.to_dict() for lock in self._lock_store.list_all_locks()]
 
-    def force_release_lock(
-        self, task_id: str, admin_id: str = "admin"
-    ) -> CheckoutResult:
+    def force_release_lock(self, task_id: str, admin_id: str = "admin") -> CheckoutResult:
         try:
             lock = self._lock_store.force_release(task_id, admin_id)
 
@@ -726,11 +681,7 @@ class TaskCheckoutManager:
                         row.get("task_id"),
                     )
                 try:
-                    last_failure = (
-                        CheckoutFailureReason(row["last_failure"])
-                        if row["last_failure"]
-                        else None
-                    )
+                    last_failure = CheckoutFailureReason(row["last_failure"]) if row["last_failure"] else None
                 except (ValueError, KeyError):
                     last_failure = None
                     logger.warning(
@@ -785,9 +736,7 @@ class TaskCheckoutManager:
                                WHERE task_id = ? AND agent_id = ?""",
                             (
                                 new_retry_count,
-                                result.failure_reason.value
-                                if result.failure_reason
-                                else None,
+                                result.failure_reason.value if result.failure_reason else None,
                                 next_retry,
                                 entry.task_id,
                                 entry.agent_id,
@@ -801,9 +750,7 @@ class TaskCheckoutManager:
 
     def get_queue_status(self) -> List[dict]:
         conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM checkout_queue ORDER BY priority ASC, created_at ASC"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM checkout_queue ORDER BY priority ASC, created_at ASC").fetchall()
         return [
             {
                 "task_id": row["task_id"],
@@ -811,9 +758,7 @@ class TaskCheckoutManager:
                 "priority": row["priority"],
                 "retry_count": row["retry_count"],
                 "last_failure": row["last_failure"],
-                "next_retry_at": datetime.fromtimestamp(
-                    row["next_retry_at"]
-                ).isoformat()
+                "next_retry_at": datetime.fromtimestamp(row["next_retry_at"]).isoformat()
                 if row["next_retry_at"]
                 else None,
                 "created_at": datetime.fromtimestamp(row["created_at"]).isoformat(),
@@ -825,17 +770,12 @@ class TaskCheckoutManager:
         unresolved = []
         for blocker_id in blockers:
             blocker_task = self.get_task(blocker_id)
-            if (
-                blocker_task is None
-                or blocker_task.status != TaskStatus.COMPLETED.value
-            ):
+            if blocker_task is None or blocker_task.status != TaskStatus.COMPLETED.value:
                 unresolved.append(blocker_id)
         return unresolved
 
     def _record_failure(self, task_id: str, agent_id: str, reason, message: str = ""):
-        reason_str = (
-            reason.value if isinstance(reason, CheckoutFailureReason) else reason
-        )
+        reason_str = reason.value if isinstance(reason, CheckoutFailureReason) else reason
         conn = self._get_conn()
         conn.execute(
             """INSERT INTO checkout_failure_history (task_id, agent_id, reason, message, timestamp)
@@ -886,9 +826,7 @@ class TaskCheckoutManager:
             try:
                 self._pool.return_connection(self._conn)
             except (OSError, RuntimeError, ValueError) as e:
-                logger.warning(
-                    "Failed to return SQLite connection to pool: %s", e
-                )
+                logger.warning("Failed to return SQLite connection to pool: %s", e)
                 try:
                     self._conn.close()
                 except (OSError, RuntimeError) as close_err:

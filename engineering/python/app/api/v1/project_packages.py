@@ -27,12 +27,13 @@
     前端通过 ``<input type="file">`` 选择 ``.lomo`` 文件上传。后端流式
     保存到 ``<output_dir>/package_uploads/`` 目录，再传给服务层处理。
 """
+
 from __future__ import annotations
 
 import logging
 import os
 import uuid
-from typing import Any, Optional
+from typing import Optional
 
 from app.utils.time import utcnow
 
@@ -75,7 +76,6 @@ router = APIRouter(
 )
 
 
-
 # ---------------------------------------------------------------------------
 # Pydantic 请求模型
 # ---------------------------------------------------------------------------
@@ -87,12 +87,8 @@ class ExportProjectRequest(BaseModel):
     将项目及其引用资源打包为 ``.lomo`` 文件。
     """
 
-    project_id: str = Field(
-        ..., min_length=1, max_length=64, description="源项目 ID"
-    )
-    exported_by: str = Field(
-        ..., min_length=1, max_length=128, description="导出者（user_id 或 plugin_id）"
-    )
+    project_id: str = Field(..., min_length=1, max_length=64, description="源项目 ID")
+    exported_by: str = Field(..., min_length=1, max_length=128, description="导出者（user_id 或 plugin_id）")
     output_dir: str = Field(
         default="",
         max_length=512,
@@ -137,8 +133,9 @@ def _handle_service_exception(e: Exception, *, action: str):
     Returns:
         error() 响应对象
     """
-    if isinstance(e, (ProjectNotFoundError, PackageNotFoundError,
-                      ExportRecordNotFoundError, ImportRecordNotFoundError)):
+    if isinstance(
+        e, (ProjectNotFoundError, PackageNotFoundError, ExportRecordNotFoundError, ImportRecordNotFoundError)
+    ):
         return error(code=ErrorCode.NOT_FOUND, message=str(e))
     if isinstance(e, (PackageFormatError,)):
         return error(
@@ -189,14 +186,10 @@ def _save_upload_file(upload_file: UploadFile, *, suffix: str = ".lomo") -> str:
         ValueError: 上传文件为空或读取失败
         OSError: 磁盘写入失败
     """
-    uploads_dir = os.path.join(
-        os.path.abspath(config.storage.output_dir), "package_uploads"
-    )
+    uploads_dir = os.path.join(os.path.abspath(config.storage.output_dir), "package_uploads")
     os.makedirs(uploads_dir, exist_ok=True)
 
-    target_path = os.path.join(
-        uploads_dir, f"upload_{uuid.uuid4().hex}{suffix}"
-    )
+    target_path = os.path.join(uploads_dir, f"upload_{uuid.uuid4().hex}{suffix}")
 
     # 流式写入（64KB 缓冲，避免内存爆炸）
     buffer_size = STREAM_CHUNK_SIZE
@@ -296,8 +289,7 @@ async def export_project(request: ExportProjectRequest):
     if not ContentPolicy.is_valid(request.content_policy):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"content_policy 不支持: {request.content_policy}"
-            f"（支持: {ContentPolicy.all()}）",
+            message=f"content_policy 不支持: {request.content_policy}（支持: {ContentPolicy.all()}）",
         )
 
     service = get_project_package_service()
@@ -326,13 +318,9 @@ async def export_project(request: ExportProjectRequest):
 
     # 更新为 running
     try:
-        await service.update_export_record(
-            export_id, status=PackageTaskStatus.RUNNING
-        )
+        await service.update_export_record(export_id, status=PackageTaskStatus.RUNNING)
     except Exception as e:
-        logger.warning(
-            "Failed to mark export %s as running: %s", export_id, e
-        )
+        logger.warning("Failed to mark export %s as running: %s", export_id, e)
 
     # 执行导出
     try:
@@ -353,9 +341,7 @@ async def export_project(request: ExportProjectRequest):
                 completed_at=utcnow(),
             )
         except Exception as update_err:
-            logger.error(
-                "Failed to mark export %s as failed: %s", export_id, update_err
-            )
+            logger.error("Failed to mark export %s as failed: %s", export_id, update_err)
         return _handle_service_exception(e, action="导出项目")
 
     # 更新记录为 completed
@@ -370,19 +356,14 @@ async def export_project(request: ExportProjectRequest):
             completed_at=utcnow(),
         )
     except Exception as e:
-        logger.error(
-            "Failed to mark export %s as completed: %s", export_id, e
-        )
+        logger.error("Failed to mark export %s as completed: %s", export_id, e)
 
     payload = result.to_dict()
     # 追加 download_url 供前端下载
     payload["download_url"] = f"/api/v1/project-packages/exports/{export_id}?download=true"
     return success(
         data=payload,
-        message=(
-            f"项目已导出: {result.resource_count} 个资源，"
-            f"包大小 {result.package_size_bytes} 字节"
-        ),
+        message=(f"项目已导出: {result.resource_count} 个资源，包大小 {result.package_size_bytes} 字节"),
     )
 
 
@@ -397,8 +378,7 @@ async def export_project(request: ExportProjectRequest):
 )
 async def import_project(
     file: UploadFile = File(..., description=".lomo 包文件"),
-    imported_by: str = Form(..., min_length=1, max_length=128,
-                            description="导入者（user_id 或 plugin_id）"),
+    imported_by: str = Form(..., min_length=1, max_length=128, description="导入者（user_id 或 plugin_id）"),
     conflict_strategy: str = Form(
         ConflictStrategy.SKIP,
         description=f"冲突策略（{ConflictStrategy.all()}，默认 skip）",
@@ -432,8 +412,7 @@ async def import_project(
     if not ConflictStrategy.is_valid(conflict_strategy):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"conflict_strategy 不支持: {conflict_strategy}"
-            f"（支持: {ConflictStrategy.all()}）",
+            message=f"conflict_strategy 不支持: {conflict_strategy}（支持: {ConflictStrategy.all()}）",
         )
 
     # 流式保存上传文件
@@ -484,9 +463,7 @@ async def import_project(
             )
         except Exception as e:
             # 记录创建失败不影响导入结果返回
-            logger.error(
-                "Failed to create import record: %s", e, exc_info=True
-            )
+            logger.error("Failed to create import record: %s", e, exc_info=True)
 
     payload = result.to_dict()
     return success(
@@ -583,10 +560,7 @@ async def preview_import(
 
     return success(
         data=manifest.to_dict(),
-        message=(
-            f"包预览已获取: {manifest.resource_count} 个资源，"
-            f"总大小 {manifest.total_size_bytes} 字节"
-        ),
+        message=(f"包预览已获取: {manifest.resource_count} 个资源，总大小 {manifest.total_size_bytes} 字节"),
     )
 
 
@@ -618,8 +592,7 @@ async def list_exports(
     if status is not None and not PackageTaskStatus.is_valid(status):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"status 不支持: {status}"
-            f"（支持: {PackageTaskStatus.all()}）",
+            message=f"status 不支持: {status}（支持: {PackageTaskStatus.all()}）",
         )
 
     service = get_project_package_service()
@@ -645,9 +618,7 @@ async def list_exports(
 @router.get("/exports/{export_id}")
 async def get_export(
     export_id: str,
-    download: bool = Query(
-        False, description="为 true 时流式下载 .lomo 文件（要求 status=completed）"
-    ),
+    download: bool = Query(False, description="为 true 时流式下载 .lomo 文件（要求 status=completed）"),
 ):
     """查询导出记录详情，或下载 ``.lomo`` 文件.
 
@@ -670,9 +641,7 @@ async def get_export(
     if not download:
         # 追加 download_url 字段
         payload = dict(record)
-        payload["download_url"] = (
-            f"/api/v1/project-packages/exports/{export_id}?download=true"
-        )
+        payload["download_url"] = f"/api/v1/project-packages/exports/{export_id}?download=true"
         return success(data=payload, message="导出记录详情已获取")
 
     # 下载模式：流式返回 .lomo 文件
@@ -776,8 +745,7 @@ async def list_imports(
     if status is not None and not PackageTaskStatus.is_valid(status):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"status 不支持: {status}"
-            f"（支持: {PackageTaskStatus.all()}）",
+            message=f"status 不支持: {status}（支持: {PackageTaskStatus.all()}）",
         )
 
     service = get_project_package_service()

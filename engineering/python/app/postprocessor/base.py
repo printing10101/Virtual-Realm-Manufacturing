@@ -93,18 +93,14 @@ class BasePostProcessor(ABC):
         # 检查并补全顶层节
         for section, expected_type in required_sections.items():
             if section not in self.config:
-                logger.warning(
-                    "配置缺少 '%s' 节，将使用默认值。"
-                    "建议检查配置文件完整性。",
-                    section
-                )
+                logger.warning("配置缺少 '%s' 节，将使用默认值。建议检查配置文件完整性。", section)
                 self.config[section] = expected_type()
             elif not isinstance(self.config[section], expected_type):
                 logger.warning(
-                    "配置 '%s' 类型错误: 期望 %s, 实际 %s。"
-                    "将使用空字典作为默认值。",
-                    section, expected_type.__name__,
-                    type(self.config[section]).__name__
+                    "配置 '%s' 类型错误: 期望 %s, 实际 %s。将使用空字典作为默认值。",
+                    section,
+                    expected_type.__name__,
+                    type(self.config[section]).__name__,
                 )
                 self.config[section] = expected_type()
 
@@ -114,9 +110,7 @@ class BasePostProcessor(ABC):
             "max_rpm": 24000,
             "default_rpm": 1000,
         }
-        self._ensure_keys_with_defaults(
-            self.config["spindle"], spindle_defaults, "spindle"
-        )
+        self._ensure_keys_with_defaults(self.config["spindle"], spindle_defaults, "spindle")
 
         # 验证并补全 feed 节
         feed_defaults = {
@@ -124,36 +118,34 @@ class BasePostProcessor(ABC):
             "max_rate": 20000.0,
             "default_rate": 1000.0,
         }
-        self._ensure_keys_with_defaults(
-            self.config["feed"], feed_defaults, "feed"
-        )
+        self._ensure_keys_with_defaults(self.config["feed"], feed_defaults, "feed")
 
         # 验证并补全 work_coordinate 节
         wcs_defaults = {
-            "G54": {}, "G55": {}, "G56": {},
-            "G57": {}, "G58": {}, "G59": {},
+            "G54": {},
+            "G55": {},
+            "G56": {},
+            "G57": {},
+            "G58": {},
+            "G59": {},
             "default_coordinate_system": "G54",
         }
-        self._ensure_keys_with_defaults(
-            self.config["work_coordinate"], wcs_defaults, "work_coordinate"
-        )
+        self._ensure_keys_with_defaults(self.config["work_coordinate"], wcs_defaults, "work_coordinate")
 
         # 验证并补全 tool_offset 节
         tool_offset_defaults = {
-            "length_registers": {
-                "start": 1, "end": 100, "default_offset": 0.0
-            },
+            "length_registers": {"start": 1, "end": 100, "default_offset": 0.0},
             "radius_registers": {
-                "start": 1, "end": 100, "default_offset": 0.0,
+                "start": 1,
+                "end": 100,
+                "default_offset": 0.0,
                 "compensation_types": {
                     "G41": {"register_range": [1, 100]},
                     "G42": {"register_range": [1, 100]},
-                }
+                },
             },
         }
-        self._ensure_keys_with_defaults(
-            self.config["tool_offset"], tool_offset_defaults, "tool_offset"
-        )
+        self._ensure_keys_with_defaults(self.config["tool_offset"], tool_offset_defaults, "tool_offset")
 
         # 验证并补全 fixed_cycles 节
         fixed_cycles_defaults = {
@@ -162,9 +154,7 @@ class BasePostProcessor(ABC):
             "boring": {},
             "threading": {},
         }
-        self._ensure_keys_with_defaults(
-            self.config["fixed_cycles"], fixed_cycles_defaults, "fixed_cycles"
-        )
+        self._ensure_keys_with_defaults(self.config["fixed_cycles"], fixed_cycles_defaults, "fixed_cycles")
 
         # 验证并补全 subprogram 节
         subprogram_defaults = {
@@ -178,9 +168,7 @@ class BasePostProcessor(ABC):
                 "system": {"range": [500, 599]},
             },
         }
-        self._ensure_keys_with_defaults(
-            self.config["subprogram"], subprogram_defaults, "subprogram"
-        )
+        self._ensure_keys_with_defaults(self.config["subprogram"], subprogram_defaults, "subprogram")
 
         # 验证顶层基础参数
         top_level_defaults = {
@@ -190,10 +178,7 @@ class BasePostProcessor(ABC):
         }
         for key, default_val in top_level_defaults.items():
             if key not in self.config:
-                logger.warning(
-                    "配置缺少顶层参数 '%s'，使用默认值: %s",
-                    key, default_val
-                )
+                logger.warning("配置缺少顶层参数 '%s'，使用默认值: %s", key, default_val)
                 self.config[key] = default_val
 
     def _ensure_keys_with_defaults(
@@ -211,10 +196,7 @@ class BasePostProcessor(ABC):
         """
         for key, default_val in defaults.items():
             if key not in target:
-                logger.warning(
-                    "配置节 '%s' 缺少参数 '%s'，使用默认值: %s",
-                    section_name, key, default_val
-                )
+                logger.warning("配置节 '%s' 缺少参数 '%s'，使用默认值: %s", section_name, key, default_val)
                 target[key] = default_val
 
     def _init_from_config(self) -> None:
@@ -285,11 +267,9 @@ class BasePostProcessor(ABC):
 
     def get_enabled_coordinate_systems(self) -> list:
         """获取所有已启用的工件坐标系列表。"""
-        return [
-            cs
-            for cs, cfg in self._work_coordinates.items()
-            if cfg.get("enabled", False)
-        ] or [self._default_coordinate_system]
+        return [cs for cs, cfg in self._work_coordinates.items() if cfg.get("enabled", False)] or [
+            self._default_coordinate_system
+        ]
 
     def get_cycle_config(self, group: str, cycle: str) -> Dict[str, Any]:
         """获取指定固定循环的配置参数。

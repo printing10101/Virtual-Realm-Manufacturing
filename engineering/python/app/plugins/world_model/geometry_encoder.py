@@ -21,6 +21,7 @@
 ============
 - (batch, d_model)，默认 d_model=64
 """
+
 from __future__ import annotations
 
 import torch

@@ -24,19 +24,14 @@ class _InternalOnlyBackend(_BaseBackend):
         gcode_file_path: str,
         controller_type: str,
     ) -> CamSoftwareReport:
-        logger.info(
-            "CamAdapter(internal_only): 跳过 CAM 软件二次校验，"
-            "仅使用 InternalValidator 内部预校验结果。"
-        )
+        logger.info("CamAdapter(internal_only): 跳过 CAM 软件二次校验，仅使用 InternalValidator 内部预校验结果。")
         return CamSoftwareReport(
             status="skipped",
             backend_used="internal_only",
             messages=[
                 "未执行 CAM 软件二次校验（internal_only 模式）。",
-                "G 代码仅经过 InternalValidator AABB 包围盒级快速预筛，"
-                "不可直接上机加工。",
-                "上机前必须由工程师手动加载到 NX / PowerMill / PyCAM "
-                "完成完整刀轨仿真。",
+                "G 代码仅经过 InternalValidator AABB 包围盒级快速预筛，不可直接上机加工。",
+                "上机前必须由工程师手动加载到 NX / PowerMill / PyCAM 完成完整刀轨仿真。",
             ],
             collisions=[],
             degraded=False,

@@ -29,8 +29,10 @@ from app.database.models.machining_record import Base
 # Material Model (materials)
 # ---------------------------------------------------------------------------
 
+
 class Material(Base):
     """制造物料模型。"""
+
     __tablename__ = "materials"
 
     id = Column(
@@ -139,8 +141,10 @@ class Material(Base):
 # Equipment Models (equipment / equipment_alarms / maintenance_plans)
 # ---------------------------------------------------------------------------
 
+
 class Equipment(Base):
     """设备监控模型。"""
+
     __tablename__ = "equipment"
 
     id = Column(
@@ -177,9 +181,7 @@ class Equipment(Base):
     alarms = relationship("EquipmentAlarm", back_populates="equipment", lazy="selectin")
     maintenance_plans = relationship("MaintenancePlan", back_populates="equipment", lazy="selectin")
 
-    __table_args__ = (
-        Index("idx_equipment_status", "status"),
-    )
+    __table_args__ = (Index("idx_equipment_status", "status"),)
 
     def to_dict(self) -> dict:
         return {
@@ -202,6 +204,7 @@ class Equipment(Base):
 
 class EquipmentAlarm(Base):
     """设备告警模型。"""
+
     __tablename__ = "equipment_alarms"
 
     id = Column(
@@ -263,6 +266,7 @@ class EquipmentAlarm(Base):
 
 class MaintenancePlan(Base):
     """设备维护计划模型。"""
+
     __tablename__ = "maintenance_plans"
 
     id = Column(
@@ -338,6 +342,7 @@ class MaintenancePlan(Base):
 # Quality Inspection Models (quality_records / quality_anomalies)
 # ---------------------------------------------------------------------------
 
+
 class QualityRecord(Base):
     __tablename__ = "quality_records"
 
@@ -350,9 +355,7 @@ class QualityRecord(Base):
     notes = Column(String(512), nullable=True, comment="备注")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
-    __table_args__ = (
-        Index("idx_qr_type_result", "inspection_type", "result"),
-    )
+    __table_args__ = (Index("idx_qr_type_result", "inspection_type", "result"),)
 
     def to_dict(self) -> dict:
         return {
@@ -378,9 +381,7 @@ class QualityAnomaly(Base):
     status = Column(String(16), nullable=False, default="待处理", index=True, comment="状态: 待处理/处理中/已解决")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
-    __table_args__ = (
-        Index("idx_qa_type_status", "anomaly_type", "status"),
-    )
+    __table_args__ = (Index("idx_qa_type_status", "anomaly_type", "status"),)
 
     def to_dict(self) -> dict:
         return {
@@ -398,6 +399,7 @@ class QualityAnomaly(Base):
 # Production Models (production_records / work_orders)
 # ---------------------------------------------------------------------------
 
+
 class ProductionRecord(Base):
     __tablename__ = "production_records"
 
@@ -413,9 +415,7 @@ class ProductionRecord(Base):
     shift = Column(String(16), nullable=False, comment="班次: 早班/中班/晚班")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
-    __table_args__ = (
-        Index("idx_pr_date_line", "date", "line_name"),
-    )
+    __table_args__ = (Index("idx_pr_date_line", "date", "line_name"),)
 
     def to_dict(self) -> dict:
         return {
@@ -441,15 +441,15 @@ class WorkOrder(Base):
     product_name = Column(String(128), nullable=False, comment="产品名称")
     planned_qty = Column(Integer, nullable=False, comment="计划数量")
     completed_qty = Column(Integer, nullable=False, default=0, comment="已完成数量")
-    status = Column(String(16), nullable=False, default="待开始", index=True, comment="状态: 进行中/已完成/待开始/已延期")
+    status = Column(
+        String(16), nullable=False, default="待开始", index=True, comment="状态: 进行中/已完成/待开始/已延期"
+    )
     priority = Column(String(16), nullable=False, default="中", comment="优先级: 紧急/高/中/低")
     start_date = Column(Date, nullable=True, comment="开始日期")
     due_date = Column(Date, nullable=True, comment="截止日期")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
-    __table_args__ = (
-        Index("idx_wo_status_priority", "status", "priority"),
-    )
+    __table_args__ = (Index("idx_wo_status_priority", "status", "priority"),)
 
     def to_dict(self) -> dict:
         return {
@@ -470,6 +470,7 @@ class WorkOrder(Base):
 # Process Route Models (process_routes / process_steps)
 # ---------------------------------------------------------------------------
 
+
 class ProcessRoute(Base):
     __tablename__ = "process_routes"
 
@@ -480,11 +481,14 @@ class ProcessRoute(Base):
     steps_count = Column(Integer, nullable=False, default=0, comment="工序数")
     description = Column(String(512), nullable=True, comment="描述")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP"))
-
-    __table_args__ = (
-        Index("idx_prt_status", "status"),
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
     )
+
+    __table_args__ = (Index("idx_prt_status", "status"),)
 
     def to_dict(self) -> dict:
         return {
@@ -512,9 +516,7 @@ class ProcessStep(Base):
     tooling = Column(String(128), nullable=True, comment="工装夹具")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
-    __table_args__ = (
-        Index("idx_pst_route_seq", "route_id", "sequence"),
-    )
+    __table_args__ = (Index("idx_pst_route_seq", "route_id", "sequence"),)
 
     def to_dict(self) -> dict:
         return {
@@ -534,12 +536,15 @@ class ProcessStep(Base):
 # Document Model (documents)
 # ---------------------------------------------------------------------------
 
+
 class Document(Base):
     __tablename__ = "documents"
 
     id = Column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String(256), nullable=False, index=True, comment="标题")
-    category = Column(String(32), nullable=False, index=True, comment="分类: 工艺规范/SOP标准/设备手册/质量标准/材料参数")
+    category = Column(
+        String(32), nullable=False, index=True, comment="分类: 工艺规范/SOP标准/设备手册/质量标准/材料参数"
+    )
     version = Column(String(16), nullable=False, default="v1.0", comment="版本")
     author = Column(String(64), nullable=False, comment="作者")
     content = Column(String(4096), nullable=True, comment="内容/描述")
@@ -547,11 +552,14 @@ class Document(Base):
     status = Column(String(16), nullable=False, default="待审核", index=True, comment="状态: 已发布/待审核")
     view_count = Column(Integer, nullable=False, default=0, comment="浏览量")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP"))
-
-    __table_args__ = (
-        Index("idx_doc_category_status", "category", "status"),
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
     )
+
+    __table_args__ = (Index("idx_doc_category_status", "category", "status"),)
 
     def to_dict(self) -> dict:
         return {

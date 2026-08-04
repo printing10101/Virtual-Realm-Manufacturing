@@ -16,6 +16,7 @@
     - code_dirty 返回 ``True``（无法保证代码版本一致性，按最保守处理）
     - 同时记录 warning 日志，便于排查
 """
+
 from __future__ import annotations
 
 import logging
@@ -71,11 +72,7 @@ class GitCollector:
             GitInfo 数据类
         """
         with self._lock:
-            if (
-                not force_refresh
-                and self._cache is not None
-                and (time.time() - self._cache.collected_at) < self._ttl
-            ):
+            if not force_refresh and self._cache is not None and (time.time() - self._cache.collected_at) < self._ttl:
                 return self._cache
 
             info = self._collect_uncached()
@@ -98,9 +95,7 @@ class GitCollector:
         """实际执行 git 命令采集信息（无缓存）."""
         sha = self._run_git(["rev-parse", "HEAD"])
         if sha is None:
-            logger.warning(
-                "GitCollector: 非 git 环境或 git 命令失败，降级为 unknown+dirty=True"
-            )
+            logger.warning("GitCollector: 非 git 环境或 git 命令失败，降级为 unknown+dirty=True")
             return GitInfo(
                 git_sha="unknown",
                 code_dirty=True,

@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 class SkillLevel(str, Enum):
     """技能级别：三级分层架构。"""
+
     GLOBAL = "global"
     PROJECT = "project"
     AGENT = "agent"
@@ -17,6 +18,7 @@ class SkillLevel(str, Enum):
 
 class SkillPriority(int, Enum):
     """技能优先级：数字越小优先级越高。"""
+
     GLOBAL = 100
     PROJECT = 50
     AGENT = 10
@@ -32,6 +34,7 @@ PRIORITY_MAP = {
 @dataclass
 class SkillVersion:
     """技能版本信息。"""
+
     version: str
     content_hash: str
     file_path: str
@@ -42,6 +45,7 @@ class SkillVersion:
 @dataclass
 class SkillMetadata:
     """技能元数据。"""
+
     skill_id: str
     name: str
     display_name: str = ""
@@ -74,9 +78,7 @@ class SkillMetadata:
             "tags": self.tags,
             "dependencies": self.dependencies,
             "parameters": self.parameters,
-            "avg_rating": round(sum(self.ratings) / len(self.ratings), 2)
-            if self.ratings
-            else None,
+            "avg_rating": round(sum(self.ratings) / len(self.ratings), 2) if self.ratings else None,
             "rating_count": len(self.ratings),
         }
 
@@ -97,6 +99,7 @@ class SkillMetadata:
 @dataclass
 class Skill:
     """技能实例。"""
+
     metadata: SkillMetadata
     raw_content: str = ""
     body: str = ""
@@ -113,9 +116,7 @@ class Skill:
         """获取当前版本。"""
         if not self.versions:
             return None
-        sorted_versions = sorted(
-            self.versions.items(), key=lambda x: [int(p) for p in x[0].split(".")]
-        )
+        sorted_versions = sorted(self.versions.items(), key=lambda x: [int(p) for p in x[0].split(".")])
         return sorted_versions[-1][1]
 
     def execute(self, **kwargs) -> Any:

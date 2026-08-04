@@ -4,7 +4,6 @@
 提供质量检验记录的 CRUD、统计汇总、异常管理及演示数据填充功能。
 """
 
-
 from datetime import datetime
 from typing import Optional
 
@@ -14,6 +13,7 @@ from pydantic import BaseModel
 from app.core.response import ErrorCode, error, success
 from app.services import quality_service
 from app.auth.permissions import require_role
+
 
 class QualityRecordCreate(BaseModel):
     batch_no: str
@@ -56,16 +56,14 @@ async def list_quality_records(
             dt_from = datetime.strptime(date_from, "%Y-%m-%d")
         except ValueError:
             return error(
-                code=ErrorCode.INVALID_PARAMETER,
-                message=f"日期格式错误: date_from 应为 YYYY-MM-DD，收到 '{date_from}'"
+                code=ErrorCode.INVALID_PARAMETER, message=f"日期格式错误: date_from 应为 YYYY-MM-DD，收到 '{date_from}'"
             )
     if date_to:
         try:
             dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
         except ValueError:
             return error(
-                code=ErrorCode.INVALID_PARAMETER,
-                message=f"日期格式错误: date_to 应为 YYYY-MM-DD，收到 '{date_to}'"
+                code=ErrorCode.INVALID_PARAMETER, message=f"日期格式错误: date_to 应为 YYYY-MM-DD，收到 '{date_to}'"
             )
 
     try:
@@ -143,10 +141,13 @@ async def seed_quality_data():
     if result["already_exists"]:
         return success(message="质量数据已存在，跳过填充")
 
-    return success(message="质量演示数据填充成功", data={
-        "records": result["records_count"],
-        "anomalies": result["anomalies_count"],
-    })
+    return success(
+        message="质量演示数据填充成功",
+        data={
+            "records": result["records_count"],
+            "anomalies": result["anomalies_count"],
+        },
+    )
 
 
 # 注意：动态路径 /{record_id} 必须位于所有静态路径（/stats/、/anomalies/、/seed）之后，

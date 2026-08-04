@@ -37,17 +37,20 @@ from app.api.v1.sse import sse_manager
 _HAS_DEVICE_MANAGER = False
 detect_device = None
 
+
 def _lazy_init_device_manager() -> bool:
     global _HAS_DEVICE_MANAGER, detect_device
     if _HAS_DEVICE_MANAGER:
         return True
     try:
         from app.ai.lnn._research_bridge import get_device_detect
+
         detect_device = get_device_detect()
         _HAS_DEVICE_MANAGER = detect_device is not None
     except Exception:
         _HAS_DEVICE_MANAGER = False
     return _HAS_DEVICE_MANAGER
+
 
 from app.api.v1.lnn.dependencies import (
     model_registry,
@@ -115,7 +118,9 @@ def _validate_data_path(user_path: str):
             project_root=_ALLOWED_DATA_BASE_DIRS[1],
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=safe_error_message(exc, fallback="请求参数无效", context="lnn.routes")) from exc
+        raise HTTPException(
+            status_code=400, detail=safe_error_message(exc, fallback="请求参数无效", context="lnn.routes")
+        ) from exc
 
 
 def _cleanup_training_queues() -> None:
@@ -125,9 +130,7 @@ def _cleanup_training_queues() -> None:
     """
     now = utcnow()
     expired = [
-        job_id
-        for job_id, info in _TRAINING_QUEUES.items()
-        if now - info.get("created_at", now) > _TRAINING_QUEUE_TTL
+        job_id for job_id, info in _TRAINING_QUEUES.items() if now - info.get("created_at", now) > _TRAINING_QUEUE_TTL
     ]
     for job_id in expired:
         _TRAINING_QUEUES.pop(job_id, None)
@@ -161,7 +164,7 @@ async def _validate_dry_run_request(request: LNNTrainDryRunRequest):
 
     def _load_data_sync():
         """同步读取文件大小并加载 CSV（在线程池中执行避免阻塞事件循环）。"""
-        with open(str(validated_data_path), 'rb') as f:
+        with open(str(validated_data_path), "rb") as f:
             f.seek(0, 2)
             file_size = f.tell()
             if file_size > _DRY_RUN_MAX_FILE_SIZE_BYTES:
@@ -192,9 +195,7 @@ async def _validate_dry_run_request(request: LNNTrainDryRunRequest):
     except ValueError as e:
         if "File too large" in str(e):
             # 包装异常消息，避免直接回显内部错误细节
-            safe = safe_error_message(
-                e, context="lnn.upload_data[file_too_large]", fallback="数据文件过大"
-            )
+            safe = safe_error_message(e, context="lnn.upload_data[file_too_large]", fallback="数据文件过大")
             return None, error(
                 code=ErrorCode.INVALID_REQUEST,
                 message=safe["message"],
@@ -245,9 +246,7 @@ def _build_training_config(request: LNNTrainDryRunRequest, data):
     epochs = request.hyperparameters.epochs
     batch_size = request.hyperparameters.batch_size
     samples_per_epoch = dataset_samples
-    estimated_duration_minutes = (
-        epochs * samples_per_epoch / batch_size
-    ) * _DRY_RUN_DURATION_COEFF
+    estimated_duration_minutes = (epochs * samples_per_epoch / batch_size) * _DRY_RUN_DURATION_COEFF
 
     potential_risks = []
     recommendations = []

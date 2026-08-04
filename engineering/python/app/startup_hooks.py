@@ -80,6 +80,7 @@ async def verify_critical_dependencies(logger: logging.Logger) -> None:
     # DB 连通性
     try:
         from app.database.connection import check_db_health
+
         db_status = await check_db_health()
         if db_status.get("status") == "unhealthy":
             logger.warning(
@@ -91,8 +92,16 @@ async def verify_critical_dependencies(logger: logging.Logger) -> None:
                 "[startup] DB 连通性自检通过: status=%s",
                 db_status.get("status"),
             )
-    except (OSError, RuntimeError, ValueError, KeyError, TypeError,
-            AttributeError, ImportError, asyncio.TimeoutError) as e:
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        ImportError,
+        asyncio.TimeoutError,
+    ) as e:
         # Q1 修复：收窄为可预期的连接/解析/导入异常。
         # OSError 覆盖 socket/PostgreSQL 连接错误；
         # ImportError 覆盖驱动缺失场景；
@@ -102,6 +111,7 @@ async def verify_critical_dependencies(logger: logging.Logger) -> None:
     # Redis 连通性（可选依赖）
     try:
         from app.services.redis_client import check_redis_health
+
         redis_status = await check_redis_health()
         if redis_status.get("status") == "unhealthy":
             logger.warning(
@@ -113,7 +123,15 @@ async def verify_critical_dependencies(logger: logging.Logger) -> None:
                 "[startup] Redis 连通性自检通过: status=%s",
                 redis_status.get("status"),
             )
-    except (OSError, RuntimeError, ValueError, KeyError, TypeError,
-            AttributeError, ImportError, asyncio.TimeoutError) as e:
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        ImportError,
+        asyncio.TimeoutError,
+    ) as e:
         # Q1 修复：Redis 为可选依赖，连接失败/模块缺失都不应阻断启动
         logger.debug("[startup] Redis 连通性自检跳过: %s", e, exc_info=True)

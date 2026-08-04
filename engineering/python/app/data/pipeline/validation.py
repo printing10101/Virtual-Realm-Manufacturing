@@ -70,12 +70,14 @@ class DataValidator:
             metrics.validation_errors.append(f"检测到{inf_count}个Inf值")
             metrics.completeness = min(metrics.completeness, 0.5)
 
-        self.validation_history.append({
-            "type": "completeness",
-            "source_type": data.source_type.value,
-            "completeness": metrics.completeness,
-            "errors": metrics.validation_errors,
-        })
+        self.validation_history.append(
+            {
+                "type": "completeness",
+                "source_type": data.source_type.value,
+                "completeness": metrics.completeness,
+                "errors": metrics.validation_errors,
+            }
+        )
 
         return metrics
 
@@ -93,17 +95,17 @@ class DataValidator:
         )
 
         if data.feature_dim != expected_dim:
-            metrics.validation_errors.append(
-                f"特征维度不一致: 期望{expected_dim}, 实际{data.feature_dim}"
-            )
+            metrics.validation_errors.append(f"特征维度不一致: 期望{expected_dim}, 实际{data.feature_dim}")
             metrics.consistency = 0.0
 
-        self.validation_history.append({
-            "type": "dimension",
-            "expected": expected_dim,
-            "actual": data.feature_dim,
-            "consistent": data.feature_dim == expected_dim,
-        })
+        self.validation_history.append(
+            {
+                "type": "dimension",
+                "expected": expected_dim,
+                "actual": data.feature_dim,
+                "consistent": data.feature_dim == expected_dim,
+            }
+        )
 
         return metrics
 
@@ -125,13 +127,9 @@ class DataValidator:
 
         tolerance = 0.01
         if actual_min < expected_min - tolerance:
-            metrics.validation_errors.append(
-                f"值超出下限: {actual_min:.4f} < {expected_min}"
-            )
+            metrics.validation_errors.append(f"值超出下限: {actual_min:.4f} < {expected_min}")
         if actual_max > expected_max + tolerance:
-            metrics.validation_errors.append(
-                f"值超出上限: {actual_max:.4f} > {expected_max}"
-            )
+            metrics.validation_errors.append(f"值超出上限: {actual_max:.4f} > {expected_max}")
 
         return metrics
 
@@ -186,9 +184,7 @@ class QualityChecker:
             metrics = self.validator.validate_completeness(data)
 
             if modality in expected_dims:
-                dim_metrics = self.validator.validate_dimension_consistency(
-                    data, expected_dims[modality]
-                )
+                dim_metrics = self.validator.validate_dimension_consistency(data, expected_dims[modality])
                 metrics.feature_dim_expected = dim_metrics.feature_dim_expected
                 metrics.feature_dim_actual = dim_metrics.feature_dim_actual
                 metrics.consistency = dim_metrics.consistency

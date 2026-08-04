@@ -89,6 +89,7 @@ async def _get_ollama_status(cfg: AppConfig) -> dict[str, Any]:
 def _get_disk_info() -> dict[str, Any]:
     try:
         import shutil
+
         usage = shutil.disk_usage("/")
         return {
             "total_gb": round(usage.total / 1_073_741_824, 1),
@@ -106,6 +107,7 @@ def _get_disk_info() -> dict[str, Any]:
 def _get_memory_info() -> dict[str, Any]:
     try:
         import psutil
+
         mem = psutil.virtual_memory()
         return {
             "total_mb": round(mem.total / 1_048_576, 1),
@@ -129,7 +131,7 @@ async def system_health(config: AppConfig = Depends(get_config)):
     memory = _get_memory_info()
     python_info = _get_python_info()
     packages = _get_package_versions()
-    
+
     # 数据库健康检查
     db_health = await check_db_health()
     redis_health = await check_redis_health()
@@ -137,131 +139,161 @@ async def system_health(config: AppConfig = Depends(get_config)):
 
     items = []
 
-    items.append({
-        "component": "python",
-        "name": "Python 运行环境",
-        "status": "ok",
-        "version": python_info["version"],
-        "details": python_info,
-    })
+    items.append(
+        {
+            "component": "python",
+            "name": "Python 运行环境",
+            "status": "ok",
+            "version": python_info["version"],
+            "details": python_info,
+        }
+    )
 
     if ollama["running"]:
-        items.append({
-            "component": "ollama",
-            "name": "Ollama AI 服务",
-            "status": "ok",
-            "version": ollama.get("base_url", ""),
-            "details": ollama,
-        })
+        items.append(
+            {
+                "component": "ollama",
+                "name": "Ollama AI 服务",
+                "status": "ok",
+                "version": ollama.get("base_url", ""),
+                "details": ollama,
+            }
+        )
     else:
-        items.append({
-            "component": "ollama",
-            "name": "Ollama AI 服务",
-            "status": "error",
-            "version": None,
-            "details": ollama,
-        })
+        items.append(
+            {
+                "component": "ollama",
+                "name": "Ollama AI 服务",
+                "status": "error",
+                "version": None,
+                "details": ollama,
+            }
+        )
 
     if ollama.get("model_count", 0) > 0:
-        items.append({
-            "component": "models",
-            "name": "AI 模型文件",
-            "status": "ok",
-            "version": str(ollama["model_count"]),
-            "details": ollama.get("models", []),
-        })
+        items.append(
+            {
+                "component": "models",
+                "name": "AI 模型文件",
+                "status": "ok",
+                "version": str(ollama["model_count"]),
+                "details": ollama.get("models", []),
+            }
+        )
     elif ollama["running"]:
-        items.append({
-            "component": "models",
-            "name": "AI 模型文件",
-            "status": "error",
-            "version": "0",
-            "details": {"models": [], "suggestion": "run: ollama pull qwen2.5:7b"},
-        })
+        items.append(
+            {
+                "component": "models",
+                "name": "AI 模型文件",
+                "status": "error",
+                "version": "0",
+                "details": {"models": [], "suggestion": "run: ollama pull qwen2.5:7b"},
+            }
+        )
     else:
-        items.append({
-            "component": "models",
-            "name": "AI 模型文件",
-            "status": "warning",
-            "version": None,
-            "details": {"models": [], "note": "Ollama not running, cannot check models"},
-        })
+        items.append(
+            {
+                "component": "models",
+                "name": "AI 模型文件",
+                "status": "warning",
+                "version": None,
+                "details": {"models": [], "note": "Ollama not running, cannot check models"},
+            }
+        )
 
     if disk.get("error") is None:
         free_gb = disk.get("free_gb", 0)
         status = "ok" if free_gb > 5 else ("warning" if free_gb > 1 else "error")
-        items.append({
-            "component": "disk",
-            "name": "系统磁盘空间",
-            "status": status,
-            "version": None,
-            "details": disk,
-        })
+        items.append(
+            {
+                "component": "disk",
+                "name": "系统磁盘空间",
+                "status": status,
+                "version": None,
+                "details": disk,
+            }
+        )
     else:
-        items.append({
-            "component": "disk",
-            "name": "系统磁盘空间",
-            "status": "warning",
-            "version": None,
-            "details": disk,
-        })
+        items.append(
+            {
+                "component": "disk",
+                "name": "系统磁盘空间",
+                "status": "warning",
+                "version": None,
+                "details": disk,
+            }
+        )
 
     if memory.get("error") is None:
         used_pct = memory.get("used_percent", 0)
         status = "ok" if used_pct < 80 else ("warning" if used_pct < 95 else "error")
-        items.append({
-            "component": "memory",
-            "name": "系统内存",
-            "status": status,
-            "version": None,
-            "details": memory,
-        })
+        items.append(
+            {
+                "component": "memory",
+                "name": "系统内存",
+                "status": status,
+                "version": None,
+                "details": memory,
+            }
+        )
     else:
-        items.append({
-            "component": "memory",
-            "name": "系统内存",
-            "status": "warning",
-            "version": None,
-            "details": memory,
-        })
+        items.append(
+            {
+                "component": "memory",
+                "name": "系统内存",
+                "status": "warning",
+                "version": None,
+                "details": memory,
+            }
+        )
 
-    items.append({
-        "component": "packages",
-        "name": "Python 依赖包",
-        "status": "ok",
-        "version": None,
-        "details": packages,
-    })
-    
+    items.append(
+        {
+            "component": "packages",
+            "name": "Python 依赖包",
+            "status": "ok",
+            "version": None,
+            "details": packages,
+        }
+    )
+
     # PostgreSQL 健康检查
     db_status = db_health.get("status", "disabled")
-    items.append({
-        "component": "postgresql",
-        "name": "PostgreSQL 数据库",
-        "status": "ok" if db_status == "healthy" else ("warning" if db_status == "disabled" else "error"),
-        "version": None,
-        "details": db_health,
-    })
-    
+    items.append(
+        {
+            "component": "postgresql",
+            "name": "PostgreSQL 数据库",
+            "status": "ok" if db_status == "healthy" else ("warning" if db_status == "disabled" else "error"),
+            "version": None,
+            "details": db_health,
+        }
+    )
+
     # Redis 健康检查
     redis_status = redis_health.get("status", "disabled")
-    items.append({
-        "component": "redis",
-        "name": "Redis 缓存",
-        "status": "ok" if redis_status == "healthy" else ("warning" if redis_status == "disabled" else "error"),
-        "version": None,
-        "details": redis_health,
-    })
-    
+    items.append(
+        {
+            "component": "redis",
+            "name": "Redis 缓存",
+            "status": "ok" if redis_status == "healthy" else ("warning" if redis_status == "disabled" else "error"),
+            "version": None,
+            "details": redis_health,
+        }
+    )
+
     # TDengine 健康检查
     tdengine_status = tdengine_health.get("status", "disabled")
-    items.append({
-        "component": "tdengine",
-        "name": "TDengine 时序数据库",
-        "status": "ok" if tdengine_status == "healthy" else ("warning" if tdengine_status == "disabled" else "error"),
-        "version": None,
-        "details": tdengine_health,
-    })
+    items.append(
+        {
+            "component": "tdengine",
+            "name": "TDengine 时序数据库",
+            "status": "ok"
+            if tdengine_status == "healthy"
+            else ("warning" if tdengine_status == "disabled" else "error"),
+            "version": None,
+            "details": tdengine_health,
+        }
+    )
 
     overall_status = "ok"
     for item in items:
@@ -302,7 +334,7 @@ async def quick_health():
 @simple_health_router.get(
     "/api/health",
     summary="标准化主健康检查",
-    description="返回标准格式：{\"status\": \"ok\", \"version\": \"x.x.x\", \"timestamp\": \"<ISO 8601>\"}",
+    description='返回标准格式：{"status": "ok", "version": "x.x.x", "timestamp": "<ISO 8601>"}',
 )
 async def main_health():
     """主健康检查端点 — 返回统一格式的健康状态。
@@ -351,7 +383,7 @@ async def main_health():
 @simple_health_router.get(
     "/api/health/ping",
     summary="轻量级健康探针",
-    description="轻量级存活探测，严格返回 {\"ping\": true}，用于 Docker HEALTHCHECK",
+    description='轻量级存活探测，严格返回 {"ping": true}，用于 Docker HEALTHCHECK',
 )
 async def ping():
     """轻量级 ping 检查端点 — 返回简单的存活状态。

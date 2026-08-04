@@ -79,8 +79,7 @@ def _run_openmvs(
         if proc.returncode != 0:
             tail = (proc.stderr or "")[-2000:]
             raise OpenMvsError(
-                f"OpenMVS 子命令失败 returncode={proc.returncode} "
-                f"cmd={openmvs_bin} stderr_tail={tail!r}"
+                f"OpenMVS 子命令失败 returncode={proc.returncode} cmd={openmvs_bin} stderr_tail={tail!r}"
             )
         return OpenMvsRunResult(
             returncode=proc.returncode,
@@ -95,9 +94,7 @@ def _run_openmvs(
             "并设置环境变量 LNN_I2T3D_OPENMVS_BIN 指向 DensifyMesh 可执行文件。"
         ) from e
     except subprocess.TimeoutExpired as e:
-        raise OpenMvsError(
-            f"OpenMVS 子命令超时 timeout={timeout}s bin={openmvs_bin}"
-        ) from e
+        raise OpenMvsError(f"OpenMVS 子命令超时 timeout={timeout}s bin={openmvs_bin}") from e
 
 
 def run_dense_reconstruction(
@@ -130,8 +127,7 @@ def run_dense_reconstruction(
     """
     if not _openmvs_available(cfg.openmvs_bin):
         raise OpenMvsError(
-            f"OpenMVS 二进制不可用 bin={cfg.openmvs_bin!r}。"
-            "请编译安装 OpenMVS 并设置 LNN_I2T3D_OPENMVS_BIN。"
+            f"OpenMVS 二进制不可用 bin={cfg.openmvs_bin!r}。请编译安装 OpenMVS 并设置 LNN_I2T3D_OPENMVS_BIN。"
         )
 
     workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -146,10 +142,14 @@ def run_dense_reconstruction(
     _run_openmvs(
         cfg.openmvs_bin,
         [
-            "--input-file", str(sparse_txt_dir),
-            "--output-file", str(scene_mvs),
-            "--resolution-level", str(resolution_level),
-            "--number-views", "0",  # 0 = 用所有视图
+            "--input-file",
+            str(sparse_txt_dir),
+            "--output-file",
+            str(scene_mvs),
+            "--resolution-level",
+            str(resolution_level),
+            "--number-views",
+            "0",  # 0 = 用所有视图
         ],
         cwd=workspace_dir,
         timeout=cfg.task_timeout_seconds,
@@ -182,9 +182,12 @@ def run_dense_reconstruction(
             _run_openmvs(
                 refine_bin,
                 [
-                    "--input-file", str(dense_mesh_ply),
-                    "--output-file", str(refined_ply),
-                    "--resolution-level", "1",
+                    "--input-file",
+                    str(dense_mesh_ply),
+                    "--output-file",
+                    str(refined_ply),
+                    "--resolution-level",
+                    "1",
                 ],
                 cwd=workspace_dir,
                 timeout=cfg.task_timeout_seconds,

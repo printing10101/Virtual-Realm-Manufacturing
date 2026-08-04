@@ -11,7 +11,7 @@ import asyncio
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheEntry:
     """缓存条目，支持 TTL"""
+
     value: Any
     expire_at: Optional[float] = None
-    
+
     def is_expired(self) -> bool:
         if self.expire_at is None:
             return False
@@ -32,21 +33,21 @@ class CacheEntry:
 class MemoryCache:
     """
     线程安全的内存缓存实现
-    
+
     功能：
     - 支持 TTL 过期机制
     - 支持 Hash 结构（HSET/HGET/HGETALL）
     - 支持简单 KV（SET/GET/DELETE）
     - 后台清理过期条目
     """
-    
+
     def __init__(self, cleanup_interval: int = 60):
         self._lock = threading.Lock()
         self._data: Dict[str, CacheEntry] = {}
         self._cleanup_interval = cleanup_interval
         self._cleanup_task: Optional[asyncio.Task] = None
         self._started = False
-        
+
     async def start(self):
         """启动后台清理任务"""
         if self._started:
@@ -54,7 +55,7 @@ class MemoryCache:
         self._started = True
         self._cleanup_task = asyncio.create_task(self._cleanup_loop())
         logger.info("MemoryCache started")
-        
+
     async def stop(self):
         """停止后台清理任务"""
         self._started = False
@@ -67,7 +68,7 @@ class MemoryCache:
                 pass
         self._data.clear()
         logger.info("MemoryCache stopped")
-        
+
     async def _cleanup_loop(self):
         """定期清理过期条目"""
         while self._started:
@@ -78,33 +79,30 @@ class MemoryCache:
                 break
             except Exception as e:
                 logger.warning("MemoryCache cleanup error: %s", e)
-                
+
     def _cleanup_expired(self):
         """清理所有过期条目"""
         with self._lock:
-            expired_keys = [
-                k for k, v in self._data.items() 
-                if v.is_expired()
-            ]
+            expired_keys = [k for k, v in self._data.items() if v.is_expired()]
             for k in expired_keys:
                 del self._data[k]
             if expired_keys:
                 logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
-    
+
     # =========================================================================
     # 简单 KV 操作
     # =========================================================================
-    
+
     async def set(self, key: str, value: Any, ex: Optional[int] = None) -> bool:
         """设置键值对，ex 为过期时间（秒）"""
         expire_at = None
         if ex is not None:
             expire_at = time.time() + ex
-        
+
         with self._lock:
             self._data[key] = CacheEntry(value=value, expire_at=expire_at)
         return True
-        
+
     async def get(self, key: str) -> Optional[Any]:
         """获取键值"""
         with self._lock:
@@ -115,7 +113,7 @@ class MemoryCache:
                 del self._data[key]
                 return None
             return entry.value
-            
+
     async def delete(self, key: str) -> bool:
         """删除键"""
         with self._lock:
@@ -123,7 +121,7 @@ class MemoryCache:
                 del self._data[key]
                 return True
             return False
-            
+
     async def exists(self, key: str) -> bool:
         """检查键是否存在"""
         with self._lock:
@@ -134,11 +132,11 @@ class MemoryCache:
                 del self._data[key]
                 return False
             return True
-    
+
     # =========================================================================
     # Hash 操作（用于任务进度存储）
     # =========================================================================
-    
+
     async def hset(self, key: str, mapping: Dict[str, Any]) -> bool:
         """设置 Hash 字段"""
         with self._lock:
@@ -146,11 +144,11 @@ class MemoryCache:
             if entry is None or not isinstance(entry.value, dict):
                 entry = CacheEntry(value={})
                 self._data[key] = entry
-            
+
             # 合并新字段
             entry.value.update(mapping)
         return True
-        
+
     async def hgetall(self, key: str) -> Dict[str, Any]:
         """获取 Hash 所有字段"""
         with self._lock:
@@ -163,7 +161,7 @@ class MemoryCache:
             if not isinstance(entry.value, dict):
                 return {}
             return entry.value.copy()
-            
+
     async def hget(self, key: str, field: str) -> Optional[Any]:
         """获取 Hash 单个字段"""
         with self._lock:
@@ -176,15 +174,15 @@ class MemoryCache:
             if not isinstance(entry.value, dict):
                 return None
             return entry.value.get(field)
-    
+
     # =========================================================================
     # 兼容性方法
     # =========================================================================
-    
+
     async def ping(self) -> bool:
         """兼容性方法：始终返回 True"""
         return True
-        
+
     async def expire(self, key: str, seconds: int) -> bool:
         """设置键的过期时间"""
         with self._lock:

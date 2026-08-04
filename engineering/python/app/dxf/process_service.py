@@ -17,6 +17,7 @@
 
 所有错误都不抛出，统一回传到 :class:`DxfProcessResult.errors`。
 """
+
 from __future__ import annotations
 
 import json
@@ -97,9 +98,7 @@ class DxfProcessService:
         """一站式处理 DXF 文件。"""
         t0 = time.time()
         path = Path(dxf_path)
-        result = DxfProcessResult(
-            file_path=str(path), file_name=path.name
-        )
+        result = DxfProcessResult(file_path=str(path), file_name=path.name)
         out_dir: Optional[Path] = None
         if output_dir is not None:
             out_dir = Path(output_dir)
@@ -115,14 +114,10 @@ class DxfProcessService:
         # 2. 特征
         result.features = self._run_features(path, user_id)
         if not result.features.success:
-            result.warnings.append(
-                f"特征提取失败: {result.features.error}；继续 3D 转换（仅基于 polylines）"
-            )
+            result.warnings.append(f"特征提取失败: {result.features.error}；继续 3D 转换（仅基于 polylines）")
 
         # 3. 3D
-        result.model3d = self._run_model3d(
-            path, out_dir, user_id
-        )
+        result.model3d = self._run_model3d(path, out_dir, user_id)
         if not result.model3d.success and not result.model3d.summary:
             result.warnings.append(f"3D 转换失败: {result.model3d.error}")
 
@@ -137,9 +132,8 @@ class DxfProcessService:
                 if f.is_file():
                     result.output_files[f.name] = str(f)
 
-        result.success = (
-            result.parse.success
-            and (result.model3d is None or result.model3d.success or result.model3d.summary)
+        result.success = result.parse.success and (
+            result.model3d is None or result.model3d.success or result.model3d.summary
         )
         result.total_latency_ms = (time.time() - t0) * 1000
         # 影子模式：研究轨 IJepa-3D chamfer 启发式识别（不阻塞产品流程）
@@ -184,6 +178,7 @@ class DxfProcessService:
         try:
             # P0#3 解耦: 通过 research_bridge 延迟导入
             from app.ai.lnn._research_bridge import get_multimodal_jepa_chamfer
+
             detect_all_extended = get_multimodal_jepa_chamfer()
             if detect_all_extended is None:
                 raise ImportError("multimodal_jepa not available")
@@ -222,14 +217,15 @@ class DxfProcessService:
         research_count = len(research_feats)
         # 高级特征（chamfer / fillet / step / slot / multi_cavity / island / long_cavity / hole_array）
         advanced_types = {
-            "chamfer", "fillet", "step", "slot",
+            "chamfer",
+            "fillet",
+            "step",
+            "slot",
             "pocket",  # multi_cavity + long_cavity 标记为 pocket
-            "boss",    # island 标记为 boss
-            "hole",    # hole_array 标记为 hole
+            "boss",  # island 标记为 boss
+            "hole",  # hole_array 标记为 hole
         }
-        research_advanced = sum(
-            1 for f in research_feats if f.type.value in advanced_types
-        )
+        research_advanced = sum(1 for f in research_feats if f.type.value in advanced_types)
 
         # 落盘 diff
         from pathlib import Path as _Path
@@ -278,14 +274,16 @@ class DxfProcessService:
         except (DxfParseError, DxfFormatError) as e:
             logger.warning("DXF parse failed: %s", e, exc_info=True)
             return StageResult(
-                name="parse", success=False,
+                name="parse",
+                success=False,
                 latency_ms=(time.time() - t0) * 1000,
                 error="DXF 文件解析失败，请检查文件格式",
             )
         except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:
             logger.error("Unexpected DXF parse error: %s", e, exc_info=True)
             return StageResult(
-                name="parse", success=False,
+                name="parse",
+                success=False,
                 latency_ms=(time.time() - t0) * 1000,
                 error="DXF 解析遇到未知错误，请联系管理员",
             )
@@ -312,14 +310,13 @@ class DxfProcessService:
         except (ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:
             logger.error("DXF feature extraction failed: %s", e, exc_info=True)
             return StageResult(
-                name="features", success=False,
+                name="features",
+                success=False,
                 latency_ms=(time.time() - t0) * 1000,
                 error=f"feature extraction failed: {e}",
             )
 
-    def _run_model3d(
-        self, path: Path, out_dir: Optional[Path], user_id: Optional[str]
-    ) -> StageResult:
+    def _run_model3d(self, path: Path, out_dir: Optional[Path], user_id: Optional[str]) -> StageResult:
         t0 = time.time()
         try:
             from app.dxf.dxf_parser import DxfParser
@@ -329,16 +326,12 @@ class DxfProcessService:
             conv = DxfToModelConverter()
             # 优先用 polylines，没 polylines 才退化到 features
             if parsed.polylines:
-                result = conv.convert_from_polylines(
-                    parsed.polylines, height=10.0
-                )
+                result = conv.convert_from_polylines(parsed.polylines, height=10.0)
             else:
                 from app.dxf.feature_extractor import FeatureExtractor
 
                 feats = FeatureExtractor().extract(str(path))
-                result = conv.convert(
-                    feats, user_id=user_id, source_dxf=str(path)
-                )
+                result = conv.convert(feats, user_id=user_id, source_dxf=str(path))
             ok = result.success
             files = []
             if ok and out_dir is not None and result.workplane is not None:
@@ -364,7 +357,8 @@ class DxfProcessService:
         except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:
             logger.error("DXF 3D conversion failed: %s", e, exc_info=True)
             return StageResult(
-                name="model3d", success=False,
+                name="model3d",
+                success=False,
                 latency_ms=(time.time() - t0) * 1000,
                 error=f"3d conversion failed: {e}",
             )
@@ -400,7 +394,8 @@ class DxfProcessService:
         except (OSError, RuntimeError, KeyError, ValueError, TypeError) as e:
             logger.error("GCode generation failed: %s", e, exc_info=True)
             return StageResult(
-                name="gcode", success=False,
+                name="gcode",
+                success=False,
                 latency_ms=(time.time() - t0) * 1000,
                 error=f"gcode generation failed: {e}",
             )

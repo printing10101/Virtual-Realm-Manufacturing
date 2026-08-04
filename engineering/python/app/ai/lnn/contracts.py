@@ -17,7 +17,7 @@ research/ 中的具体实现通过鸭子类型满足这些 Protocol。
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Union
+from typing import Any, Dict, List, Optional, Protocol
 from typing_extensions import runtime_checkable
 
 
@@ -25,12 +25,14 @@ from typing_extensions import runtime_checkable
 # LNN 模型配置
 # ---------------------------------------------------------------------------
 
+
 @runtime_checkable
 class LNNConfigProtocol(Protocol):
     """LNN 模型配置协议。
 
     与 ``research.models.torch_base_lnn.LNNConfig`` 保持结构兼容。
     """
+
     input_dim: int
     hidden_size: int
     output_dim: int
@@ -45,6 +47,7 @@ class LNNConfigProtocol(Protocol):
 # ---------------------------------------------------------------------------
 # LNN 训练器
 # ---------------------------------------------------------------------------
+
 
 @runtime_checkable
 class LNNTrainerProtocol(Protocol):
@@ -64,8 +67,10 @@ class LNNTrainerProtocol(Protocol):
 # 设备管理
 # ---------------------------------------------------------------------------
 
+
 class DeviceInfo(Protocol):
     """设备信息协议。"""
+
     device_type: str
     device_name: str
 
@@ -104,6 +109,7 @@ def clear_gpu_memory() -> None:
 # 实验追踪 (MLflow)
 # ---------------------------------------------------------------------------
 
+
 @runtime_checkable
 class ExperimentTrackerProtocol(Protocol):
     """实验追踪器协议（MLflow 包装）。"""
@@ -123,6 +129,7 @@ class ExperimentTrackerProtocol(Protocol):
 # 量化
 # ---------------------------------------------------------------------------
 
+
 @runtime_checkable
 class QuantizerProtocol(Protocol):
     """模型量化器协议。"""
@@ -135,6 +142,7 @@ class QuantizerProtocol(Protocol):
 # ---------------------------------------------------------------------------
 # 可复现性
 # ---------------------------------------------------------------------------
+
 
 def set_global_seed(seed: int = 42) -> None:
     """设置全局随机种子以确保实验可复现。"""

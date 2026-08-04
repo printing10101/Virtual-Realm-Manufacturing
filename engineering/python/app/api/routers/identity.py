@@ -12,6 +12,7 @@
 - 登录端点受速率限制（防爆破）
 - 用户主权操作需二次认证
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

@@ -169,9 +169,7 @@ class AutoDetector:
 
     async def detect_one(self, provider_type: ProviderType) -> DetectionResult | None:
         """探测单个 Provider 类型。"""
-        target = next(
-            (t for t in _PROBE_TARGETS if t["provider_type"] == provider_type), None
-        )
+        target = next((t for t in _PROBE_TARGETS if t["provider_type"] == provider_type), None)
         if target is None:
             return None
         return await self._detect_one(target)
@@ -190,9 +188,7 @@ class AutoDetector:
         result.port_open = await self._check_port(target["host"], target["port"])
 
         # 步骤2: 进程识别（辅助信息，移至线程池避免阻塞事件循环）
-        result.process_found = await asyncio.to_thread(
-            self._check_processes, target["process_names"]
-        )
+        result.process_found = await asyncio.to_thread(self._check_processes, target["process_names"])
 
         # 步骤3: API 探测（仅当端口开放时）
         if result.port_open:
@@ -220,8 +216,7 @@ class AutoDetector:
                 await writer.wait_closed()
             except (OSError, ConnectionError) as close_err:
                 # wait_closed 失败不影响端口可达性判断，仅记录便于排查
-                logger.debug("writer.wait_closed failed (host=%s port=%d): %s",
-                             host, port, close_err, exc_info=True)
+                logger.debug("writer.wait_closed failed (host=%s port=%d): %s", host, port, close_err, exc_info=True)
             return True
         except (asyncio.TimeoutError, ConnectionRefusedError, OSError) as e:
             logger.debug("Port %d:%d closed: %s", host, port, e)
@@ -247,9 +242,7 @@ class AutoDetector:
             logger.debug("process scan failed: %s", proc_err, exc_info=True)
         return False
 
-    async def _probe_api(
-        self, base_url: str, health_path: str
-    ) -> tuple[bool, list[str]]:
+    async def _probe_api(self, base_url: str, health_path: str) -> tuple[bool, list[str]]:
         """探测 API 是否响应，并尝试获取模型列表。
 
         Returns:
@@ -286,9 +279,7 @@ class AutoDetector:
                 models.append(model_name)
         return models
 
-    def generate_provider_configs(
-        self, results: list[DetectionResult]
-    ) -> list[ProviderConfig]:
+    def generate_provider_configs(self, results: list[DetectionResult]) -> list[ProviderConfig]:
         """根据探测结果生成可用的 Provider 配置列表。
 
         仅包含 is_available=True 的结果。

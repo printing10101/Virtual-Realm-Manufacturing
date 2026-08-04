@@ -30,7 +30,10 @@ class MarkdownSkillParser:
                 content = f.read()
         except (OSError, UnicodeDecodeError) as e:
             logger.error(
-                "Failed to read skill file %s: %s", file_path, e, exc_info=True,
+                "Failed to read skill file %s: %s",
+                file_path,
+                e,
+                exc_info=True,
             )
             return None
 
@@ -77,9 +80,7 @@ class MarkdownSkillParser:
                 value = value.strip()
                 if value.startswith("[") and value.endswith("]"):
                     items = value[1:-1].split(",")
-                    metadata[key] = [
-                        item.strip().strip("\"'") for item in items if item.strip()
-                    ]
+                    metadata[key] = [item.strip().strip("\"'") for item in items if item.strip()]
                 elif value.lower() == "true":
                     metadata[key] = True
                 elif value.lower() == "false":
@@ -99,9 +100,7 @@ class MarkdownSkillParser:
     @classmethod
     def _parse_legacy_metadata(cls, content: str) -> Optional[Dict[str, Any]]:
         """解析旧版元数据格式。"""
-        table_pattern = re.compile(
-            r"\|\s*字段\s*\|\s*值\s*\|\s*\n\|[-| ]+\|\s*\n((?:\|.*\|\s*\n?)+)"
-        )
+        table_pattern = re.compile(r"\|\s*字段\s*\|\s*值\s*\|\s*\n\|[-| ]+\|\s*\n((?:\|.*\|\s*\n?)+)")
         match = table_pattern.search(content)
         if not match:
             return None
@@ -126,9 +125,7 @@ class MarkdownSkillParser:
             text = metadata.pop("applicable_tasks_text")
             metadata["applicable_tasks"] = cls._extract_task_types(text)
         if "dependencies_text" in metadata:
-            metadata["dependencies"] = [
-                d.strip() for d in metadata.pop("dependencies_text").split("、")
-            ]
+            metadata["dependencies"] = [d.strip() for d in metadata.pop("dependencies_text").split("、")]
 
         return metadata
 

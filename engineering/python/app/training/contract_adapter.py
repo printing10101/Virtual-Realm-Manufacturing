@@ -18,6 +18,7 @@
 兼容性：
     - 适配器是可选的：旧代码用 TrainingDataLake 不变；新代码用适配器获得版本化能力
 """
+
 from __future__ import annotations
 
 import logging
@@ -90,9 +91,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         # 这样多次实例化同 name 的 adapter 也能复用同一 dataset_id
         import hashlib
 
-        stable_id = "lake-" + hashlib.sha256(
-            self._dataset_name.encode("utf-8")
-        ).hexdigest()[:16]
+        stable_id = "lake-" + hashlib.sha256(self._dataset_name.encode("utf-8")).hexdigest()[:16]
 
         # 尝试 list_versions 来判断 dataset 是否已存在
         try:
@@ -147,9 +146,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         注意：此方法创建的是一个**独立**的新 dataset，与 TrainingDataLake 的
         ``dataset_name`` 无关。若需把 lake 数据接入契约，应使用 ``commit_version()``。
         """
-        return await self._store.create(
-            name, schema, owner_id=owner_id, description=description
-        )
+        return await self._store.create(name, schema, owner_id=owner_id, description=description)
 
     async def commit_version(
         self,
@@ -171,13 +168,9 @@ class TrainingDataLakeAdapter(IDatasetStore):
                 "TrainingDataLakeAdapter.commit_version: 从 lake 加载 %d 条记录",
                 len(records),
             )
-        return await self._store.commit_version(
-            dataset_id, records, version=version, lineage=lineage
-        )
+        return await self._store.commit_version(dataset_id, records, version=version, lineage=lineage)
 
-    async def get_version(
-        self, dataset_id: str, version: Optional[str] = None
-    ) -> DatasetVersion:
+    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersion:
         """获取版本（委托）."""
         return await self._store.get_version(dataset_id, version)
 
@@ -189,9 +182,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         batch_size: int = 1000,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """读取版本内容（委托）."""
-        async for batch in self._store.read(
-            dataset_id, version, batch_size=batch_size
-        ):
+        async for batch in self._store.read(dataset_id, version, batch_size=batch_size):
             yield batch
 
     async def list_versions(self, dataset_id: str) -> list[DatasetVersion]:
@@ -217,9 +208,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         等价于 ``commit_version(await _ensure_dataset(), [], version=..., lineage=...)``。
         """
         dataset_id = await self._ensure_dataset()
-        return await self.commit_version(
-            dataset_id, [], version=version, lineage=lineage
-        )
+        return await self.commit_version(dataset_id, [], version=version, lineage=lineage)
 
     def write_training_sample(self, sample: dict[str, Any]) -> bool:
         """便捷方法：直接向 lake 写入一条样本.
@@ -228,9 +217,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         """
         return self._lake.write_training_sample(sample)
 
-    def write_training_samples(
-        self, samples: list[dict[str, Any]]
-    ) -> dict[str, int]:
+    def write_training_samples(self, samples: list[dict[str, Any]]) -> dict[str, int]:
         """便捷方法：批量向 lake 写入样本."""
         return self._lake.write_training_samples(samples)
 

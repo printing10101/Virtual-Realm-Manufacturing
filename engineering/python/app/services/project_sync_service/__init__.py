@@ -36,7 +36,7 @@
     - ``_clone``：clone（_CloneMixin）
     - ``service``：主类 ProjectSyncService（组合所有 Mixin）
 """
+
 from __future__ import annotations
 
 from app.dependencies import get_project_sync_service
-

@@ -112,21 +112,25 @@ class CamReviewStatus(str, Enum):
 SAFETY_MARGIN_RATIO: float = 0.8
 
 # HRC52 待校准材料集合（与阶段 5/6 对齐，阶段 7 仅继承不二次拟合）
-PENDING_CALIBRATION_MATERIALS: frozenset[str] = frozenset({
-    "steel_hrc52",
-    "hrc52",
-    "hrc_52",
-    "hardened_steel_hrc52",
-})
+PENDING_CALIBRATION_MATERIALS: frozenset[str] = frozenset(
+    {
+        "steel_hrc52",
+        "hrc52",
+        "hrc_52",
+        "hardened_steel_hrc52",
+    }
+)
 
 # 合法 CAM 后端（与 CamValidationConfig.default_cam_backend 校验逻辑对齐）
-VALID_CAM_BACKENDS: frozenset[str] = frozenset({
-    "internal_only",
-    "pycam",
-    "nx_open",
-    "powermill",
-    "manual",
-})
+VALID_CAM_BACKENDS: frozenset[str] = frozenset(
+    {
+        "internal_only",
+        "pycam",
+        "nx_open",
+        "powermill",
+        "manual",
+    }
+)
 
 
 # =============================================================================
@@ -315,9 +319,7 @@ class CamValidationTask:
     safe_z: float = 80.0
     stock_top_z: float = 50.0
     status: str = CamValidationTaskStatus.PENDING.value
-    feature_validation_results: list[FeatureValidationResult] = field(
-        default_factory=list
-    )
+    feature_validation_results: list[FeatureValidationResult] = field(default_factory=list)
     gcode_total_lines: int = 0
     # CAM 后端策略
     cam_backend_requested: str = "internal_only"
@@ -355,9 +357,7 @@ class CamValidationTask:
             "safe_z": self.safe_z,
             "stock_top_z": self.stock_top_z,
             "status": self.status,
-            "feature_validation_results": [
-                r.to_dict() for r in self.feature_validation_results
-            ],
+            "feature_validation_results": [r.to_dict() for r in self.feature_validation_results],
             "gcode_total_lines": self.gcode_total_lines,
             "cam_backend_requested": self.cam_backend_requested,
             "cam_backend_used": self.cam_backend_used,
@@ -429,18 +429,14 @@ class CamTaskStore:
         """添加任务到存储。"""
         with self._tasks_lock:
             if task.task_id in self._tasks:
-                raise CamValidationError(
-                    f"任务 ID 已存在: {task.task_id}"
-                )
+                raise CamValidationError(f"任务 ID 已存在: {task.task_id}")
             self._tasks[task.task_id] = task
 
     def get_task(self, task_id: str) -> CamValidationTask:
         """获取任务。"""
         with self._tasks_lock:
             if task_id not in self._tasks:
-                raise CamValidationError(
-                    safe_error_message(f"任务不存在: {task_id}")
-                )
+                raise CamValidationError(safe_error_message(f"任务不存在: {task_id}"))
             return self._tasks[task_id]
 
     def list_tasks(
@@ -460,9 +456,7 @@ class CamTaskStore:
         """更新任务。"""
         with self._tasks_lock:
             if task.task_id not in self._tasks:
-                raise CamValidationError(
-                    safe_error_message(f"任务不存在: {task.task_id}")
-                )
+                raise CamValidationError(safe_error_message(f"任务不存在: {task.task_id}"))
             self._tasks[task.task_id] = task
 
     def delete_task(
@@ -480,15 +474,12 @@ class CamTaskStore:
         """
         with self._tasks_lock:
             if task_id not in self._tasks:
-                raise CamValidationError(
-                    safe_error_message(f"任务不存在: {task_id}")
-                )
+                raise CamValidationError(safe_error_message(f"任务不存在: {task_id}"))
             task = self._tasks[task_id]
             if task.status == CamValidationTaskStatus.SUCCEEDED.value:
                 if not allow_delete_succeeded:
                     raise ReviewError(
-                        f"任务 {task_id} 已 SUCCEEDED，禁止删除"
-                        "（cam_report.json 是阶段 7 最终产物，需保留供审计追溯）"
+                        f"任务 {task_id} 已 SUCCEEDED，禁止删除（cam_report.json 是阶段 7 最终产物，需保留供审计追溯）"
                     )
             del self._tasks[task_id]
 

@@ -13,7 +13,6 @@ Endpoints:
     - POST /seed                  Seed initial demo data
 """
 
-
 import logging
 from typing import Optional
 
@@ -40,6 +39,7 @@ router = APIRouter(
 #   2. 请求阶段即拒绝非法字段（422），而非等到 service 层
 #   3. 统一 API 契约
 # ---------------------------------------------------------------------------
+
 
 class EquipmentUpdateRequest(BaseModel):
     """更新设备状态和指标的请求体（白名单字段）。
@@ -83,6 +83,7 @@ class MaintenancePlanUpdateRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("")
 async def list_equipment(
     status: Optional[str] = Query(None, description="按状态过滤: 运行中/待机/维护中/故障"),
@@ -91,9 +92,7 @@ async def list_equipment(
 ):
     """获取设备列表，可按状态过滤并分页。"""
     try:
-        data = await equipment_service.list_equipment(
-            status=status, page=page, page_size=page_size
-        )
+        data = await equipment_service.list_equipment(status=status, page=page, page_size=page_size)
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
 
@@ -149,6 +148,7 @@ async def update_equipment(equipment_id: str, body: EquipmentUpdateRequest):
 # Alarm endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/alarms/")
 async def list_alarms(
     equipment_id: Optional[str] = Query(None, description="按设备ID过滤"),
@@ -194,6 +194,7 @@ async def update_alarm_status(alarm_id: str, body: AlarmStatusUpdateRequest):
 # Maintenance endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/maintenance/")
 async def list_maintenance_plans(
     equipment_id: Optional[str] = Query(None, description="按设备ID过滤"),
@@ -238,6 +239,7 @@ async def update_maintenance_plan(plan_id: str, body: MaintenancePlanUpdateReque
 # ---------------------------------------------------------------------------
 # Seed endpoint
 # ---------------------------------------------------------------------------
+
 
 @router.post("/seed", dependencies=[Depends(require_role("admin"))])
 async def seed_equipment_data():

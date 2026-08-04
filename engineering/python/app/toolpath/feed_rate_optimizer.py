@@ -28,6 +28,7 @@ class CuttingConditions:
     def surface_speed(self) -> float:
         """计算切削速度 (m/min)。"""
         import math
+
         return (math.pi * self.tool_diameter * self.spindle_speed) / 1000.0
 
     @property
@@ -126,7 +127,7 @@ class FeedRateOptimizer:
         Kc = 2000  # N/mm²
         cutting_force_per_feed = Kc * conditions.depth_of_cut * conditions.width_of_cut / 1000  # N per mm/tooth
         cutting_speed_m_s = conditions.surface_speed / 60  # m/s
-        
+
         # 最大功率下的进给限制
         if cutting_force_per_feed > 0 and cutting_speed_m_s > 0:
             max_feed_from_power = (machine_power_kw * 1000) / (cutting_force_per_feed * cutting_speed_m_s)
@@ -140,7 +141,7 @@ class FeedRateOptimizer:
 
         # 计算最终进给率 (mm/min)
         # 假设默认2刃刀具，如果条件中有刀具信息则使用
-        flute_count = getattr(conditions, 'flute_count', 2)
+        flute_count = getattr(conditions, "flute_count", 2)
         optimized_feed = optimized_feed_per_tooth * conditions.spindle_speed * flute_count
 
         logger.debug(

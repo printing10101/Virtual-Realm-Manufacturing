@@ -6,12 +6,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 
-from app.tasks.execution_lock import DEFAULT_LOCK_TIMEOUT_HOURS
+from app.tasks.execution_lock import DEFAULT_LOCK_TIMEOUT_HOURS, ExecutionLock
 
 
 class CheckoutStatus(str, Enum):
@@ -80,9 +80,7 @@ class CheckoutResult:
             "task_id": self.task_id,
             "agent_id": self.agent_id,
             "message": self.message,
-            "failure_reason": self.failure_reason.value
-            if self.failure_reason
-            else None,
+            "failure_reason": self.failure_reason.value if self.failure_reason else None,
             "retry_recommended": self.retry_recommended,
             "retry_delay_minutes": self.retry_delay_minutes,
             "checked_out_at": self.checked_out_at,

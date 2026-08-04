@@ -4,7 +4,6 @@
 提供文档的 CRUD、分类统计、关键词搜索及演示数据填充功能。
 """
 
-
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -18,6 +17,7 @@ from app.services import documents_service
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
+
 
 class DocumentCreate(BaseModel):
     title: str
@@ -121,9 +121,7 @@ async def create_document(body: DocumentCreate):
 async def update_document(doc_id: str, body: DocumentUpdate):
     """更新文档。"""
     try:
-        data = await documents_service.update_document(
-            doc_id, body.model_dump(exclude_unset=True)
-        )
+        data = await documents_service.update_document(doc_id, body.model_dump(exclude_unset=True))
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
 
@@ -158,6 +156,9 @@ async def seed_documents():
     if result["already_exists"]:
         return success(message="文档数据已存在，跳过填充")
 
-    return success(message="文档演示数据填充成功", data={
-        "documents": result["count"],
-    })
+    return success(
+        message="文档演示数据填充成功",
+        data={
+            "documents": result["count"],
+        },
+    )

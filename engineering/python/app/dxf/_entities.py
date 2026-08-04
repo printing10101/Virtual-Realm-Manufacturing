@@ -1,15 +1,10 @@
 """DXF 实体数据类（V3.0 自 dxf_parser.py 拆分）。"""
+
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Callable, Iterable, Optional
+from typing import Any
 
-import ezdxf
-
-from app.dxf.exceptions import DxfParseError, DxfFormatError
-from app.utils.utils import safe_file_path
 
 class DxfLine:
     """DXF直线实体。
@@ -22,6 +17,7 @@ class DxfLine:
         handle: 实体句柄
         lineweight: 线宽枚举值
     """
+
     start: tuple[float, float, float]
     end: tuple[float, float, float]
     layer: str = "0"
@@ -41,6 +37,7 @@ class DxfCircle:
         color: 颜色索引号
         handle: 实体句柄
     """
+
     center: tuple[float, float, float]
     radius: float
     layer: str = "0"
@@ -61,6 +58,7 @@ class DxfArc:
         color: 颜色索引号
         handle: 实体句柄
     """
+
     center: tuple[float, float, float]
     radius: float
     start_angle: float
@@ -84,6 +82,7 @@ class DxfText:
         handle: 实体句柄
         entity_type: 实体类型 ("TEXT" 或 "MTEXT")
     """
+
     content: str
     position: tuple[float, float, float]
     height: float = 2.5
@@ -108,6 +107,7 @@ class DxfDimension:
         handle: 实体句柄
         associated_entities: 关联的实体句柄列表
     """
+
     dim_type: str
     measurement: float
     text: str = ""
@@ -134,6 +134,7 @@ class DxfPolyline:
         handle: 实体句柄
         entity_type: "POLYLINE" 或 "LWPOLYLINE"
     """
+
     vertices: list[tuple[float, ...]]
     is_closed: bool = False
     is_3d: bool = False
@@ -179,11 +180,10 @@ class DxfHatch:
         color: 颜色
         handle: 实体句柄
     """
+
     pattern_name: str = ""
     solid_fill: bool = False
-    boundary_paths: list[list[tuple[float, float, float]]] = field(
-        default_factory=list
-    )
+    boundary_paths: list[list[tuple[float, float, float]]] = field(default_factory=list)
     layer: str = "0"
     color: int = 256
     handle: str = ""
@@ -201,6 +201,7 @@ class DxfInsert:
         layer: 图层
         handle: 实体句柄
     """
+
     block_name: str = ""
     position: tuple[float, float, float] = (0.0, 0.0, 0.0)
     scale: tuple[float, float, float] = (1.0, 1.0, 1.0)
@@ -222,13 +223,10 @@ class DxfSpline:
         layer: 图层
         handle: 实体句柄
     """
+
     degree: int = 3
-    control_points: list[tuple[float, float, float]] = field(
-        default_factory=list
-    )
-    fit_points: list[tuple[float, float, float]] = field(
-        default_factory=list
-    )
+    control_points: list[tuple[float, float, float]] = field(default_factory=list)
+    fit_points: list[tuple[float, float, float]] = field(default_factory=list)
     knots: list[float] = field(default_factory=list)
     closed: bool = False
     layer: str = "0"
@@ -255,6 +253,7 @@ class DxfParseResult:
         errors: 解析过程中的错误
         extents: 图形范围 (min_x, min_y, max_x, max_y)
     """
+
     file_name: str = ""
     file_size: int = 0
     dxf_version: str = ""
@@ -304,5 +303,3 @@ class DxfParseResult:
             "errors": self.errors,
             "success": self.success,
         }
-
-

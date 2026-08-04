@@ -47,9 +47,7 @@ class ReaderMixin:
                     if audit_file.exists():
                         files.append(audit_file)
                     if include_archived:
-                        for archived in sorted(
-                            date_dir.glob("audit.log.archived.*")
-                        ):
+                        for archived in sorted(date_dir.glob("audit.log.archived.*")):
                             if archived.exists():
                                 files.append(archived)
         return files
@@ -94,7 +92,7 @@ class ReaderMixin:
                         except json.JSONDecodeError as e:
                             logger.debug("跳过损坏的日志行: %s", e, exc_info=True)
                             continue
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 logger.debug("日志文件不存在: %s", log_file, exc_info=True)
                 continue
 
@@ -134,9 +132,7 @@ class ReaderMixin:
         )
 
         if format == "json":
-            return json.dumps(
-                [entry.to_dict() for entry in logs], ensure_ascii=False, indent=2
-            )
+            return json.dumps([entry.to_dict() for entry in logs], ensure_ascii=False, indent=2)
         elif format == "csv":
             if not logs:
                 return ""
@@ -197,15 +193,9 @@ class ReaderMixin:
         twenty_four_hours_ms = 24 * 60 * 60 * 1000
 
         for entry in logs:
-            stats["by_module"][entry.ai_module] = (
-                stats["by_module"].get(entry.ai_module, 0) + 1
-            )
-            stats["by_decision"][entry.user_decision] = (
-                stats["by_decision"].get(entry.user_decision, 0) + 1
-            )
-            stats["by_status"][entry.operation_status] = (
-                stats["by_status"].get(entry.operation_status, 0) + 1
-            )
+            stats["by_module"][entry.ai_module] = stats["by_module"].get(entry.ai_module, 0) + 1
+            stats["by_decision"][entry.user_decision] = stats["by_decision"].get(entry.user_decision, 0) + 1
+            stats["by_status"][entry.operation_status] = stats["by_status"].get(entry.operation_status, 0) + 1
 
             if entry.confidence is not None:
                 confidence_values.append(entry.confidence)

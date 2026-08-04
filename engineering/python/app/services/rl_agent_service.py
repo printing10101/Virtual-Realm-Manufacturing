@@ -35,9 +35,9 @@
 - 输出动作仅供 CAM 验证层与决策日志参考，不直接接 CNC 控制器
 - 物理执行需"持证操作员 + 导师签字 + 保险"，本服务层不涉及
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import threading
 import time
@@ -49,8 +49,8 @@ from sqlalchemy import desc, select
 
 from app.contracts.rl_agent import (
     ActionEvaluation,
-    OptimizationTarget,
     PolicyAlgorithm,
+    PolicyError,
     PolicyInfo,
     PolicyNotFoundError,
     PolicyVersion,
@@ -62,7 +62,6 @@ from app.contracts.rl_agent import (
     SafetyViolationError,
     TrainingAlreadyRunningError,
     TrainingError,
-    TrainingMetricsSnapshot,
     TrainingStartRequest,
     TrainingStatus,
     TrainingStatusInfo,
@@ -87,6 +86,7 @@ from app.services._agent_helpers import (
     _rank_candidates,
     _build_reasoning,
 )
+
 logger = logging.getLogger(__name__)
 
 
@@ -100,9 +100,7 @@ _STATE_FIELD_ORDER: list[str] = StateField.all()
 _ACTION_FIELD_ORDER: list[str] = ActionField.all()
 """动作字段顺序（与 PolicyNet 输出维度对齐）."""
 
-_STATE_FIELD_INDEX: dict[str, int] = {
-    name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)
-}
+_STATE_FIELD_INDEX: dict[str, int] = {name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)}
 
 
 # ---------------------------------------------------------------------------
@@ -186,26 +184,16 @@ class RLAgentService(BaseSingletonService):
                 stmt = select(RLAgentPolicyVersionORM)
                 count_stmt = select(func.count(RLAgentPolicyVersionORM.id))
                 if active_only:
-                    stmt = stmt.where(
-                        RLAgentPolicyVersionORM.is_active.is_(True)
-                    )
-                    count_stmt = count_stmt.where(
-                        RLAgentPolicyVersionORM.is_active.is_(True)
-                    )
+                    stmt = stmt.where(RLAgentPolicyVersionORM.is_active.is_(True))
+                    count_stmt = count_stmt.where(RLAgentPolicyVersionORM.is_active.is_(True))
                 if algorithm:
-                    stmt = stmt.where(
-                        RLAgentPolicyVersionORM.algorithm == algorithm
-                    )
-                    count_stmt = count_stmt.where(
-                        RLAgentPolicyVersionORM.algorithm == algorithm
-                    )
+                    stmt = stmt.where(RLAgentPolicyVersionORM.algorithm == algorithm)
+                    count_stmt = count_stmt.where(RLAgentPolicyVersionORM.algorithm == algorithm)
                 stmt = stmt.order_by(desc(RLAgentPolicyVersionORM.created_at))
                 stmt = stmt.limit(limit).offset(offset)
                 result = await session.execute(stmt)
                 orms = list(result.scalars().all())
-                total = (
-                    await session.execute(count_stmt)
-                ).scalar_one()
+                total = (await session.execute(count_stmt)).scalar_one()
         finally:
             await session.close()
 
@@ -231,18 +219,14 @@ class RLAgentService(BaseSingletonService):
         session = await self._get_session()
         try:
             async with session.begin():
-                stmt = select(RLAgentPolicyVersionORM).where(
-                    RLAgentPolicyVersionORM.version == version
-                )
+                stmt = select(RLAgentPolicyVersionORM).where(RLAgentPolicyVersionORM.version == version)
                 result = await session.execute(stmt)
                 orm = result.scalars().first()
         finally:
             await session.close()
 
         if orm is None:
-            raise PolicyNotFoundError(
-                f"RL 策略版本 '{version}' 不存在"
-            )
+            raise PolicyNotFoundError(f"RL 策略版本 '{version}' 不存在")
         return self._orm_to_dataclass(orm)
 
     async def register_version(
@@ -286,9 +270,7 @@ class RLAgentService(BaseSingletonService):
             async with session.begin():
                 # 若 set_active，先清除其他激活版本
                 if set_active:
-                    active_stmt = select(RLAgentPolicyVersionORM).where(
-                        RLAgentPolicyVersionORM.is_active.is_(True)
-                    )
+                    active_stmt = select(RLAgentPolicyVersionORM).where(RLAgentPolicyVersionORM.is_active.is_(True))
                     active_result = await session.execute(active_stmt)
                     for active_orm in active_result.scalars().all():
                         active_orm.is_active = False
@@ -335,19 +317,13 @@ class RLAgentService(BaseSingletonService):
         session = await self._get_session()
         try:
             async with session.begin():
-                stmt = select(RLAgentPolicyVersionORM).where(
-                    RLAgentPolicyVersionORM.version == version
-                )
+                stmt = select(RLAgentPolicyVersionORM).where(RLAgentPolicyVersionORM.version == version)
                 result = await session.execute(stmt)
                 target = result.scalars().first()
                 if target is None:
-                    raise PolicyNotFoundError(
-                        f"RL 策略版本 '{version}' 不存在"
-                    )
+                    raise PolicyNotFoundError(f"RL 策略版本 '{version}' 不存在")
                 # 清除其他激活版本
-                active_stmt = select(RLAgentPolicyVersionORM).where(
-                    RLAgentPolicyVersionORM.is_active.is_(True)
-                )
+                active_stmt = select(RLAgentPolicyVersionORM).where(RLAgentPolicyVersionORM.is_active.is_(True))
                 active_result = await session.execute(active_stmt)
                 for active_orm in active_result.scalars().all():
                     active_orm.is_active = False
@@ -400,15 +376,11 @@ class RLAgentService(BaseSingletonService):
         start_time = time.perf_counter()
         try:
             # 1. 状态字典 → ndarray
-            state_arr = self._state_dict_to_array(
-                request.current_state, field_name="current_state"
-            )
+            state_arr = self._state_dict_to_array(request.current_state, field_name="current_state")
 
             # 2. 候选动作 list[dict] → list[ndarray]
             candidate_action_arrs = [
-                self._action_dict_to_array(
-                    act, field_name=f"candidate_actions[{idx}]"
-                )
+                self._action_dict_to_array(act, field_name=f"candidate_actions[{idx}]")
                 for idx, act in enumerate(request.candidate_actions)
             ]
 
@@ -426,37 +398,27 @@ class RLAgentService(BaseSingletonService):
 
             # 安全过滤推荐动作
             ref_action = self._get_last_action()
-            safe_action, safety_result = shield.filter(
-                raw_action, prev_action=ref_action
-            )
+            safe_action, safety_result = shield.filter(raw_action, prev_action=ref_action)
             self._set_last_action(safe_action)
 
             # 5. 评估候选动作
             action_evaluations: list[ActionEvaluation] = []
             for idx, cand_arr in enumerate(candidate_action_arrs):
-                cand_safe, cand_result = shield.filter(
-                    cand_arr, prev_action=ref_action
-                )
+                cand_safe, cand_result = shield.filter(cand_arr, prev_action=ref_action)
                 # v1 简化：q_value ≈ V(s)（PPO 离线 RL 中 Q ≈ V(s)）
                 # v2 可引入 Q 网络或 (state, action) 联合价值评估
                 q_value = state_value
                 expected_return = q_value * (0.0 if cand_result.violated else 1.0)
 
                 # 从 current_state 提取预测颤振概率 / 刀具磨损
-                chatter_prob = self._extract_state_field(
-                    state_arr, StateField.CHATTER_PROBABILITY, default=0.0
-                )
-                tool_wear = self._extract_state_field(
-                    state_arr, StateField.TOOL_WEAR, default=0.0
-                )
+                chatter_prob = self._extract_state_field(state_arr, StateField.CHATTER_PROBABILITY, default=0.0)
+                tool_wear = self._extract_state_field(state_arr, StateField.TOOL_WEAR, default=0.0)
 
                 action_evaluations.append(
                     ActionEvaluation(
                         action=self._action_array_to_dict(cand_safe),
                         expected_return=expected_return,
-                        predicted_chatter_prob=max(
-                            0.0, min(1.0, float(chatter_prob))
-                        ),
+                        predicted_chatter_prob=max(0.0, min(1.0, float(chatter_prob))),
                         predicted_tool_wear=max(0.0, float(tool_wear)),
                         safety_violation=cand_result.violated,
                         q_value=q_value,
@@ -503,9 +465,7 @@ class RLAgentService(BaseSingletonService):
         except RLActError:
             raise
         except Exception as exc:
-            raise PolicyError(
-                f"决策过程中发生未预期错误: {exc}"
-            ) from exc
+            raise PolicyError(f"决策过程中发生未预期错误: {exc}") from exc
 
     # ── 训练控制 ──────────────────────────────────────────────────────
 
@@ -520,11 +480,7 @@ class RLAgentService(BaseSingletonService):
         session = await self._get_session()
         try:
             async with session.begin():
-                stmt = (
-                    select(RLAgentTrainingRunORM)
-                    .order_by(desc(RLAgentTrainingRunORM.created_at))
-                    .limit(1)
-                )
+                stmt = select(RLAgentTrainingRunORM).order_by(desc(RLAgentTrainingRunORM.created_at)).limit(1)
                 result = await session.execute(stmt)
                 orm = result.scalars().first()
         finally:
@@ -539,9 +495,7 @@ class RLAgentService(BaseSingletonService):
             )
         return self._training_run_to_status_info(orm)
 
-    async def start_training(
-        self, request: TrainingStartRequest
-    ) -> TrainingStatusInfo:
+    async def start_training(self, request: TrainingStartRequest) -> TrainingStatusInfo:
         """启动训练（v1 仅创建训练记录，实际训练由 Workflow 编排）.
 
         流程：
@@ -569,16 +523,13 @@ class RLAgentService(BaseSingletonService):
             async with session.begin():
                 # 检查是否有 RUNNING 状态训练
                 running_stmt = (
-                    select(RLAgentTrainingRunORM)
-                    .where(RLAgentTrainingRunORM.status == TrainingStatus.RUNNING)
-                    .limit(1)
+                    select(RLAgentTrainingRunORM).where(RLAgentTrainingRunORM.status == TrainingStatus.RUNNING).limit(1)
                 )
                 running_result = await session.execute(running_stmt)
                 running_orm = running_result.scalars().first()
                 if running_orm is not None:
                     raise TrainingAlreadyRunningError(
-                        f"训练已在运行: run_id={running_orm.id} "
-                        f"step={running_orm.current_step}"
+                        f"训练已在运行: run_id={running_orm.id} step={running_orm.current_step}"
                     )
 
                 # 创建新训练记录
@@ -631,9 +582,7 @@ class RLAgentService(BaseSingletonService):
         try:
             async with session.begin():
                 running_stmt = (
-                    select(RLAgentTrainingRunORM)
-                    .where(RLAgentTrainingRunORM.status == TrainingStatus.RUNNING)
-                    .limit(1)
+                    select(RLAgentTrainingRunORM).where(RLAgentTrainingRunORM.status == TrainingStatus.RUNNING).limit(1)
                 )
                 running_result = await session.execute(running_stmt)
                 target = running_result.scalars().first()
@@ -656,36 +605,24 @@ class RLAgentService(BaseSingletonService):
 
     # ── 内部辅助方法：ORM ↔ dataclass ──────────────────────────────
 
-    def _orm_to_dataclass(
-        self, orm: RLAgentPolicyVersionORM
-    ) -> PolicyVersion:
+    def _orm_to_dataclass(self, orm: RLAgentPolicyVersionORM) -> PolicyVersion:
         return _orm_to_dataclass(orm)
 
-    def _training_run_to_status_info(
-        self, orm: RLAgentTrainingRunORM
-    ) -> TrainingStatusInfo:
+    def _training_run_to_status_info(self, orm: RLAgentTrainingRunORM) -> TrainingStatusInfo:
         return _training_run_to_status_info(orm)
 
     # ── 内部辅助方法：dict ↔ ndarray ────────────────────────────────
 
-    def _state_dict_to_array(
-        self, state_dict: dict[str, float], *, field_name: str
-    ) -> np.ndarray:
+    def _state_dict_to_array(self, state_dict: dict[str, float], *, field_name: str) -> np.ndarray:
         return _state_dict_to_array(state_dict, field_name=field_name)
 
-    def _action_dict_to_array(
-        self, action_dict: dict[str, float], *, field_name: str
-    ) -> np.ndarray:
+    def _action_dict_to_array(self, action_dict: dict[str, float], *, field_name: str) -> np.ndarray:
         return _action_dict_to_array(action_dict, field_name=field_name)
 
-    def _action_array_to_dict(
-        self, action_arr: np.ndarray
-    ) -> dict[str, float]:
+    def _action_array_to_dict(self, action_arr: np.ndarray) -> dict[str, float]:
         return _action_array_to_dict(action_arr)
 
-    def _extract_state_field(
-        self, state_arr: np.ndarray, field_name: str, *, default: float = 0.0
-    ) -> float:
+    def _extract_state_field(self, state_arr: np.ndarray, field_name: str, *, default: float = 0.0) -> float:
         return _extract_state_field(state_arr, field_name)
 
     # ── 内部辅助方法：网络加载与推理 ────────────────────────────────
@@ -785,11 +722,7 @@ class RLAgentService(BaseSingletonService):
     def _get_last_action(self) -> Optional[np.ndarray]:
         """获取最后一次合法动作（跨请求维持变化率约束）."""
         with self._last_action_lock:
-            return (
-                self._last_action.copy()
-                if self._last_action is not None
-                else None
-            )
+            return self._last_action.copy() if self._last_action is not None else None
 
     def _set_last_action(self, action: np.ndarray) -> None:
         """更新最后一次合法动作."""
@@ -834,32 +767,22 @@ class RLAgentService(BaseSingletonService):
                 source="policy",
                 safety_violated=False,
             )
-            return RecommendedAction(
-                action=action_dict, reasoning=reasoning
-            )
+            return RecommendedAction(action=action_dict, reasoning=reasoning)
 
         # 策略动作违反约束：尝试从候选动作中找最优安全动作
-        safe_candidates = [
-            e for e in action_evaluations if not e.safety_violation
-        ]
+        safe_candidates = [e for e in action_evaluations if not e.safety_violation]
         if not safe_candidates:
-            raise SafetyViolationError(
-                "所有候选动作均被 SafetyShield 过滤，无安全动作可选"
-            )
+            raise SafetyViolationError("所有候选动作均被 SafetyShield 过滤，无安全动作可选")
 
         # 按 optimization_target 排序安全候选动作
-        best = self._rank_candidates(
-            safe_candidates, optimization_target
-        )[0]
+        best = self._rank_candidates(safe_candidates, optimization_target)[0]
         reasoning = self._build_reasoning(
             action_dict=best.action,
             optimization_target=optimization_target,
             source="candidate_fallback",
             safety_violated=False,
         )
-        return RecommendedAction(
-            action=best.action, reasoning=reasoning
-        )
+        return RecommendedAction(action=best.action, reasoning=reasoning)
 
     def _rank_candidates(
         self,
@@ -883,9 +806,7 @@ class RLAgentService(BaseSingletonService):
             safety_violated=safety_violated,
         )
 
-    async def _build_policy_info(
-        self, *, model_uri: str, exploration_rate: float
-    ) -> PolicyInfo:
+    async def _build_policy_info(self, *, model_uri: str, exploration_rate: float) -> PolicyInfo:
         """构建策略元信息.
 
         从数据库查询 model_uri 对应的版本记录，提取算法 / 版本 / 训练
@@ -899,9 +820,7 @@ class RLAgentService(BaseSingletonService):
             session = await self._get_session()
             try:
                 async with session.begin():
-                    stmt = select(RLAgentPolicyVersionORM).where(
-                        RLAgentPolicyVersionORM.model_uri == model_uri
-                    )
+                    stmt = select(RLAgentPolicyVersionORM).where(RLAgentPolicyVersionORM.model_uri == model_uri)
                     result = await session.execute(stmt)
                     orm = result.scalars().first()
                 if orm is not None:

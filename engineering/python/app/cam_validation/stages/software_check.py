@@ -26,15 +26,12 @@ from __future__ import annotations
 from typing import Any
 
 from app.cam_validation.cam_store import (
-    CamAdapterError,
     CamReviewStatus,
     CamValidationError,
     CamValidationPipelineError,
     CamValidationTask,
     CamValidationTaskStatus,
     FeatureValidationResult,
-    GCodeReportLoadError,
-    InternalValidationError,
 )
 from app.core.safe_errors import safe_error_message
 
@@ -80,7 +77,6 @@ class SoftwareCheckMixin:
             CamValidationPipelineError: 任务不存在 / 状态不允许执行
         """
         # 延迟导入以避免循环依赖（CamValidationResult 在 _common 中定义）
-        from ._common import CamValidationResult
 
         try:
             task = self._store.get_task(task_id)
@@ -91,9 +87,7 @@ class SoftwareCheckMixin:
             CamValidationTaskStatus.PENDING.value,
             CamValidationTaskStatus.FAILED.value,
         ):
-            raise CamValidationPipelineError(
-                f"任务状态不允许执行: {task.status}（仅 pending/failed 可重新执行）"
-            )
+            raise CamValidationPipelineError(f"任务状态不允许执行: {task.status}（仅 pending/failed 可重新执行）")
 
         # 标记为 RUNNING（不覆盖 started_at，保留创建时间作为排序依据）
         task.status = CamValidationTaskStatus.RUNNING.value
@@ -107,9 +101,7 @@ class SoftwareCheckMixin:
             # _execute_validation 内部会将状态置为 VALIDATED / FAILED
         except CamValidationError as e:
             # 内部校验抛出的已知异常
-            safe = safe_error_message(
-                e, context="cam_validation.run_pipeline"
-            )
+            safe = safe_error_message(e, context="cam_validation.run_pipeline")
             task = self._store.get_task(task_id)
             task.status = CamValidationTaskStatus.FAILED.value
             task.error_message = safe.get("message", str(e))
@@ -117,14 +109,14 @@ class SoftwareCheckMixin:
             self._store.update_task(task)
             logger.error(
                 "任务 %s 执行失败 error_id=%s message=%s",
-                task_id, safe.get("error_id"), safe.get("message"),
+                task_id,
+                safe.get("error_id"),
+                safe.get("message"),
             )
             return self._build_result(task, error_message=safe.get("message"))
         except Exception as e:
             # 未捕获异常兜底
-            safe = safe_error_message(
-                e, context="cam_validation.run_pipeline"
-            )
+            safe = safe_error_message(e, context="cam_validation.run_pipeline")
             task = self._store.get_task(task_id)
             task.status = CamValidationTaskStatus.FAILED.value
             task.error_message = safe.get("message", str(e))
@@ -132,17 +124,21 @@ class SoftwareCheckMixin:
             self._store.update_task(task)
             logger.error(
                 "任务 %s 执行失败（未捕获异常）error_id=%s message=%s",
-                task_id, safe.get("error_id"), safe.get("message"),
+                task_id,
+                safe.get("error_id"),
+                safe.get("message"),
             )
             return self._build_result(task, error_message=safe.get("message"))
 
         # 重新获取任务（_execute_validation 已更新状态）
         task = self._store.get_task(task_id)
         logger.info(
-            "任务 %s CAM 校验完成 status=%s total_features=%d "
-            "passed=%d failed=%d backend_used=%s",
-            task_id, task.status, task.total_features,
-            task.passed_features, task.failed_features,
+            "任务 %s CAM 校验完成 status=%s total_features=%d passed=%d failed=%d backend_used=%s",
+            task_id,
+            task.status,
+            task.total_features,
+            task.passed_features,
+            task.failed_features,
             task.cam_backend_used,
         )
         return self._build_result(task)
@@ -165,9 +161,7 @@ class SoftwareCheckMixin:
             CamAdapterError: CAM 软件适配层异常
         """
         # 1. 加载阶段 6 G 代码 + report.json
-        load_result = self._loader.load_from_report(
-            task.source_gcode_report_path
-        )
+        load_result = self._loader.load_from_report(task.source_gcode_report_path)
 
         # 同步 task 字段（从阶段 6 report.json 继承）
         task.source_gcode_file_path = load_result.gcode_file_path
@@ -183,9 +177,7 @@ class SoftwareCheckMixin:
             task.warnings.extend(load_result.load_warnings)
 
         # 2. 将阶段 6 feature_results（list[dict]）转为 FeatureValidationResult
-        feature_results = self._build_feature_results(
-            load_result.feature_results
-        )
+        feature_results = self._build_feature_results(load_result.feature_results)
         task.total_features = len(feature_results)
 
         # 3. 执行内部预校验（InternalValidator）
@@ -320,9 +312,7 @@ class SoftwareCheckMixin:
                     axial_depth_mm=float(fr.get("axial_depth_mm", 0.0)),
                     limit_depth_mm=float(fr.get("limit_depth_mm", 0.0)),
                     stable=bool(fr.get("stable", True)),
-                    safety_margin_ratio=float(
-                        fr.get("safety_margin_ratio", 0.0)
-                    ),
+                    safety_margin_ratio=float(fr.get("safety_margin_ratio", 0.0)),
                     warning=str(fr.get("warning", "")),
                 )
             )

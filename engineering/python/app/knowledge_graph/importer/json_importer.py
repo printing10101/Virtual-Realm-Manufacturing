@@ -47,22 +47,8 @@ from app.knowledge_graph.importer.importers._common import (
     NODE_TYPE_PROCESS,
     NODE_TYPE_TOOL,
     # 映射常量
-    _ALL_MATERIAL_NAMES,
-    _FEATURE_TO_REPRESENTATIVE_TOOLS,
-    _SERIES_TO_FEATURES,
-    # 数据类
     ImportReport,
     ImportStats,
-    # 辅助函数
-    _load_json,
-    _material_id_from_name,
-    _resolve_default_path,
-    _retry_with_backoff,
-    _slugify_id,
-    # 去重器
-    _MachineDeduper,
-    _MaterialDeduper,
-    _ToolDeduper,
     # logger（历史代码可能依赖 json_importer.logger）
 )
 

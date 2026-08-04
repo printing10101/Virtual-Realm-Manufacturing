@@ -610,9 +610,10 @@ class TestShutdownOrderDynamicMock:
             import sys
             if "app.main" not in sys.modules:
                 # 预先 patch 关键模块级对象，避免导入时副作用
-                with patch("app.ring_log.RingLog") as _, \
-                     patch("app.ring_log.ring_log") as _, \
-                     patch("app.services.sse_manager.SSEManager") as _:
+                # V2.7.0 后 ring_log 为 app.main 模块级绑定（源自 app.utils.ring_buffer）
+                with patch("app.utils.ring_buffer.RingLog", create=True) as _, \
+ patch("app.main.ring_log", create=True) as _, \
+ patch("app.api.v1.sse.SSEManager", create=True) as _:
                     try:
                         importlib.import_module("app.main")
                     except Exception:
@@ -665,9 +666,9 @@ class TestShutdownOrderDynamicMock:
                 "app.core.logging_config.shutdown_logging",
                 new=MagicMock(side_effect=make_recorder("Logging")),
             ), patch(
-                "app.ring_log.ring_log"
+                "app.main.ring_log"
             ) as mock_ring_log, patch(
-                "app.services.sse_manager.sse_manager"
+                "app.api.v1.sse.sse_manager"
             ) as mock_sse:
                 mock_ring_log.append = MagicMock()
                 mock_ring_log.stop = AsyncMock()

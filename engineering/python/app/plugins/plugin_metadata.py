@@ -51,10 +51,7 @@ class PluginMetadata:
             "entry_point": self.entry_point,
             "plugin_type": self.plugin_type,
             "capabilities": self.capabilities,
-            "dependencies": [
-                {"name": d.name, "version": d.version, "required": d.required}
-                for d in self.dependencies
-            ],
+            "dependencies": [{"name": d.name, "version": d.version, "required": d.required} for d in self.dependencies],
             "config_schema": self.config_schema,
             "min_core_version": self.min_core_version,
             "max_core_version": self.max_core_version,

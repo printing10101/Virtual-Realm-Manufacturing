@@ -20,7 +20,7 @@ precision_disclaimer 字段在以下 API 响应中必须出现：
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from app.config import ImageTo3DConfig
@@ -96,8 +96,7 @@ def build_precision_disclaimer(
             f"{specs['expected_accuracy_mm']}mm。"
             "mesh 未做尺度归一化（无量纲），仅可用于可视化，"
             "不允许进入工艺仿真链路。"
-            "请放置已知尺寸标定块（如 30mm 量块）后重新触发重建。"
-            + part_prior_notice
+            "请放置已知尺寸标定块（如 30mm 量块）后重新触发重建。" + part_prior_notice
         )
     else:
         warning_message = (
@@ -106,8 +105,7 @@ def build_precision_disclaimer(
             "已用标定块归一化，但尺度精度仍受 SfM 噪声影响。"
             "本 mesh 必须经 CAM 软件二次校验后才允许进入机床加工。"
             "工业级配合面（H7/h6 等，0.01mm 公差）物理上不可达，"
-            "请使用三坐标测量机或激光扫描仪做最终检验。"
-            + part_prior_notice
+            "请使用三坐标测量机或激光扫描仪做最终检验。" + part_prior_notice
         )
 
     return PrecisionDisclaimer(

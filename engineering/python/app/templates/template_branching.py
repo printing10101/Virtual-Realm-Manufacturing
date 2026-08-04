@@ -161,9 +161,7 @@ class TemplateBranchManager:
         self._db.commit()
 
     def _compute_content_hash(self, data: Dict[str, Any]) -> str:
-        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[
-            :16
-        ]
+        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16]
 
     def create_branch(
         self,
@@ -219,9 +217,7 @@ class TemplateBranchManager:
         with self._lock:
             branches = list(self._cache.values())
             if type_filter:
-                branches = [
-                    b for b in branches if b.metadata.get("type") == type_filter
-                ]
+                branches = [b for b in branches if b.metadata.get("type") == type_filter]
             return sorted(branches, key=lambda b: b.updated_at, reverse=True)
 
     def get_commit_log(self, branch_id: str) -> List[Dict[str, Any]]:
@@ -256,9 +252,7 @@ class TemplateBranchManager:
             logger.info("Branch updated: id=%s, action=%s", branch_id, action)
             return branch
 
-    def merge_branch(
-        self, source_id: str, target_id: str, strategy: str = "overwrite"
-    ) -> Optional[TemplateBranch]:
+    def merge_branch(self, source_id: str, target_id: str, strategy: str = "overwrite") -> Optional[TemplateBranch]:
         """Merge source branch into target branch."""
         with self._lock:
             source = self._cache.get(source_id)
@@ -269,9 +263,7 @@ class TemplateBranchManager:
             if strategy == "overwrite":
                 target.template_data = source.template_data.copy()
             elif strategy == "deep_merge":
-                target.template_data = self._deep_merge(
-                    target.template_data, source.template_data
-                )
+                target.template_data = self._deep_merge(target.template_data, source.template_data)
 
             target.updated_at = time.time()
             target.commit_log.append(
@@ -283,28 +275,20 @@ class TemplateBranchManager:
                         "source_id": source_id,
                         "target_id": target_id,
                         "strategy": strategy,
-                        "content_hash": self._compute_content_hash(
-                            target.template_data
-                        ),
+                        "content_hash": self._compute_content_hash(target.template_data),
                     },
                 )
             )
 
             self._save_branch(target)
-            logger.info(
-                "Branch merged: %s → %s (strategy=%s)", source_id, target_id, strategy
-            )
+            logger.info("Branch merged: %s → %s (strategy=%s)", source_id, target_id, strategy)
             return target
 
     def _deep_merge(self, base: Dict, override: Dict) -> Dict:
         """Recursively merge override into base."""
         result = base.copy()
         for key, value in override.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -320,9 +304,7 @@ class TemplateBranchManager:
                 raise ValueError("Cannot delete main branch")
 
             del self._cache[branch_id]
-            self._db.execute(
-                "DELETE FROM template_branches WHERE branch_id = ?", (branch_id,)
-            )
+            self._db.execute("DELETE FROM template_branches WHERE branch_id = ?", (branch_id,))
             self._db.commit()
 
             json_path = os.path.join(self.json_dir, f"{branch_id}.json")

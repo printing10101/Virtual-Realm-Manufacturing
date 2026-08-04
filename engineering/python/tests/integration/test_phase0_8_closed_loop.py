@@ -758,12 +758,12 @@ class TestContractsInteroperability:
     def test_rl_agent_contract_construction(self):
         """RLAgent 契约 dataclass 可合法构造."""
         from app.contracts.rl_agent import (
-            DEFAULT_ACTION_DIM,
             OptimizationTarget,
             PolicyAlgorithm,
             RLActRequest,
             TrainingStatus,
         )
+        from app.contracts.world_model import DEFAULT_ACTION_DIM
 
         assert DEFAULT_ACTION_DIM == 4
         assert PolicyAlgorithm.is_valid(PolicyAlgorithm.PPO)

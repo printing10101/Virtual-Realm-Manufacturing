@@ -24,6 +24,7 @@ try:
     from app.ai.lnn.models.cfc_model import CFCModel
     from app.ai.lnn.models.ltc_model import LTCModel
     from app.ai.lnn.models.hybrid_lnn import HybridLNNModel
+
     _HAS_TORCH_MODELS = True
 except ImportError:
     BaseLNNModel = None
@@ -92,8 +93,7 @@ class ModelInfo:
         """Validate required fields"""
         if not self.name:
             raise ValueError(
-                "Model registration failed: name cannot be empty. "
-                "Use a meaningful name (e.g. 'cutting_force_45steel')."
+                "Model registration failed: name cannot be empty. Use a meaningful name (e.g. 'cutting_force_45steel')."
             )
         if not self.model_type:
             raise ValueError(
@@ -236,9 +236,7 @@ class LNNModelRegistry(BaseModelRegistry):
         """Register all predefined models"""
         for name, info in self.PREDEFINED_MODELS.items():
             if self.model_dir:
-                model_path = os.path.join(
-                    self.model_dir, os.path.basename(info.model_path)
-                )
+                model_path = os.path.join(self.model_dir, os.path.basename(info.model_path))
                 info.model_path = model_path
             entry = ModelEntry(info=info)
             self.registry[name] = entry
@@ -253,9 +251,7 @@ class LNNModelRegistry(BaseModelRegistry):
                 entry = self.registry.get(model_name)
                 return entry.info if entry else None
 
-            matches = [
-                name for name in self.registry.keys() if model_name.lower() in name.lower()
-            ]
+            matches = [name for name in self.registry.keys() if model_name.lower() in name.lower()]
             if matches:
                 return self.registry[matches[0]].info
             return None
@@ -282,11 +278,7 @@ class LNNModelRegistry(BaseModelRegistry):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         with self._lock:
-            quantized_name = (
-                f"{base_model_name}_int8"
-                if not base_model_name.endswith("_int8")
-                else base_model_name
-            )
+            quantized_name = f"{base_model_name}_int8" if not base_model_name.endswith("_int8") else base_model_name
 
             if quantized_name in self.registry:
                 return False
@@ -332,9 +324,7 @@ class LNNModelRegistry(BaseModelRegistry):
                 raise KeyError(f"Model '{model_name}' not found in registry")
             return entry
 
-    def validate_model(
-        self, model_name: str, model_path: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def validate_model(self, model_name: str, model_path: Optional[str] = None) -> Dict[str, Any]:
         with self._lock:
             entry = self.registry.get(model_name)
             if not entry:
@@ -499,9 +489,7 @@ class ModelRegistry(BaseModelRegistry):
         if len(self.registry) <= self.cache_size:
             return
 
-        loaded_models = [
-            (name, entry) for name, entry in self.registry.items() if entry.is_loaded
-        ]
+        loaded_models = [(name, entry) for name, entry in self.registry.items() if entry.is_loaded]
 
         if len(loaded_models) > self.cache_size:
             loaded_models.sort(key=lambda x: x[1].last_accessed)

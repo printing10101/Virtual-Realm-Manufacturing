@@ -173,9 +173,7 @@ class DreamingSchedulerAdapter:
         """
         existing = self._scheduler.wakeup_queue.get_task(DREAMING_TASK_ID)
         if existing is None:
-            logger.warning(
-                "Dreaming 任务未注册，先执行 register() 再 trigger_now()"
-            )
+            logger.warning("Dreaming 任务未注册，先执行 register() 再 trigger_now()")
             self.register()
 
         self._scheduler.trigger_now(DREAMING_TASK_ID)
@@ -198,9 +196,7 @@ class DreamingSchedulerAdapter:
         params = task.params or {}
         lookback = params.get("lookback_days", self._lookback_days)
         max_sessions = params.get("max_sessions", self._max_sessions)
-        include_ar_02 = params.get(
-            "include_ar_02_pre_fix", self._include_ar_02
-        )
+        include_ar_02 = params.get("include_ar_02_pre_fix", self._include_ar_02)
         enable_llm = params.get("enable_llm", self._enable_llm)
 
         # 构建 CLI 参数
@@ -231,9 +227,7 @@ class DreamingSchedulerAdapter:
             exit_code = await asyncio.to_thread(cli.run, cli_args)
 
             if exit_code != 0:
-                logger.error(
-                    "Dreaming 反思执行失败：exit_code=%d", exit_code
-                )
+                logger.error("Dreaming 反思执行失败：exit_code=%d", exit_code)
                 # 记录到 execution_log
                 self._scheduler.wakeup_queue.log_execution(
                     task.task_id,
@@ -249,9 +243,7 @@ class DreamingSchedulerAdapter:
                     result_summary=f"args={cli_args}, exit_code=0",
                 )
         except Exception as e:
-            logger.error(
-                "Dreaming 反思回调异常：%s", e, exc_info=True
-            )
+            logger.error("Dreaming 反思回调异常：%s", e, exc_info=True)
             self._scheduler.wakeup_queue.log_execution(
                 task.task_id,
                 "failed",
@@ -268,9 +260,7 @@ class DreamingSchedulerAdapter:
         Returns:
             执行历史记录列表（按时间倒序）。
         """
-        return self._scheduler.wakeup_queue.get_task_history(
-            DREAMING_TASK_ID, limit=limit
-        )
+        return self._scheduler.wakeup_queue.get_task_history(DREAMING_TASK_ID, limit=limit)
 
     def get_task_info(self) -> Optional[Dict[str, Any]]:
         """查询 Dreaming 任务的当前状态。

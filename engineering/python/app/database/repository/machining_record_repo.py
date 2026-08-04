@@ -20,8 +20,8 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Optional, Sequence
 
 from sqlalchemy import and_, select
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.database.models.machining_record import (
     MachiningRecord as MachiningRecordORM,
@@ -115,9 +115,7 @@ class MachiningRecordRepository:
             return self._session_factory()
         factory = get_sync_sessionmaker()
         if factory is None:
-            raise RuntimeError(
-                "Database not configured: set DB_URL or inject session_factory"
-            )
+            raise RuntimeError("Database not configured: set DB_URL or inject session_factory")
         return factory()
 
     @staticmethod
@@ -139,9 +137,7 @@ class MachiningRecordRepository:
                 session.commit()
             except SQLAlchemyError as exc:
                 session.rollback()
-                logger.warning(
-                    "Database error on create MachiningRecord: %s", exc
-                )
+                logger.warning("Database error on create MachiningRecord: %s", exc)
                 raise
             session.refresh(orm_obj)
         return orm_obj.record_id
@@ -157,9 +153,7 @@ class MachiningRecordRepository:
             session.expunge(orm_obj)
             return _orm_to_read(orm_obj)
 
-    def get_by_triple(
-        self, machine_id: str, tool_id: str, timestamp: datetime
-    ) -> Optional[MachiningRecordRead]:
+    def get_by_triple(self, machine_id: str, tool_id: str, timestamp: datetime) -> Optional[MachiningRecordRead]:
         """按业务唯一键 ``(machine_id, tool_id, timestamp)`` 查询。"""
         with self._session() as session:
             stmt = select(MachiningRecordORM).where(
@@ -195,16 +189,12 @@ class MachiningRecordRepository:
                 .limit(limit)
                 .offset(max(offset, 0))
             )
-            orm_objs: Sequence[MachiningRecordORM] = (
-                session.execute(stmt).scalars().all()
-            )
+            orm_objs: Sequence[MachiningRecordORM] = session.execute(stmt).scalars().all()
             for obj in orm_objs:
                 session.expunge(obj)
             return [_orm_to_read(o) for o in orm_objs]
 
-    def list_all(
-        self, *, limit: int = 100, offset: int = 0
-    ) -> list[MachiningRecordRead]:
+    def list_all(self, *, limit: int = 100, offset: int = 0) -> list[MachiningRecordRead]:
         """全表分页查询。"""
         if limit <= 0:
             return []
@@ -215,18 +205,14 @@ class MachiningRecordRepository:
                 .limit(limit)
                 .offset(max(offset, 0))
             )
-            orm_objs: Sequence[MachiningRecordORM] = (
-                session.execute(stmt).scalars().all()
-            )
+            orm_objs: Sequence[MachiningRecordORM] = session.execute(stmt).scalars().all()
             for obj in orm_objs:
                 session.expunge(obj)
             return [_orm_to_read(o) for o in orm_objs]
 
     # ----------------------------------------------------------------- update
 
-    def update(
-        self, record_id: str, patch: MachiningRecordUpdate
-    ) -> Optional[MachiningRecordRead]:
+    def update(self, record_id: str, patch: MachiningRecordUpdate) -> Optional[MachiningRecordRead]:
         """局部更新；返回更新后的 Read，未找到则返回 ``None``。"""
         with self._session() as session:
             orm_obj = session.get(MachiningRecordORM, record_id)
@@ -240,9 +226,7 @@ class MachiningRecordRepository:
                 session.commit()
             except SQLAlchemyError as exc:
                 session.rollback()
-                logger.warning(
-                    "Database error on update MachiningRecord: %s", exc
-                )
+                logger.warning("Database error on update MachiningRecord: %s", exc)
                 raise
             session.refresh(orm_obj)
             session.expunge(orm_obj)
@@ -261,9 +245,7 @@ class MachiningRecordRepository:
                 session.commit()
             except SQLAlchemyError as exc:
                 session.rollback()
-                logger.warning(
-                    "Database error on delete MachiningRecord: %s", exc
-                )
+                logger.warning("Database error on delete MachiningRecord: %s", exc)
                 raise
             return True
 

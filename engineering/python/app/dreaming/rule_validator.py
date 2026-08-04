@@ -172,18 +172,14 @@ class RuleValidator:
         test_cases.extend(boundary_cases)
         for tc in boundary_cases:
             if not tc.actual_passed and tc.expected_passed:
-                errors.append(
-                    f"边界测试失败 [{tc.name}]：{tc.error_message or '未通过'}"
-                )
+                errors.append(f"边界测试失败 [{tc.name}]：{tc.error_message or '未通过'}")
 
         # 阶段 4：模拟执行
         sim_cases = self._simulate_execution(rule)
         test_cases.extend(sim_cases)
         for tc in sim_cases:
             if not tc.actual_passed and tc.expected_passed:
-                errors.append(
-                    f"模拟执行失败 [{tc.name}]：{tc.error_message or '未通过'}"
-                )
+                errors.append(f"模拟执行失败 [{tc.name}]：{tc.error_message or '未通过'}")
 
         passed = len(errors) == 0
 
@@ -218,36 +214,26 @@ class RuleValidator:
         action_str = json.dumps(rule.action, ensure_ascii=False).lower()
         for forbidden in FORBIDDEN_ACTIONS:
             if forbidden in action_str:
-                errors.append(
-                    f"硬约束违反：action 包含禁止关键词 '{forbidden}'"
-                )
+                errors.append(f"硬约束违反：action 包含禁止关键词 '{forbidden}'")
 
         condition_str = json.dumps(rule.condition, ensure_ascii=False).lower()
         for forbidden in FORBIDDEN_CONDITIONS:
             if forbidden.lower() in condition_str:
-                errors.append(
-                    f"硬约束违反：condition 包含禁止的逻辑 '{forbidden}'"
-                )
+                errors.append(f"硬约束违反：condition 包含禁止的逻辑 '{forbidden}'")
 
         # 检查 respects_cam_validation 标志
         if not rule.respects_cam_validation:
-            errors.append(
-                "硬约束违反：respects_cam_validation=False（必须为 True）"
-            )
+            errors.append("硬约束违反：respects_cam_validation=False（必须为 True）")
 
         # 检查 respects_succeeded_lock 标志
         if not rule.respects_succeeded_lock:
-            errors.append(
-                "硬约束违反：respects_succeeded_lock=False（必须为 True）"
-            )
+            errors.append("硬约束违反：respects_succeeded_lock=False（必须为 True）")
 
         # 检查 metadata 中的硬约束键值对
         meta = rule.metadata or {}
         for key, expected_value in REQUIRED_HARD_CONSTRAINTS.items():
             if key in meta and meta[key] != expected_value:
-                errors.append(
-                    f"硬约束违反：metadata.{key}={meta[key]}（期望 {expected_value}）"
-                )
+                errors.append(f"硬约束违反：metadata.{key}={meta[key]}（期望 {expected_value}）")
 
         return errors
 
@@ -255,9 +241,7 @@ class RuleValidator:
     # 阶段 2：语法可解析性检查
     # ------------------------------------------------------------------
 
-    def _check_syntax(
-        self, rule: RuleDraft
-    ) -> tuple[List[str], List[str]]:
+    def _check_syntax(self, rule: RuleDraft) -> tuple[List[str], List[str]]:
         """检查规则的语法可解析性。
 
         Args:
@@ -295,15 +279,11 @@ class RuleValidator:
 
         # rule_id 格式校验（与 GraphStore 节点 ID 一致）
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$", rule.rule_id):
-            errors.append(
-                f"rule_id 格式非法：'{rule.rule_id}'（须匹配 ^[a-zA-Z_][a-zA-Z0-9_.\\-]{0,127}$）"
-            )
+            errors.append(f"rule_id 格式非法：'{rule.rule_id}'（须匹配 ^[a-zA-Z_][a-zA-Z0-9_.\\-]{0, 127}$）")
 
         # confidence 范围校验
         if not 0.0 <= rule.confidence <= 1.0:
-            errors.append(
-                f"confidence 超出范围 [0, 1]：{rule.confidence}"
-            )
+            errors.append(f"confidence 超出范围 [0, 1]：{rule.confidence}")
 
         # C7 bug 修复：rule_type 白名单必须与 RuleSynthesizer 实际生成的
         # 类型一致（parameter_adjustment / confidence_threshold /
@@ -316,9 +296,7 @@ class RuleValidator:
             "warning_rule",
         }
         if rule.rule_type not in valid_types:
-            warnings.append(
-                f"rule_type '{rule.rule_type}' 不在标准类型 {valid_types} 中"
-            )
+            warnings.append(f"rule_type '{rule.rule_type}' 不在标准类型 {valid_types} 中")
 
         return errors, warnings
 
@@ -326,9 +304,7 @@ class RuleValidator:
     # 阶段 3：边界情况测试
     # ------------------------------------------------------------------
 
-    def _test_boundary_cases(
-        self, rule: RuleDraft
-    ) -> List[ValidationTestCase]:
+    def _test_boundary_cases(self, rule: RuleDraft) -> List[ValidationTestCase]:
         """测试规则的边界情况。
 
         Args:
@@ -358,9 +334,7 @@ class RuleValidator:
                 description="仅含 AR-02 修复前数据时规则应跳过",
                 input_data={"is_ar_02_pre_fix": True},
                 expected_passed=True,
-                actual_passed=self._simulate_apply(
-                    rule, {"is_ar_02_pre_fix": True}
-                ),
+                actual_passed=self._simulate_apply(rule, {"is_ar_02_pre_fix": True}),
                 error_message=None,
             )
         )
@@ -390,9 +364,7 @@ class RuleValidator:
                 description="SUCCEEDED 任务时规则不可删除",
                 input_data={"status": "SUCCEEDED"},
                 expected_passed=True,
-                actual_passed=self._simulate_apply(
-                    rule, {"status": "SUCCEEDED"}
-                ),
+                actual_passed=self._simulate_apply(rule, {"status": "SUCCEEDED"}),
                 error_message=None,
             )
         )
@@ -404,9 +376,7 @@ class RuleValidator:
                 description="CAM 验证失败时规则应标记 requires_revalidation",
                 input_data={"cam_validation_passed": False},
                 expected_passed=True,
-                actual_passed=self._simulate_apply(
-                    rule, {"cam_validation_passed": False}
-                ),
+                actual_passed=self._simulate_apply(rule, {"cam_validation_passed": False}),
                 error_message=None,
             )
         )
@@ -417,9 +387,7 @@ class RuleValidator:
     # 阶段 4：模拟执行
     # ------------------------------------------------------------------
 
-    def _simulate_execution(
-        self, rule: RuleDraft
-    ) -> List[ValidationTestCase]:
+    def _simulate_execution(self, rule: RuleDraft) -> List[ValidationTestCase]:
         """使用合成数据模拟规则执行。
 
         Args:
@@ -482,9 +450,7 @@ class RuleValidator:
 
         return cases
 
-    def _simulate_apply(
-        self, rule: RuleDraft, context: Dict[str, Any]
-    ) -> bool:
+    def _simulate_apply(self, rule: RuleDraft, context: Dict[str, Any]) -> bool:
         """模拟规则应用（不触发真实操作）。
 
         Args:

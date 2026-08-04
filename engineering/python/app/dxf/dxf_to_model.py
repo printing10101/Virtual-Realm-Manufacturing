@@ -24,7 +24,6 @@ from app.dxf.feature_extractor import (
 )
 from app.dxf.polyline_outline import (
     PolylineOutlineProcessor,
-    OutlineInfo,
 )
 from app.dxf.dxf_parser import DxfPolyline
 from app.dxf.exceptions import DxfModelError
@@ -45,6 +44,7 @@ class ModelConversionResult:
         warnings: 转换过程中的警告
         errors: 转换过程中的错误
     """
+
     workplane: Any = None
     length: float = 0.0
     width: float = 0.0
@@ -95,8 +95,7 @@ class DxfToModelConverter:
             DxfModelError: 特征数据无效或CadQuery操作失败
         """
         if feature_result is None:
-            raise DxfModelError("特征提取结果为空，无法生成3D模型。"
-                                 "请先调用FeatureExtractor.extract()获取特征数据。")
+            raise DxfModelError("特征提取结果为空，无法生成3D模型。请先调用FeatureExtractor.extract()获取特征数据。")
 
         result = ModelConversionResult()
         length = feature_result.overall_length
@@ -104,10 +103,7 @@ class DxfToModelConverter:
         height = feature_result.overall_height
 
         if length <= 0 or width <= 0:
-            result.errors.append(
-                f"零件外形尺寸无效(长={length}, 宽={width})，"
-                f"无法创建3D模型"
-            )
+            result.errors.append(f"零件外形尺寸无效(长={length}, 宽={width})，无法创建3D模型")
             return result
 
         if height <= 0:
@@ -123,9 +119,7 @@ class DxfToModelConverter:
         except (ValueError, TypeError, ZeroDivisionError, OverflowError, RuntimeError, OSError) as e:
             # cadquery/OCCT 在构造基础实体时可能抛出参数错误、内部运行时错误等
             # 统一收口为 DxfModelError 向上抛出，保持业务异常类型一致
-            raise DxfModelError(
-                f"基础立方体创建失败(尺寸={length}x{width}x{height}mm): {e}"
-            ) from e
+            raise DxfModelError(f"基础立方体创建失败(尺寸={length}x{width}x{height}mm): {e}") from e
 
         hole_count = 0
         for hole in feature_result.holes:
@@ -146,7 +140,9 @@ class DxfToModelConverter:
 
         logger.info(
             "3D模型转换完成: 外形=%.1fx%.1fx%.1fmm, 孔=%d/%d",
-            length, width, height,
+            length,
+            width,
+            height,
             hole_count,
             feature_result.hole_count,
         )
@@ -184,10 +180,7 @@ class DxfToModelConverter:
 
         在XY平面上创建box，底部位于Z=0，高度沿Z轴正向。
         """
-        base = (
-            cq.Workplane("XY")
-            .box(length, width, height, centered=(True, True, False))
-        )
+        base = cq.Workplane("XY").box(length, width, height, centered=(True, True, False))
         logger.debug("基础立方体创建成功: %.1fx%.1fx%.1fmm", length, width, height)
         return base
 
@@ -233,8 +226,11 @@ class DxfToModelConverter:
         result = workplane.cut(hole_solid)
         logger.debug(
             "孔%s: 中心=(%.1f,%.1f), 直径=%.2f, 深度=%.1f",
-            hole.hole_id, hole.center_x, hole.center_y,
-            hole.diameter, hole_depth,
+            hole.hole_id,
+            hole.center_x,
+            hole.center_y,
+            hole.diameter,
+            hole_depth,
         )
         return result
 
@@ -258,8 +254,7 @@ class DxfToModelConverter:
             DxfModelError: 模型无效或导出失败
         """
         if not conversion_result.success:
-            raise DxfModelError("模型转换未成功，无法导出STL。"
-                                 f"错误: {'; '.join(conversion_result.errors)}")
+            raise DxfModelError(f"模型转换未成功，无法导出STL。错误: {'; '.join(conversion_result.errors)}")
 
         path = Path(output_path)
         try:
@@ -293,8 +288,7 @@ class DxfToModelConverter:
             DxfModelError: 模型无效或导出失败
         """
         if not conversion_result.success:
-            raise DxfModelError("模型转换未成功，无法导出STEP。"
-                                 f"错误: {'; '.join(conversion_result.errors)}")
+            raise DxfModelError(f"模型转换未成功，无法导出STEP。错误: {'; '.join(conversion_result.errors)}")
 
         path = Path(output_path)
         try:
@@ -380,9 +374,7 @@ class DxfToModelConverter:
                     base = base.cut(hwp)
                     result.hole_count += 1
                 except (ValueError, TypeError, ZeroDivisionError, RuntimeError) as e:
-                    result.warnings.append(
-                        f"挖孔失败(handle={hole.source_handle}): {e}"
-                    )
+                    result.warnings.append(f"挖孔失败(handle={hole.source_handle}): {e}")
                     logger.warning("挖孔失败: %s", e, exc_info=True)
 
             # 平移让最小 Z=0
@@ -391,7 +383,10 @@ class DxfToModelConverter:
             result.workplane = base
             logger.info(
                 "polyline→3D 完成: %.1fx%.1fx%.1f, 孔=%d",
-                length, width, height, result.hole_count,
+                length,
+                width,
+                height,
+                result.hole_count,
             )
         except (ValueError, TypeError, ZeroDivisionError, RuntimeError, OverflowError) as e:
             result.errors.append(f"多段线建模失败: {e}")
@@ -420,9 +415,7 @@ class DxfToModelConverter:
             model = self._create_base_solid(length, width, height)
         except (ValueError, TypeError, ZeroDivisionError, OverflowError, RuntimeError, OSError) as e:
             # 与 convert 入口一致，统一收口
-            raise DxfModelError(
-                f"直接创建模型失败(尺寸={length}x{width}x{height}mm): {e}"
-            ) from e
+            raise DxfModelError(f"直接创建模型失败(尺寸={length}x{width}x{height}mm): {e}") from e
 
         if holes:
             # M3 bug 修复：原代码用 `len(holes) + 1` 作为 ID，但 len(holes) 在

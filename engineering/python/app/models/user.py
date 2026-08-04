@@ -103,10 +103,7 @@ class UserStore:
         if self._file_path.exists():
             try:
                 data = json.loads(self._file_path.read_text())
-                self._users = {
-                    u["username"]: UserRecord.from_dict(u)
-                    for u in data.get("users", [])
-                }
+                self._users = {u["username"]: UserRecord.from_dict(u) for u in data.get("users", [])}
             except (json.JSONDecodeError, KeyError, ValueError, OSError) as e:
                 # 用户数据文件损坏时重置为空，记录错误以便排查
                 logger.error("Failed to load user data from %s: %s", self._file_path, e, exc_info=True)

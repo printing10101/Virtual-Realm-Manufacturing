@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from app.sharp.tools.base import BaseTool
 
@@ -30,7 +30,7 @@ class KGQueryEntityTool(BaseTool):
 
     def __init__(self, query_api) -> None:
         """Args:
-            query_api: `KnowledgeGraphQueryAPI` 实例
+        query_api: `KnowledgeGraphQueryAPI` 实例
         """
         self._api = query_api
 
@@ -133,9 +133,7 @@ class KGQueryNeighborsTool(BaseTool):
         max_hops = int(arguments.get("max_hops", 1))
         max_hops = max(1, min(max_hops, 3))  # 限制 1-3 跳
         limit = int(arguments.get("limit", 50))
-        neighbors = await asyncio.to_thread(
-            self._api.neighbors, node_id, max_hops, limit
-        )
+        neighbors = await asyncio.to_thread(self._api.neighbors, node_id, max_hops, limit)
         return {
             "node_id": node_id,
             "max_hops": max_hops,
@@ -180,9 +178,7 @@ class KGQueryPathTool(BaseTool):
 
         # 简化实现：从 source 出发 BFS，查找是否能到达 target
         # 复用 neighbors API，逐跳展开
-        paths = await asyncio.to_thread(
-            self._find_paths, source_id, target_id, max_hops
-        )
+        paths = await asyncio.to_thread(self._find_paths, source_id, target_id, max_hops)
         return {
             "source_id": source_id,
             "target_id": target_id,
@@ -191,9 +187,7 @@ class KGQueryPathTool(BaseTool):
             "reachable": len(paths) > 0,
         }
 
-    def _find_paths(
-        self, source_id: str, target_id: str, max_hops: int
-    ) -> list[list[dict]]:
+    def _find_paths(self, source_id: str, target_id: str, max_hops: int) -> list[list[dict]]:
         """同步路径查找（在 to_thread 中执行）。"""
         if source_id == target_id:
             return [[{"node_id": source_id}]]
@@ -211,18 +205,22 @@ class KGQueryPathTool(BaseTool):
                 except Exception as e:
                     # KG 邻居查询失败不阻断路径搜索，但记录可定位的 warning 便于排查数据质量问题。
                     logger.warning(
-                        "KG neighbors query failed for node %s: %s", current_id, e,
+                        "KG neighbors query failed for node %s: %s",
+                        current_id,
+                        e,
                     )
                     continue
                 for nb in neighbors:
                     nb_id = nb["node_id"]
                     if nb_id in visited:
                         continue
-                    new_path = current_path + [{
-                        "node_id": nb_id,
-                        "via_edge": nb.get("via_edge"),
-                        "direction": nb.get("direction"),
-                    }]
+                    new_path = current_path + [
+                        {
+                            "node_id": nb_id,
+                            "via_edge": nb.get("via_edge"),
+                            "direction": nb.get("direction"),
+                        }
+                    ]
                     if nb_id == target_id:
                         paths.append(new_path)
                         if len(paths) >= 5:  # 最多返回 5 条路径

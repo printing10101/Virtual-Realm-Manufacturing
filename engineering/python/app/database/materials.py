@@ -80,18 +80,13 @@ class MaterialEntry:
             if value is None:
                 continue
             if value < low or value > high:
-                raise ValueError(
-                    f"MaterialEntry.{field_name}={value}超出物理约束范围[{low}, {high}]"
-                )
+                raise ValueError(f"MaterialEntry.{field_name}={value}超出物理约束范围[{low}, {high}]")
         if self.corrosion_resistance not in self._VALID_CORROSION_LEVELS:
             raise ValueError(
-                f"corrosion_resistance='{self.corrosion_resistance}'无效，"
-                f"可选: {sorted(self._VALID_CORROSION_LEVELS)}"
+                f"corrosion_resistance='{self.corrosion_resistance}'无效，可选: {sorted(self._VALID_CORROSION_LEVELS)}"
             )
         if self.yield_strength_mpa > self.tensile_strength_mpa and self.tensile_strength_mpa > 0:
-            raise ValueError(
-                f"屈服强度({self.yield_strength_mpa}MPa)超过抗拉强度({self.tensile_strength_mpa}MPa)"
-            )
+            raise ValueError(f"屈服强度({self.yield_strength_mpa}MPa)超过抗拉强度({self.tensile_strength_mpa}MPa)")
 
     def get_cutting_speed(self, operation: str = "roughing") -> tuple[float, float]:
         r = self.cutting_speed_range.get(operation)
@@ -126,7 +121,9 @@ class MaterialEntry:
             specific_heat_capacity_j_kgk=data.get("specific_heat_capacity_j_kgk", 460),
             elastic_modulus_gpa=data.get("elastic_modulus_gpa", 210),
             poisson_ratio=data.get("poisson_ratio", 0.3),
-            specific_cutting_force_kc1_1=data.get("specific_cutting_force", data.get("specific_cutting_force_kc1_1", 2000)),
+            specific_cutting_force_kc1_1=data.get(
+                "specific_cutting_force", data.get("specific_cutting_force_kc1_1", 2000)
+            ),
             machinability_index=data.get("machinability_index", 50),
             cutting_speed_range=data.get("cutting_speed_range", {}),
             feed_range=data.get("feed_range", {}),
@@ -179,9 +176,8 @@ class MaterialDatabase:
             data_dir = Path(__file__).resolve().parent / "data"
             data_path = str(data_dir / "materials.json")
         from app.database.repository import JsonRepository
-        self._repo: JsonRepository[MaterialEntry] = JsonRepository(
-            data_path, MaterialEntry.from_dict, lambda m: m.id
-        )
+
+        self._repo: JsonRepository[MaterialEntry] = JsonRepository(data_path, MaterialEntry.from_dict, lambda m: m.id)
 
     def get(self, material_id: str) -> MaterialEntry:
         return self._repo.get(material_id)
@@ -197,6 +193,4 @@ class MaterialDatabase:
 
     def search(self, keyword: str) -> list[MaterialEntry]:
         kw = keyword.lower()
-        return self._repo.filter(
-            lambda m: kw in m.name.lower() or kw in m.id.lower()
-        )
+        return self._repo.filter(lambda m: kw in m.name.lower() or kw in m.id.lower())

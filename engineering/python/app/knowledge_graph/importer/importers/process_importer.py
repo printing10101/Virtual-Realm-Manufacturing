@@ -86,9 +86,7 @@ def import_process_rules(
                 parsed = parser.parse_single_rule(raw)
             except (ValueError, TypeError, KeyError) as exc:
                 stats.failed += 1
-                stats.error_messages.append(
-                    f"process rule parse error ({process_id}): {exc}"
-                )
+                stats.error_messages.append(f"process rule parse error ({process_id}): {exc}")
                 logger.warning("process rule parse error for id=%s: %s", process_id, exc)
                 continue
 
@@ -113,9 +111,7 @@ def import_process_rules(
             }
             graph.add_node(NODE_TYPE_PROCESS, node_id, properties)
             stats.success += 1
-            stats.node_type_breakdown[NODE_TYPE_PROCESS] = (
-                stats.node_type_breakdown.get(NODE_TYPE_PROCESS, 0) + 1
-            )
+            stats.node_type_breakdown[NODE_TYPE_PROCESS] = stats.node_type_breakdown.get(NODE_TYPE_PROCESS, 0) + 1
 
             # --- 关系 1：Process APPLIED_TO Feature（IF 条件部分） ---
             tools_used_set: set[str] = set()
@@ -141,20 +137,13 @@ def import_process_rules(
                         {
                             "confidence": parsed.confidence,
                             "source": parsed.source,
-                            "evidence": (
-                                "process_rules.json keyword match: "
-                                + (parsed.process_name or process_id)
-                            ),
+                            "evidence": ("process_rules.json keyword match: " + (parsed.process_name or process_id)),
                         },
                     )
                     stats.edges_added += 1
-                    stats.edge_type_breakdown[EDGE_APPLIED_TO] = (
-                        stats.edge_type_breakdown.get(EDGE_APPLIED_TO, 0) + 1
-                    )
+                    stats.edge_type_breakdown[EDGE_APPLIED_TO] = stats.edge_type_breakdown.get(EDGE_APPLIED_TO, 0) + 1
                 except ValueError as exc:
-                    stats.error_messages.append(
-                        f"process->feature edge error: {exc}"
-                    )
+                    stats.error_messages.append(f"process->feature edge error: {exc}")
                 # 收集可能使用的工具
                 for tool_id in _FEATURE_TO_REPRESENTATIVE_TOOLS.get(fid, []):
                     tools_used_set.add(tool_id)
@@ -162,9 +151,7 @@ def import_process_rules(
             # --- 关系 2：Process USED Tool（THEN 动作部分启发式） ---
             # 如果规则没有抽到任何 feature，使用通用刀具
             if not parsed.features:
-                tools_used_set.update(
-                    ["tool-endmill_6", "tool-twist_drill_5", "tool-face_mill_50"]
-                )
+                tools_used_set.update(["tool-endmill_6", "tool-twist_drill_5", "tool-face_mill_50"])
             for tool_id in sorted(tools_used_set):
                 if not graph.has_node(tool_id):
                     # 工具可能尚未导入（取决于调用顺序），先建占位节点
@@ -178,9 +165,7 @@ def import_process_rules(
                             "description": "auto-created from rule parser",
                         },
                     )
-                    stats.node_type_breakdown[NODE_TYPE_TOOL] = (
-                        stats.node_type_breakdown.get(NODE_TYPE_TOOL, 0) + 1
-                    )
+                    stats.node_type_breakdown[NODE_TYPE_TOOL] = stats.node_type_breakdown.get(NODE_TYPE_TOOL, 0) + 1
                 try:
                     graph.add_edge(
                         node_id,
@@ -189,24 +174,16 @@ def import_process_rules(
                         {
                             "confidence": parsed.confidence * 0.9,
                             "source": parsed.source,
-                            "evidence": (
-                                "process_rules.json inferred USED tools"
-                            ),
+                            "evidence": ("process_rules.json inferred USED tools"),
                         },
                     )
                     stats.edges_added += 1
-                    stats.edge_type_breakdown[EDGE_USED] = (
-                        stats.edge_type_breakdown.get(EDGE_USED, 0) + 1
-                    )
+                    stats.edge_type_breakdown[EDGE_USED] = stats.edge_type_breakdown.get(EDGE_USED, 0) + 1
                 except ValueError as exc:
-                    stats.error_messages.append(
-                        f"process->tool edge error: {exc}"
-                    )
+                    stats.error_messages.append(f"process->tool edge error: {exc}")
 
     try:
-        _retry_with_backoff(
-            _do_import, retries=retries, label="import_process_rules"
-        )
+        _retry_with_backoff(_do_import, retries=retries, label="import_process_rules")
     except (OSError, RuntimeError, ValueError, KeyError) as exc:
         stats.failed += 1
         stats.error_messages.append(f"process_rules import aborted: {exc}")

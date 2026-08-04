@@ -99,9 +99,8 @@ class ToolDatabase:
             data_dir = Path(__file__).resolve().parent / "data"
             data_path = str(data_dir / "tools.json")
         from app.database.repository import JsonRepository
-        self._repo: JsonRepository[ToolEntry] = JsonRepository(
-            data_path, ToolEntry.from_dict, lambda t: t.id
-        )
+
+        self._repo: JsonRepository[ToolEntry] = JsonRepository(data_path, ToolEntry.from_dict, lambda t: t.id)
 
     def get(self, tool_id: str) -> ToolEntry:
         return self._repo.get(tool_id)

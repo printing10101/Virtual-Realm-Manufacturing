@@ -16,7 +16,6 @@ audit_log、task_manager 等），供 LNN 子路由按模块级变量直接导�
 from app.services.model_registry_service import get_model_registry_service
 from app.audit.audit_log import AuditLog
 from app.tasks.task_system import AsyncTaskManager
-from app.config.limits import MAX_CONCURRENT_TRAINING_TASKS
 
 # 统一服务层 - 不要直接实例化 LNNModelRegistry
 registry_service = get_model_registry_service()
@@ -38,7 +37,6 @@ import os
 import threading
 from pathlib import Path
 from datetime import timedelta
-from app.utils.time import utcnow
 
 # 路径遍历防护：允许的数据文件根目录白名单
 _ALLOWED_DATA_BASE_DIRS: list[Path] = [

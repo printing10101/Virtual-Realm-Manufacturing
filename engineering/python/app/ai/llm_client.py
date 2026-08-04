@@ -92,9 +92,7 @@ def _classify_error(status_code: int, body: str) -> LLMError:
     if status_code == 429:
         return RateLimitError(f"Rate limit exceeded: {status_code} - {body}")
     if 500 <= status_code < 600:
-        return ServiceUnavailableError(
-            f"Service temporarily unavailable: {status_code} - {body}"
-        )
+        return ServiceUnavailableError(f"Service temporarily unavailable: {status_code} - {body}")
     return LLMError(f"API error: {status_code} - {body}")
 
 
@@ -145,18 +143,14 @@ class BaseLLMClient:
             )
 
     @staticmethod
-    def _safe_parse(
-        parser, response_data: dict[str, Any], model: str
-    ) -> dict[str, Any]:
+    def _safe_parse(parser, response_data: dict[str, Any], model: str) -> dict[str, Any]:
         try:
             return parser(response_data, model)
         except (LLMError, InvalidResponseError):
             raise
         except (ValueError, KeyError, TypeError, AttributeError) as e:
             logger.error("Failed to parse response from %s: %s", model, e, exc_info=True)
-            raise InvalidResponseError(
-                f"Failed to parse response from {model}: {e}"
-            ) from e
+            raise InvalidResponseError(f"Failed to parse response from {model}: {e}") from e
 
     async def chat_completion(
         self,
@@ -168,9 +162,7 @@ class BaseLLMClient:
         """Call LLM chat completion API with retry logic."""
         self._validate_inputs(messages, max_tokens, temperature)
 
-        payload, headers, endpoint = await self._build_payload(
-            messages, max_tokens, temperature, model
-        )
+        payload, headers, endpoint = await self._build_payload(messages, max_tokens, temperature, model)
         target_model = model or self._default_model()
 
         last_error: Exception | None = None
@@ -186,9 +178,7 @@ class BaseLLMClient:
                 )
                 if response.status_code != 200:
                     raise _classify_error(response.status_code, response.text)
-                return self._safe_parse(
-                    self._parse_response, response.json(), target_model
-                )
+                return self._safe_parse(self._parse_response, response.json(), target_model)
             except httpx.TimeoutException as e:
                 last_error = e
                 logger.warning(
@@ -239,9 +229,7 @@ class OllamaClient(BaseLLMClient):
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
-        super().__init__(
-            timeout=timeout, max_retries=max_retries, retry_delay=retry_delay
-        )
+        super().__init__(timeout=timeout, max_retries=max_retries, retry_delay=retry_delay)
         self.base_url = base_url.rstrip("/")
         self.model = model
 
@@ -289,9 +277,7 @@ class CloudLLMClient(BaseLLMClient):
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
-        super().__init__(
-            timeout=timeout, max_retries=max_retries, retry_delay=retry_delay
-        )
+        super().__init__(timeout=timeout, max_retries=max_retries, retry_delay=retry_delay)
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -362,14 +348,10 @@ class ProviderAdapter(BaseLLMClient):
         model: str | None,
     ) -> tuple[dict[str, Any], dict[str, str] | None, str]:
         # 适配器模式下不使用 BaseLLMClient 的请求构造路径
-        raise NotImplementedError(
-            "ProviderAdapter 通过 chat_completion() 直接委托给 Provider"
-        )
+        raise NotImplementedError("ProviderAdapter 通过 chat_completion() 直接委托给 Provider")
 
     def _parse_response(self, data: dict[str, Any], model: str) -> dict[str, Any]:
-        raise NotImplementedError(
-            "ProviderAdapter 通过 chat_completion() 直接委托给 Provider"
-        )
+        raise NotImplementedError("ProviderAdapter 通过 chat_completion() 直接委托给 Provider")
 
     async def chat_completion(
         self,

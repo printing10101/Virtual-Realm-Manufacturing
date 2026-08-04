@@ -27,6 +27,7 @@ SSE_HEARTBEAT_TIMEOUT = 30.0
 TORCH_AVAILABLE = False
 try:
     from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
+
     TORCH_AVAILABLE = True
 except ImportError:
     LNNPredictor = None  # type: ignore

@@ -39,9 +39,7 @@ from app.sharp.schema.domain_schema import (
 
 # `<type>-<slug>` 形式，slug 允许字母/数字/下划线/点/连字符
 # 首字符必须是字母或下划线，总长度 1-128
-NODE_ID_PATTERN: re.Pattern[str] = re.compile(
-    r"^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$"
-)
+NODE_ID_PATTERN: re.Pattern[str] = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$")
 
 # 实体类型前缀映射，用于 ID 与类型的弱一致性校验
 # 注意：这是软约束（warning），不是硬约束（error）
@@ -62,9 +60,9 @@ ENTITY_TYPE_ID_PREFIX: dict[EntityType, str] = {
 class ValidationError:
     """单条校验错误。"""
 
-    code: str          # 错误码，如 "INVALID_DOMAIN"
-    message: str       # 中文错误描述
-    field: str = ""    # 出错字段路径，如 "head.id"
+    code: str  # 错误码，如 "INVALID_DOMAIN"
+    message: str  # 中文错误描述
+    field: str = ""  # 出错字段路径，如 "head.id"
     severity: str = "error"  # "error" | "warning"
 
 
@@ -185,15 +183,13 @@ class SchemaConstraints:
         if triple.head_type != expected_head:
             result.add_error(
                 "DOMAIN_MISMATCH",
-                f"关系 {triple.relation.value} 的头实体应为 {expected_head.value}，"
-                f"实际为 {triple.head_type.value}",
+                f"关系 {triple.relation.value} 的头实体应为 {expected_head.value}，实际为 {triple.head_type.value}",
                 field="head_type",
             )
         if triple.tail_type != expected_tail:
             result.add_error(
                 "RANGE_MISMATCH",
-                f"关系 {triple.relation.value} 的尾实体应为 {expected_tail.value}，"
-                f"实际为 {triple.tail_type.value}",
+                f"关系 {triple.relation.value} 的尾实体应为 {expected_tail.value}，实际为 {triple.tail_type.value}",
                 field="tail_type",
             )
 
@@ -205,8 +201,7 @@ class SchemaConstraints:
             if not NODE_ID_PATTERN.match(entity_id):
                 result.add_error(
                     "INVALID_ID_FORMAT",
-                    f"{field_name}='{entity_id}' 不符合 ID 规范 "
-                    f"(正则: {NODE_ID_PATTERN.pattern})",
+                    f"{field_name}='{entity_id}' 不符合 ID 规范 (正则: {NODE_ID_PATTERN.pattern})",
                     field=field_name,
                 )
 

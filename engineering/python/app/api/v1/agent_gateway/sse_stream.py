@@ -49,9 +49,7 @@ async def _sse_stream(task_id: str, client_id: str):
 async def stream_training(job_id: str):
     """训练进度SSE流（R类）"""
     if job_id not in training_tasks:
-        return error(
-            code=ErrorCode.NOT_FOUND, message=f"Training task '{job_id}' not found"
-        )
+        return error(code=ErrorCode.NOT_FOUND, message=f"Training task '{job_id}' not found")
 
     client_id = f"agent_{uuid.uuid4().hex[:8]}"
     return StreamingResponse(

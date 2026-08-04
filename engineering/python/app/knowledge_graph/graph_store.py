@@ -46,8 +46,7 @@ def _validate_node_id(node_id: str) -> None:
         raise TypeError(f"node_id must be str, got {type(node_id).__name__}")
     if not _NODE_ID_PATTERN.match(node_id):
         raise ValueError(
-            f"Invalid node_id {node_id!r}: must match pattern "
-            f"'<type>-<slug>' (letters/digits/_/./-, max 128 chars)"
+            f"Invalid node_id {node_id!r}: must match pattern '<type>-<slug>' (letters/digits/_/./-, max 128 chars)"
         )
 
 
@@ -56,9 +55,7 @@ def _ensure_props(props: Optional[dict[str, Any]]) -> dict[str, Any]:
     if props is None:
         return {}
     if not isinstance(props, dict):
-        raise TypeError(
-            f"properties must be dict or None, got {type(props).__name__}"
-        )
+        raise TypeError(f"properties must be dict or None, got {type(props).__name__}")
     # 仅做浅拷贝：深拷贝由调用方按需决定
     return dict(props)
 
@@ -150,9 +147,7 @@ class GraphStore:
             ValueError: 节点 ID 格式非法 / node_type 非字符串。
         """
         if not isinstance(node_type, str) or not node_type:
-            raise ValueError(
-                f"node_type must be a non-empty str, got {node_type!r}"
-            )
+            raise ValueError(f"node_type must be a non-empty str, got {node_type!r}")
         _validate_node_id(node_id)
         props = _ensure_props(properties)
         # ``type`` 是 NetworkX 内置概念，重命名避免冲突；
@@ -231,11 +226,7 @@ class GraphStore:
         with self._lock:
             if node_type is None:
                 return self._graph.number_of_nodes()
-            return sum(
-                1
-                for _, data in self._graph.nodes(data=True)
-                if data.get("type") == node_type
-            )
+            return sum(1 for _, data in self._graph.nodes(data=True) if data.get("type") == node_type)
 
     # ============================================================== 关系操作
 
@@ -262,9 +253,7 @@ class GraphStore:
             TypeError: 参数类型错误。
         """
         if not isinstance(edge_type, str) or not edge_type:
-            raise ValueError(
-                f"edge_type must be a non-empty str, got {edge_type!r}"
-            )
+            raise ValueError(f"edge_type must be a non-empty str, got {edge_type!r}")
         _validate_node_id(source_id)
         _validate_node_id(target_id)
         # 在加锁前进行参数校验，避免持锁等待期间抛错导致锁泄漏。
@@ -286,13 +275,9 @@ class GraphStore:
             confidence = props.get("confidence")
             if confidence is not None:
                 if not isinstance(confidence, (int, float)):
-                    raise TypeError(
-                        f"confidence must be a number, got {type(confidence).__name__}"
-                    )
+                    raise TypeError(f"confidence must be a number, got {type(confidence).__name__}")
                 if not (0.0 <= float(confidence) <= 1.0):
-                    raise ValueError(
-                        f"confidence must be in [0, 1], got {confidence!r}"
-                    )
+                    raise ValueError(f"confidence must be in [0, 1], got {confidence!r}")
                 props["confidence"] = float(confidence)
             else:
                 # 未显式给出 confidence 时使用默认值 0.5，保证下游
@@ -314,9 +299,7 @@ class GraphStore:
             props,
         )
 
-    def has_edge(
-        self, source_id: str, target_id: str, edge_type: str
-    ) -> bool:
+    def has_edge(self, source_id: str, target_id: str, edge_type: str) -> bool:
         """判断关系是否存在。"""
         with self._lock:
             return self._graph.has_edge(source_id, target_id, key=edge_type)
@@ -356,21 +339,15 @@ class GraphStore:
             if "confidence" in update:
                 conf = update["confidence"]
                 if not isinstance(conf, (int, float)):
-                    raise TypeError(
-                        f"confidence must be a number, got {type(conf).__name__}"
-                    )
+                    raise TypeError(f"confidence must be a number, got {type(conf).__name__}")
                 if not (0.0 <= float(conf) <= 1.0):
-                    raise ValueError(
-                        f"confidence must be in [0, 1], got {conf!r}"
-                    )
+                    raise ValueError(f"confidence must be in [0, 1], got {conf!r}")
                 update["confidence"] = float(conf)
             merged.update(update)
             existing["properties"] = merged
             return True
 
-    def remove_edge(
-        self, source_id: str, target_id: str, edge_type: str
-    ) -> bool:
+    def remove_edge(self, source_id: str, target_id: str, edge_type: str) -> bool:
         """按三元组删除关系。"""
         with self._lock:
             if not self._graph.has_edge(source_id, target_id, key=edge_type):
@@ -405,9 +382,7 @@ class GraphStore:
             if not self._graph.has_node(source_id):
                 return []
             results: list[dict[str, Any]] = []
-            for _, v, k, data in self._graph.out_edges(
-                source_id, keys=True, data=True
-            ):
+            for _, v, k, data in self._graph.out_edges(source_id, keys=True, data=True):
                 if edge_type is None or k == edge_type:
                     results.append(
                         {
@@ -430,9 +405,7 @@ class GraphStore:
             if not self._graph.has_node(target_id):
                 return []
             results: list[dict[str, Any]] = []
-            for u, _, k, data in self._graph.in_edges(
-                target_id, keys=True, data=True
-            ):
+            for u, _, k, data in self._graph.in_edges(target_id, keys=True, data=True):
                 if edge_type is None or k == edge_type:
                     results.append(
                         {
@@ -462,18 +435,11 @@ class GraphStore:
             关系列表，按 ``confidence`` 降序排列。
         """
         if min_confidence > max_confidence:
-            raise ValueError(
-                f"min_confidence ({min_confidence}) must be <= "
-                f"max_confidence ({max_confidence})"
-            )
+            raise ValueError(f"min_confidence ({min_confidence}) must be <= max_confidence ({max_confidence})")
         if not (0.0 <= min_confidence <= 1.0):
-            raise ValueError(
-                f"min_confidence must be in [0, 1], got {min_confidence!r}"
-            )
+            raise ValueError(f"min_confidence must be in [0, 1], got {min_confidence!r}")
         if not (0.0 <= max_confidence <= 1.0):
-            raise ValueError(
-                f"max_confidence must be in [0, 1], got {max_confidence!r}"
-            )
+            raise ValueError(f"max_confidence must be in [0, 1], got {max_confidence!r}")
         with self._lock:
             results: list[dict[str, Any]] = []
             for u, v, k, data in self._graph.edges(keys=True, data=True):
@@ -504,11 +470,7 @@ class GraphStore:
         with self._lock:
             if edge_type is None:
                 return self._graph.number_of_edges()
-            return sum(
-                1
-                for _, _, k in self._graph.edges(keys=True)
-                if k == edge_type
-            )
+            return sum(1 for _, _, k in self._graph.edges(keys=True) if k == edge_type)
 
     # ============================================================== 辅助操作
 
@@ -562,18 +524,14 @@ class GraphStore:
             )
 
             if get_sync_sessionmaker() is None:
-                logger.debug(
-                    "flush_to_repository: DB not configured, skipping"
-                )
+                logger.debug("flush_to_repository: DB not configured, skipping")
                 return {"nodes_written": 0, "edges_written": 0}
 
         # 持锁以防止在落库过程中其他线程修改内存图，确保快照一致性。
         # 使用 RLock 允许 GraphPersistence 内部回调本类查询方法时复用锁。
         with self._lock:
             persistence = GraphPersistence(session_factory=session_factory)
-            return persistence.flush_to_repository(
-                self, clear_first=clear_first
-            )
+            return persistence.flush_to_repository(self, clear_first=clear_first)
 
     def load_from_repository(
         self,
@@ -601,9 +559,7 @@ class GraphStore:
         )
 
         if get_sync_sessionmaker() is None:
-            logger.debug(
-                "load_from_repository: DB not configured, skipping"
-            )
+            logger.debug("load_from_repository: DB not configured, skipping")
             return {"nodes_loaded": 0, "edges_loaded": 0}
 
         # 持锁以防止在加载过程中其他线程读取到半成品图数据。

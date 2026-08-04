@@ -65,10 +65,7 @@ class LNNPerfBenchmark:
         class _DummyLNN:
             def predict(self, x: np.ndarray) -> np.ndarray:
                 for _ in range(3):
-                    x = np.tanh(
-                        x @ np.random.randn(x.shape[1], 128) * 0.1
-                        + np.random.randn(128) * 0.01
-                    )
+                    x = np.tanh(x @ np.random.randn(x.shape[1], 128) * 0.1 + np.random.randn(128) * 0.01)
                 return x @ np.random.randn(128, 1) * 0.1
 
         self._model = _DummyLNN()

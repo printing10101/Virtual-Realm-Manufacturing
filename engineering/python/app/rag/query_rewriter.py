@@ -17,7 +17,6 @@ import hashlib
 import logging
 import os
 import threading
-import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -44,9 +43,8 @@ def _run_async(coro):
         # 无运行中的事件循环，安全使用 asyncio.run
         return asyncio.run(coro)
     # 有运行中的事件循环，调用方应直接 await 协程
-    raise RuntimeError(
-        "_run_async 不能在异步上下文中调用，请直接 await 协程或使用 asyncio.create_task"
-    )
+    raise RuntimeError("_run_async 不能在异步上下文中调用，请直接 await 协程或使用 asyncio.create_task")
+
 
 # 功能开关
 ENABLE_QUERY_REWRITE = os.getenv("ENABLE_QUERY_REWRITE", "1") == "1"
@@ -161,9 +159,7 @@ class QueryRewriter:
                 return cache[key]
         return None
 
-    def _cache_set(
-        self, cache: dict, keys: list, key: str, value: str, max_size: int
-    ):
+    def _cache_set(self, cache: dict, keys: list, key: str, value: str, max_size: int):
         """LRU 写：已存在则更新值，否则淘汰最旧后插入。"""
         if key in cache:
             # 已存在则更新值（不需要重复添加到 keys）
@@ -251,9 +247,7 @@ class QueryRewriter:
 
         try:
             prompt = HYDE_PROMPT.format(query=query)
-            result = _run_async(
-                self._call_llm(llm, prompt, max_tokens=HYDE_MAX_TOKENS)
-            )
+            result = _run_async(self._call_llm(llm, prompt, max_tokens=HYDE_MAX_TOKENS))
             hyde_doc = result.strip() if result else None
 
             if hyde_doc:
@@ -271,9 +265,7 @@ class QueryRewriter:
             logger.warning("HyDE generation failed: %s", e)
             return None
 
-    async def _call_llm(
-        self, llm: Any, prompt: str, max_tokens: int = 128
-    ) -> str:
+    async def _call_llm(self, llm: Any, prompt: str, max_tokens: int = 128) -> str:
         """异步调用 LLM。"""
         messages = [{"role": "user", "content": prompt}]
         response = await llm.chat_completion(
@@ -329,23 +321,16 @@ class QueryRewriter:
             # 命中统计
             "rewrite_hits": self._rewrite_hits,
             "rewrite_misses": self._rewrite_misses,
-            "rewrite_hit_rate": (
-                round(self._rewrite_hits / rewrite_total, 4)
-                if rewrite_total > 0
-                else 0.0
-            ),
+            "rewrite_hit_rate": (round(self._rewrite_hits / rewrite_total, 4) if rewrite_total > 0 else 0.0),
             "hyde_hits": self._hyde_hits,
             "hyde_misses": self._hyde_misses,
-            "hyde_hit_rate": (
-                round(self._hyde_hits / hyde_total, 4) if hyde_total > 0 else 0.0
-            ),
+            "hyde_hit_rate": (round(self._hyde_hits / hyde_total, 4) if hyde_total > 0 else 0.0),
             # Fallback 频率监控
             "llm_rewrite_count": self._llm_rewrite_count,
             "rule_rewrite_count": self._rule_rewrite_count,
             "rule_fallback_rate": (
                 round(
-                    self._rule_rewrite_count
-                    / max(self._llm_rewrite_count + self._rule_rewrite_count, 1),
+                    self._rule_rewrite_count / max(self._llm_rewrite_count + self._rule_rewrite_count, 1),
                     4,
                 )
             ),

@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -61,13 +61,15 @@ def _load_template(name: str) -> str:
 
 class ReviewStatus:
     """审核状态常量。"""
-    UNVERIFIED = "unverified"      # 未审核
-    APPROVED = "approved"          # 已审核
+
+    UNVERIFIED = "unverified"  # 未审核
+    APPROVED = "approved"  # 已审核
     NEEDS_REVISION = "needs_revision"  # 需修改
 
 
 class EntityReview(BaseModel):
     """实体审核数据模型。"""
+
     id: str
     entity_type: str
     name: str
@@ -80,6 +82,7 @@ class EntityReview(BaseModel):
 
 class RelationReview(BaseModel):
     """关系审核数据模型。"""
+
     source_id: str
     target_id: str
     relation_type: str
@@ -92,6 +95,7 @@ class RelationReview(BaseModel):
 
 class ExtractionReviewData(BaseModel):
     """抽取结果审核数据。"""
+
     id: str
     source_path: str
     extraction_method: str = ""
@@ -147,26 +151,30 @@ class ReviewManager:
         # 转换实体
         entities = []
         for ent in result.get("entities", []):
-            entities.append(EntityReview(
-                id=ent.get("id", ""),
-                entity_type=ent.get("entity_type", ""),
-                name=ent.get("name", ""),
-                properties=ent.get("properties", {}),
-                confidence=float(ent.get("confidence", 50)),
-                status=ent.get("status", ReviewStatus.UNVERIFIED),
-            ))
+            entities.append(
+                EntityReview(
+                    id=ent.get("id", ""),
+                    entity_type=ent.get("entity_type", ""),
+                    name=ent.get("name", ""),
+                    properties=ent.get("properties", {}),
+                    confidence=float(ent.get("confidence", 50)),
+                    status=ent.get("status", ReviewStatus.UNVERIFIED),
+                )
+            )
 
         # 转换关系
         relations = []
         for rel in result.get("relations", []):
-            relations.append(RelationReview(
-                source_id=rel.get("source_id", ""),
-                target_id=rel.get("target_id", ""),
-                relation_type=rel.get("relation_type", ""),
-                properties=rel.get("properties", {}),
-                confidence=float(rel.get("confidence", 50)),
-                status=rel.get("status", ReviewStatus.UNVERIFIED),
-            ))
+            relations.append(
+                RelationReview(
+                    source_id=rel.get("source_id", ""),
+                    target_id=rel.get("target_id", ""),
+                    relation_type=rel.get("relation_type", ""),
+                    properties=rel.get("properties", {}),
+                    confidence=float(rel.get("confidence", 50)),
+                    status=rel.get("status", ReviewStatus.UNVERIFIED),
+                )
+            )
 
         # 创建审核记录
         review = ExtractionReviewData(
@@ -206,22 +214,20 @@ class ReviewManager:
         with self._lock:
             result = []
             for review_id, review in self.reviews.items():
-                approved_entities = sum(
-                    1 for e in review.entities if e.status == ReviewStatus.APPROVED
+                approved_entities = sum(1 for e in review.entities if e.status == ReviewStatus.APPROVED)
+                approved_relations = sum(1 for r in review.relations if r.status == ReviewStatus.APPROVED)
+                result.append(
+                    {
+                        "id": review_id,
+                        "source_path": review.source_path,
+                        "total_entities": len(review.entities),
+                        "approved_entities": approved_entities,
+                        "total_relations": len(review.relations),
+                        "approved_relations": approved_relations,
+                        "overall_status": review.overall_status,
+                        "created_at": review.created_at,
+                    }
                 )
-                approved_relations = sum(
-                    1 for r in review.relations if r.status == ReviewStatus.APPROVED
-                )
-                result.append({
-                    "id": review_id,
-                    "source_path": review.source_path,
-                    "total_entities": len(review.entities),
-                    "approved_entities": approved_entities,
-                    "total_relations": len(review.relations),
-                    "approved_relations": approved_relations,
-                    "overall_status": review.overall_status,
-                    "created_at": review.created_at,
-                })
             return result
 
     def update_entity(

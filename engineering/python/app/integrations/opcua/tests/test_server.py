@@ -11,7 +11,7 @@ import asyncio
 import random
 import logging
 
-from asyncua import Server, ua
+from asyncua import Server
 
 
 async def main():
@@ -50,10 +50,12 @@ async def main():
             await load_node.write_value(random.uniform(10, 90))
             await feed_node.write_value(random.uniform(100, 2000))
             await exec_node.write_value(random.choice(["ACTIVE", "IDLE", "PROGRAM"]))
-            logger.info(f"  cycle {cycle}: speed={await speed_node.read_value():.1f}, "
-                  f"load={await load_node.read_value():.1f}, "
-                  f"feed={await feed_node.read_value():.1f}, "
-                  f"exec={await exec_node.read_value()}")
+            logger.info(
+                f"  cycle {cycle}: speed={await speed_node.read_value():.1f}, "
+                f"load={await load_node.read_value():.1f}, "
+                f"feed={await feed_node.read_value():.1f}, "
+                f"exec={await exec_node.read_value()}"
+            )
     except asyncio.CancelledError:
         pass
     finally:

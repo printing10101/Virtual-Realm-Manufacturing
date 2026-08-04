@@ -24,54 +24,124 @@ logger = logging.getLogger(__name__)
 # 物料种子数据（10 条）
 SEED_MATERIALS = [
     {
-        "code": "MAT-001", "name": "45号钢", "spec": "φ50×200mm",
-        "category": "原材料", "quantity": 1500, "safe_quantity": 200,
-        "status": "正常", "location": "A-01-03", "unit": "根", "supplier": "宝钢集团",
+        "code": "MAT-001",
+        "name": "45号钢",
+        "spec": "φ50×200mm",
+        "category": "原材料",
+        "quantity": 1500,
+        "safe_quantity": 200,
+        "status": "正常",
+        "location": "A-01-03",
+        "unit": "根",
+        "supplier": "宝钢集团",
     },
     {
-        "code": "MAT-002", "name": "铝合金6061", "spec": "100×50×300mm",
-        "category": "原材料", "quantity": 800, "safe_quantity": 300,
-        "status": "正常", "location": "A-01-05", "unit": "根", "supplier": "忠旺集团",
+        "code": "MAT-002",
+        "name": "铝合金6061",
+        "spec": "100×50×300mm",
+        "category": "原材料",
+        "quantity": 800,
+        "safe_quantity": 300,
+        "status": "正常",
+        "location": "A-01-05",
+        "unit": "根",
+        "supplier": "忠旺集团",
     },
     {
-        "code": "MAT-003", "name": "不锈钢304", "spec": "φ30×150mm",
-        "category": "原材料", "quantity": 200, "safe_quantity": 150,
-        "status": "低库存", "location": "A-02-01", "unit": "根", "supplier": "太钢集团",
+        "code": "MAT-003",
+        "name": "不锈钢304",
+        "spec": "φ30×150mm",
+        "category": "原材料",
+        "quantity": 200,
+        "safe_quantity": 150,
+        "status": "低库存",
+        "location": "A-02-01",
+        "unit": "根",
+        "supplier": "太钢集团",
     },
     {
-        "code": "MAT-004", "name": "铜棒H59", "spec": "φ25×100mm",
-        "category": "原材料", "quantity": 50, "safe_quantity": 100,
-        "status": "缺货", "location": "A-02-03", "unit": "根", "supplier": "海亮股份",
+        "code": "MAT-004",
+        "name": "铜棒H59",
+        "spec": "φ25×100mm",
+        "category": "原材料",
+        "quantity": 50,
+        "safe_quantity": 100,
+        "status": "缺货",
+        "location": "A-02-03",
+        "unit": "根",
+        "supplier": "海亮股份",
     },
     {
-        "code": "MAT-005", "name": "齿轮半成品", "spec": "GZ-50T",
-        "category": "半成品", "quantity": 120, "safe_quantity": 50,
-        "status": "正常", "location": "B-01-01", "unit": "件", "supplier": "自制",
+        "code": "MAT-005",
+        "name": "齿轮半成品",
+        "spec": "GZ-50T",
+        "category": "半成品",
+        "quantity": 120,
+        "safe_quantity": 50,
+        "status": "正常",
+        "location": "B-01-01",
+        "unit": "件",
+        "supplier": "自制",
     },
     {
-        "code": "MAT-006", "name": "轴承座半成品", "spec": "ZC-30B",
-        "category": "半成品", "quantity": 85, "safe_quantity": 30,
-        "status": "正常", "location": "B-01-02", "unit": "件", "supplier": "自制",
+        "code": "MAT-006",
+        "name": "轴承座半成品",
+        "spec": "ZC-30B",
+        "category": "半成品",
+        "quantity": 85,
+        "safe_quantity": 30,
+        "status": "正常",
+        "location": "B-01-02",
+        "unit": "件",
+        "supplier": "自制",
     },
     {
-        "code": "MAT-007", "name": "减速机总成", "spec": "JS-50W",
-        "category": "成品", "quantity": 30, "safe_quantity": 20,
-        "status": "正常", "location": "C-01-01", "unit": "台", "supplier": "自制",
+        "code": "MAT-007",
+        "name": "减速机总成",
+        "spec": "JS-50W",
+        "category": "成品",
+        "quantity": 30,
+        "safe_quantity": 20,
+        "status": "正常",
+        "location": "C-01-01",
+        "unit": "台",
+        "supplier": "自制",
     },
     {
-        "code": "MAT-008", "name": "伺服电机", "spec": "SM-750W",
-        "category": "成品", "quantity": 15, "safe_quantity": 10,
-        "status": "低库存", "location": "C-01-02", "unit": "台", "supplier": "安川电机",
+        "code": "MAT-008",
+        "name": "伺服电机",
+        "spec": "SM-750W",
+        "category": "成品",
+        "quantity": 15,
+        "safe_quantity": 10,
+        "status": "低库存",
+        "location": "C-01-02",
+        "unit": "台",
+        "supplier": "安川电机",
     },
     {
-        "code": "MAT-009", "name": "数控刀具", "spec": "D10-200",
-        "category": "原材料", "quantity": 45, "safe_quantity": 20,
-        "status": "正常", "location": "A-03-01", "unit": "把", "supplier": "山特维克",
+        "code": "MAT-009",
+        "name": "数控刀具",
+        "spec": "D10-200",
+        "category": "原材料",
+        "quantity": 45,
+        "safe_quantity": 20,
+        "status": "正常",
+        "location": "A-03-01",
+        "unit": "把",
+        "supplier": "山特维克",
     },
     {
-        "code": "MAT-010", "name": "润滑油", "spec": "HM-46",
-        "category": "原材料", "quantity": 200, "safe_quantity": 50,
-        "status": "正常", "location": "A-03-05", "unit": "升", "supplier": "壳牌",
+        "code": "MAT-010",
+        "name": "润滑油",
+        "spec": "HM-46",
+        "category": "原材料",
+        "quantity": 200,
+        "safe_quantity": 50,
+        "status": "正常",
+        "location": "A-03-05",
+        "unit": "升",
+        "supplier": "壳牌",
     },
 ]
 
@@ -165,11 +235,7 @@ async def get_material(material_id: str) -> Optional[dict]:
     """根据 ID 获取物料详情，未找到返回 None。"""
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        m = (
-            await session.execute(
-                select(Material).where(Material.id == material_id)
-            )
-        ).scalar_one_or_none()
+        m = (await session.execute(select(Material).where(Material.id == material_id))).scalar_one_or_none()
         if m is None:
             return None
         return _row_to_dict(m)
@@ -185,9 +251,7 @@ def _recalc_status(m: Material) -> None:
         m.status = "正常"
 
 
-async def stock_in_material(
-    material_id: str, quantity: int, remark: Optional[str] = None
-) -> Optional[dict]:
+async def stock_in_material(material_id: str, quantity: int, remark: Optional[str] = None) -> Optional[dict]:
     """物料入库：库存数量增加并重算状态。
 
     Args:
@@ -201,11 +265,7 @@ async def stock_in_material(
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         try:
-            m = (
-                await session.execute(
-                    select(Material).where(Material.id == material_id)
-                )
-            ).scalar_one_or_none()
+            m = (await session.execute(select(Material).where(Material.id == material_id))).scalar_one_or_none()
             if m is None:
                 return None
 
@@ -226,9 +286,7 @@ async def stock_in_material(
             raise
 
 
-async def purchase_material(
-    material_id: str, quantity: int, supplier: Optional[str] = None
-) -> Optional[dict]:
+async def purchase_material(material_id: str, quantity: int, supplier: Optional[str] = None) -> Optional[dict]:
     """物料采购：更新供应商信息并增加库存数量，重算状态。
 
     Args:
@@ -242,11 +300,7 @@ async def purchase_material(
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         try:
-            m = (
-                await session.execute(
-                    select(Material).where(Material.id == material_id)
-                )
-            ).scalar_one_or_none()
+            m = (await session.execute(select(Material).where(Material.id == material_id))).scalar_one_or_none()
             if m is None:
                 return None
 
@@ -299,11 +353,7 @@ async def update_material(material_id: str, update_data: dict[str, Any]) -> Opti
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         try:
-            m = (
-                await session.execute(
-                    select(Material).where(Material.id == material_id)
-                )
-            ).scalar_one_or_none()
+            m = (await session.execute(select(Material).where(Material.id == material_id))).scalar_one_or_none()
             if m is None:
                 return None
 
@@ -328,11 +378,7 @@ async def delete_material(material_id: str) -> Optional[bool]:
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         try:
-            m = (
-                await session.execute(
-                    select(Material).where(Material.id == material_id)
-                )
-            ).scalar_one_or_none()
+            m = (await session.execute(select(Material).where(Material.id == material_id))).scalar_one_or_none()
             if m is None:
                 return None
 
@@ -357,9 +403,7 @@ async def seed_materials() -> dict:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        existing_count = (
-            await session.execute(select(func.count(Material.id)))
-        ).scalar() or 0
+        existing_count = (await session.execute(select(func.count(Material.id)))).scalar() or 0
         if existing_count > 0:
             return {
                 "already_exists": True,

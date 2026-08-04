@@ -42,6 +42,7 @@ def _lazy_import(module_path: str, attr_name: str) -> Optional[Any]:
     _import_attempted[cache_key] = True
     try:
         import importlib as _importlib
+
         mod = _importlib.import_module(module_path)
         obj = getattr(mod, attr_name)
         _cache[cache_key] = obj
@@ -49,16 +50,19 @@ def _lazy_import(module_path: str, attr_name: str) -> Optional[Any]:
         return obj
     except ImportError as e:
         logger.warning(
-            "research bridge: cannot import %s from %s (%s). "
-            "Training functionality will be unavailable.",
-            attr_name, module_path, e,
+            "research bridge: cannot import %s from %s (%s). Training functionality will be unavailable.",
+            attr_name,
+            module_path,
+            e,
         )
         _cache[cache_key] = None
         return None
     except AttributeError as e:
         logger.error(
             "research bridge: %s not found in %s (%s)",
-            attr_name, module_path, e,
+            attr_name,
+            module_path,
+            e,
         )
         _cache[cache_key] = None
         return None

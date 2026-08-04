@@ -157,9 +157,7 @@ class HoleDetector:
                     continue
 
                 # 过滤已使用的索引
-                available_indices = [
-                    i for i in sample_indices if i not in used_global_indices
-                ]
+                available_indices = [i for i in sample_indices if i not in used_global_indices]
                 if len(available_indices) < self._cfg.cylinder_min_inliers:
                     continue
 
@@ -242,10 +240,7 @@ class HoleDetector:
                 break
 
             # 半径范围校验
-            if (
-                radius < self._cfg.hole_min_radius_mm
-                or radius > self._cfg.hole_max_radius_mm
-            ):
+            if radius < self._cfg.hole_min_radius_mm or radius > self._cfg.hole_max_radius_mm:
                 # 移除这批内点，继续找下一个
                 remaining_mask[remaining_local_indices[inlier_local_mask]] = False
                 continue
@@ -341,10 +336,8 @@ class HoleDetector:
         # 第三主成分作为法向量
         normal = vh[-1]
         normal = normal / (np.linalg.norm(normal) + 1e-10)
-        u = vh[0]
-        v = vh[1]
 
-        coords_2d = np.column_stack([centered @ u, centered @ v])
+        # 注：2D 投影坐标（vh[0]/vh[1] 主轴）由下游平面检测逻辑重新计算
         global_indices = list(range(len(vertices)))
 
         # 直接复用平面内检测逻辑（用一个虚拟平面）
@@ -389,10 +382,7 @@ class HoleDetector:
             offset_value > 0 表示凸起，< 0 表示凹陷
         """
         # 圆心附近的点
-        dist_to_center = np.sqrt(
-            (all_plane_2d[:, 0] - cx_2d) ** 2
-            + (all_plane_2d[:, 1] - cy_2d) ** 2
-        )
+        dist_to_center = np.sqrt((all_plane_2d[:, 0] - cx_2d) ** 2 + (all_plane_2d[:, 1] - cy_2d) ** 2)
         center_zone_mask = dist_to_center < (0.3 * radius)
         if int(np.sum(center_zone_mask)) < 3:
             # 圆心附近无点，无法判定，默认 HOLE
@@ -485,9 +475,7 @@ def _ransac_circle_ring(
             continue
 
         # 计算所有点到圆周的距离
-        dist_to_center = np.sqrt(
-            (points_2d[:, 0] - cx) ** 2 + (points_2d[:, 1] - cy) ** 2
-        )
+        dist_to_center = np.sqrt((points_2d[:, 0] - cx) ** 2 + (points_2d[:, 1] - cy) ** 2)
         dist_to_ring = np.abs(dist_to_center - radius)
         inlier_mask = dist_to_ring < threshold
         inlier_count = int(np.sum(inlier_mask))
@@ -505,9 +493,7 @@ def _ransac_circle_ring(
     if refined is not None:
         rcx, rcy, rradius = refined
         # 重新计算内点
-        dist_to_center = np.sqrt(
-            (points_2d[:, 0] - rcx) ** 2 + (points_2d[:, 1] - rcy) ** 2
-        )
+        dist_to_center = np.sqrt((points_2d[:, 0] - rcx) ** 2 + (points_2d[:, 1] - rcy) ** 2)
         dist_to_ring = np.abs(dist_to_center - rradius)
         refined_mask = dist_to_ring < threshold
         if int(np.sum(refined_mask)) >= best_inlier_count * 0.5:
@@ -538,16 +524,8 @@ def _circle_from_three_points(
     if abs(d) < 1e-10:
         return None
 
-    ux = (
-        (ax**2 + ay**2) * (by - cy)
-        + (bx**2 + by**2) * (cy - ay)
-        + (cx**2 + cy**2) * (ay - by)
-    ) / d
-    uy = (
-        (ax**2 + ay**2) * (cx - bx)
-        + (bx**2 + by**2) * (ax - cx)
-        + (cx**2 + cy**2) * (bx - ax)
-    ) / d
+    ux = ((ax**2 + ay**2) * (by - cy) + (bx**2 + by**2) * (cy - ay) + (cx**2 + cy**2) * (ay - by)) / d
+    uy = ((ax**2 + ay**2) * (cx - bx) + (bx**2 + by**2) * (ax - cx) + (cx**2 + cy**2) * (bx - ax)) / d
     radius = float(np.sqrt((ax - ux) ** 2 + (ay - uy) ** 2))
     return float(ux), float(uy), radius
 

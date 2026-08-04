@@ -38,6 +38,7 @@ class Operation:
         estimated_time_min: Estimated operation time (minutes).
         notes: Additional operation notes.
     """
+
     seq: int
     name: str
     feature_name: str
@@ -81,6 +82,7 @@ class OperationPlan:
         face_change_count: Number of face changes (setup transitions).
         fixture_recommendations: Recommended fixtures for each setup.
     """
+
     operations: list[Operation] = field(default_factory=list)
     setups: list[Setup] = field(default_factory=list)
     estimated_time_min: float = 0.0
@@ -107,9 +109,7 @@ class OperationPlan:
             ],
             "estimated_time_min": round(self.estimated_time_min, 2),
             "face_change_count": self.face_change_count,
-            "fixture_recommendations": [
-                fr.to_dict() for fr in self.fixture_recommendations
-            ],
+            "fixture_recommendations": [fr.to_dict() for fr in self.fixture_recommendations],
         }
 
 
@@ -119,6 +119,7 @@ class OperationSequencer:
     Uses feature dependency graphs, datum selection, and fixture analysis
     to produce an optimized sequence of machining operations.
     """
+
     def __init__(self) -> None:
         self._dep_graph = FeatureDependencyGraph()
         self._datum_selector = DatumSelector()

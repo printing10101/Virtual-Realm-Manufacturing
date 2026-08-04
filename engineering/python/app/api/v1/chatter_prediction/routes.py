@@ -20,7 +20,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from pathlib import Path
 from typing import Any
@@ -30,7 +29,6 @@ from fastapi.responses import FileResponse
 
 from app.api.v1.chatter_prediction.schemas import (
     ExportChatterReportResponse,
-    FeatureChatterResultResponse,
     ReviewRequest,
     ReviewResponse,
     TaskCreateRequest,
@@ -45,17 +43,11 @@ from app.core.safe_errors import safe_error_message
 from app.contracts._shared import TaskListResponse
 
 from app.chatter_prediction import (
-    ChatterPredictionPipeline,
     ChatterPredictionPipelineError,
-    ChatterPredictionTask,
     ChatterPredictionTaskStatus,
     ChatterReviewError,
     ChatterReviewStatus,
-    ChatterParamsLoadError,
-    FeatureChatterResult,
-    PredictionMethod,
     ReviewError,
-    build_chatter_disclaimer,
     check_ltc_model_available,
     get_task_store,
 )
@@ -176,8 +168,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
                 f"source_cutting_parameters_task_id={body.source_cutting_parameters_task_id}"
             ),
             suggestion=(
-                "请显式提供 chatter_params_path，或确认上游阶段 4 任务已 SUCCEEDED "
-                "且已导出 ChatterParams JSON。"
+                "请显式提供 chatter_params_path，或确认上游阶段 4 任务已 SUCCEEDED 且已导出 ChatterParams JSON。"
             ),
         )
 
@@ -244,10 +235,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
             "ltc_model_available": task.ltc_model_available,
             "chatter_disclaimer": _disclaimer_dict(task=task),
         },
-        message=(
-            f"任务已创建 task_id={task.task_id}，"
-            f"请调用 POST /tasks/{task.task_id}/run 触发执行"
-        ),
+        message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
 
@@ -282,10 +270,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
     ):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态不允许执行当前操作 status={task.status}。"
-                "仅 PENDING / FAILED 状态可触发执行。"
-            ),
+            message=(f"任务状态不允许执行当前操作 status={task.status}。仅 PENDING / FAILED 状态可触发执行。"),
         )
 
     # 重试场景：清空错误信息
@@ -325,22 +310,10 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
         )
 
     # 统计审核进度
-    pending_count = sum(
-        1 for r in task.feature_results
-        if r.review_status == ChatterReviewStatus.PENDING.value
-    )
-    confirmed_count = sum(
-        1 for r in task.feature_results
-        if r.review_status == ChatterReviewStatus.CONFIRMED.value
-    )
-    rejected_count = sum(
-        1 for r in task.feature_results
-        if r.review_status == ChatterReviewStatus.REJECTED.value
-    )
-    edited_count = sum(
-        1 for r in task.feature_results
-        if r.review_status == ChatterReviewStatus.EDITED.value
-    )
+    pending_count = sum(1 for r in task.feature_results if r.review_status == ChatterReviewStatus.PENDING.value)
+    confirmed_count = sum(1 for r in task.feature_results if r.review_status == ChatterReviewStatus.CONFIRMED.value)
+    rejected_count = sum(1 for r in task.feature_results if r.review_status == ChatterReviewStatus.REJECTED.value)
+    edited_count = sum(1 for r in task.feature_results if r.review_status == ChatterReviewStatus.EDITED.value)
 
     chatter_report_ready = bool(task.chatter_report_path)
 
@@ -370,9 +343,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
             "created_at": task.created_at,
             "started_at": task.started_at,
             "completed_at": task.completed_at,
-            "chatter_disclaimer": _disclaimer_dict(
-                task=task, chatter_report_ready=chatter_report_ready
-            ),
+            "chatter_disclaimer": _disclaimer_dict(task=task, chatter_report_ready=chatter_report_ready),
         },
     )
 
@@ -450,10 +421,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
     if task.status not in allowed_states:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许获取结果，"
-                f"仅 {sorted(allowed_states)} 状态可获取。"
-            ),
+            message=(f"任务状态 {task.status} 不允许获取结果，仅 {sorted(allowed_states)} 状态可获取。"),
             suggestion="请等待状态变为 predicted 后再调用此端点",
         )
 
@@ -507,9 +475,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
             "chatter_report_path": task.chatter_report_path,
             "error_message": task.error_message or None,
             "feature_results": feature_results_data,
-            "chatter_disclaimer": _disclaimer_dict(
-                task=task, chatter_report_ready=chatter_report_ready
-            ),
+            "chatter_disclaimer": _disclaimer_dict(task=task, chatter_report_ready=chatter_report_ready),
         },
     )
 
@@ -552,10 +518,7 @@ async def review_result(
     if task.status != ChatterPredictionTaskStatus.PREDICTED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许审核，"
-                f"仅 {ChatterPredictionTaskStatus.PREDICTED.value} 状态可审核"
-            ),
+            message=(f"任务状态 {task.status} 不允许审核，仅 {ChatterPredictionTaskStatus.PREDICTED.value} 状态可审核"),
             suggestion="请等待流水线执行完成（状态变为 predicted）后再审核",
         )
 
@@ -576,10 +539,7 @@ async def review_result(
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message="action=edited 时必须提供 edited_params",
-            suggestion=(
-                "请提供编辑后的参数（字段可为 limit_depth_mm / axial_depth_mm "
-                "/ stable（0/1）的子集）"
-            ),
+            suggestion=("请提供编辑后的参数（字段可为 limit_depth_mm / axial_depth_mm / stable（0/1）的子集）"),
         )
 
     try:
@@ -598,9 +558,7 @@ async def review_result(
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="chatter_prediction.review_result"
-        )
+        safe = safe_error_message(e, context="chatter_prediction.review_result")
         logger.error(
             "审核特征失败 task_id=%s feature_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -622,10 +580,7 @@ async def review_result(
             message="审核后任务丢失，请检查任务存储",
         )
 
-    all_reviewed = all(
-        r.review_status != ChatterReviewStatus.PENDING.value
-        for r in task_after.feature_results
-    )
+    all_reviewed = all(r.review_status != ChatterReviewStatus.PENDING.value for r in task_after.feature_results)
 
     return success(
         data={
@@ -641,8 +596,7 @@ async def review_result(
         message=(
             f"特征 {feature_id} 已审核（action={body.action}）。"
             + (
-                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/export "
-                "导出 ChatterReport JSON。"
+                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/export 导出 ChatterReport JSON。"
                 if all_reviewed
                 else " 仍有特征待审核。"
             )
@@ -682,10 +636,7 @@ async def export_chatter_report(task_id: str) -> dict[str, Any]:
     if task.status != ChatterPredictionTaskStatus.REVIEWED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许导出，"
-                f"仅 {ChatterPredictionTaskStatus.REVIEWED.value} 状态可导出"
-            ),
+            message=(f"任务状态 {task.status} 不允许导出，仅 {ChatterPredictionTaskStatus.REVIEWED.value} 状态可导出"),
             suggestion="请先完成所有特征的审核（状态变为 reviewed）后再导出",
         )
 
@@ -698,9 +649,7 @@ async def export_chatter_report(task_id: str) -> dict[str, Any]:
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="chatter_prediction.export_chatter_report"
-        )
+        safe = safe_error_message(e, context="chatter_prediction.export_chatter_report")
         logger.error(
             "导出 ChatterReport 失败 task_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -721,9 +670,7 @@ async def export_chatter_report(task_id: str) -> dict[str, Any]:
             message="导出后任务丢失，请检查任务存储",
         )
 
-    download_url = (
-        f"/api/v1/chatter_prediction/tasks/{task_id}/chatter_report/download"
-    )
+    download_url = f"/api/v1/chatter_prediction/tasks/{task_id}/chatter_report/download"
 
     return success(
         data={
@@ -735,9 +682,7 @@ async def export_chatter_report(task_id: str) -> dict[str, Any]:
             "chatter_report_path": chatter_report_path,
             "download_url": download_url,
             "chatter_report_ready": True,
-            "chatter_disclaimer": _disclaimer_dict(
-                task=task_after, chatter_report_ready=True
-            ),
+            "chatter_disclaimer": _disclaimer_dict(task=task_after, chatter_report_ready=True),
         },
         message=(
             f"ChatterReport 已导出 path={chatter_report_path}。"
@@ -828,10 +773,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     if task.status == ChatterPredictionTaskStatus.SUCCEEDED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务 {task_id} 已 SUCCEEDED，禁止删除。"
-                "ChatterReport 可能已被阶段 6 G 代码生成引用。"
-            ),
+            message=(f"任务 {task_id} 已 SUCCEEDED，禁止删除。ChatterReport 可能已被阶段 6 G 代码生成引用。"),
             suggestion="如确需删除，请先手动清理下游引用，再删除任务",
         )
 
@@ -845,9 +787,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
         try:
             store.update_task(task)
         except Exception as e:
-            safe = safe_error_message(
-                e, context="chatter_prediction.delete_task.cancel"
-            )
+            safe = safe_error_message(e, context="chatter_prediction.delete_task.cancel")
             logger.error(
                 "取消任务失败 task_id=%s | error_id=%s | exc=%s",
                 task_id,
@@ -870,9 +810,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="chatter_prediction.delete_task"
-        )
+        safe = safe_error_message(e, context="chatter_prediction.delete_task")
         logger.error(
             "删除任务失败 task_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -896,8 +834,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
             "task_id": task_id,
             "deleted": True,
             "note": (
-                "任务元信息已删除，ChatterReport JSON 文件与 workspace 目录未自动清理，"
-                "避免误删下游链路已引用的资源。"
+                "任务元信息已删除，ChatterReport JSON 文件与 workspace 目录未自动清理，避免误删下游链路已引用的资源。"
             ),
         },
         message=f"任务 {task_id} 已删除",

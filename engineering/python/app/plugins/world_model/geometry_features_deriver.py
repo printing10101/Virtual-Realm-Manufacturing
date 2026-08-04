@@ -39,6 +39,7 @@ feature_vector 分桶设计（32 维）
 
 对应 ADR：ADR-020 思路 1 / ADR-007 几何特征辅助提取
 """
+
 from __future__ import annotations
 
 import logging
@@ -248,14 +249,11 @@ class GeometryFeaturesDeriver:
             kept = [
                 f
                 for f in working_features
-                if f.review_status
-                in (FeatureReviewStatus.CONFIRMED.value, FeatureReviewStatus.EDITED.value)
+                if f.review_status in (FeatureReviewStatus.CONFIRMED.value, FeatureReviewStatus.EDITED.value)
             ]
             dropped = len(working_features) - len(kept)
             if dropped > 0:
-                notes.append(
-                    f"filter_reviewed=True: 过滤掉 {dropped} 条未审核特征"
-                )
+                notes.append(f"filter_reviewed=True: 过滤掉 {dropped} 条未审核特征")
             working_features = kept
 
         # 1. bbox_dimensions
@@ -274,19 +272,14 @@ class GeometryFeaturesDeriver:
                 normal = params.get("normal")
                 if isinstance(normal, (list, tuple)) and len(normal) >= 3:
                     try:
-                        plane_normals.append(
-                            [float(normal[0]), float(normal[1]), float(normal[2])]
-                        )
+                        plane_normals.append([float(normal[0]), float(normal[1]), float(normal[2])])
                     except (TypeError, ValueError):
                         pass
 
         # 3. symmetry_score
         symmetry = cls._derive_symmetry(plane_normals)
         if len(plane_normals) < 2:
-            notes.append(
-                f"plane 特征数 {len(plane_normals)} < 2，symmetry_score=0.0"
-                f"（无法判断对称性，非默认填充）"
-            )
+            notes.append(f"plane 特征数 {len(plane_normals)} < 2，symmetry_score=0.0（无法判断对称性，非默认填充）")
 
         # 4. complexity_score
         complexity = cls._derive_complexity(type_counts)
@@ -298,26 +291,16 @@ class GeometryFeaturesDeriver:
 
         # 桶溢出备注
         plane_count = type_counts.get(FeatureType.PLANE.value, 0)
-        cyl_count = (
-            type_counts.get(FeatureType.CYLINDER.value, 0)
-            + type_counts.get(FeatureType.BOSS.value, 0)
-        )
+        cyl_count = type_counts.get(FeatureType.CYLINDER.value, 0) + type_counts.get(FeatureType.BOSS.value, 0)
         hole_count = type_counts.get(FeatureType.HOLE.value, 0)
         if plane_count > PLANE_BUCKET_CAPACITY:
-            notes.append(
-                f"plane 特征 {plane_count} 超过桶容量 {PLANE_BUCKET_CAPACITY}，"
-                f"按 confidence 降序截断"
-            )
+            notes.append(f"plane 特征 {plane_count} 超过桶容量 {PLANE_BUCKET_CAPACITY}，按 confidence 降序截断")
         if cyl_count > CYLINDER_BUCKET_CAPACITY:
             notes.append(
-                f"cylinder+boss 特征 {cyl_count} 超过桶容量 {CYLINDER_BUCKET_CAPACITY}，"
-                f"按 confidence 降序截断"
+                f"cylinder+boss 特征 {cyl_count} 超过桶容量 {CYLINDER_BUCKET_CAPACITY}，按 confidence 降序截断"
             )
         if hole_count > HOLE_BUCKET_CAPACITY:
-            notes.append(
-                f"hole 特征 {hole_count} 超过桶容量 {HOLE_BUCKET_CAPACITY}，"
-                f"按 confidence 降序截断"
-            )
+            notes.append(f"hole 特征 {hole_count} 超过桶容量 {HOLE_BUCKET_CAPACITY}，按 confidence 降序截断")
 
         geometry = GeometryFeatures(
             bbox_dimensions=bbox,
@@ -461,11 +444,7 @@ class GeometryFeaturesDeriver:
         unknown 特征忽略（无几何参数）.
         """
         planes = [f for f in features if f.feature_type == FeatureType.PLANE.value]
-        cylinders = [
-            f
-            for f in features
-            if f.feature_type in (FeatureType.CYLINDER.value, FeatureType.BOSS.value)
-        ]
+        cylinders = [f for f in features if f.feature_type in (FeatureType.CYLINDER.value, FeatureType.BOSS.value)]
         holes = [f for f in features if f.feature_type == FeatureType.HOLE.value]
 
         # 按 confidence 降序
@@ -537,9 +516,7 @@ class GeometryFeaturesDeriver:
         bool
             True 表示 ``defaulted_fields`` 数量 >= 阈值，应降级.
         """
-        thresh = (
-            GeometryFeaturesDeriver.DEGRADE_THRESHOLD if threshold is None else threshold
-        )
+        thresh = GeometryFeaturesDeriver.DEGRADE_THRESHOLD if threshold is None else threshold
         return len(result.defaulted_fields) >= thresh
 
 

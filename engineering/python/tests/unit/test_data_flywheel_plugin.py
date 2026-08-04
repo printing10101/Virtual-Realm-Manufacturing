@@ -17,10 +17,8 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
 import logging
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -36,7 +34,6 @@ from app.plugins.entrypoint_loader import (
 )
 from app.plugins.extension_registry import (
     ExtensionRegistry,
-    get_extension_registry,
     reset_extension_registry,
 )
 from app.plugins.manifest_loader import load_manifest_from_dir
@@ -272,12 +269,14 @@ class TestDataFlywheelPluginLifecycle:
         assert len(tmpl_contribs) == 1
         assert tmpl_contribs[0]["plugin_id"] == "data_flywheel"
 
-        # TASK_HANDLER 应有 1 个贡献（p4-2 反馈提交处理器）
+        # TASK_HANDLER 应有 2 个贡献（p4-2 反馈提交 + p4-5 热更新，均来自 data_flywheel）
         handler_contribs = fresh_registry.list(
             BUILTIN_EXTENSION_POINTS.TASK_HANDLER
         )
-        assert len(handler_contribs) == 1
-        assert handler_contribs[0]["plugin_id"] == "data_flywheel"
+        assert len(handler_contribs) == 2
+        assert {c["plugin_id"] for c in handler_contribs} == {"data_flywheel"}
+        task_types = {c["metadata"]["task_type"] for c in handler_contribs}
+        assert task_types == {"submit_feedback", "hot_update_manager"}
 
     def test_on_load_workspace_panel_metadata(
         self, plugin_instance, fresh_registry: ExtensionRegistry
@@ -354,8 +353,8 @@ class TestDataFlywheelPluginLifecycle:
         ctx = _make_context()
         _run(plugin_instance.on_load(ctx))
 
-        # 加载后应有 3 个贡献（UI_WORKSPACE_PANEL + WORKFLOW_TEMPLATE + TASK_HANDLER）
-        assert fresh_registry.count() == 3
+        # 加载后应有 4 个贡献（UI_WORKSPACE_PANEL + WORKFLOW_TEMPLATE + 2×TASK_HANDLER）
+        assert fresh_registry.count() == 4
 
         _run(plugin_instance.on_unload())
 
@@ -461,7 +460,7 @@ class TestDataFlywheelReloadCycle:
 
         # 第一次加载
         _run(plugin_instance.on_load(ctx))
-        assert fresh_registry.count() == 3
+        assert fresh_registry.count() == 4
 
         # 卸载
         _run(plugin_instance.on_unload())
@@ -469,7 +468,7 @@ class TestDataFlywheelReloadCycle:
 
         # 重新加载
         _run(plugin_instance.on_load(ctx))
-        assert fresh_registry.count() == 3
+        assert fresh_registry.count() == 4
         # 重新加载后 invoke 仍可正常工作
         result = _run(
             fresh_registry.invoke_first(

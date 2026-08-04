@@ -126,10 +126,7 @@ class MultiModalFusion:
         result = np.zeros((n_samples, self.config.target_dim if self.config else dim), dtype=np.float32)
 
         for i in range(n_samples):
-            batch_features = {
-                modality: features[i]
-                for modality, features in features_dict.items()
-            }
+            batch_features = {modality: features[i] for modality, features in features_dict.items()}
             result[i] = self.fuse(batch_features, weights)
 
         return result
@@ -170,13 +167,12 @@ class CrossModalAttentionFusion:
             proj_q = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
             self._projections[modality] = (proj_q, proj_k, proj_v)
 
-        self._output_proj = self._rng.standard_normal(
-            (self.n_heads * d_k, self.target_dim)
-        ) / np.sqrt(self.n_heads * d_k)
+        self._output_proj = self._rng.standard_normal((self.n_heads * d_k, self.target_dim)) / np.sqrt(
+            self.n_heads * d_k
+        )
         self._initialized = True
         logger.warning(
-            "CrossModalAttentionFusion 使用随机占位权重（未经训练），"
-            "融合结果不具备物理意义，禁止用于生产或学术论文实验"
+            "CrossModalAttentionFusion 使用随机占位权重（未经训练），融合结果不具备物理意义，禁止用于生产或学术论文实验"
         )
 
     def _attention(self, q: np.ndarray, k: np.ndarray, v: np.ndarray) -> np.ndarray:
@@ -242,7 +238,7 @@ class CrossModalAttentionFusion:
             if concat.shape[0] < self._output_proj.shape[0]:
                 concat = np.pad(concat, (0, self._output_proj.shape[0] - concat.shape[0]))
             else:
-                concat = concat[:self._output_proj.shape[0]]
+                concat = concat[: self._output_proj.shape[0]]
 
         fused = np.dot(concat, self._output_proj)
         norm = np.linalg.norm(fused)

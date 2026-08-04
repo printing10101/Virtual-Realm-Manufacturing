@@ -25,11 +25,7 @@ class WearCalibrator:
                 break
 
         if predicted_at_time is None:
-            _wr_avg = (
-                predicted_curve.model_info.get("wear_rate_avg", 0.0)
-                if predicted_curve.model_info
-                else 0.0
-            )
+            _wr_avg = predicted_curve.model_info.get("wear_rate_avg", 0.0) if predicted_curve.model_info else 0.0
             predicted_at_time = _wr_avg * elapsed_time
 
         deviation = measured_wear - predicted_at_time
@@ -99,11 +95,7 @@ class WearCalibrator:
                 break
 
         if predicted_at_time is None:
-            _wr_avg = (
-                predicted_curve.model_info.get("wear_rate_avg", 0.0)
-                if predicted_curve.model_info
-                else 0.0
-            )
+            _wr_avg = predicted_curve.model_info.get("wear_rate_avg", 0.0) if predicted_curve.model_info else 0.0
             predicted_at_time = _wr_avg * elapsed_time
 
         # 3. 计算模型偏差
@@ -119,14 +111,10 @@ class WearCalibrator:
             # 振动 RMS 超过阈值时加速磨损
             if vibration_rms > 2.0:
                 sensor_adjustment *= 1.15
-                adjustment_reasons.append(
-                    f"振动RMS={vibration_rms:.2f}g超阈值，磨损加速15%"
-                )
+                adjustment_reasons.append(f"振动RMS={vibration_rms:.2f}g超阈值，磨损加速15%")
             elif vibration_rms > 1.0:
                 sensor_adjustment *= 1.05
-                adjustment_reasons.append(
-                    f"振动RMS={vibration_rms:.2f}g偏高，磨损加速5%"
-                )
+                adjustment_reasons.append(f"振动RMS={vibration_rms:.2f}g偏高，磨损加速5%")
 
         cutting_force = sensor_features.get("cutting_force", 0.0)
         if cutting_force > 0:
@@ -134,50 +122,33 @@ class WearCalibrator:
             expected_force = material.hardness_factor * 100.0
             if cutting_force > expected_force * 1.5:
                 sensor_adjustment *= 1.20
-                adjustment_reasons.append(
-                    f"切削力{cutting_force:.0f}N远超预期{expected_force:.0f}N，磨损加速20%"
-                )
+                adjustment_reasons.append(f"切削力{cutting_force:.0f}N远超预期{expected_force:.0f}N，磨损加速20%")
             elif cutting_force > expected_force * 1.2:
                 sensor_adjustment *= 1.10
-                adjustment_reasons.append(
-                    f"切削力{cutting_force:.0f}N高于预期{expected_force:.0f}N，磨损加速10%"
-                )
+                adjustment_reasons.append(f"切削力{cutting_force:.0f}N高于预期{expected_force:.0f}N，磨损加速10%")
 
         temperature = sensor_features.get("temperature", 0.0)
         if temperature > 0:
             # 温度过高加速磨损（热磨损机制）
             if temperature > 800.0:
                 sensor_adjustment *= 1.25
-                adjustment_reasons.append(
-                    f"切削温度{temperature:.0f}°C过高，热磨损加速25%"
-                )
+                adjustment_reasons.append(f"切削温度{temperature:.0f}°C过高，热磨损加速25%")
             elif temperature > 600.0:
                 sensor_adjustment *= 1.10
-                adjustment_reasons.append(
-                    f"切削温度{temperature:.0f}°C偏高，热磨损加速10%"
-                )
+                adjustment_reasons.append(f"切削温度{temperature:.0f}°C偏高，热磨损加速10%")
 
         acoustic_emission = sensor_features.get("acoustic_emission", 0.0)
         if acoustic_emission > 0:
             # 声发射信号异常表明刀具可能崩刃
             if acoustic_emission > 0.8:
                 sensor_adjustment *= 1.30
-                adjustment_reasons.append(
-                    f"声发射信号{acoustic_emission:.2f}异常，刀具可能崩刃，磨损加速30%"
-                )
+                adjustment_reasons.append(f"声发射信号{acoustic_emission:.2f}异常，刀具可能崩刃，磨损加速30%")
 
         # 5. EWMA 融合预测值与实测值
         alpha = 0.3  # 平滑系数，实测值权重
         measured_rate = real_time_wear / max(elapsed_time, 0.01)
-        _wr_avg = (
-            predicted_curve.model_info.get("wear_rate_avg", 0.0)
-            if predicted_curve.model_info
-            else 0.0
-        )
-        corrected_wear_rate = (
-            alpha * measured_rate * sensor_adjustment
-            + (1.0 - alpha) * _wr_avg
-        )
+        _wr_avg = predicted_curve.model_info.get("wear_rate_avg", 0.0) if predicted_curve.model_info else 0.0
+        corrected_wear_rate = alpha * measured_rate * sensor_adjustment + (1.0 - alpha) * _wr_avg
         corrected_wear_rate = max(1e-6, min(0.05, corrected_wear_rate))
 
         # 6. 生成校正后的预测曲线
@@ -188,21 +159,15 @@ class WearCalibrator:
         recalibrated_curve = self._curve_predictor.predict_wear_curve(calibrated_params)
 
         # 7. 计算综合置信度
-        confidence = self._curve_predictor._compute_confidence(
-            real_time_wear, cutting_speed, material
-        )
+        confidence = self._curve_predictor._compute_confidence(real_time_wear, cutting_speed, material)
         # 传感器数据齐全时提高置信度
-        sensor_coverage = sum(1 for v in sensor_features.values() if v > 0) / max(
-            len(sensor_features), 1
-        )
+        sensor_coverage = sum(1 for v in sensor_features.values() if v > 0) / max(len(sensor_features), 1)
         confidence = min(0.98, confidence + 0.05 * sensor_coverage)
 
         return {
             "measured_wear": round(real_time_wear, 4),
             "predicted_wear_at_time": round(predicted_at_time, 4),
-            "corrected_wear": round(
-                predicted_at_time + deviation * sensor_adjustment, 4
-            ),
+            "corrected_wear": round(predicted_at_time + deviation * sensor_adjustment, 4),
             "deviation": round(deviation, 4),
             "deviation_ratio": round(deviation_ratio, 4),
             "corrected_wear_rate": round(corrected_wear_rate, 6),

@@ -117,7 +117,7 @@ class PythonOccStepWriter(StepWriterEngine):
             from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Cut, BRepAlgoAPI_Fuse
             from OCC.Core.STEPControl import STEPControl_Writer, STEPControl_AsIs
             from OCC.Core.IFSelect import IFSelect_RetDone
-            from OCC.Core.TopoDS import TopoDS_Shape, TopoDS_Compound
+            from OCC.Core.TopoDS import TopoDS_Compound
             from OCC.Core.BRep import BRep_Builder
 
             self._gp_Pnt = gp_Pnt
@@ -225,10 +225,7 @@ class PythonOccStepWriter(StepWriterEngine):
                     notes.append(f"fused: {shape.shape_id}")
                 except Exception as e:
                     safe = safe_error_message(e, context="pythonocc.fuse")
-                    notes.append(
-                        f"fuse failed: {shape.shape_id} "
-                        f"(error_id={safe.get('error_id')})"
-                    )
+                    notes.append(f"fuse failed: {shape.shape_id} (error_id={safe.get('error_id')})")
 
             # subtract 所有 subtract 形状
             for shape in sub_shapes:
@@ -239,10 +236,7 @@ class PythonOccStepWriter(StepWriterEngine):
                     notes.append(f"cut: {shape.shape_id}")
                 except Exception as e:
                     safe = safe_error_message(e, context="pythonocc.cut")
-                    notes.append(
-                        f"cut failed: {shape.shape_id} "
-                        f"(error_id={safe.get('error_id')})"
-                    )
+                    notes.append(f"cut failed: {shape.shape_id} (error_id={safe.get('error_id')})")
 
             # 写入 STEP
             writer = self._step_writer()
@@ -384,10 +378,7 @@ class FreeCadStepWriter(StepWriterEngine):
                     notes.append(f"fused: {shape.shape_id}")
                 except Exception as e:
                     safe = safe_error_message(e, context="freecad.fuse")
-                    notes.append(
-                        f"fuse failed: {shape.shape_id} "
-                        f"(error_id={safe.get('error_id')})"
-                    )
+                    notes.append(f"fuse failed: {shape.shape_id} (error_id={safe.get('error_id')})")
 
             for shape in sub_shapes:
                 try:
@@ -396,10 +387,7 @@ class FreeCadStepWriter(StepWriterEngine):
                     notes.append(f"cut: {shape.shape_id}")
                 except Exception as e:
                     safe = safe_error_message(e, context="freecad.cut")
-                    notes.append(
-                        f"cut failed: {shape.shape_id} "
-                        f"(error_id={safe.get('error_id')})"
-                    )
+                    notes.append(f"cut failed: {shape.shape_id} (error_id={safe.get('error_id')})")
 
             base.exportStep(str(output_path))
 
@@ -496,17 +484,14 @@ class TemplateStepWriter(StepWriterEngine):
         lines.append("ISO-10303-21;")
         lines.append("HEADER;")
         lines.append(
-            "FILE_DESCRIPTION(('Lingjing Manufacturing parametric geometry "
-            "(template engine - degraded)'),'2;1');"
+            "FILE_DESCRIPTION(('Lingjing Manufacturing parametric geometry (template engine - degraded)'),'2;1');"
         )
         lines.append(
             f"FILE_NAME('{shapes[0].shape_id if shapes else 'output'}.step',"
             f"'{timestamp}',('Lingjing'),('Lingjing'),"
             "'Lingjing v2.5','Lingjing','None');"
         )
-        lines.append(
-            "FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));"
-        )
+        lines.append("FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));")
         lines.append("ENDSEC;")
         lines.append("DATA;")
 
@@ -515,9 +500,7 @@ class TemplateStepWriter(StepWriterEngine):
         entity_lines: list[str] = []
 
         # 应用上下文（AP214 必需）
-        entity_lines.append(
-            f"#{entity_id} = APPLICATION_CONTEXT('automotive design');"
-        )
+        entity_lines.append(f"#{entity_id} = APPLICATION_CONTEXT('automotive design');")
         app_ctx_id = entity_id
         entity_id += 1
 
@@ -573,8 +556,7 @@ class TemplateStepWriter(StepWriterEngine):
 
             axis_id = entity_id
             entity_lines.append(
-                f"#{axis_id} = AXIS2_PLACEMENT_3D('{shape.shape_id}_axis',"
-                f"#{cp_id},#{dir_id},#{ref_dir_id});"
+                f"#{axis_id} = AXIS2_PLACEMENT_3D('{shape.shape_id}_axis',#{cp_id},#{dir_id},#{ref_dir_id});"
             )
             entity_id += 1
 
@@ -584,9 +566,7 @@ class TemplateStepWriter(StepWriterEngine):
                 height = max(float(params.get("height_mm", 10.0)), 0.1)
                 # PLANE
                 plane_id = entity_id
-                entity_lines.append(
-                    f"#{plane_id} = PLANE('{shape.shape_id}_plane',#{axis_id});"
-                )
+                entity_lines.append(f"#{plane_id} = PLANE('{shape.shape_id}_plane',#{axis_id});")
                 entity_id += 1
                 # 附加注释（width / height 作为元数据）
                 entity_lines.append(
@@ -599,10 +579,7 @@ class TemplateStepWriter(StepWriterEngine):
                 height = max(float(params.get("height_mm", 5.0)), 0.1)
                 # CYLINDRICAL_SURFACE
                 cyl_id = entity_id
-                entity_lines.append(
-                    f"#{cyl_id} = CYLINDRICAL_SURFACE("
-                    f"'{shape.shape_id}_cyl',#{axis_id},{radius:.6f});"
-                )
+                entity_lines.append(f"#{cyl_id} = CYLINDRICAL_SURFACE('{shape.shape_id}_cyl',#{axis_id},{radius:.6f});")
                 entity_id += 1
                 entity_lines.append(
                     f"/* {shape.shape_id}: cylinder "

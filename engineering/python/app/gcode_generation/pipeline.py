@@ -48,7 +48,6 @@ from typing import Any, TYPE_CHECKING
 from app.core.safe_errors import safe_error_message
 from app.gcode_generation.chatter_report_loader import (
     ChatterReportLoader,
-    LoadedChatterReport,
 )
 from app.gcode_generation.gcode_disclaimer import (
     GCodeDisclaimer,
@@ -63,7 +62,6 @@ from app.gcode_generation.gcode_store import (
     GCodeGenerationTaskStatus,
     GCodeReviewStatus,
     OperationPlanLoadError,
-    ReviewError,
     generate_task_id,
     get_file_extension,
     get_task_store,
@@ -200,13 +198,9 @@ class GCodeGenerationPipeline:
             GCodeGenerationPipelineError: 输入路径非法或 workspace 创建失败
         """
         if not source_chatter_report_path:
-            raise GCodeGenerationPipelineError(
-                "source_chatter_report_path 不能为空"
-            )
+            raise GCodeGenerationPipelineError("source_chatter_report_path 不能为空")
         if not source_operation_plan_path:
-            raise GCodeGenerationPipelineError(
-                "source_operation_plan_path 不能为空"
-            )
+            raise GCodeGenerationPipelineError("source_operation_plan_path 不能为空")
 
         task_id = generate_task_id()
         output_dir = self._resolve_output_dir()
@@ -214,9 +208,7 @@ class GCodeGenerationPipeline:
         try:
             workspace_dir.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            raise GCodeGenerationPipelineError(
-                f"创建 workspace 失败: {e}"
-            ) from e
+            raise GCodeGenerationPipelineError(f"创建 workspace 失败: {e}") from e
 
         task = GCodeGenerationTask(
             task_id=task_id,
@@ -234,8 +226,11 @@ class GCodeGenerationPipeline:
         self._store.add_task(task)
         logger.info(
             "创建 G 代码生成任务 task_id=%s controller=%s material=%s chatter_report=%s op_plan=%s",
-            task_id, controller_type, material_name,
-            source_chatter_report_path, source_operation_plan_path,
+            task_id,
+            controller_type,
+            material_name,
+            source_chatter_report_path,
+            source_operation_plan_path,
         )
         return task
 
@@ -264,9 +259,7 @@ class GCodeGenerationPipeline:
             GCodeGenerationTaskStatus.PENDING.value,
             GCodeGenerationTaskStatus.FAILED.value,
         ):
-            raise GCodeGenerationPipelineError(
-                f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）"
-            )
+            raise GCodeGenerationPipelineError(f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）")
 
         # 标记为 RUNNING（不覆盖 started_at，保留创建时间作为排序依据）
         task.status = GCodeGenerationTaskStatus.RUNNING.value
@@ -279,19 +272,14 @@ class GCodeGenerationPipeline:
         try:
             # 1. 加载阶段 5 ChatterReport
             # H10 修复：loader.load 涉及文件 I/O + JSON 解析，转移到线程池。
-            report = await asyncio.to_thread(
-                self._loader.load, task.source_chatter_report_path
-            )
+            report = await asyncio.to_thread(self._loader.load, task.source_chatter_report_path)
             if not report.feature_results:
                 raise ChatterReportLoadError(
-                    f"阶段 5 ChatterReport feature_results 为空: "
-                    f"{task.source_chatter_report_path}"
+                    f"阶段 5 ChatterReport feature_results 为空: {task.source_chatter_report_path}"
                 )
 
             # 2. 加载阶段 3 OperationPlan
-            operation_plan = await asyncio.to_thread(
-                load_operation_plan, task.source_operation_plan_path
-            )
+            operation_plan = await asyncio.to_thread(load_operation_plan, task.source_operation_plan_path)
 
             # 3. 调用 GeneratorAdapter.adapt() 生成基础 G 代码 + 特征级结果
             # H10 修复：adapt 是同步 CPU 密集计算，转移到线程池。
@@ -326,11 +314,11 @@ class GCodeGenerationPipeline:
                 self._store.update_task(task)
                 logger.warning(
                     "任务 %s 生成失败（含 unstable 特征）unstable=%d errors=%d",
-                    task_id, report.unstable_features, len(task.errors),
+                    task_id,
+                    report.unstable_features,
+                    len(task.errors),
                 )
-                return self._build_result(
-                    task, error_message=task.error_message
-                )
+                return self._build_result(task, error_message=task.error_message)
 
             # 5. is_valid == True → GENERATED
             task.feature_gcode_results = feature_gcode_results
@@ -348,9 +336,13 @@ class GCodeGenerationPipeline:
             logger.info(
                 "任务 %s G 代码生成完成 controller=%s total_features=%d stable=%d unstable=%d "
                 "total_lines=%d warnings=%d",
-                task_id, task.controller_type, report.total_features,
-                report.stable_features, report.unstable_features,
-                base_result.total_lines, len(task.warnings),
+                task_id,
+                task.controller_type,
+                report.total_features,
+                report.stable_features,
+                report.unstable_features,
+                base_result.total_lines,
+                len(task.warnings),
             )
 
             return self._build_result(task)
@@ -362,33 +354,29 @@ class GCodeGenerationPipeline:
             ValueError,
             OSError,
         ) as e:
-            safe = safe_error_message(
-                e, context="gcode_generation.run_pipeline"
-            )
+            safe = safe_error_message(e, context="gcode_generation.run_pipeline")
             task.status = GCodeGenerationTaskStatus.FAILED.value
             task.error_message = safe.get("message", "")
             self._store.update_task(task)
             logger.error(
                 "任务 %s 执行失败 error_id=%s message=%s",
-                task_id, safe.get("error_id"), safe.get("message"),
+                task_id,
+                safe.get("error_id"),
+                safe.get("message"),
             )
-            return self._build_result(
-                task, error_message=safe.get("message")
-            )
+            return self._build_result(task, error_message=safe.get("message"))
         except Exception as e:
-            safe = safe_error_message(
-                e, context="gcode_generation.run_pipeline"
-            )
+            safe = safe_error_message(e, context="gcode_generation.run_pipeline")
             task.status = GCodeGenerationTaskStatus.FAILED.value
             task.error_message = safe.get("message", "")
             self._store.update_task(task)
             logger.error(
                 "任务 %s 执行失败（未捕获异常）error_id=%s message=%s",
-                task_id, safe.get("error_id"), safe.get("message"),
+                task_id,
+                safe.get("error_id"),
+                safe.get("message"),
             )
-            return self._build_result(
-                task, error_message=safe.get("message")
-            )
+            return self._build_result(task, error_message=safe.get("message"))
 
     # -------------------------------------------------------------------------
     # 工程师审核
@@ -430,9 +418,7 @@ class GCodeGenerationPipeline:
             raise GCodeReviewError(str(e)) from e
 
         if task.status != GCodeGenerationTaskStatus.GENERATED.value:
-            raise GCodeReviewError(
-                f"任务状态不允许审核: {task.status}（仅 generated 可审核）"
-            )
+            raise GCodeReviewError(f"任务状态不允许审核: {task.status}（仅 generated 可审核）")
 
         # 校验 review_status
         valid_statuses = {
@@ -441,25 +427,19 @@ class GCodeGenerationPipeline:
             GCodeReviewStatus.EDITED.value,
         }
         if review_status not in valid_statuses:
-            raise GCodeReviewError(
-                f"无效审核状态: {review_status}，合法值: {sorted(valid_statuses)}"
-            )
+            raise GCodeReviewError(f"无效审核状态: {review_status}，合法值: {sorted(valid_statuses)}")
 
         # edited 必须提供 edited_params
         if review_status == GCodeReviewStatus.EDITED.value:
             if not edited_params:
-                raise GCodeReviewError(
-                    "review_status=edited 时必须提供 edited_params"
-                )
+                raise GCodeReviewError("review_status=edited 时必须提供 edited_params")
 
         # 加审核锁（防止并发审核冲突）
         with self._store.review_lock:
             # 重新获取任务（可能在等待锁期间状态已变）
             task = self._store.get_task(task_id)
             if task.status != GCodeGenerationTaskStatus.GENERATED.value:
-                raise GCodeReviewError(
-                    f"任务状态已变更: {task.status}（并发审核冲突）"
-                )
+                raise GCodeReviewError(f"任务状态已变更: {task.status}（并发审核冲突）")
 
             # 查找特征
             target: FeatureGCodeResult | None = None
@@ -468,9 +448,7 @@ class GCodeGenerationPipeline:
                     target = result
                     break
             if target is None:
-                raise GCodeReviewError(
-                    f"特征 ID 不存在于 G 代码结果列表中: {feature_id}"
-                )
+                raise GCodeReviewError(f"特征 ID 不存在于 G 代码结果列表中: {feature_id}")
 
             # 应用审核
             target.review_status = review_status
@@ -485,15 +463,10 @@ class GCodeGenerationPipeline:
                     target.stable = bool(edited_params["stable"])
             elif engineer_notes:
                 # 非 edited 也允许记录备注（存入 edited_params）
-                target.edited_params = {
-                    "engineer_notes": engineer_notes
-                }
+                target.edited_params = {"engineer_notes": engineer_notes}
 
             # 检查是否全部审核完毕 → REVIEWED
-            all_reviewed = all(
-                r.review_status != GCodeReviewStatus.PENDING.value
-                for r in task.feature_gcode_results
-            )
+            all_reviewed = all(r.review_status != GCodeReviewStatus.PENDING.value for r in task.feature_gcode_results)
             if all_reviewed:
                 task.status = GCodeGenerationTaskStatus.REVIEWED.value
                 task.reviewed_by = reviewed_by
@@ -503,7 +476,10 @@ class GCodeGenerationPipeline:
 
         logger.info(
             "任务 %s 特征 %s 审核为 %s by %s",
-            task_id, feature_id, review_status, reviewed_by,
+            task_id,
+            feature_id,
+            review_status,
+            reviewed_by,
         )
         return target
 
@@ -538,39 +514,32 @@ class GCodeGenerationPipeline:
             raise GCodeGenerationPipelineError(str(e)) from e
 
         if task.status != GCodeGenerationTaskStatus.REVIEWED.value:
-            raise GCodeGenerationPipelineError(
-                f"任务状态不允许确认: {task.status}（仅 reviewed 可确认）"
-            )
+            raise GCodeGenerationPipelineError(f"任务状态不允许确认: {task.status}（仅 reviewed 可确认）")
 
         # 仅导出 confirmed + edited 的特征（rejected 排除）
         exportable = [
-            r for r in task.feature_gcode_results
-            if r.review_status in (
+            r
+            for r in task.feature_gcode_results
+            if r.review_status
+            in (
                 GCodeReviewStatus.CONFIRMED.value,
                 GCodeReviewStatus.EDITED.value,
             )
         ]
         if not exportable:
-            raise GCodeReviewError(
-                f"任务 {task_id} 无可导出的 G 代码段"
-                f"（所有特征均被 rejected）"
-            )
+            raise GCodeReviewError(f"任务 {task_id} 无可导出的 G 代码段（所有特征均被 rejected）")
 
         # 加导出锁（防止文件写入竞争）
         with self._store.export_lock:
             task = self._store.get_task(task_id)
             if task.status != GCodeGenerationTaskStatus.REVIEWED.value:
-                raise GCodeGenerationPipelineError(
-                    f"任务状态已变更: {task.status}（并发确认冲突）"
-                )
+                raise GCodeGenerationPipelineError(f"任务状态已变更: {task.status}（并发确认冲突）")
 
             # 导出 G 代码文件
             gcode_file_path = self._export_gcode_file(task, exportable)
 
             # 导出审核记录 JSON
-            gcode_report_path = self._export_report_json(
-                task, exportable, reviewer
-            )
+            gcode_report_path = self._export_report_json(task, exportable, reviewer)
 
             # 状态置为 SUCCEEDED
             task.gcode_file_path = gcode_file_path
@@ -581,7 +550,10 @@ class GCodeGenerationPipeline:
 
         logger.info(
             "任务 %s G 代码导出完成 gcode_file=%s report=%s features=%d",
-            task_id, gcode_file_path, gcode_report_path, len(exportable),
+            task_id,
+            gcode_file_path,
+            gcode_report_path,
+            len(exportable),
         )
         return self._build_result(task)
 
@@ -607,13 +579,9 @@ class GCodeGenerationPipeline:
             raise GCodeGenerationPipelineError(str(e)) from e
 
         if task.status != GCodeGenerationTaskStatus.SUCCEEDED.value:
-            raise GCodeGenerationPipelineError(
-                f"任务状态不允许导出: {task.status}（仅 succeeded 可获取文件路径）"
-            )
+            raise GCodeGenerationPipelineError(f"任务状态不允许导出: {task.status}（仅 succeeded 可获取文件路径）")
         if not task.gcode_file_path:
-            raise GCodeGenerationPipelineError(
-                f"任务 {task_id} gcode_file_path 为空（数据不一致）"
-            )
+            raise GCodeGenerationPipelineError(f"任务 {task_id} gcode_file_path 为空（数据不一致）")
         return task.gcode_file_path
 
     # -------------------------------------------------------------------------
@@ -648,9 +616,7 @@ class GCodeGenerationPipeline:
         error_message: str | None = None,
     ) -> GCodeGenerationResult:
         """构造任务结果摘要（含 disclaimer）。"""
-        disclaimer = self._build_disclaimer(
-            task, gcode_file_exported=bool(task.gcode_file_path)
-        )
+        disclaimer = self._build_disclaimer(task, gcode_file_exported=bool(task.gcode_file_path))
         return GCodeGenerationResult(
             task_id=task.task_id,
             status=task.status,
@@ -679,18 +645,12 @@ class GCodeGenerationPipeline:
         项目记忆硬约束：requires_cam_validation 始终 True，不可由参数关闭。
         """
         # HRC52 材料校准状态（继承阶段 5 ChatterReport）
-        material_calibration_status = (
-            "pending_calibration" if task.pending_calibration else "calibrated"
-        )
+        material_calibration_status = "pending_calibration" if task.pending_calibration else "calibrated"
         # LTC 实验性路径：prediction_method 包含 neural_network 时为 True
-        ltc_experiment_used = (
-            task.prediction_method in ("neural_network", "mixed")
-        )
+        ltc_experiment_used = task.prediction_method in ("neural_network", "mixed")
         # 精度档位（继承上游，本模块不引入新档位）
         precision_tier = (
-            getattr(self._cfg, "precision_tier", "mesh_calibrated")
-            if self._cfg is not None
-            else "mesh_calibrated"
+            getattr(self._cfg, "precision_tier", "mesh_calibrated") if self._cfg is not None else "mesh_calibrated"
         )
 
         return build_gcode_disclaimer(
@@ -737,9 +697,7 @@ class GCodeGenerationPipeline:
                 encoding="utf-8",
             )
         except OSError as e:
-            raise GCodeGenerationPipelineError(
-                f"G 代码文件写入失败: {e}"
-            ) from e
+            raise GCodeGenerationPipelineError(f"G 代码文件写入失败: {e}") from e
 
         return str(file_path)
 
@@ -781,7 +739,9 @@ class GCodeGenerationPipeline:
             "prediction_method": task.prediction_method,
             "pending_calibration": task.pending_calibration,
             "cam_validation_required": True,  # 项目记忆硬约束：始终 True
-            "gcode_file_path": str(Path(task.workspace_dir) / f"{task.task_id}{get_file_extension(task.controller_type)}"),
+            "gcode_file_path": str(
+                Path(task.workspace_dir) / f"{task.task_id}{get_file_extension(task.controller_type)}"
+            ),
             "gcode_total_lines": total_lines,
             "total_features": task.total_features,
             "stable_features": task.stable_features,
@@ -801,8 +761,6 @@ class GCodeGenerationPipeline:
                 encoding="utf-8",
             )
         except (OSError, TypeError) as e:
-            raise GCodeGenerationPipelineError(
-                f"审核记录 JSON 写入失败: {e}"
-            ) from e
+            raise GCodeGenerationPipelineError(f"审核记录 JSON 写入失败: {e}") from e
 
         return str(report_path)

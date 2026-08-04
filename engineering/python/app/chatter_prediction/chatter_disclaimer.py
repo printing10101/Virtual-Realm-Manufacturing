@@ -118,18 +118,12 @@ def build_chatter_disclaimer(
         parts.append("上游 mesh 已标定，但颤振预测仍受 SfM 噪声与机床模态参数不确定性影响")
 
     if material_calibration_status == "pending_calibration":
-        parts.append(
-            f"材料 {material_id} 数据待自采工业数据校准，"
-            f"K_s 为工程估算值，极限切深预测置信度已强制降低"
-        )
+        parts.append(f"材料 {material_id} 数据待自采工业数据校准，K_s 为工程估算值，极限切深预测置信度已强制降低")
 
     if not ltc_model_available:
         parts.append("LTC 神经网络模型不可用（chatter_model.pt 不存在），全部走 Tlusty 解析法")
     elif ltc_active_ratio < 1.0:
-        parts.append(
-            f"LTC 神经网络仅对 {ltc_active_ratio*100:.0f}% 特征生效，"
-            f"其余走 Tlusty 解析法"
-        )
+        parts.append(f"LTC 神经网络仅对 {ltc_active_ratio * 100:.0f}% 特征生效，其余走 Tlusty 解析法")
     else:
         parts.append("LTC 神经网络对全部特征生效（实验性路径）")
 

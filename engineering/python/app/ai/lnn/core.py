@@ -1,28 +1,6 @@
-"""Core data models and type definitions for the Liquid Neural Network (LNN) system.
+"""LNN 核心数据模型与类型定义。
 
-This module provides the foundational data structures, enumerations, and dataclasses
-used throughout the LNN hybrid inference pipeline. It defines standardized input/output
-formats, routing decisions, model configurations, and fusion results.
-
-Key components:
-    - EngineType, ModelType, DataType, TaskCategory: Enumerations for categorizing
-      engines, models, data types, and task categories.
-    - TaskInput: Standardized task input with metadata and requirements.
-    - RoutingDecision: Router output containing engine selection and reasoning.
-    - InferenceResult: Standardized inference output with confidence and metadata.
-    - FusionResult: Fused multi-engine result with explainability reports.
-    - ModelConfig: Model configuration for loading and execution.
-    - PreprocessingResult: Output from the data preprocessing pipeline.
-
-Example:
-    >>> from app.ai.lnn.core import TaskInput, EngineType, TaskCategory
-    >>> task = TaskInput(
-    ...     task_description="Predict tool wear",
-    ...     input_data=[1.0, 2.0, 3.0],
-    ...     task_category=TaskCategory.REGRESSION,
-    ... )
-    >>> print(task.task_category)
-    TaskCategory.REGRESSION
+提供推理管线所需的枚举、数据类和类型别名。
 """
 
 from enum import Enum
@@ -32,20 +10,7 @@ import numpy as np
 
 
 class EngineType(str, Enum):
-    """Enumeration of available inference engine types.
-
-    Used by the task router to select the appropriate engine for a given task.
-
-    Attributes:
-        LNN: Liquid Neural Network engine for fast, efficient inference.
-        LLM: Large Language Model engine for complex reasoning tasks.
-        HYBRID: Combined engine that integrates multiple inference approaches.
-        RULE: Rule-based engine for deterministic process rule evaluation.
-
-    Example:
-        >>> EngineType.LNN.value
-        'LNN'
-    """
+    """推理引擎类型枚举。"""
 
     LNN = "LNN"
     LLM = "LLM"
@@ -54,17 +19,7 @@ class EngineType(str, Enum):
 
 
 class ModelType(str, Enum):
-    """Enumeration of Liquid Neural Network model architectures.
-
-    Attributes:
-        CFC: Closed-form Continuous-time model for efficient ODE approximation.
-        LTC: Liquid Time-Constant model with adaptive time constants.
-        HYBRID_LNN: Hybrid LNN combining multiple architectures.
-
-    Example:
-        >>> ModelType.CFC.value
-        'CFC'
-    """
+    """LNN 模型架构枚举。"""
 
     CFC = "CFC"
     LTC = "LTC"
@@ -72,18 +27,7 @@ class ModelType(str, Enum):
 
 
 class DataType(str, Enum):
-    """Enumeration of supported data types.
-
-    Attributes:
-        STRUCTURED: Tabular or relational data with fixed schema.
-        UNSTRUCTURED: Free-form data such as text or raw sensor streams.
-        SEMI_STRUCTURED: Data with partial structure (e.g., JSON, XML).
-        MULTIMODAL: Data combining multiple modalities (text, image, numeric).
-
-    Example:
-        >>> DataType.STRUCTURED.value
-        'structured'
-    """
+    """数据类型枚举。"""
 
     STRUCTURED = "structured"
     UNSTRUCTURED = "unstructured"
@@ -92,21 +36,7 @@ class DataType(str, Enum):
 
 
 class TaskCategory(str, Enum):
-    """Enumeration of task categories for routing and model selection.
-
-    Attributes:
-        CLASSIFICATION: Categorical prediction tasks.
-        REGRESSION: Continuous value prediction tasks.
-        TIME_SERIES: Sequential data with temporal dependencies.
-        NLP: Natural language processing tasks.
-        VISION: Image or visual data processing tasks.
-        LOGIC_REASONING: Logical inference and deduction tasks.
-        RULE_BASED: Tasks driven by deterministic process rules.
-
-    Example:
-        >>> TaskCategory.TIME_SERIES.value
-        'time_series'
-    """
+    """任务类别枚举，用于路由和模型选择。"""
 
     CLASSIFICATION = "classification"
     REGRESSION = "regression"
@@ -119,30 +49,18 @@ class TaskCategory(str, Enum):
 
 @dataclass
 class TaskInput:
-    """Standardized task input for the LNN inference pipeline.
-
-    Encapsulates all information needed to process a single inference task,
-    including the raw input data, task description, quality requirements,
-    and performance constraints.
+    """标准化任务输入，封装推理管线所需的全部信息。
 
     Attributes:
-        task_description: Human-readable description of the task.
-        input_data: Raw input data (numeric arrays, dicts, or other formats).
-        context: Optional contextual information for routing and inference.
-        task_category: The category of task (auto-detected if None).
-        data_type: The type of input data (auto-detected if None).
-        precision_requirement: Minimum required prediction accuracy (0.0-1.0).
-        time_sensitivity: How time-critical the task is (0.0-1.0).
-        max_latency_ms: Maximum acceptable inference latency in milliseconds.
-        metadata: Optional additional metadata for tracking and debugging.
-
-    Example:
-        >>> task = TaskInput(
-        ...     task_description="Predict surface roughness",
-        ...     input_data={"cutting_speed": 200, "feed_rate": 0.2},
-        ...     precision_requirement=0.95,
-        ...     max_latency_ms=500,
-        ... )
+        task_description: 任务描述。
+        input_data: 原始输入数据。
+        context: 可选上下文信息。
+        task_category: 任务类别（None 时自动检测）。
+        data_type: 数据类型（None 时自动检测）。
+        precision_requirement: 最低精度要求 (0.0-1.0)。
+        time_sensitivity: 时间敏感度 (0.0-1.0)。
+        max_latency_ms: 最大可接受延迟（毫秒）。
+        metadata: 附加元数据。
     """
 
     task_description: str
@@ -158,30 +76,16 @@ class TaskInput:
 
 @dataclass
 class RoutingDecision:
-    """Result of the task routing decision process.
-
-    Contains the selected engine, model, and reasoning for why a particular
-    inference path was chosen. Used by the hybrid inference engine to
-    dispatch tasks to the appropriate subsystem.
+    """任务路由决策结果。
 
     Attributes:
-        selected_engine: The engine type chosen by the router.
-        selected_model: Specific model name within the selected engine.
-        confidence: Confidence in the routing decision (0.0-1.0).
-        reasoning: Human-readable explanation for the routing decision.
-        decision_factors: Scores for each factor considered in routing.
-        alternatives: List of alternative engine/model combinations.
-        timestamp: Unix timestamp when the decision was made.
-
-    Example:
-        >>> decision = RoutingDecision(
-        ...     selected_engine=EngineType.LNN,
-        ...     selected_model="CFC-Fast",
-        ...     confidence=0.85,
-        ...     reasoning="Numeric input with low latency requirement",
-        ... )
-        >>> decision.to_dict()["selected_engine"]
-        'LNN'
+        selected_engine: 选中的引擎类型。
+        selected_model: 选中的具体模型名称。
+        confidence: 路由决策置信度 (0.0-1.0)。
+        reasoning: 决策原因说明。
+        decision_factors: 各因素的评分。
+        alternatives: 备选方案列表。
+        timestamp: 决策时间戳。
     """
 
     selected_engine: EngineType
@@ -193,12 +97,7 @@ class RoutingDecision:
     timestamp: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert routing decision to a serializable dictionary.
-
-        Returns:
-            Dictionary containing all routing decision fields with
-            enum values converted to strings.
-        """
+        """转为可序列化字典（枚举值转为字符串）。"""
         return {
             "selected_engine": self.selected_engine.value,
             "selected_model": self.selected_model,
@@ -212,31 +111,17 @@ class RoutingDecision:
 
 @dataclass
 class InferenceResult:
-    """Standardized output from a single inference engine.
-
-    Wraps the prediction along with metadata about how it was produced,
-    including confidence scores, processing time, and uncertainty estimates.
+    """推理引擎输出结果，封装预测值及元数据。
 
     Attributes:
-        prediction: The model's prediction (scalar, array, or structured output).
-        confidence: Confidence score for the prediction (0.0-1.0).
-        engine_used: The engine that produced this result.
-        model_used: Specific model name within the engine.
-        processing_time_ms: Time taken to produce the result in milliseconds.
-        metadata: Additional metadata such as timestamps, shapes, and flags.
-        evidence: List of supporting evidence for the prediction.
-        uncertainty: Dictionary of uncertainty metrics (entropy, variance, etc.).
-
-    Example:
-        >>> result = InferenceResult(
-        ...     prediction=[0.8, 0.15, 0.05],
-        ...     confidence=0.85,
-        ...     engine_used=EngineType.LNN,
-        ...     model_used="CFC-Fast",
-        ...     processing_time_ms=12.5,
-        ... )
-        >>> result.to_dict()["confidence"]
-        0.85
+        prediction: 模型预测结果。
+        confidence: 置信度 (0.0-1.0)。
+        engine_used: 使用的引擎。
+        model_used: 使用的模型名称。
+        processing_time_ms: 处理耗时（毫秒）。
+        metadata: 附加元数据。
+        evidence: 支持证据列表。
+        uncertainty: 不确定性指标（熵、方差等）。
     """
 
     prediction: Any
@@ -249,13 +134,7 @@ class InferenceResult:
     uncertainty: Optional[Dict[str, float]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert inference result to a serializable dictionary.
-
-        Returns:
-            Dictionary containing all inference result fields with
-            enum values converted to strings and None defaults replaced
-            with empty containers.
-        """
+        """转为可序列化字典。"""
         return {
             "prediction": self.prediction,
             "confidence": self.confidence,
@@ -270,28 +149,16 @@ class InferenceResult:
 
 @dataclass
 class FusionResult:
-    """Fused result from combining multiple inference engine outputs.
-
-    Produced by the Dempster-Shafer fusion layer when multiple engine results
-    need to be integrated into a single prediction with aggregated confidence.
+    """多引擎推理结果融合输出（Dempster-Shafer 融合层产物）。
 
     Attributes:
-        final_prediction: The fused prediction after combining all engines.
-        confidence: Aggregated confidence from the fusion process (0.0-1.0).
-        contributing_engines: List of engines that contributed to the fusion.
-        fusion_method: Name of the fusion method used (default: "dempster_shafer").
-        reasoning_path: Step-by-step trace of the fusion reasoning.
-        explainability_report: Human-readable report explaining the fusion.
-        quality_metrics: Dictionary of quality assessment metrics.
-
-    Example:
-        >>> fusion = FusionResult(
-        ...     final_prediction=[0.75, 0.2, 0.05],
-        ...     confidence=0.88,
-        ...     fusion_method="dempster_shafer",
-        ... )
-        >>> fusion.to_dict()["fusion_method"]
-        'dempster_shafer'
+        final_prediction: 融合后的最终预测。
+        confidence: 聚合置信度 (0.0-1.0)。
+        contributing_engines: 参与融合的引擎列表。
+        fusion_method: 融合方法名称。
+        reasoning_path: 融合推理步骤追踪。
+        explainability_report: 可读的融合解释报告。
+        quality_metrics: 质量评估指标。
     """
 
     final_prediction: Any
@@ -303,12 +170,7 @@ class FusionResult:
     quality_metrics: Optional[Dict[str, float]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert fusion result to a serializable dictionary.
-
-        Returns:
-            Dictionary containing all fusion result fields with None
-            defaults replaced with empty containers.
-        """
+        """转为可序列化字典。"""
         return {
             "final_prediction": self.final_prediction,
             "confidence": self.confidence,
@@ -322,28 +184,17 @@ class FusionResult:
 
 @dataclass
 class ModelConfig:
-    """Configuration for loading and running an LNN model.
-
-    Contains all parameters needed to instantiate a model, including
-    architecture type, file path, device placement, and hyperparameters.
+    """模型加载与运行配置。
 
     Attributes:
-        model_type: The architecture type (CFC, LTC, or HybridLNN).
-        model_name: Human-readable name for the model.
-        model_path: File path to saved model weights (None for newly built models).
-        hyperparameters: Model-specific hyperparameters dictionary.
-        device: Computation device ("cpu", "cuda", etc.).
-        batch_size: Default batch size for inference.
-        version: Semantic version string for the model.
-        metadata: Optional additional metadata (training date, dataset, etc.).
-
-    Example:
-        >>> config = ModelConfig(
-        ...     model_type=ModelType.CFC,
-        ...     model_name="CFC-Fast",
-        ...     model_path="/models/cfc_v1.pt",
-        ...     device="cuda",
-        ... )
+        model_type: 架构类型 (CFC, LTC, HybridLNN)。
+        model_name: 模型名称。
+        model_path: 模型权重文件路径（新建模型为 None）。
+        hyperparameters: 模型超参数字典。
+        device: 计算设备 ("cpu", "cuda")。
+        batch_size: 默认推理批次大小。
+        version: 语义版本号。
+        metadata: 附加元数据（训练日期、数据集等）。
     """
 
     model_type: ModelType
@@ -358,25 +209,15 @@ class ModelConfig:
 
 @dataclass
 class PreprocessingResult:
-    """Output from the data preprocessing pipeline.
-
-    Contains the processed feature matrix along with metadata about the
-    transformations applied during preprocessing.
+    """数据预处理管线输出。
 
     Attributes:
-        features: Preprocessed feature matrix (n_samples, n_features).
-        feature_names: List of feature column names.
-        normalization_method: Method used for normalization ("z_score", "min_max").
-        outliers_detected: Number of outliers detected and handled.
-        missing_values_filled: Number of missing values that were imputed.
-        metadata: Additional metadata such as mean, std, and original shape.
-
-    Example:
-        >>> result = PreprocessingResult(
-        ...     features=np.array([[0.5, -0.3], [1.2, 0.8]]),
-        ...     feature_names=["speed", "feed"],
-        ...     normalization_method="z_score",
-        ... )
+        features: 预处理后的特征矩阵 (n_samples, n_features)。
+        feature_names: 特征列名列表。
+        normalization_method: 归一化方法 ("z_score", "min_max")。
+        outliers_detected: 检测到的异常值数量。
+        missing_values_filled: 填充的缺失值数量。
+        metadata: 附加元数据（均值、标准差、原始形状等）。
     """
 
     features: np.ndarray

@@ -200,10 +200,7 @@ class ProcessExplainer:
 
         # 综合系统 Prompt（兼顾工艺 + NC 代码）
         system_prompt = (
-            SYSTEM_PROMPT_PROCESS
-            + "\n\n"
-            + SYSTEM_PROMPT_NC
-            + "\n\n若用户问题与历史对话相关，请结合上下文回答。"
+            SYSTEM_PROMPT_PROCESS + "\n\n" + SYSTEM_PROMPT_NC + "\n\n若用户问题与历史对话相关，请结合上下文回答。"
         )
 
         result = await self._call_llm(

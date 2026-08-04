@@ -4,18 +4,18 @@
 
 理论基础：
     Tlusty 公式基于再生颤振理论，考虑了机床动态特性与切削过程的耦合效应。
-    
+
     稳定性极限切削深度：
         a_lim = -1 / (2 * K_s * Re[G(ω)])
-    
+
     其中：
         - K_s: 切削力系数 (N/mm²)，与材料和刀具几何相关
         - G(ω): 机床频率响应函数 (mm/N)
         - Re[G(ω)]: 频率响应函数的实部
-        
+
     主轴转速与颤振频率关系：
         n = 60 * ω / (2π * (j + 1))
-    
+
     其中：
         - n: 主轴转速 (rpm)
         - ω: 颤振角频率 (rad/s)
@@ -42,7 +42,7 @@ DEFAULT_MACHINE_PARAMS: Dict[str, Dict[str, float]] = {
         "stiffness_z": 2.0e8,  # Z向刚度 (N/m) - 修正：200 N/μm
         "damping_ratio": 0.05,  # 阻尼比
         "natural_freq": 100.0,  # 固有频率 (Hz) - 修正：与 k,m 物理一致
-        "modal_mass": 50.0,     # 模态质量 (kg)
+        "modal_mass": 50.0,  # 模态质量 (kg)
     },
     "cnc_lathe_ck6140": {
         "stiffness_x": 1.2e7,
@@ -65,9 +65,9 @@ DEFAULT_MACHINE_PARAMS: Dict[str, Dict[str, float]] = {
 # 默认刀具参数
 DEFAULT_TOOL_PARAMS: Dict[str, Dict[str, float]] = {
     "endmill_d10": {
-        "diameter": 10.0,      # 刀具直径 (mm)
-        "num_flutes": 4,       # 齿数
-        "helix_angle": 30.0,   # 螺旋角 (度)
+        "diameter": 10.0,  # 刀具直径 (mm)
+        "num_flutes": 4,  # 齿数
+        "helix_angle": 30.0,  # 螺旋角 (度)
         "cutting_force_coeff": 2000.0,  # 切削力系数 K_s (N/mm²)
     },
     "endmill_d16": {
@@ -88,14 +88,15 @@ DEFAULT_TOOL_PARAMS: Dict[str, Dict[str, float]] = {
 @dataclass
 class MachineParams:
     """机床动态参数。"""
+
     machine_id: str = "vmc_850"
-    stiffness_x: float = 1.5e7   # X向刚度 (N/m)
-    stiffness_y: float = 1.5e7   # Y向刚度 (N/m)
-    stiffness_z: float = 2.0e8   # Z向刚度 (N/m) - 修正：200 N/μm
+    stiffness_x: float = 1.5e7  # X向刚度 (N/m)
+    stiffness_y: float = 1.5e7  # Y向刚度 (N/m)
+    stiffness_z: float = 2.0e8  # Z向刚度 (N/m) - 修正：200 N/μm
     damping_ratio: float = 0.05  # 阻尼比
     natural_freq: float = 100.0  # 固有频率 (Hz) - 修正：与 k,m 物理一致
-    modal_mass: float = 50.0     # 模态质量 (kg)
-    
+    modal_mass: float = 50.0  # 模态质量 (kg)
+
     def __post_init__(self) -> None:
         if self.stiffness_x <= 0 or self.stiffness_y <= 0 or self.stiffness_z <= 0:
             raise ValueError("刚度必须为正数")
@@ -110,12 +111,13 @@ class MachineParams:
 @dataclass
 class ToolParams:
     """刀具参数。"""
+
     tool_id: str = "endmill_d10"
-    diameter: float = 10.0       # 刀具直径 (mm)
-    num_flutes: int = 4          # 齿数
-    helix_angle: float = 30.0    # 螺旋角 (度)
+    diameter: float = 10.0  # 刀具直径 (mm)
+    num_flutes: int = 4  # 齿数
+    helix_angle: float = 30.0  # 螺旋角 (度)
     cutting_force_coeff: float = 2000.0  # 切削力系数 K_s (N/mm²)
-    
+
     def __post_init__(self) -> None:
         if self.diameter <= 0:
             raise ValueError(f"刀具直径必须为正数，当前值: {self.diameter}")
@@ -130,11 +132,12 @@ class ToolParams:
 @dataclass
 class ChatterParams:
     """颤振稳定性计算参数。"""
+
     spindle_rpm: float = 8000.0  # 主轴转速 (rpm)
     machine: MachineParams = field(default_factory=MachineParams)
     tool: ToolParams = field(default_factory=ToolParams)
     axial_depth: Optional[float] = None  # 轴向切深 (mm)，None 时计算极限切深
-    
+
     def __post_init__(self) -> None:
         if self.spindle_rpm <= 0:
             raise ValueError(f"主轴转速必须为正数，当前值: {self.spindle_rpm}")
@@ -144,24 +147,22 @@ class ChatterParams:
 
 def get_machine_params(machine_id: str) -> MachineParams:
     """获取机床动态参数。
-    
+
     优先从 machines.json 读取，若不存在则使用硬编码默认值。
-    
+
     Args:
         machine_id: 机床标识 (如 'vmc_850', 'cnc_lathe_ck6140')
-    
+
     Returns:
         MachineParams 对象
     """
     # 尝试从 machines.json 读取
-    config_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "database", "data", "machines.json"
-    )
-    
+    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "database", "data", "machines.json")
+
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             machines = json.load(f)
-        
+
         for machine in machines:
             if machine.get("id") == machine_id:
                 # 从配置中提取参数，缺失时使用默认值
@@ -177,12 +178,12 @@ def get_machine_params(machine_id: str) -> MachineParams:
                 )
     except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
         logger.warning("读取 machines.json 失败: %s，使用默认参数", e)
-    
+
     # 使用硬编码默认值
     if machine_id in DEFAULT_MACHINE_PARAMS:
         params = DEFAULT_MACHINE_PARAMS[machine_id]
         return MachineParams(machine_id=machine_id, **params)
-    
+
     # 未知机床，使用 vmc_850 默认值
     logger.warning("未找到机床 '%s' 的参数，使用 vmc_850 默认值", machine_id)
     params = DEFAULT_MACHINE_PARAMS["vmc_850"]
@@ -252,43 +253,43 @@ def compute_stability_limit(
     # 在固有频率附近搜索极限切深的最小值
     # 频率范围：0.5*f_n 到 2*f_n
     freqs = np.linspace(f_n * 0.5, f_n * 2.0, 500)
-    
-    min_a_lim = float('inf')
-    
+
+    min_a_lim = float("inf")
+
     for freq in freqs:
         # 计算 FRF
         frf = _compute_frf(params.machine, freq)
         re_frf = frf.real
-        
+
         # 跳过 Re[G] <= 0 或接近零的点（避免 a_lim 数值奇异）
         # Re[G] → 0 时 a_lim = numerator / (2·K_s·Re[G]) 会发散到无穷大
         if re_frf <= 1e-9:
             continue
-        
+
         # Tlusty 公式（单自由度修正形式）
         # a_lim = |1 + 2ζi·G(ω)|² / (2·K_s·Re[G(ω)])
         numerator = abs(1.0 + 2.0 * zeta * 1j * frf) ** 2
-        
+
         # 单位转换：K_s (N/mm²), FRF (m/N → mm/N)
         k_s = params.tool.cutting_force_coeff  # N/mm²
         re_frf_mm = re_frf * 1000.0  # m/N → mm/N
-        
+
         a_lim_mm = numerator / (2.0 * k_s * re_frf_mm)
-        
+
         # 记录最小值
         if a_lim_mm > 0 and a_lim_mm < min_a_lim:
             min_a_lim = a_lim_mm
-    
+
     # 如果未找到有效值，返回默认值
-    if min_a_lim == float('inf') or min_a_lim <= 0:
+    if min_a_lim == float("inf") or min_a_lim <= 0:
         logger.warning("未找到有效的极限切深，使用默认值")
         return 1.0
-    
+
     # 限制在合理范围内
     if min_a_lim > 100.0:
         logger.warning("极限切深过大: %s mm，限制为 100 mm", min_a_lim)
         return 100.0
-    
+
     return float(min_a_lim)
 
 

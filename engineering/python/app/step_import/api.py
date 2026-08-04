@@ -19,7 +19,7 @@ from app.auth.permissions import require_permission
 
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
-from app.utils.utils import get_output_dir, get_upload_dir, make_temp_path, cleanup_temp_file, sanitize_filename
+from app.utils.utils import get_output_dir, get_upload_dir, sanitize_filename
 from app.utils.upload_security import validate_upload
 from app.step_import.step_parser import StepParser, StepParseError
 from app.step_import.step_converter import (
@@ -261,9 +261,7 @@ async def import_step_file(
 
     temp_path = None
     try:
-        temp_path = await asyncio.to_thread(
-            _save_temp_file, content, file.filename or "unknown.step"
-        )
+        temp_path = await asyncio.to_thread(_save_temp_file, content, file.filename or "unknown.step")
 
         result_data = await asyncio.to_thread(
             _parse_and_convert,
@@ -341,14 +339,10 @@ async def get_output_file(file_name: str):
 
     # 保留原有的文件存在性检查
     if not file_path.exists():
-        raise HTTPException(
-            status_code=404, detail=f"输出文件未找到: {safe_name}"
-        )
+        raise HTTPException(status_code=404, detail=f"输出文件未找到: {safe_name}")
 
     # 保留原有的媒体类型判断逻辑
-    media_type = (
-        "application/sla" if safe_name.endswith(".stl") else "application/octet-stream"
-    )
+    media_type = "application/sla" if safe_name.endswith(".stl") else "application/octet-stream"
     # 保留原有的 FileResponse 返回机制
     return FileResponse(
         path=str(file_path),
@@ -434,9 +428,7 @@ async def get_import_history(limit: int = Query(default=20, ge=1, le=100)) -> di
         # 获取历史涉及文件系统遍历，捕获核心错误
         logger.warning("获取导入历史失败: %s", e)
 
-    return success(
-        data={"history": history, "total": len(history)}, message="导入历史获取成功"
-    )
+    return success(data={"history": history, "total": len(history)}, message="导入历史获取成功")
 
 
 @router.delete("/history/{file_name}")

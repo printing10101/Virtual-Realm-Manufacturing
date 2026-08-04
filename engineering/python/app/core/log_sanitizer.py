@@ -280,10 +280,7 @@ class LogSanitizer:
             # 违反 FDA 21 CFR Part 11 审计日志完整性要求
             sanitized = value.replace("\r", "\\r").replace("\n", "\\n")
             # 同时过滤其他危险控制字符（\t 保留，制表符在日志中通常无害）
-            sanitized = "".join(
-                ch if ch == "\t" or (ord(ch) >= 0x20) else f"\\x{ord(ch):02x}"
-                for ch in sanitized
-            )
+            sanitized = "".join(ch if ch == "\t" or (ord(ch) >= 0x20) else f"\\x{ord(ch):02x}" for ch in sanitized)
             if len(sanitized) > self.USER_INPUT_MAX_LENGTH:
                 return sanitized[: self.USER_INPUT_MAX_LENGTH] + "..."
             return sanitized
@@ -307,17 +304,13 @@ class LogSanitizer:
                     masked_value = "[已脱敏]" + masked_value[-4:]
                 else:
                     masked_value = "[已脱敏]"
-                text = (
-                    text[: match.start()] + prefix + masked_value + text[match.end() :]
-                )
+                text = text[: match.start()] + prefix + masked_value + text[match.end() :]
                 match = pattern.search(text)
         return text
 
     def _sanitize_file_paths(self, text: str) -> str:
         for pattern in self._path_compiled_patterns:
-            text = pattern.sub(
-                lambda m: m.group(0).split(m.group(1))[0] + "[user]", text
-            )
+            text = pattern.sub(lambda m: m.group(0).split(m.group(1))[0] + "[user]", text)
         text = re.sub(r"\\([^\\]+)\\AppData", "[user]\\\\AppData", text)
         return text
 

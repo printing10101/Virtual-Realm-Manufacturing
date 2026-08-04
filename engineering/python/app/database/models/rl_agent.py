@@ -17,11 +17,11 @@
       避免频繁 schema 变更
     - 与 explainability.py 风格对齐：uuid 前缀生成器 + to_dict() + __repr__
 """
+
 from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
 from typing import Any
 
 from app.utils.time import utcnow

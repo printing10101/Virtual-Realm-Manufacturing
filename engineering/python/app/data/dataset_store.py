@@ -21,6 +21,7 @@ content_hash 计算：
     DRAFT → PUBLISHED → DEPRECATED → ARCHIVED
     本实现 commit_version 直接以 PUBLISHED 状态写入（不可变快照语义）。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -140,9 +141,7 @@ def _schema_from_json(raw: str) -> DatasetSchema:
     )
 
 
-def _version_orm_to_contract(
-    orm: DatasetVersionORM, schema: DatasetSchema
-) -> DatasetVersionContract:
+def _version_orm_to_contract(orm: DatasetVersionORM, schema: DatasetSchema) -> DatasetVersionContract:
     return DatasetVersionContract(
         dataset_id=orm.dataset_id,
         version=orm.version,
@@ -201,9 +200,7 @@ class DatasetStore(IDatasetStore):
 
         async with await self._get_session() as session:
             # 唯一名校验
-            existing = await session.execute(
-                select(DatasetORM).where(DatasetORM.name == name)
-            )
+            existing = await session.execute(select(DatasetORM).where(DatasetORM.name == name))
             if existing.scalar_one_or_none() is not None:
                 raise ValueError(f"数据集 name 已存在: {name}")
 
@@ -232,9 +229,7 @@ class DatasetStore(IDatasetStore):
             raise ValueError("dataset_id 不能为空")
 
         async with await self._get_session() as session:
-            ds_orm = await session.execute(
-                select(DatasetORM).where(DatasetORM.id == dataset_id)
-            )
+            ds_orm = await session.execute(select(DatasetORM).where(DatasetORM.id == dataset_id))
             dataset = ds_orm.scalar_one_or_none()
             if dataset is None:
                 raise ValueError(f"数据集不存在: {dataset_id}")
@@ -255,9 +250,7 @@ class DatasetStore(IDatasetStore):
                 resolved_version = version
                 for v in existing_versions:
                     if v.version == resolved_version:
-                        raise ValueError(
-                            f"版本已存在: dataset_id={dataset_id} version={resolved_version}"
-                        )
+                        raise ValueError(f"版本已存在: dataset_id={dataset_id} version={resolved_version}")
 
             # 计算 content_hash 并写入文件系统
             content_hash = _compute_content_hash(records)
@@ -298,14 +291,10 @@ class DatasetStore(IDatasetStore):
             schema = _schema_from_json(dataset.schema_json)
             return _version_orm_to_contract(orm, schema)
 
-    async def get_version(
-        self, dataset_id: str, version: Optional[str] = None
-    ) -> DatasetVersionContract:
+    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersionContract:
         """获取版本。version=None 返回最新 published 版本。"""
         async with await self._get_session() as session:
-            ds_orm = await session.execute(
-                select(DatasetORM).where(DatasetORM.id == dataset_id)
-            )
+            ds_orm = await session.execute(select(DatasetORM).where(DatasetORM.id == dataset_id))
             dataset = ds_orm.scalar_one_or_none()
             if dataset is None:
                 raise ValueError(f"数据集不存在: {dataset_id}")
@@ -334,9 +323,7 @@ class DatasetStore(IDatasetStore):
             if orm is None:
                 if version is None:
                     raise ValueError(f"数据集无任何版本: {dataset_id}")
-                raise ValueError(
-                    f"版本不存在: dataset_id={dataset_id} version={version}"
-                )
+                raise ValueError(f"版本不存在: dataset_id={dataset_id} version={version}")
 
             return _version_orm_to_contract(orm, schema)
 
@@ -358,14 +345,10 @@ class DatasetStore(IDatasetStore):
         ver = await self.get_version(dataset_id, version)
         # storage_uri 形如 file:///abs/path/to/hash.jsonl
         if not ver.storage_uri.startswith("file://"):
-            raise ValueError(
-                f"不支持的 storage_uri scheme（仅支持 file://）: {ver.storage_uri}"
-            )
-        path = Path(ver.storage_uri[len("file://"):])
+            raise ValueError(f"不支持的 storage_uri scheme（仅支持 file://）: {ver.storage_uri}")
+        path = Path(ver.storage_uri[len("file://") :])
         if not path.exists():
-            raise FileNotFoundError(
-                f"数据集内容文件不存在（可能已被归档清理）: {path}"
-            )
+            raise FileNotFoundError(f"数据集内容文件不存在（可能已被归档清理）: {path}")
 
         # 同步读取分批结果，然后逐批 yield（批间让出事件循环）
         batches = await asyncio.to_thread(_read_records_from_path, path, batch_size)
@@ -376,9 +359,7 @@ class DatasetStore(IDatasetStore):
     async def list_versions(self, dataset_id: str) -> list[DatasetVersionContract]:
         """列出数据集的所有版本（按创建时间倒序）。"""
         async with await self._get_session() as session:
-            ds_orm = await session.execute(
-                select(DatasetORM).where(DatasetORM.id == dataset_id)
-            )
+            ds_orm = await session.execute(select(DatasetORM).where(DatasetORM.id == dataset_id))
             dataset = ds_orm.scalar_one_or_none()
             if dataset is None:
                 raise ValueError(f"数据集不存在: {dataset_id}")
@@ -402,17 +383,11 @@ class DatasetStore(IDatasetStore):
             result = await session.execute(stmt)
             orm = result.scalar_one_or_none()
             if orm is None:
-                raise ValueError(
-                    f"版本不存在: dataset_id={dataset_id} version={version}"
-                )
+                raise ValueError(f"版本不存在: dataset_id={dataset_id} version={version}")
 
             current = DatasetStatus(orm.status)
-            if DatasetStatus.DEPRECATED not in VALID_DATASET_STATUS_TRANSITIONS.get(
-                current, set()
-            ):
-                raise ValueError(
-                    f"非法状态转换: {current.value} → deprecated"
-                )
+            if DatasetStatus.DEPRECATED not in VALID_DATASET_STATUS_TRANSITIONS.get(current, set()):
+                raise ValueError(f"非法状态转换: {current.value} → deprecated")
 
             orm.status = DatasetStatus.DEPRECATED.value
             await session.commit()
@@ -458,9 +433,7 @@ class DatasetStore(IDatasetStore):
             items: list[dict[str, Any]] = []
             for orm in orms:
                 # versions 关系 lazy=selectin，已自动加载
-                versions = sorted(
-                    orm.versions, key=lambda v: v.created_at, reverse=True
-                )
+                versions = sorted(orm.versions, key=lambda v: v.created_at, reverse=True)
                 latest = versions[0] if versions else None
                 items.append(
                     {
@@ -469,12 +442,8 @@ class DatasetStore(IDatasetStore):
                         "description": orm.description,
                         "owner_id": orm.owner_id,
                         "status": orm.status,
-                        "created_at": orm.created_at.isoformat()
-                        if orm.created_at
-                        else None,
-                        "updated_at": orm.updated_at.isoformat()
-                        if orm.updated_at
-                        else None,
+                        "created_at": orm.created_at.isoformat() if orm.created_at else None,
+                        "updated_at": orm.updated_at.isoformat() if orm.updated_at else None,
                         "version_count": len(orm.versions),
                         "latest_version": latest.version if latest else None,
                     }
@@ -484,17 +453,13 @@ class DatasetStore(IDatasetStore):
     async def get_dataset(self, dataset_id: str) -> dict[str, Any]:
         """获取单个数据集详情（含 schema 与版本列表概要）."""
         async with await self._get_session() as session:
-            ds_orm = await session.execute(
-                select(DatasetORM).where(DatasetORM.id == dataset_id)
-            )
+            ds_orm = await session.execute(select(DatasetORM).where(DatasetORM.id == dataset_id))
             orm = ds_orm.scalar_one_or_none()
             if orm is None:
                 raise ValueError(f"数据集不存在: {dataset_id}")
 
             schema = _schema_from_json(orm.schema_json)
-            versions = sorted(
-                orm.versions, key=lambda v: v.created_at, reverse=True
-            )
+            versions = sorted(orm.versions, key=lambda v: v.created_at, reverse=True)
             return {
                 "id": orm.id,
                 "name": orm.name,
@@ -516,9 +481,7 @@ class DatasetStore(IDatasetStore):
                         "row_count": v.row_count,
                         "size_bytes": v.size_bytes,
                         "storage_uri": v.storage_uri,
-                        "created_at": v.created_at.isoformat()
-                        if v.created_at
-                        else None,
+                        "created_at": v.created_at.isoformat() if v.created_at else None,
                         "created_by": v.created_by,
                         "lineage_record_id": v.lineage_record_id,
                     }

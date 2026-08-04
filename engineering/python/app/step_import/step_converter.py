@@ -103,6 +103,7 @@ class StepConverter:
     ) -> None:
         if output_dir is None:
             from app.utils.utils import get_output_dir
+
             output_dir = get_output_dir("step_import")
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -204,9 +205,7 @@ class StepConverter:
             conversion_time_ms=round(elapsed, 2),
         )
 
-    def convert_to_brep(
-        self, shape, file_name: str, entity_index: int = 0
-    ) -> ConvertResult:
+    def convert_to_brep(self, shape, file_name: str, entity_index: int = 0) -> ConvertResult:
         """将Shape转换为BREP格式(OCCT原生格式)。
 
         BREP格式保留精确的边界表示数据，不进行三角剖分。
@@ -214,9 +213,7 @@ class StepConverter:
         name_base = Path(file_name).stem
         unique_id = uuid.uuid4().hex[:8]
         brep_name = (
-            f"{name_base}_e{entity_index}_{unique_id}.brep"
-            if entity_index > 0
-            else f"{name_base}_{unique_id}.brep"
+            f"{name_base}_e{entity_index}_{unique_id}.brep" if entity_index > 0 else f"{name_base}_{unique_id}.brep"
         )
         brep_path = self.output_dir / brep_name
 
@@ -314,9 +311,7 @@ class StepConverter:
                         continue
 
                 if output_format == "brep":
-                    result = self.convert_to_brep(
-                        entity_shape, file_name, entity.entity_index
-                    )
+                    result = self.convert_to_brep(entity_shape, file_name, entity.entity_index)
                 else:
                     result = self.convert_to_stl(
                         entity_shape,

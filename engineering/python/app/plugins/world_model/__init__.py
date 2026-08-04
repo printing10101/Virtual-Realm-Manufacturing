@@ -22,6 +22,7 @@
 - 世界模型预测的轨迹仅供 RL agent 决策参考，最终参数需经 CAM 软件二次验证
 - 物理执行需"持证操作员 + 导师签字 + 保险"，本插件不涉及物理执行环节
 """
+
 from __future__ import annotations
 
 from app.plugins.world_model.plugin import WorldModelPlugin

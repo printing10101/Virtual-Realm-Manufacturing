@@ -89,10 +89,14 @@ def _warmup_graph_async() -> None:
                 _query_api_singleton = KnowledgeGraphQueryAPI(new_store)
             n_nodes = new_store.graph().number_of_nodes()
             n_edges = new_store.graph().number_of_edges()
-            logger.info(
-                "KG warmup done: nodes=%d edges=%d", n_nodes, n_edges
-            )
-        except (ImportError, OSError, RuntimeError, ValueError, AttributeError) as exc:  # pragma: no cover - 后台线程兜底
+            logger.info("KG warmup done: nodes=%d edges=%d", n_nodes, n_edges)
+        except (
+            ImportError,
+            OSError,
+            RuntimeError,
+            ValueError,
+            AttributeError,
+        ) as exc:  # pragma: no cover - 后台线程兜底
             logger.warning("KG warmup failed (non-fatal): %s", exc, exc_info=True)
             # 失败时重置标志，允许下次请求再次尝试预热
             with _warmup_lock:
@@ -103,9 +107,7 @@ def _warmup_graph_async() -> None:
         if _warmup_started:
             return
         _warmup_started = True
-    t = threading.Thread(
-        target=_runner, name="kg-warmup", daemon=True
-    )
+    t = threading.Thread(target=_runner, name="kg-warmup", daemon=True)
     t.start()
 
 
@@ -142,9 +144,7 @@ class GraphQueryRequest(BaseModel):
     """
 
     query_type: str = Field(..., description="查询类型，如 search_nodes")
-    params: dict[str, Any] = Field(
-        default_factory=dict, description="查询参数键值对"
-    )
+    params: dict[str, Any] = Field(default_factory=dict, description="查询参数键值对")
 
 
 # P2-批次2 修复：query_type 白名单 + params 键名格式校验。
@@ -214,9 +214,7 @@ def list_nodes(
     try:
         api = _get_query_api()
         if pattern is not None:
-            nodes = api.search_nodes(
-                id_pattern=pattern, node_type=type, limit=limit
-            )
+            nodes = api.search_nodes(id_pattern=pattern, node_type=type, limit=limit)
         else:
             nodes = api.nodes_by_type(type or "", limit=limit)
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
@@ -267,12 +265,8 @@ def get_neighbors(
         api = _get_query_api()
         if not api.node(node_id):
             logger.info("node not found: %s", node_id)
-            raise HTTPException(
-                status_code=404, detail="Node not found"
-            )
-        neighbors = api.neighbors(
-            node_id, max_hops=max_hops, limit=limit
-        )
+            raise HTTPException(status_code=404, detail="Node not found")
+        neighbors = api.neighbors(node_id, max_hops=max_hops, limit=limit)
     except HTTPException:
         raise
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
@@ -338,9 +332,7 @@ def get_tools_for_material(
 ) -> dict[str, Any]:
     """某材料适配的所有刀具。"""
     try:
-        items = _get_query_api().tools_for_material(
-            material_id, min_confidence=min_confidence, limit=limit
-        )
+        items = _get_query_api().tools_for_material(material_id, min_confidence=min_confidence, limit=limit)
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /tools-for-material failed: %s", material_id)
         raise HTTPException(
@@ -358,9 +350,7 @@ def get_materials_for_tool(
 ) -> dict[str, Any]:
     """某刀具能加工的所有材料。"""
     try:
-        items = _get_query_api().materials_for_tool(
-            tool_id, min_confidence=min_confidence, limit=limit
-        )
+        items = _get_query_api().materials_for_tool(tool_id, min_confidence=min_confidence, limit=limit)
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
         logger.exception("KG /materials-for-tool failed: %s", tool_id)
         raise HTTPException(
@@ -380,9 +370,7 @@ def get_process_chain(
         api = _get_query_api()
         if not api.node(feature_id):
             logger.info("node not found: %s", feature_id)
-            raise HTTPException(
-                status_code=404, detail="Node not found"
-            )
+            raise HTTPException(status_code=404, detail="Node not found")
         chain = api.process_chain(feature_id, max_hops=max_hops)
     except HTTPException:
         raise

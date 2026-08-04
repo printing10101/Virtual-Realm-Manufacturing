@@ -117,21 +117,15 @@ class TemplateEvolutionEngine:
         logger.info("TemplateEvolutionEngine initialized: db=%s", self.db_path)
 
     def _load_data(self) -> None:
-        cursor = self._db.execute(
-            "SELECT * FROM evolution_suggestions ORDER BY created_at"
-        )
+        cursor = self._db.execute("SELECT * FROM evolution_suggestions ORDER BY created_at")
         for row in cursor.fetchall():
             self._suggestions.append(
                 EvolutionSuggestion(
                     suggestion_id=row["suggestion_id"],
                     trigger_type=row["trigger_type"],
                     description=row["description"] or "",
-                    data_evidence=json.loads(row["data_evidence"])
-                    if row["data_evidence"]
-                    else {},
-                    proposed_change=json.loads(row["proposed_change"])
-                    if row["proposed_change"]
-                    else {},
+                    data_evidence=json.loads(row["data_evidence"]) if row["data_evidence"] else {},
+                    proposed_change=json.loads(row["proposed_change"]) if row["proposed_change"] else {},
                     confidence=row["confidence"],
                     created_at=row["created_at"],
                     status=row["status"],
@@ -172,10 +166,7 @@ class TemplateEvolutionEngine:
         )
         self.register_trigger(
             trigger_type="budget_strategy",
-            condition=lambda m: (
-                m.get("overspend_rate", 0) > 0.20
-                or m.get("resource_waste_rate", 0) > 0.20
-            ),
+            condition=lambda m: m.get("overspend_rate", 0) > 0.20 or m.get("resource_waste_rate", 0) > 0.20,
             action=lambda m: self._create_budget_suggestion(m),
             cooldown_hours=168,
         )
@@ -193,9 +184,7 @@ class TemplateEvolutionEngine:
             confidence=min(0.95, 0.5 + metrics.get("error_count_same_type", 0) * 0.1),
         )
 
-    def _create_model_config_suggestion(
-        self, metrics: Dict[str, Any]
-    ) -> EvolutionSuggestion:
+    def _create_model_config_suggestion(self, metrics: Dict[str, Any]) -> EvolutionSuggestion:
         winner = metrics.get("ab_test_winner", {})
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
@@ -206,9 +195,7 @@ class TemplateEvolutionEngine:
             confidence=metrics.get("confidence", 0.95),
         )
 
-    def _create_approval_suggestion(
-        self, metrics: Dict[str, Any]
-    ) -> EvolutionSuggestion:
+    def _create_approval_suggestion(self, metrics: Dict[str, Any]) -> EvolutionSuggestion:
         fpr = metrics.get("false_positive_rate", 0)
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
@@ -222,9 +209,7 @@ class TemplateEvolutionEngine:
             confidence=min(0.9, 0.5 + fpr * 0.5),
         )
 
-    def _create_heartbeat_suggestion(
-        self, metrics: Dict[str, Any]
-    ) -> EvolutionSuggestion:
+    def _create_heartbeat_suggestion(self, metrics: Dict[str, Any]) -> EvolutionSuggestion:
         gpu = metrics.get("gpu_utilization_avg_7d", 0)
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
@@ -277,9 +262,7 @@ class TemplateEvolutionEngine:
     def update_metrics(self, metrics: Dict[str, Any]) -> None:
         with self._lock:
             for key, value in metrics.items():
-                stored_value = (
-                    value if isinstance(value, (int, float)) else json.dumps(value)
-                )
+                stored_value = value if isinstance(value, (int, float)) else json.dumps(value)
                 self._metrics_data[key] = {"value": value, "updated_at": time.time()}
                 self._db.execute(
                     """INSERT OR REPLACE INTO evolution_metrics (metric_name, value, updated_at)
@@ -291,8 +274,7 @@ class TemplateEvolutionEngine:
     def evaluate_triggers(self) -> List[EvolutionSuggestion]:
         with self._lock:
             flattened = {
-                k: v["value"] if isinstance(v, dict) and "value" in v else v
-                for k, v in self._metrics_data.items()
+                k: v["value"] if isinstance(v, dict) and "value" in v else v for k, v in self._metrics_data.items()
             }
             new_suggestions = []
             for trigger_type, trigger in self._triggers.items():
@@ -365,13 +347,9 @@ class TemplateEvolutionEngine:
             self._db.commit()
             return suggestion
 
-    def apply_suggestion(
-        self, suggestion_id: str, branch_id: str
-    ) -> Optional[EvolutionSuggestion]:
+    def apply_suggestion(self, suggestion_id: str, branch_id: str) -> Optional[EvolutionSuggestion]:
         with self._lock:
-            suggestion = next(
-                (s for s in self._suggestions if s.suggestion_id == suggestion_id), None
-            )
+            suggestion = next((s for s in self._suggestions if s.suggestion_id == suggestion_id), None)
             if suggestion is None:
                 return None
 
@@ -392,23 +370,17 @@ class TemplateEvolutionEngine:
                 ),
             )
             self._db.commit()
-            logger.info(
-                "Suggestion applied: id=%s, branch=%s", suggestion_id, branch_id
-            )
+            logger.info("Suggestion applied: id=%s, branch=%s", suggestion_id, branch_id)
             return suggestion
 
-    def list_suggestions(
-        self, status_filter: Optional[str] = None
-    ) -> List[EvolutionSuggestion]:
+    def list_suggestions(self, status_filter: Optional[str] = None) -> List[EvolutionSuggestion]:
         with self._lock:
             suggestions = self._suggestions
             if status_filter:
                 suggestions = [s for s in suggestions if s.status == status_filter]
             return sorted(suggestions, key=lambda s: s.created_at, reverse=True)
 
-    def get_evolution_history(
-        self, branch_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def get_evolution_history(self, branch_id: Optional[str] = None) -> List[Dict[str, Any]]:
         with self._lock:
             if branch_id:
                 cursor = self._db.execute(
@@ -416,9 +388,7 @@ class TemplateEvolutionEngine:
                     (branch_id,),
                 )
             else:
-                cursor = self._db.execute(
-                    "SELECT * FROM evolution_history ORDER BY created_at DESC"
-                )
+                cursor = self._db.execute("SELECT * FROM evolution_history ORDER BY created_at DESC")
             return [
                 {
                     "id": row["id"],

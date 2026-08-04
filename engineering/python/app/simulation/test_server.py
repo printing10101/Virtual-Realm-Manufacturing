@@ -23,8 +23,7 @@ from app.middleware.cors_config import cors_settings
 # 检查环境变量，如果未设置则默认为 development
 _env = os.environ.get("LINGJING_ENV", "development")
 assert _env == "development", (
-    "Test server is only allowed in development environment. "
-    "Please set LINGJING_ENV=development"
+    "Test server is only allowed in development environment. Please set LINGJING_ENV=development"
 )
 
 app = FastAPI(

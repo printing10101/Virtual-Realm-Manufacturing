@@ -44,7 +44,7 @@ class PipelineState:
 
 class NL2NCPipelineOrchestrator:
     """Orchestrates the full NL-to-NC pipeline.
-    
+
     Pipeline stages:
     1. NL → CAD parameters → 3D model
     2. 3D model → Process planning
@@ -79,7 +79,7 @@ class NL2NCPipelineOrchestrator:
             # Stage 1: NL → CAD
             logger.info("Stage 1: NL to CAD conversion")
             state.stage = PipelineStage.NL_TO_CAD
-            
+
             model_path, cad_params = await self._nl2cad_service.generate_model_from_nl(
                 description=description,
                 output_format="stl",
@@ -91,7 +91,7 @@ class NL2NCPipelineOrchestrator:
             # Stage 2: CAD → Process planning
             logger.info("Stage 2: Process planning")
             state.stage = PipelineStage.CAD_TO_PROCESS
-            
+
             process_plan = await self._generate_process_plan(
                 cad_params=cad_params,
                 material=material or cad_params.get("material", "steel"),
@@ -102,7 +102,7 @@ class NL2NCPipelineOrchestrator:
             # Stage 3: Process → NC code
             logger.info("Stage 3: NC code generation")
             state.stage = PipelineStage.PROCESS_TO_NC
-            
+
             nc_code = self._generate_nc_code(
                 process_plan=process_plan,
                 machine_type=machine_type,
@@ -125,9 +125,7 @@ class NL2NCPipelineOrchestrator:
             logger.error("Pipeline failed at stage %s: %s", state.stage, e, exc_info=True)
             state.stage = PipelineStage.FAILED
             # 包装异常消息，避免直接回显内部错误细节
-            safe = safe_error_message(
-                e, context="nl2cad.execute_full_pipeline", fallback="流水线执行失败"
-            )
+            safe = safe_error_message(e, context="nl2cad.execute_full_pipeline", fallback="流水线执行失败")
             state.error = safe["message"]
             state.metadata["error_id"] = safe["error_id"]
             return state
@@ -140,41 +138,43 @@ class NL2NCPipelineOrchestrator:
         """Generate process plan from CAD parameters."""
         # Extract features from CAD params
         features = self._extract_features_from_cad(cad_params)
-        
+
         # Build part description for pipeline
         part_description = {
             "material": material,
             "part_type": cad_params.get("shape_type", "general"),
             "features": features,
         }
-        
+
         # Run process planning pipeline (synchronous)
         result = self._process_planner.run(part_description=part_description)
-        
+
         if not result.success:
             raise RuntimeError(f"Process planning failed: {result.summary}")
-        
+
         # Convert to dict for downstream consumption
         return result.to_dict()
 
     def _extract_features_from_cad(self, cad_params: dict[str, Any]) -> list[dict[str, Any]]:
         """Extract machining features from CAD parameters."""
         features = []
-        
+
         shape_type = cad_params.get("shape_type", "box")
         dimensions = cad_params.get("dimensions", {})
-        
+
         # Add base shape as a feature
-        features.append({
-            "type": "shape",
-            "shape_type": shape_type,
-            "dimensions": dimensions,
-        })
-        
+        features.append(
+            {
+                "type": "shape",
+                "shape_type": shape_type,
+                "dimensions": dimensions,
+            }
+        )
+
         # Add explicit features (holes, slots, chamfers, etc.)
         for feat in cad_params.get("features", []):
             features.append(feat)
-        
+
         return features
 
     def _generate_nc_code(
@@ -187,15 +187,13 @@ class NL2NCPipelineOrchestrator:
         operation_plan_data = process_plan.get("operation_plan")
         if not operation_plan_data:
             raise ValueError("Process plan missing operation_plan")
-        
+
         # Reconstruct OperationPlan object (simplified - in production, deserialize properly)
         from app.process_planning.operation_sequencer import OperationPlan, Operation
-        operations = [
-            Operation(**op_data) 
-            for op_data in operation_plan_data.get("operations", [])
-        ]
+
+        operations = [Operation(**op_data) for op_data in operation_plan_data.get("operations", [])]
         operation_plan = OperationPlan(operations=operations)
-        
+
         # Map machine type to controller type
         controller_map = {
             "cnc_mill": "fanuc_0i",
@@ -203,18 +201,18 @@ class NL2NCPipelineOrchestrator:
             "machining_center": "siemens_840d",
         }
         controller_type = controller_map.get(machine_type, "fanuc_0i")
-        
+
         # Generate G-code
         result = self._gcode_generator.generate(
             operation_plan=operation_plan,
             controller_type=controller_type,
         )
-        
+
         return result.program_text
 
     async def _run_simulation(self, nc_code: str) -> dict[str, Any]:
         """Run simulation to verify NC code.
-        
+
         Integrates with the voxel-based simulation module to execute
         machining simulation and return results.
         """
@@ -232,11 +230,12 @@ class NL2NCPipelineOrchestrator:
                 tool_length=50.0,
                 tool_type="flat",
             )
-            
+
             # Run simulation in thread pool
             import asyncio
+
             result = await asyncio.to_thread(run_voxel_simulation, task_id, request)
-            
+
             return {
                 "status": "completed",
                 "task_id": task_id,
@@ -251,9 +250,7 @@ class NL2NCPipelineOrchestrator:
         except Exception as e:
             logger.error("Simulation failed: %s", e, exc_info=True)
             # 包装异常消息，避免直接回显内部错误细节
-            safe = safe_error_message(
-                e, context="nl2cad._run_simulation", fallback="仿真执行失败"
-            )
+            safe = safe_error_message(e, context="nl2cad._run_simulation", fallback="仿真执行失败")
             return {
                 "status": "failed",
                 "error": safe["message"],
@@ -316,9 +313,7 @@ class NL2NCPipelineOrchestrator:
             logger.error("Refinement failed: %s", e, exc_info=True)
             state.stage = PipelineStage.FAILED
             # 包装异常消息，避免直接回显内部错误细节
-            safe = safe_error_message(
-                e, context="nl2cad.refine_and_regenerate", fallback="模型精修失败"
-            )
+            safe = safe_error_message(e, context="nl2cad.refine_and_regenerate", fallback="模型精修失败")
             state.error = safe["message"]
             state.metadata["error_id"] = safe["error_id"]
             return state

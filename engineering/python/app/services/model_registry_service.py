@@ -58,18 +58,17 @@ class ModelRegistryService(BaseSingletonService):
 
     def get_model_entry(self, model_name: str):
         """Get a model entry by name. Returns None if not found (no exception)."""
-        with self._model_registry._lock:
-            return self._model_registry.registry.get(model_name)
+        # 注意：不可在此再包一层 _lock —— registry 内部方法自带锁，
+        # 外层重复获取非重入 Lock 会自死锁（曾导致 hot_update 测试死锁）。
+        return self._model_registry.registry.get(model_name)
 
     def list_models(self, return_objects: bool = False):
         """List all registered models."""
-        with self._model_registry._lock:
-            return self._model_registry.list_models(return_objects=return_objects)
+        return self._model_registry.list_models(return_objects=return_objects)
 
     def validate_model(self, model_name: str) -> Dict[str, Any]:
         """Validate a model."""
-        with self._model_registry._lock:
-            return self._model_registry.validate_model(model_name)
+        return self._model_registry.validate_model(model_name)
 
     # ── Model Cache Delegation ─────────────────────────────────────────
 

@@ -42,9 +42,7 @@ class QwenProvider(LLMProvider):
             return False
         try:
             headers = self._build_auth_headers()
-            response = await self._http_get(
-                f"{self.config.base_url}/models", headers
-            )
+            response = await self._http_get(f"{self.config.base_url}/models", headers)
             return response.status_code == 200
         except Exception as e:
             logger.debug("Qwen detect failed: %s", e)
@@ -57,9 +55,7 @@ class QwenProvider(LLMProvider):
             return self._last_status
         try:
             headers = self._build_auth_headers()
-            response = await self._http_get(
-                f"{self.config.base_url}/models", headers
-            )
+            response = await self._http_get(f"{self.config.base_url}/models", headers)
             if response.status_code == 200:
                 self._update_status(ProviderStatus.ONLINE)
             else:
@@ -75,17 +71,11 @@ class QwenProvider(LLMProvider):
             return []
         try:
             headers = self._build_auth_headers()
-            response = await self._http_get(
-                f"{self.config.base_url}/models", headers
-            )
+            response = await self._http_get(f"{self.config.base_url}/models", headers)
             if response.status_code != 200:
                 return []
             data = response.json()
-            return [
-                m.get("id", "")
-                for m in data.get("data", [])
-                if m.get("id")
-            ]
+            return [m.get("id", "") for m in data.get("data", []) if m.get("id")]
         except Exception as e:
             logger.warning("Qwen list_models failed: %s", e)
             return []
@@ -107,15 +97,11 @@ class QwenProvider(LLMProvider):
         }
         headers = self._build_auth_headers()
         start = time.time()
-        response = await self._http_post(
-            f"{self.config.base_url}/chat/completions", payload, headers
-        )
+        response = await self._http_post(f"{self.config.base_url}/chat/completions", payload, headers)
         self._measure_latency(start)
         if response.status_code != 200:
             self._update_status(ProviderStatus.OFFLINE)
-            raise ProviderError(
-                f"API error: {response.status_code} - {response.text}"
-            )
+            raise ProviderError(f"API error: {response.status_code} - {response.text}")
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         choices = data.get("choices", [])

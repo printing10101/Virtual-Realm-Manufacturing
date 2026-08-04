@@ -22,8 +22,8 @@ from typing import Any, Callable, Optional, Sequence
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.database.sync_session import get_sync_sessionmaker
 from app.knowledge_graph.models import Base, KGEdge, KGNode
@@ -91,10 +91,9 @@ class KnowledgeGraphRepository:
             return self._session_factory()
         factory = get_sync_sessionmaker()
         if factory is None:
-            raise RuntimeError(
-                "Database not configured: set DB_URL or inject session_factory"
-            )
+            raise RuntimeError("Database not configured: set DB_URL or inject session_factory")
         return factory()
+
     # ----------------------------------------------------------------- schema
 
     def init_schema(self) -> None:
@@ -158,9 +157,7 @@ class KnowledgeGraphRepository:
                 session.commit()
             except SQLAlchemyError as exc:
                 session.rollback()
-                logger.warning(
-                    "Database error on upsert node %s: %s", node_id, exc
-                )
+                logger.warning("Database error on upsert node %s: %s", node_id, exc)
                 raise
             session.refresh(orm_obj)
             session.expunge(orm_obj)
@@ -208,12 +205,7 @@ class KnowledgeGraphRepository:
         if limit <= 0:
             return []
         with self._session() as session:
-            stmt = (
-                select(KGNode)
-                .order_by(KGNode.node_id.asc())
-                .limit(limit)
-                .offset(max(offset, 0))
-            )
+            stmt = select(KGNode).order_by(KGNode.node_id.asc()).limit(limit).offset(max(offset, 0))
             orm_objs: Sequence[KGNode] = session.execute(stmt).scalars().all()
             for obj in orm_objs:
                 session.expunge(obj)
@@ -234,6 +226,7 @@ class KnowledgeGraphRepository:
                 return False
             # 批量删除关联关系（避免 N+1 查询）
             from sqlalchemy import delete
+
             edge_delete_stmt = delete(KGEdge).where(
                 or_(
                     KGEdge.source_id == node_id,
@@ -246,9 +239,7 @@ class KnowledgeGraphRepository:
                 session.commit()
             except SQLAlchemyError as exc:
                 session.rollback()
-                logger.error(
-                    "Database error on delete node %s: %s", node_id, exc
-                )
+                logger.error("Database error on delete node %s: %s", node_id, exc)
                 raise
             return True
 
@@ -287,9 +278,7 @@ class KnowledgeGraphRepository:
             ValueError: 置信度超出 [0, 1] 范围。
         """
         if not (0.0 <= confidence <= 1.0):
-            raise ValueError(
-                f"confidence must be in [0, 1], got {confidence!r}"
-            )
+            raise ValueError(f"confidence must be in [0, 1], got {confidence!r}")
         props = dict(properties or {})
 
         with self._session() as session:
@@ -306,10 +295,7 @@ class KnowledgeGraphRepository:
                 if orm_obj is None
             ]
             if missing:
-                raise ValueError(
-                    "Cannot upsert edge: endpoint node(s) not found: "
-                    + ", ".join(missing)
-                )
+                raise ValueError("Cannot upsert edge: endpoint node(s) not found: " + ", ".join(missing))
 
             stmt = select(KGEdge).where(
                 and_(
@@ -409,9 +395,7 @@ class KnowledgeGraphRepository:
             stmt = select(KGEdge).where(KGEdge.source_id == source_id)
             if edge_type is not None:
                 stmt = stmt.where(KGEdge.edge_type == edge_type)
-            stmt = stmt.order_by(
-                KGEdge.edge_type.asc(), KGEdge.target_id.asc()
-            ).limit(limit)
+            stmt = stmt.order_by(KGEdge.edge_type.asc(), KGEdge.target_id.asc()).limit(limit)
             orm_objs: Sequence[KGEdge] = session.execute(stmt).scalars().all()
             for obj in orm_objs:
                 session.expunge(obj)
@@ -431,9 +415,7 @@ class KnowledgeGraphRepository:
             stmt = select(KGEdge).where(KGEdge.target_id == target_id)
             if edge_type is not None:
                 stmt = stmt.where(KGEdge.edge_type == edge_type)
-            stmt = stmt.order_by(
-                KGEdge.edge_type.asc(), KGEdge.source_id.asc()
-            ).limit(limit)
+            stmt = stmt.order_by(KGEdge.edge_type.asc(), KGEdge.source_id.asc()).limit(limit)
             orm_objs: Sequence[KGEdge] = session.execute(stmt).scalars().all()
             for obj in orm_objs:
                 session.expunge(obj)
@@ -451,10 +433,7 @@ class KnowledgeGraphRepository:
         if limit <= 0:
             return []
         if min_confidence > max_confidence:
-            raise ValueError(
-                f"min_confidence ({min_confidence}) must be <= max_confidence "
-                f"({max_confidence})"
-            )
+            raise ValueError(f"min_confidence ({min_confidence}) must be <= max_confidence ({max_confidence})")
         with self._session() as session:
             stmt = select(KGEdge).where(
                 and_(

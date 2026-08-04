@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from pathlib import Path
 from typing import Any
@@ -24,7 +23,6 @@ from fastapi.responses import FileResponse
 
 from app.api.v1.cutting_parameters.schemas import (
     ExportChatterParamsResponse,
-    RecommendedParamsResponse,
     ReviewRequest,
     ReviewResponse,
     TaskCreateRequest,
@@ -41,17 +39,10 @@ from app.contracts._shared import TaskListResponse
 from app.cutting_parameters import (
     CuttingParametersPipeline,
     CuttingParametersPipelineError,
-    CuttingParametersTask,
     CuttingParametersTaskStatus,
     CuttingReviewError,
     CuttingReviewStatus,
-    FeaturesLoadError,
-    MaterialNotFoundError,
-    MaterialParams,
-    MaterialResolver,
     MaterialResolverError,
-    RecommendedCuttingParams,
-    build_cutting_disclaimer,
     get_material_resolver,
     get_task_store,
 )
@@ -60,7 +51,6 @@ logger = logging.getLogger(__name__)
 
 # 后台任务引用集合（C5 修复：asyncio.create_task 不保存引用会被 GC 回收）
 _background_tasks: set = set()
-
 
 
 from app.api.v1.cutting_parameters._helpers import (
@@ -194,10 +184,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
     if body.precision_tier not in valid_tiers:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"非法 precision_tier: {body.precision_tier}，"
-                f"应为 {sorted(valid_tiers)}"
-            ),
+            message=(f"非法 precision_tier: {body.precision_tier}，应为 {sorted(valid_tiers)}"),
         )
 
     # 校验材料 ID 存在性（提前失败）
@@ -214,18 +201,13 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
     # 校验 input_features_path 存在性
     features_path = Path(body.input_features_path)
     if not features_path.is_absolute():
-        features_path = (
-            Path(config.cutting_parameters.output_dir).parent / features_path
-        )
+        features_path = Path(config.cutting_parameters.output_dir).parent / features_path
 
     if not features_path.exists():
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=f"confirmed_features.json 不存在: {features_path}",
-            suggestion=(
-                "请确认路径正确，或先调用 "
-                "GET /api/v1/feature_extraction/tasks/{fe_task_id}/export 导出。"
-            ),
+            suggestion=("请确认路径正确，或先调用 GET /api/v1/feature_extraction/tasks/{fe_task_id}/export 导出。"),
         )
 
     if features_path.suffix.lower() != ".json":
@@ -247,16 +229,13 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
         mesh_calibrated = bool(body.mesh_calibrated)
         step_source = body.step_file_path
     else:
-        mesh_calibrated, step_source = _resolve_upstream_calibrated(
-            body.source_parametric_geometry_task_id
-        )
+        mesh_calibrated, step_source = _resolve_upstream_calibrated(body.source_parametric_geometry_task_id)
 
     # default_mesh_calibrated 兜底（保守默认 False）
     if not mesh_calibrated and config.cutting_parameters.default_mesh_calibrated:
         mesh_calibrated = True
         logger.info(
-            "mesh_calibrated 未明确确认，按 default_mesh_calibrated=True 兜底 "
-            "step_source=%s",
+            "mesh_calibrated 未明确确认，按 default_mesh_calibrated=True 兜底 step_source=%s",
             step_source,
         )
 
@@ -274,9 +253,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
             num_flutes=body.num_flutes,
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cutting_parameters.create_task"
-        )
+        safe = safe_error_message(e, context="cutting_parameters.create_task")
         logger.error(
             "创建切削参数任务失败 | error_id=%s | exc=%s",
             safe.get("error_id"),
@@ -303,10 +280,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
             "num_flutes": task.num_flutes,
             "cutting_disclaimer": _disclaimer_dict(task=task),
         },
-        message=(
-            f"任务已创建 task_id={task.task_id}，"
-            f"请调用 POST /tasks/{task.task_id}/run 触发执行"
-        ),
+        message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
 
@@ -339,10 +313,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
     ):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态不允许执行当前操作 status={task.status}。"
-                "仅 PENDING / FAILED 状态可触发执行。"
-            ),
+            message=(f"任务状态不允许执行当前操作 status={task.status}。仅 PENDING / FAILED 状态可触发执行。"),
         )
 
     # 重试场景：清空错误信息
@@ -382,22 +353,10 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
         )
 
     # 统计审核进度
-    pending_count = sum(
-        1 for p in task.recommended_params
-        if p.review_status == CuttingReviewStatus.PENDING.value
-    )
-    confirmed_count = sum(
-        1 for p in task.recommended_params
-        if p.review_status == CuttingReviewStatus.CONFIRMED.value
-    )
-    rejected_count = sum(
-        1 for p in task.recommended_params
-        if p.review_status == CuttingReviewStatus.REJECTED.value
-    )
-    edited_count = sum(
-        1 for p in task.recommended_params
-        if p.review_status == CuttingReviewStatus.EDITED.value
-    )
+    pending_count = sum(1 for p in task.recommended_params if p.review_status == CuttingReviewStatus.PENDING.value)
+    confirmed_count = sum(1 for p in task.recommended_params if p.review_status == CuttingReviewStatus.CONFIRMED.value)
+    rejected_count = sum(1 for p in task.recommended_params if p.review_status == CuttingReviewStatus.REJECTED.value)
+    edited_count = sum(1 for p in task.recommended_params if p.review_status == CuttingReviewStatus.EDITED.value)
 
     chatter_params_ready = bool(task.chatter_params_path)
 
@@ -426,9 +385,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
             "created_at": task.created_at,
             "started_at": task.started_at,
             "completed_at": task.completed_at,
-            "cutting_disclaimer": _disclaimer_dict(
-                task=task, chatter_params_ready=chatter_params_ready
-            ),
+            "cutting_disclaimer": _disclaimer_dict(task=task, chatter_params_ready=chatter_params_ready),
         },
     )
 
@@ -503,10 +460,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
     if task.status not in allowed_states:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许获取结果，"
-                f"仅 {sorted(allowed_states)} 状态可获取。"
-            ),
+            message=(f"任务状态 {task.status} 不允许获取结果，仅 {sorted(allowed_states)} 状态可获取。"),
             suggestion="请等待状态变为 params_recommended 后再调用此端点",
         )
 
@@ -553,9 +507,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
             "chatter_params_path": task.chatter_params_path,
             "error_message": task.error_message or None,
             "recommended_params": recommended_params_data,
-            "cutting_disclaimer": _disclaimer_dict(
-                task=task, chatter_params_ready=chatter_params_ready
-            ),
+            "cutting_disclaimer": _disclaimer_dict(task=task, chatter_params_ready=chatter_params_ready),
         },
     )
 
@@ -622,8 +574,8 @@ async def review_params(
             code=ErrorCode.INVALID_REQUEST,
             message="action=edited 时必须提供 edited_params",
             suggestion="请提供编辑后的参数（字段可为 spindle_speed_rpm / feed_rate_mm_per_min "
-                       "/ feed_per_tooth_mm / cutting_speed_m_per_min / axial_depth_mm "
-                       "/ radial_depth_mm 的子集）",
+            "/ feed_per_tooth_mm / cutting_speed_m_per_min / axial_depth_mm "
+            "/ radial_depth_mm 的子集）",
         )
 
     try:
@@ -642,9 +594,7 @@ async def review_params(
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cutting_parameters.review_params"
-        )
+        safe = safe_error_message(e, context="cutting_parameters.review_params")
         logger.error(
             "审核特征失败 task_id=%s feature_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -666,10 +616,7 @@ async def review_params(
             message="审核后任务丢失，请检查任务存储",
         )
 
-    all_reviewed = all(
-        p.review_status != CuttingReviewStatus.PENDING.value
-        for p in task_after.recommended_params
-    )
+    all_reviewed = all(p.review_status != CuttingReviewStatus.PENDING.value for p in task_after.recommended_params)
 
     return success(
         data={
@@ -685,8 +632,7 @@ async def review_params(
         message=(
             f"特征 {feature_id} 已审核（action={body.action}）。"
             + (
-                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/export "
-                "导出 ChatterParams JSON。"
+                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/export 导出 ChatterParams JSON。"
                 if all_reviewed
                 else " 仍有特征待审核。"
             )
@@ -726,10 +672,7 @@ async def export_chatter_params(task_id: str) -> dict[str, Any]:
     if task.status != CuttingParametersTaskStatus.REVIEWED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许导出，"
-                f"仅 {CuttingParametersTaskStatus.REVIEWED.value} 状态可导出"
-            ),
+            message=(f"任务状态 {task.status} 不允许导出，仅 {CuttingParametersTaskStatus.REVIEWED.value} 状态可导出"),
             suggestion="请先完成所有特征的审核（状态变为 reviewed）后再导出",
         )
 
@@ -742,9 +685,7 @@ async def export_chatter_params(task_id: str) -> dict[str, Any]:
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cutting_parameters.export_chatter_params"
-        )
+        safe = safe_error_message(e, context="cutting_parameters.export_chatter_params")
         logger.error(
             "导出 ChatterParams 失败 task_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -765,9 +706,7 @@ async def export_chatter_params(task_id: str) -> dict[str, Any]:
             message="导出后任务丢失，请检查任务存储",
         )
 
-    download_url = (
-        f"/api/v1/cutting_parameters/tasks/{task_id}/chatter_params/download"
-    )
+    download_url = f"/api/v1/cutting_parameters/tasks/{task_id}/chatter_params/download"
 
     return success(
         data={
@@ -779,9 +718,7 @@ async def export_chatter_params(task_id: str) -> dict[str, Any]:
             "chatter_params_path": chatter_params_path,
             "download_url": download_url,
             "chatter_params_ready": True,
-            "cutting_disclaimer": _disclaimer_dict(
-                task=task_after, chatter_params_ready=True
-            ),
+            "cutting_disclaimer": _disclaimer_dict(task=task_after, chatter_params_ready=True),
         },
         message=(
             f"ChatterParams 已导出 path={chatter_params_path}。"
@@ -869,10 +806,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     if task.status == CuttingParametersTaskStatus.SUCCEEDED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务 {task_id} 已 SUCCEEDED，禁止删除。"
-                "ChatterParams 可能已被阶段 5 颤振预测引用。"
-            ),
+            message=(f"任务 {task_id} 已 SUCCEEDED，禁止删除。ChatterParams 可能已被阶段 5 颤振预测引用。"),
             suggestion="如确需删除，请先手动清理下游引用，再删除任务",
         )
 
@@ -886,9 +820,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
         try:
             store.update_task(task)
         except Exception as e:
-            safe = safe_error_message(
-                e, context="cutting_parameters.delete_task.cancel"
-            )
+            safe = safe_error_message(e, context="cutting_parameters.delete_task.cancel")
             logger.error(
                 "取消任务失败 task_id=%s | error_id=%s | exc=%s",
                 task_id,
@@ -905,9 +837,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     try:
         deleted = store.delete_task(task_id)
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cutting_parameters.delete_task"
-        )
+        safe = safe_error_message(e, context="cutting_parameters.delete_task")
         return error(
             code=ErrorCode.INTERNAL_ERROR,
             message=safe["message"],

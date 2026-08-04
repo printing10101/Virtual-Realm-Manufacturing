@@ -61,8 +61,7 @@ class TaskCreateRequest(BaseModel):
     mesh_calibrated: bool | None = Field(
         default=None,
         description=(
-            "上游 mesh 是否已做尺度归一化。"
-            "None 时通过 source_cutting_parameters_task_id 自动查询阶段 4 任务。"
+            "上游 mesh 是否已做尺度归一化。None 时通过 source_cutting_parameters_task_id 自动查询阶段 4 任务。"
         ),
     )
     machine_type: str = Field(

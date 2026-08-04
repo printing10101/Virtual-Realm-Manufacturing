@@ -74,9 +74,10 @@ class RerankerService:
                 logger.info("Reranker model loaded: %s", RERANKER_MODEL)
             except Exception as e:
                 logger.warning(
-                    "Failed to load Cross-Encoder model (%s): %s. "
-                    "Falling back to keyword-based reranking.",
-                    RERANKER_MODEL, e, exc_info=True,
+                    "Failed to load Cross-Encoder model (%s): %s. Falling back to keyword-based reranking.",
+                    RERANKER_MODEL,
+                    e,
+                    exc_info=True,
                 )
                 self.enable_cross_encoder = False
 
@@ -142,7 +143,8 @@ class RerankerService:
             except (RuntimeError, ValueError, OSError) as e:
                 logger.warning(
                     "Cross-Encoder reranking failed, falling back to BM25: %s",
-                    e, exc_info=True,
+                    e,
+                    exc_info=True,
                 )
                 reranked = self._rerank_bm25(query, results)
         else:
@@ -156,9 +158,7 @@ class RerankerService:
 
         return reranked
 
-    def _rerank_cross_encoder(
-        self, query: str, results: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _rerank_cross_encoder(self, query: str, results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """使用 Cross-Encoder 模型进行语义重排序。"""
         self._ensure_model()
         if self._model is None:
@@ -183,9 +183,7 @@ class RerankerService:
         if pairs:
             import numpy as np
 
-            raw_scores = self._model.predict(
-                pairs, show_progress_bar=False, batch_size=32
-            )
+            raw_scores = self._model.predict(pairs, show_progress_bar=False, batch_size=32)
             # Cross-Encoder 输出为 logit，用 sigmoid 归一化到 [0, 1]
             raw_scores = np.array(raw_scores)
             normalized = 1.0 / (1.0 + np.exp(-raw_scores))
@@ -204,9 +202,7 @@ class RerankerService:
         reranked.sort(key=lambda x: x["rerank_score"], reverse=True)
         return reranked
 
-    def _rerank_bm25(
-        self, query: str, results: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _rerank_bm25(self, query: str, results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """使用 BM25 关键词匹配进行重排序（Cross-Encoder 不可用时的 fallback）。
 
         基于 BM25 算法计算 query 与 document 的关键词匹配分数。
@@ -218,9 +214,7 @@ class RerankerService:
 
             # 使用共享 jieba 分词器（reranker 与 hybrid_search 一致）
             tokenized_query = tokenize(query)
-            tokenized_docs = tokenize_batch(
-                [r.get("document", "") for r in results]
-            )
+            tokenized_docs = tokenize_batch([r.get("document", "") for r in results])
 
             if not tokenized_docs or not tokenized_query:
                 return self._rerank_keyword_overlap(query, results)
@@ -243,9 +237,7 @@ class RerankerService:
             logger.debug("rank_bm25 not installed, using keyword overlap")
             return self._rerank_keyword_overlap(query, results)
 
-    def _rerank_keyword_overlap(
-        self, query: str, results: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _rerank_keyword_overlap(self, query: str, results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """词重叠重排序（最低级 fallback）。"""
         query_terms = set(query.lower().split())
 
@@ -274,11 +266,7 @@ class RerankerService:
 
     def get_performance_metrics(self) -> dict[str, Any]:
         """获取重排序服务性能指标。"""
-        avg_time = (
-            self._total_time_ms / self._total_requests
-            if self._total_requests > 0
-            else 0.0
-        )
+        avg_time = self._total_time_ms / self._total_requests if self._total_requests > 0 else 0.0
         cache_total = self._cache_hits + self._cache_misses
         return {
             "total_requests": self._total_requests,
@@ -289,9 +277,7 @@ class RerankerService:
             "cache_capacity": RERANK_CACHE_SIZE,
             "cache_hits": self._cache_hits,
             "cache_misses": self._cache_misses,
-            "cache_hit_rate": round(self._cache_hits / cache_total, 4)
-            if cache_total > 0
-            else 0.0,
+            "cache_hit_rate": round(self._cache_hits / cache_total, 4) if cache_total > 0 else 0.0,
         }
 
 

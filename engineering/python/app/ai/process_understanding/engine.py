@@ -206,9 +206,7 @@ class ProcessUnderstandingEngine:
         task_type = classification.task_type
 
         # 2. 知识检索（依赖 task_type）
-        retrieval = await self.retriever.retrieve(
-            query=user_input, task_type=task_type
-        )
+        retrieval = await self.retriever.retrieve(query=user_input, task_type=task_type)
 
         # 3. 根据任务类型路由处理
         output = await self._route_by_task_type(
@@ -243,23 +241,15 @@ class ProcessUnderstandingEngine:
     ) -> ProcessUnderstandingOutput:
         """根据任务类型路由到不同的处理逻辑。"""
         if task_type == TaskType.SOLUTION_GENERATION:
-            return await self._handle_solution_generation(
-                user_input, entities, retrieval, classification
-            )
+            return await self._handle_solution_generation(user_input, entities, retrieval, classification)
         elif task_type == TaskType.FAULT_DIAGNOSIS:
-            return await self._handle_fault_diagnosis(
-                user_input, retrieval, entities, classification
-            )
+            return await self._handle_fault_diagnosis(user_input, retrieval, entities, classification)
         elif task_type == TaskType.CHITCHAT:
             return self._handle_chitchat(classification)
         elif task_type == TaskType.PROCESS_CONSULT:
-            return await self._handle_process_consult(
-                user_input, retrieval, entities, classification
-            )
+            return await self._handle_process_consult(user_input, retrieval, entities, classification)
         else:  # KNOWLEDGE_QUERY
-            return await self._handle_knowledge_query(
-                user_input, retrieval, entities, classification
-            )
+            return await self._handle_knowledge_query(user_input, retrieval, entities, classification)
 
     async def _handle_solution_generation(
         self,
@@ -281,9 +271,7 @@ class ProcessUnderstandingEngine:
             machine_type=machine,
         )
 
-        knowledge_text = "\n".join(
-            d.content[:200] for d in retrieval.documents[:3]
-        )
+        knowledge_text = "\n".join(d.content[:200] for d in retrieval.documents[:3])
 
         return ProcessUnderstandingOutput(
             task_type=task_type_to_code(TaskType.SOLUTION_GENERATION),
@@ -292,10 +280,7 @@ class ProcessUnderstandingEngine:
             response=self._format_solution_response(solution),
             confidence=solution.confidence_score / 10.0,
             sources=[d.source for d in retrieval.documents[:5]],
-            actions=[
-                f"步骤{i+1}: {s.operation}"
-                for i, s in enumerate(solution.process_route[:5])
-            ],
+            actions=[f"步骤{i + 1}: {s.operation}" for i, s in enumerate(solution.process_route[:5])],
             details={
                 "solution": solution.to_dict(),
                 "knowledge_summary": knowledge_text[:500],
@@ -311,9 +296,7 @@ class ProcessUnderstandingEngine:
         classification: ClassificationResult,
     ) -> ProcessUnderstandingOutput:
         """处理故障诊断请求。"""
-        knowledge_text = "\n\n".join(
-            d.content[:500] for d in retrieval.documents[:5]
-        )
+        knowledge_text = "\n\n".join(d.content[:500] for d in retrieval.documents[:5])
 
         prompt = FAULT_DIAGNOSIS_PROMPT.format(
             knowledge_context=knowledge_text or "暂无相关参考知识",
@@ -360,9 +343,7 @@ class ProcessUnderstandingEngine:
         classification: ClassificationResult,
     ) -> ProcessUnderstandingOutput:
         """处理工艺咨询请求。"""
-        knowledge_text = "\n\n".join(
-            d.content[:500] for d in retrieval.documents[:5]
-        )
+        knowledge_text = "\n\n".join(d.content[:500] for d in retrieval.documents[:5])
 
         prompt = GENERAL_QA_PROMPT.format(
             knowledge_context=knowledge_text or "暂无相关参考知识",
@@ -407,9 +388,7 @@ class ProcessUnderstandingEngine:
         classification: ClassificationResult,
     ) -> ProcessUnderstandingOutput:
         """处理知识查询请求。"""
-        knowledge_text = "\n\n".join(
-            d.content[:500] for d in retrieval.documents[:5]
-        )
+        knowledge_text = "\n\n".join(d.content[:500] for d in retrieval.documents[:5])
 
         prompt = GENERAL_QA_PROMPT.format(
             knowledge_context=knowledge_text or "暂无相关参考知识",
@@ -445,9 +424,7 @@ class ProcessUnderstandingEngine:
             },
         )
 
-    def _handle_chitchat(
-        self, classification: ClassificationResult
-    ) -> ProcessUnderstandingOutput:
+    def _handle_chitchat(self, classification: ClassificationResult) -> ProcessUnderstandingOutput:
         """处理闲聊请求。"""
         return ProcessUnderstandingOutput(
             task_type=task_type_to_code(TaskType.CHITCHAT),
@@ -530,6 +507,7 @@ class ProcessUnderstandingEngine:
     def _parse_entity_json(content: str) -> dict[str, str]:
         """解析实体提取的JSON结果。"""
         from app.utils.utils import extract_json_from_markdown
+
         try:
             return extract_json_from_markdown(content)
         except (ValueError, KeyError, TypeError) as e:
@@ -558,10 +536,7 @@ class ProcessUnderstandingEngine:
             "### 加工路线",
         ]
         for step in solution.process_route:
-            lines.append(
-                f"{step.step_number}. **{step.operation}** "
-                f"({step.machine}) - {step.description}"
-            )
+            lines.append(f"{step.step_number}. **{step.operation}** ({step.machine}) - {step.description}")
 
         lines.append("")
         lines.append("### 切削参数")
@@ -628,14 +603,12 @@ class ProcessUnderstandingEngine:
         """从文本中提取操作建议列表。"""
         actions = []
         # 查找数字编号的建议
-        numbered = re.findall(r'(?:^|\n)\s*(?:\d+[.、)）]|[-•])\s*(.+?)(?:\n|$)', text)
+        numbered = re.findall(r"(?:^|\n)\s*(?:\d+[.、)）]|[-•])\s*(.+?)(?:\n|$)", text)
         if numbered:
             actions = [a.strip() for a in numbered[:5] if len(a.strip()) > 5]
         # 查找"建议"、"应该"等关键词
         if not actions:
-            suggestion_patterns = re.findall(
-                r'(?:建议|应当|应该|需要|请|务必|注意)[^。\n]{5,50}', text
-            )
+            suggestion_patterns = re.findall(r"(?:建议|应当|应该|需要|请|务必|注意)[^。\n]{5,50}", text)
             actions = [s.strip() for s in suggestion_patterns[:5]]
         return actions
 
@@ -643,18 +616,10 @@ class ProcessUnderstandingEngine:
         """获取引擎整体性能统计。"""
         return {
             "total_requests": self._total_requests,
-            "avg_latency_ms": (
-                self._total_latency_ms / self._total_requests
-                if self._total_requests > 0
-                else 0.0
-            ),
+            "avg_latency_ms": (self._total_latency_ms / self._total_requests if self._total_requests > 0 else 0.0),
             "classifier": self._classifier.get_stats() if self._classifier else {},
             "retriever": self._retriever.get_stats() if self._retriever else {},
-            "solution_generator": (
-                self._solution_generator.get_stats()
-                if self._solution_generator
-                else {}
-            ),
+            "solution_generator": (self._solution_generator.get_stats() if self._solution_generator else {}),
             "explainer": self._explainer.get_stats() if self._explainer else {},
         }
 

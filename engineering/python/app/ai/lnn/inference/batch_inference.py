@@ -97,16 +97,10 @@ class BatchInferenceEngine:
 
         return future
 
-    def _process_batch_impl(
-        self, data_list: List[Any], task_id: int
-    ) -> List[PredictionResult]:
+    def _process_batch_impl(self, data_list: List[Any], task_id: int) -> List[PredictionResult]:
         """Internal batch processing implementation"""
         start_time = time.perf_counter()
-        batch_size = (
-            self._current_batch_size
-            if self.enable_dynamic_batching
-            else self.initial_batch_size
-        )
+        batch_size = self._current_batch_size if self.enable_dynamic_batching else self.initial_batch_size
 
         try:
             results = self.predictor.predict_batch(data_list, batch_size=batch_size)
@@ -122,9 +116,7 @@ class BatchInferenceEngine:
             self._update_stats(len(data_list), processing_time, success=False)
             raise
 
-    def _update_stats(
-        self, count: int, processing_time_ms: float, success: bool
-    ) -> None:
+    def _update_stats(self, count: int, processing_time_ms: float, success: bool) -> None:
         """Update inference statistics"""
         with self._lock:
             if success:
@@ -135,9 +127,7 @@ class BatchInferenceEngine:
 
             total_time_sec = self._stats["total_processing_time_ms"] / 1000.0
             if total_time_sec > 0:
-                self._stats["throughput_samples_per_sec"] = (
-                    self._stats["total_success"] / total_time_sec
-                )
+                self._stats["throughput_samples_per_sec"] = self._stats["total_success"] / total_time_sec
 
             self._time_window_stats.append(
                 {
@@ -154,7 +144,7 @@ class BatchInferenceEngine:
     def _adjust_batch_size(self, data_count: int, processing_time_ms: float) -> None:
         """
         动态调整批大小以优化P95响应时间
-        
+
         优化策略：
         - 当平均推理时间 < 15ms/样本时，增加批大小（最大512）
         - 当平均推理时间 > 80ms/样本时，减少批大小（最小4）
@@ -162,22 +152,30 @@ class BatchInferenceEngine:
         """
         if not self.enable_dynamic_batching:
             return
-        
+
         avg_time_per_sample = processing_time_ms / data_count if data_count > 0 else 50
-        
+
         # 优化阈值以降低P95响应时间
         if avg_time_per_sample < 15:
             # 推理速度快，大幅增加批大小
-            self._current_batch_size = min(int(self._current_batch_size * self.BATCH_GROW_FACTOR_FAST), self.MAX_BATCH_SIZE)
+            self._current_batch_size = min(
+                int(self._current_batch_size * self.BATCH_GROW_FACTOR_FAST), self.MAX_BATCH_SIZE
+            )
         elif avg_time_per_sample < 30:
             # 推理速度较快，适度增加批大小
-            self._current_batch_size = min(int(self._current_batch_size * self.BATCH_GROW_FACTOR_SLOW), self.MAX_BATCH_SIZE)
+            self._current_batch_size = min(
+                int(self._current_batch_size * self.BATCH_GROW_FACTOR_SLOW), self.MAX_BATCH_SIZE
+            )
         elif avg_time_per_sample > 80:
             # 推理速度慢，大幅减少批大小
-            self._current_batch_size = max(int(self._current_batch_size * self.BATCH_SHRINK_FACTOR_FAST), self.MIN_BATCH_SIZE)
+            self._current_batch_size = max(
+                int(self._current_batch_size * self.BATCH_SHRINK_FACTOR_FAST), self.MIN_BATCH_SIZE
+            )
         elif avg_time_per_sample > 50:
             # 推理速度较慢，适度减少批大小
-            self._current_batch_size = max(int(self._current_batch_size * self.BATCH_SHRINK_FACTOR_SLOW), self.MIN_BATCH_SIZE)
+            self._current_batch_size = max(
+                int(self._current_batch_size * self.BATCH_SHRINK_FACTOR_SLOW), self.MIN_BATCH_SIZE
+            )
 
     def get_statistics(
         self,
@@ -205,9 +203,7 @@ class BatchInferenceEngine:
             stats["queue_length"] = self._task_queue.qsize()
             stats["current_batch_size"] = self._current_batch_size
             stats["average_processing_time_ms"] = (
-                stats["total_processing_time_ms"] / stats["total_processed"]
-                if stats["total_processed"] > 0
-                else 0.0
+                stats["total_processing_time_ms"] / stats["total_processed"] if stats["total_processed"] > 0 else 0.0
             )
 
         if time_window_seconds:
@@ -234,9 +230,7 @@ class BatchInferenceEngine:
         success_count = sum(s["count"] for s in window_items if s["success"])
         failed_count = total_count - success_count
         total_time_ms = sum(s["processing_time_ms"] for s in window_items)
-        throughput = (
-            success_count / (total_time_ms / 1000.0) if total_time_ms > 0 else 0.0
-        )
+        throughput = success_count / (total_time_ms / 1000.0) if total_time_ms > 0 else 0.0
 
         return {
             "count": total_count,

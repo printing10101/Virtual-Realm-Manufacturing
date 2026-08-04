@@ -102,7 +102,8 @@ class DataPipeline:
 
         self._feature_extractors = {
             DataSourceType.IMAGE: CNNFeatureExtractor(
-                self.config.image, device=self.device,
+                self.config.image,
+                device=self.device,
             ),
             DataSourceType.TIME_SERIES: TimeSeriesFeatureEngineer(
                 self.config.time_series,
@@ -188,14 +189,13 @@ class DataPipeline:
                     features[name] = feat
             except (ValueError, TypeError, KeyError, OSError, RuntimeError) as e:
                 logger.error("处理失败 %s: %s", name, e, exc_info=True)
-                error_log.append(
-                    f"{name} (preprocess/extract): {type(e).__name__}"
-                )
+                error_log.append(f"{name} (preprocess/extract): {type(e).__name__}")
         stage_timings["preprocess"] = (time.perf_counter() - t) * 1000
 
         t = time.perf_counter()
         quality_metrics = self._quality_checker.check_all(
-            processed_data, expected,
+            processed_data,
+            expected,
         )
         stage_timings["quality_check"] = (time.perf_counter() - t) * 1000
 
@@ -213,11 +213,7 @@ class DataPipeline:
         else:
             raise ValueError("未知融合器类型")
 
-        fusion_weights = (
-            self._fusion.weights
-            if hasattr(self._fusion, "weights")
-            else {}
-        )
+        fusion_weights = self._fusion.weights if hasattr(self._fusion, "weights") else {}
 
         stage_timings["fusion"] = (time.perf_counter() - t) * 1000
 

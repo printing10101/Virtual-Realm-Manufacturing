@@ -169,14 +169,10 @@ class EvidenceReranker:
             output = getattr(tr, "output", None)
             if output is None:
                 continue
-            evidences.extend(self._extract_evidences_from_output(
-                tool_name, source, output
-            ))
+            evidences.extend(self._extract_evidences_from_output(tool_name, source, output))
         return evidences
 
-    def _extract_evidences_from_output(
-        self, tool_name: str, source: str, output: Any
-    ) -> list[Evidence]:
+    def _extract_evidences_from_output(self, tool_name: str, source: str, output: Any) -> list[Evidence]:
         """根据工具输出结构提取证据。"""
         evidences: list[Evidence] = []
         if not isinstance(output, dict):
@@ -186,116 +182,134 @@ class EvidenceReranker:
             edges = output.get("edges", [])
             for edge in edges:
                 conf = (edge.get("properties") or {}).get("confidence", 0.5)
-                evidences.append(Evidence(
-                    source=source,
-                    tool=tool_name,
-                    content=(
-                        f"KG 关系存在：{edge.get('source_id')} -[{edge.get('edge_type')}]-> "
-                        f"{edge.get('target_id')} (置信度 {conf})"
-                    ),
-                    score=float(conf),
-                    metadata={"edge_type": edge.get("edge_type")},
-                ))
+                evidences.append(
+                    Evidence(
+                        source=source,
+                        tool=tool_name,
+                        content=(
+                            f"KG 关系存在：{edge.get('source_id')} -[{edge.get('edge_type')}]-> "
+                            f"{edge.get('target_id')} (置信度 {conf})"
+                        ),
+                        score=float(conf),
+                        metadata={"edge_type": edge.get("edge_type")},
+                    )
+                )
             # 关系不存在也是证据
             if output.get("exists") is False:
-                evidences.append(Evidence(
-                    source=source,
-                    tool=tool_name,
-                    content="KG 中不存在该关系",
-                    score=0.3,  # 不存在本身是弱证据
-                    metadata={"exists": False},
-                ))
+                evidences.append(
+                    Evidence(
+                        source=source,
+                        tool=tool_name,
+                        content="KG 中不存在该关系",
+                        score=0.3,  # 不存在本身是弱证据
+                        metadata={"exists": False},
+                    )
+                )
 
         elif tool_name.startswith("kg.query_entity"):
             node = output
             if isinstance(node, dict) and node.get("node_id"):
                 props = node.get("properties", {})
-                evidences.append(Evidence(
-                    source=source,
-                    tool=tool_name,
-                    content=f"KG 实体 {node.get('node_id')} 属性：{props}",
-                    score=0.7,
-                    metadata={"node_id": node.get("node_id")},
-                ))
+                evidences.append(
+                    Evidence(
+                        source=source,
+                        tool=tool_name,
+                        content=f"KG 实体 {node.get('node_id')} 属性：{props}",
+                        score=0.7,
+                        metadata={"node_id": node.get("node_id")},
+                    )
+                )
 
         elif tool_name.startswith("kg.query_neighbors"):
             neighbors = output.get("neighbors", [])
             for nb in neighbors[:10]:  # 最多取 10 条
-                evidences.append(Evidence(
-                    source=source,
-                    tool=tool_name,
-                    content=(
-                        f"邻居：{nb.get('via_source')} -[{nb.get('via_edge')}]-> "
-                        f"{nb.get('node_id')} (hop={nb.get('hop')})"
-                    ),
-                    score=0.5,
-                    metadata={"hop": nb.get("hop")},
-                ))
+                evidences.append(
+                    Evidence(
+                        source=source,
+                        tool=tool_name,
+                        content=(
+                            f"邻居：{nb.get('via_source')} -[{nb.get('via_edge')}]-> "
+                            f"{nb.get('node_id')} (hop={nb.get('hop')})"
+                        ),
+                        score=0.5,
+                        metadata={"hop": nb.get("hop")},
+                    )
+                )
 
         elif tool_name.startswith("kg.query_path"):
             paths = output.get("paths", [])
             for path in paths[:3]:
                 path_str = " -> ".join(n.get("node_id", "?") for n in path)
-                evidences.append(Evidence(
-                    source=source,
-                    tool=tool_name,
-                    content=f"KG 路径：{path_str}",
-                    score=0.6,
-                    metadata={"path_length": len(path)},
-                ))
+                evidences.append(
+                    Evidence(
+                        source=source,
+                        tool=tool_name,
+                        content=f"KG 路径：{path_str}",
+                        score=0.6,
+                        metadata={"path_length": len(path)},
+                    )
+                )
 
         elif tool_name.startswith("text.retrieve"):
             results = output.get("results", [])
             for r in results:
-                evidences.append(Evidence(
-                    source=r.get("source", "text") or "text",
-                    tool=tool_name,
-                    content=r.get("content", "")[:300],
-                    score=float(r.get("score", 0.5)),
-                    metadata=r.get("metadata", {}),
-                ))
+                evidences.append(
+                    Evidence(
+                        source=r.get("source", "text") or "text",
+                        tool=tool_name,
+                        content=r.get("content", "")[:300],
+                        score=float(r.get("score", 0.5)),
+                        metadata=r.get("metadata", {}),
+                    )
+                )
 
         elif tool_name.startswith("text.entity_lookup"):
             entities = output.get("entities", [])
             if entities:
-                evidences.append(Evidence(
-                    source=source,
-                    tool=tool_name,
-                    content=f"识别实体：{', '.join(entities)}",
-                    score=0.65,
-                    metadata={"entities": entities},
-                ))
+                evidences.append(
+                    Evidence(
+                        source=source,
+                        tool=tool_name,
+                        content=f"识别实体：{', '.join(entities)}",
+                        score=0.65,
+                        metadata={"entities": entities},
+                    )
+                )
 
         elif tool_name.startswith("llm.reason"):
             verdict = output.get("verdict", "uncertain")
             conf = float(output.get("confidence", 0.0))
             reasoning = output.get("reasoning", "")
-            evidences.append(Evidence(
-                source=source,
-                tool=tool_name,
-                content=f"LLM 推理：verdict={verdict}, confidence={conf}, reasoning={reasoning}",
-                score=conf,
-                metadata={
-                    "verdict": verdict,
-                    "key_evidence": output.get("key_evidence", []),
-                },
-            ))
+            evidences.append(
+                Evidence(
+                    source=source,
+                    tool=tool_name,
+                    content=f"LLM 推理：verdict={verdict}, confidence={conf}, reasoning={reasoning}",
+                    score=conf,
+                    metadata={
+                        "verdict": verdict,
+                        "key_evidence": output.get("key_evidence", []),
+                    },
+                )
+            )
 
         elif tool_name.startswith("llm.extract"):
             triples = output.get("triples", [])
             for t in triples:
                 head = t.get("head", {})
                 tail = t.get("tail", {})
-                evidences.append(Evidence(
-                    source=source,
-                    tool=tool_name,
-                    content=(
-                        f"LLM 抽取三元组：{head.get('name')} -[{t.get('relation')}]-> "
-                        f"{tail.get('name')} (confidence={t.get('confidence')})"
-                    ),
-                    score=float(t.get("confidence", 0.5)),
-                    metadata={"relation": t.get("relation")},
-                ))
+                evidences.append(
+                    Evidence(
+                        source=source,
+                        tool=tool_name,
+                        content=(
+                            f"LLM 抽取三元组：{head.get('name')} -[{t.get('relation')}]-> "
+                            f"{tail.get('name')} (confidence={t.get('confidence')})"
+                        ),
+                        score=float(t.get("confidence", 0.5)),
+                        metadata={"relation": t.get("relation")},
+                    )
+                )
 
         return evidences
 
@@ -401,8 +415,7 @@ class EvidenceReranker:
                 source_types.add("kg")
             elif ev.source in ("llm", "llm.reason", "llm.extract"):
                 source_types.add("llm")
-            elif ev.source in ("measured", "experiment", "bosch_cnc",
-                                "uniwear-phm2010", "uniwear-nuaa", "uniwear"):
+            elif ev.source in ("measured", "experiment", "bosch_cnc", "uniwear-phm2010", "uniwear-nuaa", "uniwear"):
                 source_types.add("measured")
             elif ev.source in ("literature", "paper", "manual", "rule", "text"):
                 source_types.add("text")
@@ -414,10 +427,7 @@ class EvidenceReranker:
         diversity_bonus = min(0.1, diversity * 0.05)
 
         # 是否有外部证据（KG 或文本/实测）
-        has_external = any(
-            ev.source not in ("llm", "llm.reason", "llm.extract", "unknown")
-            for ev in ranked_evidences
-        )
+        has_external = any(ev.source not in ("llm", "llm.reason", "llm.extract", "unknown") for ev in ranked_evidences)
 
         # 冲突检测（LLM verdict 冲突）
         verdicts = set()

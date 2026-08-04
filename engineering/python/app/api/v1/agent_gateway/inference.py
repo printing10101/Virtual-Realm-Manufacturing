@@ -16,7 +16,6 @@ P1-7：从原 ``agent_gateway.py`` 拆分而来，包含：
 - ``GET  /pipeline/{pipeline_id}/trace`` —— 获取管线执行追踪详情
 """
 
-
 import logging
 import time
 from typing import Any
@@ -145,16 +144,10 @@ async def agent_predict(request: Request, body: AgentPredictRequest):
                 message=f"Model '{body.model_name}' not found",
             )
 
-        if not body.input_data or any(
-            not isinstance(x, (int, float)) for x in body.input_data
-        ):
-            return error(
-                code=ErrorCode.INVALID_REQUEST, message="输入数据必须为非空数值数组"
-            )
+        if not body.input_data or any(not isinstance(x, (int, float)) for x in body.input_data):
+            return error(code=ErrorCode.INVALID_REQUEST, message="输入数据必须为非空数值数组")
 
-        expected_dim = (
-            len(entry.info.input_features) if entry.info.input_features else None
-        )
+        expected_dim = len(entry.info.input_features) if entry.info.input_features else None
         if expected_dim:
             input_len = len(body.input_data)
             if input_len != expected_dim and input_len % expected_dim != 0:
@@ -203,9 +196,7 @@ async def agent_predict(request: Request, body: AgentPredictRequest):
     except (ValueError, KeyError, TypeError, AttributeError, RuntimeError, OSError) as e:
         # 修复：使用 safe_error_message 包装异常，避免 str(e) 泄露
         # 内部错误详情到前端用户/调用方。
-        safe = safe_error_message(
-            e, context=f"agent.predict[{body.model_name}]"
-        )
+        safe = safe_error_message(e, context=f"agent.predict[{body.model_name}]")
         logger.warning(
             "Prediction failed | model=%s | error_id=%s | exc=%s: %s",
             body.model_name,
@@ -347,9 +338,7 @@ async def create_agent_token(req: AgentTokenCreateRequest):
     try:
         for scope in req.scopes:
             if scope not in ("R", "W", "B", "N", "C", "T"):
-                return error(
-                    code=ErrorCode.INVALID_REQUEST, message=f"Invalid scope: {scope}"
-                )
+                return error(code=ErrorCode.INVALID_REQUEST, message=f"Invalid scope: {scope}")
 
         raw_token, token = agent_token_store.create_token(
             scopes=req.scopes,
@@ -423,14 +412,13 @@ async def revoke_agent_token(agent_id: str):
 async def revoke_all_t_tokens():
     """一键撤销所有 T 类 Token（紧急停止）"""
     count = agent_token_store.revoke_t_tokens()
-    return success(
-        data={"revoked_count": count}, message=f"Revoked {count} T-class tokens"
-    )
+    return success(data={"revoked_count": count}, message=f"Revoked {count} T-class tokens")
 
 
 # =============================================================================
 # Workflow Pipeline Execution Endpoints
 # =============================================================================
+
 
 # 认证：管线执行属于执行类操作，需要 agent:execute 权限
 @router.post(
@@ -455,13 +443,13 @@ async def execute_pipeline(request: AgentPipelineRequest):
     try:
         # 记录审计日志
         agent_audit_log.log(
-            agent_id=request.agent_id if hasattr(request, 'agent_id') else "unknown",
+            agent_id=request.agent_id if hasattr(request, "agent_id") else "unknown",
             action="pipeline.execute",
             resource=f"pipeline:{request.pipeline_type}",
             permission_class="B",
             details={
                 "pipeline_type": request.pipeline_type,
-                "mode": request.mode.value if hasattr(request.mode, 'value') else str(request.mode),
+                "mode": request.mode.value if hasattr(request.mode, "value") else str(request.mode),
                 "input_keys": list(request.input_data.keys()),
             },
         )
@@ -519,9 +507,7 @@ async def execute_pipeline(request: AgentPipelineRequest):
             )
 
     except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
-        safe = safe_error_message(
-            e, context=f"agent.pipeline[{request.pipeline_type}]"
-        )
+        safe = safe_error_message(e, context=f"agent.pipeline[{request.pipeline_type}]")
         logger.error(
             "Pipeline execution failed | pipeline_type=%s | error_id=%s | exc=%s: %s",
             request.pipeline_type,
@@ -617,9 +603,7 @@ async def get_pipeline_trace(pipeline_id: str):
         )
 
     except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
-        safe = safe_error_message(
-            e, context=f"agent.pipeline_trace[{pipeline_id}]"
-        )
+        safe = safe_error_message(e, context=f"agent.pipeline_trace[{pipeline_id}]")
         logger.warning(
             "Pipeline trace retrieval failed | pipeline_id=%s | error_id=%s | exc=%s: %s",
             pipeline_id,

@@ -13,6 +13,7 @@
     - ``_RemoteMixin``：push / pull
     - ``_CloneMixin``：clone
 """
+
 from __future__ import annotations
 
 import logging
@@ -79,9 +80,7 @@ class ProjectSyncService(
         self._git_available: Optional[bool] = None
         self._git_available_lock = threading.Lock()
         # 仓库存储根目录：<output_dir>/project_sync/
-        self._repos_root = os.path.join(
-            os.path.abspath(config.storage.output_dir), "project_sync"
-        )
+        self._repos_root = os.path.join(os.path.abspath(config.storage.output_dir), "project_sync")
         os.makedirs(self._repos_root, exist_ok=True)
 
     # ------------------------------------------------------------------

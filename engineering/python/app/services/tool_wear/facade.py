@@ -59,12 +59,8 @@ class ToolWearPredictor:
     def predict_wear_curve(self, input_parameters: dict):
         return self._curve_predictor.predict_wear_curve(input_parameters)
 
-    def predict_remaining_life(
-        self, current_wear: float, input_parameters: dict
-    ) -> float:
-        return self._curve_predictor.predict_remaining_life(
-            current_wear, input_parameters
-        )
+    def predict_remaining_life(self, current_wear: float, input_parameters: dict) -> float:
+        return self._curve_predictor.predict_remaining_life(current_wear, input_parameters)
 
     def get_replacement_threshold(self, material_type: Optional[str] = None) -> float:
         return self._curve_predictor.get_replacement_threshold(material_type)
@@ -76,12 +72,8 @@ class ToolWearPredictor:
     # 参数建议（委托 ParameterAdvisor）
     # ------------------------------------------------------------------
 
-    def suggest_parameter_adjustment(
-        self, current_wear: float, remaining_life: float, current_parameters: dict
-    ):
-        return self._param_advisor.suggest_parameter_adjustment(
-            current_wear, remaining_life, current_parameters
-        )
+    def suggest_parameter_adjustment(self, current_wear: float, remaining_life: float, current_parameters: dict):
+        return self._param_advisor.suggest_parameter_adjustment(current_wear, remaining_life, current_parameters)
 
     # ------------------------------------------------------------------
     # 磨损标定（委托 WearCalibrator）
@@ -90,9 +82,7 @@ class ToolWearPredictor:
     def calibrate_with_measurement(
         self, measured_wear: float, elapsed_time: float, input_parameters: dict
     ) -> dict[str, Any]:
-        return self._calibrator.calibrate_with_measurement(
-            measured_wear, elapsed_time, input_parameters
-        )
+        return self._calibrator.calibrate_with_measurement(measured_wear, elapsed_time, input_parameters)
 
     def calibrate_with_real_time_data(
         self,
@@ -171,9 +161,7 @@ class ToolWearPredictor:
         signal_features: dict[str, float],
         material: str = "tc4",
     ) -> dict:
-        return self._ml_trainer.predict_wear_from_signals(
-            signal_features, material
-        )
+        return self._ml_trainer.predict_wear_from_signals(signal_features, material)
 
     def cross_dataset_analysis(self) -> dict:
         return self._ml_trainer.cross_dataset_analysis()

@@ -10,6 +10,7 @@
 - 缓存键：``{model_uri}:{method}:{dim}``
 - 锁粒度：仅 fit 段加锁，transform 段无锁（reducer 已不可变）
 """
+
 from __future__ import annotations
 
 import os
@@ -67,14 +68,10 @@ class ProjectorCache:
             降维失败（样本数不足 / 维度不匹配 / 方法不可用）。
         """
         if data.ndim != 2:
-            raise ProjectionError(
-                f"降维输入必须为 2D 数组 [N, hidden_dim]，当前: {data.shape}"
-            )
+            raise ProjectionError(f"降维输入必须为 2D 数组 [N, hidden_dim]，当前: {data.shape}")
         n_samples, n_features = data.shape
         if n_samples < 2:
-            raise ProjectionError(
-                f"降维样本数不足（需要 >=2，当前: {n_samples}）"
-            )
+            raise ProjectionError(f"降维样本数不足（需要 >=2，当前: {n_samples}）")
         if dim not in (2, 3):
             raise ProjectionError(f"目标维度必须为 2 或 3，当前: {dim}")
 
@@ -85,9 +82,7 @@ class ProjectorCache:
             try:
                 from sklearn.decomposition import PCA
             except ImportError as exc:
-                raise ProjectionError(
-                    "PCA 需要 scikit-learn，请安装: pip install scikit-learn"
-                ) from exc
+                raise ProjectionError("PCA 需要 scikit-learn，请安装: pip install scikit-learn") from exc
 
             with self._lock:
                 cached = self._cache.get(cache_key)
@@ -96,10 +91,7 @@ class ProjectorCache:
                 else:
                     n_components = min(dim, n_features, n_samples)
                     if n_components < dim:
-                        raise ProjectionError(
-                            f"PCA 分量数 {n_components} 小于目标维度 {dim}，"
-                            f"请减少 dim 或增加样本数"
-                        )
+                        raise ProjectionError(f"PCA 分量数 {n_components} 小于目标维度 {dim}，请减少 dim 或增加样本数")
                     reducer = PCA(n_components=n_components)
                     reducer.fit(data)
                     self._cache[cache_key] = (method, reducer)
@@ -111,22 +103,15 @@ class ProjectorCache:
         # t-SNE：无 transform 方法，每次重新拟合（不支持复用）
         if method == ProjectionMethod.TSNE:
             if n_samples > 5000:
-                raise ProjectionError(
-                    f"t-SNE 样本数限制 <=5000，当前: {n_samples}，"
-                    f"请改用 PCA 或下采样"
-                )
+                raise ProjectionError(f"t-SNE 样本数限制 <=5000，当前: {n_samples}，请改用 PCA 或下采样")
             try:
                 from sklearn.manifold import TSNE
             except ImportError as exc:
-                raise ProjectionError(
-                    "t-SNE 需要 scikit-learn，请安装: pip install scikit-learn"
-                ) from exc
+                raise ProjectionError("t-SNE 需要 scikit-learn，请安装: pip install scikit-learn") from exc
 
             n_components = min(dim, n_features, n_samples - 1)
             if n_components < dim:
-                raise ProjectionError(
-                    f"t-SNE 分量数 {n_components} 小于目标维度 {dim}"
-                )
+                raise ProjectionError(f"t-SNE 分量数 {n_components} 小于目标维度 {dim}")
             reducer = TSNE(
                 n_components=n_components,
                 perplexity=min(30.0, max(5.0, n_samples - 1)),
@@ -146,9 +131,7 @@ class ProjectorCache:
             try:
                 import umap
             except ImportError as exc:
-                raise ProjectionError(
-                    "UMAP 需要 umap-learn，请安装: pip install umap-learn"
-                ) from exc
+                raise ProjectionError("UMAP 需要 umap-learn，请安装: pip install umap-learn") from exc
 
             with self._lock:
                 cached = self._cache.get(cache_key)
@@ -157,9 +140,7 @@ class ProjectorCache:
                 else:
                     n_components = min(dim, n_features, n_samples - 1)
                     if n_components < dim:
-                        raise ProjectionError(
-                            f"UMAP 分量数 {n_components} 小于目标维度 {dim}"
-                        )
+                        raise ProjectionError(f"UMAP 分量数 {n_components} 小于目标维度 {dim}")
                     reducer = umap.UMAP(
                         n_components=n_components,
                         random_state=42,

@@ -44,8 +44,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.dreaming.apply_rules import (
-    RULE_STATUS_APPLIED,
-    RULE_STATUS_DEPRECATED,
     ApplyResult,
     RuleApplicator,
 )
@@ -68,12 +66,12 @@ class PublicationStage(str, Enum):
     降级方向：FULL → ROLLING_50 → ROLLING_10 → CANARY → SHADOW → DEPRECATED
     """
 
-    SHADOW = "shadow"            # 影子模式：0% 流量，仅记录
-    CANARY = "canary"            # 金丝雀：1% 流量
-    ROLLING_10 = "rolling_10"    # 滚动 10%
-    ROLLING_50 = "rolling_50"    # 滚动 50%
-    FULL = "full"                # 全量 100%
-    DEPRECATED = "deprecated"    # 已废弃（等价于 rollback）
+    SHADOW = "shadow"  # 影子模式：0% 流量，仅记录
+    CANARY = "canary"  # 金丝雀：1% 流量
+    ROLLING_10 = "rolling_10"  # 滚动 10%
+    ROLLING_50 = "rolling_50"  # 滚动 50%
+    FULL = "full"  # 全量 100%
+    DEPRECATED = "deprecated"  # 已废弃（等价于 rollback）
 
     @property
     def traffic_percentage(self) -> float:
@@ -159,24 +157,18 @@ class PublicationRecord:
         try:
             stage = PublicationStage(stage_str)
         except ValueError:
-            logger.warning(
-                "未知灰度阶段 '%s'，回退到 SHADOW", stage_str
-            )
+            logger.warning("未知灰度阶段 '%s'，回退到 SHADOW", stage_str)
             stage = PublicationStage.SHADOW
         return cls(
             rule_id=data["rule_id"],
             current_stage=stage,
-            entered_at=data.get(
-                "entered_at", datetime.now(timezone.utc).isoformat()
-            ),
+            entered_at=data.get("entered_at", datetime.now(timezone.utc).isoformat()),
             promoted_count=int(data.get("promoted_count", 0)),
             demoted_count=int(data.get("demoted_count", 0)),
             last_metrics=data.get("last_metrics", {}),
             stage_history=data.get("stage_history", []),
             promoted_to_full=bool(data.get("promoted_to_full", False)),
-            auto_rollback_triggered=bool(
-                data.get("auto_rollback_triggered", False)
-            ),
+            auto_rollback_triggered=bool(data.get("auto_rollback_triggered", False)),
         )
 
 
@@ -223,17 +215,17 @@ PUBLICATION_STATE_DIR = "python/outputs/dreaming/publication_state"
 # 晋级阈值：效果指标达标才允许晋级
 # 这些阈值对应 effectiveness_metrics.py 中的指标
 DEFAULT_PROMOTION_THRESHOLDS: Dict[str, float] = {
-    "min_accuracy": 0.70,        # 准确率下限
+    "min_accuracy": 0.70,  # 准确率下限
     "max_false_positive_rate": 0.20,  # 误报率上限
-    "min_sample_size": 20,       # 最小样本数（canary 阶段必须有足够样本）
-    "max_error_rate": 0.10,      # 错误率上限
+    "min_sample_size": 20,  # 最小样本数（canary 阶段必须有足够样本）
+    "max_error_rate": 0.10,  # 错误率上限
 }
 
 # 降级阈值：指标恶化时自动降级
 DEFAULT_DEMOTION_THRESHOLDS: Dict[str, float] = {
     "max_false_positive_rate": 0.40,  # 误报率超过 40% 降级
-    "max_error_rate": 0.25,           # 错误率超过 25% 降级
-    "min_accuracy": 0.50,             # 准确率低于 50% 降级
+    "max_error_rate": 0.25,  # 错误率超过 25% 降级
+    "min_accuracy": 0.50,  # 准确率低于 50% 降级
 }
 
 
@@ -309,9 +301,7 @@ class ProgressivePublisher:
                     record = PublicationRecord.from_dict(data)
                     self._records[record.rule_id] = record
                 except (OSError, json.JSONDecodeError, KeyError) as e:
-                    logger.warning(
-                        "加载灰度状态文件失败 %s: %s", state_file, e
-                    )
+                    logger.warning("加载灰度状态文件失败 %s: %s", state_file, e)
         except OSError as e:
             logger.warning("扫描灰度状态目录失败：%s", e)
 
@@ -322,13 +312,9 @@ class ProgressivePublisher:
             with open(state_file, "w", encoding="utf-8") as f:
                 json.dump(record.to_dict(), f, ensure_ascii=False, indent=2)
         except OSError as e:
-            logger.warning(
-                "灰度状态持久化失败 rule_id=%s: %s", record.rule_id, e
-            )
+            logger.warning("灰度状态持久化失败 rule_id=%s: %s", record.rule_id, e)
 
-    def _get_or_create_record(
-        self, rule_id: str
-    ) -> PublicationRecord:
+    def _get_or_create_record(self, rule_id: str) -> PublicationRecord:
         """获取或创建灰度记录。调用方须持有 _lock。"""
         if rule_id not in self._records:
             self._records[rule_id] = PublicationRecord(rule_id=rule_id)
@@ -361,10 +347,7 @@ class ProgressivePublisher:
         if not skip_validation:
             validation_result = self._validator.validate(rule)
             if not validation_result.passed and stage == PublicationStage.FULL:
-                error_msg = (
-                    f"FULL 阶段发布要求沙箱验证通过："
-                    f"{validation_result.errors}"
-                )
+                error_msg = f"FULL 阶段发布要求沙箱验证通过：{validation_result.errors}"
                 logger.warning(error_msg)
                 return PublicationResult(
                     success=False,
@@ -380,12 +363,14 @@ class ProgressivePublisher:
             record = self._get_or_create_record(rule.rule_id)
             record.current_stage = stage
             record.entered_at = operated_at
-            record.stage_history.append({
-                "action": "publish",
-                "stage": stage.value,
-                "operated_at": operated_at,
-                "traffic_percentage": stage.traffic_percentage,
-            })
+            record.stage_history.append(
+                {
+                    "action": "publish",
+                    "stage": stage.value,
+                    "operated_at": operated_at,
+                    "traffic_percentage": stage.traffic_percentage,
+                }
+            )
             if stage == PublicationStage.FULL:
                 record.promoted_to_full = True
             self._save_record(record)
@@ -394,9 +379,7 @@ class ProgressivePublisher:
         audit_seq: Optional[int] = None
         apply_result: Optional[ApplyResult] = None
         if stage == PublicationStage.FULL:
-            apply_result = self._get_applicator().apply(
-                rule, skip_validation=skip_validation
-            )
+            apply_result = self._get_applicator().apply(rule, skip_validation=skip_validation)
             if not apply_result.success:
                 # 应用失败：降级回 SHADOW
                 with self._lock:
@@ -405,12 +388,14 @@ class ProgressivePublisher:
                         record.current_stage = PublicationStage.SHADOW
                         record.promoted_to_full = False
                         record.demoted_count += 1
-                        record.stage_history.append({
-                            "action": "auto_demote_on_apply_failure",
-                            "stage": PublicationStage.SHADOW.value,
-                            "operated_at": datetime.now(timezone.utc).isoformat(),
-                            "reason": apply_result.error or "apply failed",
-                        })
+                        record.stage_history.append(
+                            {
+                                "action": "auto_demote_on_apply_failure",
+                                "stage": PublicationStage.SHADOW.value,
+                                "operated_at": datetime.now(timezone.utc).isoformat(),
+                                "reason": apply_result.error or "apply failed",
+                            }
+                        )
                         self._save_record(record)
                 return PublicationResult(
                     success=False,
@@ -428,11 +413,7 @@ class ProgressivePublisher:
             self._get_audit_recorder().record_rule_application(
                 rule_id=rule.rule_id,
                 rule_description=rule.description,
-                validation_passed=(
-                    validation_result.passed
-                    if validation_result is not None
-                    else True
-                ),
+                validation_passed=(validation_result.passed if validation_result is not None else True),
                 applied=(stage == PublicationStage.FULL),
                 rollback_triggered=False,
             )
@@ -516,17 +497,12 @@ class ProgressivePublisher:
                         stage=current_stage,
                         traffic_percentage=current_stage.traffic_percentage,
                         operated_at=operated_at,
-                        error=(
-                            f"不允许跨级晋级：{current_stage.value} → "
-                            f"{target_stage.value}（必须逐级晋级）"
-                        ),
+                        error=(f"不允许跨级晋级：{current_stage.value} → {target_stage.value}（必须逐级晋级）"),
                     )
 
             # 指标阈值检查
             if metrics_snapshot:
-                metrics_ok, fail_reason = self._check_promotion_thresholds(
-                    metrics_snapshot
-                )
+                metrics_ok, fail_reason = self._check_promotion_thresholds(metrics_snapshot)
                 if not metrics_ok:
                     return PublicationResult(
                         success=False,
@@ -584,12 +560,14 @@ class ProgressivePublisher:
                 rec = self._records.get(rule_id)
                 if rec is not None:
                     rec.promoted_count += 1
-                    rec.stage_history.append({
-                        "action": "promote",
-                        "from": current_stage.value,
-                        "to": next_stage.value,
-                        "operated_at": operated_at,
-                    })
+                    rec.stage_history.append(
+                        {
+                            "action": "promote",
+                            "from": current_stage.value,
+                            "to": next_stage.value,
+                            "operated_at": operated_at,
+                        }
+                    )
                     self._save_record(rec)
 
         return result
@@ -665,13 +643,15 @@ class ProgressivePublisher:
             record.entered_at = operated_at
             record.promoted_to_full = False
             record.demoted_count += 1
-            record.stage_history.append({
-                "action": "auto_demote" if auto else "demote",
-                "from": current_stage.value,
-                "to": prev_stage.value,
-                "operated_at": operated_at,
-                "reason": reason,
-            })
+            record.stage_history.append(
+                {
+                    "action": "auto_demote" if auto else "demote",
+                    "from": current_stage.value,
+                    "to": prev_stage.value,
+                    "operated_at": operated_at,
+                    "reason": reason,
+                }
+            )
             self._save_record(record)
 
         # 写入审计日志
@@ -729,16 +709,16 @@ class ProgressivePublisher:
         with self._lock:
             record = self._records.get(rule_id)
             if record is None:
-                logger.warning(
-                    "规则 %s 未发布，无法更新指标", rule_id
-                )
+                logger.warning("规则 %s 未发布，无法更新指标", rule_id)
                 return False
             record.last_metrics = dict(metrics)
-            record.stage_history.append({
-                "action": "metrics_update",
-                "operated_at": datetime.now(timezone.utc).isoformat(),
-                "metrics": dict(metrics),
-            })
+            record.stage_history.append(
+                {
+                    "action": "metrics_update",
+                    "operated_at": datetime.now(timezone.utc).isoformat(),
+                    "metrics": dict(metrics),
+                }
+            )
             self._save_record(record)
             return True
 
@@ -797,11 +777,7 @@ class ProgressivePublisher:
             self._get_audit_recorder().record_rule_application(
                 rule_id=rule_id,
                 rule_description=f"灰度晋级到 {target_stage.value}",
-                validation_passed=(
-                    validation_result.passed
-                    if validation_result is not None
-                    else True
-                ),
+                validation_passed=(validation_result.passed if validation_result is not None else True),
                 applied=False,
                 rollback_triggered=False,
             )
@@ -828,13 +804,15 @@ class ProgressivePublisher:
         record.current_stage = PublicationStage.DEPRECATED
         record.entered_at = operated_at
         record.auto_rollback_triggered = True
-        record.stage_history.append({
-            "action": "auto_rollback",
-            "from": PublicationStage.SHADOW.value,
-            "to": PublicationStage.DEPRECATED.value,
-            "operated_at": operated_at,
-            "reason": reason,
-        })
+        record.stage_history.append(
+            {
+                "action": "auto_rollback",
+                "from": PublicationStage.SHADOW.value,
+                "to": PublicationStage.DEPRECATED.value,
+                "operated_at": operated_at,
+                "reason": reason,
+            }
+        )
         self._save_record(record)
 
         # 写入审计日志
@@ -863,9 +841,7 @@ class ProgressivePublisher:
             operated_at=operated_at,
         )
 
-    def _check_promotion_thresholds(
-        self, metrics: Dict[str, Any]
-    ) -> tuple[bool, Optional[str]]:
+    def _check_promotion_thresholds(self, metrics: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """检查指标是否达到晋级阈值。
 
         Returns:
@@ -891,9 +867,7 @@ class ProgressivePublisher:
             return False, f"error_rate={err_rate:.3f} > {max_err}"
         return True, None
 
-    def _check_demotion_thresholds(
-        self, metrics: Dict[str, Any]
-    ) -> Optional[str]:
+    def _check_demotion_thresholds(self, metrics: Dict[str, Any]) -> Optional[str]:
         """检查指标是否触发降级。
 
         Returns:

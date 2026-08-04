@@ -43,40 +43,28 @@ class CamValidationConfig:
     """
 
     # 总开关：桌面轻量档位下可关闭
-    enabled: bool = field(
-        default_factory=lambda: _bool_env("LNN_CAM_ENABLED", True)
-    )
+    enabled: bool = field(default_factory=lambda: _bool_env("LNN_CAM_ENABLED", True))
 
     # 输出目录：存放每次 CAM 校验任务的工作目录（含 cam_report.json + internal_report.json）
     # pipeline.py 在此目录下为每个任务创建独立 workspace_dir
     output_dir: str = field(
-        default_factory=lambda: _path(
-            "LNN_CAM_OUTPUT_DIR", os.path.join("output", "cam_validation")
-        )
+        default_factory=lambda: _path("LNN_CAM_OUTPUT_DIR", os.path.join("output", "cam_validation"))
     )
 
     # 并发约束：CAM 校验为 CPU 密集型（InternalValidator 秒级 + CAM 软件 subprocess 分钟级）
     # 桌面模式默认串行，避免与阶段 1-6 抢占资源
-    max_concurrent: int = field(
-        default_factory=lambda: _int_env("LNN_CAM_MAX_CONCURRENT", 1)
-    )
+    max_concurrent: int = field(default_factory=lambda: _int_env("LNN_CAM_MAX_CONCURRENT", 1))
 
     # 任务超时（秒）：CAM 软件 subprocess 可能耗时数分钟，留足缓冲
     # internal_only 后端秒级返回，manual 后端等待工程师回填可能跨日
-    task_timeout_seconds: int = field(
-        default_factory=lambda: _int_env("LNN_CAM_TASK_TIMEOUT", 600)
-    )
+    task_timeout_seconds: int = field(default_factory=lambda: _int_env("LNN_CAM_TASK_TIMEOUT", 600))
 
     # 任务历史保留时长（小时）：与阶段 2-6 一致，工程师审核需要时间
-    task_retention_hours: int = field(
-        default_factory=lambda: _int_env("LNN_CAM_TASK_RETENTION_HOURS", 168)
-    )
+    task_retention_hours: int = field(default_factory=lambda: _int_env("LNN_CAM_TASK_RETENTION_HOURS", 168))
 
     # 默认精度档位（仅用于 disclaimer 显示告知，实际精度由上游 mesh 决定）
     # 阶段 7 继承阶段 6 的 precision_tier，不重新标定
-    precision_tier: str = field(
-        default_factory=lambda: _env("LNN_CAM_PRECISION_TIER", "mesh_calibrated")
-    )
+    precision_tier: str = field(default_factory=lambda: _env("LNN_CAM_PRECISION_TIER", "mesh_calibrated"))
 
     # 默认 CAM 后端（CamAdapter 策略模式）
     # - internal_only：仅运行 InternalValidator（秒级，AABB 包围盒），不调用外部 CAM 软件
@@ -84,41 +72,29 @@ class CamValidationConfig:
     # - nx_open：调用 Siemens NX Open subprocess（需 NX 许可证）
     # - powermill：调用 Autodesk PowerMill subprocess（需 PowerMill 许可证）
     # - manual：生成校验清单 + 工程师回填（默认降级路径，无需任何外部软件）
-    default_cam_backend: str = field(
-        default_factory=lambda: _env("LNN_CAM_DEFAULT_BACKEND", "internal_only")
-    )
+    default_cam_backend: str = field(default_factory=lambda: _env("LNN_CAM_DEFAULT_BACKEND", "internal_only"))
 
     # NX Open 可执行文件路径（仅 default_cam_backend=nx_open 时使用）
     # 留空时 CamAdapter 自动降级到 manual
-    nx_open_executable: str = field(
-        default_factory=lambda: _env("LNN_CAM_NX_OPEN_EXECUTABLE", "")
-    )
+    nx_open_executable: str = field(default_factory=lambda: _env("LNN_CAM_NX_OPEN_EXECUTABLE", ""))
 
     # PowerMill 可执行文件路径（仅 default_cam_backend=powermill 时使用）
     # 留空时 CamAdapter 自动降级到 manual
-    powermill_executable: str = field(
-        default_factory=lambda: _env("LNN_CAM_POWERMILL_EXECUTABLE", "")
-    )
+    powermill_executable: str = field(default_factory=lambda: _env("LNN_CAM_POWERMILL_EXECUTABLE", ""))
 
     # PyCAM 包装器脚本路径（仅 default_cam_backend=pycam 时使用）
     # 指向项目自带的 python/scripts/cam_adapters/pycam/autorun_gcode_check.py
     # 留空时 CamAdapter 自动降级到 manual（与 nx_open_executable / powermill_executable 风格对齐）
-    pycam_executable: str = field(
-        default_factory=lambda: _env("LNN_CAM_PYCAM_EXECUTABLE", "")
-    )
+    pycam_executable: str = field(default_factory=lambda: _env("LNN_CAM_PYCAM_EXECUTABLE", ""))
 
     # 是否允许 SUCCEEDED 状态任务删除（项目记忆硬约束：始终 False）
     # SUCCEEDED 任务包含 cam_report.json，删除会破坏追溯链
-    allow_delete_succeeded: bool = field(
-        default_factory=lambda: _bool_env("LNN_CAM_ALLOW_DELETE_SUCCEEDED", False)
-    )
+    allow_delete_succeeded: bool = field(default_factory=lambda: _bool_env("LNN_CAM_ALLOW_DELETE_SUCCEEDED", False))
 
     # CAM 二次校验强制（项目记忆硬约束：始终 True，不可关闭）
     # 阶段 6 G 代码必须经阶段 7 CAM 软件二次校验后方可上机床
     # 系统绝不直接接口 CNC 控制器，CAM 校验报告 JSON 为阶段 7 最终产物
-    cam_validation_required: bool = field(
-        default_factory=lambda: _bool_env("LNN_CAM_VALIDATION_REQUIRED", True)
-    )
+    cam_validation_required: bool = field(default_factory=lambda: _bool_env("LNN_CAM_VALIDATION_REQUIRED", True))
 
     def __post_init__(self) -> None:
         """启动时校验配置合法性。"""
@@ -126,8 +102,7 @@ class CamValidationConfig:
         valid_tiers = {"coarse", "standard", "high", "mesh_calibrated"}
         if self.precision_tier not in valid_tiers:
             logger.warning(
-                "Invalid LNN_CAM_PRECISION_TIER='%s', expected one of %s. "
-                "Falling back to 'mesh_calibrated'.",
+                "Invalid LNN_CAM_PRECISION_TIER='%s', expected one of %s. Falling back to 'mesh_calibrated'.",
                 self.precision_tier,
                 sorted(valid_tiers),
             )
@@ -143,8 +118,7 @@ class CamValidationConfig:
         }
         if self.default_cam_backend not in valid_backends:
             logger.warning(
-                "Invalid LNN_CAM_DEFAULT_BACKEND='%s', expected one of %s. "
-                "Falling back to 'internal_only'.",
+                "Invalid LNN_CAM_DEFAULT_BACKEND='%s', expected one of %s. Falling back to 'internal_only'.",
                 self.default_cam_backend,
                 sorted(valid_backends),
             )
@@ -152,16 +126,14 @@ class CamValidationConfig:
 
         if self.max_concurrent < 1:
             logger.warning(
-                "LNN_CAM_MAX_CONCURRENT=%s invalid, must be >= 1. "
-                "Setting to 1 (serial).",
+                "LNN_CAM_MAX_CONCURRENT=%s invalid, must be >= 1. Setting to 1 (serial).",
                 self.max_concurrent,
             )
             self.max_concurrent = 1
 
         if self.task_timeout_seconds < 30:
             logger.warning(
-                "LNN_CAM_TASK_TIMEOUT=%s too small (<30s), "
-                "CAM 软件 subprocess 可能未完成。Setting to 600.",
+                "LNN_CAM_TASK_TIMEOUT=%s too small (<30s), CAM 软件 subprocess 可能未完成。Setting to 600.",
                 self.task_timeout_seconds,
             )
             self.task_timeout_seconds = 600

@@ -22,6 +22,7 @@ app/database/models/project_package.py（ORM 持久化）。
 
 包文件结构详见 ADR-015 第 1 节。
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -50,13 +51,9 @@ STREAM_BUFFER_SIZE: int = 1024 * 1024
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # 内容策略常量
 # ---------------------------------------------------------------------------
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -64,13 +61,9 @@ STREAM_BUFFER_SIZE: int = 1024 * 1024
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # 任务状态常量（导出 / 导入共用）
 # ---------------------------------------------------------------------------
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -106,20 +99,14 @@ SOURCE_MACHINE_INFO_DEFAULTS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # 数据结构：源机器信息
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # 数据结构：包项目元数据
 # ---------------------------------------------------------------------------
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -168,19 +155,14 @@ class PackageManifest:
             raise ValueError("PackageManifest.exported_by 不能为空")
         if not ContentPolicy.is_valid(self.content_policy):
             raise ValueError(
-                f"PackageManifest.content_policy 不合法: {self.content_policy}，"
-                f"合法值: {ContentPolicy.all()}"
+                f"PackageManifest.content_policy 不合法: {self.content_policy}，合法值: {ContentPolicy.all()}"
             )
         if self.total_size_bytes < 0:
-            raise ValueError(
-                f"PackageManifest.total_size_bytes 不能为负数: {self.total_size_bytes}"
-            )
+            raise ValueError(f"PackageManifest.total_size_bytes 不能为负数: {self.total_size_bytes}")
         # resources 唯一性校验
         uris = [entry.resource_uri for entry in self.resources]
         if len(uris) != len(set(uris)):
-            raise ValueError(
-                "PackageManifest.resources 存在重复的 resource_uri"
-            )
+            raise ValueError("PackageManifest.resources 存在重复的 resource_uri")
 
     @property
     def resource_count(self) -> int:
@@ -201,9 +183,7 @@ class PackageManifest:
 
     def list_entries_by_type(self, resource_type: str) -> list[PackageResourceEntry]:
         """按资源类型过滤资源条目."""
-        return [
-            entry for entry in self.resources if entry.resource_type == resource_type
-        ]
+        return [entry for entry in self.resources if entry.resource_type == resource_type]
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为 dict（用于 manifest.json 写入）.
@@ -233,15 +213,9 @@ class PackageManifest:
             format_version=str(data["format_version"]),
             exported_at=str(data["exported_at"]),
             exported_by=str(data["exported_by"]),
-            source_machine=SourceMachineInfo.from_dict(
-                data["source_machine"]
-            ),
-            project=PackageProjectInfo.from_dict(
-                data["project"]
-            ),
-            resources=tuple(
-                PackageResourceEntry.from_dict(item) for item in resources_data
-            ),
+            source_machine=SourceMachineInfo.from_dict(data["source_machine"]),
+            project=PackageProjectInfo.from_dict(data["project"]),
+            resources=tuple(PackageResourceEntry.from_dict(item) for item in resources_data),
             content_policy=str(data.get("content_policy", ContentPolicy.default())),
             total_size_bytes=int(data.get("total_size_bytes", 0)),
             checksum=str(data.get("checksum", "")),
@@ -284,13 +258,10 @@ class ExportOptions:
     def __post_init__(self) -> None:
         if not ContentPolicy.is_valid(self.content_policy):
             raise ValueError(
-                f"ExportOptions.content_policy 不合法: {self.content_policy}，"
-                f"合法值: {ContentPolicy.all()}"
+                f"ExportOptions.content_policy 不合法: {self.content_policy}，合法值: {ContentPolicy.all()}"
             )
         if self.max_file_size_bytes <= 0:
-            raise ValueError(
-                f"ExportOptions.max_file_size_bytes 必须为正数: {self.max_file_size_bytes}"
-            )
+            raise ValueError(f"ExportOptions.max_file_size_bytes 必须为正数: {self.max_file_size_bytes}")
 
     def should_include(self, resource_type: str) -> bool:
         """根据资源类型判断是否打包.
@@ -371,8 +342,7 @@ class ImportOptions:
     def __post_init__(self) -> None:
         if not ConflictStrategy.is_valid(self.conflict_strategy):
             raise ValueError(
-                f"ImportOptions.conflict_strategy 不合法: {self.conflict_strategy}，"
-                f"合法值: {ConflictStrategy.all()}"
+                f"ImportOptions.conflict_strategy 不合法: {self.conflict_strategy}，合法值: {ConflictStrategy.all()}"
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -434,18 +404,12 @@ class ExportResult:
         if not self.package_path:
             raise ValueError("ExportResult.package_path 不能为空")
         if not PackageTaskStatus.is_valid(self.status):
-            raise ValueError(
-                f"ExportResult.status 不合法: {self.status}，"
-                f"合法值: {PackageTaskStatus.all()}"
-            )
+            raise ValueError(f"ExportResult.status 不合法: {self.status}，合法值: {PackageTaskStatus.all()}")
         if self.resource_count < 0:
-            raise ValueError(
-                f"ExportResult.resource_count 不能为负数: {self.resource_count}"
-            )
+            raise ValueError(f"ExportResult.resource_count 不能为负数: {self.resource_count}")
         if self.packed_count < 0 or self.packed_count > self.resource_count:
             raise ValueError(
-                f"ExportResult.packed_count 不合法: {self.packed_count}，"
-                f"应在 [0, {self.resource_count}] 范围内"
+                f"ExportResult.packed_count 不合法: {self.packed_count}，应在 [0, {self.resource_count}] 范围内"
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -470,8 +434,6 @@ class ExportResult:
 # ---------------------------------------------------------------------------
 # 数据结构：导入结果
 # ---------------------------------------------------------------------------
-
-
 
 
 @dataclass(frozen=True)
@@ -524,17 +486,11 @@ class ImportResult:
         if not self.source_package_path:
             raise ValueError("ImportResult.source_package_path 不能为空")
         if not PackageFormatVersion.is_supported(self.format_version):
-            raise ValueError(
-                f"ImportResult.format_version 不受支持: {self.format_version}"
-            )
+            raise ValueError(f"ImportResult.format_version 不受支持: {self.format_version}")
         if not ConflictStrategy.is_valid(self.conflict_strategy):
-            raise ValueError(
-                f"ImportResult.conflict_strategy 不合法: {self.conflict_strategy}"
-            )
+            raise ValueError(f"ImportResult.conflict_strategy 不合法: {self.conflict_strategy}")
         if not PackageTaskStatus.is_valid(self.status):
-            raise ValueError(
-                f"ImportResult.status 不合法: {self.status}"
-            )
+            raise ValueError(f"ImportResult.status 不合法: {self.status}")
         # 计数一致性校验
         total = self.imported_count + self.skipped_count + self.renamed_count + self.failed_count
         if total != len(self.resource_records):
@@ -581,8 +537,6 @@ class ImportResult:
 # ---------------------------------------------------------------------------
 # 数据结构：校验结果
 # ---------------------------------------------------------------------------
-
-
 
 
 # ---------------------------------------------------------------------------

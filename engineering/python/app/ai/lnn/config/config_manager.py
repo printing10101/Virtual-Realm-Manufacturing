@@ -291,12 +291,8 @@ class YAMLConfigManager:
         warnings = []
 
         errors.extend(self._validate_lnn_section(target_config.get("lnn", {})))
-        errors.extend(
-            self._validate_workflow_section(target_config.get("workflow", {}))
-        )
-        errors.extend(
-            self._validate_environment_section(target_config.get("environment", {}))
-        )
+        errors.extend(self._validate_workflow_section(target_config.get("workflow", {})))
+        errors.extend(self._validate_environment_section(target_config.get("environment", {})))
 
         if "lnn" in target_config:
             warnings.extend(self._check_lnn_best_practices(target_config["lnn"]))
@@ -397,18 +393,18 @@ class YAMLConfigManager:
         elif key == "complexity" or key.endswith(".complexity"):
             if not isinstance(value, int) or value < 1:
                 raise ValueError(f"复杂度 'complexity' 必须是正整数，实际值: {value}")
-        
+
         # 验证设备类型
         elif key == "default_device":
             valid_devices = ["cpu", "cuda", "mps"]
             if not isinstance(value, str) or value not in valid_devices:
                 raise ValueError(f"设备类型必须是 {valid_devices} 之一，实际值: {value}")
-        
+
         # 验证环境名称
         elif key == "name" and section == "environment":
             if not isinstance(value, str) or value not in self.VALID_ENVIRONMENTS:
                 raise ValueError(f"环境名称必须是 {self.VALID_ENVIRONMENTS} 之一，实际值: {value}")
-        
+
         # 验证模型类型
         elif key == "type" and "models" in section:
             if not isinstance(value, str) or value not in self.VALID_MODEL_TYPES:
@@ -575,11 +571,7 @@ class YAMLConfigManager:
         """深度合并两个字典"""
         result = base.copy()
         for key, value in override.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -608,9 +600,7 @@ class YAMLConfigManager:
             device = lnn_config["default_device"]
             valid_devices = ["cpu", "cuda", "mps", "auto"]
             if device not in valid_devices:
-                errors.append(
-                    f"Invalid default_device: {device}. Must be one of {valid_devices}"
-                )
+                errors.append(f"Invalid default_device: {device}. Must be one of {valid_devices}")
 
         if "models" in lnn_config:
             models = lnn_config["models"]
@@ -619,16 +609,12 @@ class YAMLConfigManager:
             else:
                 for model_name, model_config in models.items():
                     if not isinstance(model_config, dict):
-                        errors.append(
-                            f"Model config for '{model_name}' must be a dictionary"
-                        )
+                        errors.append(f"Model config for '{model_name}' must be a dictionary")
                         continue
 
                     for key in self.REQUIRED_MODEL_KEYS:
                         if key not in model_config:
-                            errors.append(
-                                f"Missing required key '{key}' for model '{model_name}'"
-                            )
+                            errors.append(f"Missing required key '{key}' for model '{model_name}'")
 
                     if "type" in model_config:
                         model_type = model_config["type"].lower()
@@ -650,16 +636,12 @@ class YAMLConfigManager:
                 if "quick" in thresholds:
                     val = thresholds["quick"]
                     if not isinstance(val, (int, float)) or not (0 <= val <= 1):
-                        errors.append(
-                            "Threshold 'quick' must be a float between 0 and 1"
-                        )
+                        errors.append("Threshold 'quick' must be a float between 0 and 1")
 
                 if "hybrid" in thresholds:
                     val = thresholds["hybrid"]
                     if not isinstance(val, (int, float)) or not (0 <= val <= 1):
-                        errors.append(
-                            "Threshold 'hybrid' must be a float between 0 and 1"
-                        )
+                        errors.append("Threshold 'hybrid' must be a float between 0 and 1")
 
         return errors
 
@@ -686,9 +668,7 @@ class YAMLConfigManager:
         if "name" in env_config:
             name = env_config["name"]
             if name not in self.VALID_ENVIRONMENTS:
-                errors.append(
-                    f"Invalid environment name: {name}. Must be one of {self.VALID_ENVIRONMENTS}"
-                )
+                errors.append(f"Invalid environment name: {name}. Must be one of {self.VALID_ENVIRONMENTS}")
 
         return errors
 
@@ -716,9 +696,7 @@ class YAMLConfigManager:
             self._raw_config.setdefault("lnn", {})["enabled"] = True
             self._raw_config.setdefault("environment", {})["debug"] = False
             if "default_device" not in self._raw_config.get("lnn", {}):
-                self._raw_config["lnn"]["default_device"] = (
-                    "cuda" if HAS_TORCH and torch.cuda.is_available() else "cpu"
-                )
+                self._raw_config["lnn"]["default_device"] = "cuda" if HAS_TORCH and torch.cuda.is_available() else "cpu"
 
         elif env_name == "development":
             self._raw_config.setdefault("lnn", {})["enabled"] = True
@@ -796,18 +774,10 @@ class YAMLConfigManager:
 
         dataset_cache_data = self._raw_config.get("dataset_cache", {})
         dataset_cache_config = DatasetCacheConfig(
-            cache_directory=dataset_cache_data.get(
-                "cache_directory", "~/.lingjing/cache/datasets/"
-            ),
-            max_cache_size=dataset_cache_data.get(
-                "max_cache_size", 5 * 1024 * 1024 * 1024
-            ),
-            memory_cache_size=dataset_cache_data.get(
-                "memory_cache_size", 1024 * 1024 * 1024
-            ),
-            cache_eviction_policy=dataset_cache_data.get(
-                "cache_eviction_policy", "lru"
-            ),
+            cache_directory=dataset_cache_data.get("cache_directory", "~/.lingjing/cache/datasets/"),
+            max_cache_size=dataset_cache_data.get("max_cache_size", 5 * 1024 * 1024 * 1024),
+            memory_cache_size=dataset_cache_data.get("memory_cache_size", 1024 * 1024 * 1024),
+            cache_eviction_policy=dataset_cache_data.get("cache_eviction_policy", "lru"),
             enabled=dataset_cache_data.get("enabled", True),
         )
 

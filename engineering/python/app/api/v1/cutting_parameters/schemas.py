@@ -48,8 +48,7 @@ class TaskCreateRequest(BaseModel):
     input_features_path: str = Field(
         ...,
         description=(
-            "阶段 2 导出的 confirmed_features.json 路径。"
-            "切削参数推荐基于其中的 feature_id / feature_type 字段。"
+            "阶段 2 导出的 confirmed_features.json 路径。切削参数推荐基于其中的 feature_id / feature_type 字段。"
         ),
     )
     material_id: str = Field(
@@ -66,8 +65,7 @@ class TaskCreateRequest(BaseModel):
     mesh_calibrated: bool | None = Field(
         default=None,
         description=(
-            "上游 mesh 是否已做尺度归一化。"
-            "None 时通过 source_parametric_geometry_task_id 自动查询阶段 3 任务。"
+            "上游 mesh 是否已做尺度归一化。None 时通过 source_parametric_geometry_task_id 自动查询阶段 3 任务。"
         ),
     )
     machine_type: str = Field(

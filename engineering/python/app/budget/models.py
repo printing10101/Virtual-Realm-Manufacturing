@@ -5,6 +5,7 @@
 ``BudgetCheckResult`` / ``CostOptimizationSuggestion`` 等业务模型仍由
 ``app.models.budget`` 提供，本模块只补充执行器专属类型。
 """
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional

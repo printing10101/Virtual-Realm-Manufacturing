@@ -32,6 +32,7 @@
 - SafetyShield.filter 本身线程安全（内部有锁）
 - 策略缓存 _policy_cache 使用独立锁保护
 """
+
 from __future__ import annotations
 
 import logging
@@ -41,11 +42,15 @@ from typing import Any
 
 import numpy as np
 
-from app.contracts.task import Artifact, TaskContext, TaskHandler, TaskResult, TaskStatus
+try:
+    import torch
+except ImportError:  # pragma: no cover - 无 torch 时仅影响推理路径
+    torch = None  # type: ignore[assignment]
+
+from app.contracts.task import Artifact, TaskContext, TaskResult, TaskStatus
 from app.plugins.rl_agent.policy import PolicyConfig, PolicyNet
 from app.plugins.rl_agent.safety_shield import (
     SafetyConstraints,
-    SafetyFilterResult,
     SafetyShield,
 )
 from app.plugins.rl_agent.value import ValueConfig, ValueNet
@@ -210,9 +215,7 @@ class RLAgentPlugin:
             # 1. 解析输入
             current_state = self._load_artifact_data(ctx.inputs.get("current_state"))
             prev_action = self._load_artifact_data(ctx.inputs.get("prev_action"))
-            model_uri = ctx.config.get(
-                "model_uri", "model://rl_agent/1.0.0"
-            )
+            model_uri = ctx.config.get("model_uri", "model://rl_agent/1.0.0")
 
             if current_state is None:
                 return TaskResult(
@@ -227,16 +230,19 @@ class RLAgentPlugin:
 
             # 3. 策略前向 + 安全过滤
             with self._infer_lock:
-                policy_out = policy_net(current_state)
+                # numpy → Tensor 转换（PolicyNet/ValueNet 均为 torch 网络）
+                if isinstance(current_state, np.ndarray):
+                    state_tensor = torch.from_numpy(current_state).float()
+                else:
+                    state_tensor = current_state
+                policy_out = policy_net(state_tensor)
                 raw_action = self._extract_action(policy_out)
-                value_out = value_net(current_state)
+                value_out = value_net(state_tensor)
                 value_scalar = self._extract_value(value_out)
 
             # 解析 prev_action：优先使用输入，否则用内部缓存
             ref_action = prev_action if prev_action is not None else self._last_action
-            safe_action, safety_result = self._shield.filter(
-                raw_action, prev_action=ref_action
-            )
+            safe_action, safety_result = self._shield.filter(raw_action, prev_action=ref_action)
 
             # 更新内部缓存的最后一次合法动作
             with self._last_action_lock:
@@ -477,7 +483,7 @@ class RLAgentPlugin:
         # 从 URI 加载
         uri = artifact.uri
         if uri.startswith("file://"):
-            path = uri[len("file://"):]
+            path = uri[len("file://") :]
             try:
                 return np.load(path, allow_pickle=False)
             except (OSError, ValueError) as exc:

@@ -7,6 +7,7 @@
 - disabled：未启用
 - shadow：影子模式（不返回结果，只记录 diff）
 """
+
 from __future__ import annotations
 
 import hashlib

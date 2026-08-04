@@ -94,16 +94,12 @@ class ModelCache:
                 entry = self._cache.pop(model_name)
                 self._cache[model_name] = entry
                 logger.debug(
-                    f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
-                    f"operation=get status=CACHE_HIT"
+                    f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=get status=CACHE_HIT"
                 )
                 return entry["model"]
 
             self._cache_misses += 1
-            logger.debug(
-                f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
-                f"operation=get status=CACHE_MISS"
-            )
+            logger.debug(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=get status=CACHE_MISS")
             return None
 
     def put(self, model_name: str, model: Any, memory_size_bytes: int = 0) -> None:
@@ -158,8 +154,7 @@ class ModelCache:
             if model_name in self._cache:
                 del self._cache[model_name]
                 logger.info(
-                    f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
-                    f"operation=remove status=REMOVED"
+                    f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=remove status=REMOVED"
                 )
                 return True
             return False
@@ -173,9 +168,7 @@ class ModelCache:
         """
         with self._lock:
             count = len(self._cache)
-            total_memory = sum(
-                entry["memory_size_bytes"] for entry in self._cache.values()
-            )
+            total_memory = sum(entry["memory_size_bytes"] for entry in self._cache.values())
             self._cache.clear()
             logger.info(
                 f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] operation=clear "
@@ -199,11 +192,7 @@ class ModelCache:
             - model_details: Dict mapping model names to their metadata
         """
         with self._lock:
-            hit_rate = (
-                self._cache_hits / self._total_requests
-                if self._total_requests > 0
-                else 0.0
-            )
+            hit_rate = self._cache_hits / self._total_requests if self._total_requests > 0 else 0.0
 
             model_details = {}
             total_size = 0

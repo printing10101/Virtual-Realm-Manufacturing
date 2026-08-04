@@ -14,6 +14,7 @@ reproduce 策略：
     - 若不存在，抛出 NotImplementedError 并提示用户补充复现 spec
     - 复现 run 的 owner_id = "system:reproduce"
 """
+
 from __future__ import annotations
 
 import json
@@ -91,9 +92,7 @@ class SnapshotStore(ISnapshotStore):
             git_sha=git_info.git_sha,
             code_dirty=git_info.code_dirty,
             config_json=json.dumps(config, ensure_ascii=False, default=str),
-            dataset_versions_json=json.dumps(
-                list(dataset_versions), ensure_ascii=False
-            ),
+            dataset_versions_json=json.dumps(list(dataset_versions), ensure_ascii=False),
             model_uri=model_uri,
             metrics_json=json.dumps(metrics, ensure_ascii=False, default=float),
             environment_json=json.dumps(environment, ensure_ascii=False),
@@ -115,18 +114,14 @@ class SnapshotStore(ISnapshotStore):
     async def get(self, snapshot_id: str) -> ExperimentSnapshot:
         """按 ID 取快照，不存在抛 KeyError."""
         async with await self._get_session() as session:
-            stmt = select(ExperimentSnapshotORM).where(
-                ExperimentSnapshotORM.id == snapshot_id
-            )
+            stmt = select(ExperimentSnapshotORM).where(ExperimentSnapshotORM.id == snapshot_id)
             result = await session.execute(stmt)
             orm = result.scalar_one_or_none()
             if orm is None:
                 raise KeyError(f"snapshot 不存在: {snapshot_id}")
             return _orm_to_contract(orm)
 
-    async def list(
-        self, *, filters: Optional[dict[str, Any]] = None
-    ) -> list[ExperimentSnapshot]:
+    async def list(self, *, filters: Optional[dict[str, Any]] = None) -> list[ExperimentSnapshot]:
         """列出快照（按 created_at 降序）.
 
         支持的 filters：
@@ -135,22 +130,14 @@ class SnapshotStore(ISnapshotStore):
             - model_uri: str（精确匹配）
         """
         async with await self._get_session() as session:
-            stmt = select(ExperimentSnapshotORM).order_by(
-                ExperimentSnapshotORM.created_at.desc()
-            )
+            stmt = select(ExperimentSnapshotORM).order_by(ExperimentSnapshotORM.created_at.desc())
             if filters:
                 if "created_by" in filters:
-                    stmt = stmt.where(
-                        ExperimentSnapshotORM.created_by == filters["created_by"]
-                    )
+                    stmt = stmt.where(ExperimentSnapshotORM.created_by == filters["created_by"])
                 if "git_sha" in filters:
-                    stmt = stmt.where(
-                        ExperimentSnapshotORM.git_sha == filters["git_sha"]
-                    )
+                    stmt = stmt.where(ExperimentSnapshotORM.git_sha == filters["git_sha"])
                 if "model_uri" in filters:
-                    stmt = stmt.where(
-                        ExperimentSnapshotORM.model_uri == filters["model_uri"]
-                    )
+                    stmt = stmt.where(ExperimentSnapshotORM.model_uri == filters["model_uri"])
             result = await session.execute(stmt)
             orms = result.scalars().all()
             return [_orm_to_contract(o) for o in orms]
@@ -283,10 +270,7 @@ def _workflow_spec_from_dict(spec_dict: dict[str, Any]) -> WorkflowSpec:
         )
         for n in spec_dict.get("nodes", [])
     ]
-    edges = [
-        WorkflowEdge(upstream=e["upstream"], downstream=e["downstream"])
-        for e in spec_dict.get("edges", [])
-    ]
+    edges = [WorkflowEdge(upstream=e["upstream"], downstream=e["downstream"]) for e in spec_dict.get("edges", [])]
     # inputs 形如 {"name": {"uri": "...", "mime_type": "...", "metadata": {...}}}
     inputs: dict[str, Artifact] = {}
     for name, art_dict in spec_dict.get("inputs", {}).items():

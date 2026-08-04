@@ -161,9 +161,7 @@ class GeometricValidator:
             else self.DEFAULT_FAIL_ON_DIMENSION_DEVIATION
         )
         self.fail_on_feature_recall = (
-            fail_on_feature_recall
-            if fail_on_feature_recall is not None
-            else self.DEFAULT_FAIL_ON_FEATURE_RECALL
+            fail_on_feature_recall if fail_on_feature_recall is not None else self.DEFAULT_FAIL_ON_FEATURE_RECALL
         )
         self.fail_on_tolerance_compliance = (
             fail_on_tolerance_compliance
@@ -199,17 +197,12 @@ class GeometricValidator:
                     f"禁止使用 mock 数据降级（学术诚信要求）。"
                     f"如为测试用途，请显式传 allow_mock_fallback=True。"
                 )
-            warnings.append(
-                "使用 mock 重建模型进行验证（仅测试/演示用途，"
-                "结果不可信，禁止用于生产或学术论文）"
-            )
+            warnings.append("使用 mock 重建模型进行验证（仅测试/演示用途，结果不可信，禁止用于生产或学术论文）")
             reconstructed_model = self._mock_reconstructed_model(metadata)
 
         dim_checks = self.check_dimensions(reconstructed_model, metadata.dimensions)
 
-        feature_checks = self.check_feature_presence(
-            reconstructed_model, metadata.features
-        )
+        feature_checks = self.check_feature_presence(reconstructed_model, metadata.features)
 
         topo_checks = self._check_topology(reconstructed_model, metadata.topology)
 
@@ -285,19 +278,13 @@ class GeometricValidator:
         mean_dev = dim_accuracy.get("mean_absolute_deviation", 0)
         if mean_dev > self.fail_on_dimension_deviation:
             overall_pass = False
-            warnings.append(
-                f"尺寸偏差 {mean_dev}mm 超过阈值 {self.fail_on_dimension_deviation}mm"
-            )
+            warnings.append(f"尺寸偏差 {mean_dev}mm 超过阈值 {self.fail_on_dimension_deviation}mm")
         if f_recall < self.fail_on_feature_recall:
             overall_pass = False
-            warnings.append(
-                f"特征召回率 {f_recall} 低于阈值 {self.fail_on_feature_recall}"
-            )
+            warnings.append(f"特征召回率 {f_recall} 低于阈值 {self.fail_on_feature_recall}")
         if tol_compliance < self.fail_on_tolerance_compliance:
             overall_pass = False
-            warnings.append(
-                f"公差符合度 {tol_compliance}% 低于阈值 {self.fail_on_tolerance_compliance}%"
-            )
+            warnings.append(f"公差符合度 {tol_compliance}% 低于阈值 {self.fail_on_tolerance_compliance}%")
 
         elapsed = time.perf_counter() - start_time
 
@@ -324,19 +311,9 @@ class GeometricValidator:
         measured_dims = model.get("dimensions", {})
         for spec in dimension_specs:
             name = spec.name if hasattr(spec, "name") else spec.get("name", "")
-            nominal = (
-                spec.nominal if hasattr(spec, "nominal") else spec.get("nominal", 0.0)
-            )
-            tol_u = (
-                spec.tolerance_upper
-                if hasattr(spec, "tolerance_upper")
-                else spec.get("tolerance_upper", 0.0)
-            )
-            tol_l = (
-                spec.tolerance_lower
-                if hasattr(spec, "tolerance_lower")
-                else spec.get("tolerance_lower", 0.0)
-            )
+            nominal = spec.nominal if hasattr(spec, "nominal") else spec.get("nominal", 0.0)
+            tol_u = spec.tolerance_upper if hasattr(spec, "tolerance_upper") else spec.get("tolerance_upper", 0.0)
+            tol_l = spec.tolerance_lower if hasattr(spec, "tolerance_lower") else spec.get("tolerance_lower", 0.0)
             measured = measured_dims.get(name, nominal)
             deviation = measured - nominal
             within = tol_l <= deviation <= tol_u
@@ -365,11 +342,7 @@ class GeometricValidator:
         detected_features = model.get("features", {})
         for ft_def in feature_defs:
             name = ft_def.name if hasattr(ft_def, "name") else ft_def.get("name", "")
-            ft_type = (
-                ft_def.feature_type
-                if hasattr(ft_def, "feature_type")
-                else ft_def.get("feature_type", "")
-            )
+            ft_type = ft_def.feature_type if hasattr(ft_def, "feature_type") else ft_def.get("feature_type", "")
             detected = name in detected_features
             conf = (
                 detected_features.get(name, {}).get("confidence", 0.0)
@@ -420,27 +393,11 @@ class GeometricValidator:
         results = []
         detected_edges = model.get("topology", [])
         for gt_edge in gt_topology:
-            a = (
-                gt_edge.feature_a
-                if hasattr(gt_edge, "feature_a")
-                else gt_edge.get("feature_a", "")
-            )
-            b = (
-                gt_edge.feature_b
-                if hasattr(gt_edge, "feature_b")
-                else gt_edge.get("feature_b", "")
-            )
-            rel = (
-                gt_edge.relation
-                if hasattr(gt_edge, "relation")
-                else gt_edge.get("relation", "")
-            )
+            a = gt_edge.feature_a if hasattr(gt_edge, "feature_a") else gt_edge.get("feature_a", "")
+            b = gt_edge.feature_b if hasattr(gt_edge, "feature_b") else gt_edge.get("feature_b", "")
+            rel = gt_edge.relation if hasattr(gt_edge, "relation") else gt_edge.get("relation", "")
             matched = any(
-                (
-                    de.get("feature_a") == a
-                    and de.get("feature_b") == b
-                    and de.get("relation") == rel
-                )
+                (de.get("feature_a") == a and de.get("feature_b") == b and de.get("relation") == rel)
                 or (de.get("from") == a and de.get("to") == b and de.get("type") == rel)
                 for de in detected_edges
             )
@@ -520,11 +477,7 @@ class GeometricValidator:
         overall_class = " pass" if report.overall_pass else ""
 
         recall_color = "#4caf50" if m.feature_recall >= 0.90 else "#f44336"
-        dim_color = (
-            "#4caf50"
-            if m.dimension_accuracy.get("mean_absolute_deviation", 0) <= 0.1
-            else "#f44336"
-        )
+        dim_color = "#4caf50" if m.dimension_accuracy.get("mean_absolute_deviation", 0) <= 0.1 else "#f44336"
         tol_color = "#4caf50" if m.tolerance_compliance >= 95.0 else "#f44336"
 
         warnings_html = ""
@@ -534,10 +487,10 @@ class GeometricValidator:
 
         # 修复 [XSS]：对 part_name、part_id 等报告头字段做 HTML 转义，
         # 同时对 IoU 表的字典键（特征名）做转义以避免通过文件名注入脚本。
-        iou_rows_html = "".join(
-            f"<tr><td>{_h(k)}</td><td>{round(float(v), 4):.4f}</td></tr>"
-            for k, v in m.feature_iou.items()
-        ) or '<tr><td colspan="2">无数据</td></tr>'
+        iou_rows_html = (
+            "".join(f"<tr><td>{_h(k)}</td><td>{round(float(v), 4):.4f}</td></tr>" for k, v in m.feature_iou.items())
+            or '<tr><td colspan="2">无数据</td></tr>'
+        )
 
         return _VALIDATION_REPORT_TEMPLATE.format(
             css_content=_VALIDATION_REPORT_CSS,

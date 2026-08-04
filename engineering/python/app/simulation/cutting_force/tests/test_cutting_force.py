@@ -43,6 +43,7 @@ from app.simulation.cutting_force.trainer import (
 # Kienzle 模块测试
 # ============================================================
 
+
 class TestKienzleCoefficients:
     """测试 Kienzle 系数获取。"""
 
@@ -175,6 +176,7 @@ class TestSpecificCuttingForce:
 # PINN 模型测试
 # ============================================================
 
+
 class TestResidualBlock:
     """测试残差块。"""
 
@@ -272,6 +274,7 @@ class TestPINNLoss:
 # 训练器测试
 # ============================================================
 
+
 class TestSyntheticDataset:
     """测试合成数据集。"""
 
@@ -314,9 +317,7 @@ class TestCuttingForceTrainer:
     def test_short_training(self):
         """短训练应能完成且 loss 下降。"""
         model = CuttingForcePINN()
-        trainer = CuttingForceTrainer(
-            model=model, epochs=3, batch_size=32, device="cpu"
-        )
+        trainer = CuttingForceTrainer(model=model, epochs=3, batch_size=32, device="cpu")
         train_ds = SyntheticCuttingForceDataset(num_samples=100)
         val_ds = SyntheticCuttingForceDataset(num_samples=50, seed=99)
         history = trainer.train(train_ds, val_ds)
@@ -331,6 +332,7 @@ class TestCuttingForceTrainer:
 # ============================================================
 # 推理接口测试
 # ============================================================
+
 
 class TestPredictor:
     """测试推理接口。"""

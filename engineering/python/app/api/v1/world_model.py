@@ -19,6 +19,7 @@
     - 预测端点为同步执行（horizon ≤ 100，单次 < 2s）
     - 服务层异常通过 ``_handle_service_exception`` 统一映射为 API 错误响应
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,8 +46,6 @@ logger = logging.getLogger(__name__)
 # 骨架修复（2026-08-03 任务B）：原文件缺失 router/logger/域符号导入。
 # 补齐骨架但保持未接入（main/router_registry 未引用本文件）。
 router = APIRouter(prefix="/api/v1/world-model", tags=["World Model"])
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -152,12 +151,8 @@ def _handle_service_exception(e: Exception, *, action: str):
 
 @router.get("/versions")
 async def list_versions(
-    active_only: bool = Query(
-        False, description="为 true 时仅返回当前激活版本"
-    ),
-    limit: int = Query(
-        50, ge=1, le=500, description="每页数量（1-500，默认 50）"
-    ),
+    active_only: bool = Query(False, description="为 true 时仅返回当前激活版本"),
+    limit: int = Query(50, ge=1, le=500, description="每页数量（1-500，默认 50）"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):
     """分页列出世界模型版本.
@@ -261,8 +256,7 @@ async def predict(request: WorldModelPredictRequest):
     return success(
         data=payload,
         message=(
-            f"世界模型预测完成: horizon={request.horizon}，"
-            f"轨迹步数={len(payload.get('predicted_trajectory', []))}"
+            f"世界模型预测完成: horizon={request.horizon}，轨迹步数={len(payload.get('predicted_trajectory', []))}"
         ),
     )
 

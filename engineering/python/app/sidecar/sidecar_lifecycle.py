@@ -34,9 +34,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
         if self._checker_task is not None:
             return
         self._checker_task = asyncio.create_task(self._idle_check_loop())
-        logger.info(
-            f"Idle checker started (interval={self._check_interval}s, timeout={self.idle_timeout}s)"
-        )
+        logger.info(f"Idle checker started (interval={self._check_interval}s, timeout={self.idle_timeout}s)")
 
     async def _idle_check_loop(self):
         while not self._shutdown_initiated:
@@ -55,12 +53,14 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
         # /api/health 和 /api/health/ping。K8s 探针每 10-30s 访问探针端点，
         # 被误计为"用户活动"导致空闲关停永不触发。此处覆盖所有探针路径，
         # 确保仅真实业务请求才重置空闲计时器。
-        _HEALTH_PROBE_PATHS = frozenset({
-            "/health",
-            "/api/health",
-            "/api/health/ping",
-            "/api/v1/health/quick",
-        })
+        _HEALTH_PROBE_PATHS = frozenset(
+            {
+                "/health",
+                "/api/health",
+                "/api/health/ping",
+                "/api/v1/health/quick",
+            }
+        )
         if request.url.path not in _HEALTH_PROBE_PATHS:
             self.last_activity_time = time.time()
         else:
@@ -86,10 +86,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
 
         if idle_duration >= self.idle_timeout:
             self._shutdown_initiated = True
-            logger.warning(
-                f"Idle timeout reached ({self.idle_timeout}s). "
-                f"Initiating auto shutdown..."
-            )
+            logger.warning(f"Idle timeout reached ({self.idle_timeout}s). Initiating auto shutdown...")
             self._cleanup_resources()
             self._remove_state_file()
             self._trigger_shutdown()
@@ -169,8 +166,7 @@ class GracefulShutdownHandler:
             signal.signal(signal.SIGINT, self._handle_shutdown_signal)
         except (ValueError, OSError) as e:
             logger.warning(
-                "Signal handlers not registered (non-main thread or "
-                "unsupported platform): %s",
+                "Signal handlers not registered (non-main thread or unsupported platform): %s",
                 e,
             )
 
@@ -215,6 +211,7 @@ class GracefulShutdownHandler:
         # Windows 文件句柄锁定、SQLite WAL 未 checkpoint 等问题。
         try:
             from app.main import shutdown_event
+
             await shutdown_event()
             logger.info("FastAPI shutdown_event completed")
         except Exception as e:

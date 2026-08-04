@@ -31,7 +31,7 @@ import inspect
 import logging
 from typing import Any, Callable, Optional, TypeVar
 
-from app.core.response import success, error, ErrorCode
+from app.core.response import error, ErrorCode
 from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
@@ -71,18 +71,14 @@ def safe_endpoint(
                 except _reraise:
                     raise
                 except ValueError as e:
-                    safe = safe_error_message(
-                        e, context=context or func.__qualname__, fallback="参数错误"
-                    )
+                    safe = safe_error_message(e, context=context or func.__qualname__, fallback="参数错误")
                     return error(
                         ErrorCode.INVALID_REQUEST,
                         message=safe["message"],
                         detail={"error_id": safe["error_id"]},
                     )
                 except Exception as e:
-                    safe = safe_error_message(
-                        e, context=context or func.__qualname__, fallback=fallback
-                    )
+                    safe = safe_error_message(e, context=context or func.__qualname__, fallback=fallback)
                     return error(
                         ErrorCode.INTERNAL_ERROR,
                         message=safe["message"],
@@ -98,18 +94,14 @@ def safe_endpoint(
             except _reraise:
                 raise
             except ValueError as e:
-                safe = safe_error_message(
-                    e, context=context or func.__qualname__, fallback="参数错误"
-                )
+                safe = safe_error_message(e, context=context or func.__qualname__, fallback="参数错误")
                 return error(
                     ErrorCode.INVALID_REQUEST,
                     message=safe["message"],
                     detail={"error_id": safe["error_id"]},
                 )
             except Exception as e:
-                safe = safe_error_message(
-                    e, context=context or func.__qualname__, fallback=fallback
-                )
+                safe = safe_error_message(e, context=context or func.__qualname__, fallback=fallback)
                 return error(
                     ErrorCode.INTERNAL_ERROR,
                     message=safe["message"],

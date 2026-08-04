@@ -27,6 +27,7 @@ legacy 插件实例包装为 ``app/contracts/plugin.py`` 定义的契约接口�
 
 契约稳定性：本适配器属于"实现层"，不进入契约目录，可随 legacy 演进调整。
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,10 +36,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from app.contracts.plugin import (
-    BUILTIN_CAPABILITIES,
     BUILTIN_EXTENSION_POINTS,
-    Capability,
-    ExtensionPointContribution,
     IPlugin,
     PluginContext,
     PluginManifest,
@@ -114,9 +112,7 @@ class ExtensionPointNameMapper:
         BUILTIN_EXTENSION_POINTS.CHAT_COMMAND: "chat_command",
     }
 
-    _FRONTEND_TO_BACKEND: Dict[str, str] = {
-        v: k for k, v in _BACKEND_TO_FRONTEND.items()
-    }
+    _FRONTEND_TO_BACKEND: Dict[str, str] = {v: k for k, v in _BACKEND_TO_FRONTEND.items()}
 
     @classmethod
     def to_frontend_name(cls, backend: str) -> str:
@@ -144,9 +140,7 @@ class ExtensionPointNameMapper:
 # ---------------------------------------------------------------------------
 
 
-def _legacy_entrypoint_to_contract(
-    plugin_id: str, legacy_entry: str
-) -> str:
+def _legacy_entrypoint_to_contract(plugin_id: str, legacy_entry: str) -> str:
     """把 legacy entry_point（文件名 "main.py"）转换为契约 entrypoint（"module:Class"）.
 
     legacy 用文件路径 + importlib.util.spec_from_file_location 加载，
@@ -181,7 +175,8 @@ def adapt_metadata_to_manifest(metadata: PluginMetadata) -> PluginManifest:
         dropped = set(metadata.capabilities) - set(required_caps)
         logger.warning(
             "Plugin '%s' 声明了非内置能力，已过滤: %s",
-            metadata.id, sorted(dropped),
+            metadata.id,
+            sorted(dropped),
         )
 
     return PluginManifest(
@@ -296,7 +291,9 @@ class LegacyPluginInstanceAdapter(IPlugin):
                     # 卸载时单个钩子失败不应阻塞后续清理
                     logger.warning(
                         "Legacy on_disable failed for '%s': %s",
-                        self._metadata.id, e, exc_info=True,
+                        self._metadata.id,
+                        e,
+                        exc_info=True,
                     )
 
             if hasattr(self._legacy, "shutdown"):
@@ -305,7 +302,9 @@ class LegacyPluginInstanceAdapter(IPlugin):
                 except (RuntimeError, OSError, ValueError) as e:
                     logger.warning(
                         "Legacy shutdown failed for '%s': %s",
-                        self._metadata.id, e, exc_info=True,
+                        self._metadata.id,
+                        e,
+                        exc_info=True,
                     )
 
             self._loaded = False
@@ -324,7 +323,9 @@ class LegacyPluginInstanceAdapter(IPlugin):
             except (RuntimeError, OSError, ValueError) as e:
                 logger.warning(
                     "Legacy health_check failed for '%s': %s",
-                    self._metadata.id, e, exc_info=True,
+                    self._metadata.id,
+                    e,
+                    exc_info=True,
                 )
 
         return {
@@ -365,9 +366,7 @@ class PluginContextFactory:
     task_registry: Any = None
     dataset_store: Any = None
     observability: Any = None
-    logger_factory: Callable[[str], Any] = field(
-        default=lambda pid: logging.getLogger(f"plugin.{pid}")
-    )
+    logger_factory: Callable[[str], Any] = field(default=lambda pid: logging.getLogger(f"plugin.{pid}"))
     data_dir_root: str = ""
 
     def build(
@@ -577,15 +576,16 @@ class PluginLifecycleManagerAdapter:
                 if loop.is_running():
                     # 在运行中的事件循环里不能 sync 调用 async，回退到 legacy shutdown
                     logger.warning(
-                        "Cannot await async on_unload in running loop for '%s', "
-                        "falling back to legacy shutdown only",
+                        "Cannot await async on_unload in running loop for '%s', falling back to legacy shutdown only",
                         plugin_id,
                     )
                 else:
                     loop.run_until_complete(adapter.on_unload())
             except (RuntimeError, OSError) as e:
                 logger.warning(
-                    "Async on_unload failed during uninstall: %s", e, exc_info=True,
+                    "Async on_unload failed during uninstall: %s",
+                    e,
+                    exc_info=True,
                 )
 
         self._mgr.uninstall_plugin(plugin_id)

@@ -11,6 +11,7 @@
     6. 资源引用与同步记录通过 project_id 外键关联主表，ondelete CASCADE
     7. (project_id, resource_uri) 复合唯一约束，确保同一项目内资源 URI 不重复
 """
+
 from __future__ import annotations
 
 import uuid
@@ -18,7 +19,6 @@ import uuid
 from sqlalchemy import (
     Column,
     String,
-    Integer,
     DateTime,
     ForeignKey,
     UniqueConstraint,
@@ -159,14 +159,10 @@ class ProjectRepo(Base):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
         if include_refs:
-            data["resource_refs"] = [
-                ref.to_dict() for ref in (self.resource_refs or [])
-            ]
+            data["resource_refs"] = [ref.to_dict() for ref in (self.resource_refs or [])]
             data["resource_count"] = len(self.resource_refs or [])
         if include_records:
-            data["sync_records"] = [
-                rec.to_dict() for rec in (self.sync_records or [])
-            ]
+            data["sync_records"] = [rec.to_dict() for rec in (self.sync_records or [])]
         return data
 
 

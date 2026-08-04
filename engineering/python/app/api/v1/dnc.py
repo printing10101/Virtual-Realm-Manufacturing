@@ -13,13 +13,12 @@ Example::
     app.include_router(router)
 """
 
-
 import asyncio
 import logging
 from typing import Optional
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
@@ -27,7 +26,6 @@ from app.auth.permissions import require_permission
 from app.dnc.dnc_manager import dnc_manager, ProtocolType
 from app.dnc.unified_adapter import (
     UnifiedDNCAdapter,
-    UnifiedMachineStatus,
     discover_machines,
 )
 from app.core.response import success, error, ErrorCode
@@ -46,6 +44,7 @@ router = APIRouter(
 
 # ── 请求/响应模型 ──────────────────────────────────────────────
 
+
 class MachineConnectRequest(BaseModel):
     """机床连接请求模型。
 
@@ -57,6 +56,7 @@ class MachineConnectRequest(BaseModel):
         password: 认证密码（可选）
         device_name: MTConnect 设备名称（可选，默认 Device）
     """
+
     machine_id: str = Field(..., description="机床唯一标识", examples=["CNC-001"])
     protocol: ProtocolType = Field(..., description="通信协议", examples=["opcua"])
     endpoint: str = Field(..., description="连接端点", examples=["opc.tcp://192.168.1.100:4840"])
@@ -73,12 +73,14 @@ class NCSendRequest(BaseModel):
         program_path: 本地 NC 程序文件路径
         program_name: 机床端存储的程序名（可选，默认使用文件名）
     """
+
     machine_id: str = Field(..., description="目标机床 ID", examples=["CNC-001"])
     program_path: str = Field(..., description="本地 NC 程序文件路径", examples=["/path/to/program.nc"])
     program_name: Optional[str] = Field(None, description="机床端存储的程序名（默认使用文件名）")
 
 
 # ── API 路由 ──────────────────────────────────────────────────
+
 
 @router.post("/machines", summary="添加机床连接")
 async def connect_machine(req: MachineConnectRequest):
@@ -147,11 +149,7 @@ async def send_nc_program(req: NCSendRequest):
     program_name = req.program_name or program_path.stem
     ok = await dnc_manager.send_nc_program(req.machine_id, str(program_path), program_name)
     if ok:
-        return success(data={
-            "machine_id": req.machine_id,
-            "program_name": program_name,
-            "status": "sent"
-        })
+        return success(data={"machine_id": req.machine_id, "program_name": program_name, "status": "sent"})
     return error(code=ErrorCode.INTERNAL_ERROR, message="NC 程序发送失败")
 
 
@@ -193,6 +191,7 @@ def _get_unified_adapters_lock() -> asyncio.Lock:
 
 class AutoConnectRequest(BaseModel):
     """自动探测连接请求。"""
+
     machine_id: str = Field(..., description="机床唯一标识")
     endpoints: list[str] = Field(
         ...,
@@ -206,6 +205,7 @@ class AutoConnectRequest(BaseModel):
 
 class DiscoverRequest(BaseModel):
     """资产发现请求。"""
+
     subnet: str = Field("192.168.1", description="子网前缀")
     timeout: float = Field(0.3, gt=0, le=2, description="单端口扫描超时")
 
@@ -231,12 +231,14 @@ async def unified_auto_connect(req: AutoConnectRequest):
     # [A-H2] 加锁保护并发写入，避免多请求同时注册导致字典状态不一致
     async with _get_unified_adapters_lock():
         _unified_adapters[req.machine_id] = adapter
-    return success(data={
-        "machine_id": req.machine_id,
-        "primary_protocol": result["primary_protocol"],
-        "fallback_protocol": result["fallback_protocol"],
-        "connected": adapter.is_connected(),
-    })
+    return success(
+        data={
+            "machine_id": req.machine_id,
+            "primary_protocol": result["primary_protocol"],
+            "fallback_protocol": result["fallback_protocol"],
+            "connected": adapter.is_connected(),
+        }
+    )
 
 
 @router.get("/unified/{machine_id}/status", summary="获取统一状态")
@@ -262,11 +264,13 @@ async def discover_network_machines(req: DiscoverRequest):
         subnet=req.subnet,
         timeout=req.timeout,
     )
-    return success(data={
-        "subnet": req.subnet,
-        "count": len(discovered),
-        "machines": discovered,
-    })
+    return success(
+        data={
+            "subnet": req.subnet,
+            "count": len(discovered),
+            "machines": discovered,
+        }
+    )
 
 
 @router.get("/unified/{machine_id}/info", summary="获取适配器运行信息")
@@ -281,12 +285,14 @@ async def get_adapter_info(machine_id: str):
             status_code=404,
             detail="机床未注册",
         )
-    return success(data={
-        "machine_id": machine_id,
-        "active_protocol": adapter.active_protocol,
-        "connected": adapter.is_connected(),
-        "failover_count": adapter.failover_count,
-    })
+    return success(
+        data={
+            "machine_id": machine_id,
+            "active_protocol": adapter.active_protocol,
+            "connected": adapter.is_connected(),
+            "failover_count": adapter.failover_count,
+        }
+    )
 
 
 @router.delete("/unified/{machine_id}", summary="断开统一适配器")

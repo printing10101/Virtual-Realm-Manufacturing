@@ -33,9 +33,7 @@ GSTACK_DIR = ".gstack"
 
 @dataclass
 class LogEntry:
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     type: LogBufferType = "system_event"
     level: str = "INFO"
     source: str = ""
@@ -93,6 +91,7 @@ class RingBuffer:
                 return list(self._buffer)
             # 使用 itertools.islice 高效获取最后 N 条
             from itertools import islice
+
             start = buffer_len - n
             return list(islice(self._buffer, start, buffer_len))
 
@@ -140,9 +139,7 @@ class RingLogBuffer:
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._flush_interval = flush_interval
 
-        self._buffers: dict[LogBufferType, RingBuffer] = {
-            t: RingBuffer(capacity=capacity) for t in BUFFER_TYPES
-        }
+        self._buffers: dict[LogBufferType, RingBuffer] = {t: RingBuffer(capacity=capacity) for t in BUFFER_TYPES}
 
         self._flush_task: asyncio.Task | None = None
         self._running = False
@@ -161,9 +158,7 @@ class RingLogBuffer:
         data: dict[str, Any] | None = None,
     ) -> None:
         if buffer_type not in self._buffers:
-            logger.warning(
-                "Unknown buffer type: %s, falling back to system_event", buffer_type
-            )
+            logger.warning("Unknown buffer type: %s, falling back to system_event", buffer_type)
             buffer_type = "system_event"
         entry = LogEntry(
             type=buffer_type,

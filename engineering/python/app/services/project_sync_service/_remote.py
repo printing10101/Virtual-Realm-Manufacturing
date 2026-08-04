@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 1505-1769 迁移而来。
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,19 +46,11 @@ class _RemoteMixin:
         self._require_git()
         lock = self._get_project_lock(project_id)
         with lock:
-            repo_path, branch, remote_url = await self._load_project_for_push_pull(
-                project_id, op="push"
-            )
-            push_status, push_message, push_details = self._execute_git_push(
-                repo_path, branch, remote_url
-            )
-            await self._persist_push_result(
-                project_id, push_status, push_message, push_details
-            )
+            repo_path, branch, remote_url = await self._load_project_for_push_pull(project_id, op="push")
+            push_status, push_message, push_details = self._execute_git_push(repo_path, branch, remote_url)
+            await self._persist_push_result(project_id, push_status, push_message, push_details)
             if push_status != "success":
-                raise GitOperationError(
-                    ["push", "origin", branch], -1, push_message
-                )
+                raise GitOperationError(["push", "origin", branch], -1, push_message)
 
         logger.info("Pushed project %s to %s", project_id, remote_url)
         return {
@@ -67,9 +60,7 @@ class _RemoteMixin:
             "branch": branch,
         }
 
-    async def _load_project_for_push_pull(
-        self, project_id: str, *, op: str
-    ) -> tuple[str, str, str]:
+    async def _load_project_for_push_pull(self, project_id: str, *, op: str) -> tuple[str, str, str]:
         """加载 project 并校验仓库目录 + remote_url（push/pull 通用）.
 
         Args:
@@ -84,9 +75,7 @@ class _RemoteMixin:
             InvalidProjectStateError: 未配置 remote_url
         """
         async with await self._get_session() as session:
-            stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(stmt)).scalar_one_or_none()
             if project_orm is None:
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")
@@ -95,18 +84,12 @@ class _RemoteMixin:
             remote_url = project_orm.remote_url or ""
 
         if not os.path.isdir(repo_path):
-            raise ProjectNotFoundError(
-                f"项目仓库目录不存在: {repo_path}"
-            )
+            raise ProjectNotFoundError(f"项目仓库目录不存在: {repo_path}")
         if not remote_url:
-            raise InvalidProjectStateError(
-                f"项目未配置远端仓库 URL，无法 {op}: {project_id}"
-            )
+            raise InvalidProjectStateError(f"项目未配置远端仓库 URL，无法 {op}: {project_id}")
         return repo_path, branch, remote_url
 
-    def _execute_git_push(
-        self, repo_path: str, branch: str, remote_url: str
-    ) -> tuple[str, str, dict[str, Any]]:
+    def _execute_git_push(self, repo_path: str, branch: str, remote_url: str) -> tuple[str, str, dict[str, Any]]:
         """执行 git push，捕获异常并返回 (status, message, details).
 
         Returns:
@@ -145,9 +128,7 @@ class _RemoteMixin:
         一次 commit。
         """
         async with await self._get_session() as session:
-            p_stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(p_stmt)).scalar_one()
             if push_status == "success":
                 project_orm.status = SYNC_STATUS.CLEAN
@@ -177,15 +158,9 @@ class _RemoteMixin:
         self._require_git()
         lock = self._get_project_lock(project_id)
         with lock:
-            repo_path, branch, remote_url = await self._load_project_for_push_pull(
-                project_id, op="pull"
-            )
-            pull_status, pull_message, pull_details = self._execute_git_pull(
-                repo_path, branch, remote_url
-            )
-            new_status, new_commit = self._derive_pull_status(
-                repo_path, pull_status
-            )
+            repo_path, branch, remote_url = await self._load_project_for_push_pull(project_id, op="pull")
+            pull_status, pull_message, pull_details = self._execute_git_pull(repo_path, branch, remote_url)
+            new_status, new_commit = self._derive_pull_status(repo_path, pull_status)
             await self._persist_pull_result(
                 project_id,
                 pull_status,
@@ -195,9 +170,7 @@ class _RemoteMixin:
                 new_commit,
             )
             if pull_status != "success":
-                raise GitOperationError(
-                    ["pull", "origin", branch], -1, pull_message
-                )
+                raise GitOperationError(["pull", "origin", branch], -1, pull_message)
 
         logger.info("Pulled project %s from %s", project_id, remote_url)
         return {
@@ -207,9 +180,7 @@ class _RemoteMixin:
             "branch": branch,
         }
 
-    def _execute_git_pull(
-        self, repo_path: str, branch: str, remote_url: str
-    ) -> tuple[str, str, dict[str, Any]]:
+    def _execute_git_pull(self, repo_path: str, branch: str, remote_url: str) -> tuple[str, str, dict[str, Any]]:
         """执行 git pull，捕获异常并返回 (status, message, details).
 
         与 push 的差异：pull 可能产生 conflict 状态。
@@ -242,9 +213,7 @@ class _RemoteMixin:
             pull_details["returncode"] = e.returncode
         return pull_status, pull_message, pull_details
 
-    def _derive_pull_status(
-        self, repo_path: str, pull_status: str
-    ) -> tuple[str, str]:
+    def _derive_pull_status(self, repo_path: str, pull_status: str) -> tuple[str, str]:
         """根据 pull 结果 + git status 推导新状态 + 新 HEAD sha.
 
         Returns:
@@ -280,9 +249,7 @@ class _RemoteMixin:
         session 内一次 commit。
         """
         async with await self._get_session() as session:
-            p_stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(p_stmt)).scalar_one()
             if new_commit:
                 project_orm.current_commit = new_commit

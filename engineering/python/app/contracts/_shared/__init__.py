@@ -10,6 +10,7 @@
 
 与 ``app.core.response_models`` 的关系见 ``base_schemas`` 模块文档。
 """
+
 from app.contracts._shared.base_schemas import (
     ErrorResponse,
     HealthResponse,

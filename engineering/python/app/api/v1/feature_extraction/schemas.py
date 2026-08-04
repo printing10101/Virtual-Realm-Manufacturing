@@ -28,8 +28,7 @@ class TaskCreateFromPathRequest(BaseModel):
     mesh_path: str = Field(
         ...,
         description=(
-            "输入 mesh 文件路径（PLY/STL/GLB/OBJ）。"
-            "通常为 image_to_3d 任务的输出 mesh，或用户外部上传的 mesh。"
+            "输入 mesh 文件路径（PLY/STL/GLB/OBJ）。通常为 image_to_3d 任务的输出 mesh，或用户外部上传的 mesh。"
         ),
     )
     source_reconstruction_task_id: str = Field(
@@ -109,8 +108,7 @@ class ReviewRequest(BaseModel):
     action: str = Field(
         ...,
         description=(
-            "审核动作：confirmed（确认无误）/ rejected（误识别，丢弃）/ "
-            "edited（参数需修正，需同时提供 edited_params）"
+            "审核动作：confirmed（确认无误）/ rejected（误识别，丢弃）/ edited（参数需修正，需同时提供 edited_params）"
         ),
     )
     edited_params: dict[str, Any] | None = Field(

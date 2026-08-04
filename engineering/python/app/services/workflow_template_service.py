@@ -22,6 +22,7 @@
     - 不使用 listings.json 文件模式（与 skill_marketplace 不同），因为
       工作流模板的 spec 较大且需要多版本管理，关系型存储更合适
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,7 +35,6 @@ from sqlalchemy.exc import IntegrityError
 
 from app.contracts.workflow_template import (
     TEMPLATE_CATEGORIES,
-    TemplateMarketStats,
     WorkflowTemplateManifest,
 )
 from app.database.models.workflow_template import (
@@ -121,9 +121,7 @@ class WorkflowTemplateService(BaseSingletonService):
         """
         async with await self._get_session() as session:
             # 查询主表是否已存在该 template_id
-            stmt = select(TemplateORM).where(
-                TemplateORM.template_id == manifest.id
-            )
+            stmt = select(TemplateORM).where(TemplateORM.template_id == manifest.id)
             result = await session.execute(stmt)
             existing = result.scalar_one_or_none()
 
@@ -154,9 +152,7 @@ class WorkflowTemplateService(BaseSingletonService):
                     await session.commit()
                 except IntegrityError as e:
                     await session.rollback()
-                    raise TemplateAlreadyExistsError(
-                        f"模板 ID 已存在: {manifest.id}"
-                    ) from e
+                    raise TemplateAlreadyExistsError(f"模板 ID 已存在: {manifest.id}") from e
 
                 # 创建版本记录
                 version_orm = TemplateVersionORM(
@@ -179,9 +175,7 @@ class WorkflowTemplateService(BaseSingletonService):
                     # 主表已创建但版本失败，删除主表以保持一致
                     await session.delete(template_orm)
                     await session.commit()
-                    raise VersionAlreadyExistsError(
-                        f"版本已存在: {manifest.id}@{manifest.version}"
-                    ) from e
+                    raise VersionAlreadyExistsError(f"版本已存在: {manifest.id}@{manifest.version}") from e
 
                 logger.info(
                     "Published new workflow template: %s@%s",
@@ -197,9 +191,7 @@ class WorkflowTemplateService(BaseSingletonService):
             else:
                 # 已存在：发布新版本
                 if existing.status == "banned":
-                    raise InvalidVersionError(
-                        f"模板已被封禁，无法发布新版本: {manifest.id}"
-                    )
+                    raise InvalidVersionError(f"模板已被封禁，无法发布新版本: {manifest.id}")
 
                 # 检查版本号是否已存在
                 v_stmt = select(TemplateVersionORM).where(
@@ -208,15 +200,11 @@ class WorkflowTemplateService(BaseSingletonService):
                 )
                 v_result = await session.execute(v_stmt)
                 if v_result.scalar_one_or_none() is not None:
-                    raise VersionAlreadyExistsError(
-                        f"版本已存在: {manifest.id}@{manifest.version}"
-                    )
+                    raise VersionAlreadyExistsError(f"版本已存在: {manifest.id}@{manifest.version}")
 
                 # 检查版本号是否递增（简化：只校验 != latest_version，不强制 semver 比较）
                 if manifest.version == existing.latest_version:
-                    raise InvalidVersionError(
-                        f"新版本号不能等于当前最新版本: {manifest.version}"
-                    )
+                    raise InvalidVersionError(f"新版本号不能等于当前最新版本: {manifest.version}")
 
                 # 创建新版本记录
                 version_orm = TemplateVersionORM(
@@ -247,9 +235,7 @@ class WorkflowTemplateService(BaseSingletonService):
                     await session.commit()
                 except IntegrityError as e:
                     await session.rollback()
-                    raise VersionAlreadyExistsError(
-                        f"版本已存在: {manifest.id}@{manifest.version}"
-                    ) from e
+                    raise VersionAlreadyExistsError(f"版本已存在: {manifest.id}@{manifest.version}") from e
 
                 logger.info(
                     "Published new version: %s@%s",
@@ -299,9 +285,7 @@ class WorkflowTemplateService(BaseSingletonService):
 
         async with await self._get_session() as session:
             stmt = select(TemplateORM).where(TemplateORM.status == "active")
-            count_stmt = select(func.count()).select_from(TemplateORM).where(
-                TemplateORM.status == "active"
-            )
+            count_stmt = select(func.count()).select_from(TemplateORM).where(TemplateORM.status == "active")
 
             if category:
                 if category not in TEMPLATE_CATEGORIES.all():
@@ -385,9 +369,7 @@ class WorkflowTemplateService(BaseSingletonService):
             TemplateNotFoundError: 模板或版本不存在
         """
         async with await self._get_session() as session:
-            t_stmt = select(TemplateORM).where(
-                TemplateORM.template_id == template_id
-            )
+            t_stmt = select(TemplateORM).where(TemplateORM.template_id == template_id)
             t_result = await session.execute(t_stmt)
             template_orm = t_result.scalar_one_or_none()
             if template_orm is None:
@@ -401,9 +383,7 @@ class WorkflowTemplateService(BaseSingletonService):
             v_result = await session.execute(v_stmt)
             version_orm = v_result.scalar_one_or_none()
             if version_orm is None:
-                raise TemplateNotFoundError(
-                    f"版本不存在: {template_id}@{target_version}"
-                )
+                raise TemplateNotFoundError(f"版本不存在: {template_id}@{target_version}")
 
             template_dict = template_orm.to_dict()
             version_dict = version_orm.to_dict()
@@ -431,9 +411,7 @@ class WorkflowTemplateService(BaseSingletonService):
         # 自增下载计数（持锁）
         with self._stats_lock:
             async with await self._get_session() as session:
-                t_stmt = select(TemplateORM).where(
-                    TemplateORM.template_id == template_id
-                )
+                t_stmt = select(TemplateORM).where(TemplateORM.template_id == template_id)
                 t_result = await session.execute(t_stmt)
                 template_orm = t_result.scalar_one_or_none()
                 if template_orm is None:
@@ -447,14 +425,10 @@ class WorkflowTemplateService(BaseSingletonService):
                 v_result = await session.execute(v_stmt)
                 version_orm = v_result.scalar_one_or_none()
                 if version_orm is None:
-                    raise TemplateNotFoundError(
-                        f"版本不存在: {template_id}@{target_version}"
-                    )
+                    raise TemplateNotFoundError(f"版本不存在: {template_id}@{target_version}")
 
                 template_orm.downloads = (template_orm.downloads or 0) + 1
-                version_orm.version_downloads = (
-                    version_orm.version_downloads or 0
-                ) + 1
+                version_orm.version_downloads = (version_orm.version_downloads or 0) + 1
                 # commit 而非 flush，确保事务持久化（项目硬约束）
                 await session.commit()
 
@@ -496,9 +470,7 @@ class WorkflowTemplateService(BaseSingletonService):
 
         with self._stats_lock:
             async with await self._get_session() as session:
-                t_stmt = select(TemplateORM).where(
-                    TemplateORM.template_id == template_id
-                )
+                t_stmt = select(TemplateORM).where(TemplateORM.template_id == template_id)
                 t_result = await session.execute(t_stmt)
                 template_orm = t_result.scalar_one_or_none()
                 if template_orm is None:
@@ -538,9 +510,7 @@ class WorkflowTemplateService(BaseSingletonService):
             TemplateNotFoundError: 模板不存在
         """
         async with await self._get_session() as session:
-            t_stmt = select(TemplateORM).where(
-                TemplateORM.template_id == template_id
-            )
+            t_stmt = select(TemplateORM).where(TemplateORM.template_id == template_id)
             t_result = await session.execute(t_stmt)
             template_orm = t_result.scalar_one_or_none()
             if template_orm is None:
@@ -561,9 +531,7 @@ class WorkflowTemplateService(BaseSingletonService):
             TemplateNotFoundError: 模板不存在
         """
         async with await self._get_session() as session:
-            t_stmt = select(TemplateORM).where(
-                TemplateORM.template_id == template_id
-            )
+            t_stmt = select(TemplateORM).where(TemplateORM.template_id == template_id)
             t_result = await session.execute(t_stmt)
             template_orm = t_result.scalar_one_or_none()
             if template_orm is None:
@@ -588,21 +556,15 @@ class WorkflowTemplateService(BaseSingletonService):
     async def market_stats(self) -> dict[str, Any]:
         """市场全局统计（模板总数 / 总下载 / 平均评分）."""
         async with await self._get_session() as session:
-            total_stmt = select(func.count()).select_from(TemplateORM).where(
-                TemplateORM.status == "active"
-            )
+            total_stmt = select(func.count()).select_from(TemplateORM).where(TemplateORM.status == "active")
             total_result = await session.execute(total_stmt)
             total_templates = total_result.scalar() or 0
 
-            dl_stmt = select(func.sum(TemplateORM.downloads)).where(
-                TemplateORM.status == "active"
-            )
+            dl_stmt = select(func.sum(TemplateORM.downloads)).where(TemplateORM.status == "active")
             dl_result = await session.execute(dl_stmt)
             total_downloads = dl_result.scalar() or 0
 
-            avg_stmt = select(func.avg(TemplateORM.avg_rating)).where(
-                TemplateORM.status == "active"
-            )
+            avg_stmt = select(func.avg(TemplateORM.avg_rating)).where(TemplateORM.status == "active")
             avg_result = await session.execute(avg_stmt)
             avg_rating = float(avg_result.scalar() or 0.0)
 

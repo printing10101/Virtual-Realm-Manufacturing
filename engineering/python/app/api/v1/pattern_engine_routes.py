@@ -1,6 +1,5 @@
 """Pattern Engine API Routes."""
 
-
 import logging
 from typing import Any, Dict, Optional
 
@@ -24,15 +23,9 @@ router = APIRouter(
 class ExecutionRecordRequest(BaseModel):
     task_id: str = Field(..., description="Task ID")
     branch_id: str = Field(..., description="Branch ID")
-    elements: Dict[str, Any] = Field(
-        default_factory=dict, description="Execution elements"
-    )
-    conditions: Dict[str, Any] = Field(
-        default_factory=dict, description="Execution conditions"
-    )
-    metrics: Dict[str, Any] = Field(
-        default_factory=dict, description="Execution metrics"
-    )
+    elements: Dict[str, Any] = Field(default_factory=dict, description="Execution elements")
+    conditions: Dict[str, Any] = Field(default_factory=dict, description="Execution conditions")
+    metrics: Dict[str, Any] = Field(default_factory=dict, description="Execution metrics")
 
 
 @router.get("")

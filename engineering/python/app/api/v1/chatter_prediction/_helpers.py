@@ -37,13 +37,17 @@ def _spawn(coro):
     t.add_done_callback(_background_tasks.discard)
     return t
 
+
 _pipeline: ChatterPredictionPipeline | None = None
+
+
 def _get_pipeline() -> ChatterPredictionPipeline:
     """获取 pipeline 单例。"""
     global _pipeline
     if _pipeline is None:
         _pipeline = ChatterPredictionPipeline(cfg=config.chatter_prediction)
     return _pipeline
+
 
 def _disclaimer_dict(
     task: ChatterPredictionTask | None = None,
@@ -59,27 +63,17 @@ def _disclaimer_dict(
         from app.chatter_prediction.predictor_adapter import (
             PENDING_CALIBRATION_MATERIALS,
         )
+
         material_id_lower = task.material_id.lower()
         material_calibration_status = (
-            "pending_calibration"
-            if material_id_lower in PENDING_CALIBRATION_MATERIALS
-            else "calibrated"
+            "pending_calibration" if material_id_lower in PENDING_CALIBRATION_MATERIALS else "calibrated"
         )
 
         # 根据 feature_results 统计预测方法分布 + LTC 实际参与比例
         if task.feature_results:
-            analytical_count = sum(
-                1 for r in task.feature_results
-                if r.method == PredictionMethod.ANALYTICAL.value
-            )
-            nn_count = sum(
-                1 for r in task.feature_results
-                if r.method == PredictionMethod.NEURAL_NETWORK.value
-            )
-            fb_count = sum(
-                1 for r in task.feature_results
-                if r.method == PredictionMethod.FALLBACK.value
-            )
+            analytical_count = sum(1 for r in task.feature_results if r.method == PredictionMethod.ANALYTICAL.value)
+            nn_count = sum(1 for r in task.feature_results if r.method == PredictionMethod.NEURAL_NETWORK.value)
+            fb_count = sum(1 for r in task.feature_results if r.method == PredictionMethod.FALLBACK.value)
             if fb_count > 0:
                 prediction_method = "fallback"
             elif nn_count > 0 and analytical_count > 0:
@@ -88,10 +82,7 @@ def _disclaimer_dict(
                 prediction_method = "neural_network"
             else:
                 prediction_method = "analytical"
-            ltc_active_ratio = (
-                sum(1 for r in task.feature_results if r.ltc_active)
-                / len(task.feature_results)
-            )
+            ltc_active_ratio = sum(1 for r in task.feature_results if r.ltc_active) / len(task.feature_results)
         else:
             prediction_method = "analytical"
             ltc_active_ratio = 0.0
@@ -124,6 +115,7 @@ def _disclaimer_dict(
         chatter_report_ready=False,
     ).to_dict()
 
+
 def _resolve_upstream_calibrated(
     source_cutting_parameters_task_id: str,
 ) -> tuple[bool, str, str]:
@@ -150,8 +142,7 @@ def _resolve_upstream_calibrated(
         )
     except ImportError:
         logger.warning(
-            "cutting_parameters 模块未启用，无法追溯上游 mesh_calibrated 状态 "
-            "source_cp_task_id=%s，按未标定处理",
+            "cutting_parameters 模块未启用，无法追溯上游 mesh_calibrated 状态 source_cp_task_id=%s，按未标定处理",
             source_cutting_parameters_task_id,
         )
         return False, "", ""
@@ -167,8 +158,7 @@ def _resolve_upstream_calibrated(
 
         if cp_task.status != CuttingParametersTaskStatus.SUCCEEDED.value:
             logger.warning(
-                "上游 cutting_parameters 任务未 SUCCEEDED task_id=%s status=%s，"
-                "按未标定处理",
+                "上游 cutting_parameters 任务未 SUCCEEDED task_id=%s status=%s，按未标定处理",
                 source_cutting_parameters_task_id,
                 cp_task.status,
             )
@@ -181,13 +171,10 @@ def _resolve_upstream_calibrated(
         )
 
     except Exception as e:
-        safe = safe_error_message(
-            e, context="chatter_prediction.resolve_upstream_calibrated"
-        )
+        safe = safe_error_message(e, context="chatter_prediction.resolve_upstream_calibrated")
         logger.warning(
             "查询上游任务异常 source_cp_task_id=%s error_id=%s，按未标定处理",
             source_cutting_parameters_task_id,
             safe.get("error_id"),
         )
         return False, "", ""
-

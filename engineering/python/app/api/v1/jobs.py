@@ -151,12 +151,8 @@ async def stream_job_events(job_id: str):
 async def cancel_job(job_id: str):
     result = await task_manager.cancel_task(job_id)
     if not result:
-        return error(
-            code=ErrorCode.INVALID_REQUEST, message=f"Cannot cancel job '{job_id}'"
-        )
-    return success(
-        data={"job_id": job_id, "status": "cancelled"}, message="Job cancelled"
-    )
+        return error(code=ErrorCode.INVALID_REQUEST, message=f"Cannot cancel job '{job_id}'")
+    return success(data={"job_id": job_id, "status": "cancelled"}, message="Job cancelled")
 
 
 @router.delete(
@@ -166,12 +162,8 @@ async def cancel_job(job_id: str):
 async def delete_job(job_id: str):
     result = await task_manager.cancel_task(job_id)
     if not result:
-        return error(
-            code=ErrorCode.INVALID_REQUEST, message=f"Cannot cancel job '{job_id}'"
-        )
-    return success(
-        data={"job_id": job_id, "status": "cancelled"}, message="Job cancelled"
-    )
+        return error(code=ErrorCode.INVALID_REQUEST, message=f"Cannot cancel job '{job_id}'")
+    return success(data={"job_id": job_id, "status": "cancelled"}, message="Job cancelled")
 
 
 @router.get("")
@@ -200,13 +192,9 @@ async def list_jobs(
             message=f"Invalid status '{status}'. Valid values: {valid_statuses}",
         )
 
-    tasks = await task_manager.list_tasks(
-        task_type=tt, status=st, owner_id=owner_id, limit=limit, offset=offset
-    )
+    tasks = await task_manager.list_tasks(task_type=tt, status=st, owner_id=owner_id, limit=limit, offset=offset)
     # 修复：从数据库查询真实总数，而非使用分页后的结果长度
-    total = await task_manager.count_tasks(
-        task_type=tt, status=st, owner_id=owner_id
-    )
+    total = await task_manager.count_tasks(task_type=tt, status=st, owner_id=owner_id)
 
     items = []
     for t in tasks:

@@ -91,16 +91,11 @@ class PostProcessorRegistry:
             TypeError: 如果processor_cls不是BasePostProcessor的子类
         """
         if not issubclass(processor_cls, BasePostProcessor):
-            raise TypeError(
-                f"processor_cls must be a subclass of BasePostProcessor, "
-                f"got {processor_cls.__name__}"
-            )
+            raise TypeError(f"processor_cls must be a subclass of BasePostProcessor, got {processor_cls.__name__}")
         # 安全修复：保护 _processors 字典的并发读写
         with self._lock:
             self._processors[controller_id] = processor_cls
-        logger.info(
-            "Registered post-processor: %s -> %s", controller_id, processor_cls.__name__
-        )
+        logger.info("Registered post-processor: %s -> %s", controller_id, processor_cls.__name__)
 
     def get_processor(
         self,
@@ -128,9 +123,7 @@ class PostProcessorRegistry:
             processor_cls = self._processors.get(controller_id)
             if processor_cls is None:
                 available = ", ".join(self._processors.keys())
-                raise KeyError(
-                    f"Unknown controller type: '{controller_id}'. Available: {available}"
-                )
+                raise KeyError(f"Unknown controller type: '{controller_id}'. Available: {available}")
 
             instance = processor_cls(**config)
             self._instances[config_key] = instance

@@ -40,30 +40,33 @@ logger = logging.getLogger(__name__)
 
 class FeatureExtractionTaskStatus(str, Enum):
     """特征提取任务状态枚举（继承 str 便于 JSON 序列化）。"""
-    PENDING = "pending"                       # 已创建，等待执行
-    RUNNING = "running"                       # 执行中
+
+    PENDING = "pending"  # 已创建，等待执行
+    RUNNING = "running"  # 执行中
     FEATURES_EXTRACTED = "features_extracted"  # 算法提取完成，等待工程师审核
-    REVIEWED = "reviewed"                      # 工程师已审核
-    SUCCEEDED = "succeeded"                    # 已确认特征集已导出
-    FAILED = "failed"                          # 失败
-    CANCELLED = "cancelled"                    # 已取消
+    REVIEWED = "reviewed"  # 工程师已审核
+    SUCCEEDED = "succeeded"  # 已确认特征集已导出
+    FAILED = "failed"  # 失败
+    CANCELLED = "cancelled"  # 已取消
 
 
 class FeatureType(str, Enum):
     """几何特征类型枚举。"""
-    PLANE = "plane"             # 平面
-    CYLINDER = "cylinder"       # 圆柱面
-    HOLE = "hole"               # 孔（内圆柱 + 端面）
-    BOSS = "boss"               # 凸台（外圆柱 + 端面）
-    UNKNOWN = "unknown"         # 未分类区域
+
+    PLANE = "plane"  # 平面
+    CYLINDER = "cylinder"  # 圆柱面
+    HOLE = "hole"  # 孔（内圆柱 + 端面）
+    BOSS = "boss"  # 凸台（外圆柱 + 端面）
+    UNKNOWN = "unknown"  # 未分类区域
 
 
 class FeatureReviewStatus(str, Enum):
     """单条特征的人工审核状态。"""
-    PENDING = "pending"         # 等待工程师审核
-    CONFIRMED = "confirmed"     # 工程师确认无误
-    REJECTED = "rejected"       # 工程师拒绝（误识别）
-    EDITED = "edited"           # 工程师编辑过参数
+
+    PENDING = "pending"  # 等待工程师审核
+    CONFIRMED = "confirmed"  # 工程师确认无误
+    REJECTED = "rejected"  # 工程师拒绝（误识别）
+    EDITED = "edited"  # 工程师编辑过参数
 
 
 @dataclass
@@ -80,6 +83,7 @@ class ExtractedFeature:
     工程师审核字段（review_status / engineer_notes / edited_params）默认空，
     等待工程师在 FEATURES_EXTRACTED 阶段填充。
     """
+
     feature_id: str
     feature_type: str  # FeatureType 字符串值
     params: dict[str, Any]
@@ -105,6 +109,7 @@ class ExtractedFeature:
 @dataclass
 class FeatureExtractionTask:
     """特征提取任务。"""
+
     task_id: str
     created_at: float
     updated_at: float
@@ -213,7 +218,8 @@ class FeatureStore:
                     else:
                         logger.warning(
                             "忽略无法识别的特征对象 task_id=%s: %r",
-                            task_id, f,
+                            task_id,
+                            f,
                         )
                 fields["features"] = new_features
             for k, v in fields.items():
@@ -274,7 +280,8 @@ class FeatureStore:
         except OSError as e:
             logger.warning(
                 "持久化特征提取任务失败 task_id=%s: %s",
-                task.task_id, e,
+                task.task_id,
+                e,
             )
 
 
@@ -297,6 +304,7 @@ def get_feature_store() -> FeatureStore:
     with _singleton_lock:
         if _feature_store is None:
             from app.config import config
+
             persist_dir = Path(config.feature_extraction.output_dir) / "tasks"
             _feature_store = FeatureStore(persist_dir=persist_dir)
         return _feature_store

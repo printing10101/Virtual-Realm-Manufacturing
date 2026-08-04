@@ -117,9 +117,7 @@ async def validate_model(model_name: str):
             "output_dimensions": len(model_info.output_features),
         }
 
-        return success(
-            data=info_data, message="Model validation completed successfully"
-        )
+        return success(data=info_data, message="Model validation completed successfully")
 
     except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         safe = safe_error_message(e, context=f"lnn.validate_model[{model_name}]")
@@ -143,9 +141,7 @@ async def get_model_size(model_name: str):
             )
 
         original_path = entry.info.model_path
-        original_size = (
-            os.path.getsize(original_path) if os.path.exists(original_path) else 0
-        )
+        original_size = os.path.getsize(original_path) if os.path.exists(original_path) else 0
 
         quantized_model_name = get_quantized_model_name(model_name)
         quantized_entry = model_registry.registry.get(quantized_model_name)
@@ -161,22 +157,14 @@ async def get_model_size(model_name: str):
             original_size_bytes=original_size,
             quantized_size_bytes=quantized_size,
             original_size_human=format_bytes(original_size),
-            quantized_size_human=format_bytes(quantized_size)
-            if quantized_size
-            else None,
-            size_reduction_bytes=original_size - quantized_size
-            if quantized_size
-            else None,
-            size_reduction_percent=round(
-                (1.0 - quantized_size / original_size) * 100, 2
-            )
+            quantized_size_human=format_bytes(quantized_size) if quantized_size else None,
+            size_reduction_bytes=original_size - quantized_size if quantized_size else None,
+            size_reduction_percent=round((1.0 - quantized_size / original_size) * 100, 2)
             if quantized_size and original_size > 0
             else None,
         )
 
-        return success(
-            data=response.model_dump(), message="Model size retrieved successfully"
-        )
+        return success(data=response.model_dump(), message="Model size retrieved successfully")
 
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as e:
         safe = safe_error_message(e, context=f"lnn.get_model_size[{model_name}]")

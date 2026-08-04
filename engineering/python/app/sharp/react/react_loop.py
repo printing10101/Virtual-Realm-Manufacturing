@@ -216,10 +216,7 @@ class ReActLoop:
         if max_steps_override is not None:
             max_steps = int(max_steps_override)
         else:
-            max_steps = (
-                min(strategy.max_steps, self.default_max_steps)
-                or strategy.max_steps
-            )
+            max_steps = min(strategy.max_steps, self.default_max_steps) or strategy.max_steps
 
         logger.info(
             "SHARP verify start | id=%s | triple=%s | max_steps=%d (strategy=%d, default=%d, override=%s) | tools=%s",
@@ -266,9 +263,7 @@ class ReActLoop:
             )
 
             # 5.2 调用 LLM
-            llm_response = await self._call_llm_with_retry(
-                user_prompt, verification_id, step_idx
-            )
+            llm_response = await self._call_llm_with_retry(user_prompt, verification_id, step_idx)
 
             if llm_response is None:
                 # LLM 连续失败，记录错误步骤
@@ -354,17 +349,14 @@ class ReActLoop:
                         except (TypeError, ValueError) as conf_err:
                             # confidence 字段类型不符（如非数值字符串）时跳过更新，
                             # 记录便于排查：置信度聚合可能因此缺失该步贡献
-                            logger.debug("Invalid confidence value %r: %s",
-                                         output.get("confidence"), conf_err)
+                            logger.debug("Invalid confidence value %r: %s", output.get("confidence"), conf_err)
 
                 # 实时聚合证据更新置信度（修复：KG 工具也需要参与置信度计算，
                 # 否则 confidence_delta 始终为 0，导致 evidence_converged 误触发）
                 # 设计：每步工具调用后，基于已收集的所有工具结果计算实时聚合置信度，
                 # 让收敛检测基于真实置信度变化，避免 LLM 未参与就提前终止。
                 try:
-                    evidences = self.reranker.collect_from_tool_results(
-                        tool_results, strategy.triple
-                    )
+                    evidences = self.reranker.collect_from_tool_results(tool_results, strategy.triple)
                     if evidences:
                         ranked = self.reranker.rerank(evidences, top_k=10)
                         aggregated = self.reranker.aggregate_confidence(
@@ -412,14 +404,10 @@ class ReActLoop:
             )
 
         # 7. 证据聚合
-        evidence_chain, aggregated_confidence = self._aggregate_evidence(
-            tool_results, strategy, recorder
-        )
+        evidence_chain, aggregated_confidence = self._aggregate_evidence(tool_results, strategy, recorder)
 
         # 8. 推断最终 verdict
-        verdict, reasoning = self._derive_final_verdict(
-            stopping_decision, recorder, aggregated_confidence, strategy
-        )
+        verdict, reasoning = self._derive_final_verdict(stopping_decision, recorder, aggregated_confidence, strategy)
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
 
@@ -477,20 +465,23 @@ class ReActLoop:
                 # 空响应视为失败
                 logger.warning(
                     "LLM empty response | id=%s | step=%d | attempt=%d",
-                    verification_id, step_idx, attempt + 1,
+                    verification_id,
+                    step_idx,
+                    attempt + 1,
                 )
             except Exception as e:
                 logger.warning(
                     "LLM call failed | id=%s | step=%d | attempt=%d | err=%s",
-                    verification_id, step_idx, attempt + 1, e,
+                    verification_id,
+                    step_idx,
+                    attempt + 1,
+                    e,
                 )
                 if attempt == 1:
                     return None
         return None
 
-    async def _execute_tool(
-        self, tool_name: str, action_input: Any
-    ) -> Optional[Any]:
+    async def _execute_tool(self, tool_name: str, action_input: Any) -> Optional[Any]:
         """执行工具调用。
 
         Returns:
@@ -503,6 +494,7 @@ class ReActLoop:
         if tool is None:
             logger.warning("Tool not found: %s", tool_name)
             from app.sharp.tools.base import ToolResult
+
             return ToolResult(
                 tool_name=tool_name,
                 success=False,
@@ -553,12 +545,8 @@ class ReActLoop:
         ranked = self.reranker.rerank(evidences, top_k=10)
 
         # 聚合置信度（返回 dict，提取 confidence 字段）
-        aggregated = self.reranker.aggregate_confidence(
-            ranked, require_external=strategy.require_external_evidence
-        )
-        confidence = float(aggregated.get("confidence", 0.0)) if isinstance(
-            aggregated, dict
-        ) else float(aggregated)
+        aggregated = self.reranker.aggregate_confidence(ranked, require_external=strategy.require_external_evidence)
+        confidence = float(aggregated.get("confidence", 0.0)) if isinstance(aggregated, dict) else float(aggregated)
 
         # 序列化证据链
         evidence_chain = [e.to_dict() for e in ranked]

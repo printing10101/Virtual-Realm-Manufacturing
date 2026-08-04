@@ -251,9 +251,7 @@ def _load_json(path: Path) -> list[dict[str, Any]]:
     except OSError as exc:
         raise RuntimeError(f"Failed to read {path}: {exc}") from exc
     if not isinstance(data, list):
-        raise RuntimeError(
-            f"Expected JSON array at top level in {path}, got {type(data).__name__}"
-        )
+        raise RuntimeError(f"Expected JSON array at top level in {path}, got {type(data).__name__}")
     return data
 
 
@@ -298,7 +296,7 @@ def _retry_with_backoff(
                 exc,
             )
             if i < attempts - 1:
-                time.sleep(base_delay_s * (2 ** i))
+                time.sleep(base_delay_s * (2**i))
     assert last_exc is not None
     raise last_exc
 
@@ -329,9 +327,7 @@ class _MaterialDeduper:
     def __init__(self) -> None:
         self._name_to_id: dict[str, str] = {}
 
-    def resolve(
-        self, raw: dict[str, Any]
-    ) -> tuple[Optional[str], bool]:
+    def resolve(self, raw: dict[str, Any]) -> tuple[Optional[str], bool]:
         """返回 ``(node_id, is_duplicate)``。``is_duplicate=True`` 时不要新建。"""
         name = str(raw.get("name", "")).strip()
         if not name:
@@ -349,9 +345,7 @@ class _ToolDeduper:
     def __init__(self) -> None:
         self._seen: dict[tuple[str, float], str] = {}
 
-    def resolve(
-        self, raw: dict[str, Any]
-    ) -> tuple[Optional[str], bool]:
+    def resolve(self, raw: dict[str, Any]) -> tuple[Optional[str], bool]:
         """返回 ``(node_id, is_duplicate)``。"""
         series = str(raw.get("series", "")).strip()
         diameter = raw.get("diameter_mm")
@@ -380,9 +374,7 @@ class _MachineDeduper:
     def __init__(self) -> None:
         self._ids: dict[str, str] = {}
 
-    def resolve(
-        self, raw: dict[str, Any]
-    ) -> tuple[Optional[str], bool]:
+    def resolve(self, raw: dict[str, Any]) -> tuple[Optional[str], bool]:
         machine_id = str(raw.get("id", "")).strip()
         if not machine_id:
             return None, False

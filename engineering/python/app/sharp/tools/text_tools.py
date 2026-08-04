@@ -33,7 +33,7 @@ class TextRetrieveTool(BaseTool):
 
     def __init__(self, rag_engine) -> None:
         """Args:
-            rag_engine: `RagRetrievalEngine` 实例
+        rag_engine: `RagRetrievalEngine` 实例
         """
         self._engine = rag_engine
 
@@ -75,16 +75,19 @@ class TextRetrieveTool(BaseTool):
         results = result.get("results", []) if isinstance(result, dict) else []
         simplified = []
         for r in results[:n_results]:
-            simplified.append({
-                "content": (r.get("content", "") or "")[:500],  # 截断长文本
-                "source": r.get("source", r.get("_retrieval_source_filter", "")),
-                "score": r.get("score", r.get("rerank_score", 0.0)),
-                "metadata": {
-                    k: v for k, v in r.items()
-                    if k not in ("content", "source", "score", "rerank_score")
-                    and isinstance(v, (str, int, float, bool))
-                },
-            })
+            simplified.append(
+                {
+                    "content": (r.get("content", "") or "")[:500],  # 截断长文本
+                    "source": r.get("source", r.get("_retrieval_source_filter", "")),
+                    "score": r.get("score", r.get("rerank_score", 0.0)),
+                    "metadata": {
+                        k: v
+                        for k, v in r.items()
+                        if k not in ("content", "source", "score", "rerank_score")
+                        and isinstance(v, (str, int, float, bool))
+                    },
+                }
+            )
         return {
             "query": query,
             "results": simplified,
@@ -112,8 +115,7 @@ class TextEntityLookupTool(BaseTool):
     @property
     def description(self) -> str:
         return (
-            "从查询文本中提取制造领域实体（材料牌号、刀具型号、信号类型等），"
-            "用于校验三元组中的实体是否为领域标准术语"
+            "从查询文本中提取制造领域实体（材料牌号、刀具型号、信号类型等），用于校验三元组中的实体是否为领域标准术语"
         )
 
     @property

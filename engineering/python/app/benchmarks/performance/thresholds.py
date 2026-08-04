@@ -60,7 +60,6 @@ PERFORMANCE_THRESHOLDS: dict[str, dict[str, float]] = {
     "batch_100_inference_ms": {
         "max": 1500,
     },
-
     # ------------------------------------------------------------------
     # 阶段 8 扩展：世界模型轨迹预测阈值（world_model_bench.py）
     # 工程约束：单次预测 100ms（CNC 控制周期内），horizon=50 阈值 500ms
@@ -86,7 +85,6 @@ PERFORMANCE_THRESHOLDS: dict[str, dict[str, float]] = {
     "wm_cache_cold_ms_p50": {"max": 50.0},
     "wm_cache_cold_ms_mean": {"max": 80.0},
     "wm_cache_hot_ms_p50": {"max": 10.0},
-
     # ------------------------------------------------------------------
     # 阶段 8 扩展：RL agent 决策 + SafetyShield 阈值（rl_agent_bench.py）
     # 工程约束：SafetyShield 硬约束不能成为决策路径瓶颈
@@ -115,7 +113,6 @@ PERFORMANCE_THRESHOLDS: dict[str, dict[str, float]] = {
     "rl_policy_cold_ms_p95": {"max": 200.0},
     "rl_policy_hot_ms_p50": {"max": 1.0},
     "rl_policy_hot_ms_p95": {"max": 5.0},
-
     # ------------------------------------------------------------------
     # 阶段 8 扩展：闭环工作流端到端阈值（closed_loop_bench.py）
     # 工程约束：v1 离线 RL 场景端到端 p95 < 5s

@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 class SkillFileWatcher:
     """技能文件监听器 - 检测文件变化并触发重新加载。"""
 
-    def __init__(
-        self, skills_dir: str, loader: "SkillLoader", poll_interval: float = 2.0
-    ):
+    def __init__(self, skills_dir: str, loader: "SkillLoader", poll_interval: float = 2.0):
         self.skills_dir = skills_dir
         self.loader = loader
         self.poll_interval = poll_interval
@@ -42,9 +40,7 @@ class SkillFileWatcher:
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._watch_loop, daemon=True)
         self._thread.start()
-        logger.info(
-            "SkillFileWatcher started (poll_interval=%.1fs)", self.poll_interval
-        )
+        logger.info("SkillFileWatcher started (poll_interval=%.1fs)", self.poll_interval)
 
     def stop(self) -> None:
         """停止文件监听线程。"""
@@ -61,7 +57,9 @@ class SkillFileWatcher:
                 self._scan_changes()
             except (OSError, RuntimeError) as e:
                 logger.warning(
-                    "SkillFileWatcher scan error: %s", e, exc_info=True,
+                    "SkillFileWatcher scan error: %s",
+                    e,
+                    exc_info=True,
                 )
             self._stop_event.wait(self.poll_interval)
 
@@ -113,9 +111,7 @@ class SkillFileWatcher:
                 if skill:
                     self.loader.registry.register(skill)
         except (OSError, RuntimeError, ValueError, ImportError) as e:
-            logger.error(
-                "Failed to handle file event %s for %s: %s", event, file_path, e
-            )
+            logger.error("Failed to handle file event %s for %s: %s", event, file_path, e)
 
     def _infer_level(self, file_path: str) -> SkillLevel:
         """推断技能级别。"""

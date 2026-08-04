@@ -5,6 +5,7 @@
 
 契约稳定性：Stable（v1.0.0），向后兼容扩展。
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -69,9 +70,7 @@ class DatasetSchema:
                 errors.append(f"字段 {col_name} 缺少 type 定义")
                 continue
             if col_def["type"] not in valid_types:
-                errors.append(
-                    f"字段 {col_name} 的 type 不合法: {col_def['type']}，合法值: {valid_types}"
-                )
+                errors.append(f"字段 {col_name} 的 type 不合法: {col_def['type']}，合法值: {valid_types}")
 
         # 主键字段必须在 fields 中存在
         for pk in self.primary_key:
@@ -135,8 +134,7 @@ def _is_valid_semver(version: str) -> bool:
 
 @dataclass
 class LineageRecord:
-    """血缘记录契约.    记录"谁在什么时候用什么输入产出了什么输出"。
-    """
+    """血缘记录契约.    记录"谁在什么时候用什么输入产出了什么输出"。"""
 
     record_id: str
     target: str  # "dataset://my-ds/v1" / "model://ltc-v1"
@@ -155,10 +153,7 @@ class LineageRecord:
             raise ValueError("LineageRecord.target 不能为空")
         valid_source_types = {"task", "workflow", "manual", "external"}
         if self.source_type not in valid_source_types:
-            raise ValueError(
-                f"LineageRecord.source_type 不合法: {self.source_type}，"
-                f"合法值: {valid_source_types}"
-            )
+            raise ValueError(f"LineageRecord.source_type 不合法: {self.source_type}，合法值: {valid_source_types}")
         if not self.source_ref:
             raise ValueError("LineageRecord.source_ref 不能为空")
 
@@ -197,9 +192,7 @@ class IDatasetStore(ABC):
         """
 
     @abstractmethod
-    async def get_version(
-        self, dataset_id: str, version: Optional[str] = None
-    ) -> DatasetVersion:
+    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersion:
         """获取版本。version=None 返回最新 published 版本。"""
 
     @abstractmethod
@@ -232,15 +225,11 @@ class ILineageStore(ABC):
         """记录一条血缘。返回 record_id。"""
 
     @abstractmethod
-    async def get_upstream(
-        self, target_uri: str, *, depth: int = 10
-    ) -> list[LineageRecord]:
+    async def get_upstream(self, target_uri: str, *, depth: int = 10) -> list[LineageRecord]:
         """查询上游血缘（递归到 depth 层）。"""
 
     @abstractmethod
-    async def get_downstream(
-        self, target_uri: str, *, depth: int = 10
-    ) -> list[LineageRecord]:
+    async def get_downstream(self, target_uri: str, *, depth: int = 10) -> list[LineageRecord]:
         """查询下游血缘（递归到 depth 层）。"""
 
     @abstractmethod

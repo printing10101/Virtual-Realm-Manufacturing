@@ -501,7 +501,8 @@ class TestFlush:
         lineage = store._lineages[0]
         assert lineage.source_type == "manual"
         assert lineage.operation == "feedback_collection"
-        assert lineage.source_ref == "plugin:test:feedback_collector"
+        # owner_id="test"（collector fixture）→ source_ref 不带 plugin: 前缀
+        assert lineage.source_ref == "test:feedback_collector"
         assert lineage.target.startswith("dataset://")
 
     @pytest.mark.asyncio
@@ -534,12 +535,24 @@ class TestFlush:
         self, store, monkeypatch
     ):
         """create 失败（name 冲突）时回退到 stable_id."""
-        # 预占 name → create 抛 ValueError
-        await store.create(
-            name=FEEDBACK_DATASET_NAME,
-            schema=FEEDBACK_DATASET_SCHEMA,
-            owner_id="other",
-        )
+        import hashlib
+
+        # 预置 stable 数据集（模拟另一实例已按稳定 id 规则创建同名数据集），
+        # 使 create 因 name 冲突失败后可复用 stable_id 完成 flush。
+        stable_id = "fb-" + hashlib.sha256(
+            FEEDBACK_DATASET_NAME.encode("utf-8")
+        ).hexdigest()[:16]
+        store._datasets[stable_id] = {
+            "name": FEEDBACK_DATASET_NAME,
+            "schema": FEEDBACK_DATASET_SCHEMA,
+            "owner_id": "other",
+            "description": "",
+            "status": "published",
+        }
+        store._name_to_id[FEEDBACK_DATASET_NAME] = stable_id
+        store._versions[stable_id] = []
+        store._records[stable_id] = []
+
         c = FeedbackCollector(dataset_store=store, owner_id="test")
         await c.record_annotation(user_id="u-1")
         # create 会因 name 冲突失败，但 flush 应通过 stable_id 回退成功
@@ -767,13 +780,11 @@ class TestPluginIntegration:
         await plugin.feedback_collector.record_annotation(user_id="u-1")
         assert plugin.feedback_collector.buffer_size == 1
 
-        # on_unload 应 flush
+        # on_unload 应 flush；dataset_id 懒注册（flush 时才创建），
+        # 卸载后 collector 已置 None，直接遍历 store 验证落盘
         await plugin.on_unload()
-        # flush 后落盘（store 中有版本）
-        versions = await store.list_versions(plugin.feedback_collector.dataset_id)
-        # 注意：on_unload 后 feedback_collector 已置 None，但 store 保留状态
-        # 通过 store 直接验证
-        assert any(v.row_count == 1 for v in versions) if versions else True
+        versions = [v for vs in store._versions.values() for v in vs]
+        assert any(v.row_count == 1 for v in versions)
         reset_extension_registry()
 
     @pytest.mark.asyncio

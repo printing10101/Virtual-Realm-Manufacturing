@@ -31,6 +31,7 @@ class BossStep:
         position_z: Z position of the step (mm).
         tolerance_grade: Tolerance grade, e.g. 'H8'.
     """
+
     step_index: int
     diameter: float
     height: float
@@ -168,8 +169,13 @@ class BossFeature:
 
     def _it_grade_from_tolerance(self) -> str:
         grade_map = {
-            "H5": "IT5", "H6": "IT6", "H7": "IT7",
-            "H8": "IT8", "H9": "IT9", "H10": "IT10", "H11": "IT11",
+            "H5": "IT5",
+            "H6": "IT6",
+            "H7": "IT7",
+            "H8": "IT8",
+            "H9": "IT9",
+            "H10": "IT10",
+            "H11": "IT11",
         }
         return grade_map.get(self.tolerance_grade.upper(), "IT8")
 
@@ -186,6 +192,7 @@ class BossRecognitionResult:
         errors: Error messages from the recognition process.
         accuracy_metrics: Recognition accuracy metrics.
     """
+
     bosses: list[BossFeature] = field(default_factory=list)
     total_count: int = 0
     type_summary: dict[str, int] = field(default_factory=dict)
@@ -231,6 +238,7 @@ class BossRecognizer:
         MIN_BOSS_HEIGHT: Minimum recognizable boss height (mm).
         COAXIAL_THRESHOLD: Threshold for coaxial determination (mm).
     """
+
     MIN_BOSS_DIAMETER = 1.0
     MIN_BOSS_HEIGHT = 0.1
     COAXIAL_THRESHOLD = 0.05
@@ -265,7 +273,8 @@ class BossRecognizer:
         raw_bosses = part_description.get("bosses", [])
         raw_features = part_description.get("features", [])
         boss_features = [
-            f for f in raw_features
+            f
+            for f in raw_features
             if f.get("geometric_type") in ("boss", "circular_boss", "rectangular_boss", "stepped_boss")
             or f.get("type") in ("circular_boss", "rectangular_boss", "stepped_boss")
         ]
@@ -273,26 +282,28 @@ class BossRecognizer:
             pos = bf.get("position", {})
             dims = bf.get("dimensions", {})
             raw_steps = bf.get("steps", [])
-            raw_bosses.append({
-                "id": bf.get("name", f"B{len(raw_bosses) + 1:03d}"),
-                "type": bf.get("type", "circular_boss"),
-                "position": pos,
-                "diameter": dims.get("diameter", bf.get("diameter", 0)),
-                "side_length": dims.get("side_length", bf.get("side_length", 0)),
-                "height": dims.get("height", bf.get("height", 0)),
-                "tolerance_grade": bf.get("tolerance_grade", "H8"),
-                "surface": bf.get("surface", "A"),
-                "steps": [
-                    {
-                        "step_index": s.get("step_index", i + 1),
-                        "diameter": s.get("diameter", 0),
-                        "height": s.get("height", 0),
-                        "position_z": s.get("position_z", 0),
-                        "tolerance_grade": s.get("tolerance_grade", "H8"),
-                    }
-                    for i, s in enumerate(raw_steps)
-                ],
-            })
+            raw_bosses.append(
+                {
+                    "id": bf.get("name", f"B{len(raw_bosses) + 1:03d}"),
+                    "type": bf.get("type", "circular_boss"),
+                    "position": pos,
+                    "diameter": dims.get("diameter", bf.get("diameter", 0)),
+                    "side_length": dims.get("side_length", bf.get("side_length", 0)),
+                    "height": dims.get("height", bf.get("height", 0)),
+                    "tolerance_grade": bf.get("tolerance_grade", "H8"),
+                    "surface": bf.get("surface", "A"),
+                    "steps": [
+                        {
+                            "step_index": s.get("step_index", i + 1),
+                            "diameter": s.get("diameter", 0),
+                            "height": s.get("height", 0),
+                            "position_z": s.get("position_z", 0),
+                            "tolerance_grade": s.get("tolerance_grade", "H8"),
+                        }
+                        for i, s in enumerate(raw_steps)
+                    ],
+                }
+            )
 
         contours = part_description.get("contours", part_description.get("entities", []))
         for i, contour in enumerate(contours):
@@ -301,14 +312,18 @@ class BossRecognizer:
                 if not any(b.get("id") == fig_id for b in raw_bosses):
                     shape = contour.get("shape", contour.get("type", "circular_boss"))
                     boss_type = "circular_boss" if shape in ("circle", "circular_boss") else "rectangular_boss"
-                    raw_bosses.append({
-                        "id": fig_id,
-                        "type": boss_type,
-                        "position": contour.get("center", contour.get("position", {})),
-                        "diameter": contour.get("diameter", contour.get("radius", 0) * 2 if contour.get("radius") else 0),
-                        "side_length": contour.get("side_length", contour.get("length", 0)),
-                        "height": contour.get("height", contour.get("z_height", 0)),
-                    })
+                    raw_bosses.append(
+                        {
+                            "id": fig_id,
+                            "type": boss_type,
+                            "position": contour.get("center", contour.get("position", {})),
+                            "diameter": contour.get(
+                                "diameter", contour.get("radius", 0) * 2 if contour.get("radius") else 0
+                            ),
+                            "side_length": contour.get("side_length", contour.get("length", 0)),
+                            "height": contour.get("height", contour.get("z_height", 0)),
+                        }
+                    )
 
         if not raw_bosses:
             warnings.append("未找到任何凸台特征定义")
@@ -348,20 +363,21 @@ class BossRecognizer:
 
                 if diameter > 0 and diameter < self.MIN_BOSS_DIAMETER:
                     warnings.append(
-                        f"凸台 {boss_id} 直径过小 ({diameter}mm)，"
-                        f"低于最小可识别尺寸 {self.MIN_BOSS_DIAMETER}mm"
+                        f"凸台 {boss_id} 直径过小 ({diameter}mm)，低于最小可识别尺寸 {self.MIN_BOSS_DIAMETER}mm"
                     )
 
                 raw_steps = raw.get("steps", [])
                 steps: list[BossStep] = []
                 for si, rs in enumerate(raw_steps):
-                    steps.append(BossStep(
-                        step_index=int(rs.get("step_index", si + 1)),
-                        diameter=float(rs.get("diameter", 0)),
-                        height=float(rs.get("height", 0)),
-                        position_z=float(rs.get("position_z", 0)),
-                        tolerance_grade=str(rs.get("tolerance_grade", "H8")),
-                    ))
+                    steps.append(
+                        BossStep(
+                            step_index=int(rs.get("step_index", si + 1)),
+                            diameter=float(rs.get("diameter", 0)),
+                            height=float(rs.get("height", 0)),
+                            position_z=float(rs.get("position_z", 0)),
+                            tolerance_grade=str(rs.get("tolerance_grade", "H8")),
+                        )
+                    )
 
                 if steps and boss_type != "stepped_boss":
                     boss_type = "stepped_boss"
@@ -384,9 +400,7 @@ class BossRecognizer:
                 bosses.append(boss)
 
             except (ValueError, TypeError, KeyError) as e:
-                errors.append(
-                    f"解析凸台条目 {raw.get('id', i)} 时出错: {type(e).__name__}"
-                )
+                errors.append(f"解析凸台条目 {raw.get('id', i)} 时出错: {type(e).__name__}")
                 continue
 
         bosses = self._merge_coaxial_bosses(bosses, warnings)
@@ -474,13 +488,15 @@ class BossRecognizer:
                 base = coaxial_group[0]
                 steps: list[BossStep] = []
                 for idx, cb in enumerate(coaxial_group):
-                    steps.append(BossStep(
-                        step_index=idx + 1,
-                        diameter=cb.diameter,
-                        height=cb.height,
-                        position_z=cb.center_z,
-                        tolerance_grade=cb.tolerance_grade,
-                    ))
+                    steps.append(
+                        BossStep(
+                            step_index=idx + 1,
+                            diameter=cb.diameter,
+                            height=cb.height,
+                            position_z=cb.center_z,
+                            tolerance_grade=cb.tolerance_grade,
+                        )
+                    )
 
                 stepped = BossFeature(
                     boss_id=base.boss_id,
@@ -536,53 +552,39 @@ class BossRecognizer:
             if result.total_count == expected_count:
                 passed.append(f"凸台数量匹配: {result.total_count} == {expected_count}")
             else:
-                issues.append(
-                    f"凸台数量不匹配: 识别到{result.total_count}个，期望{expected_count}个"
-                )
+                issues.append(f"凸台数量不匹配: 识别到{result.total_count}个，期望{expected_count}个")
         else:
             passed.append(f"凸台总数: {result.total_count}")
 
-        invalid_diameter = [
-            b for b in result.bosses
-            if b.is_circular() and b.diameter <= 0
-        ]
+        invalid_diameter = [b for b in result.bosses if b.is_circular() and b.diameter <= 0]
         if invalid_diameter:
             issues.append(
-                f"{len(invalid_diameter)}个圆形凸台直径无效: "
-                f"{', '.join(b.boss_id for b in invalid_diameter)}"
+                f"{len(invalid_diameter)}个圆形凸台直径无效: {', '.join(b.boss_id for b in invalid_diameter)}"
             )
         else:
             passed.append("所有圆形凸台直径有效")
 
         invalid_height = [b for b in result.bosses if b.height <= 0]
         if invalid_height:
-            issues.append(
-                f"{len(invalid_height)}个凸台高度无效: "
-                f"{', '.join(b.boss_id for b in invalid_height)}"
-            )
+            issues.append(f"{len(invalid_height)}个凸台高度无效: {', '.join(b.boss_id for b in invalid_height)}")
         else:
             passed.append("所有凸台高度有效")
 
         import math
+
         invalid_pos = [
-            b for b in result.bosses
-            if any(math.isnan(v) or math.isinf(v)
-                   for v in [b.center_x, b.center_y, b.center_z])
+            b
+            for b in result.bosses
+            if any(math.isnan(v) or math.isinf(v) for v in [b.center_x, b.center_y, b.center_z])
         ]
         if invalid_pos:
             issues.append(f"{len(invalid_pos)}个凸台位置坐标无效")
         else:
             passed.append("所有凸台位置坐标有效")
 
-        invalid_steps = [
-            b for b in result.bosses
-            if b.is_stepped() and len(b.steps) < 2
-        ]
+        invalid_steps = [b for b in result.bosses if b.is_stepped() and len(b.steps) < 2]
         if invalid_steps:
-            issues.append(
-                f"{len(invalid_steps)}个阶梯凸台阶梯数不足: "
-                f"{', '.join(b.boss_id for b in invalid_steps)}"
-            )
+            issues.append(f"{len(invalid_steps)}个阶梯凸台阶梯数不足: {', '.join(b.boss_id for b in invalid_steps)}")
         else:
             passed.append("所有阶梯凸台阶梯数有效")
 

@@ -86,16 +86,12 @@ class HeidenhainPostProcessor(BasePostProcessor):
         clockwise: bool = True,
     ) -> str:
         if clockwise:
-            return (
-                f"{self._next_block()}  L  X+{self._fmt(end[0])} "
-                f"Y+{self._fmt(end[1])} F{self._fmt(self.rapid_feed)}"
-            )
+            return f"{self._next_block()}  L  X+{self._fmt(end[0])} Y+{self._fmt(end[1])} F{self._fmt(self.rapid_feed)}"
 
         n = self._next_block()
         lines = [
             f"{n}  CC  X+{self._fmt(center[0])} Y+{self._fmt(center[1])}",
-            f"{self._next_block()}  C  X+{self._fmt(end[0])} "
-            f"Y+{self._fmt(end[1])} F{self._fmt(self.rapid_feed)}",
+            f"{self._next_block()}  C  X+{self._fmt(end[0])} Y+{self._fmt(end[1])} F{self._fmt(self.rapid_feed)}",
         ]
         return "\n".join(lines)
 
@@ -378,8 +374,6 @@ class HeidenhainPostProcessor(BasePostProcessor):
         Returns:
             CYCL DEF 263螺纹循环NC代码
         """
-        cfg = self.get_cycle_config("threading", "CYCL DEF 263")
-        r_plane = self.safe_z_height
 
         # CYCL DEF 263 外螺纹车削循环格式
         # CYCL DEF 263 THREAD
@@ -392,6 +386,7 @@ class HeidenhainPostProcessor(BasePostProcessor):
         #    Q239=PITCH
         #    Q243=NUMBER OF PASSES
         #    Q244=THREAD ANGLE
+        r_plane = self.safe_z_height
         lines = [
             f"{self._next_block()}  L  X+{self._fmt(x + 2.0)} Z+{self._fmt(z + 5.0)} R0 FMAX",
             f"{self._next_block()}  S{int(self.get_spindle_rpm())} M03",

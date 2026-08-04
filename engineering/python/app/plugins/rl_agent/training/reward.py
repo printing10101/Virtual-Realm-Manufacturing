@@ -23,10 +23,9 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -91,35 +90,21 @@ class RewardConfig:
     def validate(self) -> None:
         """校验配置合法性."""
         if self.chatter_weight < 0:
-            raise ValueError(
-                f"chatter_weight 不能为负数: {self.chatter_weight}"
-            )
+            raise ValueError(f"chatter_weight 不能为负数: {self.chatter_weight}")
         if self.wear_weight < 0:
             raise ValueError(f"wear_weight 不能为负数: {self.wear_weight}")
         if self.quality_bonus < 0:
-            raise ValueError(
-                f"quality_bonus 不能为负数: {self.quality_bonus}"
-            )
+            raise ValueError(f"quality_bonus 不能为负数: {self.quality_bonus}")
         if self.quality_threshold <= 0:
-            raise ValueError(
-                f"quality_threshold 必须为正数: {self.quality_threshold}"
-            )
+            raise ValueError(f"quality_threshold 必须为正数: {self.quality_threshold}")
         if self.mrr_weight < 0:
             raise ValueError(f"mrr_weight 不能为负数: {self.mrr_weight}")
         if self.safety_penalty >= 0:
-            raise ValueError(
-                f"safety_penalty 必须为负数（惩罚项）: {self.safety_penalty}"
-            )
+            raise ValueError(f"safety_penalty 必须为负数（惩罚项）: {self.safety_penalty}")
         if not 0.0 <= self.chatter_critical_threshold <= 1.0:
-            raise ValueError(
-                f"chatter_critical_threshold 必须在 [0, 1], "
-                f"当前: {self.chatter_critical_threshold}"
-            )
+            raise ValueError(f"chatter_critical_threshold 必须在 [0, 1], 当前: {self.chatter_critical_threshold}")
         if self.chatter_critical_extra_penalty >= 0:
-            raise ValueError(
-                f"chatter_critical_extra_penalty 必须为负数: "
-                f"{self.chatter_critical_extra_penalty}"
-            )
+            raise ValueError(f"chatter_critical_extra_penalty 必须为负数: {self.chatter_critical_extra_penalty}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -256,26 +241,16 @@ class RewardFunction:
             )
 
         # 2. 颤振惩罚（线性）
-        chatter_prob = float(
-            predicted_state.get(STATE_CHATTER_PROB, 0.0)
-        )
+        chatter_prob = float(predicted_state.get(STATE_CHATTER_PROB, 0.0))
         chatter_penalty = -chatter_prob * cfg.chatter_weight
 
         # 3. 磨损惩罚（线性）
-        wear_inc = float(
-            predicted_state.get(STATE_TOOL_WEAR_INC, 0.0)
-        )
+        wear_inc = float(predicted_state.get(STATE_TOOL_WEAR_INC, 0.0))
         wear_penalty = -wear_inc * cfg.wear_weight
 
         # 4. 质量奖励（阶跃）
-        surface_roughness = float(
-            predicted_state.get(STATE_SURFACE_ROUGHNESS, float("inf"))
-        )
-        quality_bonus = (
-            cfg.quality_bonus
-            if surface_roughness < cfg.quality_threshold
-            else 0.0
-        )
+        surface_roughness = float(predicted_state.get(STATE_SURFACE_ROUGHNESS, float("inf")))
+        quality_bonus = cfg.quality_bonus if surface_roughness < cfg.quality_threshold else 0.0
 
         # 5. 材料去除率奖励（线性，进给量越大材料去除越多）
         feed_delta = float(action.get(ACTION_FEED_DELTA, 0.0))
@@ -286,13 +261,7 @@ class RewardFunction:
         if chatter_prob > cfg.chatter_critical_threshold:
             critical_chatter_penalty = cfg.chatter_critical_extra_penalty
 
-        total = (
-            chatter_penalty
-            + wear_penalty
-            + quality_bonus
-            + material_removal
-            + critical_chatter_penalty
-        )
+        total = chatter_penalty + wear_penalty + quality_bonus + material_removal + critical_chatter_penalty
 
         return RewardBreakdown(
             total=total,
@@ -325,13 +294,9 @@ class RewardFunction:
         n = len(states)
         if len(actions) != n or len(safety_violations) != n:
             raise ValueError(
-                f"输入长度不一致: states={n}, actions={len(actions)}, "
-                f"safety_violations={len(safety_violations)}"
+                f"输入长度不一致: states={n}, actions={len(actions)}, safety_violations={len(safety_violations)}"
             )
-        return [
-            self.compute(s, a, v)
-            for s, a, v in zip(states, actions, safety_violations)
-        ]
+        return [self.compute(s, a, v) for s, a, v in zip(states, actions, safety_violations)]
 
 
 __all__ = [

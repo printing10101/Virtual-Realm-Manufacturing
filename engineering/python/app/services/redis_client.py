@@ -17,8 +17,7 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
-from app.dependencies import get_memory_cache
-from app.services.memory_cache import init_memory_cache, close_memory_cache
+from app.services.memory_cache import init_memory_cache
 
 logger = logging.getLogger(__name__)
 

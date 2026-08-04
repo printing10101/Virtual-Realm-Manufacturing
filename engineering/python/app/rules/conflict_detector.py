@@ -23,25 +23,28 @@ logger = logging.getLogger(__name__)
 
 class ConflictType(str, Enum):
     """冲突类型枚举"""
+
     CONTRADICTION = "CONTRADICTION"  # 矛盾冲突：条件完全相同但结论不同
-    SUBSET = "SUBSET"                # 子集冲突：条件是子集关系但结论不同
-    PARAMETER = "PARAMETER"          # 参数冲突：同一参数被赋予不同值
+    SUBSET = "SUBSET"  # 子集冲突：条件是子集关系但结论不同
+    PARAMETER = "PARAMETER"  # 参数冲突：同一参数被赋予不同值
 
 
 class ConflictSeverity(str, Enum):
     """冲突严重程度枚举"""
-    HIGH = "HIGH"      # 高：矛盾冲突，规则会直接冲突
+
+    HIGH = "HIGH"  # 高：矛盾冲突，规则会直接冲突
     MEDIUM = "MEDIUM"  # 中：子集冲突，部分场景下冲突
-    LOW = "LOW"        # 低：参数冲突，可能需要人工确认
+    LOW = "LOW"  # 低：参数冲突，可能需要人工确认
 
 
 @dataclass
 class ConflictReport:
     """冲突报告数据结构"""
-    conflicting_rule_ids: List[int]                # 冲突规则ID列表
-    conflict_type: ConflictType                     # 冲突类型
-    severity: ConflictSeverity                      # 严重程度
-    description: str                                # 冲突详细描述
+
+    conflicting_rule_ids: List[int]  # 冲突规则ID列表
+    conflict_type: ConflictType  # 冲突类型
+    severity: ConflictSeverity  # 严重程度
+    description: str  # 冲突详细描述
     conflicting_parameters: List[str] = field(default_factory=list)  # 冲突涉及的参数
 
 
@@ -127,18 +130,20 @@ def _detect_contradiction(rules: List[ProcessRule]) -> List[ConflictReport]:
                         if n1[0] == n2[0]:
                             conflict_params.append(n1[0])
 
-                    reports.append(ConflictReport(
-                        conflicting_rule_ids=[r1.id, r2.id],
-                        conflict_type=ConflictType.CONTRADICTION,
-                        severity=ConflictSeverity.HIGH,
-                        description=(
-                            f"规则 {r1.id} 和规则 {r2.id} 存在矛盾冲突："
-                            f"条件完全相同但结论不同。"
-                            f"规则 {r1.id} 结论: {r1.result.parameter} {r1.result.operator} {r1.result.value}, "
-                            f"规则 {r2.id} 结论: {r2.result.parameter} {r2.result.operator} {r2.result.value}"
-                        ),
-                        conflicting_parameters=conflict_params,
-                    ))
+                    reports.append(
+                        ConflictReport(
+                            conflicting_rule_ids=[r1.id, r2.id],
+                            conflict_type=ConflictType.CONTRADICTION,
+                            severity=ConflictSeverity.HIGH,
+                            description=(
+                                f"规则 {r1.id} 和规则 {r2.id} 存在矛盾冲突："
+                                f"条件完全相同但结论不同。"
+                                f"规则 {r1.id} 结论: {r1.result.parameter} {r1.result.operator} {r1.result.value}, "
+                                f"规则 {r2.id} 结论: {r2.result.parameter} {r2.result.operator} {r2.result.value}"
+                            ),
+                            conflicting_parameters=conflict_params,
+                        )
+                    )
 
     return reports
 
@@ -159,10 +164,7 @@ def _detect_subset(rules: List[ProcessRule]) -> List[ConflictReport]:
     """
     reports = []
     # 按条件数量排序，子集的条件数量一定 <= 超集
-    sorted_rules = sorted(
-        [r for r in rules if r.conditions and r.result],
-        key=lambda r: len(r.conditions)
-    )
+    sorted_rules = sorted([r for r in rules if r.conditions and r.result], key=lambda r: len(r.conditions))
 
     for i in range(len(sorted_rules)):
         sig_i = _get_condition_signature(sorted_rules[i])
@@ -180,19 +182,21 @@ def _detect_subset(rules: List[ProcessRule]) -> List[ConflictReport]:
                         if n1[0] == n2[0]:
                             conflict_params.append(n1[0])
 
-                    reports.append(ConflictReport(
-                        conflicting_rule_ids=[r1.id, r2.id],
-                        conflict_type=ConflictType.SUBSET,
-                        severity=ConflictSeverity.MEDIUM,
-                        description=(
-                            f"规则 {r1.id} 和规则 {r2.id} 存在子集冲突："
-                            f"规则 {r1.id} 的条件({len(r1.conditions)}个)是规则 {r2.id} 条件({len(r2.conditions)}个)的子集，"
-                            f"但结论不同。"
-                            f"规则 {r1.id} 结论: {r1.result.parameter} {r1.result.operator} {r1.result.value}, "
-                            f"规则 {r2.id} 结论: {r2.result.parameter} {r2.result.operator} {r2.result.value}"
-                        ),
-                        conflicting_parameters=conflict_params,
-                    ))
+                    reports.append(
+                        ConflictReport(
+                            conflicting_rule_ids=[r1.id, r2.id],
+                            conflict_type=ConflictType.SUBSET,
+                            severity=ConflictSeverity.MEDIUM,
+                            description=(
+                                f"规则 {r1.id} 和规则 {r2.id} 存在子集冲突："
+                                f"规则 {r1.id} 的条件({len(r1.conditions)}个)是规则 {r2.id} 条件({len(r2.conditions)}个)的子集，"
+                                f"但结论不同。"
+                                f"规则 {r1.id} 结论: {r1.result.parameter} {r1.result.operator} {r1.result.value}, "
+                                f"规则 {r2.id} 结论: {r2.result.parameter} {r2.result.operator} {r2.result.value}"
+                            ),
+                            conflicting_parameters=conflict_params,
+                        )
+                    )
 
     return reports
 
@@ -229,18 +233,20 @@ def _detect_parameter(rules: List[ProcessRule]) -> List[ConflictReport]:
                 if _results_conflict(r1.result, r2.result):
                     # 跳过已经作为矛盾冲突或子集冲突报告的
                     # （参数冲突是更一般的冲突，避免重复报告）
-                    reports.append(ConflictReport(
-                        conflicting_rule_ids=[r1.id, r2.id],
-                        conflict_type=ConflictType.PARAMETER,
-                        severity=ConflictSeverity.LOW,
-                        description=(
-                            f"规则 {r1.id} 和规则 {r2.id} 存在参数冲突："
-                            f"对同一参数 '{param_name}' 赋予了不同的值。"
-                            f"规则 {r1.id}: {r1.result.parameter} {r1.result.operator} {r1.result.value}, "
-                            f"规则 {r2.id}: {r2.result.parameter} {r2.result.operator} {r2.result.value}"
-                        ),
-                        conflicting_parameters=[param_name],
-                    ))
+                    reports.append(
+                        ConflictReport(
+                            conflicting_rule_ids=[r1.id, r2.id],
+                            conflict_type=ConflictType.PARAMETER,
+                            severity=ConflictSeverity.LOW,
+                            description=(
+                                f"规则 {r1.id} 和规则 {r2.id} 存在参数冲突："
+                                f"对同一参数 '{param_name}' 赋予了不同的值。"
+                                f"规则 {r1.id}: {r1.result.parameter} {r1.result.operator} {r1.result.value}, "
+                                f"规则 {r2.id}: {r2.result.parameter} {r2.result.operator} {r2.result.value}"
+                            ),
+                            conflicting_parameters=[param_name],
+                        )
+                    )
 
     return reports
 

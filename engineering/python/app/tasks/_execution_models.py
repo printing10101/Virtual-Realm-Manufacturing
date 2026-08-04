@@ -9,7 +9,7 @@ import json
 import logging
 import traceback
 import os
-from dataclasses import dataclass, field
+from dataclasses import field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -30,12 +30,14 @@ class ExecutionStatus(str, Enum):
     RECOVERING = "recovering"
     CANCELLED = "cancelled"
 
+
 class TaskCategory(str, Enum):
     """任务类别"""
 
     INFERENCE = "inference"
     TRAINING = "training"
     ANALYSIS = "analysis"
+
 
 class ExecutionResult:
     """执行结果"""
@@ -65,6 +67,7 @@ class ExecutionResult:
             "cost_events": self.cost_events,
         }
 
+
 class ExecutionSession:
     """执行会话"""
 
@@ -89,6 +92,7 @@ class ExecutionSession:
             "max_retries": self.max_retries,
         }
 
+
 class StructuredLogger:
     """结构化日志生成系统"""
 
@@ -106,9 +110,7 @@ class StructuredLogger:
         os.makedirs(log_dir, exist_ok=True)
         logger.info("StructuredLogger initialized at %s", log_dir)
 
-    def log_execution_start(
-        self, task_id: str, task_type: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def log_execution_start(self, task_id: str, task_type: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """记录执行开始"""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -155,9 +157,7 @@ class StructuredLogger:
         self._write_log(task_id, entry)
         logger.debug("[RESOURCE_USAGE] task=%s %s", task_id, resource_usage)
 
-    def log_error(
-        self, task_id: str, error: Exception, traceback_str: Optional[str] = None
-    ) -> None:
+    def log_error(self, task_id: str, error: Exception, traceback_str: Optional[str] = None) -> None:
         """记录错误信息"""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -168,9 +168,7 @@ class StructuredLogger:
             "traceback": traceback_str or traceback.format_exc(),
         }
         self._write_log(task_id, entry)
-        logger.error(
-            "[ERROR] task=%s type=%s msg=%s", task_id, type(error).__name__, error
-        )
+        logger.error("[ERROR] task=%s type=%s msg=%s", task_id, type(error).__name__, error)
 
     def log_cost_event(self, task_id: str, cost_event: Dict[str, Any]) -> None:
         """记录成本事件"""
@@ -209,4 +207,3 @@ class StructuredLogger:
             logger.warning("Failed to read task logs: %s", e)
 
         return logs
-

@@ -72,9 +72,7 @@ class PluginWorkerManager:
         if config.plugin_id in self._workers:
             existing = self._workers[config.plugin_id]
             if existing.status == WorkerStatus.RUNNING:
-                raise ValueError(
-                    f"Worker for plugin '{config.plugin_id}' already running"
-                )
+                raise ValueError(f"Worker for plugin '{config.plugin_id}' already running")
 
         port = config.worker_port or self._find_free_port()
 
@@ -99,9 +97,7 @@ class PluginWorkerManager:
         info.started_at = time.time()
         info.status = WorkerStatus.RUNNING
 
-        logger.info(
-            f"Worker started for plugin '{config.plugin_id}' (PID: {process.pid}, Port: {port})"
-        )
+        logger.info(f"Worker started for plugin '{config.plugin_id}' (PID: {process.pid}, Port: {port})")
 
         return info
 
@@ -123,7 +119,8 @@ class PluginWorkerManager:
             except (OSError, RuntimeError, TimeoutError) as e:
                 # 进程 terminate/kill 可能抛出未预期异常（OSError/PermissionError 等）
                 logger.error(
-                    f"Error stopping worker '{plugin_id}': {e}", exc_info=True,
+                    f"Error stopping worker '{plugin_id}': {e}",
+                    exc_info=True,
                 )
 
         info.status = WorkerStatus.STOPPED
@@ -149,9 +146,7 @@ class PluginWorkerManager:
         info.status = WorkerStatus.RESTARTING
         info.restart_count += 1
 
-        logger.info(
-            f"Restarting worker for plugin '{plugin_id}' (attempt {info.restart_count})"
-        )
+        logger.info(f"Restarting worker for plugin '{plugin_id}' (attempt {info.restart_count})")
 
         self.stop_worker(plugin_id)
 
@@ -219,11 +214,7 @@ class PluginWorkerManager:
         }
 
     def list_workers(self) -> List[Dict[str, Any]]:
-        return [
-            self.get_worker_info(pid)
-            for pid in self._workers
-            if self.get_worker_info(pid)
-        ]
+        return [self.get_worker_info(pid) for pid in self._workers if self.get_worker_info(pid)]
 
     def stop_all_workers(self, timeout: float = 10.0) -> None:
         for plugin_id in list(self._workers.keys()):
@@ -232,7 +223,8 @@ class PluginWorkerManager:
             except (OSError, RuntimeError, TimeoutError) as e:
                 # 批量停止时单个 worker 失败不应阻塞其他 worker
                 logger.error(
-                    f"Error stopping worker '{plugin_id}': {e}", exc_info=True,
+                    f"Error stopping worker '{plugin_id}': {e}",
+                    exc_info=True,
                 )
 
         self._workers.clear()
@@ -246,9 +238,7 @@ class PluginWorkerManager:
         return port
 
     def _run_worker(self, config: WorkerConfig, port: int) -> None:
-        logger.info(
-            f"Worker process starting for plugin '{config.plugin_id}' on port {port}"
-        )
+        logger.info(f"Worker process starting for plugin '{config.plugin_id}' on port {port}")
 
         try:
             env = os.environ.copy()
@@ -270,9 +260,7 @@ class PluginWorkerManager:
                         text=True,
                     )
                 except subprocess.TimeoutExpired:
-                    logger.error(
-                        "插件执行超时（300s）: %s", config.plugin_path
-                    )
+                    logger.error("插件执行超时（300s）: %s", config.plugin_path)
                     raise RuntimeError("插件执行超时（300s）")
 
                 if result.returncode != 0:
@@ -284,7 +272,8 @@ class PluginWorkerManager:
             # 兜底捕获：worker 进程启动涉及 subprocess + 环境变量 + 端口绑定
             # 异常族多源（OSError/ValueError 等），统一记录后抛出
             logger.error(
-                f"Worker process failed for '{config.plugin_id}': {e}", exc_info=True,
+                f"Worker process failed for '{config.plugin_id}': {e}",
+                exc_info=True,
             )
             raise
 

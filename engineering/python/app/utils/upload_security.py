@@ -116,8 +116,20 @@ EXTENSION_TO_MIME: dict[str, str] = {
 # 文本类扩展名集合：跳过 magic bytes 校验，仅做扩展名 + 大小校验。
 # 这些格式编码可变（UTF-8/UTF-16/GBK），固定签名校验会误杀。
 _TEXT_EXTENSIONS: Set[str] = {
-    ".csv", ".txt", ".json", ".md", ".gcode", ".nc", ".tap",
-    ".html", ".xml", ".rtf", ".yaml", ".yml", ".log", ".ini",
+    ".csv",
+    ".txt",
+    ".json",
+    ".md",
+    ".gcode",
+    ".nc",
+    ".tap",
+    ".html",
+    ".xml",
+    ".rtf",
+    ".yaml",
+    ".yml",
+    ".log",
+    ".ini",
 }
 
 # 检测 python-magic 是否可用（可选依赖，不强制安装）
@@ -132,6 +144,7 @@ except ImportError:
 # ============================================================
 # 核心校验函数
 # ============================================================
+
 
 async def validate_upload(
     file: UploadFile,
@@ -203,9 +216,7 @@ async def validate_upload(
             limit_mb = max_size / (1024 * 1024)
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=(
-                    f"文件大小({size_mb:.1f}MB)超过限制({limit_mb:.0f}MB)"
-                ),
+                detail=(f"文件大小({size_mb:.1f}MB)超过限制({limit_mb:.0f}MB)"),
             )
         chunks.append(chunk)
         # 已读到上限但还没读完，再读一次探测是否还有数据
@@ -233,6 +244,7 @@ async def validate_upload(
 # 内部辅助
 # ============================================================
 
+
 def _verify_magic_bytes(
     content: bytes,
     ext: str,
@@ -259,10 +271,7 @@ def _verify_magic_bytes(
         if expected_mime not in allowed_mimes:
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=(
-                    f"文件扩展名 '{ext}' 对应的 MIME '{expected_mime}' "
-                    f"不在允许类型列表中"
-                ),
+                detail=(f"文件扩展名 '{ext}' 对应的 MIME '{expected_mime}' 不在允许类型列表中"),
             )
 
     # 未知扩展名（未在 EXTENSION_TO_MIME 中）：跳过 magic 校验，
@@ -303,10 +312,7 @@ def _verify_magic_bytes(
     # 所有签名均不匹配
     raise HTTPException(
         status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-        detail=(
-            f"文件内容签名与扩展名 '{ext}' 不匹配，"
-            "可能为伪装文件。请上传真实格式的文件。"
-        ),
+        detail=(f"文件内容签名与扩展名 '{ext}' 不匹配，可能为伪装文件。请上传真实格式的文件。"),
     )
 
 

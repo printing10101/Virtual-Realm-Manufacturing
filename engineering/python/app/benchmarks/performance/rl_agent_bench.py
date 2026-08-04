@@ -115,12 +115,8 @@ class RLAgentPerfBenchmark:
 
         self._policy_net = PolicyNet(policy_config)
         self._value_net = ValueNet(value_config)
-        self._shield_strict = SafetyShield(
-            constraints=constraints, strict=True
-        )
-        self._shield_nonstrict = SafetyShield(
-            constraints=constraints, strict=False
-        )
+        self._shield_strict = SafetyShield(constraints=constraints, strict=True)
+        self._shield_nonstrict = SafetyShield(constraints=constraints, strict=False)
         self._plugin = RLAgentPlugin(
             policy_config=policy_config,
             value_config=value_config,
@@ -178,9 +174,7 @@ class RLAgentPerfBenchmark:
     # 基准 2：SafetyShield 过滤延迟（strict vs non-strict）
     # ------------------------------------------------------------------
 
-    def run_safety_shield_filter(
-        self, n_iterations: int = 200
-    ) -> dict[str, Any]:
+    def run_safety_shield_filter(self, n_iterations: int = 200) -> dict[str, Any]:
         """SafetyShield.filter() 纯过滤延迟.
 
         生成 [-1, +1] 范围内的随机动作向量，分别测量 strict 与
@@ -240,10 +234,7 @@ class RLAgentPerfBenchmark:
             result[f"rl_shield_nonstrict_ms_{k}"] = v
         result["rl_shield_samples"] = n_iterations
         result["rl_shield_strict_overhead_vs_nonstrict_pct"] = round(
-            (
-                strict_stats.get("mean", 0.0)
-                - nonstrict_stats.get("mean", 0.0)
-            )
+            (strict_stats.get("mean", 0.0) - nonstrict_stats.get("mean", 0.0))
             / max(nonstrict_stats.get("mean", 1.0), 1e-6)
             * 100,
             3,
@@ -294,9 +285,7 @@ class RLAgentPerfBenchmark:
             throughput = round(batch_size / (elapsed_ms / 1000.0), 2)
             result[f"rl_batch_{batch_size}_total_ms"] = round(elapsed_ms, 3)
             result[f"rl_batch_{batch_size}_throughput_dps"] = throughput
-            result[f"rl_batch_{batch_size}_avg_ms"] = round(
-                elapsed_ms / batch_size, 3
-            )
+            result[f"rl_batch_{batch_size}_avg_ms"] = round(elapsed_ms / batch_size, 3)
 
         self._results.update(result)
         return result
@@ -312,9 +301,7 @@ class RLAgentPerfBenchmark:
         （实例化 PolicyNet + 尝试 ModelRegistry 解析 + 失败回退随机初始化）。
         热命中：复用已加载的 model_uri，仅查字典命中。
         """
-        cold_uris = [
-            f"model://rl_agent/cold/{i}" for i in range(n_iterations)
-        ]
+        cold_uris = [f"model://rl_agent/cold/{i}" for i in range(n_iterations)]
         hot_uri = self._model_uri  # setup 阶段已加载
 
         # warmup 热路径
@@ -355,9 +342,7 @@ class RLAgentPerfBenchmark:
     # 基准 5：安全违反率统计
     # ------------------------------------------------------------------
 
-    def run_safety_violation_rate(
-        self, n_samples: int = 1000
-    ) -> dict[str, Any]:
+    def run_safety_violation_rate(self, n_samples: int = 1000) -> dict[str, Any]:
         """随机动作中触发 SafetyShield 过滤的比例统计.
 
         生成 n_samples 个随机动作（[-2, +2] 范围，刻意触发违反），
@@ -380,13 +365,9 @@ class RLAgentPerfBenchmark:
 
         for _ in range(n_samples):
             # 随机动作，刻意覆盖合法/违规场景
-            raw_action = np.random.uniform(
-                -2.0, 2.0, size=self._action_dim
-            ).astype(np.float32)
+            raw_action = np.random.uniform(-2.0, 2.0, size=self._action_dim).astype(np.float32)
 
-            safe_action, result = self._shield_strict.filter(
-                raw_action, prev_action=legal_action
-            )
+            safe_action, result = self._shield_strict.filter(raw_action, prev_action=legal_action)
 
             if result.violated:
                 total_violations += 1
@@ -404,18 +385,10 @@ class RLAgentPerfBenchmark:
 
         result: dict[str, Any] = {
             "rl_safety_total_samples": n_samples,
-            "rl_safety_boundary_violation_rate": round(
-                boundary_violations / n_samples, 4
-            ),
-            "rl_safety_delta_violation_rate": round(
-                delta_violations / n_samples, 4
-            ),
-            "rl_safety_total_violation_rate": round(
-                total_violations / n_samples, 4
-            ),
-            "rl_safety_fallback_rate": round(
-                fallback_count / n_samples, 4
-            ),
+            "rl_safety_boundary_violation_rate": round(boundary_violations / n_samples, 4),
+            "rl_safety_delta_violation_rate": round(delta_violations / n_samples, 4),
+            "rl_safety_total_violation_rate": round(total_violations / n_samples, 4),
+            "rl_safety_fallback_rate": round(fallback_count / n_samples, 4),
         }
         self._results.update(result)
         return result

@@ -125,9 +125,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 # - 通过 LNN_METRICS_ALLOW_IPS 环境变量可自定义（逗号分隔，支持 CIDR）
 # - 白名单外请求返回 403，避免指标数据泄露给外部攻击者
 
-_DEFAULT_METRICS_ALLOW_IPS = (
-    "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
-)
+_DEFAULT_METRICS_ALLOW_IPS = "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 
 
 def load_metrics_allowlist() -> tuple[
@@ -211,9 +209,7 @@ def create_metrics_router(metrics: Any) -> APIRouter:
                 request.url.path,
             )
             return JSONResponse(
-                content={
-                    "detail": "Forbidden: metrics endpoint not accessible from this IP"
-                },
+                content={"detail": "Forbidden: metrics endpoint not accessible from this IP"},
                 status_code=403,
             )
         # P0-14/15 修复：使用 Prometheus exposition format 标准 media_type

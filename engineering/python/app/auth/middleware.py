@@ -33,9 +33,6 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.auth.permissions import (
     AUTH_PUBLIC_PATHS,
     AUTH_PUBLIC_PREFIXES,
-    AGENT_ENDPOINT_PERMISSIONS,
-    PUBLIC_PATHS,
-    PUBLIC_PREFIXES,
     WRITE_SCOPES,
     _check_scope,
     _get_permission_class,
@@ -44,16 +41,12 @@ from app.auth.permissions import (
     _PUBLIC_ENDPOINTS_LNN,
 )
 from app.auth.audit import (
-    AgentAuditEntry,
-    AgentAuditLog,
     agent_audit_log,
 )
 from app.auth.rate_limiter import (
-    AgentRateLimiter,
     agent_rate_limiter,
 )
 from app.auth.idempotency import (
-    IdempotencyStore,
     idempotency_store,
 )
 
@@ -76,9 +69,7 @@ def _get_token_metadata(token: str) -> Optional[dict]:
     # 由上层调用方根据 None 拒绝访问，避免回退到 "R" 只读权限造成越权风险。
     meta_file = Path(os.environ.get("LNN_TOKEN_META_FILE", ".lnn_token_meta.json"))
     if not meta_file.exists():
-        logger.warning(
-            "Token metadata file not found; refusing to grant any permission (fail-closed)."
-        )
+        logger.warning("Token metadata file not found; refusing to grant any permission (fail-closed).")
         return None
     try:
         data = json.loads(meta_file.read_text())
@@ -159,6 +150,7 @@ def _decode_token(token: str) -> Optional[dict]:
     """Decode a JWT token (from security module)."""
     try:
         from app.auth.security import decode_token
+
         return decode_token(token)
     except (ValueError, KeyError, TypeError) as e:
         logger.debug("JWT token 解码失败: %s", e)
@@ -169,6 +161,7 @@ def _decode_token_strict(token: str, expected_type: str = "access") -> Optional[
     """Strictly decode a JWT token (from security module)."""
     try:
         from app.auth.security import decode_token_strict
+
         return decode_token_strict(token, expected_type)
     except (ValueError, KeyError, TypeError) as e:
         logger.debug("JWT token 严格解码失败: %s", e)
@@ -180,6 +173,7 @@ def _get_token_ban_list() -> Optional["_TokenBanList"]:
     # 使用 TYPE_CHECKING 解决循环导入：运行时延迟导入，类型检查时可用具体类型
     try:
         from app.dependencies import get_token_ban_list
+
         return get_token_ban_list()
     except (ImportError, AttributeError) as e:
         logger.warning("获取 token 黑名单失败: %s", e, exc_info=True)
@@ -195,6 +189,7 @@ def _get_agent_token_store() -> "_AgentTokenStore":
     """Get agent token store singleton."""
     # 使用 TYPE_CHECKING 解决循环导入：运行时延迟导入，类型检查时可用具体类型
     from app.agent.auth import agent_token_store
+
     return agent_token_store
 
 
@@ -310,8 +305,7 @@ class UnifiedAuthMiddleware:
         # 安全修复：如果权限检查被关闭，输出警告日志
         if not lnn_permission_enforced:
             logger.warning(
-                "权限强制检查已关闭 (lnn_permission_enforced=False)。"
-                "这可能导致未授权访问，生产环境应启用此选项。"
+                "权限强制检查已关闭 (lnn_permission_enforced=False)。这可能导致未授权访问，生产环境应启用此选项。"
             )
 
         # LNN token singleton
@@ -388,9 +382,7 @@ class UnifiedAuthMiddleware:
                 return
 
             start = time.perf_counter()
-            auth_result = await self._check_agent_auth(
-                method, path, auth_header, start, raw_headers
-            )
+            auth_result = await self._check_agent_auth(method, path, auth_header, start, raw_headers)
             if auth_result is not None:
                 await auth_result(send)
                 return
@@ -489,9 +481,7 @@ class UnifiedAuthMiddleware:
             status_code=captured_status["code"] or 200,
         )
 
-    async def _check_lnn_auth(
-        self, method: str, path: str, auth_header: str, token: str
-    ):
+    async def _check_lnn_auth(self, method: str, path: str, auth_header: str, token: str):
         """Check LNN flat token authentication.
 
         Returns None if auth passes or is disabled, or a callable that sends
@@ -520,9 +510,7 @@ class UnifiedAuthMiddleware:
             # Token doesn't match LNN flat token.
             # Only log a warning if the token looks like a flat token (not JWT).
             if not token.startswith("eyJ"):
-                logger.warning(
-                    "Invalid LNN token attempt from path %s", path
-                )
+                logger.warning("Invalid LNN token attempt from path %s", path)
             return lambda send: _send_json_response(
                 send,
                 401,
@@ -596,9 +584,7 @@ class UnifiedAuthMiddleware:
 
         return None
 
-    async def _check_jwt_auth(
-        self, method: str, path: str, auth_header: str, token: str
-    ):
+    async def _check_jwt_auth(self, method: str, path: str, auth_header: str, token: str):
         """Check JWT authentication.
 
         Returns None if auth passes or is disabled, or a callable that sends

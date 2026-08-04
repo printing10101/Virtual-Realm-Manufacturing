@@ -12,6 +12,7 @@
        由服务层在评分/下载时增量更新，避免每次 list 都聚合全版本数据
     6. 主表 latest_version 指向当前最新版本号，便于 list 接口直接 join
 """
+
 from __future__ import annotations
 
 import uuid

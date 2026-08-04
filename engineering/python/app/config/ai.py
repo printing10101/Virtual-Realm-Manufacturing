@@ -11,19 +11,11 @@ from app.config._utils import _bool_env, _env, _int_env, _path, logger
 @dataclass
 class AIConfig:
     mode: str = field(default_factory=lambda: _env("AI_MODE", "local"))
-    ollama_base_url: str = field(
-        default_factory=lambda: _env("OLLAMA_BASE_URL", "http://localhost:11434")
-    )
-    ollama_model: str = field(
-        default_factory=lambda: _env("OLLAMA_MODEL", "qwen2.5-coder:7b")
-    )
+    ollama_base_url: str = field(default_factory=lambda: _env("OLLAMA_BASE_URL", "http://localhost:11434"))
+    ollama_model: str = field(default_factory=lambda: _env("OLLAMA_MODEL", "qwen2.5-coder:7b"))
     cloud_api_key: str = field(default_factory=lambda: _env("CLOUD_API_KEY", ""))
-    cloud_base_url: str = field(
-        default_factory=lambda: _env("CLOUD_BASE_URL", "https://api.openai.com/v1")
-    )
-    cloud_model: str = field(
-        default_factory=lambda: _env("CLOUD_MODEL", "gpt-3.5-turbo")
-    )
+    cloud_base_url: str = field(default_factory=lambda: _env("CLOUD_BASE_URL", "https://api.openai.com/v1"))
+    cloud_model: str = field(default_factory=lambda: _env("CLOUD_MODEL", "gpt-3.5-turbo"))
     timeout: int = field(default_factory=lambda: _int_env("AI_TIMEOUT", 60))
     max_retries: int = field(default_factory=lambda: _int_env("AI_MAX_RETRIES", 3))
 
@@ -46,33 +38,17 @@ class AIConfig:
 @dataclass
 class ModelRouterSettings:
     local_model: str = field(default_factory=lambda: _env("LOCAL_MODEL", "qwen2.5:7b"))
-    cloud_provider: str = field(
-        default_factory=lambda: _env("CLOUD_PROVIDER", "openai")
-    )
-    cloud_model: str = field(
-        default_factory=lambda: _env("CLOUD_MODEL_ROUTER", "gpt-4o")
-    )
-    fallback_threshold: int = field(
-        default_factory=lambda: _int_env("FALLBACK_THRESHOLD", 3)
-    )
-    local_timeout: int = field(
-        default_factory=lambda: _int_env("LOCAL_TIMEOUT", 30)
-    )
+    cloud_provider: str = field(default_factory=lambda: _env("CLOUD_PROVIDER", "openai"))
+    cloud_model: str = field(default_factory=lambda: _env("CLOUD_MODEL_ROUTER", "gpt-4o"))
+    fallback_threshold: int = field(default_factory=lambda: _int_env("FALLBACK_THRESHOLD", 3))
+    local_timeout: int = field(default_factory=lambda: _int_env("LOCAL_TIMEOUT", 30))
 
 
 @dataclass
 class FineTuneSettings:
-    finetune_auto_trigger: bool = field(
-        default_factory=lambda: _bool_env("FINETUNE_AUTO_TRIGGER", False)
-    )
-    finetune_min_samples: int = field(
-        default_factory=lambda: _int_env("FINETUNE_MIN_SAMPLES", 50)
-    )
-    finetune_interval_days: int = field(
-        default_factory=lambda: _int_env("FINETUNE_INTERVAL_DAYS", 7)
-    )
+    finetune_auto_trigger: bool = field(default_factory=lambda: _bool_env("FINETUNE_AUTO_TRIGGER", False))
+    finetune_min_samples: int = field(default_factory=lambda: _int_env("FINETUNE_MIN_SAMPLES", 50))
+    finetune_interval_days: int = field(default_factory=lambda: _int_env("FINETUNE_INTERVAL_DAYS", 7))
     finetune_output_dir: str = field(
-        default_factory=lambda: _path(
-            "FINETUNE_OUTPUT_DIR", os.path.join("output", "models", "finetuned")
-        )
+        default_factory=lambda: _path("FINETUNE_OUTPUT_DIR", os.path.join("output", "models", "finetuned"))
     )

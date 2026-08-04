@@ -47,11 +47,10 @@ def _disclaimer_dict(
     项目记忆硬约束：requires_cam_validation 始终 True，不可由参数关闭。
     """
     if task is not None:
-        material_calibration_status = (
-            "pending_calibration" if task.pending_calibration else "calibrated"
-        )
+        material_calibration_status = "pending_calibration" if task.pending_calibration else "calibrated"
         ltc_experiment_used = task.prediction_method in (
-            "neural_network", "mixed",
+            "neural_network",
+            "mixed",
         )
         return build_gcode_disclaimer(
             precision_tier=config.gcode_generation.precision_tier,
@@ -131,8 +130,7 @@ def _resolve_upstream_chatter_report(
 
         if cp_task.status != ChatterPredictionTaskStatus.SUCCEEDED.value:
             logger.warning(
-                "上游 chatter_prediction 任务未 SUCCEEDED task_id=%s status=%s，"
-                "按未提供处理",
+                "上游 chatter_prediction 任务未 SUCCEEDED task_id=%s status=%s，按未提供处理",
                 source_chatter_prediction_task_id,
                 cp_task.status,
             )
@@ -140,8 +138,7 @@ def _resolve_upstream_chatter_report(
 
         if not cp_task.chatter_report_path:
             logger.warning(
-                "上游 chatter_prediction 任务已 SUCCEEDED 但 chatter_report_path 为空 "
-                "task_id=%s，按未提供处理",
+                "上游 chatter_prediction 任务已 SUCCEEDED 但 chatter_report_path 为空 task_id=%s，按未提供处理",
                 source_chatter_prediction_task_id,
             )
             return empty_result
@@ -150,9 +147,7 @@ def _resolve_upstream_chatter_report(
         material_name = getattr(cp_task, "material_id", "unknown") or "unknown"
         prediction_method = getattr(cp_task, "prediction_method", "") or "analytical"
         # pending_calibration 由阶段 5 ChatterReport 内部决定，此处仅作兜底
-        pending_calibration = bool(
-            getattr(cp_task, "pending_calibration", False)
-        )
+        pending_calibration = bool(getattr(cp_task, "pending_calibration", False))
         # 阶段 5 不存储 controller_type，返回空让调用方使用默认值
         default_controller_type = ""
 
@@ -165,12 +160,9 @@ def _resolve_upstream_chatter_report(
         )
 
     except Exception as e:
-        safe = safe_error_message(
-            e, context="gcode_generation.resolve_upstream_chatter_report"
-        )
+        safe = safe_error_message(e, context="gcode_generation.resolve_upstream_chatter_report")
         logger.warning(
-            "查询上游 chatter_prediction 任务异常 source_cp_task_id=%s "
-            "error_id=%s，按未提供处理",
+            "查询上游 chatter_prediction 任务异常 source_cp_task_id=%s error_id=%s，按未提供处理",
             source_chatter_prediction_task_id,
             safe.get("error_id"),
         )
@@ -223,8 +215,7 @@ def _resolve_upstream_operation_plan(
         )
         if not op_plan_path:
             logger.warning(
-                "上游 parametric_geometry 任务已存在但 operation_plan_path 为空 "
-                "task_id=%s，按未提供处理",
+                "上游 parametric_geometry 任务已存在但 operation_plan_path 为空 task_id=%s，按未提供处理",
                 source_parametric_geometry_task_id,
             )
             return ""
@@ -233,8 +224,7 @@ def _resolve_upstream_operation_plan(
         pg_status = getattr(pg_task, "status", "")
         if pg_status and pg_status != "succeeded":
             logger.warning(
-                "上游 parametric_geometry 任务未 SUCCEEDED task_id=%s status=%s，"
-                "按未提供处理",
+                "上游 parametric_geometry 任务未 SUCCEEDED task_id=%s status=%s，按未提供处理",
                 source_parametric_geometry_task_id,
                 pg_status,
             )
@@ -243,16 +233,10 @@ def _resolve_upstream_operation_plan(
         return op_plan_path
 
     except Exception as e:
-        safe = safe_error_message(
-            e, context="gcode_generation.resolve_upstream_operation_plan"
-        )
+        safe = safe_error_message(e, context="gcode_generation.resolve_upstream_operation_plan")
         logger.warning(
-            "查询上游 parametric_geometry 任务异常 source_pg_task_id=%s "
-            "error_id=%s，按未提供处理",
+            "查询上游 parametric_geometry 任务异常 source_pg_task_id=%s error_id=%s，按未提供处理",
             source_parametric_geometry_task_id,
             safe.get("error_id"),
         )
         return ""
-
-
-

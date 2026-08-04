@@ -16,7 +16,6 @@ synchronous repository helpers.
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from typing import Any, Optional
 
@@ -68,9 +67,7 @@ class _SyncSingletons:
                 return self._engine
             config = DatabaseConfig()
             if not config.enabled:
-                logger.warning(
-                    "DB_URL not configured, sync repository in-memory only"
-                )
+                logger.warning("DB_URL not configured, sync repository in-memory only")
                 return None
             sync_url = _build_sync_url(config.url)
             is_sqlite = sync_url.startswith("sqlite://")
@@ -105,9 +102,7 @@ class _SyncSingletons:
         with self._lock:
             if self._sessionmaker is not None:
                 return self._sessionmaker
-            self._sessionmaker = sessionmaker(
-                bind=engine, expire_on_commit=False, future=True
-            )
+            self._sessionmaker = sessionmaker(bind=engine, expire_on_commit=False, future=True)
             return self._sessionmaker
 
     def close(self) -> None:

@@ -1,6 +1,5 @@
 """Template Update Service API Routes."""
 
-
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -23,16 +22,12 @@ router = APIRouter(
 class CreateNotificationRequest(BaseModel):
     project_id: str = Field(..., description="Project ID")
     suggestion: Dict[str, Any] = Field(..., description="Suggestion data")
-    priority: str = Field(
-        default="optional", description="Priority: optional/recommended/critical"
-    )
+    priority: str = Field(default="optional", description="Priority: optional/recommended/critical")
 
 
 class ScanUpdatesRequest(BaseModel):
     project_id: str = Field(..., description="Project ID")
-    suggestions: List[Dict[str, Any]] = Field(
-        ..., description="List of suggestions to check"
-    )
+    suggestions: List[Dict[str, Any]] = Field(..., description="List of suggestions to check")
 
 
 @router.get("/{project_id}")

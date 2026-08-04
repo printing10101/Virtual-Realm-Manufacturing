@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -150,9 +150,7 @@ class MaterialResolver:
         if materials_json_path is None:
             # 默认路径：python/app/database/data/materials.json
             project_root = Path(__file__).resolve().parents[3]
-            self._materials_json_path = (
-                project_root / "app" / "database" / "data" / "materials.json"
-            )
+            self._materials_json_path = project_root / "app" / "database" / "data" / "materials.json"
         else:
             self._materials_json_path = Path(materials_json_path)
 
@@ -170,7 +168,8 @@ class MaterialResolver:
         except FileNotFoundError as e:
             logger.warning(
                 "materials.json 未找到 %s，仅 HRC52 补充数据可用: %s",
-                self._materials_json_path, e,
+                self._materials_json_path,
+                e,
             )
             raw_list = []
         except (json.JSONDecodeError, OSError) as e:
@@ -234,10 +233,7 @@ class MaterialResolver:
         if material_id in self._database_materials:
             return self._database_materials[material_id]
 
-        raise MaterialResolverError(
-            f"材料 ID 未找到: {material_id}。"
-            f"可用材料：{self.list_material_ids()}"
-        )
+        raise MaterialResolverError(f"材料 ID 未找到: {material_id}。可用材料：{self.list_material_ids()}")
 
     def list_material_ids(self) -> list[str]:
         """列出全部可用材料 ID（含 HRC52）。"""

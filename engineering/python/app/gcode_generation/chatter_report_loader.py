@@ -131,7 +131,7 @@ class ChatterReportLoader:
         loader = ChatterReportLoader()
         report = loader.load("/path/to/chatter_report.json")
         for feature in report.feature_results:
-            print(feature.feature_id, feature.stable, feature.limit_depth_mm)
+            logger.info("特征 %s: 稳定 %s, 极限深度 %.3f", feature.feature_id, feature.stable, feature.limit_depth_mm)
     """
 
     def load(self, report_path: str) -> LoadedChatterReport:
@@ -149,23 +149,17 @@ class ChatterReportLoader:
         """
         path = Path(report_path)
         if not path.exists():
-            raise ChatterReportLoadError(
-                f"阶段 5 ChatterReport 不存在: {report_path}"
-            )
+            raise ChatterReportLoadError(f"阶段 5 ChatterReport 不存在: {report_path}")
 
         try:
             raw_json = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
-            raise ChatterReportLoadError(
-                f"ChatterReport JSON 格式错误: {e}"
-            ) from e
+            raise ChatterReportLoadError(f"ChatterReport JSON 格式错误: {e}") from e
 
         # 校验必填字段
         missing = REQUIRED_REPORT_FIELDS - set(raw_json.keys())
         if missing:
-            raise ChatterReportLoadError(
-                f"ChatterReport 缺少必填字段: {missing}"
-            )
+            raise ChatterReportLoadError(f"ChatterReport 缺少必填字段: {missing}")
 
         task_status = raw_json["task_status"]
         if task_status != "succeeded":
@@ -177,9 +171,7 @@ class ChatterReportLoader:
         # 解析 feature_results
         raw_features = raw_json["feature_results"]
         if not isinstance(raw_features, list):
-            raise ChatterReportLoadError(
-                "ChatterReport feature_results 必须是列表"
-            )
+            raise ChatterReportLoadError("ChatterReport feature_results 必须是列表")
 
         feature_results: list[FeatureChatterResult] = []
         for i, raw_feature in enumerate(raw_features):
@@ -190,9 +182,7 @@ class ChatterReportLoader:
         prediction_method = raw_json["prediction_method"]
 
         # 检测 HRC52 待校准材料
-        pending_calibration = self._detect_pending_calibration(
-            material_id, feature_results
-        )
+        pending_calibration = self._detect_pending_calibration(material_id, feature_results)
 
         return LoadedChatterReport(
             report_path=report_path,
@@ -219,20 +209,14 @@ class ChatterReportLoader:
         """
         missing = REQUIRED_FEATURE_FIELDS - set(raw_feature.keys())
         if missing:
-            raise ChatterReportLoadError(
-                f"ChatterReport feature_results[{index}] 缺少必填字段: {missing}"
-            )
+            raise ChatterReportLoadError(f"ChatterReport feature_results[{index}] 缺少必填字段: {missing}")
 
         # [N-H3] value 非 None 校验：float(None) / bool(None) 会抛 TypeError 或静默转 False
         # 阶段 5 导出时若某字段为 null，此处给出明确错误而非在 float() 处崩溃
-        null_fields = [
-            field for field in REQUIRED_FEATURE_FIELDS
-            if raw_feature[field] is None
-        ]
+        null_fields = [field for field in REQUIRED_FEATURE_FIELDS if raw_feature[field] is None]
         if null_fields:
             raise ChatterReportLoadError(
-                f"ChatterReport feature_results[{index}] 必填字段值为 null: {null_fields}，"
-                f"报告路径: {report_path}"
+                f"ChatterReport feature_results[{index}] 必填字段值为 null: {null_fields}，报告路径: {report_path}"
             )
 
         return FeatureChatterResult(
@@ -249,17 +233,13 @@ class ChatterReportLoader:
             confidence=float(raw_feature["confidence"]),
             inference_time_ms=float(raw_feature.get("inference_time_ms", 0.0)),
             warnings=list(raw_feature.get("warnings", [])),
-            material_calibration_status=str(
-                raw_feature.get("material_calibration_status", "calibrated")
-            ),
+            material_calibration_status=str(raw_feature.get("material_calibration_status", "calibrated")),
             review_status=str(raw_feature.get("review_status", "pending")),
             edited_params=dict(raw_feature.get("edited_params", {})),
             reviewed_by=str(raw_feature.get("reviewed_by", "")),
             reviewed_at=float(raw_feature.get("reviewed_at", 0.0)),
             engineer_notes=str(raw_feature.get("engineer_notes", "")),
-            source_cutting_params_task_id=str(
-                raw_feature.get("source_cutting_params_task_id", "")
-            ),
+            source_cutting_params_task_id=str(raw_feature.get("source_cutting_params_task_id", "")),
             machine_id=str(raw_feature.get("machine_id", "")),
             tool_id=str(raw_feature.get("tool_id", "")),
             cutting_force_coeff=float(raw_feature.get("cutting_force_coeff", 0.0)),

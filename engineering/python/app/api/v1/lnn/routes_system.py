@@ -27,6 +27,7 @@ get_available_devices = None
 get_device_status = None
 clear_gpu_memory = None
 
+
 def _lazy_init_device_manager() -> bool:
     global _HAS_DEVICE_MANAGER, detect_device, get_available_devices
     global get_device_status, clear_gpu_memory
@@ -39,6 +40,7 @@ def _lazy_init_device_manager() -> bool:
             get_device_status_func,
             get_clear_gpu_memory_func,
         )
+
         detect_device = get_device_detect()
         get_available_devices = get_available_devices_func()
         get_device_status = get_device_status_func()
@@ -47,6 +49,7 @@ def _lazy_init_device_manager() -> bool:
     except Exception:
         _HAS_DEVICE_MANAGER = False
     return _HAS_DEVICE_MANAGER
+
 
 from app.api.v1.lnn.dependencies import (
     model_registry,
@@ -93,9 +96,7 @@ async def health_check():
 @api_response
 async def list_training_tasks():
     """列出所有训练任务"""
-    tasks = await task_manager.list_tasks(
-        task_type=TaskType.LNN_TRAINING, limit=200, offset=0
-    )
+    tasks = await task_manager.list_tasks(task_type=TaskType.LNN_TRAINING, limit=200, offset=0)
 
     tasks_list = []
     for t in tasks:
@@ -148,9 +149,7 @@ async def get_device_info():
         "torch_cuda_available": torch.cuda.is_available(),
         "torch_version": torch.__version__,
         "cuda_version": torch.version.cuda if torch.cuda.is_available() else None,
-        "cudnn_version": torch.backends.cudnn.version()
-        if torch.cuda.is_available()
-        else None,
+        "cudnn_version": torch.backends.cudnn.version() if torch.cuda.is_available() else None,
     }
 
     return success(data=response_data, message="Device info retrieved successfully")
@@ -180,24 +179,15 @@ async def get_device_status_endpoint():
         gpu_index = device.index if device.index is not None else 0
         response_data["gpu_status"] = {
             "total_memory_mb": round(
-                torch.cuda.get_device_properties(gpu_index).total_memory
-                / (1024**2),
+                torch.cuda.get_device_properties(gpu_index).total_memory / (1024**2),
                 2,
             ),
-            "allocated_memory_mb": round(
-                torch.cuda.memory_allocated(gpu_index) / (1024**2), 2
-            ),
-            "reserved_memory_mb": round(
-                torch.cuda.memory_reserved(gpu_index) / (1024**2), 2
-            ),
-            "max_memory_mb": round(
-                torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2
-            ),
+            "allocated_memory_mb": round(torch.cuda.memory_allocated(gpu_index) / (1024**2), 2),
+            "reserved_memory_mb": round(torch.cuda.memory_reserved(gpu_index) / (1024**2), 2),
+            "max_memory_mb": round(torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2),
         }
 
-    return success(
-        data=response_data, message="Device status retrieved successfully"
-    )
+    return success(data=response_data, message="Device status retrieved successfully")
 
 
 @router.post("/device/clear-cache", dependencies=[Depends(require_permission("lnn:write"))])

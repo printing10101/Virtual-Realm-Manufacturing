@@ -31,9 +31,7 @@ class CreateScheduledTaskRequest(BaseModel):
 
     task_id: str = Field(..., description="任务唯一标识符", min_length=1)
     agent_id: str = Field(..., description="执行代理ID", min_length=1)
-    schedule: str = Field(
-        ..., description="Cron表达式（分 时 日 月 星期）", min_length=1
-    )
+    schedule: str = Field(..., description="Cron表达式（分 时 日 月 星期）", min_length=1)
     task_type: str = Field(
         ...,
         description="任务类型（lnn_inference/lnn_training/lnn_analysis）",
@@ -89,9 +87,7 @@ async def create_scheduled_task(request: CreateScheduledTaskRequest):
     existing = scheduler.wakeup_queue.get_task(request.task_id)
     if existing:
         logger.info("Task already exists: %s", request.task_id)
-        raise HTTPException(
-            status_code=409, detail="Task already exists"
-        )
+        raise HTTPException(status_code=409, detail="Task already exists")
 
     task = ScheduledTask(
         task_id=request.task_id,
@@ -149,9 +145,7 @@ async def get_scheduled_task(task_id: str):
 
 
 @router.get("/tasks", response_model=List[TaskResponse])
-async def list_scheduled_tasks(
-    agent_id: Optional[str] = None, status: Optional[str] = None
-):
+async def list_scheduled_tasks(agent_id: Optional[str] = None, status: Optional[str] = None):
     """列出所有调度任务"""
     from app.dependencies import get_scheduler
     from app.heartbeat.heartbeat import ScheduleStatus

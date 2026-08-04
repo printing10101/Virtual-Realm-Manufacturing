@@ -16,6 +16,7 @@
 ``signal_fusion_kb`` / ``knowledge_graph`` 等 AI 驱动路由在 ``ai.py`` 中注册，
 避免双重注册。本域仅含纯工程侧路由（仿真 / 项目 / STEP / 规则 / DXF / NL2CAD / CAM）。
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

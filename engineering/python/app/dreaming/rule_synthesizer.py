@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -96,22 +95,12 @@ class RuleDraft:
             action=data.get("action", {}),
             confidence=float(data.get("confidence", 0.5)),
             status=data.get("status", RULE_STATUS_DRAFT),
-            source_insight_category=data.get(
-                "source_insight_category", ""
-            ),
+            source_insight_category=data.get("source_insight_category", ""),
             supporting_sessions=data.get("supporting_sessions", []),
-            source_insight_content=data.get(
-                "source_insight_content", ""
-            ),
-            respects_cam_validation=data.get(
-                "respects_cam_validation", True
-            ),
-            respects_succeeded_lock=data.get(
-                "respects_succeeded_lock", True
-            ),
-            created_at=data.get(
-                "created_at", datetime.now(timezone.utc).isoformat()
-            ),
+            source_insight_content=data.get("source_insight_content", ""),
+            respects_cam_validation=data.get("respects_cam_validation", True),
+            respects_succeeded_lock=data.get("respects_succeeded_lock", True),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
             validated_at=data.get("validated_at"),
             metadata=data.get("metadata", {}),
         )
@@ -140,9 +129,7 @@ class RuleSynthesizer:
         Args:
             output_dir: 规则草稿持久化目录。默认 python/outputs/dreaming/rules
         """
-        self.output_dir = Path(
-            output_dir or "python/outputs/dreaming/rules"
-        )
+        self.output_dir = Path(output_dir or "python/outputs/dreaming/rules")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -194,7 +181,8 @@ class RuleSynthesizer:
 
         logger.info(
             "规则合成完成：%d 条草稿（来自 %d 条洞察）",
-            len(rules), len(reflection.insights),
+            len(rules),
+            len(reflection.insights),
         )
         return rules
 
@@ -202,9 +190,7 @@ class RuleSynthesizer:
     # 合成策略
     # ------------------------------------------------------------------
 
-    def _synthesize_pattern_rule(
-        self, insight: InsightItem
-    ) -> Optional[RuleDraft]:
+    def _synthesize_pattern_rule(self, insight: InsightItem) -> Optional[RuleDraft]:
         """从 pattern 类洞察合成规则。
 
         例如：洞察 "材料 HRC52 出现 3 次失败"
@@ -255,9 +241,7 @@ class RuleSynthesizer:
             source_insight_content=insight.content,
         )
 
-    def _synthesize_anomaly_rule(
-        self, insight: InsightItem
-    ) -> Optional[RuleDraft]:
+    def _synthesize_anomaly_rule(self, insight: InsightItem) -> Optional[RuleDraft]:
         """从 anomaly 类洞察合成规则。"""
         return RuleDraft(
             rule_id=self._gen_rule_id(),
@@ -277,9 +261,7 @@ class RuleSynthesizer:
             source_insight_content=insight.content,
         )
 
-    def _synthesize_rule_candidate(
-        self, insight: InsightItem
-    ) -> Optional[RuleDraft]:
+    def _synthesize_rule_candidate(self, insight: InsightItem) -> Optional[RuleDraft]:
         """从 rule_candidate 类洞察合成规则。
 
         例如：洞察 "3 个 Session 成功，对应 memory 应提升 validation_count"
@@ -305,9 +287,7 @@ class RuleSynthesizer:
             source_insight_content=insight.content,
         )
 
-    def _synthesize_warning_rule(
-        self, insight: InsightItem
-    ) -> Optional[RuleDraft]:
+    def _synthesize_warning_rule(self, insight: InsightItem) -> Optional[RuleDraft]:
         """从 warning 类洞察合成警告规则。"""
         return RuleDraft(
             rule_id=self._gen_rule_id(),
@@ -340,18 +320,14 @@ class RuleSynthesizer:
         # 检查是否试图绕过 CAM 验证
         action_type = rule.action.get("type", "")
         if action_type in ("skip_cam_validation", "force_pass"):
-            logger.warning(
-                "规则 %s 试图绕过 CAM 验证，已拒绝", rule.rule_id
-            )
+            logger.warning("规则 %s 试图绕过 CAM 验证，已拒绝", rule.rule_id)
             rule.respects_cam_validation = False
             rule.status = RULE_STATUS_REJECTED
             return False
 
         # 检查是否试图解锁 SUCCEEDED 任务
         if action_type in ("unlock_succeeded", "delete_succeeded"):
-            logger.warning(
-                "规则 %s 试图解锁 SUCCEEDED 任务，已拒绝", rule.rule_id
-            )
+            logger.warning("规则 %s 试图解锁 SUCCEEDED 任务，已拒绝", rule.rule_id)
             rule.respects_succeeded_lock = False
             rule.status = RULE_STATUS_REJECTED
             return False
@@ -368,8 +344,15 @@ class RuleSynthesizer:
         支持的项目材料：TC4 / HRC52 / 6061-T6 / 45钢 / AL7075 等
         """
         materials = [
-            "TC4", "HRC52", "HRC_52", "6061-T6", "6061T6",
-            "45钢", "45_steel", "AL7075", "Al7075",
+            "TC4",
+            "HRC52",
+            "HRC_52",
+            "6061-T6",
+            "6061T6",
+            "45钢",
+            "45_steel",
+            "AL7075",
+            "Al7075",
         ]
         for mat in materials:
             if mat in content:

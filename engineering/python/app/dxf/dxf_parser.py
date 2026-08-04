@@ -19,9 +19,8 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Optional
 
 import ezdxf
 
@@ -46,9 +45,18 @@ SUPPORTED_VERSIONS = frozenset(DXF_VERSION_MAP.keys())
 
 
 from ._entities import (
-    DxfLine, DxfCircle, DxfArc, DxfText, DxfDimension,
-    DxfPolyline, DxfHatch, DxfInsert, DxfSpline, DxfParseResult,
+    DxfLine,
+    DxfCircle,
+    DxfArc,
+    DxfText,
+    DxfDimension,
+    DxfPolyline,
+    DxfHatch,
+    DxfInsert,
+    DxfSpline,
+    DxfParseResult,
 )
+
 
 class DxfParser:
     """DXF文件解析器。
@@ -96,60 +104,43 @@ class DxfParser:
                 raise DxfParseError(f"路径安全检查失败: {file_path}。错误: {e}") from e
         else:
             path = Path(file_path)
-        
+
         start_time = time.time()
         result = DxfParseResult(file_name=path.name)
 
         if not path.exists():
-            raise DxfParseError(f"DXF文件不存在: {file_path}。请检查文件路径是否正确，"
-                                f"并确认文件未被移动或删除。")
+            raise DxfParseError(f"DXF文件不存在: {file_path}。请检查文件路径是否正确，并确认文件未被移动或删除。")
 
         if not path.is_file():
-            raise DxfParseError(f"路径不是有效的文件: {file_path}。"
-                                f"请提供DXF文件的完整路径。")
+            raise DxfParseError(f"路径不是有效的文件: {file_path}。请提供DXF文件的完整路径。")
 
         result.file_size = path.stat().st_size
 
         if result.file_size == 0:
-            raise DxfParseError(f"DXF文件为空(0字节): {file_path}。"
-                                f"请确认文件未被损坏。")
+            raise DxfParseError(f"DXF文件为空(0字节): {file_path}。请确认文件未被损坏。")
 
         if result.file_size > 100 * 1024 * 1024:
-            result.warnings.append(
-                f"DXF文件过大({result.file_size / 1024 / 1024:.1f}MB)，"
-                f"解析可能需要较长时间"
-            )
+            result.warnings.append(f"DXF文件过大({result.file_size / 1024 / 1024:.1f}MB)，解析可能需要较长时间")
 
         try:
             doc = ezdxf.readfile(str(path))
         except ezdxf.DXFStructureError as e:
-            raise DxfFormatError(
-                f"DXF文件结构错误: {file_path}。文件可能已损坏或不完整。"
-                f"技术详情: {e}"
-            ) from e
+            raise DxfFormatError(f"DXF文件结构错误: {file_path}。文件可能已损坏或不完整。技术详情: {e}") from e
         except ezdxf.DXFVersionError as e:
             raise DxfFormatError(
-                f"DXF版本不兼容: {file_path}。支持的版本包括R12、R14、"
-                f"AutoCAD 2000-2021。技术详情: {e}"
+                f"DXF版本不兼容: {file_path}。支持的版本包括R12、R14、AutoCAD 2000-2021。技术详情: {e}"
             ) from e
         except (OSError, IOError, PermissionError) as e:
-            raise DxfParseError(
-                f"DXF文件读取失败: {file_path}。错误: {e}"
-            ) from e
+            raise DxfParseError(f"DXF文件读取失败: {file_path}。错误: {e}") from e
         except (AttributeError, KeyError, TypeError, ValueError) as e:
             logger.error("DXF文件读取遇到未知异常: %s", file_path, exc_info=True)
-            raise DxfParseError(
-                f"DXF文件读取失败: {file_path}。错误: {e}"
-            ) from e
+            raise DxfParseError(f"DXF文件读取失败: {file_path}。错误: {e}") from e
 
         dxf_version = doc.dxfversion
         result.dxf_version = f"{dxf_version} ({DXF_VERSION_MAP.get(dxf_version, '未知')})"
 
         if dxf_version not in SUPPORTED_VERSIONS:
-            result.warnings.append(
-                f"DXF版本 {dxf_version} 不在明确支持的版本列表中，"
-                f"解析可能不完全准确"
-            )
+            result.warnings.append(f"DXF版本 {dxf_version} 不在明确支持的版本列表中，解析可能不完全准确")
 
         modelspace = doc.modelspace()
         self._extract_lines(modelspace, result)
@@ -258,24 +249,21 @@ class DxfParser:
                     handle = getattr(entity.dxf, "handle", "<unknown>")
                     logger.warning(
                         "%s实体提取跳过(handle=%s): %s",
-                        entity_type, handle, e, exc_info=True,
+                        entity_type,
+                        handle,
+                        e,
+                        exc_info=True,
                     )
                     if warn_on_fail:
-                        result.warnings.append(
-                            f"{entity_type}实体提取失败(handle={handle}): {e}"
-                        )
+                        result.warnings.append(f"{entity_type}实体提取失败(handle={handle}): {e}")
         except (AttributeError, TypeError) as e:
             logger.warning("%s实体查询异常: %s", entity_type, e, exc_info=True)
             if query_warn:
                 result.warnings.append(f"{entity_type}实体查询异常: {e}")
 
-    def _extract_lines(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_lines(self, modelspace, result: DxfParseResult) -> None:
         """提取所有LINE实体。"""
-        self._extract_entities(
-            modelspace, "LINE", DxfParser._line_to_obj, result.lines, result
-        )
+        self._extract_entities(modelspace, "LINE", DxfParser._line_to_obj, result.lines, result)
 
     @staticmethod
     def _line_to_obj(entity) -> DxfLine:
@@ -284,25 +272,26 @@ class DxfParser:
             start=(
                 float(entity.dxf.start.x),
                 float(entity.dxf.start.y),
-                float(entity.dxf.start.z) if entity.dxf.hasattr("start") and hasattr(entity.dxf.start, 'z') else 0.0,
+                float(entity.dxf.start.z) if entity.dxf.hasattr("start") and hasattr(entity.dxf.start, "z") else 0.0,
             ),
             end=(
                 float(entity.dxf.end.x),
                 float(entity.dxf.end.y),
-                float(entity.dxf.end.z) if entity.dxf.hasattr("end") and hasattr(entity.dxf.end, 'z') else 0.0,
+                float(entity.dxf.end.z) if entity.dxf.hasattr("end") and hasattr(entity.dxf.end, "z") else 0.0,
             ),
             layer=str(entity.dxf.layer),
             color=DxfParser._safe_color(entity),
             handle=str(entity.dxf.handle),
         )
 
-    def _extract_circles(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_circles(self, modelspace, result: DxfParseResult) -> None:
         """提取所有CIRCLE实体。"""
         self._extract_entities(
-            modelspace, "CIRCLE", DxfParser._circle_to_obj,
-            result.circles, result,
+            modelspace,
+            "CIRCLE",
+            DxfParser._circle_to_obj,
+            result.circles,
+            result,
         )
 
     @staticmethod
@@ -312,7 +301,7 @@ class DxfParser:
             center=(
                 float(entity.dxf.center.x),
                 float(entity.dxf.center.y),
-                float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, 'z') else 0.0,
+                float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, "z") else 0.0,
             ),
             radius=float(entity.dxf.radius),
             layer=str(entity.dxf.layer),
@@ -321,13 +310,9 @@ class DxfParser:
         )
         return circle if circle.radius > 0 else None
 
-    def _extract_arcs(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_arcs(self, modelspace, result: DxfParseResult) -> None:
         """提取所有ARC实体。"""
-        self._extract_entities(
-            modelspace, "ARC", DxfParser._arc_to_obj, result.arcs, result
-        )
+        self._extract_entities(modelspace, "ARC", DxfParser._arc_to_obj, result.arcs, result)
 
     @staticmethod
     def _arc_to_obj(entity) -> DxfArc:
@@ -336,7 +321,7 @@ class DxfParser:
             center=(
                 float(entity.dxf.center.x),
                 float(entity.dxf.center.y),
-                float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, 'z') else 0.0,
+                float(entity.dxf.center.z) if entity.dxf.hasattr("center") and hasattr(entity.dxf.center, "z") else 0.0,
             ),
             radius=float(entity.dxf.radius),
             start_angle=float(entity.dxf.start_angle),
@@ -346,19 +331,25 @@ class DxfParser:
             handle=str(entity.dxf.handle),
         )
 
-    def _extract_texts(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_texts(self, modelspace, result: DxfParseResult) -> None:
         """提取所有TEXT和MTEXT实体。"""
         # TEXT/MTEXT 在单实体提取失败时需要往 warnings 写入诊断信息
         # （原有行为，与其它实体只 logger.warning 不同），通过 warn_on_fail=True 保留
         self._extract_entities(
-            modelspace, "TEXT", DxfParser._text_to_obj,
-            result.texts, result, warn_on_fail=True,
+            modelspace,
+            "TEXT",
+            DxfParser._text_to_obj,
+            result.texts,
+            result,
+            warn_on_fail=True,
         )
         self._extract_entities(
-            modelspace, "MTEXT", DxfParser._mtext_to_obj,
-            result.texts, result, warn_on_fail=True,
+            modelspace,
+            "MTEXT",
+            DxfParser._mtext_to_obj,
+            result.texts,
+            result,
+            warn_on_fail=True,
         )
 
     @staticmethod
@@ -369,7 +360,7 @@ class DxfParser:
             position=(
                 float(entity.dxf.insert.x),
                 float(entity.dxf.insert.y),
-                float(entity.dxf.insert.z) if entity.dxf.hasattr("insert") and hasattr(entity.dxf.insert, 'z') else 0.0,
+                float(entity.dxf.insert.z) if entity.dxf.hasattr("insert") and hasattr(entity.dxf.insert, "z") else 0.0,
             ),
             height=float(entity.dxf.height) if entity.dxf.hasattr("height") else 2.5,
             rotation=float(entity.dxf.rotation) if entity.dxf.hasattr("rotation") else 0.0,
@@ -382,13 +373,13 @@ class DxfParser:
     @staticmethod
     def _mtext_to_obj(entity) -> DxfText:
         """将单个 MTEXT 实体转换为 DxfText。"""
-        raw_text = entity.plain_text() if hasattr(entity, 'plain_text') else str(entity.dxf.text)
+        raw_text = entity.plain_text() if hasattr(entity, "plain_text") else str(entity.dxf.text)
         return DxfText(
             content=raw_text,
             position=(
                 float(entity.dxf.insert.x),
                 float(entity.dxf.insert.y),
-                float(entity.dxf.insert.z) if entity.dxf.hasattr("insert") and hasattr(entity.dxf.insert, 'z') else 0.0,
+                float(entity.dxf.insert.z) if entity.dxf.hasattr("insert") and hasattr(entity.dxf.insert, "z") else 0.0,
             ),
             height=float(entity.dxf.char_height) if entity.dxf.hasattr("char_height") else 2.5,
             rotation=float(entity.dxf.rotation) if entity.dxf.hasattr("rotation") else 0.0,
@@ -398,17 +389,18 @@ class DxfParser:
             entity_type="MTEXT",
         )
 
-    def _extract_dimensions(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_dimensions(self, modelspace, result: DxfParseResult) -> None:
         """提取所有DIMENSION实体。
 
         对每种标注类型（线性/对齐/角度/半径/直径）调用专门的提取方法。
         对于无法确定类型的标注，尝试从文本内容推断。
         """
         self._extract_entities(
-            modelspace, "DIMENSION", DxfParser._dimension_to_obj,
-            result.dimensions, result,
+            modelspace,
+            "DIMENSION",
+            DxfParser._dimension_to_obj,
+            result.dimensions,
+            result,
         )
 
     @staticmethod
@@ -425,7 +417,7 @@ class DxfParser:
 
         associated = []
         try:
-            if hasattr(entity.dxf, 'geometry'):
+            if hasattr(entity.dxf, "geometry"):
                 geo_handle = entity.dxf.geometry
                 if geo_handle:
                     associated.append(str(geo_handle))
@@ -485,12 +477,17 @@ class DxfParser:
         try:
             return float(entity.dxf.measurement)
         except (AttributeError, TypeError, ValueError) as e:
-            logger.warning("无法从 entity.dxf.measurement 获取测量值 (handle=%s): %s",
-                        getattr(entity.dxf, "handle", "?"), e, exc_info=True)
+            logger.warning(
+                "无法从 entity.dxf.measurement 获取测量值 (handle=%s): %s",
+                getattr(entity.dxf, "handle", "?"),
+                e,
+                exc_info=True,
+            )
             try:
                 raw_text = DxfParser._get_dimension_text(entity)
                 import re
-                nums = re.findall(r'[\d.]+', raw_text)
+
+                nums = re.findall(r"[\d.]+", raw_text)
                 if nums:
                     return float(nums[0])
             except (AttributeError, TypeError, ValueError) as parse_err:
@@ -537,7 +534,7 @@ class DxfParser:
             return (
                 float(entity.dxf.text_midpoint.x),
                 float(entity.dxf.text_midpoint.y),
-                float(entity.dxf.text_midpoint.z) if hasattr(entity.dxf.text_midpoint, 'z') else 0.0,
+                float(entity.dxf.text_midpoint.z) if hasattr(entity.dxf.text_midpoint, "z") else 0.0,
             )
         except (AttributeError, TypeError, ValueError) as exc:
             # 修复：原代码用裸 except Exception 静默吞掉所有错误。
@@ -551,7 +548,7 @@ class DxfParser:
                 return (
                     float(entity.dxf.def_point.x),
                     float(entity.dxf.def_point.y),
-                    float(entity.dxf.def_point.z) if hasattr(entity.dxf.def_point, 'z') else 0.0,
+                    float(entity.dxf.def_point.z) if hasattr(entity.dxf.def_point, "z") else 0.0,
                 )
             except (AttributeError, TypeError, ValueError) as exc2:
                 logger.warning(
@@ -577,9 +574,7 @@ class DxfParser:
             )
             return 256
 
-    def _extract_polylines(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_polylines(self, modelspace, result: DxfParseResult) -> None:
         """提取所有 POLYLINE 和 LWPOLYLINE 实体。
 
         LWPOLYLINE 顶点包含 bulge（凸度）信息，用于表示圆弧段。
@@ -588,12 +583,20 @@ class DxfParser:
         # LWPOLYLINE/POLYLINE 原代码在 query 失败时不往 warnings 添加消息，
         # 通过 query_warn=False 保留该行为
         self._extract_entities(
-            modelspace, "LWPOLYLINE", DxfParser._lwpolyline_to_obj,
-            result.polylines, result, query_warn=False,
+            modelspace,
+            "LWPOLYLINE",
+            DxfParser._lwpolyline_to_obj,
+            result.polylines,
+            result,
+            query_warn=False,
         )
         self._extract_entities(
-            modelspace, "POLYLINE", DxfParser._polyline_to_obj,
-            result.polylines, result, query_warn=False,
+            modelspace,
+            "POLYLINE",
+            DxfParser._polyline_to_obj,
+            result.polylines,
+            result,
+            query_warn=False,
         )
 
     @staticmethod
@@ -602,17 +605,16 @@ class DxfParser:
         vertices: list[tuple[float, ...]] = []
         # ezdxf 的 points() 方法返回带 bulge 的顶点
         try:
-            points_with_bulge = entity.get_points(
-                format="xyseb"
-            )  # x, y, start_width, end_width, bulge
+            points_with_bulge = entity.get_points(format="xyseb")  # x, y, start_width, end_width, bulge
         except (AttributeError, TypeError, ValueError) as e:
             # 旧版 ezdxf 退路
-            logger.warning("LWPOLYLINE get_points(format='xyseb') 失败，尝试 vertices() (handle=%s): %s",
-                       str(entity.dxf.handle), e, exc_info=True)
-            points_with_bulge = [
-                (p[0], p[1], 0.0, 0.0, p[2] if len(p) > 2 else 0.0)
-                for p in entity.vertices()
-            ]
+            logger.warning(
+                "LWPOLYLINE get_points(format='xyseb') 失败，尝试 vertices() (handle=%s): %s",
+                str(entity.dxf.handle),
+                e,
+                exc_info=True,
+            )
+            points_with_bulge = [(p[0], p[1], 0.0, 0.0, p[2] if len(p) > 2 else 0.0) for p in entity.vertices()]
         for pt in points_with_bulge:
             x = float(pt[0])
             y = float(pt[1])
@@ -646,14 +648,11 @@ class DxfParser:
                         is_3d = True
                     bulge = float(getattr(v.dxf, "bulge", 0.0))
                     if abs(bulge) > 1e-6:
-                        vertices.append(
-                            (float(loc.x), float(loc.y), bulge)
-                        )
+                        vertices.append((float(loc.x), float(loc.y), bulge))
                     else:
                         vertices.append((float(loc.x), float(loc.y), 0.0))
             except (AttributeError, KeyError, TypeError, ValueError) as e:
-                logger.warning("POLYLINE 顶点解析失败，跳过 (handle=%s): %s",
-                           str(entity.dxf.handle), e, exc_info=True)
+                logger.warning("POLYLINE 顶点解析失败，跳过 (handle=%s): %s", str(entity.dxf.handle), e, exc_info=True)
                 continue
         return DxfPolyline(
             vertices=vertices,
@@ -665,9 +664,7 @@ class DxfParser:
             entity_type="POLYLINE",
         )
 
-    def _extract_hatches(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_hatches(self, modelspace, result: DxfParseResult) -> None:
         """提取所有 HATCH 实体（填充图案）。
 
         HATCH 在工程图中常表示：
@@ -677,19 +674,18 @@ class DxfParser:
         - 文字背景
         """
         self._extract_entities(
-            modelspace, "HATCH", DxfParser._hatch_to_obj,
-            result.hatches, result,
+            modelspace,
+            "HATCH",
+            DxfParser._hatch_to_obj,
+            result.hatches,
+            result,
         )
 
     @staticmethod
     def _hatch_to_obj(entity) -> DxfHatch:
         """将单个 HATCH 实体转换为 DxfHatch。"""
-        pattern_name = str(
-            getattr(entity.dxf, "pattern_name", "") or ""
-        )
-        solid_fill = bool(
-            getattr(entity.dxf, "solid_fill", 0) or 0
-        )
+        pattern_name = str(getattr(entity.dxf, "pattern_name", "") or "")
+        solid_fill = bool(getattr(entity.dxf, "solid_fill", 0) or 0)
         # 提取边界路径
         boundary_paths: list[list[tuple[float, float, float]]] = []
         try:
@@ -713,11 +709,7 @@ class DxfParser:
                                         (
                                             float(start[0]),
                                             float(start[1]),
-                                            float(
-                                                getattr(
-                                                    start, "z", 0.0
-                                                )
-                                            ),
+                                            float(getattr(start, "z", 0.0)),
                                         )
                                     )
                             end = getattr(ve.dxf, "end", None)
@@ -726,11 +718,7 @@ class DxfParser:
                                     (
                                         float(end[0]),
                                         float(end[1]),
-                                        float(
-                                            getattr(
-                                                end, "z", 0.0
-                                            )
-                                        ),
+                                        float(getattr(end, "z", 0.0)),
                                     )
                                 )
                     except (AttributeError, TypeError, ValueError) as e_inner:
@@ -753,37 +741,32 @@ class DxfParser:
             pattern_name=pattern_name,
             solid_fill=solid_fill,
             boundary_paths=boundary_paths,
-            layer=str(
-                getattr(entity.dxf, "layer", "0")
-            ),
+            layer=str(getattr(entity.dxf, "layer", "0")),
             color=DxfParser._safe_color(entity),
             handle=str(entity.dxf.handle),
         )
 
-    def _extract_inserts(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_inserts(self, modelspace, result: DxfParseResult) -> None:
         """提取所有 INSERT 实体（Block 引用）。
 
         INSERT 表示"插入一个块"，是 DXF 复用的关键机制。
         工业场景中：标准件库（螺栓、键、键槽、孔标准件）通过 INSERT 引用。
         """
         self._extract_entities(
-            modelspace, "INSERT", DxfParser._insert_to_obj,
-            result.inserts, result,
+            modelspace,
+            "INSERT",
+            DxfParser._insert_to_obj,
+            result.inserts,
+            result,
         )
 
     @staticmethod
     def _insert_to_obj(entity) -> DxfInsert:
         """将单个 INSERT 实体转换为 DxfInsert。"""
-        block_name = str(
-            getattr(entity.dxf, "name", "") or ""
-        )
+        block_name = str(getattr(entity.dxf, "name", "") or "")
         insert_point = getattr(entity.dxf, "insert", None)
         if insert_point is None:
-            position: tuple[float, float, float] = (
-                0.0, 0.0, 0.0
-            )
+            position: tuple[float, float, float] = (0.0, 0.0, 0.0)
         else:
             position = (
                 float(insert_point.x),
@@ -805,15 +788,11 @@ class DxfParser:
             position=position,
             scale=(sx, sy, sz),
             rotation=rotation,
-            layer=str(
-                getattr(entity.dxf, "layer", "0")
-            ),
+            layer=str(getattr(entity.dxf, "layer", "0")),
             handle=str(entity.dxf.handle),
         )
 
-    def _extract_splines(
-        self, modelspace, result: DxfParseResult
-    ) -> None:
+    def _extract_splines(self, modelspace, result: DxfParseResult) -> None:
         """提取所有 SPLINE 实体（样条曲线）。
 
         SPLINE 在工业场景中：
@@ -822,8 +801,11 @@ class DxfParser:
         - 凸轮轮廓线
         """
         self._extract_entities(
-            modelspace, "SPLINE", DxfParser._spline_to_obj,
-            result.splines, result,
+            modelspace,
+            "SPLINE",
+            DxfParser._spline_to_obj,
+            result.splines,
+            result,
         )
 
     @staticmethod
@@ -840,26 +822,20 @@ class DxfParser:
         try:
             # 部分 ezdxf 版本：从 control_points 获取
             for ctl in entity.control_points:
-                cp.append(
-                    (float(ctl[0]), float(ctl[1]), float(ctl[2]))
-                )
+                cp.append((float(ctl[0]), float(ctl[1]), float(ctl[2])))
         except (AttributeError, TypeError, ValueError) as e:
             # 退化：基于 fit_points 估计
             logger.warning("SPLINE control_points 解析失败，尝试 fit_points: %s", e, exc_info=True)
             try:
                 for f in entity.fit_points:
-                    cp.append(
-                        (float(f[0]), float(f[1]), float(f[2]))
-                    )
+                    cp.append((float(f[0]), float(f[1]), float(f[2])))
             except (AttributeError, TypeError, ValueError) as e2:
                 logger.warning("SPLINE fit_points 也解析失败: %s", e2, exc_info=True)
         # fit points
         fp: list[tuple[float, float, float]] = []
         try:
             for f in entity.fit_points:
-                fp.append(
-                    (float(f[0]), float(f[1]), float(f[2]))
-                )
+                fp.append((float(f[0]), float(f[1]), float(f[2])))
         except (AttributeError, TypeError, ValueError) as e:
             logger.warning("SPLINE fit_points 解析失败: %s", e, exc_info=True)
         # knots
@@ -878,9 +854,7 @@ class DxfParser:
             fit_points=fp,
             knots=knots,
             closed=closed,
-            layer=str(
-                getattr(entity.dxf, "layer", "0")
-            ),
+            layer=str(getattr(entity.dxf, "layer", "0")),
             handle=str(entity.dxf.handle),
         )
 

@@ -109,8 +109,7 @@ class _ManualBackend(_BaseBackend):
         except OSError as e:
             # 写入失败时降级到临时目录
             logger.warning(
-                "CamAdapter(manual): 写入校验清单到 %s 失败：%s，"
-                "降级到系统临时目录。",
+                "CamAdapter(manual): 写入校验清单到 %s 失败：%s，降级到系统临时目录。",
                 checklist_path,
                 e,
             )

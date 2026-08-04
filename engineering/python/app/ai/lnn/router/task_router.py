@@ -112,9 +112,7 @@ class TaskRouter:
 
         # Online ML signal: rolling success rate per engine. Seeds are small
         # pseudo-counts so a brand-new engine does not get a zero score.
-        self._engine_success: Dict[EngineType, Deque[float]] = {
-            eng: deque(maxlen=history_size) for eng in EngineType
-        }
+        self._engine_success: Dict[EngineType, Deque[float]] = {eng: deque(maxlen=history_size) for eng in EngineType}
         self._engine_priors: Dict[EngineType, float] = {
             EngineType.LNN: 0.75,
             EngineType.LLM: 0.70,
@@ -158,10 +156,7 @@ class TaskRouter:
 
         combined: Dict[EngineType, float] = {}
         for eng in EngineType:
-            combined[eng] = (
-                self._rule_weight * rule_scores.get(eng, 0.0)
-                + self._ml_weight * ml_scores.get(eng, 0.0)
-            )
+            combined[eng] = self._rule_weight * rule_scores.get(eng, 0.0) + self._ml_weight * ml_scores.get(eng, 0.0)
 
         selected_engine = max(combined, key=combined.get)
         confidence = max(0.0, min(1.0, combined[selected_engine]))
@@ -170,9 +165,7 @@ class TaskRouter:
         # Confidence calibration: if every engine is below threshold, mark
         # the decision as low-confidence so callers can fall back gracefully.
         below_threshold = confidence < self._confidence_threshold
-        reasoning = self._build_reasoning(
-            selected_engine, category, rule_scores, ml_scores, below_threshold
-        )
+        reasoning = self._build_reasoning(selected_engine, category, rule_scores, ml_scores, below_threshold)
 
         alternatives: Optional[List[Dict[str, Any]]] = None
         if self._enable_fallback:
@@ -211,7 +204,7 @@ class TaskRouter:
             )
             # Cap decision history to avoid unbounded growth.
             if len(self._decision_history) > self._history_size * 4:
-                self._decision_history = self._decision_history[-self._history_size:]
+                self._decision_history = self._decision_history[-self._history_size :]
 
         logger.debug(
             "TaskRouter routed task %r -> %s (confidence=%.3f, category=%s)",
@@ -254,9 +247,7 @@ class TaskRouter:
                 "total_decisions": 0,
                 "engine_distribution": {},
                 "avg_confidence": 0.0,
-                "ml_engine_rates": {
-                    eng.value: self._ml_score(eng) for eng in EngineType
-                },
+                "ml_engine_rates": {eng.value: self._ml_score(eng) for eng in EngineType},
             }
 
         engine_counts: Dict[str, int] = {}
@@ -270,9 +261,7 @@ class TaskRouter:
             "total_decisions": total,
             "engine_distribution": engine_counts,
             "avg_confidence": confidence_sum / total,
-            "ml_engine_rates": {
-                eng.value: self._ml_score(eng) for eng in EngineType
-            },
+            "ml_engine_rates": {eng.value: self._ml_score(eng) for eng in EngineType},
         }
 
     def reset_history(self) -> None:
@@ -355,9 +344,7 @@ class TaskRouter:
             return TaskCategory.RULE_BASED
         if isinstance(data, (list, tuple)) and data and isinstance(data[0], (list, tuple)):
             return TaskCategory.TIME_SERIES
-        if isinstance(data, dict) and any(
-            k in data for k in ("speed", "feed", "depth", "force", "vibration")
-        ):
+        if isinstance(data, dict) and any(k in data for k in ("speed", "feed", "depth", "force", "vibration")):
             return TaskCategory.REGRESSION
         return TaskCategory.REGRESSION
 

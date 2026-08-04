@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import numpy as np
 
@@ -69,9 +69,7 @@ class _IntermediatesMixin:
             "capture_mode": "disabled",
         }
 
-    def _register_hidden_hooks(
-        self, capture_hidden: bool
-    ) -> tuple[List[Any], List[np.ndarray], str]:
+    def _register_hidden_hooks(self, capture_hidden: bool) -> tuple[List[Any], List[np.ndarray], str]:
         """在模型 ``ltc_cells`` 上注册 forward hook 以捕获隐状态序列。
 
         Args:
@@ -95,12 +93,11 @@ class _IntermediatesMixin:
             return ([], [], "disabled")
 
         for cell in ltc_cells:
+
             def _hook(module, inputs, output, _cell=cell):
                 try:
                     if isinstance(output, torch.Tensor):
-                        captured_hidden.append(
-                            output.detach().cpu().numpy()
-                        )
+                        captured_hidden.append(output.detach().cpu().numpy())
                 except (RuntimeError, ValueError, TypeError) as hook_exc:
                     # 隐状态捕获失败不应中断推理，但需可追踪（debug 级，不刷屏）
                     logger.debug("LNN 隐状态 hook 捕获失败: %s", hook_exc)
@@ -110,9 +107,7 @@ class _IntermediatesMixin:
 
         return (hook_handles, captured_hidden, "hook")
 
-    def _collect_hidden_states(
-        self, captured_hidden: List[np.ndarray], intermediates: Dict[str, Any]
-    ) -> None:
+    def _collect_hidden_states(self, captured_hidden: List[np.ndarray], intermediates: Dict[str, Any]) -> None:
         """将捕获到的隐状态填充到 intermediates 字典中（原地修改）。
 
         优先使用 hook 模式捕获的多帧序列；若 hook 未捕获到任何数据，
@@ -169,11 +164,7 @@ class _IntermediatesMixin:
             return
 
         # 广播 dt 到 hidden_dim 维
-        hidden_dim = (
-            len(intermediates["hidden_states"][0])
-            if intermediates["hidden_states"]
-            else 1
-        )
+        hidden_dim = len(intermediates["hidden_states"][0]) if intermediates["hidden_states"] else 1
         gate_values = [float(dt)] * hidden_dim
         time_constants = [1.0 / float(dt) if float(dt) > 0 else 0.0] * hidden_dim
         # 广播到帧数
@@ -183,9 +174,7 @@ class _IntermediatesMixin:
         if intermediates["capture_mode"] == "disabled":
             intermediates["capture_mode"] = "attribute"
 
-    def _execute_forward_with_capture(
-        self, features: Any, hidden_meta: Any
-    ) -> tuple[Any, Any]:
+    def _execute_forward_with_capture(self, features: Any, hidden_meta: Any) -> tuple[Any, Any]:
         """执行标准前向传播并完成逆变换/后处理。
 
         Args:
@@ -320,20 +309,14 @@ class _IntermediatesMixin:
                     exc,
                     exc_info=True,
                 )
-                return self._build_intermediate_failure_result(
-                    intermediates, str(exc), start_time
-                )
+                return self._build_intermediate_failure_result(intermediates, str(exc), start_time)
 
             # ---- 捕获中间状态 ----
-            hook_handles, captured_hidden, capture_mode = (
-                self._register_hidden_hooks(capture_hidden)
-            )
+            hook_handles, captured_hidden, capture_mode = self._register_hidden_hooks(capture_hidden)
             intermediates["capture_mode"] = capture_mode
 
             try:
-                output, processed_output = self._execute_forward_with_capture(
-                    features, hidden_meta
-                )
+                output, processed_output = self._execute_forward_with_capture(features, hidden_meta)
 
                 if capture_hidden:
                     self._collect_hidden_states(captured_hidden, intermediates)
@@ -346,9 +329,7 @@ class _IntermediatesMixin:
                     exc_info=True,
                 )
                 # 主推理已失败，返回错误结果
-                return self._build_intermediate_failure_result(
-                    intermediates, str(exc), start_time
-                )
+                return self._build_intermediate_failure_result(intermediates, str(exc), start_time)
             finally:
                 # 确保 hook 移除，防止泄漏
                 for handle in hook_handles:

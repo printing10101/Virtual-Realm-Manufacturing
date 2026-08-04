@@ -75,10 +75,10 @@ class FeatureNotSupportedError(RecommendationError):
 
 # 径向切深 (ae) 占刀具直径 D 的比例（保守值，便于工程师审核）
 FEATURE_TYPE_RADIAL_DEPTH_RATIO: dict[str, float] = {
-    "plane": 0.5,       # 平面铣削：ae = 0.5*D（行距）
-    "cylinder": 0.3,   # 圆柱面铣削：ae = 0.3*D（侧铣，避免过切）
-    "hole": 1.0,        # 孔加工：ae = D（满刀，孔特征专用）
-    "boss": 0.5,       # 凸台铣削：ae = 0.5*D（外轮廓铣削）
+    "plane": 0.5,  # 平面铣削：ae = 0.5*D（行距）
+    "cylinder": 0.3,  # 圆柱面铣削：ae = 0.3*D（侧铣，避免过切）
+    "hole": 1.0,  # 孔加工：ae = D（满刀，孔特征专用）
+    "boss": 0.5,  # 凸台铣削：ae = 0.5*D（外轮廓铣削）
 }
 
 SUPPORTED_FEATURE_TYPES = frozenset(FEATURE_TYPE_RADIAL_DEPTH_RATIO.keys())
@@ -144,19 +144,14 @@ class CuttingParamRecommender:
         # 1. 校验特征类型
         if feature_type not in SUPPORTED_FEATURE_TYPES:
             raise FeatureNotSupportedError(
-                f"特征类型 {feature_type} 不支持，"
-                f"当前支持：{sorted(SUPPORTED_FEATURE_TYPES)}"
+                f"特征类型 {feature_type} 不支持，当前支持：{sorted(SUPPORTED_FEATURE_TYPES)}"
             )
 
         # 2. 校验刀具参数
         if tool_diameter_mm <= 0:
-            raise RecommendationError(
-                f"刀具直径必须为正数，当前值: {tool_diameter_mm}"
-            )
+            raise RecommendationError(f"刀具直径必须为正数，当前值: {tool_diameter_mm}")
         if num_flutes <= 0:
-            raise RecommendationError(
-                f"齿数必须为正整数，当前值: {num_flutes}"
-            )
+            raise RecommendationError(f"齿数必须为正整数，当前值: {num_flutes}")
 
         # 3. 查询材料参数
         try:
@@ -181,9 +176,7 @@ class CuttingParamRecommender:
             material.taylor_exponent_n,
             material.taylor_constant_c,
         )
-        cutting_time_s = self._estimate_cutting_time(
-            feature_type, axial_depth, radial_depth, feed_rate
-        )
+        cutting_time_s = self._estimate_cutting_time(feature_type, axial_depth, radial_depth, feed_rate)
 
         # 7. 构造 warnings
         warnings = self._build_warnings(
@@ -258,9 +251,7 @@ class CuttingParamRecommender:
         return (feed_range[0] + feed_range[1]) / 2.0
 
     @staticmethod
-    def _pick_axial_depth(
-        material: MaterialParams, operation: str, feature_type: str
-    ) -> float:
+    def _pick_axial_depth(material: MaterialParams, operation: str, feature_type: str) -> float:
         """轴向切深：取材料范围 [min, max] 的中位数。
 
         hole 特征采用 finishing 的 depth_range（孔深方向，避免大切深断刀）。
@@ -289,9 +280,7 @@ class CuttingParamRecommender:
         return cutting_speed_m_per_min * 1000.0 / (math.pi * tool_diameter_mm)
 
     @staticmethod
-    def _compute_feed_rate(
-        spindle_rpm: float, num_flutes: int, feed_per_tooth_mm: float
-    ) -> float:
+    def _compute_feed_rate(spindle_rpm: float, num_flutes: int, feed_per_tooth_mm: float) -> float:
         """进给速度：F = n * z * f_z。"""
         return spindle_rpm * num_flutes * feed_per_tooth_mm
 
@@ -363,14 +352,10 @@ class CuttingParamRecommender:
         if (
             len(material_speed_range) == 2
             and material_speed_range[1] > 0
-            and (
-                cutting_speed < material_speed_range[0] * 0.9
-                or cutting_speed > material_speed_range[1] * 1.1
-            )
+            and (cutting_speed < material_speed_range[0] * 0.9 or cutting_speed > material_speed_range[1] * 1.1)
         ):
             warnings.append(
-                f"切削速度 {cutting_speed:.1f} m/min 接近材料范围边界"
-                f" {material_speed_range}，工程师需重点审核"
+                f"切削速度 {cutting_speed:.1f} m/min 接近材料范围边界 {material_speed_range}，工程师需重点审核"
             )
 
         # 精度档位提示
@@ -381,10 +366,7 @@ class CuttingParamRecommender:
 
         # HRC52 特殊警告
         if material.hardness_hrc is not None and material.hardness_hrc >= 50:
-            warnings.append(
-                f"高硬度材料（HRC{material.hardness_hrc:.0f}）"
-                f"需硬质合金或陶瓷刀具，普通 HSS 刀具不可用"
-            )
+            warnings.append(f"高硬度材料（HRC{material.hardness_hrc:.0f}）需硬质合金或陶瓷刀具，普通 HSS 刀具不可用")
 
         # 孔特征警告
         if feature_type == "hole":

@@ -13,6 +13,7 @@
 - 训练时必须固定随机种子（torch.manual_seed + cudnn.deterministic）
 - 所有 loss 与超参必须通过 MLflow 记录，保证可复现
 """
+
 from __future__ import annotations
 
 import torch
@@ -70,10 +71,14 @@ class PartPriorVAE(nn.Module):
         1 → base_ch → base_ch*2 → base_ch*4 → base_ch*8
         """
         return nn.Sequential(
-            nn.Conv3d(1, base_ch, 4, 2, 1), nn.ReLU(),  # 64 → 32
-            nn.Conv3d(base_ch, base_ch * 2, 4, 2, 1), nn.ReLU(),  # 32 → 16
-            nn.Conv3d(base_ch * 2, base_ch * 4, 4, 2, 1), nn.ReLU(),  # 16 → 8
-            nn.Conv3d(base_ch * 4, base_ch * 8, 4, 2, 1), nn.ReLU(),  # 8 → 4
+            nn.Conv3d(1, base_ch, 4, 2, 1),
+            nn.ReLU(),  # 64 → 32
+            nn.Conv3d(base_ch, base_ch * 2, 4, 2, 1),
+            nn.ReLU(),  # 32 → 16
+            nn.Conv3d(base_ch * 2, base_ch * 4, 4, 2, 1),
+            nn.ReLU(),  # 16 → 8
+            nn.Conv3d(base_ch * 4, base_ch * 8, 4, 2, 1),
+            nn.ReLU(),  # 8 → 4
             nn.Flatten(),
         )
 
@@ -96,16 +101,19 @@ class PartPriorVAE(nn.Module):
             nn.Linear(latent_dim, latent_dim * 8),
             nn.ReLU(),
             nn.Unflatten(1, (latent_dim * 8, 1, 1, 1)),
-            nn.ConvTranspose3d(latent_dim * 8, base_ch * 8, 4, 2, 0), nn.ReLU(),  # 1 → 4
-            nn.ConvTranspose3d(base_ch * 8, base_ch * 4, 4, 2, 1), nn.ReLU(),  # 4 → 8
-            nn.ConvTranspose3d(base_ch * 4, base_ch * 2, 4, 2, 1), nn.ReLU(),  # 8 → 16
-            nn.ConvTranspose3d(base_ch * 2, base_ch, 4, 2, 1), nn.ReLU(),  # 16 → 32
-            nn.ConvTranspose3d(base_ch, 1, 4, 2, 1), nn.Sigmoid(),  # 32 → 64
+            nn.ConvTranspose3d(latent_dim * 8, base_ch * 8, 4, 2, 0),
+            nn.ReLU(),  # 1 → 4
+            nn.ConvTranspose3d(base_ch * 8, base_ch * 4, 4, 2, 1),
+            nn.ReLU(),  # 4 → 8
+            nn.ConvTranspose3d(base_ch * 4, base_ch * 2, 4, 2, 1),
+            nn.ReLU(),  # 8 → 16
+            nn.ConvTranspose3d(base_ch * 2, base_ch, 4, 2, 1),
+            nn.ReLU(),  # 16 → 32
+            nn.ConvTranspose3d(base_ch, 1, 4, 2, 1),
+            nn.Sigmoid(),  # 32 → 64
         )
 
-    def forward(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """前向传播：编码 → 重参数化采样 → 解码。
 
         Args:
@@ -271,9 +279,7 @@ class PartPriorCompleter:
         normalized[:, 1] = (points[:, 1] / bbox[1]) * self.voxel_dim
         normalized[:, 2] = (points[:, 2] / bbox[2]) * self.voxel_dim
         # 栅格化（保留落在范围内的点）
-        valid = (normalized >= 0).all(dim=1) & (
-            normalized < self.voxel_dim
-        ).all(dim=1)
+        valid = (normalized >= 0).all(dim=1) & (normalized < self.voxel_dim).all(dim=1)
         indices = normalized[valid].long()
         voxel[indices[:, 0], indices[:, 1], indices[:, 2]] = 1.0
         return voxel

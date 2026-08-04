@@ -25,10 +25,11 @@
     - 所有决策响应包含 ``reasoning`` 字段（自然语言推荐理由），强调
       "本动作仅供 CAM 验证层参考，实际加工需经持证操作员审核"
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -56,8 +57,6 @@ logger = logging.getLogger(__name__)
 # 骨架修复（2026-08-03 任务B）：原文件缺失 router/logger/域符号导入。
 # 补齐骨架但保持未接入（main/router_registry 未引用本文件）。
 router = APIRouter(prefix="/api/v1/rl-agent", tags=["RL Agent"])
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -225,16 +224,12 @@ def _handle_service_exception(e: Exception, *, action: str):
 
 @router.get("/versions")
 async def list_versions(
-    active_only: bool = Query(
-        False, description="为 true 时仅返回当前激活版本"
-    ),
+    active_only: bool = Query(False, description="为 true 时仅返回当前激活版本"),
     algorithm: Optional[str] = Query(
         None,
         description=f"按策略算法过滤（{PolicyAlgorithm.all()}）",
     ),
-    limit: int = Query(
-        50, ge=1, le=500, description="每页数量（1-500，默认 50）"
-    ),
+    limit: int = Query(50, ge=1, le=500, description="每页数量（1-500，默认 50）"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):
     """分页列出 RL 策略版本.
@@ -249,8 +244,7 @@ async def list_versions(
     if algorithm is not None and not PolicyAlgorithm.is_valid(algorithm):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"algorithm 不支持: {algorithm}"
-            f"（支持: {PolicyAlgorithm.all()}）",
+            message=f"algorithm 不支持: {algorithm}（支持: {PolicyAlgorithm.all()}）",
         )
 
     service = get_rl_agent_service()
@@ -328,8 +322,7 @@ async def act(request: RLActRequestModel):
     if not OptimizationTarget.is_valid(request.optimization_target):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"optimization_target 不支持: {request.optimization_target}"
-            f"（支持: {OptimizationTarget.all()}）",
+            message=f"optimization_target 不支持: {request.optimization_target}（支持: {OptimizationTarget.all()}）",
         )
 
     # 解析安全约束（为空则使用默认值）
@@ -439,15 +432,13 @@ async def start_training(request: TrainingStartRequestModel):
     if not PolicyAlgorithm.is_valid(request.algorithm):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"algorithm 不支持: {request.algorithm}"
-            f"（支持: {PolicyAlgorithm.all()}）",
+            message=f"algorithm 不支持: {request.algorithm}（支持: {PolicyAlgorithm.all()}）",
         )
     # 前置校验：optimization_target 合法性
     if not OptimizationTarget.is_valid(request.optimization_target):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"optimization_target 不支持: {request.optimization_target}"
-            f"（支持: {OptimizationTarget.all()}）",
+            message=f"optimization_target 不支持: {request.optimization_target}（支持: {OptimizationTarget.all()}）",
         )
 
     # 构造契约层 dataclass
@@ -472,10 +463,7 @@ async def start_training(request: TrainingStartRequestModel):
 
     return success(
         data=status_info.to_dict(),
-        message=(
-            f"RL 训练已启动: algorithm={request.algorithm}，"
-            f"max_steps={request.max_steps}"
-        ),
+        message=(f"RL 训练已启动: algorithm={request.algorithm}，max_steps={request.max_steps}"),
     )
 
 

@@ -298,17 +298,11 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
             ValueError: 坐标超出 XM-100 物理范围
         """
         if abs(x) > self.XM100_TRAVEL_X / 2:
-            raise ValueError(
-                f"X{x:.1f} 超出 XM-100 X行程 (±{self.XM100_TRAVEL_X/2:.0f}mm)"
-            )
+            raise ValueError(f"X{x:.1f} 超出 XM-100 X行程 (±{self.XM100_TRAVEL_X / 2:.0f}mm)")
         if abs(y) > self.XM100_TRAVEL_Y / 2:
-            raise ValueError(
-                f"Y{y:.1f} 超出 XM-100 Y行程 (±{self.XM100_TRAVEL_Y/2:.0f}mm)"
-            )
+            raise ValueError(f"Y{y:.1f} 超出 XM-100 Y行程 (±{self.XM100_TRAVEL_Y / 2:.0f}mm)")
         if abs(z) > self.XM100_TRAVEL_Z / 2:
-            raise ValueError(
-                f"Z{z:.1f} 超出 XM-100 Z行程 (±{self.XM100_TRAVEL_Z/2:.0f}mm)"
-            )
+            raise ValueError(f"Z{z:.1f} 超出 XM-100 Z行程 (±{self.XM100_TRAVEL_Z / 2:.0f}mm)")
         if a is not None:
             self._validate_a_axis(a)
         if c is not None:
@@ -317,10 +311,7 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
     def _validate_a_axis(self, a: float) -> None:
         """验证 A 轴角度并检查奇异点。"""
         if a < self.XM100_A_AXIS_MIN or a > self.XM100_A_AXIS_MAX:
-            raise ValueError(
-                f"A轴角度 {a:.1f}° 超出 XM-100 范围 "
-                f"[{self.XM100_A_AXIS_MIN}°, {self.XM100_A_AXIS_MAX}°]"
-            )
+            raise ValueError(f"A轴角度 {a:.1f}° 超出 XM-100 范围 [{self.XM100_A_AXIS_MIN}°, {self.XM100_A_AXIS_MAX}°]")
         # 奇异点警告：A轴接近±90°时 C轴失去意义
         if abs(abs(a) - 90.0) < 5.0:
             logger.warning(
@@ -331,10 +322,7 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
     def _validate_c_axis(self, c: float) -> None:
         """验证 C 轴角度。"""
         if c < self.XM100_C_AXIS_MIN or c > self.XM100_C_AXIS_MAX:
-            raise ValueError(
-                f"C轴角度 {c:.1f}° 超出 XM-100 范围 "
-                f"[{self.XM100_C_AXIS_MIN}°, {self.XM100_C_AXIS_MAX}°]"
-            )
+            raise ValueError(f"C轴角度 {c:.1f}° 超出 XM-100 范围 [{self.XM100_C_AXIS_MIN}°, {self.XM100_C_AXIS_MAX}°]")
 
     def format_arc(
         self,
@@ -346,10 +334,7 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
         g_code = "G02" if clockwise else "G03"
         radius = self._calc_arc_radius(end, center)
         feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.5))
-        return (
-            f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} "
-            f"R{self._fmt(radius)} F{feed}"
-        )
+        return f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} R{self._fmt(radius)} F{feed}"
 
     def format_cycle_drill(
         self,

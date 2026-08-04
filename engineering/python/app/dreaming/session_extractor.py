@@ -107,12 +107,8 @@ class SessionExtractor:
             "MLFLOW_TRACKING_URI",
             f"file://{os.path.abspath('data/mlruns')}",
         )
-        self.cam_reports_dir = Path(
-            cam_reports_dir or "python/outputs/cam_validation"
-        )
-        self.audit_log_dir = Path(
-            audit_log_dir or "python/outputs/audit"
-        )
+        self.cam_reports_dir = Path(cam_reports_dir or "python/outputs/cam_validation")
+        self.audit_log_dir = Path(audit_log_dir or "python/outputs/audit")
         self.cutting_store = cutting_store
 
     # ------------------------------------------------------------------
@@ -173,7 +169,8 @@ class SessionExtractor:
             filtered = [s for s in sessions if not s.is_ar_02_pre_fix]
             logger.info(
                 "Session 提取完成：total=%d, after_ar02_filter=%d",
-                len(sessions), len(filtered),
+                len(sessions),
+                len(filtered),
             )
             return filtered
 
@@ -189,6 +186,7 @@ class SessionExtractor:
         try:
             # P0#3 解耦: 通过 research_bridge 检查 MLflow 可用性
             from app.ai.lnn._research_bridge import get_has_mlflow
+
             HAS_MLFLOW = get_has_mlflow()
         except ImportError:
             HAS_MLFLOW = False
@@ -226,14 +224,8 @@ class SessionExtractor:
             timestamp = datetime.fromtimestamp(start_time_ms / 1000).isoformat()
 
             # 从 params/metrics 提取工艺上下文
-            params = {
-                k.replace("params.", ""): v
-                for k, v in run.items() if k.startswith("params.")
-            }
-            metrics = {
-                k.replace("metrics.", ""): v
-                for k, v in run.items() if k.startswith("metrics.")
-            }
+            params = {k.replace("params.", ""): v for k, v in run.items() if k.startswith("params.")}
+            metrics = {k.replace("metrics.", ""): v for k, v in run.items() if k.startswith("metrics.")}
 
             status = run.get("attributes.status", "")
             outcome = "success" if status == "FINISHED" else "failed"
@@ -301,17 +293,13 @@ class SessionExtractor:
 
         return sessions
 
-    def _normalize_cam_report(
-        self, report: Dict[str, Any], file_path: str
-    ) -> Optional[ProjectSession]:
+    def _normalize_cam_report(self, report: Dict[str, Any], file_path: str) -> Optional[ProjectSession]:
         """将 CAM 验证 report 归一化为 ProjectSession。"""
         try:
             timestamp = report.get("timestamp") or report.get("created_at")
             if timestamp is None:
                 # 用文件修改时间兜底
-                timestamp = datetime.fromtimestamp(
-                    Path(file_path).stat().st_mtime
-                ).isoformat()
+                timestamp = datetime.fromtimestamp(Path(file_path).stat().st_mtime).isoformat()
 
             passed = report.get("passed") or report.get("validation_passed")
             failure_reason = report.get("failure_reason") or report.get("errors", [None])[0]
@@ -381,9 +369,7 @@ class SessionExtractor:
 
         return sessions
 
-    def _normalize_audit_entry(
-        self, entry: Dict[str, Any], log_path: str
-    ) -> Optional[ProjectSession]:
+    def _normalize_audit_entry(self, entry: Dict[str, Any], log_path: str) -> Optional[ProjectSession]:
         """将审计日志条目归一化为 ProjectSession。"""
         try:
             timestamp_ms = entry.get("timestamp_ms", 0)
@@ -471,22 +457,24 @@ class SessionExtractor:
                 # 硬约束标记：SUCCEEDED 禁删
                 is_locked_succeeded = status == "SUCCEEDED"
 
-                sessions.append(ProjectSession(
-                    session_id=f"cutting_{task.get('task_id', '')}",
-                    source="cutting_store",
-                    timestamp=created_at,
-                    material_type=task.get("material_type"),
-                    tool_params=task.get("tool_params", {}),
-                    outcome=outcome,
-                    failure_reason=task.get("failure_reason"),
-                    raw_artifact_path=task.get("task_id"),
-                    metadata={
-                        "status": status,
-                        "is_locked_succeeded": is_locked_succeeded,
-                        "review_status": task.get("review_status"),
-                        "cutting_params": task.get("cutting_params"),
-                    },
-                ))
+                sessions.append(
+                    ProjectSession(
+                        session_id=f"cutting_{task.get('task_id', '')}",
+                        source="cutting_store",
+                        timestamp=created_at,
+                        material_type=task.get("material_type"),
+                        tool_params=task.get("tool_params", {}),
+                        outcome=outcome,
+                        failure_reason=task.get("failure_reason"),
+                        raw_artifact_path=task.get("task_id"),
+                        metadata={
+                            "status": status,
+                            "is_locked_succeeded": is_locked_succeeded,
+                            "review_status": task.get("review_status"),
+                            "cutting_params": task.get("cutting_params"),
+                        },
+                    )
+                )
         except Exception as e:
             logger.warning("Cutting store 提取失败: %s", e)
 

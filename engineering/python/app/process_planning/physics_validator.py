@@ -6,7 +6,6 @@ including cutting force, power, torque, and stability limits.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,6 +23,7 @@ class MachineCapability:
         max_feed_rate_mm_min: Maximum feed rate (mm/min)
         max_depth_of_cut_mm: Maximum depth of cut (mm)
     """
+
     max_power_kw: float = 15.0
     max_torque_nm: float = 100.0
     max_force_n: float = 5000.0
@@ -46,6 +46,7 @@ class CuttingForceResult:
         within_limits: Whether forces are within machine limits
         warnings: List of warning messages
     """
+
     force_tangential_n: float
     force_feed_n: float
     force_radial_n: float
@@ -131,7 +132,7 @@ class PhysicsValidator:
 
         # Calculate tangential cutting force (empirical model)
         # Fc = Kc * f^0.75 * ap^0.9 * vc^(-0.1)
-        force_tangential = kc * (feed_mm_rev ** 0.75) * (depth_of_cut_mm ** 0.9) * (cutting_speed_m_min ** (-0.1))
+        force_tangential = kc * (feed_mm_rev**0.75) * (depth_of_cut_mm**0.9) * (cutting_speed_m_min ** (-0.1))
 
         # Estimate feed and radial forces based on operation type
         if operation == "turning":
@@ -154,24 +155,15 @@ class PhysicsValidator:
         within_limits = True
 
         if force_tangential > self.machine.max_force_n:
-            warnings.append(
-                f"主切削力 {force_tangential:.1f} N 超过机床最大切削力 "
-                f"{self.machine.max_force_n:.1f} N"
-            )
+            warnings.append(f"主切削力 {force_tangential:.1f} N 超过机床最大切削力 {self.machine.max_force_n:.1f} N")
             within_limits = False
 
         if torque_nm > self.machine.max_torque_nm:
-            warnings.append(
-                f"所需扭矩 {torque_nm:.2f} N·m 超过机床最大扭矩 "
-                f"{self.machine.max_torque_nm:.2f} N·m"
-            )
+            warnings.append(f"所需扭矩 {torque_nm:.2f} N·m 超过机床最大扭矩 {self.machine.max_torque_nm:.2f} N·m")
             within_limits = False
 
         if power_kw > self.machine.max_power_kw:
-            warnings.append(
-                f"所需功率 {power_kw:.2f} kW 超过机床最大功率 "
-                f"{self.machine.max_power_kw:.2f} kW"
-            )
+            warnings.append(f"所需功率 {power_kw:.2f} kW 超过机床最大功率 {self.machine.max_power_kw:.2f} kW")
             within_limits = False
 
         return CuttingForceResult(
@@ -255,13 +247,10 @@ class PhysicsValidator:
         # Check depth of cut limit
         if depth_of_cut_mm > self.machine.max_depth_of_cut_mm:
             result["errors"].append(
-                f"切削深度 {depth_of_cut_mm:.2f} mm 超过机床最大切深 "
-                f"{self.machine.max_depth_of_cut_mm:.2f} mm"
+                f"切削深度 {depth_of_cut_mm:.2f} mm 超过机床最大切深 {self.machine.max_depth_of_cut_mm:.2f} mm"
             )
             result["valid"] = False
-            result["recommendations"].append(
-                f"建议将切削深度降低至 {self.machine.max_depth_of_cut_mm:.2f} mm 以下"
-            )
+            result["recommendations"].append(f"建议将切削深度降低至 {self.machine.max_depth_of_cut_mm:.2f} mm 以下")
 
         # Add force warnings
         result["warnings"].extend(force_result.warnings)
@@ -274,22 +263,16 @@ class PhysicsValidator:
             if force_result.power_kw > self.machine.max_power_kw:
                 # Reduce cutting speed or depth of cut
                 recommended_speed = cutting_speed_m_min * (self.machine.max_power_kw / force_result.power_kw)
-                result["recommendations"].append(
-                    f"建议将切削速度降低至 {recommended_speed:.1f} m/min"
-                )
+                result["recommendations"].append(f"建议将切削速度降低至 {recommended_speed:.1f} m/min")
 
             if force_result.torque_nm > self.machine.max_torque_nm:
                 # Reduce feed or depth of cut
                 recommended_feed = feed_mm_rev * (self.machine.max_torque_nm / force_result.torque_nm)
-                result["recommendations"].append(
-                    f"建议将进给量降低至 {recommended_feed:.3f} mm/rev"
-                )
+                result["recommendations"].append(f"建议将进给量降低至 {recommended_feed:.3f} mm/rev")
 
         # Check for unstable cutting conditions
         if cutting_speed_m_min > 500 and feed_mm_rev > 0.5:
-            result["warnings"].append(
-                "高速大切屑加工可能导致振动，建议降低切削参数"
-            )
+            result["warnings"].append("高速大切屑加工可能导致振动，建议降低切削参数")
 
         return result
 

@@ -10,6 +10,7 @@
 
 稳定性承诺：本文件为 Stable 契约 v1.0.0，向后兼容扩展，breaking change 需新开 ADR。
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -77,20 +78,15 @@ class ConfigField:
     def _validate_sweep(self) -> None:
         """校验 sweep 规格。"""
         if not isinstance(self.sweep, dict):
-            raise ValueError(
-                f"ConfigField {self.name!r}: sweep must be a dict, got {type(self.sweep).__name__}"
-            )
+            raise ValueError(f"ConfigField {self.name!r}: sweep must be a dict, got {type(self.sweep).__name__}")
         kind = self.sweep.get("kind")
         if kind not in VALID_SWEEP_KINDS:
             raise ValueError(
-                f"ConfigField {self.name!r}: sweep.kind must be one of "
-                f"{sorted(VALID_SWEEP_KINDS)}, got {kind!r}"
+                f"ConfigField {self.name!r}: sweep.kind must be one of {sorted(VALID_SWEEP_KINDS)}, got {kind!r}"
             )
         values = self.sweep.get("values")
         if not isinstance(values, list) or len(values) == 0:
-            raise ValueError(
-                f"ConfigField {self.name!r}: sweep.values must be a non-empty list"
-            )
+            raise ValueError(f"ConfigField {self.name!r}: sweep.values must be a non-empty list")
 
 
 # ---------------------------------------------------------------------------
@@ -122,9 +118,7 @@ class ConfigSpec:
         if not self.name or not isinstance(self.name, str):
             raise ValueError("ConfigSpec.name must be a non-empty string")
         if not _is_valid_semver(self.version):
-            raise ValueError(
-                f"ConfigSpec.version must be MAJOR.MINOR.PATCH format, got {self.version!r}"
-            )
+            raise ValueError(f"ConfigSpec.version must be MAJOR.MINOR.PATCH format, got {self.version!r}")
         if not isinstance(self.fields, list):
             raise ValueError("ConfigSpec.fields must be a list")
         # 校验字段名唯一
@@ -160,19 +154,13 @@ class ConfigSpec:
                 continue
             # choices 校验
             if f.choices and v not in f.choices:
-                errors.append(
-                    f"Field {f.name!r}: value {v!r} not in choices {f.choices}"
-                )
+                errors.append(f"Field {f.name!r}: value {v!r} not in choices {f.choices}")
             # 数值范围校验
             if f.type in ("int", "float") and isinstance(v, (int, float)):
                 if f.min is not None and v < f.min:
-                    errors.append(
-                        f"Field {f.name!r}: value {v} < min {f.min}"
-                    )
+                    errors.append(f"Field {f.name!r}: value {v} < min {f.min}")
                 if f.max is not None and v > f.max:
-                    errors.append(
-                        f"Field {f.name!r}: value {v} > max {f.max}"
-                    )
+                    errors.append(f"Field {f.name!r}: value {v} > max {f.max}")
         return errors
 
     def materialize(self, values: dict[str, Any]) -> dict[str, Any]:
@@ -184,9 +172,7 @@ class ConfigSpec:
         """
         errors = self.validate(values)
         if errors:
-            raise ValueError(
-                f"ConfigSpec {self.name!r} validation failed: " + "; ".join(errors)
-            )
+            raise ValueError(f"ConfigSpec {self.name!r} validation failed: " + "; ".join(errors))
         result: dict[str, Any] = {}
         for f in self.fields:
             if f.name in values:

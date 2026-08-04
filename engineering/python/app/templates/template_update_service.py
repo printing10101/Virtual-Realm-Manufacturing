@@ -87,9 +87,7 @@ class TemplateUpdateService:
         logger.info("TemplateUpdateService initialized: db=%s", self.db_path)
 
     def _load_data(self) -> None:
-        cursor = self._db.execute(
-            "SELECT * FROM update_notifications ORDER BY created_at DESC"
-        )
+        cursor = self._db.execute("SELECT * FROM update_notifications ORDER BY created_at DESC")
         for row in cursor.fetchall():
             self._notifications[row["notification_id"]] = UpdateNotification(
                 notification_id=row["notification_id"],
@@ -98,12 +96,8 @@ class TemplateUpdateService:
                 priority=row["priority"],
                 title=row["title"] or "",
                 description=row["description"] or "",
-                change_preview=json.loads(row["change_preview"])
-                if row["change_preview"]
-                else {},
-                expected_impact=json.loads(row["expected_impact"])
-                if row["expected_impact"]
-                else {},
+                change_preview=json.loads(row["change_preview"]) if row["change_preview"] else {},
+                expected_impact=json.loads(row["expected_impact"]) if row["expected_impact"] else {},
                 created_at=row["created_at"],
                 status=row["status"],
             )
@@ -168,9 +162,7 @@ class TemplateUpdateService:
         with self._lock:
             notifications = []
             for suggestion in suggestions:
-                improvement = suggestion.get("expected_impact", {}).get(
-                    "improvement", 0
-                )
+                improvement = suggestion.get("expected_impact", {}).get("improvement", 0)
                 priority = self.classify_priority(improvement)
 
                 existing = [
@@ -237,9 +229,7 @@ class TemplateUpdateService:
         status_filter: Optional[str] = None,
     ) -> List[UpdateNotification]:
         with self._lock:
-            notifs = [
-                n for n in self._notifications.values() if n.project_id == project_id
-            ]
+            notifs = [n for n in self._notifications.values() if n.project_id == project_id]
             if status_filter:
                 notifs = [n for n in notifs if n.status == status_filter]
             return sorted(notifs, key=lambda n: n.created_at, reverse=True)

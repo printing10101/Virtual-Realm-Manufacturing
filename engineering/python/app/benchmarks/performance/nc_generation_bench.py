@@ -54,9 +54,7 @@ class NCGenerationBenchmark:
         total_elapsed = time.perf_counter() - total_start
 
         self._total_time_s = total_elapsed
-        self._stage_results = {
-            f"{name}_s": round(sum(times), 3) for name, times in all_stage_times.items()
-        }
+        self._stage_results = {f"{name}_s": round(sum(times), 3) for name, times in all_stage_times.items()}
         self._stage_results["nc_generation_total_s"] = round(total_elapsed, 3)
         self._stage_results["parts_processed"] = n_parts
         self._stage_results["avg_per_part_s"] = round(
@@ -105,9 +103,7 @@ class NCGenerationBenchmark:
     def _analyze_bottlenecks(self) -> list[dict[str, Any]]:
         bottlenecks: list[dict[str, Any]] = []
         stage_keys = [
-            k
-            for k in self._stage_results
-            if k.endswith("_s") and k not in ("nc_generation_total_s", "avg_per_part_s")
+            k for k in self._stage_results if k.endswith("_s") and k not in ("nc_generation_total_s", "avg_per_part_s")
         ]
         total = self._stage_results.get("nc_generation_total_s", 1.0)
         if total == 0:

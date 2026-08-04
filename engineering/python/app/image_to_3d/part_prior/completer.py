@@ -16,6 +16,7 @@
 - 输出体素值域 [0, 1]，需 threshold 后才能 marching cubes
 - 所有输出必须经 CAM 软件（NX/PowerMill/PyCAM）二次校验后才允许上机床
 """
+
 from __future__ import annotations
 
 from app.image_to_3d.part_prior.encoder import PartPriorCompleter, PartPriorVAE

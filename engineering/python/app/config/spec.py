@@ -23,6 +23,7 @@
 
 稳定性承诺：本文件为 Stable 契约 v1.0.0 实现，向后兼容扩展，breaking change 需新开 ADR。
 """
+
 from __future__ import annotations
 
 import itertools
@@ -32,8 +33,6 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 from app.config.yaml_loader import (
-    YamlLoader,
-    YamlLoaderError,
     flatten_dict,
     get_yaml_loader,
     unflatten_dict,
@@ -81,20 +80,14 @@ class ConfigStore(IConfigStore):
         """
         with self._lock:
             if spec.name in self._specs:
-                raise ValueError(
-                    f"ConfigSpec {spec.name!r} already registered. "
-                    f"Use a different name or bump version."
-                )
+                raise ValueError(f"ConfigSpec {spec.name!r} already registered. Use a different name or bump version.")
             self._specs[spec.name] = spec
 
     def get_spec(self, name: str) -> ConfigSpec:
         """按名取规格，不存在抛 ``KeyError``。"""
         with self._lock:
             if name not in self._specs:
-                raise KeyError(
-                    f"ConfigSpec {name!r} not found. "
-                    f"Registered specs: {sorted(self._specs.keys())}"
-                )
+                raise KeyError(f"ConfigSpec {name!r} not found. Registered specs: {sorted(self._specs.keys())}")
             return self._specs[name]
 
     def list_specs(self) -> list[str]:
@@ -299,9 +292,7 @@ class ConfigStore(IConfigStore):
         # 合并 spec 中通过 ConfigField.sweep 声明的字段
         for f in spec.fields:
             if f.sweep is not None and f.name not in sweep_fields and f.name not in fixed_overrides:
-                values, kind = self._parse_sweep_value(
-                    f.name, {"sweep": f.sweep}
-                )
+                values, kind = self._parse_sweep_value(f.name, {"sweep": f.sweep})
                 sweep_fields[f.name] = (values, kind)
 
         # 固定值转嵌套（作为 resolve 的基础 overrides）
@@ -316,10 +307,7 @@ class ConfigStore(IConfigStore):
         else:
             strategy = strategy.lower()
             if strategy not in ("grid", "random", "bayesian"):
-                raise ValueError(
-                    f"expand_sweep: strategy must be 'grid' / 'random' / 'bayesian', "
-                    f"got {strategy!r}"
-                )
+                raise ValueError(f"expand_sweep: strategy must be 'grid' / 'random' / 'bayesian', got {strategy!r}")
 
         # 生成全空间候选组合（用于 grid 或作为 random/bayesian 的采样池）
         field_names = list(sweep_fields.keys())
@@ -333,13 +321,9 @@ class ConfigStore(IConfigStore):
         if strategy == "grid":
             selected_combos = all_combos
         elif strategy == "random":
-            selected_combos = self._sample_combos(
-                all_combos, count=count, seed=seed, strategy="random"
-            )
+            selected_combos = self._sample_combos(all_combos, count=count, seed=seed, strategy="random")
         else:  # bayesian
-            selected_combos = self._sample_combos(
-                all_combos, count=count, seed=seed, strategy="bayesian"
-            )
+            selected_combos = self._sample_combos(all_combos, count=count, seed=seed, strategy="bayesian")
 
         # 展开为完整配置
         configs: list[dict[str, Any]] = []
@@ -359,8 +343,7 @@ class ConfigStore(IConfigStore):
         if not configs and skipped:
             sample_err = skipped[0][1][:100]
             raise ValueError(
-                f"expand_sweep: all {len(skipped)} combinations failed validation. "
-                f"First error: {sample_err}"
+                f"expand_sweep: all {len(skipped)} combinations failed validation. First error: {sample_err}"
             )
 
         return configs
@@ -375,8 +358,7 @@ class ConfigStore(IConfigStore):
         has_bayesian = "bayesian" in kinds
         if has_random and has_bayesian:
             raise ValueError(
-                "expand_sweep: cannot mix 'random' and 'bayesian' sweep kinds. "
-                "Use explicit strategy parameter."
+                "expand_sweep: cannot mix 'random' and 'bayesian' sweep kinds. Use explicit strategy parameter."
             )
         if has_bayesian:
             return "bayesian"
@@ -441,15 +423,11 @@ class ConfigStore(IConfigStore):
         if isinstance(spec_value, dict) and "sweep" in spec_value:
             sweep_spec = spec_value["sweep"]
             if not isinstance(sweep_spec, dict):
-                raise ValueError(
-                    f"Sweep field {field_name!r}: 'sweep' must be a dict, "
-                    f"got {type(sweep_spec).__name__}"
-                )
+                raise ValueError(f"Sweep field {field_name!r}: 'sweep' must be a dict, got {type(sweep_spec).__name__}")
             kind = sweep_spec.get("kind", "grid")
             if kind not in ("grid", "random", "bayesian"):
                 raise ValueError(
-                    f"Sweep field {field_name!r}: kind must be 'grid' / 'random' / "
-                    f"'bayesian', got {kind!r}"
+                    f"Sweep field {field_name!r}: kind must be 'grid' / 'random' / 'bayesian', got {kind!r}"
                 )
             values = sweep_spec.get("values", [])
         elif isinstance(spec_value, list):
@@ -463,10 +441,7 @@ class ConfigStore(IConfigStore):
             )
 
         if not isinstance(values, list):
-            raise ValueError(
-                f"Sweep values for {field_name!r} must be a list, "
-                f"got {type(values).__name__}"
-            )
+            raise ValueError(f"Sweep values for {field_name!r} must be a list, got {type(values).__name__}")
         if len(values) == 0:
             raise ValueError(f"Sweep values for {field_name!r} is empty")
 

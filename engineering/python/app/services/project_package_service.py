@@ -23,6 +23,7 @@
     - 资源不存在 → LookupError 子类
     - 业务状态非法 → ProjectPackageError 子类
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -30,12 +31,9 @@ import io
 import json
 import logging
 import os
-import platform
-import shutil
-import socket
 import threading
 import zipfile
-from app.utils.time import utcnow, utcnow_filename_suffix, utcnow_iso_z
+from app.utils.time import utcnow, utcnow_iso_z
 from typing import Any, Optional
 
 from sqlalchemy import desc, func, select
@@ -43,8 +41,6 @@ from sqlalchemy import desc, func, select
 from app.config import config
 from app.contracts.project_package import (
     ConflictStrategy,
-    ContentPolicy,
-    DEFAULT_MAX_FILE_SIZE_BYTES,
     ExportOptions,
     ExportResult,
     ImportOptions,
@@ -55,10 +51,7 @@ from app.contracts.project_package import (
     PackageProjectInfo,
     PackageResourceEntry,
     PackageTaskStatus,
-    SOURCE_MACHINE_INFO_DEFAULTS,
     STREAM_BUFFER_SIZE,
-    PACKAGE_FILE_EXTENSION,
-    PACKAGE_FILENAME_TEMPLATE,
     SourceMachineInfo,
     ValidationResult,
 )
@@ -71,6 +64,7 @@ from app.database.models.project_package import (
 from app.services._shared.service_base import BaseSingletonService
 
 from app.services._package_io import (
+    PackageFormatError,
     _resolve_output_path,
     _resolve_resource_path,
     _compute_sha256,
@@ -100,10 +94,6 @@ class ProjectNotFoundError(LookupError):
 
 class PackageNotFoundError(LookupError):
     """包文件不存在."""
-
-
-class PackageFormatError(ValueError):
-    """包格式不合法（manifest 解析失败 / 版本不兼容）."""
 
 
 class PackageChecksumError(ProjectPackageError):
@@ -160,9 +150,7 @@ class ProjectPackageService(BaseSingletonService):
         self._locks: dict[str, threading.Lock] = {}
         self._locks_guard = threading.Lock()
         # 包存储根目录：<output_dir>/project_packages/
-        self._packages_root = os.path.join(
-            os.path.abspath(config.storage.output_dir), "project_packages"
-        )
+        self._packages_root = os.path.join(os.path.abspath(config.storage.output_dir), "project_packages")
         os.makedirs(self._packages_root, exist_ok=True)
 
     # ── 锁管理 ─────────────────────────────────────────────────────────
@@ -241,9 +229,7 @@ class ProjectPackageService(BaseSingletonService):
             sync_service = get_project_sync_service()
             # 获取项目元数据 + 资源引用
             try:
-                project_dict = await sync_service.get_project(
-                    project_id, include_refs=True
-                )
+                project_dict = await sync_service.get_project(project_id, include_refs=True)
             except LookupError as e:
                 raise ProjectNotFoundError(str(e)) from e
 
@@ -267,9 +253,7 @@ class ProjectPackageService(BaseSingletonService):
             total_size = 0
 
             # 流式写入 ZIP
-            with zipfile.ZipFile(
-                package_path, "w", zipfile.ZIP_DEFLATED, allowZip64=True
-            ) as zf:
+            with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
                 for ref in refs:
                     resource_type = ref.get("resource_type", "")
                     resource_uri = ref.get("resource_uri", "")
@@ -286,14 +270,10 @@ class ProjectPackageService(BaseSingletonService):
                     content_hash = ref.get("content_hash") or ""
                     path_in_package = ""
 
-                    if content_path and options.should_pack_content(
-                        os.path.getsize(content_path)
-                    ):
+                    if content_path and options.should_pack_content(os.path.getsize(content_path)):
                         # 打包内容
                         ext = os.path.splitext(content_path)[1] or ".bin"
-                        path_in_package = self._build_package_path(
-                            resource_type, resource_uri, ext
-                        )
+                        path_in_package = self._build_package_path(resource_type, resource_uri, ext)
                         # 流式写入文件
                         with open(content_path, "rb") as f:
                             buf = io.BufferedReader(f, buffer_size=STREAM_BUFFER_SIZE)
@@ -307,19 +287,13 @@ class ProjectPackageService(BaseSingletonService):
                     else:
                         # 仅元数据
                         if content_path:
-                            skipped_resources.append(
-                                f"{resource_uri} (excluded by content_policy)"
-                            )
+                            skipped_resources.append(f"{resource_uri} (excluded by content_policy)")
                         path_in_package = ""
                         size_bytes = 0
 
                     # 从 ref metadata 提取附加元数据
                     ref_metadata = ref.get("metadata") or {}
-                    entry_metadata = {
-                        k: v
-                        for k, v in ref_metadata.items()
-                        if k not in {"path", "storage_uri"}
-                    }
+                    entry_metadata = {k: v for k, v in ref_metadata.items() if k not in {"path", "storage_uri"}}
 
                     resource_entries.append(
                         PackageResourceEntry(
@@ -394,9 +368,7 @@ class ProjectPackageService(BaseSingletonService):
             )
             return result
 
-    def _build_package_path(
-        self, resource_type: str, resource_uri: str, ext: str
-    ) -> str:
+    def _build_package_path(self, resource_type: str, resource_uri: str, ext: str) -> str:
         """从 _package_io 委托。"""
         return _build_package_path(resource_type, resource_uri, ext)
 
@@ -435,9 +407,7 @@ class ProjectPackageService(BaseSingletonService):
             # 阶段 1：读取并校验 manifest
             manifest = self._read_manifest(package_path)
             if not PackageFormatVersion.is_supported(manifest.format_version):
-                raise PackageFormatError(
-                    f"包格式版本不支持: {manifest.format_version}"
-                )
+                raise PackageFormatError(f"包格式版本不支持: {manifest.format_version}")
 
             # 阶段 2：创建目标项目（通过 ProjectSyncService）
             from app.dependencies import get_project_sync_service
@@ -472,9 +442,7 @@ class ProjectPackageService(BaseSingletonService):
                 target_project_id = target_project["project_id"]
                 repo_path = target_project["repo_path"]
             except Exception as e:
-                raise ProjectPackageError(
-                    f"创建目标项目失败: {e}"
-                ) from e
+                raise ProjectPackageError(f"创建目标项目失败: {e}") from e
 
             # 阶段 3：解压资源文件到目标项目目录
             records: list[ImportResourceRecord] = []
@@ -487,13 +455,9 @@ class ProjectPackageService(BaseSingletonService):
             with zipfile.ZipFile(package_path, "r") as zf:
                 # 检查冲突（conflict_strategy=fail 时）
                 if options.conflict_strategy == ConflictStrategy.FAIL:
-                    existing = self._check_existing_resources(
-                        manifest, repo_path
-                    )
+                    existing = self._check_existing_resources(manifest, repo_path)
                     if existing:
-                        raise PackageConflictError(
-                            f"目标已存在资源，conflict_strategy=fail: {existing}"
-                        )
+                        raise PackageConflictError(f"目标已存在资源，conflict_strategy=fail: {existing}")
 
                 for entry in manifest.resources:
                     if not entry.path_in_package or not entry.has_content:
@@ -509,12 +473,8 @@ class ProjectPackageService(BaseSingletonService):
                         continue
 
                     try:
-                        target_path = os.path.join(
-                            repo_path, entry.path_in_package
-                        )
-                        os.makedirs(
-                            os.path.dirname(target_path), exist_ok=True
-                        )
+                        target_path = os.path.join(repo_path, entry.path_in_package)
+                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
                         # 冲突处理
                         if os.path.exists(target_path):
@@ -533,9 +493,7 @@ class ProjectPackageService(BaseSingletonService):
                             # overwrite: 直接覆盖（默认 ZipFile.extract 行为）
 
                         # 流式写入文件
-                        with zf.open(entry.path_in_package) as src, open(
-                            target_path, "wb"
-                        ) as dst:
+                        with zf.open(entry.path_in_package) as src, open(target_path, "wb") as dst:
                             while True:
                                 chunk = src.read(STREAM_BUFFER_SIZE)
                                 if not chunk:
@@ -544,14 +502,16 @@ class ProjectPackageService(BaseSingletonService):
 
                         # 校验 hash
                         if entry.content_hash and entry.content_hash.startswith("sha256:"):
-                            expected = entry.content_hash[len("sha256:"):]
+                            expected = entry.content_hash[len("sha256:") :]
                             actual = self._compute_sha256(target_path)
                             if actual != expected:
-                                warnings.append(
-                                    f"资源 hash 不匹配: {entry.resource_uri}"
-                                )
+                                warnings.append(f"资源 hash 不匹配: {entry.resource_uri}")
 
-                        action = "renamed" if options.conflict_strategy == ConflictStrategy.RENAME and os.path.exists(target_path) else "imported"
+                        action = (
+                            "renamed"
+                            if options.conflict_strategy == ConflictStrategy.RENAME and os.path.exists(target_path)
+                            else "imported"
+                        )
                         if action == "renamed":
                             renamed_count += 1
                         else:
@@ -617,9 +577,7 @@ class ProjectPackageService(BaseSingletonService):
         """从 _package_io 委托。"""
         return _read_manifest(package_path)
 
-    def _check_existing_resources(
-        self, manifest: PackageManifest, repo_path: str
-    ) -> list[str]:
+    def _check_existing_resources(self, manifest: PackageManifest, repo_path: str) -> list[str]:
         """从 _package_io 委托。"""
         return _check_existing_resources(manifest, repo_path)
 
@@ -666,15 +624,15 @@ class ProjectPackageService(BaseSingletonService):
 
                 format_version = manifest_data.get("format_version", "")
                 if not PackageFormatVersion.is_supported(format_version):
-                    errors.append(
-                        f"包格式版本不支持: {format_version}"
-                    )
+                    errors.append(f"包格式版本不支持: {format_version}")
 
                 # 校验 checksum
                 stored_checksum = manifest_data.get("checksum", "")
                 if stored_checksum:
                     recomputed = self._compute_manifest_checksum(manifest_data)
-                    expected = stored_checksum[len("sha256:"):] if stored_checksum.startswith("sha256:") else stored_checksum
+                    expected = (
+                        stored_checksum[len("sha256:") :] if stored_checksum.startswith("sha256:") else stored_checksum
+                    )
                     if recomputed == expected:
                         checksum_verified = True
                     else:
@@ -700,17 +658,13 @@ class ProjectPackageService(BaseSingletonService):
                             actual_hash = h.hexdigest()
                         expected_hash = entry.get("content_hash", "")
                         if expected_hash.startswith("sha256:"):
-                            expected_hash = expected_hash[len("sha256:"):]
+                            expected_hash = expected_hash[len("sha256:") :]
                         if actual_hash == expected_hash:
                             verified_count += 1
                         else:
-                            errors.append(
-                                f"资源 hash 不匹配: {entry.get('resource_uri', path_in_package)}"
-                            )
+                            errors.append(f"资源 hash 不匹配: {entry.get('resource_uri', path_in_package)}")
                     except KeyError:
-                        errors.append(
-                            f"资源文件不存在于包内: {path_in_package}"
-                        )
+                        errors.append(f"资源文件不存在于包内: {path_in_package}")
 
         except zipfile.BadZipFile as e:
             errors.append(f"ZIP 文件损坏: {e}")
@@ -766,9 +720,7 @@ class ProjectPackageService(BaseSingletonService):
             await session.commit()
         return record
 
-    async def update_export_record(
-        self, export_id: str, **fields: Any
-    ) -> ProjectExport:
+    async def update_export_record(self, export_id: str, **fields: Any) -> ProjectExport:
         """更新导出记录字段."""
         async with await self._get_session() as session:
             stmt = select(ProjectExport).where(ProjectExport.id == export_id)
@@ -809,30 +761,17 @@ class ProjectPackageService(BaseSingletonService):
 
             if project_id:
                 stmt = stmt.where(ProjectExport.project_id == project_id)
-                count_stmt = count_stmt.where(
-                    ProjectExport.project_id == project_id
-                )
+                count_stmt = count_stmt.where(ProjectExport.project_id == project_id)
             if status_filter:
                 stmt = stmt.where(ProjectExport.status == status_filter)
-                count_stmt = count_stmt.where(
-                    ProjectExport.status == status_filter
-                )
+                count_stmt = count_stmt.where(ProjectExport.status == status_filter)
             if exported_by:
                 stmt = stmt.where(ProjectExport.exported_by == exported_by)
-                count_stmt = count_stmt.where(
-                    ProjectExport.exported_by == exported_by
-                )
+                count_stmt = count_stmt.where(ProjectExport.exported_by == exported_by)
 
             total = (await session.execute(count_stmt)).scalar() or 0
-            stmt = (
-                stmt.order_by(desc(ProjectExport.created_at))
-                .limit(limit)
-                .offset(offset)
-            )
-            items = [
-                row.to_dict()
-                for row in (await session.execute(stmt)).scalars().all()
-            ]
+            stmt = stmt.order_by(desc(ProjectExport.created_at)).limit(limit).offset(offset)
+            items = [row.to_dict() for row in (await session.execute(stmt)).scalars().all()]
             return {
                 "items": items,
                 "total": total,
@@ -897,9 +836,7 @@ class ProjectPackageService(BaseSingletonService):
             await session.commit()
         return record
 
-    async def update_import_record(
-        self, import_id: str, **fields: Any
-    ) -> ProjectImport:
+    async def update_import_record(self, import_id: str, **fields: Any) -> ProjectImport:
         """更新导入记录字段."""
         async with await self._get_session() as session:
             stmt = select(ProjectImport).where(ProjectImport.id == import_id)
@@ -939,33 +876,18 @@ class ProjectPackageService(BaseSingletonService):
             count_stmt = select(func.count()).select_from(ProjectImport)
 
             if target_project_id:
-                stmt = stmt.where(
-                    ProjectImport.target_project_id == target_project_id
-                )
-                count_stmt = count_stmt.where(
-                    ProjectImport.target_project_id == target_project_id
-                )
+                stmt = stmt.where(ProjectImport.target_project_id == target_project_id)
+                count_stmt = count_stmt.where(ProjectImport.target_project_id == target_project_id)
             if status_filter:
                 stmt = stmt.where(ProjectImport.status == status_filter)
-                count_stmt = count_stmt.where(
-                    ProjectImport.status == status_filter
-                )
+                count_stmt = count_stmt.where(ProjectImport.status == status_filter)
             if imported_by:
                 stmt = stmt.where(ProjectImport.imported_by == imported_by)
-                count_stmt = count_stmt.where(
-                    ProjectImport.imported_by == imported_by
-                )
+                count_stmt = count_stmt.where(ProjectImport.imported_by == imported_by)
 
             total = (await session.execute(count_stmt)).scalar() or 0
-            stmt = (
-                stmt.order_by(desc(ProjectImport.created_at))
-                .limit(limit)
-                .offset(offset)
-            )
-            items = [
-                row.to_dict()
-                for row in (await session.execute(stmt)).scalars().all()
-            ]
+            stmt = stmt.order_by(desc(ProjectImport.created_at)).limit(limit).offset(offset)
+            items = [row.to_dict() for row in (await session.execute(stmt)).scalars().all()]
             return {
                 "items": items,
                 "total": total,

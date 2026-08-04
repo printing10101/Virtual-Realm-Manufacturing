@@ -5,6 +5,7 @@
 
 契约稳定性：Stable（v1.0.0），向后兼容扩展。
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -49,22 +50,16 @@ class PluginManifest:
         if not self.entrypoint:
             raise ValueError("PluginManifest.entrypoint 不能为空")
         if ":" not in self.entrypoint:
-            raise ValueError(
-                f"PluginManifest.entrypoint 格式错误（应为 module.path:ClassName）: {self.entrypoint}"
-            )
+            raise ValueError(f"PluginManifest.entrypoint 格式错误（应为 module.path:ClassName）: {self.entrypoint}")
         # 校验 required_contracts 格式
         for req in self.required_contracts:
             if "@" not in req:
-                raise ValueError(
-                    f"required_contracts 条目格式错误（应为 name@version）: {req}"
-                )
+                raise ValueError(f"required_contracts 条目格式错误（应为 name@version）: {req}")
         # workflow_templates 必须是字符串列表
         if not isinstance(self.workflow_templates, list) or not all(
             isinstance(t, str) for t in self.workflow_templates
         ):
-            raise ValueError(
-                "PluginManifest.workflow_templates 必须是字符串列表（YAML 文件相对路径）"
-            )
+            raise ValueError("PluginManifest.workflow_templates 必须是字符串列表（YAML 文件相对路径）")
 
 
 class IPlugin(ABC):
@@ -171,9 +166,7 @@ class ExtensionPointContribution:
         if not self.plugin_id:
             raise ValueError("ExtensionPointContribution.plugin_id 不能为空")
         if self.handler is None and self.component_url is None:
-            raise ValueError(
-                "ExtensionPointContribution 必须提供 handler 或 component_url 之一"
-            )
+            raise ValueError("ExtensionPointContribution 必须提供 handler 或 component_url 之一")
 
 
 class IExtensionRegistry(ABC):
@@ -256,9 +249,7 @@ BUILTIN_CAPABILITIES: dict[str, Capability] = {
     "dataset:write": Capability("dataset:write", "写入数据集", False),
     "dataset:version:create": Capability("dataset:version:create", "创建数据集版本", False),
     "config:sweep": Capability("config:sweep", "启动超参搜索", False),
-    "observability:snapshot:create": Capability(
-        "observability:snapshot:create", "创建实验快照", True
-    ),
+    "observability:snapshot:create": Capability("observability:snapshot:create", "创建实验快照", True),
     "observability:trace:export": Capability("observability:trace:export", "导出 trace", True),
     "plugin:install": Capability("plugin:install", "安装其他插件", False),
     "compute:gpu": Capability("compute:gpu", "使用 GPU", True),

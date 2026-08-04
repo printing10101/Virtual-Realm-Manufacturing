@@ -7,7 +7,6 @@ Ollama 默认端口 11434，API 端点 /api/chat 和 /api/tags。
 from __future__ import annotations
 
 import logging
-import socket
 from typing import Any
 import time
 
@@ -98,14 +97,10 @@ class OllamaProvider(LLMProvider):
             },
         }
         start = time.time()
-        response = await self._http_post(
-            f"{self.config.base_url}/api/chat", payload
-        )
+        response = await self._http_post(f"{self.config.base_url}/api/chat", payload)
         self._measure_latency(start)
         if response.status_code != 200:
-            raise ProviderError(
-                f"Ollama API error: {response.status_code} - {response.text}"
-            )
+            raise ProviderError(f"Ollama API error: {response.status_code} - {response.text}")
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         return {

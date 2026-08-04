@@ -142,9 +142,7 @@ class ProjectManifest:
     def to_dict(self) -> dict[str, Any]:
         return {
             "version": self.version,
-            "metadata": asdict(self.metadata)
-            if self.metadata
-            else asdict(ProjectMetadata()),
+            "metadata": asdict(self.metadata) if self.metadata else asdict(ProjectMetadata()),
             "resources": [self._resource_to_dict(r) for r in self.resources],
             "data": self.data,
             "extensions": self.extensions,
@@ -246,9 +244,7 @@ class ProjectStore:
         workspace_dir = (
             str(workspace_dir)
             if workspace_dir
-            else os.path.join(
-                os.path.dirname(__file__), "..", "..", "output", "projects"
-            )
+            else os.path.join(os.path.dirname(__file__), "..", "..", "output", "projects")
         )
         self._workspace_dir = Path(workspace_dir)
         self._workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -303,9 +299,7 @@ class ProjectStore:
         if not file_path.exists():
             raise FileNotFoundError(f"工程文件不存在: {file_path}")
         if file_path.suffix.lower() != PROJECT_FILE_EXTENSION:
-            raise ValueError(
-                f"不支持的文件格式: {file_path.suffix}，仅支持 {PROJECT_FILE_EXTENSION}"
-            )
+            raise ValueError(f"不支持的文件格式: {file_path.suffix}，仅支持 {PROJECT_FILE_EXTENSION}")
 
         with zipfile.ZipFile(str(file_path), "r") as zf:
             names = zf.namelist()
@@ -371,9 +365,7 @@ class ProjectStore:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(str(src_path), str(dest))
 
-            with zipfile.ZipFile(
-                str(output_path), "w", compression=zipfile.ZIP_DEFLATED
-            ) as zf:
+            with zipfile.ZipFile(str(output_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
                 zf.write(str(project_json_path), _PROJECT_JSON_FILENAME)
                 if resource_files:
                     for rel_path in resource_files:
@@ -426,9 +418,7 @@ class ProjectStore:
             新建的ResourceEntry
         """
         if resource_type not in _RESOURCE_TYPES:
-            raise ValueError(
-                f"不支持的资源类型: {resource_type}，有效类型: {_RESOURCE_TYPES}"
-            )
+            raise ValueError(f"不支持的资源类型: {resource_type}，有效类型: {_RESOURCE_TYPES}")
 
         source_path = Path(source_path)
         sub_dir = f"{resource_type}s"
@@ -519,10 +509,7 @@ class ProjectStore:
         except (ValueError, IndexError) as e:
             if "高于" in str(e) or "升级" in str(e):
                 raise
-            raise ValueError(
-                f"无效的版本号格式: '{version}'。"
-                f"期望格式: 主版本号.次版本号（如 '1.0'）"
-            )
+            raise ValueError(f"无效的版本号格式: '{version}'。期望格式: 主版本号.次版本号（如 '1.0'）")
 
     def list_projects(self) -> list[dict[str, Any]]:
         """列出工作目录下的所有工程文件摘要信息。
@@ -538,12 +525,8 @@ class ProjectStore:
                     {
                         "path": str(f),
                         "name": manifest.metadata.name if manifest.metadata else "",
-                        "created_at": manifest.metadata.created_at
-                        if manifest.metadata
-                        else "",
-                        "modified_at": manifest.metadata.modified_at
-                        if manifest.metadata
-                        else "",
+                        "created_at": manifest.metadata.created_at if manifest.metadata else "",
+                        "modified_at": manifest.metadata.modified_at if manifest.metadata else "",
                         "resource_count": len(manifest.resources),
                         "file_size": f.stat().st_size,
                     }

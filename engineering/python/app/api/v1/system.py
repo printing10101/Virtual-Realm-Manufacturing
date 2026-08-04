@@ -1,4 +1,5 @@
 """系统信息端点（version / info）。"""
+
 from fastapi import APIRouter
 
 from app.version import get_version_info

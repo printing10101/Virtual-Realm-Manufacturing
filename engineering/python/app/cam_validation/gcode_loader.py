@@ -43,7 +43,6 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from app.cam_validation.cam_store import GCodeReportLoadError
@@ -57,18 +56,20 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-REQUIRED_GCODE_REPORT_FIELDS: frozenset[str] = frozenset({
-    "task_id",
-    "task_status",
-    "controller_type",
-    "material_name",
-    "safe_z",
-    "stock_top_z",
-    "gcode_file_path",
-    "feature_results",
-    "cam_validation_required",
-    "prediction_method",
-})
+REQUIRED_GCODE_REPORT_FIELDS: frozenset[str] = frozenset(
+    {
+        "task_id",
+        "task_status",
+        "controller_type",
+        "material_name",
+        "safe_z",
+        "stock_top_z",
+        "gcode_file_path",
+        "feature_results",
+        "cam_validation_required",
+        "prediction_method",
+    }
+)
 
 
 # =============================================================================
@@ -169,12 +170,11 @@ class GCodeLoader:
         if project_root is None:
             # 从 app.config 推导 PROJECT_ROOT（与 config.__init__.PROJECT_ROOT 一致）
             from app.config import PROJECT_ROOT
+
             self._project_root = PROJECT_ROOT
         else:
             self._project_root = project_root
-        logger.debug(
-            "GCodeLoader initialized (project_root=%s)", self._project_root
-        )
+        logger.debug("GCodeLoader initialized (project_root=%s)", self._project_root)
 
     def load_from_report(self, report_path: str) -> GCodeLoadResult:
         """从阶段 6 report.json 加载 G 代码 + 特征信息。
@@ -196,22 +196,14 @@ class GCodeLoader:
         # ------------------------------------------------------------------
         report_full_path = self._resolve_path(report_path)
         if not os.path.isfile(report_full_path):
-            raise GCodeReportLoadError(
-                safe_error_message(
-                    f"阶段 6 report.json 不存在: {report_path}"
-                )
-            )
+            raise GCodeReportLoadError(safe_error_message(f"阶段 6 report.json 不存在: {report_path}"))
         try:
             with open(report_full_path, "r", encoding="utf-8") as f:
                 report_data: dict[str, Any] = json.load(f)
         except json.JSONDecodeError as e:
-            raise GCodeReportLoadError(
-                f"阶段 6 report.json 解析失败: {e}"
-            ) from e
+            raise GCodeReportLoadError(f"阶段 6 report.json 解析失败: {e}") from e
         except OSError as e:
-            raise GCodeReportLoadError(
-                safe_error_message(f"阶段 6 report.json 读取失败: {e}")
-            ) from e
+            raise GCodeReportLoadError(safe_error_message(f"阶段 6 report.json 读取失败: {e}")) from e
 
         logger.debug(
             "GCodeLoader: report.json loaded (path=%s, task_id=%s)",
@@ -225,9 +217,7 @@ class GCodeLoader:
         missing_fields = REQUIRED_GCODE_REPORT_FIELDS - set(report_data.keys())
         if missing_fields:
             missing_str = ", ".join(sorted(missing_fields))
-            raise GCodeReportLoadError(
-                f"阶段 6 report.json 必填字段缺失: {missing_str}"
-            )
+            raise GCodeReportLoadError(f"阶段 6 report.json 必填字段缺失: {missing_str}")
 
         # ------------------------------------------------------------------
         # 3. 校验 task_status == "succeeded"
@@ -235,8 +225,7 @@ class GCodeLoader:
         task_status = report_data["task_status"]
         if task_status != "succeeded":
             raise GCodeReportLoadError(
-                f"阶段 6 任务未审核通过（task_status={task_status}），"
-                "请先在阶段 6 完成审核并导出 SUCCEEDED 产物"
+                f"阶段 6 任务未审核通过（task_status={task_status}），请先在阶段 6 完成审核并导出 SUCCEEDED 产物"
             )
 
         # ------------------------------------------------------------------
@@ -247,12 +236,9 @@ class GCodeLoader:
             # 项目记忆硬约束：cam_validation_required 始终 True
             # 阶段 6 report.json 中此字段应为 True，若为 False 则视为数据损坏
             logger.warning(
-                "GCodeLoader: 阶段 6 report.json cam_validation_required=False，"
-                "强制视为 True（项目记忆硬约束）"
+                "GCodeLoader: 阶段 6 report.json cam_validation_required=False，强制视为 True（项目记忆硬约束）"
             )
-            load_warnings.append(
-                "阶段 6 report.json cam_validation_required=False，已强制视为 True"
-            )
+            load_warnings.append("阶段 6 report.json cam_validation_required=False，已强制视为 True")
             cam_validation_required = True
 
         # ------------------------------------------------------------------
@@ -261,21 +247,16 @@ class GCodeLoader:
         raw_feature_results = report_data["feature_results"]
         if not isinstance(raw_feature_results, list):
             raise GCodeReportLoadError(
-                f"阶段 6 report.json feature_results 必须是列表，实际类型: "
-                f"{type(raw_feature_results).__name__}"
+                f"阶段 6 report.json feature_results 必须是列表，实际类型: {type(raw_feature_results).__name__}"
             )
         if not raw_feature_results:
-            raise GCodeReportLoadError(
-                "阶段 6 report.json feature_results 为空，无法执行 CAM 校验"
-            )
+            raise GCodeReportLoadError("阶段 6 report.json feature_results 为空，无法执行 CAM 校验")
 
         # 深拷贝 + line_range list → tuple 转换
         feature_results: list[dict[str, Any]] = []
         for idx, fr in enumerate(raw_feature_results):
             if not isinstance(fr, dict):
-                load_warnings.append(
-                    f"feature_results[{idx}] 不是 dict，已跳过"
-                )
+                load_warnings.append(f"feature_results[{idx}] 不是 dict，已跳过")
                 continue
             fr_copy = dict(fr)
             # line_range: list [start, end] → tuple (start, end)
@@ -283,18 +264,14 @@ class GCodeLoader:
             if isinstance(lr, (list, tuple)) and len(lr) == 2:
                 fr_copy["line_range"] = (int(lr[0]), int(lr[1]))
             elif lr is not None:
-                load_warnings.append(
-                    f"feature_results[{idx}] line_range 格式异常: {lr}，已置为 (0, 0)"
-                )
+                load_warnings.append(f"feature_results[{idx}] line_range 格式异常: {lr}，已置为 (0, 0)")
                 fr_copy["line_range"] = (0, 0)
             else:
                 fr_copy["line_range"] = (0, 0)
             feature_results.append(fr_copy)
 
         if not feature_results:
-            raise GCodeReportLoadError(
-                "阶段 6 report.json feature_results 解析后为空"
-            )
+            raise GCodeReportLoadError("阶段 6 report.json feature_results 解析后为空")
 
         # ------------------------------------------------------------------
         # 6. 读取 G 代码文件
@@ -318,12 +295,8 @@ class GCodeLoader:
             gcode_file_path=gcode_file_path,
             gcode_total_lines=int(report_data.get("gcode_total_lines", 0)),
             cam_validation_required=cam_validation_required,
-            source_chatter_report_path=str(
-                report_data.get("source_chatter_report_path", "")
-            ),
-            source_operation_plan_path=str(
-                report_data.get("source_operation_plan_path", "")
-            ),
+            source_chatter_report_path=str(report_data.get("source_chatter_report_path", "")),
+            source_operation_plan_path=str(report_data.get("source_operation_plan_path", "")),
             reviewer=str(report_data.get("reviewer", "")),
             exported_at=float(report_data.get("exported_at", 0.0)),
             load_warnings=load_warnings,
@@ -361,8 +334,7 @@ class GCodeLoader:
         # 强制校验：最终路径必须位于 PROJECT_ROOT 之下
         if not resolved.startswith(project_root + os.sep) and resolved != project_root:
             raise GCodeReportLoadError(
-                f"路径越界被拒绝（安全策略）：{path!r} 解析为 {resolved!r}，"
-                f"不在项目根目录 {project_root!r} 之下"
+                f"路径越界被拒绝（安全策略）：{path!r} 解析为 {resolved!r}，不在项目根目录 {project_root!r} 之下"
             )
         return resolved
 
@@ -380,18 +352,12 @@ class GCodeLoader:
         """
         full_path = self._resolve_path(gcode_file_path)
         if not os.path.isfile(full_path):
-            raise GCodeReportLoadError(
-                safe_error_message(
-                    f"阶段 6 G 代码文件不存在: {gcode_file_path}"
-                )
-            )
+            raise GCodeReportLoadError(safe_error_message(f"阶段 6 G 代码文件不存在: {gcode_file_path}"))
         try:
             with open(full_path, "r", encoding="utf-8") as f:
                 return f.read()
         except OSError as e:
-            raise GCodeReportLoadError(
-                safe_error_message(f"阶段 6 G 代码文件读取失败: {e}")
-            ) from e
+            raise GCodeReportLoadError(safe_error_message(f"阶段 6 G 代码文件读取失败: {e}")) from e
 
 
 __all__ = [

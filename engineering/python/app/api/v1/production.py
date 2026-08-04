@@ -4,7 +4,6 @@
 提供生产记录查询、工单 CRUD、仪表盘 KPI、产线数据及演示数据填充功能。
 """
 
-
 from datetime import date
 from typing import Optional
 
@@ -19,6 +18,7 @@ from app.services import production_service
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
+
 
 class WorkOrderUpdate(BaseModel):
     product_name: Optional[str] = None
@@ -86,9 +86,7 @@ async def list_work_orders(
 ):
     """获取工单列表，支持按状态、优先级筛选。"""
     try:
-        data = await production_service.list_work_orders(
-            status=status, priority=priority, limit=limit, offset=offset
-        )
+        data = await production_service.list_work_orders(status=status, priority=priority, limit=limit, offset=offset)
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
 
@@ -112,9 +110,7 @@ async def get_work_order(wo_id: str):
 async def update_work_order(wo_id: str, body: WorkOrderUpdate):
     """更新工单信息。"""
     try:
-        data = await production_service.update_work_order(
-            wo_id, body.model_dump(exclude_unset=True)
-        )
+        data = await production_service.update_work_order(wo_id, body.model_dump(exclude_unset=True))
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
 
@@ -170,7 +166,10 @@ async def seed_production_data():
     if result["already_exists"]:
         return success(message="生产数据已存在，跳过填充")
 
-    return success(message="生产演示数据填充成功", data={
-        "production_records": result["record_count"],
-        "work_orders": result["work_order_count"],
-    })
+    return success(
+        message="生产演示数据填充成功",
+        data={
+            "production_records": result["record_count"],
+            "work_orders": result["work_order_count"],
+        },
+    )

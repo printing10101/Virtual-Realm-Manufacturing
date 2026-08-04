@@ -17,11 +17,11 @@ KND 与 Fanuc 0i 的关键差异：
 
 实现策略：继承 Fanuc 0i，只 override 跟 KND 不同的方法。
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple
 
-from app.postprocessor.base import BasePostProcessor
 from app.postprocessor.fanuc import FanucPostProcessor
 
 
@@ -93,10 +93,7 @@ class KNDPostProcessor(FanucPostProcessor):
         g_code = "G02" if clockwise else "G03"
         radius = self._calc_arc_radius(end, center)
         feed = self._fmt(self.get_feed_rate(self.rapid_feed))
-        return (
-            f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} "
-            f"R{self._fmt(radius)} F{feed}"
-        )
+        return f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} R{self._fmt(radius)} F{feed}"
 
     def format_cycle_drill(
         self,

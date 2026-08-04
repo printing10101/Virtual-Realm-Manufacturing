@@ -1,6 +1,5 @@
 # 修复（2026-08-03 任务B）：原文件缺失 pydantic/typing 导入，运行时 NameError、
 # mypy 报 478 条 name-defined 中的大量条目。该文件未被引用但属真实缺陷，补全导入。
-from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -151,9 +150,11 @@ class SimulationStatusResponse(BaseModel):
     progress: float = 0.0
     result: SimulationResponse | None = None
 
+
 # ===========================================================================
 # 以下模型由安装验证（2026-08-03）发现拆分遗漏，从拆分前 api.py 恢复
 # ===========================================================================
+
 
 class ConflictCheckRequest(BaseModel):
     """Request model for tool-slot compatibility check.
@@ -185,7 +186,6 @@ class ConflictCheckRequest(BaseModel):
         default="slot milling",
         description="Machining operation type.",
     )
-
 
 
 class ExportAnimationRequest(BaseModel):
@@ -232,7 +232,6 @@ class ExportAnimationRequest(BaseModel):
         pattern="^(flat|ball|drill)$",
         description="Tool type.",
     )
-
 
 
 class AutoDiffCompareRequest(BaseModel):
@@ -293,7 +292,6 @@ class AutoDiffCompareRequest(BaseModel):
     )
 
 
-
 class FEMSolveRequest(BaseModel):
     """FEM 求解请求体（标准简支梁三点弯曲场景）。"""
 
@@ -310,9 +308,9 @@ class FEMSolveRequest(BaseModel):
     beam_height: float = Field(20.0, gt=0, le=1000, description="试件高度（mm）")
     load_force: float = Field(5000.0, gt=0, le=1e9, description="集中载荷（N）")
 
-# ===========================================================================
-# 以下模型由安装验证（2026-08-03）发现拆分遗漏，从拆分前 api.py 恢复
-# ===========================================================================
+    # ===========================================================================
+    # 以下模型由安装验证（2026-08-03）发现拆分遗漏，从拆分前 api.py 恢复
+    # ===========================================================================
 
     """Request model for tool-slot compatibility check.
 
@@ -343,8 +341,6 @@ class FEMSolveRequest(BaseModel):
         default="slot milling",
         description="Machining operation type.",
     )
-
-
 
     """Request model for simulation animation export.
 
@@ -389,8 +385,6 @@ class FEMSolveRequest(BaseModel):
         pattern="^(flat|ball|drill)$",
         description="Tool type.",
     )
-
-
 
     """Auto-Diff 几何比对请求。
 
@@ -448,8 +442,6 @@ class FEMSolveRequest(BaseModel):
         description="残料拒收阈值（体积占比），留空使用默认 0.05。",
     )
 
-
-
     """FEM 求解请求体（标准简支梁三点弯曲场景）。"""
 
     material: str = Field("steel45", max_length=64, description="材料名称")
@@ -464,4 +456,3 @@ class FEMSolveRequest(BaseModel):
     beam_width: float = Field(20.0, gt=0, le=1000, description="试件宽度（mm）")
     beam_height: float = Field(20.0, gt=0, le=1000, description="试件高度（mm）")
     load_force: float = Field(5000.0, gt=0, le=1e9, description="集中载荷（N）")
-

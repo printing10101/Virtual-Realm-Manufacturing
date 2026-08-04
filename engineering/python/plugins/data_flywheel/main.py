@@ -35,7 +35,6 @@ from plugins.data_flywheel.feedback_collector import (
     FeedbackCollector,
 )
 from plugins.data_flywheel.hot_update_manager import (
-    DeploymentRecord,
     DeploymentStatus,
     HotUpdateManager,
     configure_hot_update_manager,
@@ -93,6 +92,7 @@ class Plugin(IPlugin):
         """插件加载时调用.
 
         - 缓存 PluginContext
+        - 加载插件清单（manifest）
         - 构造 FeedbackCollector（p4-2）
         - 向 ExtensionRegistry 注册飞轮看板、工作流模板、反馈提交扩展点
         """
@@ -100,7 +100,15 @@ class Plugin(IPlugin):
         registry = get_extension_registry()
         plugin_id = context.plugin_id
 
-        # 0. 构造反馈采集器（p4-2）
+        # 0. 主动加载插件清单：on_load 后 health_check 的 manifest_loaded 必须为 True
+        #    清单缺失属降级模式（保留 None，health_check 如实上报 unhealthy）
+        try:
+            self.manifest()
+        except Exception:
+            logger.exception("数据飞轮插件清单加载失败，进入降级模式")
+            self._manifest = None
+
+        # 1. 构造反馈采集器（p4-2）
         #    dataset_store 可能为 None（降级模式），FeedbackCollector 内部处理
         feedback_config = context.config.get("feedback_collection", {}) if context.config else {}
         self._feedback_collector = FeedbackCollector(

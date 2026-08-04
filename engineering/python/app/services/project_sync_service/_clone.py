@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 1770-2016 迁移而来。
 """
+
 from __future__ import annotations
 
 import logging
@@ -153,9 +154,7 @@ class _CloneMixin:
                 await session.commit()
             except IntegrityError as e:
                 await session.rollback()
-                raise ProjectAlreadyExistsError(
-                    f"项目创建失败: {name}"
-                ) from e
+                raise ProjectAlreadyExistsError(f"项目创建失败: {name}") from e
             await session.refresh(project_orm)
             project_id = project_orm.project_id
             repo_path = self._get_repo_path(project_id)
@@ -181,9 +180,7 @@ class _CloneMixin:
         事务边界与原实现一致：独立 session + commit。
         """
         async with await self._get_session() as session:
-            p_stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             p_orm = (await session.execute(p_stmt)).scalar_one_or_none()
             if p_orm is not None:
                 await session.delete(p_orm)
@@ -202,9 +199,7 @@ class _CloneMixin:
     def _read_clone_branch(self, repo_path: str) -> str:
         """读取 clone 后的当前分支名（失败时返回 'main'）."""
         try:
-            branch_res = self._run_git(
-                ["rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_path
-            )
+            branch_res = self._run_git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_path)
             branch = branch_res.stdout.strip() or "main"
         except GitOperationError:
             branch = "main"
@@ -229,9 +224,7 @@ class _CloneMixin:
                     resource_type=ref_data.get("resource_type", ""),
                     resource_uri=ref_data.get("resource_uri", ""),
                     content_hash=ref_data.get("content_hash") or None,
-                    sync_strategy=ref_data.get(
-                        "sync_strategy", SYNC_STRATEGIES.HASH_REFERENCED
-                    ),
+                    sync_strategy=ref_data.get("sync_strategy", SYNC_STRATEGIES.HASH_REFERENCED),
                     metadata_json=ref_data.get("metadata") or {},
                 )
                 session.add(ref_orm)
@@ -258,9 +251,7 @@ class _CloneMixin:
         一次 commit。
         """
         async with await self._get_session() as session:
-            p_stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(p_stmt)).scalar_one()
             project_orm.current_branch = branch
             project_orm.current_commit = head_sha or None

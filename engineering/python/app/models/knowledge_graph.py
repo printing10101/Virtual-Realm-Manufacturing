@@ -46,9 +46,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class RelationSource(str, Enum):
     """关系来源枚举。"""
 
-    RULE = "rule"      # 由规则推导（如 process_rules.json）
-    LLM = "llm"        # 由大模型抽取
-    MEASURED = "实测"   # 由车间实测数据统计得到
+    RULE = "rule"  # 由规则推导（如 process_rules.json）
+    LLM = "llm"  # 由大模型抽取
+    MEASURED = "实测"  # 由车间实测数据统计得到
     MANUAL = "manual"  # 由人工录入
 
 

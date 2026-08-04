@@ -107,17 +107,13 @@ class ContextBuilder:
                 parts.append(f"该项目旨在{parent_goal_desc}。")
 
         if strategic_goal_name:
-            parts.append(
-                f"通过完成此任务，将直接支持战略目标「{strategic_goal_name}」的实现。"
-            )
+            parts.append(f"通过完成此任务，将直接支持战略目标「{strategic_goal_name}」的实现。")
 
         if mission_name:
             parts.append(f"最终服务于公司使命：「{mission_name}」。")
 
         if not parts:
-            parts.append(
-                f"本任务「{task_title}」暂无关联目标。建议将任务关联到具体项目以确保目标对齐。"
-            )
+            parts.append(f"本任务「{task_title}」暂无关联目标。建议将任务关联到具体项目以确保目标对齐。")
 
         return " ".join(parts)
 
@@ -127,7 +123,5 @@ class ContextBuilder:
             "task_description": task.description,
             "task_id": task.id,
             "task_type": task.task_type.value,
-            "goal_chain_summary": [
-                {"name": g.name, "type": g.level.value} for g in task.goal_chain
-            ],
+            "goal_chain_summary": [{"name": g.name, "type": g.level.value} for g in task.goal_chain],
         }

@@ -32,7 +32,6 @@ dataset_id 时再注入到 ``FlywheelMetricsCollector``。
 
 from __future__ import annotations
 
-import asyncio
 import datetime
 import json
 import logging
@@ -137,9 +136,7 @@ class FlywheelMetricsCollector:
         self._snapshot_store = snapshot_store
         self._feedback_dataset_id: Optional[str] = feedback_dataset_id
         if data_source is not None:
-            logger.warning(
-                "data_source 参数已废弃，请通过 dataset_store + snapshot_store 注入"
-            )
+            logger.warning("data_source 参数已废弃，请通过 dataset_store + snapshot_store 注入")
         self._cache: dict[str, FlywheelMetrics] = {}
         self._cache_lock = threading.Lock()
 
@@ -205,9 +202,7 @@ class FlywheelMetricsCollector:
             self._cache[metrics.timestamp] = metrics
         return metrics
 
-    async def get_historical_metrics_async(
-        self, days: int = 7
-    ) -> list[FlywheelMetrics]:
+    async def get_historical_metrics_async(self, days: int = 7) -> list[FlywheelMetrics]:
         """从 ``ISnapshotStore`` 取历史快照构造历史指标.
 
         Args:
@@ -308,9 +303,7 @@ class FlywheelMetricsCollector:
 
         report = {
             "report_type": "weekly",
-            "generated_at": datetime.datetime.now(
-                datetime.timezone.utc
-            ).isoformat(),
+            "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "period": {
                 "start": historical[-1].timestamp if historical else current.timestamp,
                 "end": current.timestamp,
@@ -344,9 +337,7 @@ class FlywheelMetricsCollector:
         trends = self._calculate_trends([])
         return {
             "report_type": "weekly",
-            "generated_at": datetime.datetime.now(
-                datetime.timezone.utc
-            ).isoformat(),
+            "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "period": {"start": current.timestamp, "end": current.timestamp},
             "current_metrics": current.to_dict(),
             "historical_metrics": [],
@@ -363,9 +354,7 @@ class FlywheelMetricsCollector:
         if self._dataset_store is None or self._feedback_dataset_id is None:
             return 0
         try:
-            version = await self._dataset_store.get_version(
-                self._feedback_dataset_id
-            )
+            version = await self._dataset_store.get_version(self._feedback_dataset_id)
             return int(version.row_count)
         except Exception as e:
             logger.warning(
@@ -392,15 +381,11 @@ class FlywheelMetricsCollector:
         if not records:
             return 0.0
 
-        adoption_records = [
-            r for r in records if r.get("feedback_type") == ADOPTION_FEEDBACK_TYPE
-        ]
+        adoption_records = [r for r in records if r.get("feedback_type") == ADOPTION_FEEDBACK_TYPE]
         if not adoption_records:
             return 0.0
 
-        accepted_count = sum(
-            1 for r in adoption_records if r.get("accepted") is True
-        )
+        accepted_count = sum(1 for r in adoption_records if r.get("accepted") is True)
         return round(accepted_count / len(adoption_records) * 100, 2)
 
     async def _get_uncertainty_mean_async(self) -> float:
@@ -466,9 +451,9 @@ class FlywheelMetricsCollector:
         # 按 created_at 降序，取第一个
         return sorted(
             snapshots,
-            key=lambda s: s.created_at
-            if s.created_at.tzinfo is not None
-            else s.created_at.replace(tzinfo=datetime.timezone.utc),
+            key=lambda s: (
+                s.created_at if s.created_at.tzinfo is not None else s.created_at.replace(tzinfo=datetime.timezone.utc)
+            ),
             reverse=True,
         )[0]
 
@@ -505,11 +490,7 @@ class FlywheelMetricsCollector:
             "data_volume": {
                 "current": latest.data_volume,
                 "change": latest.data_volume - oldest.data_volume,
-                "change_percent": (
-                    (latest.data_volume - oldest.data_volume)
-                    / oldest.data_volume
-                    * 100
-                )
+                "change_percent": ((latest.data_volume - oldest.data_volume) / oldest.data_volume * 100)
                 if oldest.data_volume > 0
                 else 0,
             },
@@ -517,9 +498,7 @@ class FlywheelMetricsCollector:
                 "current": latest.model_quality,
                 "change": round(latest.model_quality - oldest.model_quality, 2),
                 "change_percent": round(
-                    (latest.model_quality - oldest.model_quality)
-                    / oldest.model_quality
-                    * 100,
+                    (latest.model_quality - oldest.model_quality) / oldest.model_quality * 100,
                     2,
                 )
                 if oldest.model_quality > 0
@@ -529,9 +508,7 @@ class FlywheelMetricsCollector:
                 "current": latest.adoption_rate,
                 "change": round(latest.adoption_rate - oldest.adoption_rate, 2),
                 "change_percent": round(
-                    (latest.adoption_rate - oldest.adoption_rate)
-                    / oldest.adoption_rate
-                    * 100,
+                    (latest.adoption_rate - oldest.adoption_rate) / oldest.adoption_rate * 100,
                     2,
                 )
                 if oldest.adoption_rate > 0
@@ -540,22 +517,16 @@ class FlywheelMetricsCollector:
             "uncertainty_mean": {
                 "current": latest.uncertainty_mean,
                 "change": round(latest.uncertainty_mean - oldest.uncertainty_mean, 3),
-                "trend": "improving"
-                if latest.uncertainty_mean < oldest.uncertainty_mean
-                else "degrading",
+                "trend": "improving" if latest.uncertainty_mean < oldest.uncertainty_mean else "degrading",
             },
             "feedback_delay": {
                 "current": latest.feedback_delay,
                 "change": round(latest.feedback_delay - oldest.feedback_delay, 2),
-                "trend": "improving"
-                if latest.feedback_delay < oldest.feedback_delay
-                else "degrading",
+                "trend": "improving" if latest.feedback_delay < oldest.feedback_delay else "degrading",
             },
         }
 
-    def _generate_summary(
-        self, current: FlywheelMetrics, trends: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _generate_summary(self, current: FlywheelMetrics, trends: dict[str, Any]) -> dict[str, Any]:
         """生成报告摘要."""
         health_score = self._calculate_health_score(current, trends)
 
@@ -566,9 +537,7 @@ class FlywheelMetricsCollector:
             "recommendations": self._generate_recommendations(current, trends),
         }
 
-    def _calculate_health_score(
-        self, current: FlywheelMetrics, trends: dict[str, Any]
-    ) -> float:
+    def _calculate_health_score(self, current: FlywheelMetrics, trends: dict[str, Any]) -> float:
         """计算飞轮健康分数(0-100)."""
         score = 0.0
 
@@ -603,9 +572,7 @@ class FlywheelMetricsCollector:
         else:
             return "poor"
 
-    def _generate_highlights(
-        self, current: FlywheelMetrics, trends: dict[str, Any]
-    ) -> list[str]:
+    def _generate_highlights(self, current: FlywheelMetrics, trends: dict[str, Any]) -> list[str]:
         """生成亮点摘要."""
         highlights: list[str] = []
 
@@ -623,9 +590,7 @@ class FlywheelMetricsCollector:
 
         return highlights
 
-    def _generate_recommendations(
-        self, current: FlywheelMetrics, trends: dict[str, Any]
-    ) -> list[str]:
+    def _generate_recommendations(self, current: FlywheelMetrics, trends: dict[str, Any]) -> list[str]:
         """生成改进建议."""
         recommendations: list[str] = []
 

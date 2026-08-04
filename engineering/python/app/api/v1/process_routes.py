@@ -4,7 +4,6 @@
 提供工艺路线的 CRUD（含工序步骤）、状态筛选及演示数据填充功能。
 """
 
-
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -19,6 +18,7 @@ from app.services import process_routes_service
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
+
 
 class ProcessStepCreate(BaseModel):
     sequence: int
@@ -115,9 +115,7 @@ async def update_process_route(route_id: str, body: ProcessRouteUpdate):
     steps = [s.model_dump() for s in steps_data] if steps_data is not None else None
 
     try:
-        data = await process_routes_service.update_process_route(
-            route_id, update_fields, steps
-        )
+        data = await process_routes_service.update_process_route(route_id, update_fields, steps)
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
 
@@ -152,7 +150,10 @@ async def seed_process_routes():
     if result["already_exists"]:
         return success(message="工艺路线数据已存在，跳过填充")
 
-    return success(message="工艺路线演示数据填充成功", data={
-        "routes": result["routes_count"],
-        "steps": result["steps_count"],
-    })
+    return success(
+        message="工艺路线演示数据填充成功",
+        data={
+            "routes": result["routes_count"],
+            "steps": result["steps_count"],
+        },
+    )

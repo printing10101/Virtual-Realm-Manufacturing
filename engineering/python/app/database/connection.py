@@ -33,8 +33,7 @@ logger = logging.getLogger(__name__)
 
 # P1-2 修复：通过 contextvar 让 get_db() 在 yield 时知道当前请求方法，
 # 从而对 GET / HEAD / OPTIONS 请求跳过 commit。
-_current_request_method: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "_current_request_method", default="")
+_current_request_method: contextvars.ContextVar[str] = contextvars.ContextVar("_current_request_method", default="")
 
 
 def set_request_method(method: str) -> contextvars.Token:
@@ -52,6 +51,7 @@ def _resolve_db_url() -> str:
     if url:
         return url
     from app.config import config
+
     return config.database.db_url
 
 
@@ -114,13 +114,15 @@ class _DatabaseSingletons:
                 # SQLite: use StaticPool or NullPool, no pool params
                 engine_kwargs["pool_pre_ping"] = False
             else:
-                engine_kwargs.update({
-                    "pool_size": config.pool_size,
-                    "max_overflow": config.max_overflow,
-                    "pool_timeout": config.pool_timeout,
-                    "pool_recycle": config.pool_recycle,
-                    "pool_pre_ping": True,
-                })
+                engine_kwargs.update(
+                    {
+                        "pool_size": config.pool_size,
+                        "max_overflow": config.max_overflow,
+                        "pool_timeout": config.pool_timeout,
+                        "pool_recycle": config.pool_recycle,
+                        "pool_pre_ping": True,
+                    }
+                )
             self._engine = create_async_engine(config.async_url, **engine_kwargs)
             # P1-3 修复：SQLite PRAGMA 优化（WAL 模式 + foreign_keys + busy_timeout）
             # - journal_mode=WAL：并发读不阻塞写，桌面单用户场景显著降低锁冲突
@@ -129,6 +131,7 @@ class _DatabaseSingletons:
             if config.async_url.startswith("sqlite"):
                 # 防御性：当 sync_engine 不是合法事件目标时（如测试 MagicMock）跳过注册
                 try:
+
                     @event.listens_for(self._engine.sync_engine, "connect")
                     def _set_sqlite_pragma(dbapi_conn, _connection_record):
                         cursor = dbapi_conn.cursor()
@@ -138,6 +141,7 @@ class _DatabaseSingletons:
                             cursor.execute("PRAGMA busy_timeout=5000")
                         finally:
                             cursor.close()
+
                     logger.info("SQLite PRAGMA enabled: journal_mode=WAL, foreign_keys=ON, busy_timeout=5000")
                 except (InvalidRequestError, AttributeError, TypeError):
                     # 测试环境或非标准 engine（如 MagicMock）无法注册事件，跳过

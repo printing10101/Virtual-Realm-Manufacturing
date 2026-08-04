@@ -84,8 +84,8 @@ class StoppingCriteria:
         max_consecutive_errors: int = 3,
     ) -> None:
         """Args:
-            convergence_threshold: 收敛阈值，连续 N 步置信度变化 < 该值视为收敛
-            max_consecutive_errors: 连续错误熔断阈值
+        convergence_threshold: 收敛阈值，连续 N 步置信度变化 < 该值视为收敛
+        max_consecutive_errors: 连续错误熔断阈值
         """
         self.convergence_threshold = convergence_threshold
         self.max_consecutive_errors = max_consecutive_errors
@@ -118,8 +118,7 @@ class StoppingCriteria:
         if llm_action and llm_action.get("type") == "finish":
             return StoppingDecision(
                 should_stop=True,
-                reason=f"LLM 主动终止：verdict={llm_action.get('verdict')}, "
-                       f"confidence={llm_action.get('confidence')}",
+                reason=f"LLM 主动终止：verdict={llm_action.get('verdict')}, confidence={llm_action.get('confidence')}",
                 trigger="llm_finish",
             )
 
@@ -145,16 +144,12 @@ class StoppingCriteria:
             return StoppingDecision(
                 should_stop=True,
                 reason=f"连续 {strategy.evidence_convergence_window} 步置信度变化 "
-                       f"< {self.convergence_threshold}，证据已收敛",
+                f"< {self.convergence_threshold}，证据已收敛",
                 trigger="evidence_converged",
             )
 
         # 5. 步数上限（尊重 max_steps_override，用于压测场景显式控制）
-        effective_max_steps = (
-            max_steps_override
-            if max_steps_override is not None
-            else strategy.max_steps
-        )
+        effective_max_steps = max_steps_override if max_steps_override is not None else strategy.max_steps
         if step_idx >= effective_max_steps:
             return StoppingDecision(
                 should_stop=True,

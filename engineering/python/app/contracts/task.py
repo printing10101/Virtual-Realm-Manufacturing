@@ -5,6 +5,7 @@
 
 契约稳定性：Stable（v1.0.0），向后兼容扩展。
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -245,9 +246,7 @@ class WorkflowEdge:
 
     def __post_init__(self) -> None:
         if self.upstream == self.downstream:
-            raise ValueError(
-                f"WorkflowEdge 不能形成自环: upstream==downstream=={self.upstream}"
-            )
+            raise ValueError(f"WorkflowEdge 不能形成自环: upstream==downstream=={self.upstream}")
 
 
 @dataclass
@@ -354,8 +353,7 @@ def _validate_artifact_ref(
         if workflow_input_names and inner in workflow_input_names:
             return None
         return (
-            f"artifact 引用缺少 . 分隔符且不是工作流级输入: "
-            f"{field_name}={ref} (未在 workflow.inputs 中声明 '{inner}')"
+            f"artifact 引用缺少 . 分隔符且不是工作流级输入: {field_name}={ref} (未在 workflow.inputs 中声明 '{inner}')"
         )
     ref_node_id, _ = inner.split(".", 1)
     if ref_node_id not in valid_node_ids:
@@ -442,9 +440,7 @@ class WorkflowEvent:
             "workflow_cancelled",
         }
         if self.event_type not in valid_types:
-            raise ValueError(
-                f"WorkflowEvent.event_type 不合法: {self.event_type}，合法值: {valid_types}"
-            )
+            raise ValueError(f"WorkflowEvent.event_type 不合法: {self.event_type}，合法值: {valid_types}")
 
 
 class IWorkflowRunner(ABC):

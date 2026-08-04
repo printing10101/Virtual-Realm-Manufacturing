@@ -164,10 +164,7 @@ def generate_summary_text(report: SimulationReport) -> str:
     ]
 
     for c in cr.collisions:
-        lines.append(
-            f"    [{c.severity.upper()}] N{c.block_number} "
-            f"{c.collision_type}: {c.message}"
-        )
+        lines.append(f"    [{c.severity.upper()}] N{c.block_number} {c.collision_type}: {c.message}")
 
     if cr.warnings:
         lines.append("")

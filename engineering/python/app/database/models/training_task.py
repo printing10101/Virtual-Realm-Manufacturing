@@ -132,9 +132,7 @@ class TrainingTask(Base):
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
         }
         if self.started_at and self.completed_at:
-            d["duration_seconds"] = round(
-                (self.completed_at - self.started_at).total_seconds(), 2
-            )
+            d["duration_seconds"] = round((self.completed_at - self.started_at).total_seconds(), 2)
         return d
 
     def __repr__(self) -> str:
@@ -334,26 +332,66 @@ PRESET_PERMISSIONS = [
     {"code": "snapshot:write", "name": "实验快照创建", "description": "创建实验快照，自动采集 git 与环境"},
     {"code": "snapshot:reproduce", "name": "实验快照复现", "description": "触发快照一键复现工作流"},
     # 资源卡片（ADR-012 阶段 6 p6-3）
-    {"code": "resource_card:read", "name": "资源卡片查询", "description": "查询模型卡片、数据集 README、卡片聚合与 lineage 摘要"},
-    {"code": "resource_card:write", "name": "资源卡片写入", "description": "注册 / 更新 / 删除模型产物、追加指标、upsert 数据集 README"},
+    {
+        "code": "resource_card:read",
+        "name": "资源卡片查询",
+        "description": "查询模型卡片、数据集 README、卡片聚合与 lineage 摘要",
+    },
+    {
+        "code": "resource_card:write",
+        "name": "资源卡片写入",
+        "description": "注册 / 更新 / 删除模型产物、追加指标、upsert 数据集 README",
+    },
     # 项目导入导出（ADR-015 阶段 6 p6-4）
-    {"code": "project_package:read", "name": "项目包查询", "description": "查询导出/导入记录、校验包、预览导入、下载 .lomo 包"},
-    {"code": "project_package:write", "name": "项目包写入", "description": "导出项目为 .lomo 包、导入 .lomo 包、删除导出记录"},
+    {
+        "code": "project_package:read",
+        "name": "项目包查询",
+        "description": "查询导出/导入记录、校验包、预览导入、下载 .lomo 包",
+    },
+    {
+        "code": "project_package:write",
+        "name": "项目包写入",
+        "description": "导出项目为 .lomo 包、导入 .lomo 包、删除导出记录",
+    },
     # 可解释性可视化（ADR-016 阶段 7 p7）
     {"code": "explainability:read", "name": "可解释性查询", "description": "查询历史解释记录、解释详情、对比解释"},
-    {"code": "explainability:write", "name": "可解释性生成", "description": "生成隐状态投影/门控动力学/反事实/置信度解释、删除解释记录"},
+    {
+        "code": "explainability:write",
+        "name": "可解释性生成",
+        "description": "生成隐状态投影/门控动力学/反事实/置信度解释、删除解释记录",
+    },
     # 世界模型 + RL Agent（ADR-017 阶段 8 p8）
     {"code": "world_model:read", "name": "世界模型查询", "description": "查询世界模型版本列表、版本详情"},
     {"code": "world_model:write", "name": "世界模型预测", "description": "执行世界模型轨迹预测（不走工作流）"},
     {"code": "rl_agent:read", "name": "RL策略查询", "description": "查询RL策略版本、版本详情、训练状态"},
     {"code": "rl_agent:write", "name": "RL决策与训练", "description": "执行RL决策、启动训练Workflow、停止训练"},
     # CAM 校验（ADR-018 阶段 7：G 代码→InternalValidator→CamAdapter→审核→CAM 校验报告）
-    {"code": "cam_validation:read", "name": "CAM校验查询", "description": "查询 CAM 校验任务状态、结果列表、precision_info"},
+    {
+        "code": "cam_validation:read",
+        "name": "CAM校验查询",
+        "description": "查询 CAM 校验任务状态、结果列表、precision_info",
+    },
     {"code": "cam_validation:create", "name": "CAM校验创建", "description": "创建 CAM 校验任务（PENDING）"},
-    {"code": "cam_validation:run", "name": "CAM校验执行", "description": "触发 CAM 校验流水线（PENDING → RUNNING → VALIDATED）"},
-    {"code": "cam_validation:review", "name": "CAM校验审核", "description": "工程师审核单个特征校验结果（VALIDATED → REVIEWED）"},
-    {"code": "cam_validation:confirm", "name": "CAM校验确认", "description": "确认任务并导出 cam_report.json（REVIEWED → SUCCEEDED）"},
-    {"code": "cam_validation:download", "name": "CAM报告下载", "description": "下载 cam_report.json / internal_report.json"},
+    {
+        "code": "cam_validation:run",
+        "name": "CAM校验执行",
+        "description": "触发 CAM 校验流水线（PENDING → RUNNING → VALIDATED）",
+    },
+    {
+        "code": "cam_validation:review",
+        "name": "CAM校验审核",
+        "description": "工程师审核单个特征校验结果（VALIDATED → REVIEWED）",
+    },
+    {
+        "code": "cam_validation:confirm",
+        "name": "CAM校验确认",
+        "description": "确认任务并导出 cam_report.json（REVIEWED → SUCCEEDED）",
+    },
+    {
+        "code": "cam_validation:download",
+        "name": "CAM报告下载",
+        "description": "下载 cam_report.json / internal_report.json",
+    },
     {"code": "cam_validation:delete", "name": "CAM校验删除", "description": "取消/删除任务（SUCCEEDED 禁删）"},
 ]
 
@@ -364,55 +402,115 @@ PRESET_ROLES = [
         "description": "系统管理员，拥有全部操作权限",
         "permissions": [
             # 原有 12 码
-            "system:config", "user:manage", "project:create", "project:delete",
-            "simulation:run", "simulation:configure", "result:view", "report:export",
-            "model:train", "model:predict", "rule:edit", "toolpath:edit",
+            "system:config",
+            "user:manage",
+            "project:create",
+            "project:delete",
+            "simulation:run",
+            "simulation:configure",
+            "result:view",
+            "report:export",
+            "model:train",
+            "model:predict",
+            "rule:edit",
+            "toolpath:edit",
             # 补充的全部新增权限码（管理员拥有全部权限）
-            "lnn:read", "lnn:write", "lnn:train",
-            "materials:read", "equipment:read", "wear:read",
-            "user:read", "tools:read", "template:read",
-            "task:checkout:read", "task:checkout:write", "task:lock:release",
-            "signal_kb:read", "signal_kb:write",
-            "sharp:read", "sharp:write",
-            "production:read", "process:read",
-            "explainer:read", "explainer:write",
-            "plugin:config:update", "plugin:capability:manage",
-            "pattern:read", "step:read",
-            "flywheel:read", "cost:budget",
-            "adjust:read", "adjust:write",
+            "lnn:read",
+            "lnn:write",
+            "lnn:train",
+            "materials:read",
+            "equipment:read",
+            "wear:read",
+            "user:read",
+            "tools:read",
+            "template:read",
+            "task:checkout:read",
+            "task:checkout:write",
+            "task:lock:release",
+            "signal_kb:read",
+            "signal_kb:write",
+            "sharp:read",
+            "sharp:write",
+            "production:read",
+            "process:read",
+            "explainer:read",
+            "explainer:write",
+            "plugin:config:update",
+            "plugin:capability:manage",
+            "pattern:read",
+            "step:read",
+            "flywheel:read",
+            "cost:budget",
+            "adjust:read",
+            "adjust:write",
             "dxf:read",
-            "agents:read", "agents:write", "agents:admin",
+            "agents:read",
+            "agents:write",
+            "agents:admin",
             # 第二轮复查补全：管理员拥有全部新增权限码
-            "goal:read", "goal:write",
-            "documents:read", "dnc:read", "collision:check",
-            "agent:read", "agent:predict", "agent:train", "agent:execute",
-            "agent:audit:read", "agent:token:create", "agent:token:revoke", "agent:token:revoke_all",
-            "rule:write", "backup:read",
-            "job:read", "job:manage",
-            "skills:read", "skills:write",
-            "heartbeat:read", "heartbeat:write",
-            "plugin:read", "nl2cad:read",
-            "template-branch:read", "template-branch:write",
-            "template-abtest:read", "template-abtest:write",
-            "template-evolution:read", "template-evolution:write",
-            "template-update:read", "template-update:write",
-            "workflow:read", "workflow:write", "workflow:manage",
+            "goal:read",
+            "goal:write",
+            "documents:read",
+            "dnc:read",
+            "collision:check",
+            "agent:read",
+            "agent:predict",
+            "agent:train",
+            "agent:execute",
+            "agent:audit:read",
+            "agent:token:create",
+            "agent:token:revoke",
+            "agent:token:revoke_all",
+            "rule:write",
+            "backup:read",
+            "job:read",
+            "job:manage",
+            "skills:read",
+            "skills:write",
+            "heartbeat:read",
+            "heartbeat:write",
+            "plugin:read",
+            "nl2cad:read",
+            "template-branch:read",
+            "template-branch:write",
+            "template-abtest:read",
+            "template-abtest:write",
+            "template-evolution:read",
+            "template-evolution:write",
+            "template-update:read",
+            "template-update:write",
+            "workflow:read",
+            "workflow:write",
+            "workflow:manage",
             # 阶段 2：数据集 + 快照
-            "dataset:read", "dataset:write", "dataset:manage",
-            "snapshot:read", "snapshot:write", "snapshot:reproduce",
+            "dataset:read",
+            "dataset:write",
+            "dataset:manage",
+            "snapshot:read",
+            "snapshot:write",
+            "snapshot:reproduce",
             # 阶段 6 p6-3：资源卡片
-            "resource_card:read", "resource_card:write",
+            "resource_card:read",
+            "resource_card:write",
             # 阶段 6 p6-4：项目导入导出
-            "project_package:read", "project_package:write",
+            "project_package:read",
+            "project_package:write",
             # 阶段 7 p7：可解释性可视化
-            "explainability:read", "explainability:write",
+            "explainability:read",
+            "explainability:write",
             # 阶段 8 p8：世界模型 + RL Agent（管理员拥有全部权限）
-            "world_model:read", "world_model:write",
-            "rl_agent:read", "rl_agent:write",
+            "world_model:read",
+            "world_model:write",
+            "rl_agent:read",
+            "rl_agent:write",
             # ADR-018 阶段 7：CAM 校验（管理员拥有全部权限）
-            "cam_validation:read", "cam_validation:create", "cam_validation:run",
-            "cam_validation:review", "cam_validation:confirm",
-            "cam_validation:download", "cam_validation:delete",
+            "cam_validation:read",
+            "cam_validation:create",
+            "cam_validation:run",
+            "cam_validation:review",
+            "cam_validation:confirm",
+            "cam_validation:download",
+            "cam_validation:delete",
         ],
     },
     {
@@ -420,25 +518,42 @@ PRESET_ROLES = [
         "name": "工程师",
         "description": "工程技术人员，具备项目创建和仿真运行权限",
         "permissions": [
-            "project:create", "simulation:run", "result:view",
-            "report:export", "model:predict", "rule:edit", "toolpath:edit",
-            "workflow:read", "workflow:write",
-            "dataset:read", "dataset:write",
-            "snapshot:read", "snapshot:write",
+            "project:create",
+            "simulation:run",
+            "result:view",
+            "report:export",
+            "model:predict",
+            "rule:edit",
+            "toolpath:edit",
+            "workflow:read",
+            "workflow:write",
+            "dataset:read",
+            "dataset:write",
+            "snapshot:read",
+            "snapshot:write",
             # 阶段 6 p6-3：资源卡片（工程师默认读写）
-            "resource_card:read", "resource_card:write",
+            "resource_card:read",
+            "resource_card:write",
             # 阶段 6 p6-4：项目导入导出（工程师默认读写）
-            "project_package:read", "project_package:write",
+            "project_package:read",
+            "project_package:write",
             # 阶段 7 p7：可解释性可视化（工程师默认读写）
-            "explainability:read", "explainability:write",
+            "explainability:read",
+            "explainability:write",
             # 阶段 8 p8：世界模型 + RL Agent（工程师默认读写）
-            "world_model:read", "world_model:write",
-            "rl_agent:read", "rl_agent:write",
+            "world_model:read",
+            "world_model:write",
+            "rl_agent:read",
+            "rl_agent:write",
             # ADR-018 阶段 7：CAM 校验（工程师默认拥有全部 CAM 校验权限）
             # 定位「工程师助手」，工程师是 CAM 校验的主要使用者
-            "cam_validation:read", "cam_validation:create", "cam_validation:run",
-            "cam_validation:review", "cam_validation:confirm",
-            "cam_validation:download", "cam_validation:delete",
+            "cam_validation:read",
+            "cam_validation:create",
+            "cam_validation:run",
+            "cam_validation:review",
+            "cam_validation:confirm",
+            "cam_validation:download",
+            "cam_validation:delete",
         ],
     },
     {
@@ -446,7 +561,9 @@ PRESET_ROLES = [
         "name": "操作员",
         "description": "设备操作人员，具备结果查看和报告导出权限",
         "permissions": [
-            "result:view", "report:export", "model:predict",
+            "result:view",
+            "report:export",
+            "model:predict",
         ],
     },
 ]
@@ -471,9 +588,7 @@ async def _upgrade_rbac_permissions(session) -> None:
 
     try:
         # 1. 一次性加载所有已存在权限的 (code, id) 映射
-        existing_rows = (
-            await session.execute(select(Permission.code, Permission.id))
-        ).all()
+        existing_rows = (await session.execute(select(Permission.code, Permission.id))).all()
         existing_map: dict[str, int] = {code: pid for code, pid in existing_rows}
 
         # 2. 补全缺失的 Permission 记录
@@ -491,9 +606,7 @@ async def _upgrade_rbac_permissions(session) -> None:
                 new_perm_added = True
 
         # 3. 查询 admin 角色
-        admin_role = (
-            await session.execute(select(Role).where(Role.code == "admin"))
-        ).scalar_one_or_none()
+        admin_role = (await session.execute(select(Role).where(Role.code == "admin"))).scalar_one_or_none()
         if admin_role is None:
             # admin 角色不存在，仅提交权限补全
             if new_perm_added:
@@ -502,12 +615,16 @@ async def _upgrade_rbac_permissions(session) -> None:
 
         # 4. 查询 admin 已关联的权限码集合
         admin_perm_codes = (
-            await session.execute(
-                select(Permission.code)
-                .join(RolePermission, RolePermission.permission_id == Permission.id)
-                .where(RolePermission.role_id == admin_role.id)
+            (
+                await session.execute(
+                    select(Permission.code)
+                    .join(RolePermission, RolePermission.permission_id == Permission.id)
+                    .where(RolePermission.role_id == admin_role.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         admin_set = set(admin_perm_codes)
 
         # 5. 补全 admin 缺失的权限关联（包括本次新增和历史遗漏）
@@ -612,13 +729,10 @@ async def _seed_default_admin_user() -> None:
         password = "".join(_secrets.choice(alphabet) for _ in range(16))
 
     try:
-        store.create_user(
-            "admin", hash_password(password), role="admin", must_change_password=True
-        )
+        store.create_user("admin", hash_password(password), role="admin", must_change_password=True)
         if os.environ.get("LJ_ADMIN_INITIAL_PASSWORD"):
             logger.warning(
-                "[部署可用性] 已创建默认 admin 用户（密码取自 LJ_ADMIN_INITIAL_PASSWORD）。"
-                "必须立即登录并修改密码！"
+                "[部署可用性] 已创建默认 admin 用户（密码取自 LJ_ADMIN_INITIAL_PASSWORD）。必须立即登录并修改密码！"
             )
         else:
             # P0-13 修复：随机初始密码不得输出到 stdout（会被 shell 历史、日志采集器、
@@ -634,8 +748,7 @@ async def _seed_default_admin_user() -> None:
             try:
                 _pw_file.parent.mkdir(parents=True, exist_ok=True)
                 _pw_file.write_text(
-                    f"[初始化] admin 用户随机初始密码（请立即保存并登录修改，完成后删除此文件）:\n"
-                    f"{password}\n",
+                    f"[初始化] admin 用户随机初始密码（请立即保存并登录修改，完成后删除此文件）:\n{password}\n",
                     encoding="utf-8",
                 )
                 # 设置仅 owner 可读写（0o600），防止其他用户读取
@@ -676,26 +789,24 @@ async def init_db():
 
     # P0-2 修复：显式导入全部 Base 持有者，确保 metadata 包含全部表定义
     # 顺序无关，但 import 触发模块级 declarative_base() 调用
-    import app.database.rule_models
-    import app.database.models.machining_record
-    import app.knowledge_graph.models
-    import app.database.models.workflow
-    import app.database.models.dataset
 
     # 收集全部 Base.metadata
     metadatas = [Base.metadata]
     try:
         from app.database.rule_models import Base as _RuleBase
+
         metadatas.append(_RuleBase.metadata)
     except ImportError:
         logger.debug("rule_models.Base 未导入，跳过", exc_info=True)
     try:
         from app.database.models.machining_record import Base as _MachiningBase
+
         metadatas.append(_MachiningBase.metadata)
     except ImportError:
         logger.debug("machining_record.Base 未导入，跳过", exc_info=True)
     try:
         from app.knowledge_graph.models import Base as _KGBase
+
         metadatas.append(_KGBase.metadata)
     except ImportError:
         logger.debug("knowledge_graph.Base 未导入，跳过", exc_info=True)
@@ -715,6 +826,7 @@ async def init_db():
                 raise
 
     from app.database.connection import get_sessionmaker
+
     sessionmaker = get_sessionmaker()
     if sessionmaker:
         async with sessionmaker() as session:

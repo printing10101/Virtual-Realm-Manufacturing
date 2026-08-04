@@ -39,16 +39,16 @@ from typing import Any
 
 import numpy as np
 
-from app.simulation.voxel_cutter.mesher import reconstruct_mesh, voxelize_mesh
+from app.simulation.voxel_cutter.mesher import reconstruct_mesh
 
 logger = logging.getLogger(__name__)
 
 
 # ── 严重度阈值（基于体积占比，可由调用方覆盖） ──────────────────────────
-DEFAULT_GOUGE_REJECT_RATIO = 0.001   # 过切体积 > 设计体积 0.1% → reject
-DEFAULT_GOUGE_WARN_RATIO = 0.0001    # 过切体积 > 0.01% → warning
+DEFAULT_GOUGE_REJECT_RATIO = 0.001  # 过切体积 > 设计体积 0.1% → reject
+DEFAULT_GOUGE_WARN_RATIO = 0.0001  # 过切体积 > 0.01% → warning
 DEFAULT_LEFTOVER_REJECT_RATIO = 0.05  # 残料体积 > 设计体积 5% → reject
-DEFAULT_LEFTOVER_WARN_RATIO = 0.01    # 残料体积 > 1% → warning
+DEFAULT_LEFTOVER_WARN_RATIO = 0.01  # 残料体积 > 1% → warning
 
 
 @dataclass
@@ -195,28 +195,20 @@ class GeometryDiffer:
         try:
             import trimesh
         except ImportError as e:
-            return self._error_result(
-                task_id, start_time, f"trimesh 未安装: {e}"
-            )
+            return self._error_result(task_id, start_time, f"trimesh 未安装: {e}")
 
         # ── 1. 加载两个 STL ──────────────────────────────────────
         try:
             design_mesh = trimesh.load(str(design_stl_path), file_type="stl")
             actual_mesh = trimesh.load(str(actual_stl_path), file_type="stl")
             if not isinstance(design_mesh, trimesh.Trimesh):
-                return self._error_result(
-                    task_id, start_time, "设计 STL 解析失败：非 Trimesh"
-                )
+                return self._error_result(task_id, start_time, "设计 STL 解析失败：非 Trimesh")
             if not isinstance(actual_mesh, trimesh.Trimesh):
-                return self._error_result(
-                    task_id, start_time, "仿真结果 STL 解析失败：非 Trimesh"
-                )
+                return self._error_result(task_id, start_time, "仿真结果 STL 解析失败：非 Trimesh")
         except (OSError, ValueError, TypeError, RuntimeError, AttributeError) as e:
             # AttributeError: trimesh 4.x 对不存在/损坏文件可能抛 AttributeError
             # （如 "'str' object has no attribute 'tell'"），需纳入降级路径
-            return self._error_result(
-                task_id, start_time, f"STL 加载失败: {e}"
-            )
+            return self._error_result(task_id, start_time, f"STL 加载失败: {e}")
 
         # ── 2. 统一坐标系：取两者 bbox 并集 ──────────────────────
         # 避免某个模型的部分体素落在另一模型的 bbox 之外被丢失
@@ -232,12 +224,8 @@ class GeometryDiffer:
         # 注意：voxelize_mesh 内部会用 bbox 计算 padding，但实际返回的
         # grid 尺寸取决于 trimesh 的 voxelize 方法。为保证两者对齐，
         # 我们改用自定义的统一网格体素化。
-        design_grid = self._voxelize_unified(
-            design_mesh, union_bbox_min, union_bbox_max
-        )
-        actual_grid = self._voxelize_unified(
-            actual_mesh, union_bbox_min, union_bbox_max
-        )
+        design_grid = self._voxelize_unified(design_mesh, union_bbox_min, union_bbox_max)
+        actual_grid = self._voxelize_unified(actual_mesh, union_bbox_min, union_bbox_max)
 
         # ── 4. 委托 compare_grids 完成 grid 级比对 ──────────────
         return self.compare_grids(
@@ -285,27 +273,21 @@ class GeometryDiffer:
         # 形状对齐校验
         if design_grid.shape != actual_grid.shape:
             min_shape = np.minimum(design_grid.shape, actual_grid.shape)
-            design_grid = design_grid[:min_shape[0], :min_shape[1], :min_shape[2]]
-            actual_grid = actual_grid[:min_shape[0], :min_shape[1], :min_shape[2]]
-            logger.warning(
-                "设计/仿真体素网格形状不一致，已裁剪到 %s", tuple(min_shape)
-            )
+            design_grid = design_grid[: min_shape[0], : min_shape[1], : min_shape[2]]
+            actual_grid = actual_grid[: min_shape[0], : min_shape[1], : min_shape[2]]
+            logger.warning("设计/仿真体素网格形状不一致，已裁剪到 %s", tuple(min_shape))
 
         # ── 计算偏差区域 ─────────────────────────────────────
-        gouge_grid = design_grid & ~actual_grid      # 设计有但实际没有 → 过切
-        leftover_grid = actual_grid & ~design_grid   # 实际有但设计没有 → 残料
+        gouge_grid = design_grid & ~actual_grid  # 设计有但实际没有 → 过切
+        leftover_grid = actual_grid & ~design_grid  # 实际有但设计没有 → 残料
 
-        voxel_volume = self._voxel_size ** 3
+        voxel_volume = self._voxel_size**3
         design_volume = float(design_grid.sum()) * voxel_volume
         actual_volume = float(actual_grid.sum()) * voxel_volume
 
         # ── 统计偏差区域 ─────────────────────────────────────
-        gouge = self._summarize_region(
-            gouge_grid, "gouge", design_volume, bbox_min
-        )
-        leftover = self._summarize_region(
-            leftover_grid, "leftover", design_volume, bbox_min
-        )
+        gouge = self._summarize_region(gouge_grid, "gouge", design_volume, bbox_min)
+        leftover = self._summarize_region(leftover_grid, "leftover", design_volume, bbox_min)
 
         # ── 判定 verdict ────────────────────────────────────
         verdict = self._compute_verdict(gouge, leftover)
@@ -314,14 +296,10 @@ class GeometryDiffer:
         diff_stl_url = ""
         diff_stl_raw = b""
         if export_diff_stl and output_dir is not None:
-            diff_stl_url, diff_stl_raw = self._export_diff_stl(
-                gouge_grid, leftover_grid, bbox_min, output_dir, task_id
-            )
+            diff_stl_url, diff_stl_raw = self._export_diff_stl(gouge_grid, leftover_grid, bbox_min, output_dir, task_id)
 
         elapsed = time.perf_counter() - start_time
-        summary = self._build_summary(
-            verdict, gouge, leftover, design_volume, actual_volume
-        )
+        summary = self._build_summary(verdict, gouge, leftover, design_volume, actual_volume)
 
         return DiffResult(
             task_id=task_id,
@@ -343,7 +321,7 @@ class GeometryDiffer:
 
     def _voxelize_unified(
         self,
-        mesh: "trimesh.Trimesh",
+        mesh: "trimesh.Trimesh",  # noqa: F821  # 字符串注解：trimesh 可选依赖延迟导入，运行时不求值
         bbox_min: np.ndarray,
         bbox_max: np.ndarray,
     ) -> np.ndarray:
@@ -361,9 +339,8 @@ class GeometryDiffer:
         # 优先尝试 trimesh 的 voxelize（更快）
         try:
             from trimesh.voxel import creation as voxel_creation
-            voxel_obj = voxel_creation.voxelize(
-                mesh, pitch=self._voxel_size, method="subdivide"
-            )
+
+            voxel_obj = voxel_creation.voxelize(mesh, pitch=self._voxel_size, method="subdivide")
             matrix = voxel_obj.matrix.astype(bool)
             # 裁剪/填充到统一尺寸
             return self._resize_grid(matrix, (nx, ny, nz))
@@ -371,25 +348,19 @@ class GeometryDiffer:
             logger.debug("trimesh voxelize 失败，回退到 contains: %s", e)
 
         # 回退：使用 mesh.contains 逐点判断
-        return self._voxelize_contains_unified(
-            mesh, bbox_min, padding, nx, ny, nz
-        )
+        return self._voxelize_contains_unified(mesh, bbox_min, padding, nx, ny, nz)
 
-    def _resize_grid(
-        self, grid: np.ndarray, target_shape: tuple[int, int, int]
-    ) -> np.ndarray:
+    def _resize_grid(self, grid: np.ndarray, target_shape: tuple[int, int, int]) -> np.ndarray:
         """将体素网格裁剪或填充到目标形状。"""
         src_shape = grid.shape
         result = np.zeros(target_shape, dtype=bool)
         min_shape = tuple(min(s, t) for s, t in zip(src_shape, target_shape))
-        result[:min_shape[0], :min_shape[1], :min_shape[2]] = (
-            grid[:min_shape[0], :min_shape[1], :min_shape[2]]
-        )
+        result[: min_shape[0], : min_shape[1], : min_shape[2]] = grid[: min_shape[0], : min_shape[1], : min_shape[2]]
         return result
 
     def _voxelize_contains_unified(
         self,
-        mesh: "trimesh.Trimesh",
+        mesh: "trimesh.Trimesh",  # noqa: F821  # 字符串注解：trimesh 可选依赖延迟导入，运行时不求值
         bbox_min: np.ndarray,
         padding: float,
         nx: int,
@@ -398,29 +369,13 @@ class GeometryDiffer:
     ) -> np.ndarray:
         """使用 mesh.contains 在统一网格上体素化。"""
         grid = np.zeros((nx, ny, nz), dtype=bool)
-        batch_size = 4000
-
         # 预生成所有体素中心点
-        xs = (
-            bbox_min[0]
-            - padding
-            + (np.arange(nx) + 0.5) * self._voxel_size
-        )
-        ys = (
-            bbox_min[1]
-            - padding
-            + (np.arange(ny) + 0.5) * self._voxel_size
-        )
-        zs = (
-            bbox_min[2]
-            - padding
-            + (np.arange(nz) + 0.5) * self._voxel_size
-        )
+        xs = bbox_min[0] - padding + (np.arange(nx) + 0.5) * self._voxel_size
+        ys = bbox_min[1] - padding + (np.arange(ny) + 0.5) * self._voxel_size
+        zs = bbox_min[2] - padding + (np.arange(nz) + 0.5) * self._voxel_size
 
         # 分批处理，避免一次性占用过多内存
-        points_xy = np.array(
-            np.meshgrid(xs, ys, indexing="ij")
-        ).reshape(2, -1).T  # (nx*ny, 2)
+        points_xy = np.array(np.meshgrid(xs, ys, indexing="ij")).reshape(2, -1).T  # (nx*ny, 2)
 
         for iz in range(nz):
             z = zs[iz]
@@ -447,7 +402,7 @@ class GeometryDiffer:
         if region_voxel_count == 0:
             return DiffRegion(kind=kind)
 
-        voxel_volume = self._voxel_size ** 3
+        voxel_volume = self._voxel_size**3
         region_volume = region_voxel_count * voxel_volume
         ratio = region_volume / design_volume if design_volume > 0 else 0.0
 
@@ -455,19 +410,13 @@ class GeometryDiffer:
         active_indices = np.argwhere(region_grid)
         centroid_idx = active_indices.mean(axis=0)
         padding = self._voxel_size * 2
-        centroid_world = (
-            bbox_min - padding + (centroid_idx + 0.5) * self._voxel_size
-        )
+        centroid_world = bbox_min - padding + (centroid_idx + 0.5) * self._voxel_size
 
         # 包围盒
         min_idx = active_indices.min(axis=0)
         max_idx = active_indices.max(axis=0)
-        bbox_min_world = (
-            bbox_min - padding + min_idx * self._voxel_size
-        )
-        bbox_max_world = (
-            bbox_min - padding + (max_idx + 1) * self._voxel_size
-        )
+        bbox_min_world = bbox_min - padding + min_idx * self._voxel_size
+        bbox_max_world = bbox_min - padding + (max_idx + 1) * self._voxel_size
 
         # 最大偏差深度：沿偏差主方向的最大连续体素数 × voxel_size
         # 对 gouge：沿 Z 轴（切削深度方向）的最大连续深度
@@ -480,9 +429,7 @@ class GeometryDiffer:
             sampled = active_indices[::step][:50]
         else:
             sampled = active_indices
-        sample_positions = (
-            bbox_min - padding + (sampled + 0.5) * self._voxel_size
-        ).tolist()
+        sample_positions = (bbox_min - padding + (sampled + 0.5) * self._voxel_size).tolist()
 
         # 严重度判定
         if kind == "gouge":
@@ -580,7 +527,7 @@ class GeometryDiffer:
     ) -> tuple[str, bytes]:
         """导出偏差可视化 STL（gouge + leftover 合并，用于前端着色）。"""
         try:
-            import trimesh
+            import trimesh  # noqa: F401  # 探测导入：确认 trimesh 可用，不可用时返回空
         except ImportError:
             return "", b""
 
@@ -617,20 +564,20 @@ class GeometryDiffer:
         if verdict == "accept":
             return (
                 f"几何比对通过：过切 {gouge.volume_mm3:.2f} mm³ "
-                f"({gouge.ratio*100:.4f}%)，残料 {leftover.volume_mm3:.2f} mm³ "
-                f"({leftover.ratio*100:.4f}%)，均在容差范围内。"
+                f"({gouge.ratio * 100:.4f}%)，残料 {leftover.volume_mm3:.2f} mm³ "
+                f"({leftover.ratio * 100:.4f}%)，均在容差范围内。"
             )
         if verdict == "warning":
             parts = []
             if gouge.severity == "warning":
                 parts.append(
                     f"检测到过切 {gouge.volume_mm3:.2f} mm³ "
-                    f"({gouge.ratio*100:.4f}%)，最大深度 {gouge.max_depth_mm:.3f} mm"
+                    f"({gouge.ratio * 100:.4f}%)，最大深度 {gouge.max_depth_mm:.3f} mm"
                 )
             if leftover.severity == "warning":
                 parts.append(
                     f"检测到残料 {leftover.volume_mm3:.2f} mm³ "
-                    f"({leftover.ratio*100:.4f}%)，最大高度 {leftover.max_depth_mm:.3f} mm"
+                    f"({leftover.ratio * 100:.4f}%)，最大高度 {leftover.max_depth_mm:.3f} mm"
                 )
             return "几何比对告警：" + "；".join(parts) + "。建议复核刀路。"
         # reject
@@ -638,20 +585,18 @@ class GeometryDiffer:
         if gouge.severity == "critical":
             parts.append(
                 f"严重过切 {gouge.volume_mm3:.2f} mm³ "
-                f"({gouge.ratio*100:.4f}%)，最大深度 {gouge.max_depth_mm:.3f} mm，"
+                f"({gouge.ratio * 100:.4f}%)，最大深度 {gouge.max_depth_mm:.3f} mm，"
                 f"可能导致工件报废"
             )
         if leftover.severity == "critical":
             parts.append(
                 f"严重残料 {leftover.volume_mm3:.2f} mm³ "
-                f"({leftover.ratio*100:.4f}%)，最大高度 {leftover.max_depth_mm:.3f} mm，"
+                f"({leftover.ratio * 100:.4f}%)，最大高度 {leftover.max_depth_mm:.3f} mm，"
                 f"需补加工"
             )
         return "几何比对拒收：" + "；".join(parts) + "。"
 
-    def _error_result(
-        self, task_id: str, start_time: float, message: str
-    ) -> DiffResult:
+    def _error_result(self, task_id: str, start_time: float, message: str) -> DiffResult:
         """生成错误降级结果。"""
         elapsed = time.perf_counter() - start_time
         result = DiffResult(

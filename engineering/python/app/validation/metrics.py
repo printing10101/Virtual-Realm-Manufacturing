@@ -71,18 +71,10 @@ def compute_dimension_accuracy(
 
     return {
         "dimensions": [d.__dict__ for d in dimensions],
-        "mean_absolute_deviation": round(sum(deviations_abs) / len(deviations_abs), 3)
-        if deviations_abs
-        else 0.0,
-        "max_absolute_deviation": round(max(deviations_abs), 3)
-        if deviations_abs
-        else 0.0,
-        "mean_relative_deviation": round(sum(deviations_rel) / len(deviations_rel), 5)
-        if deviations_rel
-        else 0.0,
-        "max_relative_deviation": round(max(deviations_rel), 5)
-        if deviations_rel
-        else 0.0,
+        "mean_absolute_deviation": round(sum(deviations_abs) / len(deviations_abs), 3) if deviations_abs else 0.0,
+        "max_absolute_deviation": round(max(deviations_abs), 3) if deviations_abs else 0.0,
+        "mean_relative_deviation": round(sum(deviations_rel) / len(deviations_rel), 5) if deviations_rel else 0.0,
+        "max_relative_deviation": round(max(deviations_rel), 5) if deviations_rel else 0.0,
         "within_tolerance_count": within_count,
         "total_count": len(dimensions),
     }

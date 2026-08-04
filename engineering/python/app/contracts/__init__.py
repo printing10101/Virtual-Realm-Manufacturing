@@ -119,6 +119,7 @@ from app.contracts.workflow_template import (
     TemplateMarketStats,
     WorkflowTemplateManifest,
 )
+
 # 世界模型契约（ADR-017 阶段 8 p8）
 from app.contracts.world_model import (
     DEFAULT_ACTION_DIM,
@@ -140,6 +141,7 @@ from app.contracts.world_model import (
     WorldModelVersion,
     WM_PREDICT_STATE_TASK_TYPE,
 )
+
 # RL Agent 契约（ADR-017 阶段 8 p8）
 from app.contracts.rl_agent import (
     ActionEvaluation,
@@ -163,6 +165,7 @@ from app.contracts.rl_agent import (
     TrainingStatus,
     TrainingStatusInfo,
 )
+
 # 可解释性契约（ADR-016 阶段 7 p7）
 from app.contracts.explainability import (
     ComparisonMismatchError,
@@ -183,6 +186,7 @@ from app.contracts.explainability import (
     ProjectionMethod,
     SamplingError,
 )
+
 # 跨领域共享通用 schema（P2-5 重构）
 from app.contracts._shared import (
     ErrorResponse,

@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +34,7 @@ class ColmapError(RuntimeError):
 @dataclass
 class ColmapRunResult:
     """COLMAP 一次调用结果。"""
+
     returncode: int
     stdout: str
     stderr: str
@@ -98,8 +98,7 @@ def _run_colmap(
             # 仅截取最后 2000 字符，避免日志爆炸
             tail = (proc.stderr or "")[-2000:]
             raise ColmapError(
-                f"COLMAP 子命令失败 returncode={proc.returncode} "
-                f"cmd={' '.join(args[:2])} stderr_tail={tail!r}"
+                f"COLMAP 子命令失败 returncode={proc.returncode} cmd={' '.join(args[:2])} stderr_tail={tail!r}"
             )
         return ColmapRunResult(
             returncode=proc.returncode,
@@ -113,9 +112,7 @@ def _run_colmap(
             "请从 https://colmap.github.io/install.html 下载并配置 LNN_I2T3D_COLMAP_BIN"
         ) from e
     except subprocess.TimeoutExpired as e:
-        raise ColmapError(
-            f"COLMAP 子命令超时 timeout={timeout}s cmd={' '.join(args[:2])}"
-        ) from e
+        raise ColmapError(f"COLMAP 子命令超时 timeout={timeout}s cmd={' '.join(args[:2])}") from e
 
 
 def run_sparse_reconstruction(
@@ -169,14 +166,21 @@ def run_sparse_reconstruction(
         cfg.colmap_bin,
         [
             "feature_extractor",
-            "--database_path", str(db_path),
-            "--image_path", str(image_dir),
-            "--ImageReader.single_camera", "1",
-            "--ImageReader.camera_model", "SIMPLE_PINHOLE",
+            "--database_path",
+            str(db_path),
+            "--image_path",
+            str(image_dir),
+            "--ImageReader.single_camera",
+            "1",
+            "--ImageReader.camera_model",
+            "SIMPLE_PINHOLE",
             # SIFT 数量上限由精度档位控制
-            "--SiftExtraction.max_image_size", "1600" if cfg.precision_tier == "coarse" else "2000",
-            "--SiftExtraction.max_num_features", str(feature_threshold),
-            "--SiftExtraction.estimate_affine_shape", "1" if cfg.precision_tier == "high" else "0",
+            "--SiftExtraction.max_image_size",
+            "1600" if cfg.precision_tier == "coarse" else "2000",
+            "--SiftExtraction.max_num_features",
+            str(feature_threshold),
+            "--SiftExtraction.estimate_affine_shape",
+            "1" if cfg.precision_tier == "high" else "0",
         ],
         cwd=workspace_dir,
         timeout=cfg.task_timeout_seconds,
@@ -187,7 +191,8 @@ def run_sparse_reconstruction(
         cfg.colmap_bin,
         [
             "matcher_exhaustive",
-            "--database_path", str(db_path),
+            "--database_path",
+            str(db_path),
         ],
         cwd=workspace_dir,
         timeout=cfg.task_timeout_seconds,
@@ -198,9 +203,12 @@ def run_sparse_reconstruction(
         cfg.colmap_bin,
         [
             "mapper",
-            "--database_path", str(db_path),
-            "--image_path", str(image_dir),
-            "--output_path", str(sparse_dir),
+            "--database_path",
+            str(db_path),
+            "--image_path",
+            str(image_dir),
+            "--output_path",
+            str(sparse_dir),
         ],
         cwd=workspace_dir,
         timeout=cfg.task_timeout_seconds,
@@ -219,9 +227,12 @@ def run_sparse_reconstruction(
         cfg.colmap_bin,
         [
             "model_converter",
-            "--input_path", str(model_bin_dir),
-            "--output_path", str(sparse_txt_dir),
-            "--output_type", "TXT",
+            "--input_path",
+            str(model_bin_dir),
+            "--output_path",
+            str(sparse_txt_dir),
+            "--output_type",
+            "TXT",
         ],
         cwd=workspace_dir,
         timeout=cfg.task_timeout_seconds,
@@ -232,9 +243,12 @@ def run_sparse_reconstruction(
         cfg.colmap_bin,
         [
             "model_converter",
-            "--input_path", str(model_bin_dir),
-            "--output_path", str(sparse_ply),
-            "--output_type", "PLY",
+            "--input_path",
+            str(model_bin_dir),
+            "--output_path",
+            str(sparse_ply),
+            "--output_type",
+            "PLY",
         ],
         cwd=workspace_dir,
         timeout=cfg.task_timeout_seconds,

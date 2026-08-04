@@ -103,9 +103,7 @@ class SiemensPostProcessor(BasePostProcessor):
     ) -> str:
         lines = []
         if length_offset > 0:
-            lines.append(
-                f"N{self._next_block():05d} $TC_DP6[{length_offset},1]={self._fmt(0.0)}"
-            )
+            lines.append(f"N{self._next_block():05d} $TC_DP6[{length_offset},1]={self._fmt(0.0)}")
         if radius_offset > 0:
             lines.append(f"N{self._next_block():05d} G41 DISC{radius_offset}")
         if not lines:
@@ -308,7 +306,6 @@ class SiemensPostProcessor(BasePostProcessor):
         """
         cfg = self.get_cycle_config("grooving", "CYCLE93")
         retract_val = cfg.get("retract_amount", retract)
-        finish_allow = cfg.get("finish_allowance", finish_allowance)
 
         r_plane = self.safe_z_height
         groove_feed = self._fmt(self.get_feed_rate(self.rapid_feed * 0.1))
@@ -357,9 +354,6 @@ class SiemensPostProcessor(BasePostProcessor):
         Returns:
             CYCLE97螺纹循环NC代码
         """
-        cfg = self.get_cycle_config("threading", "CYCLE97")
-        r_plane = self.safe_z_height
-
         # CYCLE97 螺纹车削循环格式
         # CYCLE97(IDLEP, ITHREAD, SDIS, EP, PITCH, IAD, GAP, TOL, TOLL, PROG, VARI, NUM)
         lines = [

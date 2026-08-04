@@ -77,9 +77,7 @@ async def get_dashboard() -> dict:
 
         # 活跃告警数：查询真实未处理告警数量（替代原 random.randint 模拟值）
         try:
-            alarm_stmt = select(func.count()).select_from(EquipmentAlarm).where(
-                EquipmentAlarm.status == "未处理"
-            )
+            alarm_stmt = select(func.count()).select_from(EquipmentAlarm).where(EquipmentAlarm.status == "未处理")
             active_alarms = (await session.execute(alarm_stmt)).scalar() or 0
         except Exception as e:
             # 表不存在或查询失败时返回 0，避免随机数误导
@@ -111,9 +109,7 @@ async def list_production_records(
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        stmt = select(ProductionRecord).order_by(
-            ProductionRecord.date.desc(), ProductionRecord.line_name
-        )
+        stmt = select(ProductionRecord).order_by(ProductionRecord.date.desc(), ProductionRecord.line_name)
         if date_from:
             stmt = stmt.where(ProductionRecord.date >= date_from)
         if date_to:
@@ -256,10 +252,12 @@ async def get_production_lines() -> dict:
                 "energy_consumption": r.energy_consumption,
             }
 
-        lines_data.append({
-            "line_name": line,
-            "shifts": shifts,
-        })
+        lines_data.append(
+            {
+                "line_name": line,
+                "shifts": shifts,
+            }
+        )
 
     return {"lines": lines_data}
 
@@ -390,21 +388,11 @@ async def seed_production_data() -> dict:
                 for line in LINES:
                     for shift in SHIFTS:
                         planned = random.randint(SEED_PLANNED_QTY_MIN, SEED_PLANNED_QTY_MAX)
-                        actual = random.randint(
-                            int(planned * SEED_ACTUAL_QTY_RATIO_MIN), planned
-                        )
-                        qualified = int(
-                            actual * random.uniform(
-                                SEED_QUALIFIED_RATIO_MIN, SEED_QUALIFIED_RATIO_MAX
-                            )
-                        )
+                        actual = random.randint(int(planned * SEED_ACTUAL_QTY_RATIO_MIN), planned)
+                        qualified = int(actual * random.uniform(SEED_QUALIFIED_RATIO_MIN, SEED_QUALIFIED_RATIO_MAX))
                         defect = actual - qualified
-                        util = round(
-                            random.uniform(SEED_UTILIZATION_MIN, SEED_UTILIZATION_MAX), 1
-                        )
-                        energy = round(
-                            random.uniform(SEED_ENERGY_MIN, SEED_ENERGY_MAX), 1
-                        )
+                        util = round(random.uniform(SEED_UTILIZATION_MIN, SEED_UTILIZATION_MAX), 1)
+                        energy = round(random.uniform(SEED_ENERGY_MIN, SEED_ENERGY_MAX), 1)
 
                         rec = ProductionRecord(
                             date=d,
@@ -422,14 +410,86 @@ async def seed_production_data() -> dict:
 
             # 8 个工单
             work_orders_data = [
-                {"order_no": "WO-20260623-001", "product_name": "精密轴类零件-A型", "planned_qty": 500, "completed_qty": 320, "status": "进行中", "priority": "紧急", "start_date": date(2026, 6, 20), "due_date": date(2026, 6, 28)},
-                {"order_no": "WO-20260623-002", "product_name": "齿轮组件-B型", "planned_qty": 300, "completed_qty": 300, "status": "已完成", "priority": "高", "start_date": date(2026, 6, 15), "due_date": date(2026, 6, 22)},
-                {"order_no": "WO-20260623-003", "product_name": "箱体铸件-C型", "planned_qty": 100, "completed_qty": 45, "status": "进行中", "priority": "中", "start_date": date(2026, 6, 21), "due_date": date(2026, 7, 5)},
-                {"order_no": "WO-20260623-004", "product_name": "模具核心-D型", "planned_qty": 50, "completed_qty": 0, "status": "待开始", "priority": "高", "start_date": date(2026, 6, 25), "due_date": date(2026, 7, 10)},
-                {"order_no": "WO-20260623-005", "product_name": "焊接支架-E型", "planned_qty": 200, "completed_qty": 180, "status": "进行中", "priority": "中", "start_date": date(2026, 6, 18), "due_date": date(2026, 6, 26)},
-                {"order_no": "WO-20260623-006", "product_name": "精密轴承座-F型", "planned_qty": 150, "completed_qty": 150, "status": "已完成", "priority": "低", "start_date": date(2026, 6, 10), "due_date": date(2026, 6, 20)},
-                {"order_no": "WO-20260623-007", "product_name": "涡轮叶片-G型", "planned_qty": 80, "completed_qty": 20, "status": "已延期", "priority": "紧急", "start_date": date(2026, 6, 12), "due_date": date(2026, 6, 22)},
-                {"order_no": "WO-20260623-008", "product_name": "液压缸体-H型", "planned_qty": 120, "completed_qty": 0, "status": "待开始", "priority": "中", "start_date": date(2026, 6, 28), "due_date": date(2026, 7, 15)},
+                {
+                    "order_no": "WO-20260623-001",
+                    "product_name": "精密轴类零件-A型",
+                    "planned_qty": 500,
+                    "completed_qty": 320,
+                    "status": "进行中",
+                    "priority": "紧急",
+                    "start_date": date(2026, 6, 20),
+                    "due_date": date(2026, 6, 28),
+                },
+                {
+                    "order_no": "WO-20260623-002",
+                    "product_name": "齿轮组件-B型",
+                    "planned_qty": 300,
+                    "completed_qty": 300,
+                    "status": "已完成",
+                    "priority": "高",
+                    "start_date": date(2026, 6, 15),
+                    "due_date": date(2026, 6, 22),
+                },
+                {
+                    "order_no": "WO-20260623-003",
+                    "product_name": "箱体铸件-C型",
+                    "planned_qty": 100,
+                    "completed_qty": 45,
+                    "status": "进行中",
+                    "priority": "中",
+                    "start_date": date(2026, 6, 21),
+                    "due_date": date(2026, 7, 5),
+                },
+                {
+                    "order_no": "WO-20260623-004",
+                    "product_name": "模具核心-D型",
+                    "planned_qty": 50,
+                    "completed_qty": 0,
+                    "status": "待开始",
+                    "priority": "高",
+                    "start_date": date(2026, 6, 25),
+                    "due_date": date(2026, 7, 10),
+                },
+                {
+                    "order_no": "WO-20260623-005",
+                    "product_name": "焊接支架-E型",
+                    "planned_qty": 200,
+                    "completed_qty": 180,
+                    "status": "进行中",
+                    "priority": "中",
+                    "start_date": date(2026, 6, 18),
+                    "due_date": date(2026, 6, 26),
+                },
+                {
+                    "order_no": "WO-20260623-006",
+                    "product_name": "精密轴承座-F型",
+                    "planned_qty": 150,
+                    "completed_qty": 150,
+                    "status": "已完成",
+                    "priority": "低",
+                    "start_date": date(2026, 6, 10),
+                    "due_date": date(2026, 6, 20),
+                },
+                {
+                    "order_no": "WO-20260623-007",
+                    "product_name": "涡轮叶片-G型",
+                    "planned_qty": 80,
+                    "completed_qty": 20,
+                    "status": "已延期",
+                    "priority": "紧急",
+                    "start_date": date(2026, 6, 12),
+                    "due_date": date(2026, 6, 22),
+                },
+                {
+                    "order_no": "WO-20260623-008",
+                    "product_name": "液压缸体-H型",
+                    "planned_qty": 120,
+                    "completed_qty": 0,
+                    "status": "待开始",
+                    "priority": "中",
+                    "start_date": date(2026, 6, 28),
+                    "due_date": date(2026, 7, 15),
+                },
             ]
 
             for wod in work_orders_data:

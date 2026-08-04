@@ -3,11 +3,17 @@
 从原 ``explainability_service.py`` 拆分。封装 model_uri 解析与 predictor 缓存，
 缓存上限 4（与 ``world_model/plugin.py`` 对齐），LRU 淘汰策略。
 """
+
 from __future__ import annotations
 
 import logging
 import threading
 from typing import Any
+
+from app.contracts.explainability import (
+    ExplanationValidationError,
+    ProjectionError,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +50,7 @@ class PredictorLoader:
         if not model_uri:
             raise ExplanationValidationError("model_uri 不能为空")
         if model_uri.startswith("model://"):
-            rest = model_uri[len("model://"):]
+            rest = model_uri[len("model://") :]
             # 去除 version 部分（首个 / 之后）
             if "/" in rest:
                 return rest.split("/", 1)[0]
@@ -75,13 +81,13 @@ class PredictorLoader:
                 return predictor
 
             # 加载模型
-            model_name = self.parse_model_uri(model_uri)
+            _ = self.parse_model_uri(model_uri)  # 仅验证 URI 格式（加载路径见 TODO）
             try:
-                from app.ai.lnn.inference.predictor import LNNPredictor
+                # TODO(LNN-加载): 探测导入确认依赖可用；加载路径缺失 LNNPredictor 构造
+                # （缓存未命中时返回 None，见 .hermes-memory.md 待办）
+                from app.ai.lnn.inference.predictor import LNNPredictor  # noqa: F401
             except ImportError as exc:
-                raise ProjectionError(
-                    f"无法加载模型: {model_uri}（{exc}）"
-                ) from exc
+                raise ProjectionError(f"无法加载模型: {model_uri}（{exc}）") from exc
 
             # LRU 淘汰
             if len(self._cache) >= self._cache_limit:

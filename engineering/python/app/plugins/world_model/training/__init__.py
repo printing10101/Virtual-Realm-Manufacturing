@@ -23,6 +23,7 @@
   model_config, metrics, timestamp, ...}``，便于 ``TrajectoryPredictor``
   通过 ``torch.load + load_state_dict`` 加载。
 """
+
 from app.plugins.world_model.training.weights_resolver import (
     DEFAULT_MODELS_DIR,
     WeightsResolutionError,

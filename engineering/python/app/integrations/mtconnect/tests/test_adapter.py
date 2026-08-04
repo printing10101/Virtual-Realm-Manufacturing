@@ -22,11 +22,10 @@ Run with::
 
 from __future__ import annotations
 
-import asyncio
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -45,7 +44,6 @@ if str(_PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(_PYTHON_DIR))
 
 from app.integrations.mtconnect import MTConnectAdapter
-from app.integrations.mtconnect import parser as parser_mod
 from app.integrations.mtconnect import cli
 from app.integrations.mtconnect.adapter import (
     AdapterConfig,
@@ -337,9 +335,7 @@ class TestAdapterProbe:
         assert identity["mtconnect_version"] == "1.5"
 
     def test_probe_propagates_http_error(self) -> None:
-        session = _build_stub_session(
-            [_StubResponse("nope", status_code=500)]
-        )
+        session = _build_stub_session([_StubResponse("nope", status_code=500)])
         adapter = MTConnectAdapter(
             config=AdapterConfig(agent_url="http://demo.mtconnect.org:80"),
             session=session,
@@ -375,14 +371,12 @@ class TestAdapterRun:
         # within ``duration`` so the queue cannot run out regardless
         # of scheduler jitter.  The assertion below is therefore a
         # lower-bound on what the adapter *must* have ingested.
-        session = _build_stub_session(
-            [_StubResponse(SAMPLE_XML) for _ in range(50)]
-        )
+        session = _build_stub_session([_StubResponse(SAMPLE_XML) for _ in range(50)])
         adapter = MTConnectAdapter(
             config=AdapterConfig(
                 agent_url="http://demo.mtconnect.org:80",
-                interval=0.01,           # keep the test fast
-                batch_size=1,            # flush after every sample
+                interval=0.01,  # keep the test fast
+                batch_size=1,  # flush after every sample
                 max_retries=1,
             ),
             session=session,
@@ -424,9 +418,7 @@ class TestAdapterRun:
 
     def test_run_gives_up_after_max_retries(self) -> None:
         # Provide plenty of error responses so the loop never starves.
-        session = _build_stub_session(
-            [ReqConnectionError("never works") for _ in range(50)]
-        )
+        session = _build_stub_session([ReqConnectionError("never works") for _ in range(50)])
         adapter = MTConnectAdapter(
             config=AdapterConfig(
                 agent_url="http://demo.mtconnect.org:80",
@@ -448,9 +440,7 @@ class TestAdapterRun:
     def test_run_persists_to_tdengine(self) -> None:
         # Provide plenty of responses so the loop is bound by the
         # ``duration`` (not by queue exhaustion) before it stops.
-        session = _build_stub_session(
-            [_StubResponse(SAMPLE_XML) for _ in range(20)]
-        )
+        session = _build_stub_session([_StubResponse(SAMPLE_XML) for _ in range(20)])
         tde = _StubTDE()
         adapter = MTConnectAdapter(
             config=AdapterConfig(
@@ -470,13 +460,11 @@ class TestAdapterRun:
         # Each row matches the canonical DDL column order
         for row in tde.inserted:
             assert len(row) == 5
-            assert isinstance(row[0], str)   # ts
-            assert row[4] == "ACTIVE"        # execution
+            assert isinstance(row[0], str)  # ts
+            assert row[4] == "ACTIVE"  # execution
 
     def test_stop_signal_exits_loop_quickly(self) -> None:
-        session = _build_stub_session(
-            [_StubResponse(SAMPLE_XML) for _ in range(50)]
-        )
+        session = _build_stub_session([_StubResponse(SAMPLE_XML) for _ in range(50)])
         adapter = MTConnectAdapter(
             config=AdapterConfig(
                 agent_url="http://demo.mtconnect.org:80",
@@ -487,14 +475,17 @@ class TestAdapterRun:
         )
 
         import threading
+
         def _stop_after() -> None:
             import time
+
             time.sleep(0.05)
             adapter.stop()
 
         threading.Thread(target=_stop_after, daemon=True).start()
         # Bound the call so a regression in stop() doesn't hang CI.
         import time
+
         t0 = time.monotonic()
         ingested = adapter.run(duration=5.0)
         elapsed = time.monotonic() - t0
@@ -516,8 +507,11 @@ class TestAdapterFlush:
         )
         # Stuff a sample into the buffer manually.
         sample = Sample(
-            spindle_speed=1.0, spindle_load=2.0, feedrate=3.0,
-            execution="IDLE", observed_at=datetime.now(timezone.utc),
+            spindle_speed=1.0,
+            spindle_load=2.0,
+            feedrate=3.0,
+            execution="IDLE",
+            observed_at=datetime.now(timezone.utc),
         )
         adapter._enqueue(sample)
         written = adapter.flush()
@@ -564,9 +558,7 @@ class TestCLIArgparse:
 
     def test_custom_values_propagate(self) -> None:
         parser = cli.build_parser()
-        ns = parser.parse_args(
-            ["--agent", "http://agent:5000", "--duration", "5", "--interval", "0.5"]
-        )
+        ns = parser.parse_args(["--agent", "http://agent:5000", "--duration", "5", "--interval", "0.5"])
         assert ns.agent == "http://agent:5000"
         assert ns.duration == 5.0
         assert ns.interval == 0.5
@@ -576,19 +568,17 @@ class TestCLIMain:
     def test_main_returns_error_on_probe_failure(self, capsys) -> None:
         # Stub the probe to raise – the CLI should report the failure
         # and exit with code 2.
-        session = _build_stub_session(
-            [_StubResponse("oops", status_code=500)]
-        )
+        session = _build_stub_session([_StubResponse("oops", status_code=500)])
         # Patch the ``requests.Session`` used by the adapter.  Because
         # MTConnectAdapter builds its own session when none is passed,
         # we monkey-patch the class instead.
-        with patch.object(
-            MTConnectAdapter, "_build_default_session", return_value=session
-        ):
+        with patch.object(MTConnectAdapter, "_build_default_session", return_value=session):
             code = cli.main(
                 [
-                    "--agent", "http://demo.mtconnect.org:80",
-                    "--duration", "0",
+                    "--agent",
+                    "http://demo.mtconnect.org:80",
+                    "--duration",
+                    "0",
                     "--dry-run",
                 ]
             )
@@ -602,26 +592,26 @@ class TestCLIMain:
         # far more samples than the loop will consume within
         # ``--duration`` so the queue cannot run dry and trip the
         # ``AssertionError("No more stub responses queued")`` guard.
-        session = _build_stub_session(
-            [_StubResponse(PROBE_XML)]
-            + [_StubResponse(SAMPLE_XML) for _ in range(50)]
-        )
+        session = _build_stub_session([_StubResponse(PROBE_XML)] + [_StubResponse(SAMPLE_XML) for _ in range(50)])
         tde = _StubTDE()
 
-        with patch.object(
-            MTConnectAdapter, "_build_default_session", return_value=session
-        ):
+        with patch.object(MTConnectAdapter, "_build_default_session", return_value=session):
             with patch.object(cli, "build_tdengine_client", return_value=(tde, "test", MagicMock())):
                 with patch.object(
-                    cli, "ensure_table",
+                    cli,
+                    "ensure_table",
                     new=_make_async_returning(True),
                 ):
                     code = cli.main(
                         [
-                            "--agent", "http://demo.mtconnect.org:80",
-                            "--duration", "0.05",
-                            "--interval", "0.01",
-                            "--batch-size", "1",
+                            "--agent",
+                            "http://demo.mtconnect.org:80",
+                            "--duration",
+                            "0.05",
+                            "--interval",
+                            "0.01",
+                            "--batch-size",
+                            "1",
                         ]
                     )
         assert code == 0

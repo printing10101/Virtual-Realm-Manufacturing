@@ -21,6 +21,7 @@
 - loss_dict 的 6 个 key 固定不变，保证消融实验日志一致性
 - 固定随机种子由训练脚本负责（不在 loss 函数内设置）
 """
+
 from __future__ import annotations
 
 import torch
@@ -171,6 +172,7 @@ def nominal_value_loss(
         # 简化：用三轴占据 extent 的最大值作为特征尺寸估计
         # 真实实现需根据 feature_name 做特征提取（v2）
         occupancy = (voxel > 0.5).float()  # (B, 1, D, H, W)
+
         # 沿每个空间轴计算占据 extent：该轴上任意位置存在体素的范围长度
         # dim=2 (D): 在 H、W 维上 any-reduce 后，D 轴上 (max_idx - min_idx + 1)
         def _axis_extent(dim: int) -> torch.Tensor:

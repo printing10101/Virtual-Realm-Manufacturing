@@ -4,6 +4,7 @@ Pytest configuration for lnn_uncertain tests.
 This conftest.py pre-injects mock modules into sys.modules to prevent
 import errors from the existing codebase (missing TrainingTask model).
 """
+
 import sys
 from unittest.mock import MagicMock
 
@@ -19,6 +20,7 @@ if "app.tasks.task_system" not in sys.modules:
 # Also mock app.database.models.TrainingTask if needed
 try:
     from app.database import models as db_models
+
     if not hasattr(db_models, "TrainingTask"):
         db_models.TrainingTask = MagicMock()
     if not hasattr(db_models, "TaskStatusEnum"):

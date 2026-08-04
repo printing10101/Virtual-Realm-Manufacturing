@@ -17,12 +17,10 @@ DNC 管理器
 
 import logging
 import threading
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from datetime import datetime, timezone
 from enum import Enum
 
-from .opcu_client import OPCUAClient
-from .mtconnect_client import MTConnectClient
 from .unified_adapter import UnifiedDNCAdapter
 from app.core.safe_errors import safe_error_message
 
@@ -62,11 +60,7 @@ class DNCManager:
             for mid, adapter in self._adapters.items():
                 meta = self._meta.get(mid, {})
                 # 底层客户端从 adapter 的 primary 取出（保持外部 client API 兼容）
-                client = (
-                    adapter.primary.client
-                    if adapter.primary is not None
-                    else None
-                )
+                client = adapter.primary.client if adapter.primary is not None else None
                 view[mid] = {
                     "client": client,
                     "protocol": meta.get("protocol"),
@@ -78,13 +72,7 @@ class DNCManager:
     # ------------------------------------------------------------------
     # 连接管理
     # ------------------------------------------------------------------
-    async def add_machine(
-        self,
-        machine_id: str,
-        protocol: ProtocolType,
-        endpoint: str,
-        **kwargs
-    ) -> bool:
+    async def add_machine(self, machine_id: str, protocol: ProtocolType, endpoint: str, **kwargs) -> bool:
         """添加机床连接（委托给 UnifiedDNCAdapter.connect_single）。"""
         try:
             if protocol not in (ProtocolType.OPC_UA, ProtocolType.MTCONNECT):
@@ -103,6 +91,7 @@ class DNCManager:
                 # device_name 通过 kwargs.device_name 传递需走 connect_single 之外的路径。
                 # 这里直接构造 MTConnectAdapter 以保留 device_name 参数。
                 from .unified_adapter import MTConnectAdapter
+
                 adapter.primary = MTConnectAdapter(
                     agent_url=endpoint,
                     device_name=device_name,
@@ -184,9 +173,7 @@ class DNCManager:
             result[machine_id] = await self.get_machine_status(machine_id)
         return result
 
-    async def send_nc_program(
-        self, machine_id: str, program_path: str, program_name: str
-    ) -> bool:
+    async def send_nc_program(self, machine_id: str, program_path: str, program_name: str) -> bool:
         """发送 NC 程序到机床（委托给 UnifiedDNCAdapter.send_nc_program）。"""
         with self._lock:
             adapter = self._adapters.get(machine_id)

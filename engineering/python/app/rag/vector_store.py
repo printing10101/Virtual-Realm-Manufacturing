@@ -19,9 +19,7 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 DEFAULT_COLLECTION = "knowledge_base"
-DEFAULT_PERSIST_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "data", "chroma_db"
-)
+DEFAULT_PERSIST_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "chroma_db")
 
 # ============================================================
 # HNSW 索引调优参数（参考 ChromaDB 官方文档与 HNSW 论文最佳实践）
@@ -52,9 +50,7 @@ DEFAULT_PERSIST_DIR = os.path.join(
 # num_threads (构建并行线程数):
 #   - 索引构建并行度，4 适合多数服务器 CPU
 DEFAULT_HNSW_M = int(os.environ.get("RAG_HNSW_M", "32"))
-DEFAULT_HNSW_EF_CONSTRUCTION = int(
-    os.environ.get("RAG_HNSW_EF_CONSTRUCTION", "200")
-)
+DEFAULT_HNSW_EF_CONSTRUCTION = int(os.environ.get("RAG_HNSW_EF_CONSTRUCTION", "200"))
 DEFAULT_HNSW_EF_SEARCH = int(os.environ.get("RAG_HNSW_EF_SEARCH", "100"))
 DEFAULT_HNSW_NUM_THREADS = int(os.environ.get("RAG_HNSW_NUM_THREADS", "4"))
 DEFAULT_HNSW_SPACE = os.environ.get("RAG_HNSW_SPACE", "cosine")
@@ -104,21 +100,13 @@ class VectorStore:
 
             os.makedirs(self._persist_directory, exist_ok=True)
             self._client = chromadb.PersistentClient(path=self._persist_directory)
-            logger.info(
-                "ChromaDB client initialized: %s", self._persist_directory
-            )
+            logger.info("ChromaDB client initialized: %s", self._persist_directory)
         except ImportError:
-            logger.warning(
-                "ChromaDB 未安装，RAG 向量存储不可用。请安装 chromadb 以启用持久化向量检索。"
-            )
+            logger.warning("ChromaDB 未安装，RAG 向量存储不可用。请安装 chromadb 以启用持久化向量检索。")
             self._client = None
-            raise RuntimeError(
-                "ChromaDB 未安装，RAG 功能无法启动。请安装 chromadb（pip install chromadb）后重试。"
-            )
+            raise RuntimeError("ChromaDB 未安装，RAG 功能无法启动。请安装 chromadb（pip install chromadb）后重试。")
         except Exception as e:
-            logger.error(
-                "ChromaDB 初始化失败: %s", e, exc_info=True
-            )
+            logger.error("ChromaDB 初始化失败: %s", e, exc_info=True)
             self._client = None
             raise RuntimeError(f"向量存储初始化失败: {e}") from e
 
@@ -215,9 +203,7 @@ class VectorStore:
         self._ensure_collection()
         return self._collection.count()
 
-    def list_documents(
-        self, limit: int = 100, offset: int = 0
-    ) -> list[dict[str, Any]]:
+    def list_documents(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
         self._ensure_collection()
         result = self._collection.get(
             limit=limit,
@@ -229,11 +215,13 @@ class VectorStore:
         documents = result.get("documents", [])
         metadatas = result.get("metadatas", [])
         for i in range(len(ids)):
-            docs.append({
-                "id": ids[i] if i < len(ids) else "",
-                "document": documents[i] if i < len(documents) else "",
-                "metadata": metadatas[i] if i < len(metadatas) else {},
-            })
+            docs.append(
+                {
+                    "id": ids[i] if i < len(ids) else "",
+                    "document": documents[i] if i < len(documents) else "",
+                    "metadata": metadatas[i] if i < len(metadatas) else {},
+                }
+            )
         return docs
 
     def optimize_index(self) -> bool:
@@ -288,9 +276,7 @@ class VectorStore:
         persist_size = 0
         persist_dir = Path(self._persist_directory)
         if persist_dir.exists():
-            persist_size = sum(
-                f.stat().st_size for f in persist_dir.rglob("*") if f.is_file()
-            )
+            persist_size = sum(f.stat().st_size for f in persist_dir.rglob("*") if f.is_file())
         return {
             "total_documents": total,
             "collection_name": self._collection_name,
@@ -320,17 +306,12 @@ class VectorStore:
                 self._collection = None
             if self._client is not None:
                 # ChromaDB 不同版本提供 close()/reset()/stop() 之一，按优先级尝试
-                close_fn = (
-                    getattr(self._client, "close", None)
-                    or getattr(self._client, "stop", None)
-                )
+                close_fn = getattr(self._client, "close", None) or getattr(self._client, "stop", None)
                 if close_fn is not None:
                     try:
                         close_fn()
                     except Exception as e:
-                        logger.warning(
-                            "ChromaDB close() raised: %s", e, exc_info=True
-                        )
+                        logger.warning("ChromaDB close() raised: %s", e, exc_info=True)
                 self._client = None
                 logger.info("ChromaDB PersistentClient closed")
         except Exception as e:

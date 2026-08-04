@@ -188,25 +188,20 @@ class DreamReflector:
         update_result = self._update_stale_entries(sessions)
 
         # 阶段 3：洞察浮现
-        insights, llm_used, llm_model = await self._surface_insights(
-            sessions, instructions
-        )
+        insights, llm_used, llm_model = await self._surface_insights(sessions, instructions)
 
         # 生成不可变版本
         new_version = None
         try:
             version = self.store.commit_version(
-                message=f"dream: reflect {len(sessions)} sessions, "
-                f"{len(insights)} insights"
+                message=f"dream: reflect {len(sessions)} sessions, {len(insights)} insights"
             )
             new_version = version.version_id
         except Exception as e:
             logger.warning("Memory version 提交失败: %s", e)
 
         # 生成摘要
-        summary = self._generate_summary(
-            sessions, dedup_result, update_result, insights
-        )
+        summary = self._generate_summary(sessions, dedup_result, update_result, insights)
 
         result = ReflectionResult(
             deduplicated=dedup_result,
@@ -252,9 +247,7 @@ class DreamReflector:
         for entity, entries in by_entity.items():
             if len(entries) <= 1:
                 # 无重复
-                result.kept_node_ids.extend(
-                    e["node_id"] for e in entries
-                )
+                result.kept_node_ids.extend(e["node_id"] for e in entries)
                 continue
 
             # 简单文本相似度：content 完全相同视为重复
@@ -275,12 +268,8 @@ class DreamReflector:
                     reverse=True,
                 )
                 primary = group[0]
-                merged_count = sum(
-                    e["properties"].get("validation_count", 0) for e in group
-                )
-                merged_confidence = max(
-                    e["properties"].get("confidence", 0.5) for e in group
-                )
+                merged_count = sum(e["properties"].get("validation_count", 0) for e in group)
+                merged_confidence = max(e["properties"].get("confidence", 0.5) for e in group)
 
                 # 更新主节点
                 self.store.update_observation(
@@ -292,9 +281,7 @@ class DreamReflector:
                 primary_props = dict(primary["properties"])
                 primary_props["validation_count"] = merged_count
                 primary_props["merged_from"] = [e["node_id"] for e in group[1:]]
-                self.store.graph.update_node_properties(
-                    primary["node_id"], primary_props
-                )
+                self.store.graph.update_node_properties(primary["node_id"], primary_props)
 
                 result.kept_node_ids.append(primary["node_id"])
                 # 移除重复节点（保留审计记录：不移除，标记 deprecated）
@@ -324,9 +311,7 @@ class DreamReflector:
     # 阶段 2：过时更新
     # ------------------------------------------------------------------
 
-    def _update_stale_entries(
-        self, sessions: List[ProjectSession]
-    ) -> UpdateResult:
+    def _update_stale_entries(self, sessions: List[ProjectSession]) -> UpdateResult:
         """用新 Session 数据修正过时的 memory 条目。
 
         策略：
@@ -357,13 +342,15 @@ class DreamReflector:
                         confidence=new_confidence,
                     )
                     result.invalidated_node_ids.append(node_id)
-                    result.details.append({
-                        "node_id": node_id,
-                        "old_confidence": confidence,
-                        "new_confidence": new_confidence,
-                        "reason": f"session_failure: {session.failure_reason}",
-                        "session_id": session.session_id,
-                    })
+                    result.details.append(
+                        {
+                            "node_id": node_id,
+                            "old_confidence": confidence,
+                            "new_confidence": new_confidence,
+                            "reason": f"session_failure: {session.failure_reason}",
+                            "session_id": session.session_id,
+                        }
+                    )
 
                 # HRC52 pending_calibration 硬约束：强制降低置信度
                 if entity.upper() in ("HRC52", "HRC_52"):
@@ -375,12 +362,14 @@ class DreamReflector:
                                 confidence=new_confidence,
                             )
                             result.invalidated_node_ids.append(node_id)
-                            result.details.append({
-                                "node_id": node_id,
-                                "old_confidence": confidence,
-                                "new_confidence": new_confidence,
-                                "reason": "HRC52_pending_calibration_hard_constraint",
-                            })
+                            result.details.append(
+                                {
+                                    "node_id": node_id,
+                                    "old_confidence": confidence,
+                                    "new_confidence": new_confidence,
+                                    "reason": "HRC52_pending_calibration_hard_constraint",
+                                }
+                            )
 
                 # CAM 验证失败：标记 memory 需要重新验证
                 if session.cam_validation_passed is False:
@@ -415,9 +404,7 @@ class DreamReflector:
 
         # 尝试 LLM 反思
         if self.enable_llm:
-            llm_result = await self._llm_reflect(
-                session_summaries, instructions
-            )
+            llm_result = await self._llm_reflect(session_summaries, instructions)
             if llm_result is not None:
                 insights, model = llm_result
                 return insights, True, model
@@ -427,9 +414,7 @@ class DreamReflector:
         insights = self._rule_based_insights(sessions)
         return insights, False, None
 
-    def _prepare_session_summaries(
-        self, sessions: List[ProjectSession]
-    ) -> str:
+    def _prepare_session_summaries(self, sessions: List[ProjectSession]) -> str:
         """将 Session 列表准备为 LLM 输入文本。"""
         lines = []
         for s in sessions:
@@ -459,9 +444,7 @@ class DreamReflector:
             return None
 
         # 构造反思 prompt
-        prompt = self._build_reflection_prompt(
-            session_summaries, instructions
-        )
+        prompt = self._build_reflection_prompt(session_summaries, instructions)
 
         messages = [
             {
@@ -469,7 +452,7 @@ class DreamReflector:
                 "content": (
                     "你是'灵境制造'项目的离线反思助手。"
                     "请分析以下 Session 记录，发现潜在规律、异常和可执行的规则候选。"
-                    "输出 JSON 格式：{\"insights\": [{\"category\": \"...\", \"content\": \"...\", \"confidence\": 0.0}]}。"
+                    '输出 JSON 格式：{"insights": [{"category": "...", "content": "...", "confidence": 0.0}]}。'
                     "category 可选：pattern / anomaly / rule_candidate / warning。"
                     "硬约束：CAM 二次验证始终必须，SUCCEEDED 任务不可删除，"
                     "HRC52 pending_calibration 必须降低置信度。"
@@ -512,7 +495,7 @@ class DreamReflector:
             "2. anomaly：异常值或离群点\n"
             "3. rule_candidate：可转化为规则候选的规律\n"
             "4. warning：需要人工介入的警告\n"
-            "输出 JSON：{\"insights\": [...]}"
+            '输出 JSON：{"insights": [...]}'
         )
         return prompt
 
@@ -544,9 +527,7 @@ class DreamReflector:
             logger.warning("LLM 输出解析失败: %s", e)
             return []
 
-    def _rule_based_insights(
-        self, sessions: List[ProjectSession]
-    ) -> List[InsightItem]:
+    def _rule_based_insights(self, sessions: List[ProjectSession]) -> List[InsightItem]:
         """规则统计降级：无 LLM 时的洞察生成。"""
         insights: List[InsightItem] = []
 
@@ -554,41 +535,43 @@ class DreamReflector:
         material_failures: Dict[str, List[str]] = {}
         for s in sessions:
             if s.outcome == "failure" and s.material_type:
-                material_failures.setdefault(
-                    s.material_type, []
-                ).append(s.session_id)
+                material_failures.setdefault(s.material_type, []).append(s.session_id)
 
         for material, fail_sessions in material_failures.items():
             if len(fail_sessions) >= 2:
-                insights.append(InsightItem(
-                    category="pattern",
-                    content=f"材料 {material} 出现 {len(fail_sessions)} 次失败，"
-                    f"建议检查切削参数推荐逻辑",
-                    confidence=0.7,
-                    supporting_sessions=fail_sessions,
-                ))
+                insights.append(
+                    InsightItem(
+                        category="pattern",
+                        content=f"材料 {material} 出现 {len(fail_sessions)} 次失败，建议检查切削参数推荐逻辑",
+                        confidence=0.7,
+                        supporting_sessions=fail_sessions,
+                    )
+                )
 
         # 规则 2：CAM 验证失败聚集
         cam_failures = [s for s in sessions if s.cam_validation_passed is False]
         if len(cam_failures) >= 2:
-            insights.append(InsightItem(
-                category="warning",
-                content=f"CAM 验证失败 {len(cam_failures)} 次，"
-                f"常见原因：{cam_failures[0].cam_validation_failure_reason}",
-                confidence=0.6,
-                supporting_sessions=[s.session_id for s in cam_failures],
-            ))
+            insights.append(
+                InsightItem(
+                    category="warning",
+                    content=f"CAM 验证失败 {len(cam_failures)} 次，"
+                    f"常见原因：{cam_failures[0].cam_validation_failure_reason}",
+                    confidence=0.6,
+                    supporting_sessions=[s.session_id for s in cam_failures],
+                )
+            )
 
         # 规则 3：SUCCEEDED 锁定提醒
         succeeded = [s for s in sessions if s.outcome == "success"]
         if succeeded:
-            insights.append(InsightItem(
-                category="rule_candidate",
-                content=f"{len(succeeded)} 个 Session 成功，"
-                f"对应的 memory 条目应提升 validation_count",
-                confidence=0.5,
-                supporting_sessions=[s.session_id for s in succeeded],
-            ))
+            insights.append(
+                InsightItem(
+                    category="rule_candidate",
+                    content=f"{len(succeeded)} 个 Session 成功，对应的 memory 条目应提升 validation_count",
+                    confidence=0.5,
+                    supporting_sessions=[s.session_id for s in succeeded],
+                )
+            )
 
         return insights
 

@@ -22,6 +22,7 @@
   初始为 False，在 ``register_routers`` 调用后由
   ``register_all_domain_routers`` 返回的 flags dict 回填
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,7 +52,8 @@ if config.hardware.skip_ollama:
     )
 else:
     try:
-        from app.ai import ollama_routes
+        from app.ai import ollama_routes  # noqa: F401  # 探测导入：路由注册在 app/api/routers/ai.py
+
         _OLLAMA_AVAILABLE = True
     except ImportError as e:
         logging.warning(

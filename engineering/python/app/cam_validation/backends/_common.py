@@ -33,13 +33,15 @@ logger = logging.getLogger("app.cam_validation.cam_adapter")
 # =============================================================================
 
 # 合法 CAM 后端集合（与 CamValidationConfig.__post_init__ 对齐）
-_VALID_BACKENDS: frozenset[str] = frozenset({
-    "internal_only",
-    "pycam",
-    "nx_open",
-    "powermill",
-    "manual",
-})
+_VALID_BACKENDS: frozenset[str] = frozenset(
+    {
+        "internal_only",
+        "pycam",
+        "nx_open",
+        "powermill",
+        "manual",
+    }
+)
 
 # CAM 软件校验状态枚举
 # - skipped：跳过 CAM 软件二次校验（internal_only 后端）
@@ -47,13 +49,15 @@ _VALID_BACKENDS: frozenset[str] = frozenset({
 # - fail：CAM 软件校验失败，发现碰撞
 # - manual_pending：等待工程师手动回填校验结果（manual 后端）
 # - error：CAM 软件调用异常（subprocess 失败 / JSON 解析失败）
-_VALID_STATUSES: frozenset[str] = frozenset({
-    "skipped",
-    "pass",
-    "fail",
-    "manual_pending",
-    "error",
-})
+_VALID_STATUSES: frozenset[str] = frozenset(
+    {
+        "skipped",
+        "pass",
+        "fail",
+        "manual_pending",
+        "error",
+    }
+)
 
 # NX Open / PowerMill subprocess 输出 JSON 报告的字段名约定
 # 子后端 subprocess 协议：

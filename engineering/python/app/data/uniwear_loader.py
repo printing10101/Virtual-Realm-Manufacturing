@@ -90,9 +90,7 @@ class UniwearDataLoader:
         }
         return self.data_dir / mapping[dataset]
 
-    def load_dataset(
-        self, dataset: UniwearDataset, use_cache: bool = True
-    ) -> pd.DataFrame:
+    def load_dataset(self, dataset: UniwearDataset, use_cache: bool = True) -> pd.DataFrame:
         cache_key = dataset.value
         if use_cache and cache_key in self._cache:
             return self._cache[cache_key].copy()
@@ -135,9 +133,7 @@ class UniwearDataLoader:
         available = [c for c in columns if c in df.columns]
         missing = set(columns) - set(available)
         if missing:
-            logger.warning(
-                "Columns not found in %s dataset: %s", dataset.value, missing
-            )
+            logger.warning("Columns not found in %s dataset: %s", dataset.value, missing)
 
         return df[available] if available else df
 
@@ -205,11 +201,7 @@ class UniwearDataLoader:
         for ds in UniwearDataset:
             try:
                 df = self.load_dataset(ds)
-                experiments = (
-                    self.get_experiment_tags(ds)
-                    if "experiment_tag" in df.columns
-                    else []
-                )
+                experiments = self.get_experiment_tags(ds) if "experiment_tag" in df.columns else []
 
                 ds_summary = {
                     "file": self._resolve_path(ds).name,
@@ -230,9 +222,7 @@ class UniwearDataLoader:
                     ds_summary["signal_types"] = "force/vibration/acoustic_emission"
                 elif ds == UniwearDataset.UNIWEAR:
                     ds_summary["material"] = f"{NUAA_MATERIAL}+{PHM2010_MATERIAL}"
-                    ds_summary["material_full"] = (
-                        f"{NUAA_MATERIAL_FULL} / {PHM2010_MATERIAL_FULL}"
-                    )
+                    ds_summary["material_full"] = f"{NUAA_MATERIAL_FULL} / {PHM2010_MATERIAL_FULL}"
                     ds_summary["signal_types"] = "unified force/vibration"
 
                 summary["datasets"][ds.value] = ds_summary
@@ -309,9 +299,7 @@ class UniwearDataLoader:
                     "initial_wear": round(float(finite_w[0]), 6),
                     "final_wear": round(float(finite_w[-1]), 6),
                     "max_wear": round(float(np.max(finite_w)), 6),
-                    "mean_wear_rate": round(
-                        float((finite_w[-1] - finite_w[0]) / max(len(finite_w), 1)), 8
-                    ),
+                    "mean_wear_rate": round(float((finite_w[-1] - finite_w[0]) / max(len(finite_w), 1)), 8),
                     "total_wear_increment": round(float(finite_w[-1] - finite_w[0]), 6),
                     "sample_count": len(finite_w),
                 }
@@ -338,9 +326,7 @@ class UniwearDataLoader:
 
         comparison: dict = {
             "dataset": dataset.value,
-            "material": NUAA_MATERIAL
-            if dataset == UniwearDataset.NUAA
-            else PHM2010_MATERIAL,
+            "material": NUAA_MATERIAL if dataset == UniwearDataset.NUAA else PHM2010_MATERIAL,
             "experiments": {},
         }
 
@@ -351,8 +337,7 @@ class UniwearDataLoader:
                 wear_rate = 0.0
                 if "tool_wear" in wear_df.columns and len(wear_df) > 1:
                     wear_rate = float(
-                        (wear_df["tool_wear"].iloc[-1] - wear_df["tool_wear"].iloc[0])
-                        / max(len(wear_df), 2)
+                        (wear_df["tool_wear"].iloc[-1] - wear_df["tool_wear"].iloc[0]) / max(len(wear_df), 2)
                     )
                 comparison["experiments"][exp] = {
                     "wear_stats": stats.get("wear_stats", {}),
@@ -385,12 +370,8 @@ class UniwearDataLoader:
         nuaa_comparison = self.compare_experiments(UniwearDataset.NUAA)
         phm2010_comparison = self.compare_experiments(UniwearDataset.PHM2010)
 
-        total_nuaa_samples = sum(
-            e.get("sample_count", 0) for e in nuaa_comparison["experiments"].values()
-        )
-        total_phm2010_samples = sum(
-            e.get("sample_count", 0) for e in phm2010_comparison["experiments"].values()
-        )
+        total_nuaa_samples = sum(e.get("sample_count", 0) for e in nuaa_comparison["experiments"].values())
+        total_phm2010_samples = sum(e.get("sample_count", 0) for e in phm2010_comparison["experiments"].values())
 
         return {
             "materials": {

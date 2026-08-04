@@ -18,6 +18,7 @@
 - 所有 ``generate_xxx`` 方法遵循 ``collect → build → persist`` 三段式
 - 保留原 ``_persist_and_create_record`` 统一收尾逻辑
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,7 +41,6 @@ from app.contracts.explainability import (
     ExplanationType,
     ExplanationValidationError,
     GateDynamicsExplanation,
-    HiddenStateExplanation,
     ProjectionError,
     ProjectionMethod,
     SamplingError,
@@ -146,9 +146,7 @@ class ExplainabilityService(BaseSingletonService):
         DB 记录的 id 由 ``_record_repo.create_record`` 内部生成。
         """
         record_id = _gen_explanation_id()
-        payload_path, payload_size = self._payload_store.persist(
-            explanation.to_payload(), record_id
-        )
+        payload_path, payload_size = self._payload_store.persist(explanation.to_payload(), record_id)
         return await self._record_repo.create_record(
             explanation_type=explanation_type,
             model_uri=model_uri,
@@ -176,25 +174,15 @@ class ExplainabilityService(BaseSingletonService):
     ) -> ExplanationRecord:
         """生成隐状态投影解释."""
         if not ProjectionMethod.is_valid(projection_method):
-            raise ExplanationValidationError(
-                f"projection_method 不合法: {projection_method}"
-            )
+            raise ExplanationValidationError(f"projection_method 不合法: {projection_method}")
         if projection_dim not in (2, 3):
-            raise ExplanationValidationError(
-                f"projection_dim 必须为 2 或 3，当前: {projection_dim}"
-            )
+            raise ExplanationValidationError(f"projection_dim 必须为 2 或 3，当前: {projection_dim}")
         if max_frames < 1:
-            raise ExplanationValidationError(
-                f"max_frames 必须 >= 1，当前: {max_frames}"
-            )
+            raise ExplanationValidationError(f"max_frames 必须 >= 1，当前: {max_frames}")
 
         predictor = self._predictor_loader.get(model_uri)
-        intermediates, hidden_array = collect_hidden_state_intermediates(
-            predictor, max_frames=max_frames
-        )
-        projections = self._projector.project(
-            projection_method, hidden_array, projection_dim, model_uri
-        )
+        intermediates, hidden_array = collect_hidden_state_intermediates(predictor, max_frames=max_frames)
+        projections = self._projector.project(projection_method, hidden_array, projection_dim, model_uri)
         explanation = build_hidden_state_explanation(
             hidden_array,
             projections,
@@ -240,18 +228,12 @@ class ExplainabilityService(BaseSingletonService):
     ) -> ExplanationRecord:
         """生成门控动力学解释."""
         if anomaly_sigma <= 0:
-            raise ExplanationValidationError(
-                f"anomaly_sigma 必须为正数，当前: {anomaly_sigma}"
-            )
+            raise ExplanationValidationError(f"anomaly_sigma 必须为正数，当前: {anomaly_sigma}")
 
         predictor = self._predictor_loader.get(model_uri)
-        intermediates, gate_values_raw, time_constants_raw = (
-            collect_gate_intermediates(predictor)
-        )
+        intermediates, gate_values_raw, time_constants_raw = collect_gate_intermediates(predictor)
         gate_array = np.asarray(gate_values_raw, dtype=np.float32)
-        mean_gate_per_feature, anomaly_frames = compute_gate_anomalies(
-            gate_array, anomaly_sigma
-        )
+        mean_gate_per_feature, anomaly_frames = compute_gate_anomalies(gate_array, anomaly_sigma)
 
         explanation = GateDynamicsExplanation(
             frame_ids=list(range(len(gate_values_raw))),
@@ -301,26 +283,16 @@ class ExplainabilityService(BaseSingletonService):
         if not perturbed_feature:
             raise ExplanationValidationError("perturbed_feature 不能为空")
         if perturbed_feature not in base_input:
-            raise ExplanationValidationError(
-                f"perturbed_feature '{perturbed_feature}' 不在 base_input 中"
-            )
+            raise ExplanationValidationError(f"perturbed_feature '{perturbed_feature}' 不在 base_input 中")
         if perturbation_step <= 0:
-            raise ExplanationValidationError(
-                f"perturbation_step 必须为正数，当前: {perturbation_step}"
-            )
+            raise ExplanationValidationError(f"perturbation_step 必须为正数，当前: {perturbation_step}")
 
-        perturbation_range = build_perturbation_range(
-            perturbation_range, perturbation_step
-        )
+        perturbation_range = build_perturbation_range(perturbation_range, perturbation_step)
 
         predictor = self._predictor_loader.get(model_uri)
         base_value = float(base_input[perturbed_feature])
-        outputs = scan_counterfactual_outputs(
-            predictor, base_input, perturbed_feature, base_value, perturbation_range
-        )
-        sensitivity, critical_points = compute_counterfactual_metrics(
-            outputs, perturbation_range
-        )
+        outputs = scan_counterfactual_outputs(predictor, base_input, perturbed_feature, base_value, perturbation_range)
+        sensitivity, critical_points = compute_counterfactual_metrics(outputs, perturbation_range)
 
         explanation = CounterfactualExplanation(
             base_input=dict(base_input),
@@ -374,32 +346,20 @@ class ExplainabilityService(BaseSingletonService):
         if not input_data:
             raise ExplanationValidationError("input_data 不能为空")
         if sample_count <= 0:
-            raise ExplanationValidationError(
-                f"sample_count 必须为正数，当前: {sample_count}"
-            )
+            raise ExplanationValidationError(f"sample_count 必须为正数，当前: {sample_count}")
         if sample_count > 200:
-            raise ExplanationValidationError(
-                f"sample_count 上限 200，当前: {sample_count}"
-            )
+            raise ExplanationValidationError(f"sample_count 上限 200，当前: {sample_count}")
 
         predictor = self._predictor_loader.get(model_uri)
 
         # 构造输入向量
         try:
-            input_vector = np.array(
-                list(input_data.values()), dtype=np.float32
-            ).reshape(1, -1)
+            input_vector = np.array(list(input_data.values()), dtype=np.float32).reshape(1, -1)
         except (ValueError, TypeError) as exc:
-            raise ExplanationValidationError(
-                f"input_data 无法转换为数值向量: {exc}"
-            ) from exc
+            raise ExplanationValidationError(f"input_data 无法转换为数值向量: {exc}") from exc
 
-        mc_mean, mc_std = collect_mc_dropout_samples(
-            predictor, input_vector, sample_count
-        )
-        percentiles, histogram = build_confidence_distribution(
-            mc_mean, mc_std, sample_count
-        )
+        mc_mean, mc_std = collect_mc_dropout_samples(predictor, input_vector, sample_count)
+        percentiles, histogram = build_confidence_distribution(mc_mean, mc_std, sample_count)
 
         # 认知不确定性 = std（可由数据降低）
         epistemic = mc_std
@@ -447,17 +407,13 @@ class ExplainabilityService(BaseSingletonService):
     # IExplainabilityService 实现 —— 4 个 CRUD
     # ==================================================================
 
-    async def get_explanation(
-        self, explanation_id: str, *, include_payload: bool = False
-    ) -> dict[str, Any]:
+    async def get_explanation(self, explanation_id: str, *, include_payload: bool = False) -> dict[str, Any]:
         """查询解释结果."""
         record_orm = await self._record_repo.find_record_orm(explanation_id)
         result = record_orm.to_dict()
         if include_payload:
             try:
-                result["payload"] = self._payload_store.load(
-                    record_orm.payload_path
-                )
+                result["payload"] = self._payload_store.load(record_orm.payload_path)
             except ProjectionError as exc:
                 logger.warning(
                     "读取 payload 失败 explanation_id=%s: %s",
@@ -503,25 +459,18 @@ class ExplainabilityService(BaseSingletonService):
     ) -> ExplanationComparison:
         """对比两个解释."""
         if not ComparisonType.is_valid(comparison_type):
-            raise ExplanationValidationError(
-                f"comparison_type 不合法: {comparison_type}"
-            )
+            raise ExplanationValidationError(f"comparison_type 不合法: {comparison_type}")
         if base_explanation_id == compared_explanation_id:
-            raise ExplanationValidationError(
-                "base 与 compared 不能为相同解释"
-            )
+            raise ExplanationValidationError("base 与 compared 不能为相同解释")
 
         # 查询两条记录
         base_orm = await self._record_repo.find_record_orm(base_explanation_id)
-        compared_orm = await self._record_repo.find_record_orm(
-            compared_explanation_id
-        )
+        compared_orm = await self._record_repo.find_record_orm(compared_explanation_id)
 
         # 类型一致性校验
         if base_orm.explanation_type != compared_orm.explanation_type:
             raise ComparisonMismatchError(
-                f"解释类型不一致: base={base_orm.explanation_type} "
-                f"compared={compared_orm.explanation_type}"
+                f"解释类型不一致: base={base_orm.explanation_type} compared={compared_orm.explanation_type}"
             )
 
         # 加载 payload
@@ -529,15 +478,11 @@ class ExplainabilityService(BaseSingletonService):
         compared_payload = self._payload_store.load(compared_orm.payload_path)
 
         # 计算差异 payload
-        diff_payload = compute_diff(
-            base_payload, compared_payload, base_orm.explanation_type
-        )
+        diff_payload = compute_diff(base_payload, compared_payload, base_orm.explanation_type)
 
         # 持久化差异 payload
         comparison_id = _gen_comparison_id()
-        diff_path = self._payload_store.persist_diff(
-            diff_payload, comparison_id
-        )
+        diff_path = self._payload_store.persist_diff(diff_payload, comparison_id)
 
         # 写入数据库
         comparison_orm = await self._record_repo.create_comparison(

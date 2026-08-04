@@ -64,29 +64,30 @@ async def retry_with_backoff(
                 # 达到最大重试次数
                 logger.error(
                     "%s 失败，已达最大重试次数 %d: %s",
-                    operation_name, max_retries, e,
+                    operation_name,
+                    max_retries,
+                    e,
                 )
                 if failure_callback:
                     try:
                         failure_callback(operation_name, e, attempt + 1)
                     except Exception as cb_err:
-                        logger.error(
-                            "failure_callback 执行失败: %s", cb_err
-                        )
-                raise RuntimeError(
-                    f"{operation_name} 失败，已达最大重试次数 "
-                    f"{max_retries}: {e}"
-                ) from e
+                        logger.error("failure_callback 执行失败: %s", cb_err)
+                raise RuntimeError(f"{operation_name} 失败，已达最大重试次数 {max_retries}: {e}") from e
             # 指数退避 + jitter（避免惊群）
             delay = min(
-                backoff_base * (2 ** attempt),
+                backoff_base * (2**attempt),
                 backoff_max,
             )
             jitter = random.uniform(0, 1.0)
             wait_time = delay + jitter
             logger.warning(
                 "%s 第 %d/%d 次尝试失败: %s，%.2f 秒后重试",
-                operation_name, attempt + 1, total_attempts, e, wait_time,
+                operation_name,
+                attempt + 1,
+                total_attempts,
+                e,
+                wait_time,
             )
             await asyncio.sleep(wait_time)
     # 理论上不应到达

@@ -103,9 +103,7 @@ class SSEConnectionManager:
             for cid in clients_to_remove:
                 self._clients[task_id].pop(cid, None)
 
-    async def send_to_client(
-        self, task_id: str, client_id: str, event_type: str, data: dict[str, Any]
-    ):
+    async def send_to_client(self, task_id: str, client_id: str, event_type: str, data: dict[str, Any]):
         """Send an event to a specific client."""
         async with self._get_lock():
             if task_id not in self._clients or client_id not in self._clients[task_id]:
@@ -138,6 +136,17 @@ class SSEConnectionManager:
     def get_cancel_event(self, task_id: str) -> Optional[asyncio.Event]:
         """Get the cancellation event for a task."""
         return self._cancel_events.get(task_id)
+
+    async def shutdown(self) -> None:
+        """关闭所有 SSE 连接并清理状态（应用退出时调用）。
+
+        清空客户端注册表与取消事件，不等待单个队列排空——
+        应用退出场景无需优雅排空。
+        """
+        async with self._get_lock():
+            self._clients.clear()
+            self._cancel_events.clear()
+        logger.info("SSE 管理器已关闭（全部连接已清理）")
 
     async def cleanup_timeout_clients(self):
         """Remove clients that have timed out."""
@@ -179,15 +188,9 @@ class TrainingProgressCallback:
         self._total_epochs = total_epochs
         self._start_time = time.time()
 
-    def __call__(
-        self, epoch: int, loss: float, metrics: Optional[dict] = None, **kwargs
-    ):
+    def __call__(self, epoch: int, loss: float, metrics: Optional[dict] = None, **kwargs):
         """Called after each training epoch."""
-        progress = (
-            round((epoch / self._total_epochs) * 100, 1)
-            if self._total_epochs > 0
-            else 0.0
-        )
+        progress = round((epoch / self._total_epochs) * 100, 1) if self._total_epochs > 0 else 0.0
 
         data = {
             "epoch": epoch,
@@ -199,9 +202,7 @@ class TrainingProgressCallback:
         }
 
         # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
-        broadcast_task = asyncio.create_task(
-            self._manager.broadcast(self._task_id, "progress", data)
-        )
+        broadcast_task = asyncio.create_task(self._manager.broadcast(self._task_id, "progress", data))
         _active_broadcast_tasks.add(broadcast_task)
 
         def _on_broadcast_done(t: asyncio.Task) -> None:
@@ -217,9 +218,7 @@ class TrainingProgressCallback:
 
         broadcast_task.add_done_callback(_on_broadcast_done)
 
-    async def send_complete(
-        self, status: str, final_loss: float, training_time: Optional[float] = None
-    ):
+    async def send_complete(self, status: str, final_loss: float, training_time: Optional[float] = None):
         """Send training completion event."""
         if training_time is None:
             training_time = time.time() - self._start_time
@@ -248,8 +247,6 @@ class TrainingProgressCallback:
 sse_manager = SSEConnectionManager()
 
 
-def create_progress_callback(
-    task_id: str, total_epochs: int
-) -> TrainingProgressCallback:
+def create_progress_callback(task_id: str, total_epochs: int) -> TrainingProgressCallback:
     """Factory function to create a progress callback for a training task."""
     return TrainingProgressCallback(sse_manager, task_id, total_epochs)

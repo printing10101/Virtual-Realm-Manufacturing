@@ -87,9 +87,7 @@ class MemoryAugmentor:
     # 公共接口
     # ------------------------------------------------------------------
 
-    async def retrieve_similar(
-        self, triple: Triple
-    ) -> list[StoredTrajectory]:
+    async def retrieve_similar(self, triple: Triple) -> list[StoredTrajectory]:
         """检索与当前三元组相似的历史轨迹。
 
         Args:
@@ -134,9 +132,7 @@ class MemoryAugmentor:
             return ""
 
         # 取 last_retrieve_scores 中的分数信息（若对齐）
-        scores_map: dict[str, SimilarityScore] = {
-            r.verification_id: s for r, s in self.last_retrieve_scores
-        }
+        scores_map: dict[str, SimilarityScore] = {r.verification_id: s for r, s in self.last_retrieve_scores}
 
         lines: list[str] = []
         lines.append(f"共检索到 {len(records)} 条历史相似案例：")
@@ -144,10 +140,7 @@ class MemoryAugmentor:
 
         for idx, record in enumerate(records, start=1):
             score = scores_map.get(record.verification_id)
-            score_text = (
-                f"（相似度 {score.total_score:.2f}）"
-                if score else ""
-            )
+            score_text = f"（相似度 {score.total_score:.2f}）" if score else ""
 
             # 三元组简短表示
             t = record.triple or {}

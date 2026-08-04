@@ -31,12 +31,11 @@ import uuid
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Deque, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Deque, Dict, List, Optional, Sequence
 
 from app.integrations.mtconnect.parser import Sample
 from app.models.machining_record import (
     MachiningRecordCreate,
-    _new_record_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,9 +68,7 @@ class CollectorContext:
 
     def __post_init__(self) -> None:
         if not self.machine_id or not self.tool_id or not self.material:
-            raise ValueError(
-                "CollectorContext.machine_id / tool_id / material are required"
-            )
+            raise ValueError("CollectorContext.machine_id / tool_id / material are required")
 
 
 # ---------------------------------------------------------------------------
@@ -130,9 +127,7 @@ def convert_sample_to_record(
 # ---------------------------------------------------------------------------
 
 
-def _build_series_id(
-    context: CollectorContext, start_ts: datetime, suffix: str = ""
-) -> str:
+def _build_series_id(context: CollectorContext, start_ts: datetime, suffix: str = "") -> str:
     """构造 TDengine 时序子表 ID。
 
     Format: ``{prefix}_{machine_id}_{tool_id}_{utc_ts}_{suffix}``
@@ -175,10 +170,7 @@ def aggregate_samples_to_record(
     if not samples:
         raise ValueError("aggregate_samples_to_record requires at least one sample")
     if strategy not in {"mean", "last", "max", "min"}:
-        raise ValueError(
-            f"Unknown aggregation strategy: {strategy!r}; "
-            "expected one of: mean, last, max, min"
-        )
+        raise ValueError(f"Unknown aggregation strategy: {strategy!r}; expected one of: mean, last, max, min")
 
     start_ts = samples[0].observed_at or datetime.now(timezone.utc)
     end_ts = samples[-1].observed_at or start_ts
@@ -207,14 +199,10 @@ def aggregate_samples_to_record(
         spindle_speed = _reduce(speed_values, strategy)
         feed_rate = _reduce(feed_values, strategy)
 
-    spindle_load = (
-        _reduce(load_values, "mean") if load_values else None
-    )
+    spindle_load = _reduce(load_values, "mean") if load_values else None
     execution = executions[-1] if executions else None
 
-    series_id = _build_series_id(
-        context, start_ts, suffix=f"agg{uuid.uuid4().hex[:6]}"
-    )
+    series_id = _build_series_id(context, start_ts, suffix=f"agg{uuid.uuid4().hex[:6]}")
 
     duration = (end_ts - start_ts).total_seconds() if end_ts >= start_ts else 0.0
 
@@ -318,11 +306,7 @@ class SampleBatchAggregator:
             return True
         if self._last_flush_at is None:
             # 第一次 flush 用窗口起始时间作为基线
-            baseline = (
-                self._current_window_start.timestamp()
-                if self._current_window_start
-                else None
-            )
+            baseline = self._current_window_start.timestamp() if self._current_window_start else None
             if baseline is None:
                 return False
 

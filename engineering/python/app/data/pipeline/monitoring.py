@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PerformanceMetrics:
     """性能指标"""
+
     latency_ms: float = 0.0
     throughput_per_sec: float = 0.0
     memory_usage_mb: float = 0.0
@@ -98,6 +99,7 @@ class PipelineMonitor:
     def _get_memory_usage(self) -> float:
         try:
             import psutil
+
             process = psutil.Process()
             return process.memory_info().rss / (1024 * 1024)
         except ImportError:
@@ -118,6 +120,7 @@ class PipelineMonitor:
         if metrics.memory_usage_mb > 0:
             try:
                 import psutil
+
                 mem_pct = psutil.Process().memory_percent()
                 if mem_pct > self.config.alert_threshold_memory_pct:
                     self._trigger_alert(

@@ -191,8 +191,8 @@ class TestDryRunPreview:
         assert path1["op_name"] == "OP01-粗铣平面"
         assert path1["tool_type"] == "endmill_D10"
         assert path1["start_pos"]["z"] == 50.0  # 从安全高度开始
-        assert path1["end_pos"]["z"] == -5.0  # 到深度5mm
-        assert path1["travel_distance"] == 55.0  # 50 - (-5) = 55
+        assert path1["end_pos"]["z"] == 45.0  # 毛坯顶面 50 - 深度 5
+        assert path1["travel_distance"] == 5.0  # 50 - 45 = 5
         assert path1["machining_method"] == "粗铣"
 
     def test_dry_run_preview_time_estimation(self, generator, sample_operation_plan):
@@ -440,11 +440,11 @@ class TestDryRunPreview:
             operation_plan=sample_operation_plan,
         )
 
-        # 验证默认值
+        # 验证默认值（safe_z 默认 80.0：安全高度高于毛坯顶面 50.0）
         assert result["controller_type"] == "fanuc_0i"
         assert result["material"] == "45#钢"
         assert result["program_number"] == 1000
-        assert result["safe_z"] == 50.0
+        assert result["safe_z"] == 80.0
 
     def test_dry_run_preview_multiple_features_same_tool(self, generator):
         """测试同一刀具加工多个特征"""

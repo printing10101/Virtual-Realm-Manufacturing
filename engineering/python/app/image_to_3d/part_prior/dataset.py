@@ -23,6 +23,7 @@
 - 每个样本的预处理参数必须记录到 MLflow
 - 不允许在 test 集上做模型选择
 """
+
 from __future__ import annotations
 
 import json
@@ -162,18 +163,14 @@ def voxelize_points(
     Returns:
         (voxel_dim, voxel_dim, voxel_dim) 二值体素网格（0 或 1）
     """
-    voxel = np.zeros(
-        (voxel_dim, voxel_dim, voxel_dim), dtype=np.float32
-    )
+    voxel = np.zeros((voxel_dim, voxel_dim, voxel_dim), dtype=np.float32)
     # 归一化点到 [0, voxel_dim)
     normalized = np.zeros_like(points)
     normalized[:, 0] = (points[:, 0] / bbox[0]) * voxel_dim
     normalized[:, 1] = (points[:, 1] / bbox[1]) * voxel_dim
     normalized[:, 2] = (points[:, 2] / bbox[2]) * voxel_dim
     # 栅格化（保留落在范围内的点）
-    valid = (
-        (normalized >= 0).all(axis=1) & (normalized < voxel_dim).all(axis=1)
-    )
+    valid = (normalized >= 0).all(axis=1) & (normalized < voxel_dim).all(axis=1)
     indices = normalized[valid].astype(np.int64)
     for idx in indices:
         voxel[idx[0], idx[1], idx[2]] += 1.0
@@ -230,9 +227,7 @@ def load_dataset_manifest(manifest_path: Path) -> dict[str, Any]:
         raise
 
     if not isinstance(manifest, dict):
-        raise ValueError(
-            f"manifest 格式错误：期望 dict，实际 {type(manifest).__name__}: {manifest_path}"
-        )
+        raise ValueError(f"manifest 格式错误：期望 dict，实际 {type(manifest).__name__}: {manifest_path}")
 
     logger.info(
         "加载 manifest: %s（%d 类别, %d 样本）",

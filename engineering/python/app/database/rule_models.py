@@ -4,8 +4,6 @@ SQLAlchemy ORM models for process rules database.
 Defines RuleGroup and ProcessRule models for the rule_groups and rules tables.
 """
 
-from datetime import datetime
-
 from sqlalchemy import (
     Column,
     Integer,

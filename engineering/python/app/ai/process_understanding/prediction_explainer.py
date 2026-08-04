@@ -56,10 +56,7 @@ class PredictionExplanation:
     def to_dict(self) -> dict[str, Any]:
         return {
             "summary": self.summary,
-            "sections": [
-                {"title": s.title, "content": s.content, "priority": s.priority}
-                for s in self.sections
-            ],
+            "sections": [{"title": s.title, "content": s.content, "priority": s.priority} for s in self.sections],
             "recommended_actions": self.recommended_actions,
             "attention_points": self.attention_points,
             "risk_level": self.risk_level,
@@ -207,11 +204,13 @@ class PredictionExplainer:
 
             sections = []
             for sec in data.get("sections", []):
-                sections.append(ExplanationSection(
-                    title=sec.get("title", ""),
-                    content=sec.get("content", ""),
-                    priority=sec.get("priority", "normal"),
-                ))
+                sections.append(
+                    ExplanationSection(
+                        title=sec.get("title", ""),
+                        content=sec.get("content", ""),
+                        priority=sec.get("priority", "normal"),
+                    )
+                )
 
             return PredictionExplanation(
                 summary=data.get("summary", ""),
@@ -245,36 +244,44 @@ class PredictionExplainer:
 
         # 切削力分析
         if prediction.force_pred > 500:
-            sections.append(ExplanationSection(
-                "切削力偏高",
-                f"当前预测切削力为 {prediction.force_pred:.1f} N，超出正常范围。"
-                f"高切削力可能导致刀具磨损加速和工件变形。",
-                "high",
-            ))
+            sections.append(
+                ExplanationSection(
+                    "切削力偏高",
+                    f"当前预测切削力为 {prediction.force_pred:.1f} N，超出正常范围。"
+                    f"高切削力可能导致刀具磨损加速和工件变形。",
+                    "high",
+                )
+            )
             actions.append("检查切削参数（切削速度、进给量、切深）是否合理")
             actions.append("检查刀具是否磨损，必要时更换刀具")
             risk_level = "high"
         elif prediction.force_pred > 300:
-            sections.append(ExplanationSection(
-                "切削力正常偏高",
-                f"预测切削力为 {prediction.force_pred:.1f} N，处于正常偏高范围，注意监控。",
-                "normal",
-            ))
+            sections.append(
+                ExplanationSection(
+                    "切削力正常偏高",
+                    f"预测切削力为 {prediction.force_pred:.1f} N，处于正常偏高范围，注意监控。",
+                    "normal",
+                )
+            )
         else:
-            sections.append(ExplanationSection(
-                "切削力正常",
-                f"预测切削力为 {prediction.force_pred:.1f} N，处于正常范围。",
-                "low",
-            ))
+            sections.append(
+                ExplanationSection(
+                    "切削力正常",
+                    f"预测切削力为 {prediction.force_pred:.1f} N，处于正常范围。",
+                    "low",
+                )
+            )
 
         # 刀具磨损分析
         if prediction.wear_pred > WEAR_REPLACEMENT_THRESHOLD:
-            sections.append(ExplanationSection(
-                "刀具磨损严重 - 需要立即处理",
-                f"预测刀具磨损量为 {prediction.wear_pred:.3f} mm，已达到或超过磨损极限。"
-                f"继续使用可能导致加工质量下降和安全隐患。",
-                "high",
-            ))
+            sections.append(
+                ExplanationSection(
+                    "刀具磨损严重 - 需要立即处理",
+                    f"预测刀具磨损量为 {prediction.wear_pred:.3f} mm，已达到或超过磨损极限。"
+                    f"继续使用可能导致加工质量下降和安全隐患。",
+                    "high",
+                )
+            )
             actions.append("立即停机更换刀具")
             attention.append("更换刀具后需重新对刀并验证首件尺寸")
             if risk_level != "high":
@@ -282,40 +289,46 @@ class PredictionExplainer:
             else:
                 risk_level = "critical"
         elif prediction.wear_pred > WEAR_WARNING_THRESHOLD:
-            sections.append(ExplanationSection(
-                "刀具磨损需关注",
-                f"预测刀具磨损量为 {prediction.wear_pred:.3f} mm，接近磨损极限，"
-                f"建议提前准备备用刀具。",
-                "normal",
-            ))
+            sections.append(
+                ExplanationSection(
+                    "刀具磨损需关注",
+                    f"预测刀具磨损量为 {prediction.wear_pred:.3f} mm，接近磨损极限，建议提前准备备用刀具。",
+                    "normal",
+                )
+            )
             actions.append("准备备用刀具")
             attention.append("密切关注加工表面质量和尺寸变化")
         else:
-            sections.append(ExplanationSection(
-                "刀具磨损正常",
-                f"预测刀具磨损量为 {prediction.wear_pred:.3f} mm，处于正常范围。",
-                "low",
-            ))
+            sections.append(
+                ExplanationSection(
+                    "刀具磨损正常",
+                    f"预测刀具磨损量为 {prediction.wear_pred:.3f} mm，处于正常范围。",
+                    "low",
+                )
+            )
 
         # 异常概率分析
         if prediction.anomaly_prob > 50:
-            sections.append(ExplanationSection(
-                "异常风险较高",
-                f"JEPA视觉分析显示异常概率为 {prediction.anomaly_prob:.1f}%，"
-                f"建议仔细检查工件状态和加工过程。",
-                "high",
-            ))
+            sections.append(
+                ExplanationSection(
+                    "异常风险较高",
+                    f"JEPA视觉分析显示异常概率为 {prediction.anomaly_prob:.1f}%，建议仔细检查工件状态和加工过程。",
+                    "high",
+                )
+            )
             actions.append("检查工件装夹是否牢固")
             actions.append("检查冷却液供应是否正常")
             attention.append("增加巡检频次，关注加工声音和振动变化")
             if risk_level == "normal":
                 risk_level = "high"
         elif prediction.anomaly_prob > 30:
-            sections.append(ExplanationSection(
-                "存在轻微异常迹象",
-                f"异常概率为 {prediction.anomaly_prob:.1f}%，建议保持关注。",
-                "normal",
-            ))
+            sections.append(
+                ExplanationSection(
+                    "存在轻微异常迹象",
+                    f"异常概率为 {prediction.anomaly_prob:.1f}%，建议保持关注。",
+                    "normal",
+                )
+            )
 
         return PredictionExplanation(
             summary=f"风险等级: {risk_level}。{sections[0].content[:50] if sections else '系统运行正常'}...",
@@ -330,8 +343,6 @@ class PredictionExplainer:
         return {
             "total_explanations": self._total_explanations,
             "avg_latency_ms": (
-                self._total_latency_ms / self._total_explanations
-                if self._total_explanations > 0
-                else 0.0
+                self._total_latency_ms / self._total_explanations if self._total_explanations > 0 else 0.0
             ),
         }

@@ -18,11 +18,11 @@ GSK 与 Fanuc 0i 的关键差异：
 
 实现策略：继承 Fanuc 0i，只 override 跟 GSK 不同的方法。
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple
 
-from app.postprocessor.base import BasePostProcessor
 from app.postprocessor.fanuc import FanucPostProcessor
 
 
@@ -78,7 +78,7 @@ class GSKPostProcessor(FanucPostProcessor):
             "G00 G91 G30 X0. Y0.",
             f"T{tool_id:02d} M06",
             f"G00 G90 {wcs}",
-            f"X0. Y0.",
+            "X0. Y0.",
             f"G00 G43 Z{self._fmt(self.safe_z_height)} H{tool_id:02d}",
             f"G01 Z{self._fmt(length_comp)} F{feed}",
         ]
@@ -99,10 +99,7 @@ class GSKPostProcessor(FanucPostProcessor):
         i = center[0] - start[0]
         j = center[1] - start[1]
         feed = self._fmt(self.get_feed_rate(self.rapid_feed))
-        return (
-            f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} "
-            f"I{self._fmt(i)} J{self._fmt(j)} F{feed}"
-        )
+        return f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} I{self._fmt(i)} J{self._fmt(j)} F{feed}"
 
     def format_cycle_drill(
         self,

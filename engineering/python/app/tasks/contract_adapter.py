@@ -33,6 +33,7 @@
    构造闭包 ``executor`` 内部调用 ``handler.execute(ctx)`` 并把
    TaskResult 的 outputs/metrics 回写。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -110,7 +111,9 @@ def _record_to_result(record: TaskRecord) -> TaskResult:
                 except (TypeError, ValueError) as e:
                     logger.warning(
                         "TaskRecord %s 输出 %s 反序列化 Artifact 失败: %s",
-                        record.job_id, name, e,
+                        record.job_id,
+                        name,
+                        e,
                     )
         raw_metrics = record.result.get("metrics") or {}
         if isinstance(raw_metrics, dict):
@@ -146,9 +149,9 @@ def _parse_sse_event(raw: str) -> tuple[Optional[str], Optional[dict]]:
         if not line:
             continue
         if line.startswith("event:"):
-            event_type = line[len("event:"):].strip()
+            event_type = line[len("event:") :].strip()
         elif line.startswith("data:"):
-            payload = line[len("data:"):].strip()
+            payload = line[len("data:") :].strip()
             try:
                 parsed = json.loads(payload)
                 if isinstance(parsed, dict):
@@ -226,7 +229,7 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
         # 1. 校验 task_type 已注册
         try:
             handler = self.registry.get(task_type)
-        except KeyError as e:
+        except KeyError:
             logger.warning("ITaskExecutor.submit 失败：task_type=%s 未注册", task_type)
             raise
 
@@ -280,8 +283,7 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
             # 序列化 TaskResult 为 dict（用于 record.result 持久化）
             return {
                 "outputs": {
-                    name: art.__dict__ if isinstance(art, Artifact) else art
-                    for name, art in result.outputs.items()
+                    name: art.__dict__ if isinstance(art, Artifact) else art for name, art in result.outputs.items()
                 },
                 "metrics": dict(result.metrics),
                 "error_code": result.error_code,
@@ -299,9 +301,7 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
             except asyncio.CancelledError:
                 logger.info("Task %s 被取消", job_id)
             except Exception as e:
-                logger.error(
-                    "Task %s execute_task 异常: %s", job_id, e, exc_info=True
-                )
+                logger.error("Task %s execute_task 异常: %s", job_id, e, exc_info=True)
 
         # [H8] 保存任务引用到 set，防止 asyncio.create_task 弱引用被 GC 回收
         # 导致任务在执行中被取消且无异常日志。

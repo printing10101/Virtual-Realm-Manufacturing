@@ -186,7 +186,9 @@ class ParametricGeometryPipeline:
         self._store.create(task)
         logger.info(
             "创建参数化几何任务 task_id=%s source_fe_task_id=%s precision_tier=%s",
-            task_id, source_feature_extraction_task_id, precision_tier,
+            task_id,
+            source_feature_extraction_task_id,
+            precision_tier,
         )
         return task
 
@@ -214,9 +216,7 @@ class ParametricGeometryPipeline:
             ParametricGeometryTaskStatus.PENDING.value,
             ParametricGeometryTaskStatus.FAILED.value,
         ):
-            raise ParametricGeometryError(
-                f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）"
-            )
+            raise ParametricGeometryError(f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）")
 
         # 标记为 RUNNING
         self._store.update(
@@ -231,10 +231,7 @@ class ParametricGeometryPipeline:
             self._store.update(task_id, input_features=features)
 
             if not features:
-                raise FeaturesLoadError(
-                    f"阶段 2 confirmed_features.json 中无任何特征: "
-                    f"{task.input_features_path}"
-                )
+                raise FeaturesLoadError(f"阶段 2 confirmed_features.json 中无任何特征: {task.input_features_path}")
 
             # 2. 特征 → BrepShape
             brep_result = convert_features_to_brep(features)
@@ -260,9 +257,7 @@ class ParametricGeometryPipeline:
             )
 
             if not write_result.success:
-                raise ParametricGeometryError(
-                    f"STEP 写入失败: {write_result.error_message}"
-                )
+                raise ParametricGeometryError(f"STEP 写入失败: {write_result.error_message}")
 
             # 5. 持久化装配信息（用于工程师审核回溯）
             self._persist_assembly_info(task_id, assembly_plan, brep_result)
@@ -298,9 +293,7 @@ class ParametricGeometryPipeline:
             )
 
         except Exception as e:
-            safe = safe_error_message(
-                e, context="parametric_geometry.run_pipeline"
-            )
+            safe = safe_error_message(e, context="parametric_geometry.run_pipeline")
             self._store.update(
                 task_id,
                 status=ParametricGeometryTaskStatus.FAILED.value,
@@ -360,25 +353,16 @@ class ParametricGeometryPipeline:
             raise StepReviewError(f"任务不存在: {task_id}")
 
         if task.status != ParametricGeometryTaskStatus.STEP_GENERATED.value:
-            raise StepReviewError(
-                f"任务状态不允许审核: {task.status}（仅 step_generated 可审核）"
-            )
+            raise StepReviewError(f"任务状态不允许审核: {task.status}（仅 step_generated 可审核）")
 
         # 验证 review_status 合法
         valid_statuses = {s.value for s in StepReviewStatus}
         if review_status not in valid_statuses:
-            raise StepReviewError(
-                f"非法 review_status: {review_status}（合法值: {valid_statuses}）"
-            )
+            raise StepReviewError(f"非法 review_status: {review_status}（合法值: {valid_statuses}）")
 
         # 验证 edited 模式必须有 edited_params
-        if (
-            review_status == StepReviewStatus.EDITED.value
-            and not edited_params
-        ):
-            raise StepReviewError(
-                "review_status=edited 时必须提供 edited_params"
-            )
+        if review_status == StepReviewStatus.EDITED.value and not edited_params:
+            raise StepReviewError("review_status=edited 时必须提供 edited_params")
 
         # 找到对应的 ReviewedFeatureRef
         target: ReviewedFeatureRef | None = None
@@ -387,9 +371,7 @@ class ParametricGeometryPipeline:
                 target = f
                 break
         if target is None:
-            raise StepReviewError(
-                f"特征不存在: {feature_id}（task_id={task_id}）"
-            )
+            raise StepReviewError(f"特征不存在: {feature_id}（task_id={task_id}）")
 
         # 更新审核字段（直接修改对象，update 触发持久化）
         target.review_status = review_status
@@ -399,15 +381,8 @@ class ParametricGeometryPipeline:
         target.reviewed_at = time.time()
 
         # 检查是否所有特征都已审核（不再有 pending）
-        all_reviewed = all(
-            f.review_status != StepReviewStatus.PENDING.value
-            for f in task.input_features
-        )
-        new_status = (
-            ParametricGeometryTaskStatus.REVIEWED.value
-            if all_reviewed
-            else task.status
-        )
+        all_reviewed = all(f.review_status != StepReviewStatus.PENDING.value for f in task.input_features)
+        new_status = ParametricGeometryTaskStatus.REVIEWED.value if all_reviewed else task.status
 
         self._store.update(
             task_id,
@@ -417,7 +392,10 @@ class ParametricGeometryPipeline:
 
         logger.info(
             "任务 %s 特征 %s 审核为 %s（all_reviewed=%s）",
-            task_id, feature_id, review_status, all_reviewed,
+            task_id,
+            feature_id,
+            review_status,
+            all_reviewed,
         )
         return target
 
@@ -446,18 +424,14 @@ class ParametricGeometryPipeline:
             raise ParametricGeometryError(f"任务不存在: {task_id}")
 
         if task.status != ParametricGeometryTaskStatus.REVIEWED.value:
-            raise ParametricGeometryError(
-                f"任务状态不允许最终化: {task.status}（仅 reviewed 可最终化）"
-            )
+            raise ParametricGeometryError(f"任务状态不允许最终化: {task.status}（仅 reviewed 可最终化）")
 
         try:
             # 1. 基于审核后的 effective_params 重新转换
             # （rejected 特征会被 convert_features_to_brep 跳过）
             brep_result = convert_features_to_brep(task.input_features)
             if not brep_result.shapes:
-                raise ParametricGeometryError(
-                    "审核后无可用形状（可能全部特征被 rejected）"
-                )
+                raise ParametricGeometryError("审核后无可用形状（可能全部特征被 rejected）")
 
             # 2. 重新装配
             assembly_plan = build_assembly_plan(
@@ -466,18 +440,14 @@ class ParametricGeometryPipeline:
             )
 
             # 3. 写入最终 STEP
-            final_step_path = (
-                Path(task.workspace_dir) / f"{task_id}_final.step"
-            )
+            final_step_path = Path(task.workspace_dir) / f"{task_id}_final.step"
             write_result = write_step_with_fallback(
                 shapes=brep_result.shapes,
                 output_path=final_step_path,
             )
 
             if not write_result.success:
-                raise ParametricGeometryError(
-                    f"最终 STEP 写入失败: {write_result.error_message}"
-                )
+                raise ParametricGeometryError(f"最终 STEP 写入失败: {write_result.error_message}")
 
             # 4. 状态置为 SUCCEEDED
             self._store.update(
@@ -490,7 +460,8 @@ class ParametricGeometryPipeline:
 
             logger.info(
                 "任务 %s 最终 STEP 生成完成 path=%s",
-                task_id, write_result.output_path,
+                task_id,
+                write_result.output_path,
             )
 
             return ParametricGeometryResult(
@@ -507,9 +478,7 @@ class ParametricGeometryPipeline:
                 assembly_summary=get_assembly_summary(assembly_plan),
             )
         except Exception as e:
-            safe = safe_error_message(
-                e, context="parametric_geometry.finalize_step"
-            )
+            safe = safe_error_message(e, context="parametric_geometry.finalize_step")
             self._store.update(
                 task_id,
                 status=ParametricGeometryTaskStatus.FAILED.value,
@@ -517,11 +486,11 @@ class ParametricGeometryPipeline:
             )
             logger.error(
                 "任务 %s 最终化失败 error_id=%s message=%s",
-                task_id, safe.get("error_id"), safe.get("message"),
+                task_id,
+                safe.get("error_id"),
+                safe.get("message"),
             )
-            raise ParametricGeometryError(
-                safe.get("message", "未知错误")
-            ) from e
+            raise ParametricGeometryError(safe.get("message", "未知错误")) from e
 
     # -------------------------------------------------------------------------
     # 取消任务
@@ -546,9 +515,7 @@ class ParametricGeometryPipeline:
             ParametricGeometryTaskStatus.CANCELLED.value,
         }
         if task.status in terminal_states:
-            raise ParametricGeometryError(
-                f"任务已终态，无法取消: {task.status}"
-            )
+            raise ParametricGeometryError(f"任务已终态，无法取消: {task.status}")
 
         self._store.update(
             task_id,
@@ -600,11 +567,7 @@ class ParametricGeometryPipeline:
         """
         engine_used = (task.engine_used if task else None) or "unavailable"
         mesh_calibrated = task.mesh_calibrated if task else False
-        feature_source = (
-            task.source_feature_extraction_task_id
-            if task
-            else "external_upload"
-        )
+        feature_source = task.source_feature_extraction_task_id if task else "external_upload"
         precision_tier = task.precision_tier if task else "standard"
 
         return build_step_disclaimer(
@@ -619,9 +582,7 @@ class ParametricGeometryPipeline:
     # 内部工具
     # -------------------------------------------------------------------------
 
-    def _load_input_features(
-        self, input_features_path: str
-    ) -> list[ReviewedFeatureRef]:
+    def _load_input_features(self, input_features_path: str) -> list[ReviewedFeatureRef]:
         """加载阶段 2 confirmed_features.json。
 
         阶段 2 导出的 features 中 params 字段已是 effective_params（包含工程师编辑），
@@ -639,22 +600,17 @@ class ParametricGeometryPipeline:
         """
         path = Path(input_features_path)
         if not path.exists():
-            raise FeaturesLoadError(
-                f"阶段 2 confirmed_features.json 不存在: {input_features_path}"
-            )
+            raise FeaturesLoadError(f"阶段 2 confirmed_features.json 不存在: {input_features_path}")
 
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
-            raise FeaturesLoadError(
-                f"阶段 2 confirmed_features.json 解析失败: {e}"
-            ) from e
+            raise FeaturesLoadError(f"阶段 2 confirmed_features.json 解析失败: {e}") from e
 
         features_data = data.get("features", [])
         if not isinstance(features_data, list):
             raise FeaturesLoadError(
-                f"confirmed_features.json 中 features 字段不是 list: "
-                f"{type(features_data).__name__}"
+                f"confirmed_features.json 中 features 字段不是 list: {type(features_data).__name__}"
             )
 
         features: list[ReviewedFeatureRef] = []
@@ -674,7 +630,9 @@ class ParametricGeometryPipeline:
                 )
             except KeyError as e:
                 logger.warning(
-                    "跳过非法特征记录（缺字段 %s）: %r", e, f,
+                    "跳过非法特征记录（缺字段 %s）: %r",
+                    e,
+                    f,
                 )
 
         return features
@@ -726,9 +684,7 @@ class ParametricGeometryPipeline:
                 encoding="utf-8",
             )
         except OSError as e:
-            safe = safe_error_message(
-                e, context="parametric_geometry._persist_assembly_info"
-            )
+            safe = safe_error_message(e, context="parametric_geometry._persist_assembly_info")
             logger.warning(
                 "持久化装配信息失败 task_id=%s error_id=%s message=%s",
                 task_id,

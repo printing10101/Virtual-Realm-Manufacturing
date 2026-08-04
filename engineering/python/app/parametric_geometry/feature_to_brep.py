@@ -159,8 +159,7 @@ def _convert_plane(feature: ReviewedFeatureRef) -> BrepShape:
         },
         source_feature_id=feature.feature_id,
         conversion_notes=(
-            f"平面边界按 sqrt(area_mm2={area_mm2:.2f}) 估算为正方形 "
-            f"边长={side_mm:.2f}mm，实际边界需工程师审核"
+            f"平面边界按 sqrt(area_mm2={area_mm2:.2f}) 估算为正方形 边长={side_mm:.2f}mm，实际边界需工程师审核"
         ),
     )
 
@@ -201,10 +200,7 @@ def _convert_cylinder(feature: ReviewedFeatureRef) -> BrepShape:
             "height_mm": height_mm,
         },
         source_feature_id=feature.feature_id,
-        conversion_notes=(
-            f"圆柱 radius={radius_mm:.3f}mm height={height_mm:.3f}mm "
-            f"axis={axis} center={center}"
-        ),
+        conversion_notes=(f"圆柱 radius={radius_mm:.3f}mm height={height_mm:.3f}mm axis={axis} center={center}"),
     )
 
 
@@ -244,8 +240,7 @@ def _convert_hole(feature: ReviewedFeatureRef) -> BrepShape:
         },
         source_feature_id=feature.feature_id,
         conversion_notes=(
-            f"孔 radius={radius_mm:.3f}mm depth={depth_mm:.3f}mm "
-            f"normal={normal} center={center}（布尔减运算）"
+            f"孔 radius={radius_mm:.3f}mm depth={depth_mm:.3f}mm normal={normal} center={center}（布尔减运算）"
         ),
     )
 
@@ -286,8 +281,7 @@ def _convert_boss(feature: ReviewedFeatureRef) -> BrepShape:
         },
         source_feature_id=feature.feature_id,
         conversion_notes=(
-            f"凸台 radius={radius_mm:.3f}mm height={height_mm:.3f}mm "
-            f"normal={normal} center={center}（布尔加运算）"
+            f"凸台 radius={radius_mm:.3f}mm height={height_mm:.3f}mm normal={normal} center={center}（布尔加运算）"
         ),
     )
 
@@ -343,30 +337,36 @@ def convert_features_to_brep(
     for feature in features:
         # 跳过工程师已拒绝的特征
         if feature.review_status == "rejected":
-            result.skipped_features.append({
-                "feature_id": feature.feature_id,
-                "feature_type": feature.feature_type,
-                "reason": "rejected_by_engineer",
-            })
+            result.skipped_features.append(
+                {
+                    "feature_id": feature.feature_id,
+                    "feature_type": feature.feature_type,
+                    "reason": "rejected_by_engineer",
+                }
+            )
             continue
 
         converter = _FEATURE_CONVERTERS.get(feature.feature_type)
         if converter is None:
-            result.skipped_features.append({
-                "feature_id": feature.feature_id,
-                "feature_type": feature.feature_type,
-                "reason": f"unsupported_feature_type: {feature.feature_type}",
-            })
+            result.skipped_features.append(
+                {
+                    "feature_id": feature.feature_id,
+                    "feature_type": feature.feature_type,
+                    "reason": f"unsupported_feature_type: {feature.feature_type}",
+                }
+            )
             continue
 
         try:
             shape = converter(feature)
             result.shapes.append(shape)
         except Exception as e:
-            result.conversion_errors.append({
-                "feature_id": feature.feature_id,
-                "feature_type": feature.feature_type,
-                "error": str(e),
-            })
+            result.conversion_errors.append(
+                {
+                    "feature_id": feature.feature_id,
+                    "feature_type": feature.feature_type,
+                    "error": str(e),
+                }
+            )
 
     return result

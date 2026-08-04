@@ -51,11 +51,7 @@ class StockBoundingBox:
         Returns:
             True if the point is inside or on the boundary of the box.
         """
-        return (
-            self.x_min <= x <= self.x_max
-            and self.y_min <= y <= self.y_max
-            and self.z_min <= z <= self.z_max
-        )
+        return self.x_min <= x <= self.x_max and self.y_min <= y <= self.y_max and self.z_min <= z <= self.z_max
 
     def intersects_bbox(self, other: "StockBoundingBox") -> bool:
         """Check if this bounding box intersects another.
@@ -84,11 +80,7 @@ class StockBoundingBox:
         Returns:
             Volume in cubic millimeters.
         """
-        return (
-            (self.x_max - self.x_min)
-            * (self.y_max - self.y_min)
-            * (self.z_max - self.z_min)
-        )
+        return (self.x_max - self.x_min) * (self.y_max - self.y_min) * (self.z_max - self.z_min)
 
     def center(self) -> tuple[float, float, float]:
         """Get the center point of the bounding box.

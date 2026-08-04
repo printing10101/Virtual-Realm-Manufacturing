@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
 from app.utils.time import utcnow
 from sqlalchemy import (
@@ -81,9 +80,7 @@ class Dataset(Base):
         lazy="selectin",
     )
 
-    __table_args__ = (
-        Index("ix_datasets_owner_status", "owner_id", "status"),
-    )
+    __table_args__ = (Index("ix_datasets_owner_status", "owner_id", "status"),)
 
 
 class DatasetVersion(Base):

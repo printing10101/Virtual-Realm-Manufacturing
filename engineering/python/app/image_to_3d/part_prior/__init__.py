@@ -20,6 +20,7 @@
 
 对应 ADR：ADR-020 思路 2 / ADR-006 拍照重建模块
 """
+
 from __future__ import annotations
 
 from app.image_to_3d.part_prior.encoder import (

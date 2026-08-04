@@ -12,11 +12,10 @@
 
 from __future__ import annotations
 
-import os
 from typing import Iterator
 
 import pytest
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.knowledge_graph.graph_store import GraphStore
@@ -93,12 +92,8 @@ class TestGraphStoreNodes:
 
     def test_update_node_properties_merge(self) -> None:
         g = GraphStore()
-        g.add_node(
-            "material", "material-45steel", {"name": "45 steel", "density": 7.85}
-        )
-        assert g.update_node_properties(
-            "material-45steel", {"hardness_hb": 197.0}
-        ) is True
+        g.add_node("material", "material-45steel", {"name": "45 steel", "density": 7.85})
+        assert g.update_node_properties("material-45steel", {"hardness_hb": 197.0}) is True
         node = g.get_node("material-45steel")
         assert node["properties"] == {
             "name": "45 steel",
@@ -164,9 +159,7 @@ class TestGraphStoreEdges:
             "SUITABLE_FOR",
             {"confidence": 0.9, "source": "rule"},
         )
-        edge = g.get_edge(
-            "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-        )
+        edge = g.get_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR")
         assert edge is not None
         assert edge["source_id"] == "tool-endmill-10"
         assert edge["target_id"] == "material-45steel"
@@ -177,12 +170,8 @@ class TestGraphStoreEdges:
     def test_add_edge_with_default_confidence(self) -> None:
         g = GraphStore()
         self._seed(g)
-        g.add_edge(
-            "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-        )
-        edge = g.get_edge(
-            "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-        )
+        g.add_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR")
+        edge = g.get_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR")
         assert edge is not None
         assert edge["properties"]["confidence"] == 0.5
 
@@ -190,13 +179,9 @@ class TestGraphStoreEdges:
         g = GraphStore()
         g.add_node("material", "material-45steel")
         with pytest.raises(ValueError):
-            g.add_edge(
-                "missing-source", "material-45steel", "SUITABLE_FOR"
-            )
+            g.add_edge("missing-source", "material-45steel", "SUITABLE_FOR")
         with pytest.raises(ValueError):
-            g.add_edge(
-                "material-45steel", "missing-target", "SUITABLE_FOR"
-            )
+            g.add_edge("material-45steel", "missing-target", "SUITABLE_FOR")
 
     def test_add_edge_confidence_validation(self) -> None:
         g = GraphStore()
@@ -229,9 +214,7 @@ class TestGraphStoreEdges:
         g = GraphStore()
         self._seed(g)
         with pytest.raises(ValueError):
-            g.add_edge(
-                "tool-endmill-10", "material-45steel", ""
-            )
+            g.add_edge("tool-endmill-10", "material-45steel", "")
 
     def test_has_edge(self) -> None:
         g = GraphStore()
@@ -303,9 +286,7 @@ class TestGraphStoreEdges:
             )
             is True
         )
-        edge = g.get_edge(
-            "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-        )
+        edge = g.get_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR")
         assert edge["properties"]["confidence"] == 0.85
         assert edge["properties"]["source"] == "rule"
 
@@ -373,13 +354,9 @@ class TestGraphStoreEdges:
         )
         edges = g.list_edges_by_source("tool-endmill-10")
         assert len(edges) == 2
-        edges_filtered = g.list_edges_by_source(
-            "tool-endmill-10", edge_type="SUITABLE_FOR"
-        )
+        edges_filtered = g.list_edges_by_source("tool-endmill-10", edge_type="SUITABLE_FOR")
         assert len(edges_filtered) == 2
-        edges_other = g.list_edges_by_source(
-            "tool-endmill-10", edge_type="APPLIED_TO"
-        )
+        edges_other = g.list_edges_by_source("tool-endmill-10", edge_type="APPLIED_TO")
         assert len(edges_other) == 0
 
     def test_list_edges_by_target(self) -> None:
@@ -428,15 +405,11 @@ class TestGraphStoreEdges:
         assert edges[0]["source_id"] == "tool-endmill-10"
         assert edges[0]["target_id"] == "material-45steel"
         # [0.5, 0.7] 区间
-        edges2 = g.list_edges_by_confidence(
-            min_confidence=0.5, max_confidence=0.7
-        )
+        edges2 = g.list_edges_by_confidence(min_confidence=0.5, max_confidence=0.7)
         assert len(edges2) == 1
         assert edges2[0]["properties"]["confidence"] == 0.6
         # edge_type 过滤
-        edges3 = g.list_edges_by_confidence(
-            min_confidence=0.0, edge_type="APPLIED_TO"
-        )
+        edges3 = g.list_edges_by_confidence(min_confidence=0.0, edge_type="APPLIED_TO")
         assert len(edges3) == 1
         # 降序
         edges4 = g.list_edges_by_confidence(min_confidence=0.0)
@@ -491,9 +464,7 @@ class TestGraphStoreEdges:
         )
         g.remove_node("tool-endmill-10")
         assert g.edge_count() == 0
-        assert g.get_edge(
-            "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-        ) is None
+        assert g.get_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR") is None
 
     def test_clear(self) -> None:
         g = GraphStore()
@@ -570,9 +541,7 @@ class TestORMModelSchema:
         assert expected.issubset(index_names)
 
     def test_kg_edge_unique_constraint(self) -> None:
-        constraint_names = {
-            con.name for con in KGEdge.__table__.constraints
-        }
+        constraint_names = {con.name for con in KGEdge.__table__.constraints}
         assert "uq_kg_edges_source_target_type" in constraint_names
 
     def test_kg_node_to_dict(self) -> None:
@@ -657,20 +626,14 @@ class TestRepositoryCRUD:
     """KnowledgeGraphRepository 同步 CRUD 端到端测试。"""
 
     def test_upsert_node_new(self, repo: KnowledgeGraphRepository) -> None:
-        orm_obj = repo.upsert_node(
-            "material-45steel", "material", {"name": "45 steel"}
-        )
+        orm_obj = repo.upsert_node("material-45steel", "material", {"name": "45 steel"})
         assert orm_obj.node_id == "material-45steel"
         assert orm_obj.node_type == "material"
         assert orm_obj.properties == {"name": "45 steel"}
 
     def test_upsert_node_existing_merge(self, repo: KnowledgeGraphRepository) -> None:
-        repo.upsert_node(
-            "material-45steel", "material", {"name": "45 steel", "density": 7.85}
-        )
-        repo.upsert_node(
-            "material-45steel", "material", {"hardness_hb": 197.0}
-        )
+        repo.upsert_node("material-45steel", "material", {"name": "45 steel", "density": 7.85})
+        repo.upsert_node("material-45steel", "material", {"hardness_hb": 197.0})
         node = repo.get_node("material-45steel")
         assert node is not None
         assert node.properties == {
@@ -698,9 +661,7 @@ class TestRepositoryCRUD:
         assert repo.count_nodes() == 2
         assert repo.count_nodes("material") == 1
 
-    def test_delete_node_cascades_edges(
-        self, repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_delete_node_cascades_edges(self, repo: KnowledgeGraphRepository) -> None:
         repo.upsert_node("material-45steel", "material", {})
         repo.upsert_node("tool-endmill-10", "tool", {})
         repo.upsert_edge(
@@ -712,12 +673,7 @@ class TestRepositoryCRUD:
         assert repo.delete_node("tool-endmill-10") is True
         assert repo.get_node("tool-endmill-10") is None
         # 边被级联删除
-        assert (
-            repo.get_edge(
-                "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-            )
-            is None
-        )
+        assert repo.get_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR") is None
 
     def test_upsert_edge_new(self, repo: KnowledgeGraphRepository) -> None:
         repo.upsert_node("material-45steel", "material", {})
@@ -735,9 +691,7 @@ class TestRepositoryCRUD:
         assert edge.confidence == 0.9
         assert edge.properties == {"source": "rule"}
 
-    def test_upsert_edge_existing_update(
-        self, repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_upsert_edge_existing_update(self, repo: KnowledgeGraphRepository) -> None:
         repo.upsert_node("material-45steel", "material", {})
         repo.upsert_node("tool-endmill-10", "tool", {})
         repo.upsert_edge(
@@ -753,16 +707,12 @@ class TestRepositoryCRUD:
             confidence=0.85,
             properties={"source": "rule"},
         )
-        edge = repo.get_edge(
-            "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-        )
+        edge = repo.get_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR")
         assert edge is not None
         assert edge.confidence == 0.85
         assert edge.properties == {"source": "rule"}
 
-    def test_upsert_edge_confidence_validation(
-        self, repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_upsert_edge_confidence_validation(self, repo: KnowledgeGraphRepository) -> None:
         repo.upsert_node("material-45steel", "material", {})
         repo.upsert_node("tool-endmill-10", "tool", {})
         with pytest.raises(ValueError):
@@ -773,9 +723,7 @@ class TestRepositoryCRUD:
                 confidence=1.5,
             )
 
-    def test_upsert_edge_missing_endpoint_raises(
-        self, repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_upsert_edge_missing_endpoint_raises(self, repo: KnowledgeGraphRepository) -> None:
         with pytest.raises(Exception):  # IntegrityError
             repo.upsert_edge(
                 "missing-source",
@@ -831,9 +779,7 @@ class TestRepositoryCRUD:
         )
         edges = repo.list_edges_by_source("tool-endmill-10")
         assert len(edges) == 2
-        edges_filtered = repo.list_edges_by_source(
-            "tool-endmill-10", edge_type="SUITABLE_FOR"
-        )
+        edges_filtered = repo.list_edges_by_source("tool-endmill-10", edge_type="SUITABLE_FOR")
         assert len(edges_filtered) == 2
 
     def test_list_edges_by_target(self, repo: KnowledgeGraphRepository) -> None:
@@ -849,9 +795,7 @@ class TestRepositoryCRUD:
         assert len(edges) == 1
         assert edges[0].source_id == "tool-endmill-10"
 
-    def test_list_edges_by_confidence(
-        self, repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_list_edges_by_confidence(self, repo: KnowledgeGraphRepository) -> None:
         repo.upsert_node("material-45steel", "material", {})
         repo.upsert_node("material-al6061", "material", {})
         repo.upsert_node("tool-endmill-10", "tool", {})
@@ -871,26 +815,18 @@ class TestRepositoryCRUD:
         edges = repo.list_edges_by_confidence(min_confidence=0.7)
         assert len(edges) == 1
         # [0.5, 0.7]
-        edges2 = repo.list_edges_by_confidence(
-            min_confidence=0.5, max_confidence=0.7
-        )
+        edges2 = repo.list_edges_by_confidence(min_confidence=0.5, max_confidence=0.7)
         assert len(edges2) == 1
         # edge_type 过滤
-        edges3 = repo.list_edges_by_confidence(
-            min_confidence=0.0, edge_type="SUITABLE_FOR"
-        )
+        edges3 = repo.list_edges_by_confidence(min_confidence=0.0, edge_type="SUITABLE_FOR")
         assert len(edges3) == 2
         # 降序
         edges4 = repo.list_edges_by_confidence(min_confidence=0.0)
         assert edges4[0].confidence == 0.9
 
-    def test_list_edges_by_confidence_invalid(
-        self, repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_list_edges_by_confidence_invalid(self, repo: KnowledgeGraphRepository) -> None:
         with pytest.raises(ValueError):
-            repo.list_edges_by_confidence(
-                min_confidence=0.8, max_confidence=0.5
-            )
+            repo.list_edges_by_confidence(min_confidence=0.8, max_confidence=0.5)
 
     def test_delete_edge(self, repo: KnowledgeGraphRepository) -> None:
         repo.upsert_node("material-45steel", "material", {})
@@ -901,18 +837,8 @@ class TestRepositoryCRUD:
             "SUITABLE_FOR",
             confidence=0.9,
         )
-        assert (
-            repo.delete_edge(
-                "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-            )
-            is True
-        )
-        assert (
-            repo.delete_edge(
-                "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-            )
-            is False
-        )
+        assert repo.delete_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR") is True
+        assert repo.delete_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR") is False
 
     def test_count_edges(self, repo: KnowledgeGraphRepository) -> None:
         assert repo.count_edges() == 0
@@ -981,14 +907,10 @@ class TestGraphPersistence:
         )
         return g
 
-    def test_flush_then_load_roundtrip(
-        self, persistence_repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_flush_then_load_roundtrip(self, persistence_repo: KnowledgeGraphRepository) -> None:
         g = self._build_graph()
         # 使用同一个 session_factory
-        persistence = GraphPersistence(
-            session_factory=persistence_repo._session_factory
-        )
+        persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
         stats = persistence.flush_to_repository(g)
         assert stats["nodes_written"] == 5
         assert stats["edges_written"] == 3
@@ -1001,9 +923,7 @@ class TestGraphPersistence:
         assert g2.node_count() == 5
         assert g2.edge_count() == 3
 
-    def test_persistence_survives_reload(
-        self, persistence_repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_persistence_survives_reload(self, persistence_repo: KnowledgeGraphRepository) -> None:
         """模拟服务重启：GraphStore 重新创建后通过 load 恢复。"""
         # 第一次会话：写入数据
         g1 = GraphStore()
@@ -1015,9 +935,7 @@ class TestGraphPersistence:
             "SUITABLE_FOR",
             {"confidence": 0.9, "source": "rule"},
         )
-        persistence = GraphPersistence(
-            session_factory=persistence_repo._session_factory
-        )
+        persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
         persistence.flush_to_repository(g1)
 
         # 第二次会话：模拟重启
@@ -1034,12 +952,8 @@ class TestGraphPersistence:
         assert node is not None
         assert node["properties"]["name"] == "45 steel"
 
-    def test_flush_with_clear_first(
-        self, persistence_repo: KnowledgeGraphRepository
-    ) -> None:
-        persistence = GraphPersistence(
-            session_factory=persistence_repo._session_factory
-        )
+    def test_flush_with_clear_first(self, persistence_repo: KnowledgeGraphRepository) -> None:
+        persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
 
         # 第一次写入
         g1 = self._build_graph()
@@ -1054,12 +968,8 @@ class TestGraphPersistence:
         assert persistence_repo.count_nodes() == 1
         assert persistence_repo.count_edges() == 0
 
-    def test_flush_upsert_updates_existing(
-        self, persistence_repo: KnowledgeGraphRepository
-    ) -> None:
-        persistence = GraphPersistence(
-            session_factory=persistence_repo._session_factory
-        )
+    def test_flush_upsert_updates_existing(self, persistence_repo: KnowledgeGraphRepository) -> None:
+        persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
 
         g1 = GraphStore()
         g1.add_node("material", "material-45steel", {"name": "45 steel"})
@@ -1074,9 +984,7 @@ class TestGraphPersistence:
 
         # 第二次：更新节点属性和关系 confidence
         g2 = GraphStore()
-        g2.add_node(
-            "material", "material-45steel", {"name": "45 steel", "hardness_hb": 197.0}
-        )
+        g2.add_node("material", "material-45steel", {"name": "45 steel", "hardness_hb": 197.0})
         g2.add_node("tool", "tool-endmill-10", {"name": "Endmill D10"})
         g2.add_edge(
             "tool-endmill-10",
@@ -1094,19 +1002,13 @@ class TestGraphPersistence:
             "hardness_hb": 197.0,
         }
         # 关系 confidence 被更新
-        edge = persistence_repo.get_edge(
-            "tool-endmill-10", "material-45steel", "SUITABLE_FOR"
-        )
+        edge = persistence_repo.get_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR")
         assert edge is not None
         assert edge.confidence == 0.95
 
-    def test_end_to_end_persistence_acceptance(
-        self, persistence_repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_end_to_end_persistence_acceptance(self, persistence_repo: KnowledgeGraphRepository) -> None:
         """任务 M1.2 验收脚本的等价测试。"""
-        persistence = GraphPersistence(
-            session_factory=persistence_repo._session_factory
-        )
+        persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
 
         # 步骤 1：创建并落库
         g = GraphStore()
@@ -1128,13 +1030,9 @@ class TestGraphPersistence:
         assert g2.node_count() >= 2
         assert g2.edge_count() == 1
 
-    def test_load_from_empty_db(
-        self, persistence_repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_load_from_empty_db(self, persistence_repo: KnowledgeGraphRepository) -> None:
         """空数据库加载不应抛错。"""
-        persistence = GraphPersistence(
-            session_factory=persistence_repo._session_factory
-        )
+        persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
         g = GraphStore()
         stats = persistence.load_from_repository(g)
         assert stats["nodes_loaded"] == 0
@@ -1144,9 +1042,7 @@ class TestGraphPersistence:
     def test_load_does_not_overwrite_existing_when_replace_false(
         self, persistence_repo: KnowledgeGraphRepository
     ) -> None:
-        persistence = GraphPersistence(
-            session_factory=persistence_repo._session_factory
-        )
+        persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
 
         # 先持久化 2 个节点
         g_seed = self._build_graph()
@@ -1173,13 +1069,9 @@ class TestGraphPersistence:
 class TestAcceptanceScenarios:
     """任务 M1.2 验收脚本场景。"""
 
-    def test_acceptance_end_to_end(
-        self, persistence_repo: KnowledgeGraphRepository
-    ) -> None:
+    def test_acceptance_end_to_end(self, persistence_repo: KnowledgeGraphRepository) -> None:
         """模拟任务描述中的端到端验收脚本。"""
-        persistence = GraphPersistence(
-            session_factory=persistence_repo._session_factory
-        )
+        persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
 
         g = GraphStore()
         g.add_node("material", "material-45steel", {"name": "45 steel"})

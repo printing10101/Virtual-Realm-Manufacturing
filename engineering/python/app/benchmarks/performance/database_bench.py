@@ -13,7 +13,6 @@ import random
 import sqlite3
 import sys
 import time
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -133,7 +132,7 @@ class DatabasePerfBenchmark:
             )
 
         self._conn.commit()
-        logger.info(f"  数据填充完成")
+        logger.info("  数据填充完成")
 
     def test_simple_query(self) -> dict[str, float]:
         """测试简单查询性能。"""
@@ -221,8 +220,7 @@ class DatabasePerfBenchmark:
         for _ in range(10):
             base_time = time.time()
             data_batch = [
-                (base_time + i * 0.1, *np.random.randn(5).tolist(), random.uniform(0, 1))
-                for i in range(n_inserts)
+                (base_time + i * 0.1, *np.random.randn(5).tolist(), random.uniform(0, 1)) for i in range(n_inserts)
             ]
 
             t0 = time.perf_counter()
@@ -253,11 +251,15 @@ class DatabasePerfBenchmark:
         cursor = self._conn.cursor()
 
         # 先插入一些关联数据
-        cursor.execute("INSERT INTO machining_tasks (task_name, material, tool_type) VALUES (?, ?, ?)",
-                      ("test_task", "aluminum", "end_mill"))
+        cursor.execute(
+            "INSERT INTO machining_tasks (task_name, material, tool_type) VALUES (?, ?, ?)",
+            ("test_task", "aluminum", "end_mill"),
+        )
         task_id = cursor.lastrowid
-        cursor.execute("INSERT INTO nc_programs (program_name, gcode_content, task_id) VALUES (?, ?, ?)",
-                      ("test_program", "G00 X0 Y0", task_id))
+        cursor.execute(
+            "INSERT INTO nc_programs (program_name, gcode_content, task_id) VALUES (?, ?, ?)",
+            ("test_program", "G00 X0 Y0", task_id),
+        )
         self._conn.commit()
 
         times: list[float] = []

@@ -14,24 +14,11 @@ References Paperclip's Persistent Agent State design:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
-import os
-import time
-import zlib
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 # shared imports moved to state/__init__.py
-from app.state.exceptions import StatePersistenceError, StateConflictError, StateNotFoundError
 from app.models.agent_state import (
-    AgentState,
-    AgentStatus,
-    Checkpoint,
-    MemoryEntry,
-    SessionContext,
-    StateVersion,
     CURRENT_SCHEMA_VERSION,
     migrate_state,
 )
@@ -53,9 +40,7 @@ class StateMigrationEngine:
     def __init__(self):
         self._migrations: List[Dict[str, Any]] = []
 
-    def register_migration(
-        self, from_version: str, to_version: str, migrator: Callable[[Dict], Dict]
-    ):
+    def register_migration(self, from_version: str, to_version: str, migrator: Callable[[Dict], Dict]):
         self._migrations.append(
             {
                 "from": from_version,

@@ -47,9 +47,7 @@ from app.process_planning.pipeline import (
 logger = logging.getLogger(__name__)
 
 
-def _record_stage_error(
-    exc: BaseException, *, context: str, generic_message: str
-) -> tuple[str, str]:
+def _record_stage_error(exc: BaseException, *, context: str, generic_message: str) -> tuple[str, str]:
     """统一记录阶段错误的安全包装器。
 
     修复：原实现将 ``str(e)`` 直接存储到 ``DxfPipelineStage.errors`` 中，
@@ -68,6 +66,7 @@ def _record_stage_error(
 @dataclass
 class DxfPipelineStage:
     """DXF流水线单个阶段的执行记录。"""
+
     name: str
     status: str = "pending"
     duration_ms: float = 0.0
@@ -91,6 +90,7 @@ class DxfPipelineStage:
 @dataclass
 class DxfPipelineResult:
     """DXF流水线完整执行结果。"""
+
     success: bool = False
     stages: list[DxfPipelineStage] = field(default_factory=list)
     parse_result: Optional[DxfParseResult] = None
@@ -324,8 +324,7 @@ class DxfProcessPipeline:
                 status="success",
                 duration_ms=(time.time() - stage4_start) * 1000,
                 output_summary=(
-                    f"孔数据: {len(part_description.get('holes', []))}条, "
-                    f"材料: {material}, 类型: {part_type}"
+                    f"孔数据: {len(part_description.get('holes', []))}条, 材料: {material}, 类型: {part_type}"
                 ),
             )
         except (ValueError, TypeError, KeyError, AttributeError) as e:
@@ -363,16 +362,11 @@ class DxfProcessPipeline:
             output_summary_parts = []
             if process_result.operation_plan:
                 op = process_result.operation_plan
-                output_summary_parts.append(
-                    f"工序: {len(op.operations)}个, "
-                    f"工时: {op.estimated_time_min:.1f}min"
-                )
+                output_summary_parts.append(f"工序: {len(op.operations)}个, 工时: {op.estimated_time_min:.1f}min")
             if process_result.gcode_result:
                 gc = process_result.gcode_result
                 output_summary_parts.append(
-                    f"G代码: {gc.total_lines}行, "
-                    f"刀具: {gc.tool_count}把, "
-                    f"周期: {gc.estimated_cycle_time_min:.1f}min"
+                    f"G代码: {gc.total_lines}行, 刀具: {gc.tool_count}把, 周期: {gc.estimated_cycle_time_min:.1f}min"
                 )
 
             stage5 = DxfPipelineStage(
@@ -381,14 +375,8 @@ class DxfProcessPipeline:
                 duration_ms=(time.time() - stage5_start) * 1000,
                 input_summary=f"孔: {feature_result.hole_count}个, 材料: {material}",
                 output_summary=" | ".join(output_summary_parts),
-                errors=[
-                    e for s in process_result.stages
-                    for e in s.errors
-                ],
-                warnings=[
-                    w for s in process_result.stages
-                    for w in s.warnings
-                ],
+                errors=[e for s in process_result.stages for e in s.errors],
+                warnings=[w for s in process_result.stages for w in s.warnings],
             )
         except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError, TimeoutError) as e:
             # 工艺规划涉及流程控制和文件I/O
@@ -414,14 +402,11 @@ class DxfProcessPipeline:
 
         # ===== 汇总 =====
         result.stages = stages
-        result.success = all(
-            s.status in ("success", "completed_with_errors") for s in stages
-        )
+        result.success = all(s.status in ("success", "completed_with_errors") for s in stages)
         result.total_duration_ms = (time.time() - pipeline_start) * 1000
 
         summary_parts = [
-            f"DXF流水线{'成功' if result.success else '部分失败'} "
-            f"({result.total_duration_ms:.0f}ms)",
+            f"DXF流水线{'成功' if result.success else '部分失败'} ({result.total_duration_ms:.0f}ms)",
             f"文件: {Path(file_path).name}",
             f"特征: {feature_result.hole_count}孔/{feature_result.plane_count}面, "
             f"外形{feature_result.overall_length:.0f}x"
@@ -429,9 +414,7 @@ class DxfProcessPipeline:
             f"{feature_result.overall_height:.0f}mm",
         ]
         if process_result and process_result.gcode_result:
-            summary_parts.append(
-                f"G代码: {process_result.gcode_result.total_lines}行"
-            )
+            summary_parts.append(f"G代码: {process_result.gcode_result.total_lines}行")
         result.summary = " | ".join(summary_parts)
 
         logger.info("DXF流水线完成: %s", result.summary)
@@ -455,15 +438,17 @@ class DxfProcessPipeline:
         """
         holes_data = []
         for hole in feature_result.holes:
-            holes_data.append({
-                "id": hole.hole_id,
-                "type": hole.hole_type,
-                "position": [hole.center_x, hole.center_y, 0.0],
-                "diameter": hole.diameter,
-                "depth": hole.depth,
-                "tolerance_grade": hole.tolerance_grade,
-                "surface": hole.surface,
-            })
+            holes_data.append(
+                {
+                    "id": hole.hole_id,
+                    "type": hole.hole_type,
+                    "position": [hole.center_x, hole.center_y, 0.0],
+                    "diameter": hole.diameter,
+                    "depth": hole.depth,
+                    "tolerance_grade": hole.tolerance_grade,
+                    "surface": hole.surface,
+                }
+            )
 
         part_description: dict[str, Any] = {
             "material": material,

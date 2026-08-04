@@ -78,11 +78,7 @@ class TGIProvider(LLMProvider):
             if response.status_code != 200:
                 return []
             data = response.json()
-            return [
-                m.get("id", "")
-                for m in data.get("data", [])
-                if m.get("id")
-            ]
+            return [m.get("id", "") for m in data.get("data", []) if m.get("id")]
         except Exception as e:
             logger.warning("TGI list_models failed: %s", e)
             return []
@@ -111,9 +107,7 @@ class TGIProvider(LLMProvider):
         )
         self._measure_latency(start)
         if response.status_code != 200:
-            raise ProviderError(
-                f"TGI API error: {response.status_code} - {response.text}"
-            )
+            raise ProviderError(f"TGI API error: {response.status_code} - {response.text}")
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         choices = data.get("choices", [])

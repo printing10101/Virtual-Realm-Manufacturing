@@ -34,7 +34,6 @@ import json
 import logging
 import threading
 from collections import deque
-from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Deque, Dict, List, Optional
@@ -42,9 +41,8 @@ from typing import Any, Deque, Dict, List, Optional
 from app.dreaming._closed_loop_models import (
     ClosedLoopDecision,
     RuleOutcomeRecord,
-    run_closed_loop,
-    record_rule_outcome,
 )
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,10 +67,6 @@ CLOSED_LOOP_STATE_DIR = "python/outputs/dreaming/closed_loop"
 # ---------------------------------------------------------------------------
 # 数据结构
 # ---------------------------------------------------------------------------
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -184,8 +178,7 @@ class ClosedLoop:
                 )
             except Exception as e:
                 logger.warning(
-                    "ClosedLoop: DempsterShaferFusion 初始化失败，"
-                    "将退化为加权平均：%s",
+                    "ClosedLoop: DempsterShaferFusion 初始化失败，将退化为加权平均：%s",
                     e,
                 )
                 self._fusion = None
@@ -204,8 +197,7 @@ class ClosedLoop:
                 )
             except Exception as e:
                 logger.warning(
-                    "ClosedLoop: TaskRouter 初始化失败，"
-                    "router 反馈将跳过：%s",
+                    "ClosedLoop: TaskRouter 初始化失败，router 反馈将跳过：%s",
                     e,
                 )
                 self._router = None
@@ -221,9 +213,7 @@ class ClosedLoop:
 
                 self._publisher = ProgressivePublisher()
             except Exception as e:
-                logger.warning(
-                    "ClosedLoop: ProgressivePublisher 初始化失败：%s", e
-                )
+                logger.warning("ClosedLoop: ProgressivePublisher 初始化失败：%s", e)
                 self._publisher = None
         return self._publisher
 
@@ -254,9 +244,7 @@ class ClosedLoop:
                     publisher=self._get_publisher(),
                 )
             except Exception as e:
-                logger.warning(
-                    "ClosedLoop: RollbackManager 初始化失败：%s", e
-                )
+                logger.warning("ClosedLoop: RollbackManager 初始化失败：%s", e)
                 self._rollback_mgr = None
         return self._rollback_mgr
 
@@ -295,9 +283,7 @@ class ClosedLoop:
 
         with self._lock:
             if rule_id not in self._windows:
-                self._windows[rule_id] = deque(
-                    maxlen=self._window_size
-                )
+                self._windows[rule_id] = deque(maxlen=self._window_size)
             record = RuleOutcomeRecord(
                 rule_id=rule_id,
                 success=success,
@@ -395,32 +381,22 @@ class ClosedLoop:
                 metrics = collector.collect_metrics(rule_id)
                 if metrics and metrics.hard_constraint_violations > 0:
                     decision.action = "rollback"
-                    decision.reason = (
-                        f"硬约束违反 {metrics.hard_constraint_violations} 次，"
-                        f"触发自动回滚"
-                    )
+                    decision.reason = f"硬约束违反 {metrics.hard_constraint_violations} 次，触发自动回滚"
                     decision.fused_confidence = metrics.confidence
                     decision.conflict = 0.0
                     decision.ds_mass = 0.0
                     return decision
             except Exception as e:
-                logger.debug(
-                    "ClosedLoop: collect_metrics 失败（继续评估）：%s", e
-                )
+                logger.debug("ClosedLoop: collect_metrics 失败（继续评估）：%s", e)
 
         # 阶段 2：样本不足直接 keep
         if sample_count < self._min_samples_for_decision:
             decision.action = "keep"
-            decision.reason = (
-                f"样本数不足（{sample_count}/"
-                f"{self._min_samples_for_decision}），暂不决策"
-            )
+            decision.reason = f"样本数不足（{sample_count}/{self._min_samples_for_decision}），暂不决策"
             return decision
 
         # 阶段 3：Dempster-Shafer 融合
-        fused_confidence, conflict, ds_mass = self._fuse_rule_evidence(
-            samples
-        )
+        fused_confidence, conflict, ds_mass = self._fuse_rule_evidence(samples)
         decision.fused_confidence = fused_confidence
         decision.conflict = conflict
         decision.ds_mass = ds_mass
@@ -442,22 +418,15 @@ class ClosedLoop:
             decision.action = "demote"
             decision.target_stage = self._get_previous_stage(rule_id)
             decision.reason = (
-                f"融合置信度 {fused_confidence:.3f} ≤ "
-                f"{self._demote_confidence} 或冲突 {conflict:.3f} 过高，"
-                f"建议降级"
+                f"融合置信度 {fused_confidence:.3f} ≤ {self._demote_confidence} 或冲突 {conflict:.3f} 过高，建议降级"
             )
         else:
             decision.action = "keep"
-            decision.reason = (
-                f"融合置信度 {fused_confidence:.3f} 与冲突 {conflict:.3f} "
-                f"均在容忍区间，保持现状"
-            )
+            decision.reason = f"融合置信度 {fused_confidence:.3f} 与冲突 {conflict:.3f} 均在容忍区间，保持现状"
 
         return decision
 
-    def _fuse_rule_evidence(
-        self, samples: List[RuleOutcomeRecord]
-    ) -> tuple:
+    def _fuse_rule_evidence(self, samples: List[RuleOutcomeRecord]) -> tuple:
         """将规则样本融合为单一置信度。
 
         将成功样本与失败样本分别包装为 InferenceResult：
@@ -537,9 +506,7 @@ class ClosedLoop:
             fused = weighted_sum / total_weight if total_weight > 0 else 0.0
             return (fused, 0.0, fused)
 
-    def _apply_hrc52_penalty(
-        self, rule_id: str, confidence: float
-    ) -> float:
+    def _apply_hrc52_penalty(self, rule_id: str, confidence: float) -> float:
         """对 HRC52 pending_calibration 规则强制降低置信度。
 
         硬约束：HRC52 pending_calibration 强制降低置信度，
@@ -737,9 +704,7 @@ class ClosedLoop:
             )
             return False
 
-    def _record_decision_to_audit(
-        self, decision: ClosedLoopDecision
-    ) -> None:
+    def _record_decision_to_audit(self, decision: ClosedLoopDecision) -> None:
         """将闭环决策写入审计日志。"""
         recorder = self._get_audit_recorder()
         if recorder is None:
@@ -748,18 +713,13 @@ class ClosedLoop:
             # DreamingAuditRecorder 提供 record_rule_application 方法
             recorder.record_rule_application(
                 rule_id=decision.rule_id,
-                rule_description=(
-                    f"闭环决策 action={decision.action} "
-                    f"reason={decision.reason}"
-                ),
+                rule_description=(f"闭环决策 action={decision.action} reason={decision.reason}"),
                 validation_passed=True,
                 applied=decision.applied,
                 rollback_triggered=(decision.action == "rollback"),
             )
         except Exception as e:
-            logger.debug(
-                "ClosedLoop: 审计记录失败（忽略）：%s", e
-            )
+            logger.debug("ClosedLoop: 审计记录失败（忽略）：%s", e)
 
     # ------------------------------------------------------------------
     # 4. 批量迭代
@@ -812,8 +772,7 @@ class ClosedLoop:
         self._persist_iteration(decisions)
 
         logger.info(
-            "ClosedLoop: 迭代完成，共 %d 条决策（promote=%d, demote=%d, "
-            "keep=%d, rollback=%d）",
+            "ClosedLoop: 迭代完成，共 %d 条决策（promote=%d, demote=%d, keep=%d, rollback=%d）",
             len(decisions),
             sum(1 for d in decisions if d.action == "promote"),
             sum(1 for d in decisions if d.action == "demote"),
@@ -822,9 +781,7 @@ class ClosedLoop:
         )
         return decisions
 
-    def _persist_iteration(
-        self, decisions: List[ClosedLoopDecision]
-    ) -> None:
+    def _persist_iteration(self, decisions: List[ClosedLoopDecision]) -> None:
         """持久化单次迭代结果到 JSON 文件。"""
         if not decisions:
             return
@@ -842,29 +799,21 @@ class ClosedLoop:
                     ensure_ascii=False,
                     indent=2,
                 )
-            logger.debug(
-                "ClosedLoop: 迭代结果已持久化 %s", output_file
-            )
+            logger.debug("ClosedLoop: 迭代结果已持久化 %s", output_file)
         except OSError as e:
-            logger.warning(
-                "ClosedLoop: 迭代结果持久化失败（不影响决策）：%s", e
-            )
+            logger.warning("ClosedLoop: 迭代结果持久化失败（不影响决策）：%s", e)
 
     # ------------------------------------------------------------------
     # 5. 查询接口
     # ------------------------------------------------------------------
 
-    def get_decision_history(
-        self, rule_id: str, limit: int = 10
-    ) -> List[ClosedLoopDecision]:
+    def get_decision_history(self, rule_id: str, limit: int = 10) -> List[ClosedLoopDecision]:
         """获取指定规则的决策历史。"""
         with self._lock:
             history = self._decision_history.get(rule_id, [])
             return list(history[-limit:])
 
-    def get_window_samples(
-        self, rule_id: str
-    ) -> List[RuleOutcomeRecord]:
+    def get_window_samples(self, rule_id: str) -> List[RuleOutcomeRecord]:
         """获取指定规则的当前窗口样本。"""
         with self._lock:
             window = self._windows.get(rule_id, deque(maxlen=self._window_size))
@@ -875,9 +824,7 @@ class ClosedLoop:
         with self._lock:
             total_samples = sum(len(w) for w in self._windows.values())
             rule_count = len(self._windows)
-            total_decisions = sum(
-                len(h) for h in self._decision_history.values()
-            )
+            total_decisions = sum(len(h) for h in self._decision_history.values())
         return {
             "tracked_rule_count": rule_count,
             "total_samples": total_samples,
@@ -915,17 +862,13 @@ class ClosedLoop:
                     for r in window
                 ]
             for rule_id, history in self._decision_history.items():
-                state["decision_history"][rule_id] = [
-                    d.to_dict() for d in history
-                ]
+                state["decision_history"][rule_id] = [d.to_dict() for d in history]
 
         try:
             state_file = self._state_dir / "closed_loop_state.json"
             with open(state_file, "w", encoding="utf-8") as f:
                 json.dump(state, f, ensure_ascii=False, indent=2)
-            logger.info(
-                "ClosedLoop: 状态已保存到 %s", state_file
-            )
+            logger.info("ClosedLoop: 状态已保存到 %s", state_file)
         except OSError as e:
             logger.warning("ClosedLoop: 状态保存失败：%s", e)
 
@@ -941,9 +884,7 @@ class ClosedLoop:
             with self._lock:
                 self._windows.clear()
                 for rule_id, samples in state.get("windows", {}).items():
-                    window: Deque[RuleOutcomeRecord] = deque(
-                        maxlen=self._window_size
-                    )
+                    window: Deque[RuleOutcomeRecord] = deque(maxlen=self._window_size)
                     for s in samples:
                         window.append(
                             RuleOutcomeRecord(
@@ -960,18 +901,14 @@ class ClosedLoop:
                     self._windows[rule_id] = window
 
                 self._decision_history.clear()
-                for rule_id, history in state.get(
-                    "decision_history", {}
-                ).items():
+                for rule_id, history in state.get("decision_history", {}).items():
                     self._decision_history[rule_id] = [
                         ClosedLoopDecision(
                             rule_id=d["rule_id"],
                             action=d["action"],
                             target_stage=d.get("target_stage"),
                             reason=d.get("reason", ""),
-                            fused_confidence=d.get(
-                                "fused_confidence", 0.0
-                            ),
+                            fused_confidence=d.get("fused_confidence", 0.0),
                             conflict=d.get("conflict", 0.0),
                             ds_mass=d.get("ds_mass", 0.0),
                             sample_count=d.get("sample_count", 0),

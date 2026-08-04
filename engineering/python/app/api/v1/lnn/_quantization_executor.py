@@ -22,17 +22,20 @@ from app.ai.lnn.inference.registry import (
 _HAS_LNN_CONFIG = False
 LNNConfig = None
 
+
 def _lazy_init_config() -> bool:
     global _HAS_LNN_CONFIG, LNNConfig
     if _HAS_LNN_CONFIG:
         return True
     try:
         from app.ai.lnn._research_bridge import get_lnn_config_factory
+
         LNNConfig = get_lnn_config_factory()
         _HAS_LNN_CONFIG = LNNConfig is not None
     except Exception:
         _HAS_LNN_CONFIG = False
     return _HAS_LNN_CONFIG
+
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +70,10 @@ def _load_model_for_quantization(model_name: str) -> tuple[Any, Any, str]:
         model.load(entry.info.model_path)
         model.build()
     except FileNotFoundError:
-        raise FileNotFoundError(
-            f"Model file not found: {entry.info.model_path}"
-        )
+        raise FileNotFoundError(f"Model file not found: {entry.info.model_path}")
     except (OSError, RuntimeError, ValueError, TypeError) as e:
         logger.warning(
-            f"Failed to load model weights for quantization, "
-            f"falling back to initialized weights: {e}",
+            f"Failed to load model weights for quantization, falling back to initialized weights: {e}",
             exc_info=True,
         )
 
@@ -88,21 +88,15 @@ async def _load_calibration_data_async(calibration_data_path: str) -> np.ndarray
     路径不存在时抛出 FileNotFoundError;解析失败时抛出 ValueError。
     """
     if not calibration_data_path or not os.path.exists(calibration_data_path):
-        raise FileNotFoundError(
-            "Calibration data path required for static quantization"
-        )
+        raise FileNotFoundError("Calibration data path required for static quantization")
 
     try:
         # 修复 P2：用 asyncio.to_thread 包装同步 np.loadtxt，避免阻塞事件循环
-        calibration_data = await asyncio.to_thread(
-            np.loadtxt, calibration_data_path, delimiter=","
-        )
+        calibration_data = await asyncio.to_thread(np.loadtxt, calibration_data_path, delimiter=",")
         if calibration_data.ndim == 1:
             calibration_data = calibration_data.reshape(-1, 1)
         if calibration_data.shape[1] == 1:
-            calibration_data = np.column_stack(
-                [calibration_data, calibration_data]
-            )
+            calibration_data = np.column_stack([calibration_data, calibration_data])
         calibration_data = calibration_data[:, :-1]
         return calibration_data
     except (ValueError, TypeError, OSError, FileNotFoundError) as e:
@@ -122,20 +116,14 @@ def _run_quantizer(model, model_name: str, quantization_type: str, calibration_d
         get_quantization_config,
         get_quantization_type_enum,
     )
+
     Quantizer = get_quantizer_factory()
     QuantizationConfig = get_quantization_config()
     QuantizationType = get_quantization_type_enum()
     if any(x is None for x in (Quantizer, QuantizationConfig, QuantizationType)):
-        raise ImportError(
-            "Quantization module is not available. "
-            "Ensure the research package is installed with torch."
-        )
+        raise ImportError("Quantization module is not available. Ensure the research package is installed with torch.")
 
-    quant_type = (
-        QuantizationType.DYNAMIC
-        if quantization_type == "dynamic"
-        else QuantizationType.STATIC
-    )
+    quant_type = QuantizationType.DYNAMIC if quantization_type == "dynamic" else QuantizationType.STATIC
     quant_config = QuantizationConfig(quantization_type=quant_type)
 
     quantizer = Quantizer(quant_config)

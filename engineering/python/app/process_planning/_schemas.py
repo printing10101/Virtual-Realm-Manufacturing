@@ -23,6 +23,7 @@ class GCodeResult:
         metadata: 附加元数据
         checkpoints: 断点续传标记点列表 [{"op_index": int, "line_number": int, "label": str}]
     """
+
     program_text: str
     controller_type: str
     program_number: int = 1000

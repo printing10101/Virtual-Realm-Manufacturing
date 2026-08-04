@@ -35,8 +35,8 @@ def get_project_version() -> str:
     try:
         return VERSION_FILE.read_text(encoding="utf-8").strip()
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as e:
-            logger.warning("无法读取VERSION文件: %s，使用默认版本 0.0.0", e)
-            return "0.0.0"
+        logger.warning("无法读取VERSION文件: %s，使用默认版本 0.0.0", e)
+        return "0.0.0"
 
 
 def parse_version(version_str: str) -> Tuple[int, int, int]:
@@ -70,8 +70,7 @@ def check_version_compatibility(import_version: str, current_version: str) -> Tu
             return True, f"版本完全匹配 ({current_version})"
         else:
             return True, (
-                f"版本兼容 (导入文件: {import_version}, 当前项目: {current_version})。"
-                f"主版本号相同，数据格式兼容。"
+                f"版本兼容 (导入文件: {import_version}, 当前项目: {current_version})。主版本号相同，数据格式兼容。"
             )
     else:
         return False, (
@@ -147,14 +146,8 @@ class ProcessRule:
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
-        d["conditions"] = [
-            c.to_dict() if isinstance(c, RuleCondition) else c for c in self.conditions
-        ]
-        d["result"] = (
-            self.result.to_dict()
-            if isinstance(self.result, RuleResult)
-            else self.result
-        )
+        d["conditions"] = [c.to_dict() if isinstance(c, RuleCondition) else c for c in self.conditions]
+        d["result"] = self.result.to_dict() if isinstance(self.result, RuleResult) else self.result
         return d
 
     def to_json(self) -> str:
@@ -207,9 +200,7 @@ class ProcessRule:
         joiner = f" {self.logic_operator} "
         parts.append(joiner.join(cond_parts))
         if self.result:
-            result_text = (
-                f"{self.result.parameter} {self.result.operator} {self.result.value}"
-            )
+            result_text = f"{self.result.parameter} {self.result.operator} {self.result.value}"
             if self.result.unit:
                 result_text += f"{self.result.unit}"
             parts.append(f"THEN {result_text}")
@@ -336,6 +327,7 @@ class RuleDatabase:
         与 DDL 中的 ``DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`` 一致。
         """
         from datetime import timezone
+
         return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def _row_to_rule(self, row: sqlite3.Row) -> ProcessRule:
@@ -388,9 +380,7 @@ class RuleDatabase:
                 rule.group_id,
                 json.dumps([c.to_dict() for c in rule.conditions], ensure_ascii=False),
                 rule.logic_operator,
-                json.dumps(
-                    rule.result.to_dict() if rule.result else None, ensure_ascii=False
-                ),
+                json.dumps(rule.result.to_dict() if rule.result else None, ensure_ascii=False),
                 rule.status,
                 rule.priority,
                 rule.created_at,
@@ -421,9 +411,7 @@ class RuleDatabase:
                 rule.group_id,
                 json.dumps([c.to_dict() for c in rule.conditions], ensure_ascii=False),
                 rule.logic_operator,
-                json.dumps(
-                    rule.result.to_dict() if rule.result else None, ensure_ascii=False
-                ),
+                json.dumps(rule.result.to_dict() if rule.result else None, ensure_ascii=False),
                 rule.status,
                 rule.priority,
                 rule.updated_at,
@@ -520,9 +508,7 @@ class RuleDatabase:
 
     def load_all_active_rules(self) -> List[ProcessRule]:
         """加载所有启用状态的规则（用于LNN引擎启动时加载）"""
-        return self.list_rules(
-            status="active", sort_by="priority", sort_order="DESC", limit=DEFAULT_QUERY_LIMIT
-        )
+        return self.list_rules(status="active", sort_by="priority", sort_order="DESC", limit=DEFAULT_QUERY_LIMIT)
 
     # ==================== Group CRUD ====================
 
@@ -612,9 +598,7 @@ class RuleDatabase:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        logger.info(
-            f"导出规则到: {output_path} ({len(rules)} 条规则, {len(groups)} 个分组, 版本: {project_version})"
-        )
+        logger.info(f"导出规则到: {output_path} ({len(rules)} 条规则, {len(groups)} 个分组, 版本: {project_version})")
         return data
 
     def import_rules(self, input_path: str) -> Dict[str, Any]:
@@ -634,9 +618,7 @@ class RuleDatabase:
         # 版本兼容性检查
         current_version = get_project_version()
         import_version = data.get("version", "1.0")
-        is_compatible, version_message = check_version_compatibility(
-            import_version, current_version
-        )
+        is_compatible, version_message = check_version_compatibility(import_version, current_version)
 
         if not is_compatible:
             logger.warning("规则导入版本不兼容: %s", version_message)
@@ -686,9 +668,7 @@ class RuleDatabase:
             self.create_rule(rule)
             imported_rules += 1
 
-        version_check = (
-            "compatible" if import_version == current_version else "warning"
-        )
+        version_check = "compatible" if import_version == current_version else "warning"
 
         logger.info("导入规则完成: %s 个分组, %s 条规则", imported_groups, imported_rules)
         return {

@@ -30,6 +30,7 @@
 - 标志位由 ``router_registry.py`` 集中定义，通过参数传递给各领域注册函数
 - 避免领域模块反向依赖 ``router_registry`` 造成循环导入
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

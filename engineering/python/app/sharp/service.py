@@ -21,6 +21,7 @@ ReActLoop），对外暴露统一的 `verify()` / `batch_verify()` 接口。
 - ``service.set_ablation_mode(mode)``
 - ``service.list_trajectories(...)`` / ``service.clear_trajectories()``
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -56,9 +57,7 @@ DEFAULT_EVIDENCE_CONVERGENCE_WINDOW: int = 2
 DEFAULT_MEMORY_TOP_K: int = 3
 DEFAULT_LLM_MAX_TOKENS: int = 768
 DEFAULT_LLM_TEMPERATURE: float = 0.3
-VALID_ABLATION_MODES: frozenset[str | None] = frozenset(
-    {None, "no_schema", "no_memory", "no_react", "no_toolset"}
-)
+VALID_ABLATION_MODES: frozenset[str | None] = frozenset({None, "no_schema", "no_memory", "no_react", "no_toolset"})
 
 
 # ---------------------------------------------------------------------------
@@ -98,9 +97,7 @@ class SharpService:
         self._ablation_mode: Optional[str] = None
         self._max_react_steps: int = DEFAULT_MAX_REACT_STEPS
         self._confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD
-        self._evidence_convergence_window: int = (
-            DEFAULT_EVIDENCE_CONVERGENCE_WINDOW
-        )
+        self._evidence_convergence_window: int = DEFAULT_EVIDENCE_CONVERGENCE_WINDOW
         self._memory_top_k: int = DEFAULT_MEMORY_TOP_K
 
         # 重型依赖（懒加载）
@@ -162,9 +159,7 @@ class SharpService:
                 self._ablation_mode,
             )
         except Exception as e:
-            logger.warning(
-                "SHARP: load SharpConfig failed, use module defaults: %s", e
-            )
+            logger.warning("SHARP: load SharpConfig failed, use module defaults: %s", e)
 
     @staticmethod
     def _derive_ablation_from_toggles(cfg: Any) -> Optional[str]:
@@ -302,9 +297,7 @@ class SharpService:
     def set_ablation_mode(self, mode: Optional[str]) -> None:
         """切换消融模式并重建 pipeline。"""
         if mode not in VALID_ABLATION_MODES:
-            raise ValueError(
-                f"ablation_mode 必须是 {VALID_ABLATION_MODES} 之一，实际: {mode}"
-            )
+            raise ValueError(f"ablation_mode 必须是 {VALID_ABLATION_MODES} 之一，实际: {mode}")
         if mode == self._ablation_mode and self._deps_loaded:
             return
         self._ablation_mode = mode
@@ -336,14 +329,8 @@ class SharpService:
                 "hybrid_toolset": self._ablation_mode != "no_toolset",
                 "react_loop": self._ablation_mode != "no_react",
             },
-            "tool_registry_size": (
-                self._tool_registry.size if self._tool_registry else 0
-            ),
-            "trajectory_count": (
-                self._trajectory_store.count()
-                if self._trajectory_store
-                else 0
-            ),
+            "tool_registry_size": (self._tool_registry.size if self._tool_registry else 0),
+            "trajectory_count": (self._trajectory_store.count() if self._trajectory_store else 0),
         }
 
     # ------------------------------------------------------------------
@@ -378,15 +365,11 @@ class SharpService:
         # 处理单次覆盖：加锁串行化，避免 pipeline 重建竞态
         if ablation_mode is not None and ablation_mode != self._ablation_mode:
             if ablation_mode not in VALID_ABLATION_MODES:
-                raise ValueError(
-                    f"ablation_mode 必须是 {VALID_ABLATION_MODES} 之一"
-                )
+                raise ValueError(f"ablation_mode 必须是 {VALID_ABLATION_MODES} 之一")
             async with self._verify_lock:
                 original_mode = self._ablation_mode
                 try:
-                    self._build_pipeline_with_override(
-                        ablation_mode, max_react_steps
-                    )
+                    self._build_pipeline_with_override(ablation_mode, max_react_steps)
                     result = await self._run_verify(triple)
                 finally:
                     self._build_pipeline_with_override(original_mode, None)
@@ -398,9 +381,7 @@ class SharpService:
 
         return await self._run_verify(triple)
 
-    async def _run_verify_with_max_steps(
-        self, triple: Triple, max_react_steps: int
-    ) -> VerificationResult:
+    async def _run_verify_with_max_steps(self, triple: Triple, max_react_steps: int) -> VerificationResult:
         """单次 max_steps 覆盖的隔离执行路径。
 
         通过 ``verify(max_steps_override=...)`` 参数传入覆盖值，无需构造
@@ -412,9 +393,7 @@ class SharpService:
             return await self._verify_without_react(triple)
 
         # 直接调用共享实例，通过 max_steps_override 控制本次循环上限
-        result = await self._react_loop.verify(
-            triple, max_steps_override=max_react_steps
-        )
+        result = await self._react_loop.verify(triple, max_steps_override=max_react_steps)
 
         # 存储到 Memory
         if self._memory_augmentor is not None:
@@ -447,16 +426,13 @@ class SharpService:
 
         对应论文消融实验 §5.3：去除 ReAct 循环后，仅靠单次 LLM 推理验证。
         """
-        from app.sharp.react.stopping_criteria import StoppingDecision
         from app.sharp.tools.base import ToolCall
 
         verification_id = f"ver_{uuid.uuid4().hex[:12]}"
         start_time = time.perf_counter()
 
         # 1. Schema 校验
-        schema_valid = DEFAULT_SCHEMA.is_valid_relation(
-            triple.head_type, triple.relation, triple.tail_type
-        )
+        schema_valid = DEFAULT_SCHEMA.is_valid_relation(triple.head_type, triple.relation, triple.tail_type)
 
         # 2. 构造 LLMReasonTool 所需的自然语言输入
         # 注意：LLMReasonTool._execute 期望参数 triple_text / evidence_summary / focus_dimensions
@@ -467,8 +443,7 @@ class SharpService:
             f"{triple.tail_type.value}({triple.tail_id})"
         )
         evidence_summary = (
-            f"Schema 校验: {'通过' if schema_valid else '不通过'}；"
-            f"无 ReAct 循环，未收集外部证据（KG/RAG 工具未触发）"
+            f"Schema 校验: {'通过' if schema_valid else '不通过'}；无 ReAct 循环，未收集外部证据（KG/RAG 工具未触发）"
         )
 
         # 3. 调用 LLM 推理工具
@@ -495,9 +470,7 @@ class SharpService:
                         reasoning = tool_result.output.get("reasoning", "")
                     elif not tool_result.success:
                         # 工具内部异常（如 LLM 调用失败、JSON 解析失败）
-                        reasoning = (
-                            f"no_react 模式 LLM 推理失败: {tool_result.error}"
-                        )
+                        reasoning = f"no_react 模式 LLM 推理失败: {tool_result.error}"
                         logger.warning(
                             "SHARP no_react: llm.reason tool failed: %s",
                             tool_result.error,
@@ -579,9 +552,7 @@ class SharpService:
                 )
                 results.append((idx, result, None))
             except Exception as e:
-                logger.warning(
-                    "SHARP batch verify[%d] failed: %s", idx, e
-                )
+                logger.warning("SHARP batch verify[%d] failed: %s", idx, e)
                 results.append((idx, None, str(e)))  # type: ignore[arg-type]
         return results
 
@@ -605,10 +576,7 @@ class SharpService:
         if verdict:
             records = [r for r in records if r.verdict == verdict]
         if relation:
-            records = [
-                r for r in records
-                if r.triple.get("relation") == relation
-            ]
+            records = [r for r in records if r.triple.get("relation") == relation]
         # 截断
         return records[-limit:] if limit < len(records) else list(records)
 

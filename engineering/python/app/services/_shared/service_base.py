@@ -21,6 +21,7 @@ WorldModelService / WorkflowTemplateService / ModelRegistryService）提供
 工厂函数 ``get_xxx_service()`` 和 ``reset_xxx_service()`` 仍需保留（向后
 兼容），但内部直接委托到 ``cls.get_instance()`` / ``cls.reset_instance()``。
 """
+
 from __future__ import annotations
 
 import threading

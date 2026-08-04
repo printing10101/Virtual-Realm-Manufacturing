@@ -30,8 +30,9 @@ from app.postprocessor.registry import PostProcessorRegistry
 
 # 生产配置文件路径——TestConfigLoading 使用它避免与 ConfigValidator 的
 # 必需字段清单重复维护（割裂式同步坑）。
+# V2.7.0 解耦：tests 位于 engineering/python/tests/，仓库根需 4 级 dirname。
 _PROD_CONFIG = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
     "config",
     "postprocessor_config.yaml",
 )

@@ -176,7 +176,9 @@ class CrossLayerRetriever:
 
         logger.info(
             "Built index for layer '%s': %d vectors, dim=%d",
-            layer, len(embeddings), self.embedding_dim,
+            layer,
+            len(embeddings),
+            self.embedding_dim,
         )
 
     def query(
@@ -209,15 +211,17 @@ class CrossLayerRetriever:
             if modality_filter and meta.get("modality", "") != modality_filter:
                 continue
             confidence = self._calibrate_confidence(float(sim))
-            results.append(RetrievalResult(
-                index=int(idx),
-                similarity=float(sim),
-                embedding=self._embeddings[target_layer][int(idx)].copy(),
-                metadata=meta,
-                layer=target_layer,
-                modality=str(meta.get("modality", "")),
-                confidence=confidence,
-            ))
+            results.append(
+                RetrievalResult(
+                    index=int(idx),
+                    similarity=float(sim),
+                    embedding=self._embeddings[target_layer][int(idx)].copy(),
+                    metadata=meta,
+                    layer=target_layer,
+                    modality=str(meta.get("modality", "")),
+                    confidence=confidence,
+                )
+            )
 
         return results
 
@@ -244,10 +248,9 @@ class CrossLayerRetriever:
 
         # 应用轴权重（如果有）
         if axis_weights:
-            queries = np.array([
-                self._apply_axis_weights(query_embeddings[i], axis_weights)
-                for i in range(query_count)
-            ])
+            queries = np.array(
+                [self._apply_axis_weights(query_embeddings[i], axis_weights) for i in range(query_count)]
+            )
         else:
             queries = query_embeddings
 
@@ -262,15 +265,17 @@ class CrossLayerRetriever:
             for idx, sim in zip(indices, similarities):
                 meta = self._metadata[target_layer][int(idx)] if idx < len(self._metadata[target_layer]) else {}
                 confidence = self._calibrate_confidence(float(sim))
-                results.append(RetrievalResult(
-                    index=int(idx),
-                    similarity=float(sim),
-                    embedding=self._embeddings[target_layer][int(idx)].copy(),
-                    metadata=meta,
-                    layer=target_layer,
-                    modality=str(meta.get("modality", "")),
-                    confidence=confidence,
-                ))
+                results.append(
+                    RetrievalResult(
+                        index=int(idx),
+                        similarity=float(sim),
+                        embedding=self._embeddings[target_layer][int(idx)].copy(),
+                        metadata=meta,
+                        layer=target_layer,
+                        modality=str(meta.get("modality", "")),
+                        confidence=confidence,
+                    )
+                )
             all_results.append(results)
             for r in results:
                 total_similarities.append(r.similarity)
@@ -345,7 +350,7 @@ class CrossLayerRetriever:
         for axis_name, weight in weights.items():
             if axis_name in axis_map:
                 start, length = axis_map[axis_name]
-                weighted[start:start + length] *= weight
+                weighted[start : start + length] *= weight
         return weighted
 
     def _calibrate_confidence(self, similarity: float) -> float:

@@ -34,6 +34,7 @@ class PipelineStage(str, Enum):
 @dataclass
 class RawInput:
     """原始输入数据容器"""
+
     source_type: DataSourceType = DataSourceType.UNKNOWN
     data: Any = None
     source_id: str = ""
@@ -150,6 +151,7 @@ class GCodeInput(RawInput):
 @dataclass
 class ProcessedData:
     """预处理后的数据容器"""
+
     source_type: DataSourceType
     original_data: Any
     processed_data: np.ndarray
@@ -164,6 +166,7 @@ class ProcessedData:
 @dataclass
 class DataQualityMetrics:
     """数据质量指标"""
+
     completeness: float = 1.0
     consistency: float = 1.0
     outlier_ratio: float = 0.0
@@ -176,11 +179,7 @@ class DataQualityMetrics:
     @property
     def is_valid(self) -> bool:
         """数据是否通过质量检查"""
-        return (
-            self.completeness >= 0.999
-            and self.missing_ratio < 0.001
-            and len(self.validation_errors) == 0
-        )
+        return self.completeness >= 0.999 and self.missing_ratio < 0.001 and len(self.validation_errors) == 0
 
     @property
     def dim_consistency(self) -> bool:
@@ -193,6 +192,7 @@ class DataQualityMetrics:
 @dataclass
 class PipelineResult:
     """管道最终输出结果"""
+
     fused_features: np.ndarray
     individual_features: Dict[str, np.ndarray]
     quality_metrics: Dict[str, DataQualityMetrics]

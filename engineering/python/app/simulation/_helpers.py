@@ -5,29 +5,20 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
 from app.utils.utils import validate_user_path
-from app.auth.dependencies import get_current_user
 from app.config import config
-from app.core.response import success, error, ErrorCode
-from app.core.safe_errors import safe_error_message
-from app.core.error_taxonomy import (
-    ManufacturingError,
-    ErrorCategory,
-)
 from app.simulation.voxel_cutter import (
     VoxelCutter,
     VoxelSimulationResult,
     ToolModel,
-    GeometryDiffer,
-    DiffResult,
 )
 from app.simulation.toolpath_parser import ToolpathParser, ToolpathSegment
-from app.simulation.schemas import SimulationRequest
+from app.simulation.schemas import SimulationRequest, SimulationResponse
 
 logger = logging.getLogger(__name__)
 
@@ -141,8 +132,7 @@ async def _cleanup_store() -> None:
         expired = [
             tid
             for tid in _in_memory_store
-            if (_completed_at_map.get(tid) is not None)
-            and (now - _completed_at_map[tid]) > _MAX_STORE_AGE_SECONDS
+            if (_completed_at_map.get(tid) is not None) and (now - _completed_at_map[tid]) > _MAX_STORE_AGE_SECONDS
         ]
         for tid in expired:
             _in_memory_store.pop(tid, None)
@@ -182,9 +172,7 @@ def _run_simulation(
 
     if request.stock_stl_path:
         try:
-            stock_stl_path = _validate_user_path(
-                request.stock_stl_path, "stock_stl_path"
-            )
+            stock_stl_path = _validate_user_path(request.stock_stl_path, "stock_stl_path")
         except HTTPException as exc:
             raise ValueError(str(exc.detail)) from exc
     else:
@@ -193,9 +181,7 @@ def _run_simulation(
     source_file_paths: list[Path] | None = None
     if request.source_file_path:
         try:
-            source_path = _validate_user_path(
-                request.source_file_path, "source_file_path"
-            )
+            source_path = _validate_user_path(request.source_file_path, "source_file_path")
         except HTTPException as exc:
             raise ValueError(str(exc.detail)) from exc
         if source_path.exists():

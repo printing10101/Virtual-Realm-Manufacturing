@@ -111,9 +111,7 @@ class MergeReportMixin:
             raise ReviewError(str(e)) from e
 
         if task.status != CamValidationTaskStatus.VALIDATED.value:
-            raise ReviewError(
-                f"任务状态不允许审核: {task.status}（仅 validated 可审核）"
-            )
+            raise ReviewError(f"任务状态不允许审核: {task.status}（仅 validated 可审核）")
 
         # 校验 review_status
         valid_statuses = {
@@ -122,25 +120,19 @@ class MergeReportMixin:
             CamReviewStatus.EDITED.value,
         }
         if review_status not in valid_statuses:
-            raise ReviewError(
-                f"无效审核状态: {review_status}，合法值: {sorted(valid_statuses)}"
-            )
+            raise ReviewError(f"无效审核状态: {review_status}，合法值: {sorted(valid_statuses)}")
 
         # edited 必须提供 edited_params
         if review_status == CamReviewStatus.EDITED.value:
             if not edited_params:
-                raise ReviewError(
-                    "review_status=edited 时必须提供 edited_params"
-                )
+                raise ReviewError("review_status=edited 时必须提供 edited_params")
 
         # 加审核锁（防止并发审核冲突）
         with self._store.review_lock:
             # 重新获取任务（可能在等待锁期间状态已变）
             task = self._store.get_task(task_id)
             if task.status != CamValidationTaskStatus.VALIDATED.value:
-                raise ReviewError(
-                    f"任务状态已变更: {task.status}（并发审核冲突）"
-                )
+                raise ReviewError(f"任务状态已变更: {task.status}（并发审核冲突）")
 
             # 查找特征
             target: FeatureValidationResult | None = None
@@ -149,9 +141,7 @@ class MergeReportMixin:
                     target = result
                     break
             if target is None:
-                raise ReviewError(
-                    f"特征 ID 不存在: {feature_id}"
-                )
+                raise ReviewError(f"特征 ID 不存在: {feature_id}")
 
             # 应用审核
             target.review_status = review_status
@@ -165,8 +155,7 @@ class MergeReportMixin:
 
             # 检查是否全部审核完毕 → REVIEWED
             all_reviewed = all(
-                r.review_status != CamReviewStatus.PENDING.value
-                for r in task.feature_validation_results
+                r.review_status != CamReviewStatus.PENDING.value for r in task.feature_validation_results
             )
             if all_reviewed:
                 task.status = CamValidationTaskStatus.REVIEWED.value
@@ -177,7 +166,10 @@ class MergeReportMixin:
 
         logger.info(
             "任务 %s 特征 %s 审核为 %s by %s",
-            task_id, feature_id, review_status, reviewed_by,
+            task_id,
+            feature_id,
+            review_status,
+            reviewed_by,
         )
         return target
 
@@ -212,7 +204,6 @@ class MergeReportMixin:
             ReviewError: 全部特征均被 rejected（无可导出的校验结论）
         """
         # 延迟导入以避免循环依赖（CamValidationResult 在 _common 中定义）
-        from ._common import CamValidationResult
 
         try:
             task = self._store.get_task(task_id)
@@ -220,28 +211,18 @@ class MergeReportMixin:
             raise CamValidationPipelineError(str(e)) from e
 
         if task.status != CamValidationTaskStatus.REVIEWED.value:
-            raise CamValidationPipelineError(
-                f"任务状态不允许确认: {task.status}（仅 reviewed 可确认）"
-            )
+            raise CamValidationPipelineError(f"任务状态不允许确认: {task.status}（仅 reviewed 可确认）")
 
         # 检查至少有一个特征非 rejected
-        non_rejected = [
-            r for r in task.feature_validation_results
-            if r.review_status != CamReviewStatus.REJECTED.value
-        ]
+        non_rejected = [r for r in task.feature_validation_results if r.review_status != CamReviewStatus.REJECTED.value]
         if not non_rejected:
-            raise ReviewError(
-                f"任务 {task_id} 无可导出的校验结论"
-                f"（所有特征均被 rejected）"
-            )
+            raise ReviewError(f"任务 {task_id} 无可导出的校验结论（所有特征均被 rejected）")
 
         # 加导出锁（防止文件写入竞争）
         with self._store.export_lock:
             task = self._store.get_task(task_id)
             if task.status != CamValidationTaskStatus.REVIEWED.value:
-                raise CamValidationPipelineError(
-                    f"任务状态已变更: {task.status}（并发确认冲突）"
-                )
+                raise CamValidationPipelineError(f"任务状态已变更: {task.status}（并发确认冲突）")
 
             # 导出 cam_report.json（最终结论）
             cam_report_path = self._export_cam_report(task, reviewer)
@@ -259,7 +240,9 @@ class MergeReportMixin:
 
         logger.info(
             "任务 %s CAM 校验报告导出完成 cam_report=%s internal_report=%s",
-            task_id, cam_report_path, internal_report_path,
+            task_id,
+            cam_report_path,
+            internal_report_path,
         )
         return self._build_result(task)
 
@@ -324,9 +307,7 @@ class MergeReportMixin:
             "passed_features": task.passed_features,
             "failed_features": task.failed_features,
             # 每条特征的双层校验 + 审核记录
-            "feature_validation_results": [
-                r.to_dict() for r in task.feature_validation_results
-            ],
+            "feature_validation_results": [r.to_dict() for r in task.feature_validation_results],
             # 审核元数据
             "reviewed_by": task.reviewed_by,
             "reviewed_at": task.reviewed_at,
@@ -351,9 +332,7 @@ class MergeReportMixin:
                 encoding="utf-8",
             )
         except (OSError, TypeError) as e:
-            raise CamValidationPipelineError(
-                f"cam_report.json 写入失败: {e}"
-            ) from e
+            raise CamValidationPipelineError(f"cam_report.json 写入失败: {e}") from e
 
         return str(report_path)
 
@@ -441,10 +420,7 @@ class MergeReportMixin:
             此报告从 feature_validation_results 中提取 internal 字段重建。
             完整 CollisionReport.events 可在 task.warnings 中追溯。
         """
-        report_path = (
-            Path(task.workspace_dir)
-            / f"{task.task_id}.internal_report.json"
-        )
+        report_path = Path(task.workspace_dir) / f"{task.task_id}.internal_report.json"
 
         # 从 feature_validation_results 提取内部预校验字段
         internal_feature_results = [
@@ -510,8 +486,6 @@ class MergeReportMixin:
                 encoding="utf-8",
             )
         except (OSError, TypeError) as e:
-            raise CamValidationPipelineError(
-                f"internal_report.json 写入失败: {e}"
-            ) from e
+            raise CamValidationPipelineError(f"internal_report.json 写入失败: {e}") from e
 
         return str(report_path)

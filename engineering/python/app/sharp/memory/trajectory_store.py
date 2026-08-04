@@ -95,9 +95,7 @@ class StoredTrajectory:
         )
 
     @classmethod
-    def from_verification_result(
-        cls, result: Any, timestamp: Optional[float] = None
-    ) -> "StoredTrajectory":
+    def from_verification_result(cls, result: Any, timestamp: Optional[float] = None) -> "StoredTrajectory":
         """从 `VerificationResult` 构造存储记录。
 
         Args:
@@ -167,9 +165,7 @@ class TrajectoryStore:
             max_records: 内存中保留的最大记录数
             autoload: 是否在初始化时自动加载已有文件
         """
-        self._path = storage_path or os.environ.get(
-            "SHARP_TRAJECTORY_PATH", self.DEFAULT_PATH
-        )
+        self._path = storage_path or os.environ.get("SHARP_TRAJECTORY_PATH", self.DEFAULT_PATH)
         self._max_records = max_records
         self._lock = threading.Lock()
         self._records: list[StoredTrajectory] = []
@@ -196,9 +192,7 @@ class TrajectoryStore:
 
         with self._lock:
             if record.verification_id in self._ids:
-                logger.debug(
-                    "Trajectory already stored: %s, skip", record.verification_id
-                )
+                logger.debug("Trajectory already stored: %s, skip", record.verification_id)
                 return record
 
             # 更新内存索引
@@ -215,7 +209,9 @@ class TrajectoryStore:
 
         logger.debug(
             "Stored trajectory: id=%s verdict=%s conf=%.3f",
-            record.verification_id, record.verdict, record.confidence,
+            record.verification_id,
+            record.verdict,
+            record.confidence,
         )
         return record
 
@@ -283,9 +279,7 @@ class TrajectoryStore:
             evicted = self._records.pop(0)
             self._ids.discard(evicted.verification_id)
 
-        logger.info(
-            "Loaded %d trajectories from %s", len(self._records), self._path
-        )
+        logger.info("Loaded %d trajectories from %s", len(self._records), self._path)
 
     def _append_to_file(self, record: StoredTrajectory) -> None:
         """追加一行到 JSONL 文件。"""

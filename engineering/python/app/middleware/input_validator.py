@@ -16,9 +16,9 @@ _DEFAULT_FALLBACK_DIRS: tuple[str, ...] = ("data", "output", "uploads")
 
 # P2-5-4 修复：提取校验阈值魔法数字为命名常量，便于统一管理与调整
 # 切削参数上限（单位见各注释）
-MAX_CUTTING_SPEED: float = 10_000.0      # m/min
-MAX_FEED_RATE: float = 50.0              # mm/r
-MAX_DEPTH_OF_CUT: float = 100.0          # mm
+MAX_CUTTING_SPEED: float = 10_000.0  # m/min
+MAX_FEED_RATE: float = 50.0  # mm/r
+MAX_DEPTH_OF_CUT: float = 100.0  # mm
 # 预测时长上限：24 小时 = 86400 秒
 MAX_PREDICTION_HORIZON_SECONDS: float = 86_400.0
 # 模型名称长度上限

@@ -30,6 +30,7 @@ class FixtureRecommendation:
         suitability_score: Suitability score (0-100).
         reasoning: List of reasoning strings explaining the recommendation.
     """
+
     fixture_id: str
     fixture_name: str
     fixture_type: str
@@ -71,6 +72,7 @@ class FixtureAnalysis:
         setup_count: Number of required setups.
         face_changes: List of face change descriptions.
     """
+
     recommendations: list[FixtureRecommendation] = field(default_factory=list)
     best_fixture: FixtureRecommendation | None = None
     setup_count: int = 0
@@ -98,15 +100,14 @@ class FixtureAnalyzer:
     machining features, then recommends the best clamping method
     from a template library.
     """
+
     def __init__(self, templates_path: str | None = None) -> None:
         if templates_path is None:
             data_dir = Path(__file__).resolve().parent / "data"
             templates_path = str(data_dir / "fixture_templates.json")
         with open(templates_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        self._templates: dict[str, dict[str, Any]] = {
-            f["id"]: f for f in data["fixtures"]
-        }
+        self._templates: dict[str, dict[str, Any]] = {f["id"]: f for f in data["fixtures"]}
 
     def analyze(
         self,
@@ -146,10 +147,7 @@ class FixtureAnalyzer:
         has_holes = any(f.is_hole() for f in features)
         has_faces = any(f.is_face() for f in features)
         max_dim = max(
-            (
-                f.dimensions.get("diameter", f.dimensions.get("length", 10))
-                for f in features
-            ),
+            (f.dimensions.get("diameter", f.dimensions.get("length", 10)) for f in features),
             default=10,
         )
 
@@ -206,9 +204,7 @@ class FixtureAnalyzer:
             clamping_points=[
                 {
                     "type": t.get("clamping_principle", {}).get("description", ""),
-                    "constrained_dof": t.get("clamping_principle", {}).get(
-                        "constrained_dof", []
-                    ),
+                    "constrained_dof": t.get("clamping_principle", {}).get("constrained_dof", []),
                 }
             ],
             clamping_force_n=clamp_force,

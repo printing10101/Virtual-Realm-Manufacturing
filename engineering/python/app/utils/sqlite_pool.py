@@ -197,9 +197,7 @@ class SQLiteConnectionPool:
                 if conn is not None:
                     return conn
 
-        raise RuntimeError(
-            f"Failed to get SQLite connection from pool after {self.timeout}s"
-        )
+        raise RuntimeError(f"Failed to get SQLite connection from pool after {self.timeout}s")
 
     async def async_get_connection(self) -> sqlite3.Connection:
         """
@@ -252,9 +250,7 @@ class SQLiteConnectionPool:
             if conn is not None:
                 return conn
 
-        raise RuntimeError(
-            f"Failed to get SQLite connection from pool after {self.timeout}s"
-        )
+        raise RuntimeError(f"Failed to get SQLite connection from pool after {self.timeout}s")
 
     def return_connection(self, conn: sqlite3.Connection) -> None:
         """
@@ -357,10 +353,10 @@ class SQLiteConnectionPool:
     def check_leaked_connections(self, max_age_seconds: float = 300.0) -> list[int]:
         """
         检查可能泄漏的连接（借出时间超过阈值）
-        
+
         Args:
             max_age_seconds: 最大允许借出时间（秒）
-            
+
         Returns:
             泄漏连接的id列表
         """

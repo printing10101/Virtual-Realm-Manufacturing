@@ -13,7 +13,6 @@ import logging
 import time
 import uuid
 import json
-import sqlite3
 import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -189,9 +188,7 @@ class ApprovalWorkflowEngine:
         )
         return request
 
-    def assign_approver(
-        self, request_id: str, approver_id: str
-    ) -> Optional[ApprovalRequest]:
+    def assign_approver(self, request_id: str, approver_id: str) -> Optional[ApprovalRequest]:
         """分配审批人"""
         request = self._get_request(request_id)
         if request is None:
@@ -244,9 +241,7 @@ class ApprovalWorkflowEngine:
         request.decisions.append(approval_decision)
 
         if decision == "approved":
-            approved_count = sum(
-                1 for d in request.decisions if d.decision == "approved"
-            )
+            approved_count = sum(1 for d in request.decisions if d.decision == "approved")
             if approved_count >= request.required_approvals:
                 request.status = ApprovalStatus.APPROVED
                 request.completed_at = time.time()
@@ -306,9 +301,7 @@ class ApprovalWorkflowEngine:
         self._save_request(request)
         return request
 
-    def escalate_request(
-        self, request_id: str, escalator_id: str, reason: str = ""
-    ) -> Optional[ApprovalRequest]:
+    def escalate_request(self, request_id: str, escalator_id: str, reason: str = "") -> Optional[ApprovalRequest]:
         """升级审批请求"""
         request = self._get_request(request_id)
         if request is None:
@@ -466,9 +459,7 @@ class ApprovalWorkflowEngine:
         self._conn.commit()
         self._load_delegations.append(delegation)
 
-        logger.info(
-            "Approval delegated: %s → %s (%s)", delegator_id, delegate_id, reason
-        )
+        logger.info("Approval delegated: %s → %s (%s)", delegator_id, delegate_id, reason)
         return delegation
 
     def get_active_delegation(self, user_id: str) -> Optional[ApprovalDelegation]:
@@ -566,9 +557,7 @@ class ApprovalWorkflowEngine:
         self._conn.commit()
 
         if self._conn.execute("SELECT changes()").fetchone()[0] > 0:
-            self._consecutive_emergency_count = max(
-                0, self._consecutive_emergency_count - 1
-            )
+            self._consecutive_emergency_count = max(0, self._consecutive_emergency_count - 1)
             self._log_audit(
                 emergency_id,
                 "retroactive_completed",
@@ -735,9 +724,7 @@ class ApprovalWorkflowEngine:
 
     def _get_request(self, request_id: str) -> Optional[ApprovalRequest]:
         """从数据库获取审批请求"""
-        row = self._conn.execute(
-            "SELECT * FROM approval_requests WHERE request_id = ?", (request_id,)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM approval_requests WHERE request_id = ?", (request_id,)).fetchone()
         if row is None:
             return None
         return self._row_to_request(row)
@@ -778,9 +765,7 @@ class ApprovalWorkflowEngine:
             completed_at=row["completed_at"],
         )
 
-    def _log_audit(
-        self, request_id: str, action: str, actor_id: str, details: Dict[str, Any]
-    ) -> None:
+    def _log_audit(self, request_id: str, action: str, actor_id: str, details: Dict[str, Any]) -> None:
         """记录不可变审计日志"""
         self._conn.execute(
             """INSERT INTO audit_log (request_id, action, actor_id, details, timestamp)
@@ -816,9 +801,7 @@ class ApprovalWorkflowEngine:
                 {
                     "period_start": period_start,
                     "period_end": period_end,
-                    "avg_risk": round(avg_risk["avg_risk"], 2)
-                    if avg_risk["avg_risk"]
-                    else 0,
+                    "avg_risk": round(avg_risk["avg_risk"], 2) if avg_risk["avg_risk"] else 0,
                     "count": avg_risk["count"],
                 }
             )

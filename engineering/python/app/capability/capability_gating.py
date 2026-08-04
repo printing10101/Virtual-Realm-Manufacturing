@@ -90,25 +90,17 @@ class CapabilityGatekeeper:
             "data_source": CapabilityGrant(
                 capability="data_source",
                 level=CapabilityLevel.READ_ONLY,
-                network_rules=[
-                    NetworkAccessRule(host_pattern="localhost", port_range=(1, 65535))
-                ],
+                network_rules=[NetworkAccessRule(host_pattern="localhost", port_range=(1, 65535))],
             ),
             "machine_control": CapabilityGrant(
                 capability="machine_control",
                 level=CapabilityLevel.READ_WRITE,
-                network_rules=[
-                    NetworkAccessRule(host_pattern="localhost", port_range=(1, 65535))
-                ],
+                network_rules=[NetworkAccessRule(host_pattern="localhost", port_range=(1, 65535))],
             ),
             "file_access": CapabilityGrant(
                 capability="file_access",
                 level=CapabilityLevel.READ_ONLY,
-                file_rules=[
-                    FileAccessRule(
-                        path_pattern="*.txt", level=CapabilityLevel.READ_ONLY
-                    )
-                ],
+                file_rules=[FileAccessRule(path_pattern="*.txt", level=CapabilityLevel.READ_ONLY)],
             ),
             "network_access": CapabilityGrant(
                 capability="network_access",
@@ -125,9 +117,7 @@ class CapabilityGatekeeper:
             ),
         }
 
-    def grant_capabilities(
-        self, plugin_id: str, capabilities: List[str]
-    ) -> List[CapabilityGrant]:
+    def grant_capabilities(self, plugin_id: str, capabilities: List[str]) -> List[CapabilityGrant]:
         # 安全修复：保护 _grants 字典的并发读写
         with self._lock:
             if plugin_id not in self._grants:
@@ -169,9 +159,7 @@ class CapabilityGatekeeper:
                 return self._grants[plugin_id].get(capability)
         return None
 
-    def check_file_access(
-        self, plugin_id: str, path: str, operation: str = "read"
-    ) -> bool:
+    def check_file_access(self, plugin_id: str, path: str, operation: str = "read") -> bool:
         grant = self.get_grant(plugin_id, "file_access")
         if grant is None:
             return False
@@ -231,12 +219,10 @@ class CapabilityGatekeeper:
                             "capability": cap_name,
                             "level": grant.level.value,
                             "file_rules": [
-                                {"pattern": r.path_pattern, "level": r.level.value}
-                                for r in grant.file_rules
+                                {"pattern": r.path_pattern, "level": r.level.value} for r in grant.file_rules
                             ],
                             "network_rules": [
-                                {"host": r.host_pattern, "port_range": r.port_range}
-                                for r in grant.network_rules
+                                {"host": r.host_pattern, "port_range": r.port_range} for r in grant.network_rules
                             ],
                             "gpu_limits": {
                                 "max_memory_mb": grant.gpu_limits.max_memory_mb,
@@ -260,9 +246,7 @@ class CapabilityGatekeeper:
         with self._lock:
             grant = self._grants.get(plugin_id, {}).get(capability)
             if grant is None:
-                raise ValueError(
-                    f"No grant found for plugin '{plugin_id}' capability '{capability}'"
-                )
+                raise ValueError(f"No grant found for plugin '{plugin_id}' capability '{capability}'")
 
             if file_rules is not None:
                 grant.file_rules = [
@@ -277,9 +261,7 @@ class CapabilityGatekeeper:
                 grant.network_rules = [
                     NetworkAccessRule(
                         host_pattern=r.get("host_pattern", "*"),
-                        port_range=tuple(r.get("port_range", (1, 65535)))
-                        if r.get("port_range")
-                        else None,
+                        port_range=tuple(r.get("port_range", (1, 65535))) if r.get("port_range") else None,
                     )
                     for r in network_rules
                 ]
@@ -290,9 +272,7 @@ class CapabilityGatekeeper:
                     max_utilization_percent=gpu_limits.get("max_utilization_percent", 50.0),
                 )
 
-        logger.info(
-            f"Updated grant rules for plugin '{plugin_id}' capability '{capability}'"
-        )
+        logger.info(f"Updated grant rules for plugin '{plugin_id}' capability '{capability}'")
 
 
 def get_capability_gatekeeper() -> CapabilityGatekeeper:

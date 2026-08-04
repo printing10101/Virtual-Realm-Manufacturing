@@ -1,6 +1,5 @@
 """NL to CAD API routes."""
 
-
 import logging
 from typing import Any
 
@@ -8,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
+
 # P2-4-5 修复：引入共享速率限制器，NL2CAD 端点调用 LLM 生成 CAD/NC 代码，
 # 消耗大量推理资源，需速率限制防止 DoS。
 from app.middleware.rate_limiter import limiter
@@ -263,15 +263,12 @@ async def generate_process_plan(request: Request, body: ProcessPlanningRequest) 
     try:
         orchestrator = get_nl2nc_orchestrator()
 
-        # 提取加工特征
-        features = orchestrator._extract_features_from_cad(body.cad_params)
-
         # 生成工艺规划
         process_plan = await orchestrator._generate_process_plan(
             cad_params=body.cad_params,
             material=body.material,
         )
-        
+
         return ProcessPlanningResponse(process_plan=process_plan)
 
     except Exception as e:
@@ -302,7 +299,7 @@ async def generate_nc_code(request: Request, body: NCCodeRequest) -> NCCodeRespo
             process_plan=body.process_plan,
             machine_type=body.machine_type,
         )
-        
+
         return NCCodeResponse(nc_code=nc_code)
 
     except Exception as e:
@@ -334,10 +331,10 @@ async def execute_full_pipeline(request: Request, body: FullPipelineRequest) -> 
             machine_type=body.machine_type,
             material=body.material,
         )
-        
+
         if state.stage == PipelineStage.FAILED:
             raise ValueError(state.error or "Pipeline failed")
-        
+
         return FullPipelineResponse(
             model_path=state.model_path or "",
             cad_params=state.cad_params or {},

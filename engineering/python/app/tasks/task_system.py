@@ -76,9 +76,7 @@ class TaskRecord:
         if self.started_at:
             d["started_at_iso"] = datetime.fromtimestamp(self.started_at).isoformat()
         if self.completed_at:
-            d["completed_at_iso"] = datetime.fromtimestamp(
-                self.completed_at
-            ).isoformat()
+            d["completed_at_iso"] = datetime.fromtimestamp(self.completed_at).isoformat()
         if self.started_at and self.completed_at:
             d["duration_seconds"] = round(self.completed_at - self.started_at, 2)
         return d
@@ -202,8 +200,7 @@ class AsyncTaskManager:
         self._cancel_hooks.clear()
 
         logger.info(
-            "AsyncTaskManager shut down: %d task(s) signalled to cancel, "
-            "%d task(s) were running",
+            "AsyncTaskManager shut down: %d task(s) signalled to cancel, %d task(s) were running",
             cancel_count,
             len(self._tasks),
         )
@@ -216,9 +213,7 @@ class AsyncTaskManager:
         try:
             async with sessionmaker() as session:
                 result = await session.execute(
-                    select(TrainingTask).where(
-                        TrainingTask.status == TaskStatusEnum.RUNNING
-                    )
+                    select(TrainingTask).where(TrainingTask.status == TaskStatusEnum.RUNNING)
                 )
                 running_tasks = result.scalars().all()
 
@@ -270,11 +265,10 @@ class AsyncTaskManager:
             return 0
         try:
             from datetime import timedelta
+
             cutoff = datetime.now(timezone.utc) - timedelta(seconds=max_age_seconds)
             async with sessionmaker() as session:
-                stmt = select(TrainingTask).where(
-                    TrainingTask.status == TaskStatusEnum.RUNNING
-                )
+                stmt = select(TrainingTask).where(TrainingTask.status == TaskStatusEnum.RUNNING)
                 if task_types:
                     stmt = stmt.where(TrainingTask.task_type.in_(task_types))
                 result = await session.execute(stmt)
@@ -317,13 +311,9 @@ class AsyncTaskManager:
                     existing.error = record.error
                     existing.params = record.params
                     if record.started_at:
-                        existing.started_at = datetime.fromtimestamp(
-                            record.started_at, tz=timezone.utc
-                        )
+                        existing.started_at = datetime.fromtimestamp(record.started_at, tz=timezone.utc)
                     if record.completed_at:
-                        existing.completed_at = datetime.fromtimestamp(
-                            record.completed_at, tz=timezone.utc
-                        )
+                        existing.completed_at = datetime.fromtimestamp(record.completed_at, tz=timezone.utc)
                 else:
                     task_model = TrainingTask(
                         id=record.job_id,
@@ -335,17 +325,11 @@ class AsyncTaskManager:
                         error=record.error,
                         owner_id=record.owner_id,
                         idempotency_key=record.idempotency_key,
-                        created_at=datetime.fromtimestamp(
-                            record.created_at, tz=timezone.utc
-                        ),
-                        started_at=datetime.fromtimestamp(
-                            record.started_at, tz=timezone.utc
-                        )
+                        created_at=datetime.fromtimestamp(record.created_at, tz=timezone.utc),
+                        started_at=datetime.fromtimestamp(record.started_at, tz=timezone.utc)
                         if record.started_at
                         else None,
-                        completed_at=datetime.fromtimestamp(
-                            record.completed_at, tz=timezone.utc
-                        )
+                        completed_at=datetime.fromtimestamp(record.completed_at, tz=timezone.utc)
                         if record.completed_at
                         else None,
                     )
@@ -368,9 +352,7 @@ class AsyncTaskManager:
         # P2-2 修复：shutdown 后拒绝创建新任务，避免在关闭流程中产生
         # 无法被调度执行的新任务（semaphore 已可能失效、事件循环即将关闭）
         if self._shutdown:
-            raise RuntimeError(
-                "AsyncTaskManager has been shut down; cannot create new tasks"
-            )
+            raise RuntimeError("AsyncTaskManager has been shut down; cannot create new tasks")
         async with self._get_task_lock():
             if idempotency_key and idempotency_key in self._idempotency_map:
                 return self._tasks[self._idempotency_map[idempotency_key]]
@@ -381,9 +363,7 @@ class AsyncTaskManager:
                     try:
                         async with sessionmaker() as session:
                             result = await session.execute(
-                                select(TrainingTask).where(
-                                    TrainingTask.idempotency_key == idempotency_key
-                                )
+                                select(TrainingTask).where(TrainingTask.idempotency_key == idempotency_key)
                             )
                             existing_db = result.scalar_one_or_none()
                             if existing_db:
@@ -461,15 +441,11 @@ class AsyncTaskManager:
                     # 使用 wait_for 添加超时控制
                     try:
                         result = await asyncio.wait_for(
-                            executor(
-                                cancel_evt, self._create_progress_updater(job_id)
-                            ),
+                            executor(cancel_evt, self._create_progress_updater(job_id)),
                             timeout=timeout,
                         )
                     except asyncio.TimeoutError:
-                        raise TimeoutError(
-                            f"Task {job_id} exceeded timeout of {timeout}s"
-                        )
+                        raise TimeoutError(f"Task {job_id} exceeded timeout of {timeout}s")
 
                     # 成功执行，跳出重试循环
                     async with self._get_task_lock():
@@ -534,7 +510,10 @@ class AsyncTaskManager:
                     if attempt < self._max_retries:
                         logger.warning(
                             "Task %s failed (attempt %d/%d), retrying: %s",
-                            job_id, attempt + 1, self._max_retries, e,
+                            job_id,
+                            attempt + 1,
+                            self._max_retries,
+                            e,
                         )
                         # 重试时重置进度
                         async with self._get_task_lock():
@@ -559,15 +538,13 @@ class AsyncTaskManager:
                             },
                         )
                         # 指数退避
-                        await asyncio.sleep(2 ** attempt)
+                        await asyncio.sleep(2**attempt)
                         continue
                     raise  # 最后一次重试失败，抛出异常
 
                 except (RuntimeError, ValueError, TypeError) as e:
                     # 不可重试的异常，直接失败
-                    safe = safe_error_message(
-                        e, context=f"task_system.run_task[{job_id}]"
-                    )
+                    safe = safe_error_message(e, context=f"task_system.run_task[{job_id}]")
                     async with self._get_task_lock():
                         record = self._tasks[job_id]
                         record.status = TaskStatus.FAILED
@@ -677,9 +654,7 @@ class AsyncTaskManager:
 
         try:
             async with sessionmaker() as session:
-                result = await session.execute(
-                    select(TrainingTask).where(TrainingTask.id == job_id)
-                )
+                result = await session.execute(select(TrainingTask).where(TrainingTask.id == job_id))
                 db_task = result.scalar_one_or_none()
                 if db_task:
                     record = TaskRecord.from_db_model(db_task)
@@ -708,6 +683,7 @@ class AsyncTaskManager:
         try:
             async with sessionmaker() as session:
                 from sqlalchemy import func
+
                 query = select(func.count(TrainingTask.id))
 
                 filters = []
@@ -720,6 +696,7 @@ class AsyncTaskManager:
 
                 if filters:
                     from sqlalchemy import and_
+
                     query = query.where(and_(*filters))
 
                 result = await session.execute(query)
@@ -759,6 +736,7 @@ class AsyncTaskManager:
 
                 if filters:
                     from sqlalchemy import and_
+
                     query = query.where(and_(*filters))
 
                 query = query.order_by(TrainingTask.created_at.desc())
@@ -822,9 +800,7 @@ class AsyncTaskManager:
     def register_cancel_hook(self, job_id: str, hook: Callable):
         self._cancel_hooks[job_id] = hook
 
-    async def _broadcast_event(
-        self, job_id: str, event_type: str, data: Dict[str, Any]
-    ):
+    async def _broadcast_event(self, job_id: str, event_type: str, data: Dict[str, Any]):
         event = f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
         if job_id in self._subscribers:
@@ -846,9 +822,7 @@ class AsyncTaskManager:
                 self._subscribers[job_id].remove(q)
 
     def _create_progress_updater(self, job_id: str) -> Callable:
-        async def update_progress(
-            percent: float, message: str = "", metrics: Optional[Dict] = None
-        ):
+        async def update_progress(percent: float, message: str = "", metrics: Optional[Dict] = None):
             async with self._get_task_lock():
                 if job_id in self._tasks:
                     self._tasks[job_id].progress = percent
@@ -879,9 +853,7 @@ class AsyncTaskManager:
         return update_progress
 
     def _estimate_wait(self) -> float:
-        queued_count = sum(
-            1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED
-        )
+        queued_count = sum(1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED)
         return queued_count * 60.0
 
     def _queue_size(self) -> int:
@@ -901,9 +873,7 @@ class AsyncTaskManager:
         total = len(self._tasks)
         active = sum(1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING)
         queued = sum(1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED)
-        completed = sum(
-            1 for t in self._tasks.values() if t.status == TaskStatus.COMPLETED
-        )
+        completed = sum(1 for t in self._tasks.values() if t.status == TaskStatus.COMPLETED)
         failed = sum(1 for t in self._tasks.values() if t.status == TaskStatus.FAILED)
 
         return {

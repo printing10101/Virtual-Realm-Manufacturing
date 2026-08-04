@@ -61,7 +61,7 @@ from app.simulation.voxel_cutter.mesher import (
 from app.simulation.toolpath_parser import ToolpathSegment
 
 if TYPE_CHECKING:
-    import trimesh
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -262,23 +262,17 @@ class VoxelCutter(_PyVoxelCutter):
         try:
             import trimesh
         except ImportError:
-            return self._generate_fallback_result(
-                task_id, output_dir, segments, start_time, "trimesh未安装"
-            )
+            return self._generate_fallback_result(task_id, output_dir, segments, start_time, "trimesh未安装")
 
         try:
             stock_mesh = trimesh.load(str(stock_stl_path), file_type="stl")
             if not isinstance(stock_mesh, trimesh.Trimesh):
                 stock_mesh = stock_mesh if hasattr(stock_mesh, "geometry") else None
                 if stock_mesh is None or not isinstance(stock_mesh, trimesh.Trimesh):
-                    return self._generate_fallback_result(
-                        task_id, output_dir, segments, start_time, "STL解析失败"
-                    )
+                    return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL解析失败")
         except (OSError, ValueError, TypeError, RuntimeError) as load_err:
             logger.warning("STL文件加载失败: %s", load_err, exc_info=True)
-            return self._generate_fallback_result(
-                task_id, output_dir, segments, start_time, "STL文件加载失败"
-            )
+            return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL文件加载失败")
 
         bbox_min, bbox_max = (
             stock_mesh.bounds[0].copy(),
@@ -337,22 +331,14 @@ class VoxelCutter(_PyVoxelCutter):
             )
 
         if collision_info.collided:
-            severity = (
-                "critical"
-                if len(collision_info.collision_positions) > 3
-                else "warning"
-            )
+            severity = "critical" if len(collision_info.collision_positions) > 3 else "warning"
             collision_info.collision_severity = severity
 
-        rapid_check = _check_rapid_collisions(
-            segments, voxel_grid, bbox_min, safe_z_height, self._voxel_size
-        )
+        rapid_check = _check_rapid_collisions(segments, voxel_grid, bbox_min, safe_z_height, self._voxel_size)
         if rapid_check.collided:
             collision_info.collided = True
             collision_info.collision_positions.extend(rapid_check.collision_positions)
-            collision_info.collision_segment_indices.extend(
-                rapid_check.collision_segment_indices
-            )
+            collision_info.collision_segment_indices.extend(rapid_check.collision_segment_indices)
             if rapid_check.collision_severity == "critical":
                 collision_info.collision_severity = "critical"
             elif collision_info.collision_severity == "none":
@@ -433,8 +419,7 @@ class VoxelCutter(_PyVoxelCutter):
                 return np.asarray(mask_array, dtype=bool)
             except (RuntimeError, ValueError, TypeError, OSError) as exc:
                 logger.warning(
-                    "[VoxelCutter] Rust build_tool_mask failed (%s); "
-                    "falling back to Python voxel_mask for this call.",
+                    "[VoxelCutter] Rust build_tool_mask failed (%s); falling back to Python voxel_mask for this call.",
                     exc,
                     exc_info=True,
                 )
@@ -495,8 +480,7 @@ class VoxelCutter(_PyVoxelCutter):
             except (RuntimeError, ValueError, TypeError, OSError) as exc:
                 stats.fallback_reason = f"rust_apply_failed: {exc}"
                 logger.warning(
-                    "[VoxelCutter] Rust apply_tool_mask failed (%s); "
-                    "falling back to Python batch for this call.",
+                    "[VoxelCutter] Rust apply_tool_mask failed (%s); falling back to Python batch for this call.",
                     exc,
                     exc_info=True,
                 )
@@ -509,9 +493,7 @@ class VoxelCutter(_PyVoxelCutter):
         t0 = time.perf_counter()
         from app.simulation.voxel_cutter import _apply_tool_mask_batch as _py_batch
 
-        removed = _py_batch(
-            voxel_grid, tool_mask, points, bbox_min, voxel_size, padding
-        )
+        removed = _py_batch(voxel_grid, tool_mask, points, bbox_min, voxel_size, padding)
         stats.elapsed_ms = (time.perf_counter() - t0) * 1000.0
         stats.removed = removed
         stats.points = int(points.shape[0])
@@ -535,12 +517,8 @@ def apply_cutting_batch(
         dict: 包含 removed/skipped/points 字段。
     """
     if not is_rust_available():
-        raise RuntimeError(
-            f"Rust compute engine unavailable (import_error={RUST_IMPORT_ERROR})"
-        )
-    return _RUST_VOXEL_CUTTER.apply_tool_mask(
-        voxel_grid, tool_mask, points, bbox_min, voxel_size, padding
-    )
+        raise RuntimeError(f"Rust compute engine unavailable (import_error={RUST_IMPORT_ERROR})")
+    return _RUST_VOXEL_CUTTER.apply_tool_mask(voxel_grid, tool_mask, points, bbox_min, voxel_size, padding)
 
 
 def build_tool_mask(
@@ -554,9 +532,7 @@ def build_tool_mask(
 ) -> np.ndarray:
     """模块级便捷函数：调用 Rust 构造刀具掩码。"""
     if not is_rust_available():
-        raise RuntimeError(
-            f"Rust compute engine unavailable (import_error={RUST_IMPORT_ERROR})"
-        )
+        raise RuntimeError(f"Rust compute engine unavailable (import_error={RUST_IMPORT_ERROR})")
     mask_array, _info = _RUST_VOXEL_CUTTER.build_tool_mask(
         tool_type=tool_type,
         diameter=diameter,

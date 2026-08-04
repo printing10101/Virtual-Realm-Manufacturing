@@ -24,6 +24,7 @@ app/database/models/project_sync.py（ORM 持久化）。
     snapshot://<snapshot_id>
     template://<template_id>/<version>
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -207,9 +208,7 @@ def parse_resource_uri(uri: str) -> tuple[str, str]:
         raise ValueError(f"资源 URI 格式无效（缺少 scheme://）: {uri}")
     scheme, path = uri.split("://", 1)
     if not RESOURCE_TYPES.is_valid(scheme):
-        raise ValueError(
-            f"资源 URI scheme 不支持: {scheme}（支持: {RESOURCE_TYPES.all()}）"
-        )
+        raise ValueError(f"资源 URI scheme 不支持: {scheme}（支持: {RESOURCE_TYPES.all()}）")
     if not path:
         raise ValueError(f"资源 URI path 为空: {uri}")
     return scheme, path
@@ -271,22 +270,15 @@ class ResourceRef:
         if not self.project_id:
             raise ValueError("ResourceRef.project_id 不能为空")
         if not RESOURCE_TYPES.is_valid(self.resource_type):
-            raise ValueError(
-                f"ResourceRef.resource_type 不支持: {self.resource_type}"
-            )
+            raise ValueError(f"ResourceRef.resource_type 不支持: {self.resource_type}")
         if not self.resource_uri:
             raise ValueError("ResourceRef.resource_uri 不能为空")
         # 校验 URI scheme 与 resource_type 一致
         scheme, _ = parse_resource_uri(self.resource_uri)
         if scheme != self.resource_type:
-            raise ValueError(
-                f"ResourceRef URI scheme ({scheme}) 与 resource_type "
-                f"({self.resource_type}) 不匹配"
-            )
+            raise ValueError(f"ResourceRef URI scheme ({scheme}) 与 resource_type ({self.resource_type}) 不匹配")
         if not SYNC_STRATEGIES.is_valid(self.sync_strategy):
-            raise ValueError(
-                f"ResourceRef.sync_strategy 不支持: {self.sync_strategy}"
-            )
+            raise ValueError(f"ResourceRef.sync_strategy 不支持: {self.sync_strategy}")
 
     @property
     def path(self) -> str:
@@ -361,15 +353,11 @@ class ProjectSyncManifest:
         if not self.current_branch:
             raise ValueError("ProjectSyncManifest.current_branch 不能为空")
         if not SYNC_STATUS.is_valid(self.status):
-            raise ValueError(
-                f"ProjectSyncManifest.status 不支持: {self.status}"
-            )
+            raise ValueError(f"ProjectSyncManifest.status 不支持: {self.status}")
         # resource_refs 唯一性校验
         uris = [ref.resource_uri for ref in self.resource_refs]
         if len(uris) != len(set(uris)):
-            raise ValueError(
-                "ProjectSyncManifest.resource_refs 存在重复的 resource_uri"
-            )
+            raise ValueError("ProjectSyncManifest.resource_refs 存在重复的 resource_uri")
 
     @property
     def resource_count(self) -> int:
@@ -395,9 +383,7 @@ class ProjectSyncManifest:
 
     def list_refs_by_type(self, resource_type: str) -> list[ResourceRef]:
         """按资源类型过滤资源引用."""
-        return [
-            ref for ref in self.resource_refs if ref.resource_type == resource_type
-        ]
+        return [ref for ref in self.resource_refs if ref.resource_type == resource_type]
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为 dict（用于 API 响应与 ORM 投影）."""
@@ -456,9 +442,7 @@ class SyncRecord:
         if not self.project_id:
             raise ValueError("SyncRecord.project_id 不能为空")
         if not SYNC_DIRECTIONS.is_valid(self.direction):
-            raise ValueError(
-                f"SyncRecord.direction 不支持: {self.direction}"
-            )
+            raise ValueError(f"SyncRecord.direction 不支持: {self.direction}")
         if self.status not in ("success", "failed", "conflict"):
             raise ValueError(f"SyncRecord.status 不支持: {self.status}")
 

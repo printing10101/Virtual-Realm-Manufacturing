@@ -110,9 +110,7 @@ class EnvironmentConfig:
         如需获取 CORS 用的环境标识，请直接调用 :func:`get_lingjing_env`。
     """
 
-    environment: str = field(
-        default_factory=lambda: _env("ENVIRONMENT", "development").lower()
-    )
+    environment: str = field(default_factory=lambda: _env("ENVIRONMENT", "development").lower())
 
     @property
     def is_production(self) -> bool:

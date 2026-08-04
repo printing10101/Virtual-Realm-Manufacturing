@@ -13,6 +13,7 @@
     较差，因此递归查询在 Python 层完成。数据规模在实验管理场景下可接受
     （典型 < 10^4 条）。后续若需扩展，可引入 SQLAlchemy JSON 函数或图数据库。
 """
+
 from __future__ import annotations
 
 import json
@@ -122,9 +123,7 @@ class LineageStore(ILineageStore):
             result = await session.execute(stmt)
             return [_orm_to_contract(orm) for orm in result.scalars().all()]
 
-    async def get_upstream(
-        self, target_uri: str, *, depth: int = 10
-    ) -> list[LineageRecord]:
+    async def get_upstream(self, target_uri: str, *, depth: int = 10) -> list[LineageRecord]:
         """查询上游血缘（递归到 depth 层）。
 
         返回的列表按发现顺序（BFS），不含 target_uri 自身。
@@ -159,9 +158,7 @@ class LineageStore(ILineageStore):
 
         return result
 
-    async def get_downstream(
-        self, target_uri: str, *, depth: int = 10
-    ) -> list[LineageRecord]:
+    async def get_downstream(self, target_uri: str, *, depth: int = 10) -> list[LineageRecord]:
         """查询下游血缘（递归到 depth 层）。"""
         if depth <= 0:
             return []

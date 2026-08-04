@@ -16,9 +16,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exceptions import (
     AppException,
-    NotFoundException,
     ValidationException,
 )
+
 # V3.0: RepositoryError / RecordNotFoundError 已改为继承 AppException，
 # FastAPI 自动通过下面的 app_exception_handler 处理，无需单独注册。
 from app.core.response import error_response, manufacturing_error
@@ -69,9 +69,7 @@ async def app_exception_handler(_request: Request, exc: AppException) -> JSONRes
     )
 
 
-async def http_exception_handler(
-    _request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
+async def http_exception_handler(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
     code = _STARLETTE_HTTP_TO_CODE.get(exc.status_code, 2001)
     # 对 5xx 错误进行脱敏处理，避免泄露敏感信息
     if exc.status_code >= 500:
@@ -93,9 +91,7 @@ async def http_exception_handler(
     return _build_json_response(code=code, message=message, http_status=exc.status_code)
 
 
-async def validation_exception_handler(
-    _request: Request, exc: RequestValidationError
-) -> JSONResponse:
+async def validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
     errors = []
     for error in exc.errors():
         loc = " -> ".join(str(p) for p in error.get("loc", []))
@@ -137,9 +133,7 @@ async def generic_exception_handler(_request: Request, exc: Exception) -> JSONRe
     )
 
 
-async def manufacturing_error_handler(
-    _request: Request, exc: ManufacturingError
-) -> JSONResponse:
+async def manufacturing_error_handler(_request: Request, exc: ManufacturingError) -> JSONResponse:
     logger.warning(
         "[ManufacturingError] code=%s severity=%s message=%s path=%s detail=%s",
         exc.code,

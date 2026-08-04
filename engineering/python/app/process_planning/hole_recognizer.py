@@ -55,6 +55,7 @@ class HoleFeature:
         counterbore_depth: 沉头孔深度 (mm)，仅counterbore类型
         metadata: 附加元数据字典
     """
+
     hole_id: str
     type: str
     position_x: float
@@ -176,9 +177,7 @@ class HoleFeature:
 
     def _it_grade_from_hole_tolerance(self) -> str:
         """将H7/H8等孔公差转换为IT等级表示"""
-        grade_map = {"H5": "IT5", "H6": "IT6", "H7": "IT7",
-                     "H8": "IT8", "H9": "IT9", "H10": "IT10",
-                     "H11": "IT11"}
+        grade_map = {"H5": "IT5", "H6": "IT6", "H7": "IT7", "H8": "IT8", "H9": "IT9", "H10": "IT10", "H11": "IT11"}
         return grade_map.get(self.tolerance_grade.upper(), "IT8")
 
 
@@ -194,6 +193,7 @@ class HoleRecognitionResult:
         errors: 识别过程中的错误信息
         accuracy_metrics: 识别准确率指标
     """
+
     holes: list[HoleFeature] = field(default_factory=list)
     total_count: int = 0
     type_summary: dict[str, int] = field(default_factory=dict)
@@ -296,26 +296,28 @@ class HoleFeatureRecognizer:
         # --- 路径2: 从 features 字段提取孔特征 ---
         raw_features = part_description.get("features", [])
         hole_features = [
-            f for f in raw_features
+            f
+            for f in raw_features
             if f.get("geometric_type") == "cylinder"
-            and f.get("type") in ("through_hole", "inner_bore", "counterbore",
-                                  "center_hole", "blind_hole")
+            and f.get("type") in ("through_hole", "inner_bore", "counterbore", "center_hole", "blind_hole")
         ]
         # 合并 features 中的孔到 raw_holes
         for hf in hole_features:
             pos = hf.get("position", {})
             dims = hf.get("dimensions", {})
-            raw_holes.append({
-                "id": hf.get("name", f"H{len(raw_holes) + 1:03d}"),
-                "type": hf.get("type", "through_hole"),
-                "position": pos,
-                "diameter": dims.get("diameter", hf.get("diameter", 0)),
-                "depth": dims.get("depth", hf.get("depth", 0)),
-                "tolerance_grade": hf.get("tolerance_grade", "H8"),
-                "surface": hf.get("surface", "A"),
-                "is_threaded": hf.get("is_threaded", False),
-                "thread_spec": hf.get("thread_spec", ""),
-            })
+            raw_holes.append(
+                {
+                    "id": hf.get("name", f"H{len(raw_holes) + 1:03d}"),
+                    "type": hf.get("type", "through_hole"),
+                    "position": pos,
+                    "diameter": dims.get("diameter", hf.get("diameter", 0)),
+                    "depth": dims.get("depth", hf.get("depth", 0)),
+                    "tolerance_grade": hf.get("tolerance_grade", "H8"),
+                    "surface": hf.get("surface", "A"),
+                    "is_threaded": hf.get("is_threaded", False),
+                    "thread_spec": hf.get("thread_spec", ""),
+                }
+            )
 
         # --- 路径3: 从 solids 字段的圆柱面提取 ---
         solids = part_description.get("solids", [])
@@ -328,14 +330,16 @@ class HoleFeatureRecognizer:
                     is_through = all(b.get("open", True) for b in boundaries)
                     hole_type = "through_hole" if is_through else "blind_hole"
                     center = face.get("center", {})
-                    raw_holes.append({
-                        "id": f"H{len(raw_holes) + 1:03d}",
-                        "type": hole_type,
-                        "position": center,
-                        "diameter": face.get("diameter", 0),
-                        "depth": face.get("height", face.get("length", 0)),
-                        "tolerance_grade": face.get("tolerance", "H8"),
-                    })
+                    raw_holes.append(
+                        {
+                            "id": f"H{len(raw_holes) + 1:03d}",
+                            "type": hole_type,
+                            "position": center,
+                            "diameter": face.get("diameter", 0),
+                            "depth": face.get("height", face.get("length", 0)),
+                            "tolerance_grade": face.get("tolerance", "H8"),
+                        }
+                    )
 
         if not raw_holes:
             warnings.append("未找到任何孔特征定义。请检查输入数据是否包含 holes/features/solids 字段")
@@ -348,9 +352,11 @@ class HoleFeatureRecognizer:
 
                 pos = raw.get("position", {})
                 if isinstance(pos, (list, tuple)):
-                    pos = {"x": pos[0] if len(pos) > 0 else 0,
-                           "y": pos[1] if len(pos) > 1 else 0,
-                           "z": pos[2] if len(pos) > 2 else 0}
+                    pos = {
+                        "x": pos[0] if len(pos) > 0 else 0,
+                        "y": pos[1] if len(pos) > 1 else 0,
+                        "z": pos[2] if len(pos) > 2 else 0,
+                    }
 
                 position_x = float(pos.get("x", 0))
                 position_y = float(pos.get("y", 0))
@@ -368,8 +374,9 @@ class HoleFeatureRecognizer:
 
                 # 深度校验：盲孔深度必须 > 钻尖高度
                 if hole_type == "blind_hole":
-                    drill_tip_height = (diameter / 2) * (1.0 / __import__('math').tan(
-                        __import__('math').radians(self.STANDARD_DRILL_POINT_ANGLE / 2)))
+                    drill_tip_height = (diameter / 2) * (
+                        1.0 / __import__("math").tan(__import__("math").radians(self.STANDARD_DRILL_POINT_ANGLE / 2))
+                    )
                     if depth <= drill_tip_height:
                         warnings.append(
                             f"盲孔 {hole_id} 深度 {depth:.1f}mm ≤ 钻尖高度"
@@ -403,9 +410,7 @@ class HoleFeatureRecognizer:
                 holes.append(hole)
 
             except (ValueError, TypeError, KeyError) as e:
-                errors.append(
-                    f" 解析孔条目 {raw.get('id', i)} 时出错: {type(e).__name__}"
-                )
+                errors.append(f" 解析孔条目 {raw.get('id', i)} 时出错: {type(e).__name__}")
                 continue
 
         # 合并共轴孔为沉头孔
@@ -563,19 +568,14 @@ class HoleFeatureRecognizer:
             if result.total_count == expected_count:
                 passed.append(f"孔数量匹配: {result.total_count} == {expected_count}")
             else:
-                issues.append(
-                    f"孔数量不匹配: 识别到{result.total_count}个，期望{expected_count}个"
-                )
+                issues.append(f"孔数量不匹配: 识别到{result.total_count}个，期望{expected_count}个")
         else:
             passed.append(f"孔总数: {result.total_count}")
 
         # 检查2: 直径验证
         invalid_diameter = [h for h in result.holes if h.diameter <= 0]
         if invalid_diameter:
-            issues.append(
-                f"{len(invalid_diameter)}个孔的直径无效: "
-                f"{', '.join(h.hole_id for h in invalid_diameter)}"
-            )
+            issues.append(f"{len(invalid_diameter)}个孔的直径无效: {', '.join(h.hole_id for h in invalid_diameter)}")
         else:
             passed.append("所有孔直径均为正值")
 
@@ -583,18 +583,17 @@ class HoleFeatureRecognizer:
         through_holes = [h for h in result.holes if h.is_through()]
         invalid_depth = [h for h in through_holes if h.depth <= 0]
         if invalid_depth:
-            issues.append(
-                f"{len(invalid_depth)}个通孔的深度无效"
-            )
+            issues.append(f"{len(invalid_depth)}个通孔的深度无效")
         else:
             passed.append(f"{len(through_holes)}个通孔深度有效")
 
         # 检查4: 位置验证
         import math
+
         invalid_pos = [
-            h for h in result.holes
-            if any(math.isnan(v) or math.isinf(v)
-                   for v in [h.position_x, h.position_y, h.position_z])
+            h
+            for h in result.holes
+            if any(math.isnan(v) or math.isinf(v) for v in [h.position_x, h.position_y, h.position_z])
         ]
         if invalid_pos:
             issues.append(f"{len(invalid_pos)}个孔的位置坐标无效")

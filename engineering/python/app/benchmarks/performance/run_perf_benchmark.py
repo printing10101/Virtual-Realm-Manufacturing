@@ -31,6 +31,7 @@ from app.benchmarks.performance.nc_generation_bench import NCGenerationBenchmark
 from app.benchmarks.performance.drawing_parse_bench import DrawingParseBenchmark
 from app.benchmarks.performance.api_bench import APIPerfBenchmark
 from app.benchmarks.performance.database_bench import DatabasePerfBenchmark
+
 # 阶段2 解耦改造：business_logic_bench 模块已迁移到 research/，
 # 工程侧运行时若需调用完整业务逻辑基准测试，请在 research/ 环境中执行。
 # 这里通过 try/except 提供降级保护，避免 import 失败导致整个基准测试框架不可用。
@@ -38,6 +39,7 @@ try:
     from app.benchmarks.performance.business_logic_bench import (
         BusinessLogicPerfBenchmark,
     )
+
     _HAS_BUSINESS_LOGIC_BENCH = True
 except ImportError:
     BusinessLogicPerfBenchmark = None
@@ -105,8 +107,7 @@ class RegressionReport:
                 "NEW": "[NEW]",
             }.get(e.status, "[?]")
             lines.append(
-                f"| {e.metric} | {e.current:.3f} | {e.previous:.3f} | "
-                f"{e.change_pct:+.1f}% | {status_icon} {e.status} |"
+                f"| {e.metric} | {e.current:.3f} | {e.previous:.3f} | {e.change_pct:+.1f}% | {status_icon} {e.status} |"
             )
 
         if self.violations:

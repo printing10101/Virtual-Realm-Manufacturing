@@ -125,18 +125,14 @@ class DreamingAuditRecorder:
             "artifacts": {
                 "report_path": metadata.get("report_path") if metadata else None,
                 "rules_path": metadata.get("rules_path") if metadata else None,
-                "reflection_json_path": metadata.get("reflection_json_path")
-                if metadata
-                else None,
+                "reflection_json_path": metadata.get("reflection_json_path") if metadata else None,
             },
         }
 
         extra_meta = {
             "lookback_days": lookback_days,
             "session_count": session_count,
-            "ar_02_pre_fix_included": metadata.get("ar_02_pre_fix_included", False)
-            if metadata
-            else False,
+            "ar_02_pre_fix_included": metadata.get("ar_02_pre_fix_included", False) if metadata else False,
             "adr": "ADR-021",
         }
         if metadata:
@@ -152,9 +148,7 @@ class DreamingAuditRecorder:
                 final_execution=final_execution,
                 operation_status=OperationStatus.SUCCESS,
                 reasoning=summary,
-                confidence=self._compute_confidence(
-                    llm_model, insight_count, session_count
-                ),
+                confidence=self._compute_confidence(llm_model, insight_count, session_count),
                 metadata=extra_meta,
             )
             logger.info(
@@ -243,8 +237,7 @@ class DreamingAuditRecorder:
                     "succeeded_lock_violated": False,
                 },
                 operation_status=status,
-                reasoning=f"规则 {rule_id} 应用状态：applied={applied}, "
-                f"rollback={rollback_triggered}",
+                reasoning=f"规则 {rule_id} 应用状态：applied={applied}, rollback={rollback_triggered}",
                 metadata={"adr": "ADR-021", "rule_id": rule_id},
             )
             logger.info(
@@ -260,9 +253,7 @@ class DreamingAuditRecorder:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _compute_confidence(
-        llm_model: Optional[str], insight_count: int, session_count: int
-    ) -> float:
+    def _compute_confidence(llm_model: Optional[str], insight_count: int, session_count: int) -> float:
         """计算反思置信度。
 
         规则：
@@ -290,9 +281,7 @@ class DreamingAuditRecorder:
             return ""
         sanitized = msg
         # 移除 Windows 绝对路径
-        sanitized = re.sub(
-            r"[A-Za-z]:\\[^\s'\"]+", "<path>", sanitized
-        )
+        sanitized = re.sub(r"[A-Za-z]:\\[^\s'\"]+", "<path>", sanitized)
         # 移除 Unix 绝对路径
         sanitized = re.sub(r"/(?:home|root|var|opt|tmp)/[^\s'\"]+", "<path>", sanitized)
         # 截断过长的错误信息

@@ -25,7 +25,7 @@ import logging
 import os
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +57,7 @@ __all__ = [
 @dataclass
 class ReconstructionResult:
     """重建结果摘要，用于 API 响应。"""
+
     task_id: str
     status: str
     output_mesh_path: str
@@ -352,8 +353,7 @@ class ReconstructionPipeline:
                     )
                 else:
                     logger.warning(
-                        "part_prior[%s] 预训练权重路径不存在: %s，"
-                        "使用随机初始化权重（仅用于链路测试，不可用于生产）",
+                        "part_prior[%s] 预训练权重路径不存在: %s，使用随机初始化权重（仅用于链路测试，不可用于生产）",
                         task_id,
                         prior_cfg.pretrained_model_path,
                     )
@@ -431,15 +431,11 @@ class ReconstructionPipeline:
             import numpy as np
             from plyfile import PlyData
         except ImportError as e:
-            raise RuntimeError(
-                f"part_prior 路径需要 numpy + plyfile，但当前环境不可用: {e}"
-            ) from e
+            raise RuntimeError(f"part_prior 路径需要 numpy + plyfile，但当前环境不可用: {e}") from e
 
         plydata = PlyData.read(str(ply_path))
         vertex = plydata["vertex"]
-        points = np.stack(
-            [vertex["x"], vertex["y"], vertex["z"]], axis=-1
-        ).astype(np.float64)
+        points = np.stack([vertex["x"], vertex["y"], vertex["z"]], axis=-1).astype(np.float64)
 
         bbox_min = tuple(float(points.min(axis=0)[i]) for i in range(3))
         bbox_max = tuple(float(points.max(axis=0)[i]) for i in range(3))
@@ -475,19 +471,15 @@ class ReconstructionPipeline:
             import trimesh
             from trimesh import Trimesh
         except ImportError as e:
-            raise RuntimeError(
-                f"part_prior 路径需要 numpy + trimesh，但当前环境不可用: {e}"
-            ) from e
+            raise RuntimeError(f"part_prior 路径需要 numpy + trimesh，但当前环境不可用: {e}") from e
 
         # H5 bug 修复：Trimesh 构造函数没有 file_path 参数（这是 AI 臆造的 API）。
         # 原写法 mesh.vertices 永远为空 → 直接导出空 mesh → 缩放逻辑全部跳过。
         # 改用 trimesh.load 正确加载文件。
-        mesh = trimesh.load(str(input_mesh_path), force='mesh')
+        mesh = trimesh.load(str(input_mesh_path), force="mesh")
         # Scene 对象（多 mesh 容器）需合并为单个 Trimesh
         if isinstance(mesh, trimesh.Scene):
-            mesh = trimesh.util.concatenate(
-                [g for g in mesh.geometry.values()]
-            )
+            mesh = trimesh.util.concatenate([g for g in mesh.geometry.values()])
         if len(mesh.vertices) == 0:
             # 空 mesh 直接保存
             mesh.export(str(output_mesh_path))

@@ -31,10 +31,8 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
-    Integer,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import relationship
@@ -262,10 +260,7 @@ class ModelArtifact(Base):
         }
 
     def __repr__(self) -> str:
-        return (
-            f"<ModelArtifact(id={self.id}, name={self.name}, "
-            f"version={self.version}, status={self.status})>"
-        )
+        return f"<ModelArtifact(id={self.id}, name={self.name}, version={self.version}, status={self.status})>"
 
 
 class DatasetReadme(Base):
@@ -360,10 +355,7 @@ class DatasetReadme(Base):
         }
 
     def __repr__(self) -> str:
-        return (
-            f"<DatasetReadme(id={self.id}, dataset_id={self.dataset_id}, "
-            f"version={self.version})>"
-        )
+        return f"<DatasetReadme(id={self.id}, dataset_id={self.dataset_id}, version={self.version})>"
 
 
 __all__ = [

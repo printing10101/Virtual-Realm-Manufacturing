@@ -48,11 +48,10 @@ def _disclaimer_dict(
     项目记忆硬约束：cam_validation_required 始终 True，不可由参数关闭。
     """
     if task is not None:
-        material_calibration_status = (
-            "pending_calibration" if task.pending_calibration else "calibrated"
-        )
+        material_calibration_status = "pending_calibration" if task.pending_calibration else "calibrated"
         ltc_experiment_used = task.prediction_method in (
-            "neural_network", "mixed",
+            "neural_network",
+            "mixed",
         )
         return build_cam_disclaimer(
             precision_tier=config.cam_validation.precision_tier,
@@ -111,7 +110,14 @@ def _resolve_upstream_gcode_calibrated(
         - 上游任务不存在 / 未完成：返回空字符串 + 默认值，并记日志
     """
     empty_result: tuple[str, str, str, str, float, float, bool, str] = (
-        "", "", "", "", 80.0, 50.0, False, "analytical",
+        "",
+        "",
+        "",
+        "",
+        80.0,
+        50.0,
+        False,
+        "analytical",
     )
 
     if not source_gcode_generation_task_id:
@@ -141,8 +147,7 @@ def _resolve_upstream_gcode_calibrated(
 
         if gcode_task.status != GCodeGenerationTaskStatus.SUCCEEDED.value:
             logger.warning(
-                "上游 gcode_generation 任务未 SUCCEEDED task_id=%s status=%s，"
-                "按未提供处理",
+                "上游 gcode_generation 任务未 SUCCEEDED task_id=%s status=%s，按未提供处理",
                 source_gcode_generation_task_id,
                 gcode_task.status,
             )
@@ -150,8 +155,7 @@ def _resolve_upstream_gcode_calibrated(
 
         if not gcode_task.gcode_report_path:
             logger.warning(
-                "上游 gcode_generation 任务已 SUCCEEDED 但 gcode_report_path 为空 "
-                "task_id=%s，按未提供处理",
+                "上游 gcode_generation 任务已 SUCCEEDED 但 gcode_report_path 为空 task_id=%s，按未提供处理",
                 source_gcode_generation_task_id,
             )
             return empty_result
@@ -169,12 +173,9 @@ def _resolve_upstream_gcode_calibrated(
         )
 
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cam_validation.resolve_upstream_gcode_calibrated"
-        )
+        safe = safe_error_message(e, context="cam_validation.resolve_upstream_gcode_calibrated")
         logger.warning(
-            "查询上游 gcode_generation 任务异常 source_gcode_task_id=%s "
-            "error_id=%s，按未提供处理",
+            "查询上游 gcode_generation 任务异常 source_gcode_task_id=%s error_id=%s，按未提供处理",
             source_gcode_generation_task_id,
             safe.get("error_id"),
         )

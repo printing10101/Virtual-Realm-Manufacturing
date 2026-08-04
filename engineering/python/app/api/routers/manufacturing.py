@@ -9,6 +9,7 @@
 - documents  — 制造文档
 - notifications — 通知 / 系统状态 / 活动简报聚合
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

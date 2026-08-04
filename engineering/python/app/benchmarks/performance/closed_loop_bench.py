@@ -92,9 +92,7 @@ class ClosedLoopPerfBenchmark:
         self._wm_plugin: Any = None
         self._rl_plugin: Any = None
         self._results: dict[str, Any] = {}
-        self._stage_times: dict[str, list[float]] = {
-            n: [] for n in self.NODE_SEQUENCE
-        }
+        self._stage_times: dict[str, list[float]] = {n: [] for n in self.NODE_SEQUENCE}
         self._total_times: list[float] = []
         self._state_dim = 8
         self._action_dim = 4
@@ -148,9 +146,7 @@ class ClosedLoopPerfBenchmark:
 
         # ---------- 节点 2: predict（真实 WorldModelPlugin） ----------
         t0 = time.perf_counter()
-        candidate_action = np.random.randn(
-            self._horizon, self._action_dim
-        ).astype(np.float32)
+        candidate_action = np.random.randn(self._horizon, self._action_dim).astype(np.float32)
         state_artifact = Artifact(
             name="current_state",
             type="metrics",
@@ -182,9 +178,7 @@ class ClosedLoopPerfBenchmark:
 
         # 提取预测轨迹摘要作为 decide 节点输入
         trajectory_artifact = predict_result.outputs.get("predicted_trajectory")
-        trajectory_metrics_artifact = predict_result.outputs.get(
-            "trajectory_metrics"
-        )
+        trajectory_metrics_artifact = predict_result.outputs.get("trajectory_metrics")
 
         # ---------- 节点 3: decide（真实 RLAgentPlugin） ----------
         t0 = time.perf_counter()
@@ -193,8 +187,7 @@ class ClosedLoopPerfBenchmark:
             workflow_run_id=None,
             inputs={
                 "current_state": state_artifact,
-                "predicted_trajectory": trajectory_artifact
-                or state_artifact,
+                "predicted_trajectory": trajectory_artifact or state_artifact,
             },
             config={"model_uri": self._rl_model_uri},
             retry_count=0,
@@ -217,9 +210,7 @@ class ClosedLoopPerfBenchmark:
 
         # ---------- 节点 6: execute（模拟 CAM 仿真，dry_run=true） ----------
         t0 = time.perf_counter()
-        execution_artifact = self._simulate_execute(
-            gcode_artifact, validation_artifact
-        )
+        execution_artifact = self._simulate_execute(gcode_artifact, validation_artifact)
         stage_times["execute"] = (time.perf_counter() - t0) * 1000
 
         # ---------- 节点 7: collect_feedback（模拟反馈回写） ----------
@@ -232,9 +223,7 @@ class ClosedLoopPerfBenchmark:
         stage_times["collect_feedback"] = (time.perf_counter() - t0) * 1000
 
         # 汇总总耗时
-        stage_times["total"] = sum(
-            stage_times[n] for n in self.NODE_SEQUENCE
-        )
+        stage_times["total"] = sum(stage_times[n] for n in self.NODE_SEQUENCE)
         return stage_times
 
     # ------------------------------------------------------------------
@@ -257,15 +246,12 @@ class ClosedLoopPerfBenchmark:
         # 输出状态向量
         return np.random.randn(self._state_dim).astype(np.float32)
 
-    def _simulate_generate_params(self, action_artifact: Any) -> Artifact:
+    def _simulate_generate_params(self, action_artifact: Any) -> Artifact:  # noqa: F821  # 函数内延迟导入 + future annotations，注解运行时不求值
         """模拟 CAM 参数生成 + G-code 生成."""
         from app.contracts.task import Artifact
 
         # 模拟 G-code 字符串生成（~1000 行）
-        gcode_lines = [
-            f"G01 X{i * 0.1:.3f} Y{i * 0.05:.3f} F{500 + i}"
-            for i in range(200)
-        ]
+        gcode_lines = [f"G01 X{i * 0.1:.3f} Y{i * 0.05:.3f} F{500 + i}" for i in range(200)]
         gcode_str = "\n".join(gcode_lines)
         # 模拟参数查表 + 约束校验开销
         _ = np.random.randn(32, 32) @ np.random.randn(32, 16)
@@ -280,7 +266,7 @@ class ClosedLoopPerfBenchmark:
             },
         )
 
-    def _simulate_validate_cam(self, gcode_artifact: Any) -> Artifact:
+    def _simulate_validate_cam(self, gcode_artifact: Any) -> Artifact:  # noqa: F821  # 函数内延迟导入 + future annotations，注解运行时不求值
         """模拟 CAM 软件二次验证（碰撞/过切/颤振稳定性检查）."""
         from app.contracts.task import Artifact
 
@@ -299,9 +285,7 @@ class ClosedLoopPerfBenchmark:
             },
         )
 
-    def _simulate_execute(
-        self, gcode_artifact: Any, validation_artifact: Any
-    ) -> Artifact:
+    def _simulate_execute(self, gcode_artifact: Any, validation_artifact: Any) -> Artifact:  # noqa: F821  # 函数内延迟导入 + future annotations，注解运行时不求值
         """模拟 CAM 仿真执行（dry_run=true，v1 硬门控）."""
         from app.contracts.task import Artifact
 
@@ -324,7 +308,7 @@ class ClosedLoopPerfBenchmark:
         execution_artifact: Any,
         trajectory_metrics_artifact: Any,
         recommended_action: Any,
-    ) -> Artifact:
+    ) -> Artifact:  # noqa: F821  # 函数内延迟导入 + future annotations，注解运行时不求值
         """模拟反馈回写数据飞轮."""
         from app.contracts.task import Artifact
 
@@ -410,9 +394,7 @@ class ClosedLoopPerfBenchmark:
 
         result: dict[str, Any] = {}
         total_mean = sum(
-            sum(self._stage_times[n]) / len(self._stage_times[n])
-            for n in self.NODE_SEQUENCE
-            if self._stage_times[n]
+            sum(self._stage_times[n]) / len(self._stage_times[n]) for n in self.NODE_SEQUENCE if self._stage_times[n]
         )
         if total_mean <= 0:
             return result
@@ -420,9 +402,7 @@ class ClosedLoopPerfBenchmark:
         for node in self.NODE_SEQUENCE:
             if not self._stage_times[node]:
                 continue
-            node_mean = sum(self._stage_times[node]) / len(
-                self._stage_times[node]
-            )
+            node_mean = sum(self._stage_times[node]) / len(self._stage_times[node])
             pct = node_mean / total_mean * 100
             result[f"cl_{node}_mean_ms"] = round(node_mean, 3)
             result[f"cl_{node}_pct_of_total"] = round(pct, 2)
@@ -489,9 +469,7 @@ class ClosedLoopPerfBenchmark:
         for node in self.NODE_SEQUENCE:
             if not self._stage_times[node]:
                 continue
-            node_mean = sum(self._stage_times[node]) / len(
-                self._stage_times[node]
-            )
+            node_mean = sum(self._stage_times[node]) / len(self._stage_times[node])
             pct = node_mean / total_mean_ms * 100
             if pct >= BOTTLENECK_THRESHOLD_PCT:
                 bottlenecks.append(

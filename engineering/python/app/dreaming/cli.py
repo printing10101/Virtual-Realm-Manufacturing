@@ -229,8 +229,7 @@ async def cmd_reflect(args: argparse.Namespace) -> int:
 
     # 7. 持久化反思结果（JSON，供 report 子命令使用）
     reflection_json_path = (
-        Path("python/outputs/dreaming/reports")
-        / f"reflection_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        Path("python/outputs/dreaming/reports") / f"reflection_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     )
     reflection_json_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -296,20 +295,12 @@ def cmd_report(args: argparse.Namespace) -> int:
     reflection = ReflectionResult(
         deduplicated=DeduplicationResult(
             merged_count=data.get("deduplicated", {}).get("merged_count", 0),
-            removed_node_ids=data.get("deduplicated", {}).get(
-                "removed_node_ids", []
-            ),
-            kept_node_ids=data.get("deduplicated", {}).get(
-                "kept_node_ids", []
-            ),
+            removed_node_ids=data.get("deduplicated", {}).get("removed_node_ids", []),
+            kept_node_ids=data.get("deduplicated", {}).get("kept_node_ids", []),
         ),
         updated=UpdateResult(
-            updated_node_ids=data.get("updated", {}).get(
-                "updated_node_ids", []
-            ),
-            invalidated_node_ids=data.get("updated", {}).get(
-                "invalidated_node_ids", []
-            ),
+            updated_node_ids=data.get("updated", {}).get("updated_node_ids", []),
+            invalidated_node_ids=data.get("updated", {}).get("invalidated_node_ids", []),
             details=data.get("updated", {}).get("details", []),
         ),
         insights=[
@@ -362,14 +353,10 @@ def build_parser() -> argparse.ArgumentParser:
         prog="python -m app.dreaming.cli",
         description="灵境制造 Dreaming 离线反思模块（ADR-021）",
     )
-    subparsers = parser.add_subparsers(
-        dest="command", help="子命令", required=True
-    )
+    subparsers = parser.add_subparsers(dest="command", help="子命令", required=True)
 
     # reflect 子命令
-    reflect_parser = subparsers.add_parser(
-        "reflect", help="执行完整反思流程"
-    )
+    reflect_parser = subparsers.add_parser("reflect", help="执行完整反思流程")
     reflect_parser.add_argument(
         "--lookback-days",
         type=int,
@@ -398,15 +385,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="禁用 LLM，强制使用规则统计降级模式",
     )
-    reflect_parser.add_argument(
-        "--verbose", action="store_true", help="详细日志"
-    )
+    reflect_parser.add_argument("--verbose", action="store_true", help="详细日志")
     reflect_parser.set_defaults(func=cmd_reflect)
 
     # extract 子命令
-    extract_parser = subparsers.add_parser(
-        "extract", help="仅提取 Session"
-    )
+    extract_parser = subparsers.add_parser("extract", help="仅提取 Session")
     extract_parser.add_argument(
         "--lookback-days",
         type=int,
@@ -433,9 +416,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract_parser.set_defaults(func=cmd_extract)
 
     # report 子命令
-    report_parser = subparsers.add_parser(
-        "report", help="从已保存的反思结果生成报告"
-    )
+    report_parser = subparsers.add_parser("report", help="从已保存的反思结果生成报告")
     report_parser.add_argument(
         "--reflection",
         type=str,
@@ -445,9 +426,7 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.set_defaults(func=cmd_report)
 
     # version 子命令
-    version_parser = subparsers.add_parser(
-        "version", help="显示版本信息"
-    )
+    version_parser = subparsers.add_parser("version", help="显示版本信息")
     version_parser.set_defaults(func=cmd_version)
 
     return parser

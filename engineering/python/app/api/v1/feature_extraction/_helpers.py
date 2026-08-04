@@ -14,7 +14,6 @@ from app.config import config
 from app.core.safe_errors import safe_error_message
 from app.feature_extraction import (
     FeatureExtractionPipeline,
-    FeatureExtractionTaskStatus,
     build_feature_disclaimer,
     get_feature_store,
 )
@@ -32,6 +31,7 @@ def _spawn(coro):
     t.add_done_callback(_background_tasks.discard)
     return t
 
+
 _pipeline: FeatureExtractionPipeline | None = None
 
 
@@ -45,6 +45,7 @@ def _get_pipeline() -> FeatureExtractionPipeline:
         )
     return _pipeline
 
+
 def _disclaimer_dict(
     mesh_calibrated: bool = False,
     mesh_source: str = "external_upload",
@@ -55,6 +56,7 @@ def _disclaimer_dict(
         mesh_calibrated=mesh_calibrated,
         mesh_source=mesh_source,
     ).to_dict()
+
 
 def _resolve_upstream_calibrated(
     source_reconstruction_task_id: str,
@@ -77,8 +79,7 @@ def _resolve_upstream_calibrated(
         from app.image_to_3d.task_store import ReconstructionTaskStatus
     except ImportError:
         logger.warning(
-            "image_to_3d 模块未启用，无法追溯上游任务 calibrated 状态 "
-            "source_reconstruction_task_id=%s，按未标定处理",
+            "image_to_3d 模块未启用，无法追溯上游任务 calibrated 状态 source_reconstruction_task_id=%s，按未标定处理",
             source_reconstruction_task_id,
         )
         return False, "external_upload"
@@ -102,13 +103,10 @@ def _resolve_upstream_calibrated(
 
         return bool(upstream.calibrated), source_reconstruction_task_id
     except Exception as e:
-        safe = safe_error_message(
-            e, context="feature_extraction.resolve_upstream_calibrated"
-        )
+        safe = safe_error_message(e, context="feature_extraction.resolve_upstream_calibrated")
         logger.warning(
             "查询上游 image_to_3d 任务异常 source=%s error_id=%s，按未标定处理",
             source_reconstruction_task_id,
             safe.get("error_id"),
         )
         return False, "external_upload"
-

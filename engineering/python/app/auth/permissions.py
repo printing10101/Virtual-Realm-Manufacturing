@@ -110,9 +110,7 @@ class PermissionChecker:
         self._rate_limiter: Dict[str, RateLimitState] = {}
         self._rate_limit_config = RateLimitConfig()
 
-    def has_permission(
-        self, token_level: PermissionLevel, endpoint: str, method: str
-    ) -> bool:
+    def has_permission(self, token_level: PermissionLevel, endpoint: str, method: str) -> bool:
         key = f"{method} {endpoint}"
         required_level = self.ENDPOINT_PERMISSIONS.get(key)
 
@@ -139,9 +137,7 @@ class PermissionChecker:
 
     def get_required_permission(self, method: str, path: str) -> PermissionLevel:
         key = f"{method} {path}"
-        return self.ENDPOINT_PERMISSIONS.get(
-            key, self.DEFAULT_PERMISSIONS.get(method, PermissionLevel.R)
-        )
+        return self.ENDPOINT_PERMISSIONS.get(key, self.DEFAULT_PERMISSIONS.get(method, PermissionLevel.R))
 
 
 permission_checker = PermissionChecker()
@@ -371,19 +367,26 @@ def require_role(*roles: str):
 # [F-P0-4] 防复发：T 级操作敏感字段脱敏白名单
 #   NC 程序内容、API Key、密码等不得写入审计日志或普通日志
 _SENSITIVE_FIELDS: tuple[str, ...] = (
-    "api_key", "password", "token", "secret", "credential",
-    "nc_program", "g_code", "nc_code",  # NC 程序可能含商业机密
-    "signature", "private_key",
+    "api_key",
+    "password",
+    "token",
+    "secret",
+    "credential",
+    "nc_program",
+    "g_code",
+    "nc_code",  # NC 程序可能含商业机密
+    "signature",
+    "private_key",
 )
 
 # [F-P0-4] 防复发：T 级操作机床安全前置状态字段
 #   依据 ISO 10218 工业机器人安全标准 + 用户三方评估 F-P0-4
 #   实模式执行前必须校验所有物理安全信号
 REQUIRED_MACHINE_SAFETY_FIELDS: tuple[str, ...] = (
-    "emergency_stop_active",   # 急停是否触发（True=危险，必须阻止）
-    "guard_door_closed",       # 防护门是否关闭
-    "light_curtain_clear",     # 光幕是否畅通
-    "operator_present",        # 操作员是否在场
+    "emergency_stop_active",  # 急停是否触发（True=危险，必须阻止）
+    "guard_door_closed",  # 防护门是否关闭
+    "light_curtain_clear",  # 光幕是否畅通
+    "operator_present",  # 操作员是否在场
 )
 
 
@@ -468,9 +471,7 @@ class PaperOnlyGuard:
 
         return True, "T operation approved"
 
-    def simulate_t_operation(
-        self, operation: Dict[str, Any], operator: str = "unknown"
-    ) -> Dict[str, Any]:
+    def simulate_t_operation(self, operation: Dict[str, Any], operator: str = "unknown") -> Dict[str, Any]:
         """模拟 T 级操作，记录审计日志（脱敏）。
 
         Args:
@@ -510,14 +511,10 @@ class PaperOnlyGuard:
                 metadata={"operation_type": "t_operation_simulated"},
             )
         except ImportError:
-            logger.debug(
-                "Audit log module not available; skipping audit record for simulated T operation"
-            )
+            logger.debug("Audit log module not available; skipping audit record for simulated T operation")
         except Exception as exc:
             # 审计日志写入失败不应阻断模拟流程，但必须告警
-            logger.warning(
-                "Failed to write audit log for simulated T operation: %s", exc
-            )
+            logger.warning("Failed to write audit log for simulated T operation: %s", exc)
 
         return {
             "status": "simulated",

@@ -18,15 +18,14 @@ OPC UA 客户端实现
 
 import asyncio
 import logging
-import random
 from typing import Optional, Dict, Any, Callable
 from datetime import datetime, timezone
 
 from app.utils.retry import retry_with_backoff
 
 try:
-    from asyncua import ua, Client
-    from asyncua.common.subscription import SubHandler
+    from asyncua import Client
+
     OPCUA_AVAILABLE = True
 except ImportError:
     OPCUA_AVAILABLE = False
@@ -155,6 +154,7 @@ class OPCUAClient:
         Raises:
             RuntimeError: 连接失败（不静默返回 False）
         """
+
         async def _do_connect():
             # 清理旧 client
             if self.client:
@@ -200,9 +200,7 @@ class OPCUAClient:
                 await node.read_value()
                 return True
             except Exception as e:
-                logger.warning(
-                    "OPC UA 心跳探测失败，连接可能已断开: %s", e
-                )
+                logger.warning("OPC UA 心跳探测失败，连接可能已断开: %s", e)
                 self.connected = False
         elif self.connected and self.client:
             # 未配置心跳节点，回退到布尔标志检查
@@ -334,15 +332,17 @@ class OPCUAClient:
 
         try:
             # 读取标准机床状态节点（根据实际机床 OPC UA 信息模型调整）
-            status.update({
-                "spindle_speed": await self.safe_read("ns=2;s=SpindleSpeed"),
-                "feed_rate": await self.safe_read("ns=2;s=FeedRate"),
-                "x_position": await self.safe_read("ns=2;s=PosX"),
-                "y_position": await self.safe_read("ns=2;s=PosY"),
-                "z_position": await self.safe_read("ns=2;s=PosZ"),
-                "machine_mode": await self.safe_read("ns=2;s=MachineMode"),
-                "alarm_active": await self.safe_read("ns=2;s=AlarmActive"),
-            })
+            status.update(
+                {
+                    "spindle_speed": await self.safe_read("ns=2;s=SpindleSpeed"),
+                    "feed_rate": await self.safe_read("ns=2;s=FeedRate"),
+                    "x_position": await self.safe_read("ns=2;s=PosX"),
+                    "y_position": await self.safe_read("ns=2;s=PosY"),
+                    "z_position": await self.safe_read("ns=2;s=PosZ"),
+                    "machine_mode": await self.safe_read("ns=2;s=MachineMode"),
+                    "alarm_active": await self.safe_read("ns=2;s=AlarmActive"),
+                }
+            )
         except Exception as e:
             logger.error("获取机床状态失败: %s", e)
 
@@ -374,17 +374,15 @@ class OPCUAClient:
         """
         sanitized = program_name
         # 移除路径分隔符
-        sanitized = sanitized.replace('/', '').replace('\\', '')
+        sanitized = sanitized.replace("/", "").replace("\\", "")
         # 移除 OPC UA 节点 ID 分隔符
-        sanitized = sanitized.replace(';', '')
+        sanitized = sanitized.replace(";", "")
         # 移除点号序列（防止 .. 路径穿越）
-        sanitized = sanitized.replace('..', '')
+        sanitized = sanitized.replace("..", "")
         # 移除控制字符
-        sanitized = sanitized.replace('\x00', '').replace('\n', '').replace('\r', '')
+        sanitized = sanitized.replace("\x00", "").replace("\n", "").replace("\r", "")
         if not sanitized:
-            raise ValueError(
-                f"program_name 转义后为空，可能包含恶意字符: {program_name!r}"
-            )
+            raise ValueError(f"program_name 转义后为空，可能包含恶意字符: {program_name!r}")
         return sanitized
 
     async def send_nc_program(self, program_path: str, program_name: str) -> bool:
@@ -411,17 +409,14 @@ class OPCUAClient:
         sanitized_name = self._sanitize_program_name(program_name)
 
         # 构造节点 ID（使用可配置命名空间和模板，不硬编码）
-        node_id = (
-            f"ns={self.node_namespace};s="
-            f"{self.nc_program_node_template.format(program_name=sanitized_name)}"
-        )
+        node_id = f"ns={self.node_namespace};s={self.nc_program_node_template.format(program_name=sanitized_name)}"
 
         if not await self._reconnect_if_needed():
             raise RuntimeError("OPC UA 未连接且无法重新连接")
 
         try:
             # 读取本地文件
-            with open(program_path, 'r', encoding='utf-8') as f:
+            with open(program_path, "r", encoding="utf-8") as f:
                 program_content = f.read()
 
             # 写入机床 NC 程序存储节点

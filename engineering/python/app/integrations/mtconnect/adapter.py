@@ -28,7 +28,7 @@ import logging
 import random
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from xml.etree import ElementTree as ET
@@ -45,6 +45,15 @@ logger = logging.getLogger(__name__)
 # MTConnect 异步 future 的统一等待超时（秒）。用于跨线程提交的协程结果回收，
 # 避免因事件循环阻塞导致采集线程长时间挂起。
 DEFAULT_MTCONNECT_FUTURE_TIMEOUT_SEC: float = 10.0
+
+
+def _local_attr_name(name: str) -> str:
+    """剥掉 XML Clark notation 命名空间前缀，返回本地属性名。
+
+    MTConnect 流数据属性形如 ``{urn:mtconnect.org:MTConnectStreams:1.8}timestamp``，
+    只取 ``}`` 之后的本地名（F821 修复：历史实现引用但从未定义）。
+    """
+    return name.split("}")[-1]
 
 
 # ---------------------------------------------------------------------------
@@ -74,20 +83,20 @@ class AdapterConfig:
     sample_path: str = "/sample"
 
     # Polling
-    interval: float = 1.0            # seconds between samples (1 Hz default)
+    interval: float = 1.0  # seconds between samples (1 Hz default)
 
     # Batching
-    batch_size: int = 10             # flush after this many samples
-    batch_interval: float = 5.0      # ...or after this many seconds
+    batch_size: int = 10  # flush after this many samples
+    batch_interval: float = 5.0  # ...or after this many seconds
 
     # Retry
-    max_retries: int = 5             # bounded – never spin forever
-    initial_backoff: float = 0.5     # seconds for the first retry
-    max_backoff: float = 16.0        # ...but capped so we don't sleep forever
+    max_retries: int = 5  # bounded – never spin forever
+    initial_backoff: float = 0.5  # seconds for the first retry
+    max_backoff: float = 16.0  # ...but capped so we don't sleep forever
 
     # Storage
-    database: str = "test"           # TDengine DB (override per env)
-    table: str = "mtconnect"         # TDengine super/sub-table name
+    database: str = "test"  # TDengine DB (override per env)
+    table: str = "mtconnect"  # TDengine super/sub-table name
 
     def __post_init__(self) -> None:
         # Normalise the agent URL so the rest of the code can rely on
@@ -95,9 +104,7 @@ class AdapterConfig:
         # avoid double-slash URLs after path joining.
         self.agent_url = self.agent_url.rstrip("/")
         if not self.agent_url.lower().startswith(("http://", "https://")):
-            raise ValueError(
-                f"agent_url must be an http(s) URL, got: {self.agent_url!r}"
-            )
+            raise ValueError(f"agent_url must be an http(s) URL, got: {self.agent_url!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -207,9 +214,7 @@ class MTConnectAdapter:
         for header in root.iter():
             if _local_attr_name(header.tag) == "Header":
                 for attr_name, attr_value in header.attrib.items():
-                    namespace_attrs.setdefault(
-                        _local_attr_name(attr_name), attr_value
-                    )
+                    namespace_attrs.setdefault(_local_attr_name(attr_name), attr_value)
                 break
 
         # Map the spec attribute names (which may be CamelCase) onto the
@@ -226,9 +231,7 @@ class MTConnectAdapter:
             if value is not None:
                 result[out_key] = value
         if not result:
-            raise RuntimeError(
-                f"Agent at {url} did not return a valid MTConnect probe document"
-            )
+            raise RuntimeError(f"Agent at {url} did not return a valid MTConnect probe document")
         logger.info("Probe OK: %s", result)
         return result
 
@@ -301,9 +304,7 @@ class MTConnectAdapter:
 
         # Always flush at the end so the last partial batch is not lost.
         self.flush()
-        logger.info(
-            "Polling stopped. ingested=%d, errors=%d", self.ingested_count, self.error_count
-        )
+        logger.info("Polling stopped. ingested=%d, errors=%d", self.ingested_count, self.error_count)
         return self.ingested_count
 
     def stop(self) -> None:
@@ -426,9 +427,7 @@ class MTConnectAdapter:
         """Flush if either the size or the age threshold is met."""
         with self._buffer_lock:
             too_many = len(self._buffer) >= self.config.batch_size
-            too_old = (
-                time.monotonic() - self._last_flush
-            ) >= self.config.batch_interval and bool(self._buffer)
+            too_old = (time.monotonic() - self._last_flush) >= self.config.batch_interval and bool(self._buffer)
         if too_many or too_old:
             self.flush()
 
@@ -481,10 +480,7 @@ class MTConnectAdapter:
             # Cannot use run_until_complete() or asyncio.run() here.
             # Use run_coroutine_threadsafe() to schedule on the loop from this thread.
             try:
-                future = asyncio.run_coroutine_threadsafe(
-                    self._insert_async(client, insert, rows),
-                    loop
-                )
+                future = asyncio.run_coroutine_threadsafe(self._insert_async(client, insert, rows), loop)
                 return future.result(timeout=DEFAULT_MTCONNECT_FUTURE_TIMEOUT_SEC)
             except (RuntimeError, TimeoutError, Exception) as exc:
                 logger.error("Failed to persist rows in async context: %s", exc, exc_info=True)

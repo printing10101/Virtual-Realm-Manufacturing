@@ -20,7 +20,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -104,9 +103,7 @@ class LocalMemoryStore:
         self.graph = graph_store
         self.repo_root = Path(repo_root).resolve()
         # 默认只跟踪知识图谱数据目录，避免把无关文件纳入版本
-        self.watch_paths = [
-            str(p) for p in (watch_paths or ["python/app/knowledge_graph/"])
-        ]
+        self.watch_paths = [str(p) for p in (watch_paths or ["python/app/knowledge_graph/"])]
 
     # ------------------------------------------------------------------
     # 读取
@@ -129,10 +126,7 @@ class LocalMemoryStore:
     def read_by_entity(self, entity_id: str) -> List[Dict[str, Any]]:
         """读取与指定实体关联的所有 memory 条目。"""
         all_entries = self.read_all()
-        return [
-            e for e in all_entries
-            if e["properties"].get("entity") == entity_id
-        ]
+        return [e for e in all_entries if e["properties"].get("entity") == entity_id]
 
     # ------------------------------------------------------------------
     # 写入
@@ -202,7 +196,8 @@ class LocalMemoryStore:
 
         logger.debug(
             "Dreaming memory added: entity=%s, confidence=%.2f",
-            entity, confidence,
+            entity,
+            confidence,
         )
         return node_id
 
@@ -329,7 +324,8 @@ class LocalMemoryStore:
 
         logger.info(
             "Memory version committed: %s, entries=%d",
-            version.version_id, version.entry_count,
+            version.version_id,
+            version.entry_count,
         )
         return version
 

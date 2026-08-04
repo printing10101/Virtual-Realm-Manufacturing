@@ -122,9 +122,7 @@ class EffectivenessMetrics:
     confidence: float = 0.0
     window_start: str = ""
     window_end: str = ""
-    collected_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    collected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     insufficient_data: bool = False
     hard_constraint_violations: int = 0
 
@@ -244,14 +242,10 @@ class EffectivenessMetricsCollector:
                     if not rule_id:
                         continue
                     samples_data = data.get("samples", [])
-                    samples = [
-                        OutcomeSample(**s) for s in samples_data
-                    ]
+                    samples = [OutcomeSample(**s) for s in samples_data]
                     self._samples[rule_id] = samples
                 except (OSError, json.JSONDecodeError, TypeError) as e:
-                    logger.warning(
-                        "加载样本文件失败 %s: %s", samples_file, e
-                    )
+                    logger.warning("加载样本文件失败 %s: %s", samples_file, e)
         except OSError as e:
             logger.warning("扫描样本目录失败：%s", e)
 
@@ -269,9 +263,7 @@ class EffectivenessMetricsCollector:
             with open(samples_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except OSError as e:
-            logger.warning(
-                "样本持久化失败 rule_id=%s: %s", rule_id, e
-            )
+            logger.warning("样本持久化失败 rule_id=%s: %s", rule_id, e)
 
     # ------------------------------------------------------------------
     # 样本录入 API
@@ -292,15 +284,11 @@ class EffectivenessMetricsCollector:
             self._samples[sample.rule_id].append(sample)
             # 保留最近 1000 条样本（防止内存膨胀）
             if len(self._samples[sample.rule_id]) > 1000:
-                self._samples[sample.rule_id] = self._samples[
-                    sample.rule_id
-                ][-1000:]
+                self._samples[sample.rule_id] = self._samples[sample.rule_id][-1000:]
         self._save_samples(sample.rule_id)
         return True
 
-    def record_samples(
-        self, samples: List[OutcomeSample]
-    ) -> int:
+    def record_samples(self, samples: List[OutcomeSample]) -> int:
         """批量录入样本。
 
         Args:
@@ -390,10 +378,7 @@ class EffectivenessMetricsCollector:
         with self._lock:
             rule_ids = list(self._samples.keys())
 
-        return {
-            rule_id: self.collect_metrics(rule_id, window_days)
-            for rule_id in rule_ids
-        }
+        return {rule_id: self.collect_metrics(rule_id, window_days) for rule_id in rule_ids}
 
     def get_samples(
         self,
@@ -446,11 +431,7 @@ class EffectivenessMetricsCollector:
         fp_count = sum(1 for s in samples if s.false_positive)
         fn_count = sum(1 for s in samples if s.false_negative)
         err_count = sum(1 for s in samples if s.production_error)
-        hc_violations = sum(
-            1
-            for s in samples
-            if s.cam_validation_bypassed or s.succeeded_lock_violated
-        )
+        hc_violations = sum(1 for s in samples if s.cam_validation_bypassed or s.succeeded_lock_violated)
 
         accuracy = correct_count / sample_size
         false_positive_rate = fp_count / sample_size
@@ -460,11 +441,7 @@ class EffectivenessMetricsCollector:
         # 触发数 = 样本数 - 漏报数（漏报样本来源有限，这里近似）
         triggered_count = sample_size - fn_count
         total_should_trigger = triggered_count + fn_count
-        recall = (
-            triggered_count / total_should_trigger
-            if total_should_trigger > 0
-            else 1.0
-        )
+        recall = triggered_count / total_should_trigger if total_should_trigger > 0 else 1.0
 
         # 置信度：基于样本数
         if sample_size >= CONFIDENT_HIGH_SAMPLES:

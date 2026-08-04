@@ -41,6 +41,7 @@ from app.ai.lnn.inference.model_cache import get_model_cache
 # 工程侧推理路径应改为加载 ONNX（见 onnx_predictor.py）。
 try:
     from app.ai.lnn.models.base_lnn import BaseLNNModel
+
     _HAS_TORCH_MODELS = True
 except ImportError:
     BaseLNNModel = None
@@ -183,9 +184,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
         self._max_recent_times = 10_000
 
         # Trace log persistence
-        self._trace_log_path = os.path.join(
-            os.getcwd(), "data", "traces", "trace_log.jsonl"
-        )
+        self._trace_log_path = os.path.join(os.getcwd(), "data", "traces", "trace_log.jsonl")
         self._trace_log_enabled = True
         try:
             Path(self._trace_log_path).parent.mkdir(parents=True, exist_ok=True)
@@ -242,11 +241,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
         return output
 
     def _maybe_inverse_transform(self, predictions: np.ndarray) -> np.ndarray:
-        if (
-            self.preprocessor.is_fitted
-            and hasattr(self.preprocessor, "mean_")
-            and self.preprocessor.mean_ is not None
-        ):
+        if self.preprocessor.is_fitted and hasattr(self.preprocessor, "mean_") and self.preprocessor.mean_ is not None:
             if predictions.shape[-1] == self.preprocessor.mean_.shape[0]:
                 return self.preprocessor.inverse_transform(predictions)
         return predictions
@@ -258,7 +253,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
     ) -> Union[PredictionResult, Any]:
         """
         优化的单次预测接口
-        
+
         性能优化点：
         - 减少不必要的类型转换
         - 优化设备同步
@@ -293,9 +288,9 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
             inference_time = (time.perf_counter() - start_time) * 1000
             mem_after = self._get_memory_usage_mb()
             self._update_stats(inference_time, mem_after)
-            
+
             # 持久化真实推理性能数据
-            input_shape = features.shape if hasattr(features, 'shape') else (1,)
+            input_shape = features.shape if hasattr(features, "shape") else (1,)
             self._write_trace(inference_time, input_shape, success=True)
 
             try:
@@ -340,9 +335,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
                 model_info={
                     "name": self.model_name,
                     "device": str(self.device),
-                    "constraint_result": constraint_result.to_dict()
-                    if constraint_result
-                    else None,
+                    "constraint_result": constraint_result.to_dict() if constraint_result else None,
                 },
             )
 
@@ -396,7 +389,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
     def _predict_batch_chunk(self, chunk: List[Any]) -> List[PredictionResult]:
         """
         优化的批量预测分块处理
-        
+
         性能优化点：
         - 使用 torch.inference_mode 替代 torch.no_grad
         - 减少中间张量拷贝
@@ -477,9 +470,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
         with self._stats_lock:
             stats = self._stats.copy()
         total = stats["total_inferences"]
-        stats["average_inference_time_ms"] = (
-            stats["total_inference_time_ms"] / total if total > 0 else 0.0
-        )
+        stats["average_inference_time_ms"] = stats["total_inference_time_ms"] / total if total > 0 else 0.0
         if stats["min_inference_time_ms"] == float("inf"):
             stats["min_inference_time_ms"] = 0.0
         stats["current_memory_mb"] = self._get_memory_usage_mb()
@@ -500,9 +491,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
 
             now = time.perf_counter()
             window_elapsed = now - window_start
-            throughput = (
-                window_inferences / window_elapsed if window_elapsed > 0 else 0.0
-            )
+            throughput = window_inferences / window_elapsed if window_elapsed > 0 else 0.0
             if window_elapsed > 60.0:
                 self._stats["window_start"] = now
                 self._stats["window_inferences"] = 0
@@ -524,18 +513,14 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
             "device": device_type,
             "device_type": str(self.device),
             "amp_enabled": self.use_amp,
-            "engine_type": self.engine_type.value
-            if hasattr(self.engine_type, "value")
-            else str(self.engine_type),
+            "engine_type": self.engine_type.value if hasattr(self.engine_type, "value") else str(self.engine_type),
             "total_inferences": total,
             "avg_inference_ms": round(avg_ms, 4),
             "p50_inference_ms": round(p50, 4),
             "p95_inference_ms": round(p95, 4),
             "p99_inference_ms": round(p99, 4),
             "min_inference_ms": round(
-                min_inference_time_ms
-                if min_inference_time_ms != float("inf")
-                else 0.0,
+                min_inference_time_ms if min_inference_time_ms != float("inf") else 0.0,
                 4,
             ),
             "max_inference_ms": round(max_inference_time_ms, 4),
@@ -548,7 +533,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
     def _compute_confidence(self, output) -> float:
         """
         优化置信度计算以提升推理性能
-        
+
         优化策略：
         - 使用更高效的 softmax 计算
         - 减少不必要的张量操作
@@ -558,7 +543,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
             # 优化：对于标量或单元素输出直接返回固定高置信度
             if output.numel() <= 1:
                 return 0.95
-            
+
             # 优化：使用 in-place 操作减少内存分配
             # 注意：调用方已在 torch.inference_mode() 上下文中，无需再次禁用梯度
             if output.dim() > 1:
@@ -566,10 +551,10 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
             else:
                 # 对于一维输出，直接使用 sigmoid 近似
                 probs = torch.sigmoid(output)
-            
+
             max_prob = probs.max().item()
             return min(max(max_prob, 0.0), 1.0)
-        
+
         return 0.9
 
     def _standardize_input(self, input_data: Any) -> np.ndarray:
@@ -614,12 +599,8 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
         with self._stats_lock:
             self._stats["total_inferences"] += 1
             self._stats["total_inference_time_ms"] += inference_time_ms
-            self._stats["max_inference_time_ms"] = max(
-                self._stats["max_inference_time_ms"], inference_time_ms
-            )
-            self._stats["min_inference_time_ms"] = min(
-                self._stats["min_inference_time_ms"], inference_time_ms
-            )
+            self._stats["max_inference_time_ms"] = max(self._stats["max_inference_time_ms"], inference_time_ms)
+            self._stats["min_inference_time_ms"] = min(self._stats["min_inference_time_ms"], inference_time_ms)
             self._stats["peak_memory_mb"] = max(self._stats["peak_memory_mb"], memory_mb)
             times = self._stats["inference_times"]
             times.append(inference_time_ms)
@@ -636,7 +617,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
     ) -> None:
         """
         持久化推理性能数据到 trace_log.jsonl
-        
+
         Args:
             inference_time_ms: 真实推理耗时（毫秒）
             input_shape: 输入数据形状
@@ -645,7 +626,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
         """
         if not self._trace_log_enabled:
             return
-        
+
         try:
             trace_entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -659,7 +640,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
                 "amp_enabled": self.use_amp,
                 "engine_type": self.engine_type.value if hasattr(self.engine_type, "value") else str(self.engine_type),
             }
-            
+
             with open(self._trace_log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(trace_entry, ensure_ascii=False) + "\n")
         except (OSError, IOError, TypeError, ValueError) as exc:
@@ -677,16 +658,10 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
         cached_model = cache.get(model_name)
 
         if cached_model is not None:
-            logger.info(
-                f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
-                f"operation=load status=FROM_CACHE"
-            )
+            logger.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=load status=FROM_CACHE")
             return cls(model=cached_model, model_name=model_name, **kwargs)
 
-        logger.info(
-            f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
-            f"operation=load status=FROM_REGISTRY"
-        )
+        logger.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=load status=FROM_REGISTRY")
         load_start = time.perf_counter()
         model = cls._load_model_from_registry(registry, model_name)
         load_duration = time.perf_counter() - load_start
@@ -713,8 +688,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
             # 模型缓存写入或内存计算可能因缓存后端或属性访问失败，
             # 失败时记录警告但允许模型继续使用（不缓存即可）
             logger.warning(
-                f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} "
-                f"operation=cache status=FAILED error={e}"
+                f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=cache status=FAILED error={e}"
             )
 
         return cls(model=model, model_name=model_name, **kwargs)
@@ -786,9 +760,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
             raise ValueError(f"Unsupported model type: {entry.info.model_type}")
 
         input_dim = len(entry.info.input_features) if entry.info.input_features else 1
-        output_dim = (
-            len(entry.info.output_features) if entry.info.output_features else 1
-        )
+        output_dim = len(entry.info.output_features) if entry.info.output_features else 1
 
         logger.info(
             f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={entry.info.name} "
@@ -813,8 +785,7 @@ class LNNPredictor(_MCDropoutMixin, _IntermediatesMixin):
             except (OSError, IOError, RuntimeError, ValueError, TypeError) as e:
                 # 模型权重加载失败时使用初始化权重继续构建，记录以便排查
                 logger.warning(
-                    f"Failed to load weights from {model_path}, "
-                    f"falling back to initialized weights: {e}",
+                    f"Failed to load weights from {model_path}, falling back to initialized weights: {e}",
                     exc_info=True,
                 )
 

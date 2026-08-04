@@ -34,11 +34,9 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +48,7 @@ logger = logging.getLogger(__name__)
 # 类型契约（V2.7: 自 shared/lnn/types.py 迁移至本地的 _types.py）
 from app.chatter_prediction._types import (
     ChatterPredictionTaskStatus,
-    ChatterReviewStatus,
-    PredictionMethod,
-    FeatureChatterResult,
+    FeatureChatterResult,  # re-export：同上（predictor_adapter 依赖旧导入路径）
 )
 
 
@@ -206,8 +202,7 @@ class TaskStore:
             # （阶段 6 G 代码生成可能已引用其 ChatterReport）
             if task.status == ChatterPredictionTaskStatus.SUCCEEDED.value:
                 raise ReviewError(
-                    f"任务 {task_id} 处于 SUCCEEDED 状态，禁止删除"
-                    f"（阶段 6 G 代码生成可能已引用其 ChatterReport）"
+                    f"任务 {task_id} 处于 SUCCEEDED 状态，禁止删除（阶段 6 G 代码生成可能已引用其 ChatterReport）"
                 )
             del self._tasks[task_id]
             # 删除持久化文件

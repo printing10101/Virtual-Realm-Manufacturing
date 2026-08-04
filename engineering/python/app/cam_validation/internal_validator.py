@@ -36,7 +36,6 @@ from app.cam_validation.cam_store import (
 )
 from app.config import CamValidationConfig
 from app.simulation.collision_detector import (
-    CollisionEvent,
     CollisionReport,
     CollisionDetector,
 )
@@ -60,8 +59,7 @@ _STOCK_TOP_Z_TOLERANCE_MM: float = 0.01
 
 # 归因失败时追加到 CollisionReport.warnings 的前缀
 _UNATTRIBUTED_WARNING_PREFIX: str = (
-    "InternalValidator 归因失败：以下碰撞事件 block_number "
-    "不在任何 feature_results.line_range 区间内："
+    "InternalValidator 归因失败：以下碰撞事件 block_number 不在任何 feature_results.line_range 区间内："
 )
 
 
@@ -233,8 +231,7 @@ class InternalValidator:
         # 3. G 代码无运动段：返回空报告 + 不修改 feature_results
         if not segments:
             logger.warning(
-                "InternalValidator: G 代码无运动段（segments=0），"
-                "可能是空文件或仅含注释/坐标系选择指令。返回空报告。"
+                "InternalValidator: G 代码无运动段（segments=0），可能是空文件或仅含注释/坐标系选择指令。返回空报告。"
             )
             empty_report = CollisionReport(
                 total_segments=0,
@@ -252,9 +249,7 @@ class InternalValidator:
 
         # 4. stock_top_z 与 stock_height 一致性校验（仅警告，不抛异常）
         warnings_collected: list[str] = []
-        if not math.isclose(
-            stock_top_z, stock_height, abs_tol=_STOCK_TOP_Z_TOLERANCE_MM
-        ):
+        if not math.isclose(stock_top_z, stock_height, abs_tol=_STOCK_TOP_Z_TOLERANCE_MM):
             msg = (
                 f"stock_top_z={stock_top_z:.4f}mm 与 stock_height="
                 f"{stock_height:.4f}mm 不一致（容差 {_STOCK_TOP_Z_TOLERANCE_MM}mm）。"
@@ -293,17 +288,13 @@ class InternalValidator:
         except InternalValidationError:
             raise
         except Exception as e:
-            raise InternalValidationError(
-                f"StockModel/CollisionDetector 构造失败: {e}"
-            ) from e
+            raise InternalValidationError(f"StockModel/CollisionDetector 构造失败: {e}") from e
 
         # 6. 执行碰撞检测
         try:
             report = detector.check_segments(segments)
         except Exception as e:
-            raise InternalValidationError(
-                f"CollisionDetector.check_segments 失败: {e}"
-            ) from e
+            raise InternalValidationError(f"CollisionDetector.check_segments 失败: {e}") from e
 
         # 7. 追加 stock 一致性警告到 CollisionReport.warnings
         for w in warnings_collected:
@@ -313,8 +304,7 @@ class InternalValidator:
         updated = self._attribute_collision_to_feature(report, feature_results)
 
         logger.info(
-            "InternalValidator 完成：total_segments=%d, segments_checked=%d, "
-            "collisions=%d, warnings=%d, features=%d",
+            "InternalValidator 完成：total_segments=%d, segments_checked=%d, collisions=%d, warnings=%d, features=%d",
             report.total_segments,
             report.segments_checked,
             len(report.collisions),

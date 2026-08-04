@@ -10,13 +10,8 @@ import asyncio
 import logging
 import time
 import json
-import os
-import sqlite3
 import threading
 import traceback
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 
@@ -31,11 +26,11 @@ logger = logging.getLogger(__name__)
 
 from app.tasks._execution_models import (
     ExecutionStatus,
-    TaskCategory,
     ExecutionResult,
     ExecutionSession,
     StructuredLogger,
 )
+
 
 class SessionManager:
     """会话状态管理器"""
@@ -84,9 +79,7 @@ class SessionManager:
                 session.session_id,
                 session.task_id,
                 session.status.value,
-                json.dumps(session.checkpoint_data)
-                if session.checkpoint_data
-                else None,
+                json.dumps(session.checkpoint_data) if session.checkpoint_data else None,
                 session.started_at,
                 session.last_updated,
                 session.retry_count,
@@ -96,9 +89,7 @@ class SessionManager:
         self._conn.commit()
 
     # 允许的列名白名单，防止 SQL 注入
-    _ALLOWED_COLUMNS = {
-        "status", "last_updated", "checkpoint_data", "retry_count", "max_retries"
-    }
+    _ALLOWED_COLUMNS = {"status", "last_updated", "checkpoint_data", "retry_count", "max_retries"}
 
     def update_session(
         self,
@@ -124,16 +115,12 @@ class SessionManager:
         set_clause = ", ".join(f"{k} = ?" for k in updates.keys() if k in self._ALLOWED_COLUMNS)
         values = [v for k, v in updates.items() if k in self._ALLOWED_COLUMNS] + [session_id]
 
-        self._conn.execute(
-            f"UPDATE execution_sessions SET {set_clause} WHERE session_id = ?", values
-        )
+        self._conn.execute(f"UPDATE execution_sessions SET {set_clause} WHERE session_id = ?", values)
         self._conn.commit()
 
     def get_session(self, session_id: str) -> Optional[ExecutionSession]:
         """获取会话"""
-        row = self._conn.execute(
-            "SELECT * FROM execution_sessions WHERE session_id = ?", (session_id,)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM execution_sessions WHERE session_id = ?", (session_id,)).fetchone()
 
         if row is None:
             return None
@@ -142,9 +129,7 @@ class SessionManager:
             session_id=row["session_id"],
             task_id=row["task_id"],
             status=ExecutionStatus(row["status"]),
-            checkpoint_data=json.loads(row["checkpoint_data"])
-            if row["checkpoint_data"]
-            else None,
+            checkpoint_data=json.loads(row["checkpoint_data"]) if row["checkpoint_data"] else None,
             started_at=row["started_at"],
             last_updated=row["last_updated"],
             retry_count=row["retry_count"],
@@ -165,9 +150,7 @@ class SessionManager:
                     session_id=row["session_id"],
                     task_id=row["task_id"],
                     status=ExecutionStatus(row["status"]),
-                    checkpoint_data=json.loads(row["checkpoint_data"])
-                    if row["checkpoint_data"]
-                    else None,
+                    checkpoint_data=json.loads(row["checkpoint_data"]) if row["checkpoint_data"] else None,
                     started_at=row["started_at"],
                     last_updated=row["last_updated"],
                     retry_count=row["retry_count"],
@@ -177,9 +160,7 @@ class SessionManager:
 
         return sessions
 
-    def get_orphaned_sessions(
-        self, timeout_seconds: float = 3600
-    ) -> List[ExecutionSession]:
+    def get_orphaned_sessions(self, timeout_seconds: float = 3600) -> List[ExecutionSession]:
         """
         获取孤立会话（超时未更新的运行中会话）
 
@@ -204,9 +185,7 @@ class SessionManager:
                     session_id=row["session_id"],
                     task_id=row["task_id"],
                     status=ExecutionStatus(row["status"]),
-                    checkpoint_data=json.loads(row["checkpoint_data"])
-                    if row["checkpoint_data"]
-                    else None,
+                    checkpoint_data=json.loads(row["checkpoint_data"]) if row["checkpoint_data"] else None,
                     started_at=row["started_at"],
                     last_updated=row["last_updated"],
                     retry_count=row["retry_count"],
@@ -275,9 +254,7 @@ class TaskExecutor:
             if asyncio.iscoroutinefunction(executor):
                 result = await executor(workspace_context, params or {})
             else:
-                result = await asyncio.to_thread(
-                    executor, workspace_context, params or {}
-                )
+                result = await asyncio.to_thread(executor, workspace_context, params or {})
 
             duration_ms = (time.time() - start_time) * 1000
 
@@ -289,7 +266,7 @@ class TaskExecutor:
                 duration_ms=duration_ms,
                 result_data=result if isinstance(result, dict) else {"output": result},
             )
-        except (RuntimeError, ValueError, TypeError, TimeoutError, OSError) as e:
+        except (RuntimeError, ValueError, TypeError, TimeoutError, OSError):
             duration_ms = (time.time() - start_time) * 1000
 
             return ExecutionResult(
@@ -302,9 +279,7 @@ class TaskExecutor:
                 error_traceback=traceback.format_exc(),
             )
 
-    def _execute_lnn_inference(
-        self, workspace_context: Any, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _execute_lnn_inference(self, workspace_context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
         """执行LNN推理任务"""
         from app.ai.lnn.inference.predictor import LNNPredictor
         from app.dependencies import get_model_registry_service
@@ -333,16 +308,12 @@ class TaskExecutor:
         result = predictor.predict(input_array, return_confidence=True)
 
         return {
-            "prediction": result.value.tolist()
-            if hasattr(result.value, "tolist")
-            else result.value,
+            "prediction": result.value.tolist() if hasattr(result.value, "tolist") else result.value,
             "confidence": result.confidence,
             "inference_time": result.inference_time,
         }
 
-    def _execute_lnn_training(
-        self, workspace_context: Any, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _execute_lnn_training(self, workspace_context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
         """执行 LNN 训练任务。
 
         接口修复说明：
@@ -357,6 +328,7 @@ class TaskExecutor:
         """
         # P0#3 解耦: 通过 research_bridge 延迟导入
         from app.ai.lnn._research_bridge import get_trainer_factory
+
         LNNTrainer = get_trainer_factory()
         if LNNTrainer is None:
             raise ImportError("Research package not available for training")
@@ -368,27 +340,21 @@ class TaskExecutor:
         logger.info("Executing LNN training for task %s", workspace_context.task_id)
 
         if not workspace_context.dataset_path:
-            raise RuntimeError(
-                "LNN训练任务缺少数据集路径。请指定训练数据集的文件路径。"
-            )
+            raise RuntimeError("LNN训练任务缺少数据集路径。请指定训练数据集的文件路径。")
 
         # 1. 从全局 registry 获取模型实例（trainer.__init__ 需要 nn.Module）
         registry_service = get_model_registry_service()
         model_name = workspace_context.model_name or "default"
         model = registry_service.model_registry.get(model_name)
         if model is None:
-            raise RuntimeError(
-                f"模型 '{model_name}' 在注册表中未找到，请先注册或加载模型。"
-            )
+            raise RuntimeError(f"模型 '{model_name}' 在注册表中未找到，请先注册或加载模型。")
 
         # 2. 从 dataset_path 加载 CSV 数据为 DataLoader
         dataset_path = workspace_context.dataset_path
         try:
             data = np.loadtxt(dataset_path, delimiter=",", skiprows=1)
         except (OSError, ValueError) as e:
-            raise RuntimeError(
-                f"数据集加载失败: {dataset_path}。错误: {e}"
-            ) from e
+            raise RuntimeError(f"数据集加载失败: {dataset_path}。错误: {e}") from e
 
         if data.ndim == 1:
             data = data.reshape(-1, 1)
@@ -400,17 +366,11 @@ class TaskExecutor:
         n_total = len(full_dataset)
         n_train = max(1, int(n_total * 0.8))
         n_val = n_total - n_train
-        train_dataset, val_dataset = torch.utils.data.random_split(
-            full_dataset, [n_train, n_val]
-        )
+        train_dataset, val_dataset = torch.utils.data.random_split(full_dataset, [n_train, n_val])
 
         batch_size = params.get("batch_size", 64)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        val_loader = (
-            DataLoader(val_dataset, batch_size=batch_size)
-            if n_val > 0
-            else train_loader
-        )
+        val_loader = DataLoader(val_dataset, batch_size=batch_size) if n_val > 0 else train_loader
 
         # 3. 构造 trainer 并训练（使用真实接口签名）
         trainer = LNNTrainer(
@@ -437,9 +397,7 @@ class TaskExecutor:
             "metrics": trainer.get_training_summary(),
         }
 
-    def _execute_lnn_analysis(
-        self, workspace_context: Any, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _execute_lnn_analysis(self, workspace_context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
         from app.ai.lnn.inference.predictor import LNNPredictor
         from app.dependencies import get_model_registry_service
         import numpy as np
@@ -465,9 +423,7 @@ class TaskExecutor:
         return {
             "status": "analysis_completed",
             "workspace": workspace_context.workspace_dir,
-            "prediction": result.value.tolist()
-            if hasattr(result.value, "tolist")
-            else result.value,
+            "prediction": result.value.tolist() if hasattr(result.value, "tolist") else result.value,
             "confidence": result.confidence,
         }
 
@@ -481,7 +437,6 @@ class ExecutionEngine:
     """
 
     def __init__(self):
-
         self.structured_logger = StructuredLogger()
         self.session_manager = SessionManager()
         self.executor = TaskExecutor()
@@ -530,20 +485,14 @@ class ExecutionEngine:
             budget_result = budget_manager.check_budget(agent_id)
 
             if not budget_result.passed:
-                error_msg = (
-                    f"Budget check failed: {'; '.join(budget_result.blocked_reasons)}"
-                )
+                error_msg = f"Budget check failed: {'; '.join(budget_result.blocked_reasons)}"
                 logger.error("[%s] %s", task_id, error_msg)
 
                 self.structured_logger.log_error(task_id, RuntimeError(error_msg))
                 self.session_manager.update_session(session_id, ExecutionStatus.FAILED)
 
-                scheduler.wakeup_queue.update_task_status(
-                    task_id, ScheduleStatus.FAILED
-                )
-                scheduler.wakeup_queue.log_execution(
-                    task_id, "failed", error_message=error_msg
-                )
+                scheduler.wakeup_queue.update_task_status(task_id, ScheduleStatus.FAILED)
+                scheduler.wakeup_queue.log_execution(task_id, "failed", error_message=error_msg)
 
                 budget_manager.suspend_agent_tasks(agent_id, error_msg)
 
@@ -575,25 +524,17 @@ class ExecutionEngine:
 
             self._record_resource_usage(task_id, agent_id, result)
 
-            self.structured_logger.log_execution_end(
-                task_id, result.status, result.duration_ms
-            )
+            self.structured_logger.log_execution_end(task_id, result.status, result.duration_ms)
 
             if result.status == ExecutionStatus.COMPLETED:
-                scheduler.wakeup_queue.update_task_status(
-                    task_id, ScheduleStatus.COMPLETED, last_run=time.time()
-                )
+                scheduler.wakeup_queue.update_task_status(task_id, ScheduleStatus.COMPLETED, last_run=time.time())
                 scheduler.wakeup_queue.log_execution(
                     task_id,
                     "completed",
                     duration_ms=result.duration_ms,
-                    result_summary=json.dumps(result.result_data)[:500]
-                    if result.result_data
-                    else None,
+                    result_summary=json.dumps(result.result_data)[:500] if result.result_data else None,
                 )
-                self.session_manager.update_session(
-                    session_id, ExecutionStatus.COMPLETED
-                )
+                self.session_manager.update_session(session_id, ExecutionStatus.COMPLETED)
             else:
                 await self._handle_failure(task, session, result)
 
@@ -608,9 +549,7 @@ class ExecutionEngine:
             self.session_manager.update_session(session_id, ExecutionStatus.FAILED)
 
             scheduler.wakeup_queue.update_task_status(task_id, ScheduleStatus.FAILED)
-            scheduler.wakeup_queue.log_execution(
-                task_id, "failed", error_message=type(e).__name__
-            )
+            scheduler.wakeup_queue.log_execution(task_id, "failed", error_message=type(e).__name__)
 
             self._cleanup_resources(task_id)
 
@@ -624,9 +563,7 @@ class ExecutionEngine:
                 error_traceback=traceback.format_exc(),
             )
 
-    async def _handle_failure(
-        self, task: Any, session: ExecutionSession, result: ExecutionResult
-    ) -> None:
+    async def _handle_failure(self, task: Any, session: ExecutionSession, result: ExecutionResult) -> None:
         """处理任务失败，实现重试机制"""
         from app.dependencies import get_scheduler
         from app.heartbeat.heartbeat import ScheduleStatus
@@ -674,9 +611,7 @@ class ExecutionEngine:
                 task.max_retries,
             )
 
-            scheduler.wakeup_queue.update_task_status(
-                task.task_id, ScheduleStatus.FAILED
-            )
+            scheduler.wakeup_queue.update_task_status(task.task_id, ScheduleStatus.FAILED)
             scheduler.wakeup_queue.log_execution(
                 task.task_id,
                 "permanently_failed",
@@ -684,22 +619,16 @@ class ExecutionEngine:
                 result_summary=f"Failed after {task.max_retries} retries",
             )
 
-            self.session_manager.update_session(
-                session.session_id, ExecutionStatus.FAILED
-            )
+            self.session_manager.update_session(session.session_id, ExecutionStatus.FAILED)
 
-    def _record_resource_usage(
-        self, task_id: str, agent_id: str, result: ExecutionResult
-    ) -> None:
+    def _record_resource_usage(self, task_id: str, agent_id: str, result: ExecutionResult) -> None:
         """记录资源使用"""
         gpu_hours = result.duration_ms / (1000 * 3600) if result.duration_ms else 0
 
         if gpu_hours > 0:
             get_cost_tracker().record_gpu_usage(task_id, gpu_hours, agent_id)
 
-        get_cost_tracker().record_memory_usage(
-            task_id, result.resource_usage.get("memory_mb", 0), agent_id
-        )
+        get_cost_tracker().record_memory_usage(task_id, result.resource_usage.get("memory_mb", 0), agent_id)
 
     def _cleanup_resources(self, task_id: str) -> None:
         """清理任务资源"""
@@ -724,9 +653,7 @@ class ExecutionEngine:
 
         scheduler = get_scheduler()
 
-        orphaned_sessions = self.session_manager.get_orphaned_sessions(
-            timeout_seconds=3600
-        )
+        orphaned_sessions = self.session_manager.get_orphaned_sessions(timeout_seconds=3600)
 
         recovered_count = 0
 
@@ -737,19 +664,13 @@ class ExecutionEngine:
                 if task:
                     task.retry_count = session.retry_count
                     # H14 bug 修复：同上，retry_count 越界保护
-                    retry_idx = min(
-                        session.retry_count, len(self._retry_delays) - 1
-                    )
-                    task.next_run = (
-                        time.time() + self._retry_delays[retry_idx]
-                    )
+                    retry_idx = min(session.retry_count, len(self._retry_delays) - 1)
+                    task.next_run = time.time() + self._retry_delays[retry_idx]
                     task.status = ScheduleStatus.PENDING
 
                     scheduler.wakeup_queue.add_task(task)
 
-                    self.session_manager.update_session(
-                        session.session_id, ExecutionStatus.RECOVERING
-                    )
+                    self.session_manager.update_session(session.session_id, ExecutionStatus.RECOVERING)
 
                     recovered_count += 1
 
@@ -764,9 +685,7 @@ class ExecutionEngine:
 
         return recovered_count
 
-    async def start_recovery_loop(
-        self, check_interval: float = 60.0, max_interval: float = 600.0
-    ) -> None:
+    async def start_recovery_loop(self, check_interval: float = 60.0, max_interval: float = 600.0) -> None:
         """启动孤立任务检测循环（含指数退避）
 
         Args:

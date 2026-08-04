@@ -40,9 +40,7 @@ _ERROR_CODE_TO_NUMERIC: dict[ErrorCode, int] = {
     ErrorCode.SERVICE_UNAVAILABLE: 2002,
 }
 
-_NUMERIC_TO_ERROR_CODE: dict[int, ErrorCode] = {
-    v: k for k, v in _ERROR_CODE_TO_NUMERIC.items()
-}
+_NUMERIC_TO_ERROR_CODE: dict[int, ErrorCode] = {v: k for k, v in _ERROR_CODE_TO_NUMERIC.items()}
 
 
 def code_to_numeric(code: ErrorCode) -> int:

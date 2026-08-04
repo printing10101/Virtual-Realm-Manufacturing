@@ -65,8 +65,7 @@ class _PyCamBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                "PyCAM 包装器脚本未配置（LNN_CAM_PYCAM_EXECUTABLE 为空），"
-                "自动降级到 manual 后端。",
+                "PyCAM 包装器脚本未配置（LNN_CAM_PYCAM_EXECUTABLE 为空），自动降级到 manual 后端。",
             )
 
         # 2. 检查包装器脚本文件是否存在
@@ -77,8 +76,7 @@ class _PyCamBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                f"PyCAM 包装器脚本文件不存在：{self._pycam_executable}。"
-                "自动降级到 manual 后端。",
+                f"PyCAM 包装器脚本文件不存在：{self._pycam_executable}。自动降级到 manual 后端。",
             )
 
         # 3. subprocess 调用 PyCAM 包装器脚本
@@ -86,8 +84,7 @@ class _PyCamBackend(_BaseBackend):
         # 期望 stdout 输出 JSON：{"status": "pass"/"fail"/"error", "collisions": [...], "messages": [...]}
         try:
             result = subprocess.run(
-                [sys.executable, str(script_path),
-                 gcode_file_path, controller_type],
+                [sys.executable, str(script_path), gcode_file_path, controller_type],
                 capture_output=True,
                 text=True,
                 timeout=600,  # PyCAM 校验耗时较长，留 10 分钟
@@ -103,8 +100,7 @@ class _PyCamBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                f"Python 解释器或 PyCAM 包装器脚本未找到：{e}。"
-                "自动降级到 manual 后端。",
+                f"Python 解释器或 PyCAM 包装器脚本未找到：{e}。自动降级到 manual 后端。",
             )
         except subprocess.SubprocessError as e:
             return self._degrade_to_manual(
@@ -131,8 +127,7 @@ class _PyCamBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                f"PyCAM 输出 JSON 解析失败：{e}。"
-                f"stdout 预览：{stdout_preview}。自动降级到 manual 后端。",
+                f"PyCAM 输出 JSON 解析失败：{e}。stdout 预览：{stdout_preview}。自动降级到 manual 后端。",
             )
 
         # 5. 归一化字段
@@ -140,12 +135,8 @@ class _PyCamBackend(_BaseBackend):
         if status not in {"pass", "fail"}:
             status = "error"
 
-        collisions = self._normalize_collisions(
-            payload.get(_JSON_COLLISIONS_FIELD)
-        )
-        messages = self._normalize_messages(
-            payload.get(_JSON_MESSAGES_FIELD)
-        )
+        collisions = self._normalize_collisions(payload.get(_JSON_COLLISIONS_FIELD))
+        messages = self._normalize_messages(payload.get(_JSON_MESSAGES_FIELD))
 
         # status=error 时降级到 manual
         if status == "error":
@@ -192,9 +183,7 @@ class _PyCamBackend(_BaseBackend):
             status="manual_pending" 的 CamSoftwareReport，
             backend_used="manual"，degraded=True
         """
-        logger.warning(
-            "CamAdapter(pycam): 降级到 manual。原因：%s", reason
-        )
+        logger.warning("CamAdapter(pycam): 降级到 manual。原因：%s", reason)
         manual = _ManualBackend()
         report = manual.validate(gcode_file_path, controller_type)
         report.degraded = True

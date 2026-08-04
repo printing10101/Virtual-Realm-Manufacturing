@@ -44,7 +44,6 @@ from app.dreaming.effectiveness_metrics import (
     OutcomeSample,
 )
 from app.dreaming.progressive_publisher import (
-    PublicationRecord,
     PublicationStage,
     ProgressivePublisher,
 )
@@ -74,9 +73,7 @@ class RollbackDecision:
     should_rollback: bool
     reason: str = ""
     severity: str = "none"  # hard_constraint | production_error | metrics_degradation | none
-    detected_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    detected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     metrics_snapshot: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -105,9 +102,7 @@ class RollbackExecutionResult:
     current_stage: str = ""
     fully_deprecated: bool = False
     rollback_result: Optional[RollbackResult] = None
-    operated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    operated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     reason: str = ""
     error: Optional[str] = None
 
@@ -185,9 +180,7 @@ class RollbackManager:
         self._metrics_collector = metrics_collector
         self.cooldown_hours = cooldown_hours
         self.consecutive_anomaly_threshold = consecutive_anomaly_threshold
-        self.production_error_rate_threshold = (
-            production_error_rate_threshold
-        )
+        self.production_error_rate_threshold = production_error_rate_threshold
         self._lock = threading.RLock()
         # rule_id -> 冷却到期时间戳
         self._cooldowns: Dict[str, str] = {}
@@ -302,10 +295,7 @@ class RollbackManager:
 
         # 优先级 1：硬约束违反
         if metrics.hard_constraint_violations > 0:
-            reason = (
-                f"硬约束违反 {metrics.hard_constraint_violations} 次"
-                f"（CAM 绕过 / SUCCEEDED 解锁）"
-            )
+            reason = f"硬约束违反 {metrics.hard_constraint_violations} 次（CAM 绕过 / SUCCEEDED 解锁）"
             logger.warning(
                 "规则 %s 触发硬约束违反回滚：%s",
                 rule_id,
@@ -321,17 +311,9 @@ class RollbackManager:
             )
 
         # 优先级 2：生产异常率超限
-        if (
-            metrics.error_rate > self.production_error_rate_threshold
-            and metrics.sample_size > 0
-        ):
-            reason = (
-                f"生产异常率 {metrics.error_rate:.3f} 超过阈值 "
-                f"{self.production_error_rate_threshold}"
-            )
-            logger.warning(
-                "规则 %s 触发生产异常回滚：%s", rule_id, reason
-            )
+        if metrics.error_rate > self.production_error_rate_threshold and metrics.sample_size > 0:
+            reason = f"生产异常率 {metrics.error_rate:.3f} 超过阈值 {self.production_error_rate_threshold}"
+            logger.warning("规则 %s 触发生产异常回滚：%s", rule_id, reason)
             return RollbackDecision(
                 rule_id=rule_id,
                 should_rollback=True,
@@ -345,12 +327,8 @@ class RollbackManager:
         with self._lock:
             anomaly_count = self._consecutive_anomalies.get(rule_id, 0)
             # 指标恶化判定：准确率低于 0.5 或误报率高于 0.4
-            if (
-                metrics.sample_size > 0
-                and metrics.accuracy < 0.5
-            ) or (
-                metrics.sample_size > 0
-                and metrics.false_positive_rate > 0.4
+            if (metrics.sample_size > 0 and metrics.accuracy < 0.5) or (
+                metrics.sample_size > 0 and metrics.false_positive_rate > 0.4
             ):
                 anomaly_count += 1
                 self._consecutive_anomalies[rule_id] = anomaly_count
@@ -366,9 +344,7 @@ class RollbackManager:
                     f"（accuracy={metrics.accuracy:.3f}, "
                     f"fpr={metrics.false_positive_rate:.3f}）"
                 )
-                logger.warning(
-                    "规则 %s 触发指标恶化回滚：%s", rule_id, reason
-                )
+                logger.warning("规则 %s 触发指标恶化回滚：%s", rule_id, reason)
                 return RollbackDecision(
                     rule_id=rule_id,
                     should_rollback=True,
@@ -428,9 +404,7 @@ class RollbackManager:
 
         # 获取当前灰度阶段
         record = publisher.get_record(rule_id)
-        previous_stage = (
-            record.current_stage.value if record else "unknown"
-        )
+        previous_stage = record.current_stage.value if record else "unknown"
 
         rollback_result: Optional[RollbackResult] = None
         current_stage = previous_stage
@@ -456,9 +430,7 @@ class RollbackManager:
             )
             if demote_result.success:
                 current_stage = demote_result.stage.value
-                fully_deprecated = (
-                    demote_result.stage == PublicationStage.DEPRECATED
-                )
+                fully_deprecated = demote_result.stage == PublicationStage.DEPRECATED
             else:
                 # demote 失败：尝试直接 rollback
                 logger.warning(
@@ -471,24 +443,24 @@ class RollbackManager:
                 fully_deprecated = True
 
         # 设置冷却期
-        cooldown_until = (
-            datetime.now(timezone.utc) + timedelta(hours=self.cooldown_hours)
-        ).isoformat()
+        cooldown_until = (datetime.now(timezone.utc) + timedelta(hours=self.cooldown_hours)).isoformat()
         with self._lock:
             self._cooldowns[rule_id] = cooldown_until
             # 重置连续异常计数
             self._consecutive_anomalies[rule_id] = 0
             # 记录历史
-            self._rollback_history.append({
-                "rule_id": rule_id,
-                "reason": reason,
-                "severity": severity,
-                "previous_stage": previous_stage,
-                "current_stage": current_stage,
-                "fully_deprecated": fully_deprecated,
-                "operated_at": operated_at,
-                "cooldown_until": cooldown_until,
-            })
+            self._rollback_history.append(
+                {
+                    "rule_id": rule_id,
+                    "reason": reason,
+                    "severity": severity,
+                    "previous_stage": previous_stage,
+                    "current_stage": current_stage,
+                    "fully_deprecated": fully_deprecated,
+                    "operated_at": operated_at,
+                    "cooldown_until": cooldown_until,
+                }
+            )
             self._save_history()
             self._save_cooldowns()
 
@@ -496,9 +468,7 @@ class RollbackManager:
         try:
             self._get_audit_recorder().record_rule_application(
                 rule_id=rule_id,
-                rule_description=(
-                    f"规则回滚：{reason}（severity={severity}）"
-                ),
+                rule_description=(f"规则回滚：{reason}（severity={severity}）"),
                 validation_passed=True,
                 applied=False,
                 rollback_triggered=True,
@@ -555,18 +525,14 @@ class RollbackManager:
 
             # 跳过冷却期内的规则
             if self._is_in_cooldown(rule_id):
-                logger.debug(
-                    "规则 %s 在冷却期内，跳过检测", rule_id
-                )
+                logger.debug("规则 %s 在冷却期内，跳过检测", rule_id)
                 continue
 
             # 收集指标
             try:
                 metrics = collector.collect_metrics(rule_id)
             except Exception as e:
-                logger.error(
-                    "规则 %s 指标收集失败：%s", rule_id, e
-                )
+                logger.error("规则 %s 指标收集失败：%s", rule_id, e)
                 continue
 
             # 检测异常
@@ -584,9 +550,7 @@ class RollbackManager:
             results.append(result)
 
         if results:
-            logger.info(
-                "本轮监控触发了 %d 条规则回滚", len(results)
-            )
+            logger.info("本轮监控触发了 %d 条规则回滚", len(results))
         return results
 
     # ------------------------------------------------------------------

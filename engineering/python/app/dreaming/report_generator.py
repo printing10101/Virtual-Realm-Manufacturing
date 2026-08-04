@@ -52,9 +52,7 @@ class ReportGenerator:
         Args:
             output_dir: 报告输出目录。默认 python/outputs/dreaming/reports
         """
-        self.output_dir = Path(
-            output_dir or "python/outputs/dreaming/reports"
-        )
+        self.output_dir = Path(output_dir or "python/outputs/dreaming/reports")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -147,16 +145,14 @@ class ReportGenerator:
     # 各章节构建
     # ------------------------------------------------------------------
 
-    def _build_header(
-        self, reflection: ReflectionResult, instructions: Optional[str]
-    ) -> str:
+    def _build_header(self, reflection: ReflectionResult, instructions: Optional[str]) -> str:
         """构建报告头部。"""
         return f"""# Dreaming 反思报告
 
 **生成时间**：{reflection.reflected_at}  
 **Memory Version**：`{reflection.new_memory_version or "(未提交)"}`  
 **LLM 模型**：{reflection.llm_model if reflection.llm_used else "规则统计降级"}  
-**LLM 使用**：{'是' if reflection.llm_used else '否'}  
+**LLM 使用**：{"是" if reflection.llm_used else "否"}  
 **反思指令**：{instructions or "(默认)"}
 
 ---
@@ -166,9 +162,7 @@ class ReportGenerator:
 {reflection.summary}
 """
 
-    def _build_input_summary(
-        self, sessions: List[ProjectSession]
-    ) -> str:
+    def _build_input_summary(self, sessions: List[ProjectSession]) -> str:
         """构建输入 Session 摘要。"""
         total = len(sessions)
         success = sum(1 for s in sessions if s.outcome == "success")
@@ -183,9 +177,7 @@ class ReportGenerator:
         # AR-02 标记统计
         ar02_count = sum(1 for s in sessions if s.is_ar_02_pre_fix)
 
-        source_lines = "\n".join(
-            f"- {src}：{cnt} 个" for src, cnt in by_source.items()
-        )
+        source_lines = "\n".join(f"- {src}：{cnt} 个" for src, cnt in by_source.items())
 
         return f"""---
 
@@ -197,16 +189,14 @@ class ReportGenerator:
 | 成功 | {success} |
 | 失败 | {failure} |
 | 警告 | {warning} |
-| AR-02 修复前数据 | {ar02_count}（已{'包含' if ar02_count > 0 else '排除'}） |
+| AR-02 修复前数据 | {ar02_count}（已{"包含" if ar02_count > 0 else "排除"}） |
 
 **数据源分布**：
 
 {source_lines or "(无数据)"}
 """
 
-    def _build_dedup_section(
-        self, reflection: ReflectionResult
-    ) -> str:
+    def _build_dedup_section(self, reflection: ReflectionResult) -> str:
         """构建去重结果章节。"""
         dedup = reflection.deduplicated
         return f"""---
@@ -224,15 +214,17 @@ class ReportGenerator:
 将 `merged_into` 指向主节点（不移除，保留审计记录）。
 """
 
-    def _build_update_section(
-        self, reflection: ReflectionResult
-    ) -> str:
+    def _build_update_section(self, reflection: ReflectionResult) -> str:
         """构建过时更新结果章节。"""
         update = reflection.updated
-        details_text = "(无)" if not update.details else "\n".join(
-            f"- `{d['node_id']}`：confidence {d.get('old_confidence', '?')} → "
-            f"{d.get('new_confidence', '?')}（{d.get('reason', '?')}）"
-            for d in update.details[:10]  # 最多显示 10 条
+        details_text = (
+            "(无)"
+            if not update.details
+            else "\n".join(
+                f"- `{d['node_id']}`：confidence {d.get('old_confidence', '?')} → "
+                f"{d.get('new_confidence', '?')}（{d.get('reason', '?')}）"
+                for d in update.details[:10]  # 最多显示 10 条
+            )
         )
         if len(update.details) > 10:
             details_text += f"\n- ... 其余 {len(update.details) - 10} 条省略"
@@ -256,9 +248,7 @@ class ReportGenerator:
 - SUCCEEDED 任务对应 memory 不可删除（仅可降低 confidence）
 """
 
-    def _build_insights_section(
-        self, reflection: ReflectionResult
-    ) -> str:
+    def _build_insights_section(self, reflection: ReflectionResult) -> str:
         """构建洞察浮现章节。"""
         insights = reflection.insights
         if not insights:
@@ -276,11 +266,7 @@ class ReportGenerator:
             f"- **置信度**：{insight.confidence:.2f}\n"
             f"- **支撑 Session 数**：{len(insight.supporting_sessions)}\n"
             f"- **支撑 Session ID**：{', '.join(insight.supporting_sessions[:5])}"
-            + (
-                f"... 等 {len(insight.supporting_sessions)} 个"
-                if len(insight.supporting_sessions) > 5
-                else ""
-            )
+            + (f"... 等 {len(insight.supporting_sessions)} 个" if len(insight.supporting_sessions) > 5 else "")
             for i, insight in enumerate(insights)
         )
 
@@ -295,9 +281,7 @@ class ReportGenerator:
 {insights_text}
 """
 
-    def _build_rules_section(
-        self, rules: List[RuleDraft]
-    ) -> str:
+    def _build_rules_section(self, rules: List[RuleDraft]) -> str:
         """构建规则候选章节。"""
         if not rules:
             return """
@@ -351,13 +335,9 @@ class ReportGenerator:
         violations = []
         for rule in rules:
             if not rule.respects_cam_validation:
-                violations.append(
-                    f"- 规则 `{rule.rule_id}` 试图绕过 CAM 二次验证（已拒绝）"
-                )
+                violations.append(f"- 规则 `{rule.rule_id}` 试图绕过 CAM 二次验证（已拒绝）")
             if not rule.respects_succeeded_lock:
-                violations.append(
-                    f"- 规则 `{rule.rule_id}` 试图解锁 SUCCEEDED 任务（已拒绝）"
-                )
+                violations.append(f"- 规则 `{rule.rule_id}` 试图解锁 SUCCEEDED 任务（已拒绝）")
 
         violation_text = "\n".join(violations) if violations else "（无违规）"
 
@@ -369,8 +349,8 @@ class ReportGenerator:
 
 | 约束 | 状态 |
 |------|------|
-| CAM 二次验证始终 True | {'合规' if all(r.respects_cam_validation for r in rules) else '违规'} |
-| SUCCEEDED 任务禁删 | {'合规' if all(r.respects_succeeded_lock for r in rules) else '违规'} |
+| CAM 二次验证始终 True | {"合规" if all(r.respects_cam_validation for r in rules) else "违规"} |
+| SUCCEEDED 任务禁删 | {"合规" if all(r.respects_succeeded_lock for r in rules) else "违规"} |
 | HRC52 pending_calibration 降低置信度 | 已在过时更新阶段执行 |
 | 单轮审核状态机 | 未触碰（反思只修改 memory，不修改任务状态） |
 
@@ -390,13 +370,9 @@ class ReportGenerator:
         artifact_lines = []
         for s in sessions[:20]:  # 最多列出 20 个
             if s.raw_artifact_path:
-                artifact_lines.append(
-                    f"- `{s.session_id}`：{s.raw_artifact_path}"
-                )
+                artifact_lines.append(f"- `{s.session_id}`：{s.raw_artifact_path}")
         if len(sessions) > 20:
-            artifact_lines.append(
-                f"- ... 其余 {len(sessions) - 20} 个见完整日志"
-            )
+            artifact_lines.append(f"- ... 其余 {len(sessions) - 20} 个见完整日志")
 
         return f"""
 
@@ -407,25 +383,25 @@ class ReportGenerator:
 ### 7.1 AR-02 数据排除
 
 - AR-02 修复前数据数：{len(ar02_sessions)}
-- 论文数据处理：{'排除' if ar02_sessions else '不适用'}
+- 论文数据处理：{"排除" if ar02_sessions else "不适用"}
 - 排除依据：`is_ar_02_pre_fix=True` 标记
 
 ### 7.2 LLM 使用透明度
 
-- 是否使用 LLM：{'是' if reflection.llm_used else '否'}
-- LLM 模型：{reflection.llm_model or 'N/A'}
-- 降级原因：{'N/A' if reflection.llm_used else 'ProviderRouter 无可用 Provider'}
+- 是否使用 LLM：{"是" if reflection.llm_used else "否"}
+- LLM 模型：{reflection.llm_model or "N/A"}
+- 降级原因：{"N/A" if reflection.llm_used else "ProviderRouter 无可用 Provider"}
 
 ### 7.3 原始 Artifact 路径
 
 以下列出支撑本反思报告的原始 Session artifact 路径，供审稿人复核：
 
-{chr(10).join(artifact_lines) if artifact_lines else '(无)'}
+{chr(10).join(artifact_lines) if artifact_lines else "(无)"}
 
 ### 7.4 可复现性
 
-- Memory Version：`{reflection.new_memory_version or 'N/A'}`
-- Git Diff 命令：`git diff {reflection.new_memory_version or '<parent>'}~1 {reflection.new_memory_version or 'HEAD'}`
+- Memory Version：`{reflection.new_memory_version or "N/A"}`
+- Git Diff 命令：`git diff {reflection.new_memory_version or "<parent>"}~1 {reflection.new_memory_version or "HEAD"}`
 - MLflow Tracking URI：见 `python/app/ai/lnn/training/experiment_tracker.py`
 """
 
@@ -448,7 +424,7 @@ class ReportGenerator:
    标记 {len(reflection.updated.updated_node_ids)} 条需重新验证
 3. **洞察浮现**：{len(reflection.insights)} 条洞察
 4. **规则候选**：{len(rules)} 条草稿（状态 `draft`，待验证）
-5. **Memory Version**：`{reflection.new_memory_version or '未提交'}`
+5. **Memory Version**：`{reflection.new_memory_version or "未提交"}`
 
 **后续动作**：
 - [ ] 人工审阅本报告

@@ -31,7 +31,7 @@ feature_disclaimer 字段在以下 API 响应中必须出现：
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -105,7 +105,7 @@ def build_feature_disclaimer(
     # 警告消息根据 mesh 标定状态拼接
     if not mesh_calibrated:
         warning_message = (
-            f"⚠ 上游 mesh 未做尺度归一化（calibrated=False），"
+            "⚠ 上游 mesh 未做尺度归一化（calibrated=False），"
             "本模块输出的 radius_mm / height_mm 等参数为无量纲值，"
             "仅可用于可视化，不可用于工艺仿真。"
             "请在阶段 1 拍照重建时放置标定块并触发尺度归一化。"

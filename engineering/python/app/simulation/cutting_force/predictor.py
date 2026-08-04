@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import os
-import time
 import logging
 from typing import Dict, Optional, Any
 
@@ -31,7 +30,6 @@ except ImportError:
 
 from app.simulation.cutting_force.kienzle import (
     compute_cutting_forces,
-    DEFAULT_MATERIAL_COEFFICIENTS,
 )
 
 # CuttingForcePINN 依赖 torch.nn，torch 不可用时置 None
@@ -69,10 +67,7 @@ def _load_model(device: str = "cpu") -> Any:
         model.load_state_dict(checkpoint["model_state_dict"])
         logger.info("已加载模型检查点: %s", checkpoint_path)
     else:
-        logger.warning(
-            f"未找到模型检查点: {checkpoint_path}。"
-            "请先运行训练脚本，或使用 Kienzle 解析解。"
-        )
+        logger.warning(f"未找到模型检查点: {checkpoint_path}。请先运行训练脚本，或使用 Kienzle 解析解。")
 
     model.to(device)
     model.eval()
@@ -136,9 +131,7 @@ def predict_cutting_force(
 
     # PINN 推理（torch 不可用时直接回退到 Kienzle）
     if not _HAS_TORCH or CuttingForcePINN is None:
-        logger.warning(
-            "torch 不可用，PINN 推理已跳过，使用 Kienzle 解析解"
-        )
+        logger.warning("torch 不可用，PINN 推理已跳过，使用 Kienzle 解析解")
         return {
             "Fx": kienzle_result["Fx"],
             "Fy": kienzle_result["Fy"],
@@ -226,7 +219,4 @@ def predict_cutting_force_batch(
     Returns:
         预测结果列表
     """
-    return [
-        predict_cutting_force(material=material, params=p, use_pinn=use_pinn)
-        for p in params_list
-    ]
+    return [predict_cutting_force(material=material, params=p, use_pinn=use_pinn) for p in params_list]

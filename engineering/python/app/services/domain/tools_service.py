@@ -23,60 +23,116 @@ logger = logging.getLogger(__name__)
 # 种子数据（与原路由保持一致）
 SEED_TOOLS = [
     {
-        "code": "T01", "name": "D10立铣刀", "type": "end_mill",
-        "diameter": 10.0, "length": 75.0, "flute_count": 4,
-        "material": "carbide", "coating": "TiAlN",
-        "max_rpm": 12000, "max_feed": 3000,
-        "vendor": "山特维克", "cost": 280.0,
+        "code": "T01",
+        "name": "D10立铣刀",
+        "type": "end_mill",
+        "diameter": 10.0,
+        "length": 75.0,
+        "flute_count": 4,
+        "material": "carbide",
+        "coating": "TiAlN",
+        "max_rpm": 12000,
+        "max_feed": 3000,
+        "vendor": "山特维克",
+        "cost": 280.0,
     },
     {
-        "code": "T02", "name": "D6球头铣刀", "type": "ball_mill",
-        "diameter": 6.0, "length": 60.0, "flute_count": 2,
-        "material": "carbide", "coating": "AlCrN",
-        "max_rpm": 15000, "max_feed": 2000,
-        "vendor": "肯纳金属", "cost": 320.0,
+        "code": "T02",
+        "name": "D6球头铣刀",
+        "type": "ball_mill",
+        "diameter": 6.0,
+        "length": 60.0,
+        "flute_count": 2,
+        "material": "carbide",
+        "coating": "AlCrN",
+        "max_rpm": 15000,
+        "max_feed": 2000,
+        "vendor": "肯纳金属",
+        "cost": 320.0,
     },
     {
-        "code": "T03", "name": "D8.5钻头", "type": "drill",
-        "diameter": 8.5, "length": 100.0, "flute_count": 2,
-        "material": "hss", "coating": "TiN",
-        "max_rpm": 5000, "max_feed": 500,
-        "vendor": "OSG", "cost": 45.0,
+        "code": "T03",
+        "name": "D8.5钻头",
+        "type": "drill",
+        "diameter": 8.5,
+        "length": 100.0,
+        "flute_count": 2,
+        "material": "hss",
+        "coating": "TiN",
+        "max_rpm": 5000,
+        "max_feed": 500,
+        "vendor": "OSG",
+        "cost": 45.0,
     },
     {
-        "code": "T04", "name": "D10铰刀", "type": "reamer",
-        "diameter": 10.0, "length": 90.0, "flute_count": 6,
-        "material": "hss", "coating": "TiN",
-        "max_rpm": 3000, "max_feed": 200,
-        "vendor": "OSG", "cost": 120.0,
+        "code": "T04",
+        "name": "D10铰刀",
+        "type": "reamer",
+        "diameter": 10.0,
+        "length": 90.0,
+        "flute_count": 6,
+        "material": "hss",
+        "coating": "TiN",
+        "max_rpm": 3000,
+        "max_feed": 200,
+        "vendor": "OSG",
+        "cost": 120.0,
     },
     {
-        "code": "T05", "name": "M6丝锥", "type": "tap",
-        "diameter": 6.0, "length": 70.0, "flute_count": 4,
-        "material": "hss", "coating": "TiN",
-        "max_rpm": 1500, "max_feed": 100,
-        "vendor": "YAMAWA", "cost": 35.0,
+        "code": "T05",
+        "name": "M6丝锥",
+        "type": "tap",
+        "diameter": 6.0,
+        "length": 70.0,
+        "flute_count": 4,
+        "material": "hss",
+        "coating": "TiN",
+        "max_rpm": 1500,
+        "max_feed": 100,
+        "vendor": "YAMAWA",
+        "cost": 35.0,
     },
     {
-        "code": "T06", "name": "D16立铣刀", "type": "end_mill",
-        "diameter": 16.0, "length": 90.0, "flute_count": 4,
-        "material": "carbide", "coating": "TiAlN",
-        "max_rpm": 10000, "max_feed": 4000,
-        "vendor": "山特维克", "cost": 420.0,
+        "code": "T06",
+        "name": "D16立铣刀",
+        "type": "end_mill",
+        "diameter": 16.0,
+        "length": 90.0,
+        "flute_count": 4,
+        "material": "carbide",
+        "coating": "TiAlN",
+        "max_rpm": 10000,
+        "max_feed": 4000,
+        "vendor": "山特维克",
+        "cost": 420.0,
     },
     {
-        "code": "T07", "name": "D4立铣刀", "type": "end_mill",
-        "diameter": 4.0, "length": 50.0, "flute_count": 4,
-        "material": "carbide", "coating": "DLC",
-        "max_rpm": 20000, "max_feed": 1500,
-        "vendor": "三菱综合材料", "cost": 180.0,
+        "code": "T07",
+        "name": "D4立铣刀",
+        "type": "end_mill",
+        "diameter": 4.0,
+        "length": 50.0,
+        "flute_count": 4,
+        "material": "carbide",
+        "coating": "DLC",
+        "max_rpm": 20000,
+        "max_feed": 1500,
+        "vendor": "三菱综合材料",
+        "cost": 180.0,
     },
     {
-        "code": "T08", "name": "切槽刀 3mm", "type": "grooving",
-        "diameter": 3.0, "length": 40.0, "flute_count": 1,
-        "material": "carbide", "coating": None,
-        "max_rpm": 3000, "max_feed": 100,
-        "vendor": "伊斯卡", "cost": 150.0,
+        "code": "T08",
+        "name": "切槽刀 3mm",
+        "type": "grooving",
+        "diameter": 3.0,
+        "length": 40.0,
+        "flute_count": 1,
+        "material": "carbide",
+        "coating": None,
+        "max_rpm": 3000,
+        "max_feed": 100,
+        "vendor": "伊斯卡",
+        "cost": 150.0,
     },
 ]
 
@@ -149,15 +205,9 @@ async def stats_summary() -> dict:
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         total = await session.execute(select(func.count(Tool.id)))
-        worn = await session.execute(
-            select(func.count(Tool.id)).where(Tool.status == "worn")
-        )
-        broken = await session.execute(
-            select(func.count(Tool.id)).where(Tool.status == "broken")
-        )
-        active = await session.execute(
-            select(func.count(Tool.id)).where(Tool.status == "active")
-        )
+        worn = await session.execute(select(func.count(Tool.id)).where(Tool.status == "worn"))
+        broken = await session.execute(select(func.count(Tool.id)).where(Tool.status == "broken"))
+        active = await session.execute(select(func.count(Tool.id)).where(Tool.status == "active"))
         return {
             "total": total.scalar() or 0,
             "active": active.scalar() or 0,
@@ -174,9 +224,7 @@ async def get_tool(tool_id: str) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        result = await session.execute(
-            select(Tool).where(Tool.id == tool_id)
-        )
+        result = await session.execute(select(Tool).where(Tool.id == tool_id))
         t = result.scalar_one_or_none()
         if t is None:
             return None
@@ -199,9 +247,7 @@ async def create_tool(body_data: dict[str, Any]) -> dict[str, Any]:
     async with sessionmaker() as session:
         try:
             # 检查编码唯一性
-            existing = await session.execute(
-                select(Tool).where(Tool.code == body_data["code"])
-            )
+            existing = await session.execute(select(Tool).where(Tool.code == body_data["code"]))
             if existing.scalar_one_or_none() is not None:
                 raise ValueError(f"刀具编码 '{body_data['code']}' 已存在")
 
@@ -232,9 +278,7 @@ async def update_tool(tool_id: str, update_data: dict[str, Any]) -> Optional[dic
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         try:
-            result = await session.execute(
-                select(Tool).where(Tool.id == tool_id)
-            )
+            result = await session.execute(select(Tool).where(Tool.id == tool_id))
             t = result.scalar_one_or_none()
             if t is None:
                 return None
@@ -264,9 +308,7 @@ async def delete_tool(tool_id: str) -> Optional[bool]:
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         try:
-            result = await session.execute(
-                select(Tool).where(Tool.id == tool_id)
-            )
+            result = await session.execute(select(Tool).where(Tool.id == tool_id))
             t = result.scalar_one_or_none()
             if t is None:
                 return None
@@ -300,9 +342,7 @@ async def update_tool_wear(
     sessionmaker = _get_session()
     async with sessionmaker() as session:
         try:
-            result = await session.execute(
-                select(Tool).where(Tool.id == tool_id)
-            )
+            result = await session.execute(select(Tool).where(Tool.id == tool_id))
             t = result.scalar_one_or_none()
             if t is None:
                 return None
@@ -346,9 +386,7 @@ async def tool_life_prediction(tool_id: str) -> Optional[dict]:
     """
     sessionmaker = _get_session()
     async with sessionmaker() as session:
-        result = await session.execute(
-            select(Tool).where(Tool.id == tool_id)
-        )
+        result = await session.execute(select(Tool).where(Tool.id == tool_id))
         t = result.scalar_one_or_none()
         if t is None:
             return None

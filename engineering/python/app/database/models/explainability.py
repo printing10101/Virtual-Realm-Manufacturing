@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
 from typing import Any
 
 from app.utils.time import utcnow
@@ -37,7 +36,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
-    Integer,
     String,
     Text,
 )

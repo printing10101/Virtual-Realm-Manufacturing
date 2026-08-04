@@ -6,11 +6,9 @@ covering parsing, configuration, connection, and data handling.
 
 from __future__ import annotations
 
-import asyncio
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -453,12 +451,17 @@ class TestCLI:
         assert args.batch_size == 10
 
         # Test custom values
-        args = parser.parse_args([
-            "--endpoint", "opc.tcp://192.168.1.100:4840",
-            "--interval", "2.0",
-            "--batch-size", "20",
-            "--dry-run",
-        ])
+        args = parser.parse_args(
+            [
+                "--endpoint",
+                "opc.tcp://192.168.1.100:4840",
+                "--interval",
+                "2.0",
+                "--batch-size",
+                "20",
+                "--dry-run",
+            ]
+        )
         assert args.endpoint == "opc.tcp://192.168.1.100:4840"
         assert args.interval == 2.0
         assert args.batch_size == 20
@@ -486,21 +489,27 @@ class TestAdapterIntegration:
 
         async def mock_get_node(node_id):
             mock_node = MagicMock()
+
             async def mock_get_value():
                 if node_id == 2271:  # Server_ServerArray
                     return ["urn:test:server"]
                 elif node_id == 2256:  # Server_ServerStatus
                     return MagicMock()
+
             mock_node.get_value = mock_get_value
             return mock_node
 
         async def mock_create_subscription(interval, handler):
             mock_sub = MagicMock()
+
             async def mock_subscribe_data_change(nodes):
                 return None
+
             mock_sub.subscribe_data_change = mock_subscribe_data_change
+
             async def mock_delete():
                 return None
+
             mock_sub.delete = mock_delete
             return mock_sub
 

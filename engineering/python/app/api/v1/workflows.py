@@ -18,7 +18,6 @@
     workflow:manage  —— 取消 / 删除
 """
 
-
 import asyncio
 import json
 import logging
@@ -42,7 +41,6 @@ from app.workflow import (
     get_workflow_runner,
 )
 from app.workflow.dag_store import get_dag_store
-from app.config.limits import SSE_HEARTBEAT_TIMEOUT_SEC
 
 logger = logging.getLogger(__name__)
 
@@ -321,9 +319,7 @@ async def stream_workflow_events(workflow_run_id: str):
             logger.info("SSE 流被取消: workflow_run_id=%s", workflow_run_id)
             raise
         except Exception as e:
-            logger.exception(
-                "SSE 流异常: workflow_run_id=%s err=%s", workflow_run_id, e
-            )
+            logger.exception("SSE 流异常: workflow_run_id=%s err=%s", workflow_run_id, e)
             err_payload = json.dumps(
                 {"event_type": "stream_error", "error": str(e)},
                 ensure_ascii=False,

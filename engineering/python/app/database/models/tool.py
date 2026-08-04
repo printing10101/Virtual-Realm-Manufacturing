@@ -6,10 +6,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, text
-from sqlalchemy.orm import relationship
 
 from app.database.models.machining_record import Base
 

@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, Request
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 from app.auth.permissions import require_permission
+
 # P2-4-5 修复：引入共享速率限制器，MC Dropout 推理消耗 30 次前向传播，
 # 资源消耗远高于单次推理，需速率限制防止 DoS。
 from app.middleware.rate_limiter import limiter
@@ -79,9 +80,7 @@ async def predict_uncertain(request: Request, body: LNNPredictRequest):
             )
 
         model_info = entry.info
-        expected_dim = (
-            len(model_info.input_features) if model_info.input_features else None
-        )
+        expected_dim = len(model_info.input_features) if model_info.input_features else None
         if expected_dim:
             input_len = len(body.input_data)
             if input_len != expected_dim and input_len % expected_dim != 0:
@@ -182,9 +181,7 @@ async def predict_uncertain(request: Request, body: LNNPredictRequest):
 
         response_data = response.model_dump()
         response_data["uncertainty_method"] = uncertainty_method
-        response_data["mc_n_samples"] = (
-            result.model_info.get("mc_n_samples", 1) if result.model_info else 1
-        )
+        response_data["mc_n_samples"] = result.model_info.get("mc_n_samples", 1) if result.model_info else 1
 
         return success(
             data=response_data,

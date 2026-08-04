@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 508-549、2022-2092 迁移而来。
 """
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -79,9 +80,7 @@ class _SyncRecordsMixin:
 
         async with await self._get_session() as session:
             # 校验项目存在
-            p_stmt = select(ProjectRepo.project_id).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo.project_id).where(ProjectRepo.project_id == project_id)
             if (await session.execute(p_stmt)).first() is None:
                 from app.services.project_sync_service._exceptions import (
                     ProjectNotFoundError,
@@ -89,28 +88,17 @@ class _SyncRecordsMixin:
 
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")
 
-            stmt = select(ProjectSyncRecord).where(
-                ProjectSyncRecord.project_id == project_id
+            stmt = select(ProjectSyncRecord).where(ProjectSyncRecord.project_id == project_id)
+            count_stmt = (
+                select(func.count()).select_from(ProjectSyncRecord).where(ProjectSyncRecord.project_id == project_id)
             )
-            count_stmt = select(func.count()).select_from(
-                ProjectSyncRecord
-            ).where(ProjectSyncRecord.project_id == project_id)
             if direction:
                 stmt = stmt.where(ProjectSyncRecord.direction == direction)
-                count_stmt = count_stmt.where(
-                    ProjectSyncRecord.direction == direction
-                )
+                count_stmt = count_stmt.where(ProjectSyncRecord.direction == direction)
 
             total = (await session.execute(count_stmt)).scalar() or 0
-            stmt = (
-                stmt.order_by(desc(ProjectSyncRecord.timestamp))
-                .limit(limit)
-                .offset(offset)
-            )
-            records = [
-                row.to_dict()
-                for row in (await session.execute(stmt)).scalars().all()
-            ]
+            stmt = stmt.order_by(desc(ProjectSyncRecord.timestamp)).limit(limit).offset(offset)
+            records = [row.to_dict() for row in (await session.execute(stmt)).scalars().all()]
             return {
                 "project_id": project_id,
                 "records": records,

@@ -33,8 +33,10 @@ router = APIRouter(
 # Response schemas
 # ---------------------------------------------------------------------------
 
+
 class MetricDefinition(BaseModel):
     """指标定义。"""
+
     name: str = Field(..., description="指标名称")
     description: str = Field(..., description="指标含义")
     unit: str = Field(..., description="单位")
@@ -44,6 +46,7 @@ class MetricDefinition(BaseModel):
 
 class FlywheelStatusResponse(BaseModel):
     """飞轮状态响应。"""
+
     status: str = Field(..., description="飞轮状态: healthy / warning / critical")
     data_volume: int = Field(..., description="加工记录数（条）")
     model_quality: float = Field(..., description="模型质量（%，0-100）")
@@ -56,6 +59,7 @@ class FlywheelStatusResponse(BaseModel):
 
 class FlywheelReportResponse(BaseModel):
     """飞轮报告响应。"""
+
     report_type: str
     generated_at: str
     period: dict[str, str]
@@ -66,12 +70,14 @@ class FlywheelReportResponse(BaseModel):
 
 class MetricDefinitionsResponse(BaseModel):
     """指标定义列表响应。"""
+
     metrics: list[MetricDefinition]
 
 
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/status",
@@ -251,9 +257,7 @@ _MODEL_STORAGE_CANDIDATES: tuple[Path, ...] = (
 )
 
 # 识别为已部署模型的文件后缀
-_MODEL_FILE_SUFFIXES: frozenset[str] = frozenset(
-    {".pt", ".pth", ".onnx", ".bin", ".safetensors", ".ckpt"}
-)
+_MODEL_FILE_SUFFIXES: frozenset[str] = frozenset({".pt", ".pth", ".onnx", ".bin", ".safetensors", ".ckpt"})
 
 
 @router.get(
@@ -292,9 +296,7 @@ async def get_flywheel_deployments() -> dict[str, Any]:
                         "path": rel,
                         "size_bytes": stat.st_size,
                         "size_human": _format_size(stat.st_size),
-                        "updated_at": datetime.fromtimestamp(
-                            stat.st_mtime
-                        ).isoformat(timespec="seconds"),
+                        "updated_at": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
                         "status": "active",
                         "version": path.stem,
                     }

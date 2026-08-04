@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SlidingWindowConfig:
     """滑动窗口配置参数"""
+
     window_size: int = 256
     overlap_ratio: float = 0.5
     sample_rate: float = 1000.0
@@ -46,24 +47,16 @@ class SlidingWindowProcessor:
 
     def _validate_config(self):
         if self.config.sample_rate < self.config.sample_rate_min:
-            raise ValueError(
-                f"采样率 {self.config.sample_rate}Hz 低于最小值 {self.config.sample_rate_min}Hz"
-            )
+            raise ValueError(f"采样率 {self.config.sample_rate}Hz 低于最小值 {self.config.sample_rate_min}Hz")
         if self.config.sample_rate > self.config.sample_rate_max:
-            raise ValueError(
-                f"采样率 {self.config.sample_rate}Hz 超过最大值 {self.config.sample_rate_max}Hz"
-            )
+            raise ValueError(f"采样率 {self.config.sample_rate}Hz 超过最大值 {self.config.sample_rate_max}Hz")
         if self.config.overlap_ratio < 0 or self.config.overlap_ratio >= 1:
-            raise ValueError(
-                f"重叠比例 {self.config.overlap_ratio} 必须在 [0, 1) 范围内"
-            )
+            raise ValueError(f"重叠比例 {self.config.overlap_ratio} 必须在 [0, 1) 范围内")
 
     def set_sample_rate(self, rate: float):
         """动态调整采样率"""
         if rate < self.config.sample_rate_min or rate > self.config.sample_rate_max:
-            raise ValueError(
-                f"采样率 {rate}Hz 超出范围 [{self.config.sample_rate_min}, {self.config.sample_rate_max}]"
-            )
+            raise ValueError(f"采样率 {rate}Hz 超出范围 [{self.config.sample_rate_min}, {self.config.sample_rate_max}]")
         self.config.sample_rate = rate
 
     def resample(
@@ -89,6 +82,7 @@ class SlidingWindowProcessor:
 
         try:
             from scipy.signal import resample
+
             ratio = target_rate / self.config.sample_rate
             n_samples = int(data.shape[0] * ratio)
             return resample(data, n_samples, axis=0)
@@ -120,9 +114,7 @@ class SlidingWindowProcessor:
         n_samples, n_channels = data.shape
 
         if n_samples < self.config.min_samples:
-            raise ValueError(
-                f"数据长度 {n_samples} 小于最小样本数 {self.config.min_samples}"
-            )
+            raise ValueError(f"数据长度 {n_samples} 小于最小样本数 {self.config.min_samples}")
 
         if n_samples < window_size:
             pad_size = window_size - n_samples
@@ -143,11 +135,14 @@ class SlidingWindowProcessor:
 
         for i in range(n_windows):
             start = i * step
-            windows[i] = data[start:start + window_size]
+            windows[i] = data[start : start + window_size]
 
         logger.debug(
             "滑动窗口: %d样本 -> %d窗口 (size=%d, step=%d, overlap=%.0f%%)",
-            n_samples, n_windows, window_size, step,
+            n_samples,
+            n_windows,
+            window_size,
+            step,
             self.config.overlap_ratio * 100,
         )
 

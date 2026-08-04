@@ -4,16 +4,8 @@ from __future__ import annotations
 
 import ast
 import asyncio
-import atexit
-import ctypes
-import json
 import logging
-import os
-import struct
-import subprocess
-import sys
 import tempfile
-import threading
 from pathlib import Path
 from typing import Any
 
@@ -24,8 +16,6 @@ except ImportError:
     _resource = None
 
 import cadquery as cq
-import numpy as np
-from PIL import Image, ImageFilter, ImageOps
 
 from app.cad.advanced_features import AdvancedFeatureBuilder
 
@@ -51,52 +41,56 @@ def _register_cadquery_temp_dir(path: Path) -> None:
 
 
 # 安全修复：禁止访问的危险 dunder 属性，防止沙箱逃逸
-_DANGEROUS_ATTRS = frozenset({
-    "__class__", "__mro__", "__subclasses__", "__globals__",
-    "__builtins__", "__bases__", "__base__", "__code__",
-    "__func__", "__self__", "__dict__", "__module__",
-    "__import__", "__loader__", "__spec__",
-})
+_DANGEROUS_ATTRS = frozenset(
+    {
+        "__class__",
+        "__mro__",
+        "__subclasses__",
+        "__globals__",
+        "__builtins__",
+        "__bases__",
+        "__base__",
+        "__code__",
+        "__func__",
+        "__self__",
+        "__dict__",
+        "__module__",
+        "__import__",
+        "__loader__",
+        "__spec__",
+    }
+)
 
 
 from app.cad._cadquery_helpers import (
-    _cleanup_cadquery_temp_dirs,
     _register_cadquery_temp_dir,
     _unpack_generation_params,
-    _build_shape_params,
     _build_shape_script,
     _build_solid,
     _wrap_script,
     _run_cadquery_script,
-    _async_raise_thread,
-    _preprocess_image_for_cv,
-    _find_connected_regions,
-    _classify_shape_from_region,
     _extract_cv_geometry_params,
     _merge_cv_results,
     _get_image_dimensions,
 )
+
+
 class _CadQueryScriptValidator(ast.NodeVisitor):
     """AST 审计器：拒绝危险属性访问，防止沙箱逃逸。"""
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         if node.attr in _DANGEROUS_ATTRS:
             raise CadQueryScriptError(
-                f"Access to dangerous attribute '{node.attr}' is forbidden "
-                f"in CadQuery scripts (line {node.lineno})"
+                f"Access to dangerous attribute '{node.attr}' is forbidden in CadQuery scripts (line {node.lineno})"
             )
         self.generic_visit(node)
 
     def visit_Import(self, node: ast.Import) -> None:
         # 禁止 import 语句，仅允许已注入的 cq/cadquery
-        raise CadQueryScriptError(
-            f"Import statements are forbidden in CadQuery scripts (line {node.lineno})"
-        )
+        raise CadQueryScriptError(f"Import statements are forbidden in CadQuery scripts (line {node.lineno})")
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        raise CadQueryScriptError(
-            f"Import statements are forbidden in CadQuery scripts (line {node.lineno})"
-        )
+        raise CadQueryScriptError(f"Import statements are forbidden in CadQuery scripts (line {node.lineno})")
 
 
 class CadQueryError(Exception):
@@ -118,9 +112,7 @@ class CadQueryGenerator:
         self._initialized = True
         logger.info("CadQueryGenerator initialized")
 
-    async def extract_geometry_params_from_views(
-        self, views: dict[str, str]
-    ) -> dict[str, Any]:
+    async def extract_geometry_params_from_views(self, views: dict[str, str]) -> dict[str, Any]:
         """Extract geometry parameters from three-view image paths.
 
         Uses a lightweight computer-vision pipeline (Pillow + numpy) to
@@ -189,14 +181,10 @@ class CadQueryGenerator:
                     height,
                 )
             except (OSError, ValueError) as e:
-                logger.warning(
-                    "Failed to read view %s (%s): %s", view_name, view_path, e
-                )
+                logger.warning("Failed to read view %s (%s): %s", view_name, view_path, e)
 
         if not image_sizes and not cv_results:
-            logger.warning(
-                "Could not read any view images; using default geometry params"
-            )
+            logger.warning("Could not read any view images; using default geometry params")
 
         # --- Merge CV results when available ------------------------
         if cv_results:
@@ -260,9 +248,7 @@ class CadQueryGenerator:
         logger.info("Generated CadQuery script (%d chars)", len(script))
         return script
 
-    async def execute_and_export(
-        self, script: str, task_id: str, output_format: str
-    ) -> str:
+    async def execute_and_export(self, script: str, task_id: str, output_format: str) -> str:
         """Execute a CadQuery script and export the resulting model."""
         logger.info(
             "Executing script for task %s (format=%s, script_len=%d)",
@@ -294,13 +280,9 @@ class CadQueryGenerator:
         _run_cadquery_script(wrapped_script, task_id)
 
         if not output_path.exists():
-            raise CadQueryExportError(
-                f"Export failed: output file not created at {output_path}"
-            )
+            raise CadQueryExportError(f"Export failed: output file not created at {output_path}")
 
-        logger.info(
-            "Model exported: %s (%d bytes)", output_path, output_path.stat().st_size
-        )
+        logger.info("Model exported: %s (%d bytes)", output_path, output_path.stat().st_size)
         return str(output_path)
 
     def generate_3d_model(self, params: dict[str, Any]) -> str:

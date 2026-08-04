@@ -115,16 +115,19 @@ class ProcessRuleEntry:
 
 class DataValidationError(Exception):
     """数据验证异常"""
+
     pass
 
 
 class DataLoadError(Exception):
     """数据加载异常"""
+
     pass
 
 
 class QueryError(Exception):
     """查询异常"""
+
     pass
 
 
@@ -138,6 +141,10 @@ class ProcessPlanningDataManager:
         if data_dir is None:
             data_dir = Path(__file__).resolve().parent
         self._data_dir = Path(data_dir)
+        # 回退数据目录：materials.json / tools.json 位于 app/database/data/
+        # （与 material_resolver 的默认路径一致），cutting_parameters.json /
+        # process_rules.json 位于本模块同目录。多目录查找避免数据文件漂移。
+        self._fallback_dir = self._data_dir.parent / "database" / "data"
         self._materials: dict[str, MaterialEntry] = {}
         self._tools: dict[str, ToolEntry] = {}
         self._cutting_parameters: dict[str, CuttingParameterEntry] = {}
@@ -147,7 +154,11 @@ class ProcessPlanningDataManager:
     def _load_json(self, filename: str) -> list[dict[str, Any]]:
         filepath = self._data_dir / filename
         if not filepath.exists():
-            raise DataLoadError(f"数据文件不存在: {filepath}")
+            fallback = self._fallback_dir / filename
+            if fallback.exists():
+                filepath = fallback
+            else:
+                raise DataLoadError(f"数据文件不存在: {filepath}（回退目录 {self._fallback_dir} 亦未找到）")
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -167,16 +178,42 @@ class ProcessPlanningDataManager:
         self._load_process_rules()
 
     def _load_materials(self) -> None:
-        raw_data = self._load_json("materials.json")
+        raw_data = self._load_json_optional("materials.json")
+        if not raw_data:
+            return
         for item in raw_data:
-            entry = MaterialEntry.from_dict(item)
+            try:
+                entry = MaterialEntry.from_dict(item)
+            except (KeyError, TypeError, ValueError) as e:
+                logger.warning("跳过不兼容的材料条目 %s: %s", item.get("id", "?"), e)
+                continue
             self._materials[entry.id] = entry
 
     def _load_tools(self) -> None:
-        raw_data = self._load_json("tools.json")
+        raw_data = self._load_json_optional("tools.json")
+        if not raw_data:
+            return
         for item in raw_data:
-            entry = ToolEntry.from_dict(item)
+            try:
+                entry = ToolEntry.from_dict(item)
+            except (KeyError, TypeError, ValueError) as e:
+                logger.warning("跳过不兼容的刀具条目 %s: %s", item.get("id", "?"), e)
+                continue
             self._tools[entry.id] = entry
+
+    def _load_json_optional(self, filename: str) -> list[dict[str, Any]]:
+        """容错加载：文件缺失或格式不兼容时记录 warning 并返回空列表。
+
+        材料/刀具数据已迁移至 ``app/database/data/``（新格式，由
+        ``material_resolver`` 消费），本模块的旧格式 Entry 无法解析时
+        不应使整个数据管理器构造失败——ToolParamMatcher 对空数据有
+        通用 fallback 设计。
+        """
+        try:
+            return self._load_json(filename)
+        except (DataLoadError, DataValidationError) as e:
+            logger.warning("工艺规划数据加载跳过 %s: %s", filename, e)
+            return []
 
     def _load_cutting_parameters(self) -> None:
         raw_data = self._load_json("cutting_parameters.json")
@@ -210,11 +247,7 @@ class ProcessPlanningDataManager:
                 return material
         return None
 
-    def get_tools_by_material_and_process(
-        self,
-        material_category: str,
-        process: str
-    ) -> list[ToolEntry]:
+    def get_tools_by_material_and_process(self, material_category: str, process: str) -> list[ToolEntry]:
         """按材料类型和加工工序查询适用刀具。
 
         Args:
@@ -239,16 +272,9 @@ class ProcessPlanningDataManager:
         if not tool_series:
             return []
 
-        return [
-            tool for tool in self._tools.values()
-            if tool.series == tool_series
-        ]
+        return [tool for tool in self._tools.values() if tool.series == tool_series]
 
-    def get_cutting_parameters(
-        self,
-        material_id: str,
-        tool_series: str
-    ) -> list[CuttingParameterEntry]:
+    def get_cutting_parameters(self, material_id: str, tool_series: str) -> list[CuttingParameterEntry]:
         """按材料类型和刀具类型查询推荐切削参数。
 
         Args:
@@ -265,10 +291,7 @@ class ProcessPlanningDataManager:
 
         results = []
         for param in self._cutting_parameters.values():
-            if (
-                param.material_id == material_id.strip()
-                and param.tool_series == tool_series.strip()
-            ):
+            if param.material_id == material_id.strip() and param.tool_series == tool_series.strip():
                 results.append(param)
         return results
 
@@ -346,10 +369,7 @@ class ProcessPlanningDataManager:
         Returns:
             list[ProcessRuleEntry]: 规则列表
         """
-        return [
-            rule for rule in self._process_rules.values()
-            if rule.category == category
-        ]
+        return [rule for rule in self._process_rules.values() if rule.category == category]
 
     def get_tools_by_series(self, series: str) -> list[ToolEntry]:
         """按刀具系列查询刀具。
@@ -360,10 +380,7 @@ class ProcessPlanningDataManager:
         Returns:
             list[ToolEntry]: 刀具列表
         """
-        return [
-            tool for tool in self._tools.values()
-            if tool.series == series
-        ]
+        return [tool for tool in self._tools.values() if tool.series == series]
 
     def get_materials_by_category(self, category: str) -> list[MaterialEntry]:
         """按材料类别查询材料。
@@ -374,10 +391,7 @@ class ProcessPlanningDataManager:
         Returns:
             list[MaterialEntry]: 材料列表
         """
-        return [
-            material for material in self._materials.values()
-            if material.category == category
-        ]
+        return [material for material in self._materials.values() if material.category == category]
 
     def validate_data_integrity(self) -> dict[str, Any]:
         """验证数据完整性。

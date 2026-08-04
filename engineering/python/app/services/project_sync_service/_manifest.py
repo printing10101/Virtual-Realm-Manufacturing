@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 282-347 迁移而来。
 """
+
 from __future__ import annotations
 
 import os
@@ -19,9 +20,7 @@ class _ManifestMixin:
         - 类属性 ``_MANIFEST_FILENAME``（由 ProjectSyncService 定义）
     """
 
-    def _write_manifest_yaml(
-        self, repo_path: str, manifest_dict: dict[str, Any]
-    ) -> None:
+    def _write_manifest_yaml(self, repo_path: str, manifest_dict: dict[str, Any]) -> None:
         """写入 .lomo-project.yaml 清单文件."""
         manifest_path = os.path.join(repo_path, self._MANIFEST_FILENAME)
         # 原子写入：先写临时文件，再 rename

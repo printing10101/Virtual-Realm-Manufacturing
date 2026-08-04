@@ -3,7 +3,6 @@
 提供制造物料的 CRUD 操作、统计汇总和种子数据初始化。
 """
 
-
 import logging
 from typing import Optional
 
@@ -26,6 +25,7 @@ router = APIRouter(
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
+
 
 class MaterialCreate(BaseModel):
     code: str = Field(..., min_length=1, max_length=64, description="物料编码")
@@ -66,6 +66,7 @@ class PurchaseRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/")
 async def list_materials(
@@ -112,9 +113,7 @@ async def create_material(body: MaterialCreate):
 @router.put("/{material_id}")
 async def update_material(material_id: str, body: MaterialUpdate):
     """更新物料信息。"""
-    data = await materials_service.update_material(
-        material_id, body.model_dump(exclude_unset=True)
-    )
+    data = await materials_service.update_material(material_id, body.model_dump(exclude_unset=True))
     if data is None:
         return error(ErrorCode.NOT_FOUND, message=f"物料 {material_id} 不存在")
     return success(data=data, message="物料更新成功")
@@ -132,9 +131,7 @@ async def delete_material(material_id: str):
 @router.post("/{material_id}/stock-in")
 async def stock_in_material(material_id: str, body: StockInRequest):
     """物料入库：增加库存数量并自动重算状态。"""
-    data = await materials_service.stock_in_material(
-        material_id, body.quantity, remark=body.remark
-    )
+    data = await materials_service.stock_in_material(material_id, body.quantity, remark=body.remark)
     if data is None:
         return error(ErrorCode.NOT_FOUND, message=f"物料 {material_id} 不存在")
     return success(data=data, message="入库成功")
@@ -143,9 +140,7 @@ async def stock_in_material(material_id: str, body: StockInRequest):
 @router.post("/{material_id}/purchase")
 async def purchase_material(material_id: str, body: PurchaseRequest):
     """物料采购：更新供应商并增加库存数量，自动重算状态。"""
-    data = await materials_service.purchase_material(
-        material_id, body.quantity, supplier=body.supplier
-    )
+    data = await materials_service.purchase_material(material_id, body.quantity, supplier=body.supplier)
     if data is None:
         return error(ErrorCode.NOT_FOUND, message=f"物料 {material_id} 不存在")
     return success(data=data, message="采购成功")
@@ -155,14 +150,13 @@ async def purchase_material(material_id: str, body: PurchaseRequest):
 # Seed data
 # ---------------------------------------------------------------------------
 
+
 @router.post("/seed", dependencies=[Depends(require_role("admin"))])
 async def seed_materials():
     """初始化种子数据（仅在物料表为空时插入）。"""
     result = await materials_service.seed_materials()
     if result["already_exists"]:
-        return success(
-            message=f"物料表已有 {result['existing_count']} 条记录，跳过种子数据"
-        )
+        return success(message=f"物料表已有 {result['existing_count']} 条记录，跳过种子数据")
 
     logger.info("已插入 %d 条物料种子数据", result["inserted_count"])
     return success(message=f"成功插入 {result['inserted_count']} 条物料种子数据")

@@ -1,6 +1,5 @@
 """Template Marketplace API Routes — enhanced with evolution data, trending, subscriptions, export/import."""
 
-
 import logging
 import threading
 import time
@@ -84,17 +83,11 @@ def get_template_metrics(branch_id: str):
 
     ab_framework = get_ab_testing()
     exps = [
-        e
-        for e in ab_framework.list_experiments()
-        if e.control_branch == branch_id or e.candidate_branch == branch_id
+        e for e in ab_framework.list_experiments() if e.control_branch == branch_id or e.candidate_branch == branch_id
     ]
 
     total_experiments = len(exps)
-    success_count = sum(
-        1
-        for e in exps
-        if e.result == "winner_control" or e.result == "winner_candidate"
-    )
+    success_count = sum(1 for e in exps if e.result == "winner_control" or e.result == "winner_candidate")
     success_rate = success_count / max(total_experiments, 1)
 
     with _marketplace_lock:
@@ -152,11 +145,7 @@ def subscribe(req: SubscribeRequest):
 def get_subscriptions(project_id: str):
     """Get subscriptions for a project."""
     with _marketplace_lock:
-        subs = [
-            s
-            for s in _marketplace_data.get("subscriptions", [])
-            if s["project_id"] == project_id
-        ]
+        subs = [s for s in _marketplace_data.get("subscriptions", []) if s["project_id"] == project_id]
         # 拷贝以避免返回后列表被其他线程修改
         subs = list(subs)
     return success(data=subs)
@@ -196,9 +185,7 @@ def export_template(branch_id: str, req: ExportRequest = None):
     # downloads 计数器 read-modify-write 必须在锁内完成，避免并发请求
     # 同时读取旧值导致计数丢失。这是本模块最关键的竞争点。
     with _marketplace_lock:
-        _marketplace_data["downloads"][branch_id] = (
-            _marketplace_data.get("downloads", {}).get(branch_id, 0) + 1
-        )
+        _marketplace_data["downloads"][branch_id] = _marketplace_data.get("downloads", {}).get(branch_id, 0) + 1
 
     return success(data=export_data)
 
@@ -220,9 +207,7 @@ def import_template(req: ImportRequest):
         data=data,
         metadata={"type": "imported", "imported_at": time.time()},
     )
-    logger.info(
-        "Template imported: branch_id=%s, name=%s", branch.branch_id, target_name
-    )
+    logger.info("Template imported: branch_id=%s, name=%s", branch.branch_id, target_name)
     return success(data={"branch_id": branch.branch_id, "name": target_name})
 
 

@@ -3,6 +3,7 @@
 从原 ``explainability_service.py`` 拆分。封装 payload JSON 文件的写入 / 读取 /
 删除操作，统一异常映射为 ``ProjectionError``。
 """
+
 from __future__ import annotations
 
 import json
@@ -28,9 +29,7 @@ class PayloadStore:
         self._root = payloads_root
         os.makedirs(self._root, exist_ok=True)
 
-    def persist(
-        self, payload: dict[str, Any], explanation_id: str
-    ) -> tuple[str, int]:
+    def persist(self, payload: dict[str, Any], explanation_id: str) -> tuple[str, int]:
         """将 payload 写入 JSON 文件.
 
         Returns
@@ -43,9 +42,7 @@ class PayloadStore:
             with open(payload_path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, default=str)
         except (OSError, IOError, TypeError, ValueError) as exc:
-            raise ProjectionError(
-                f"payload 持久化失败: {exc}"
-            ) from exc
+            raise ProjectionError(f"payload 持久化失败: {exc}") from exc
         size = os.path.getsize(payload_path)
         return payload_path, size
 
@@ -69,9 +66,7 @@ class PayloadStore:
                 exc,
             )
 
-    def persist_diff(
-        self, diff_payload: dict[str, Any], comparison_id: str
-    ) -> str:
+    def persist_diff(self, diff_payload: dict[str, Any], comparison_id: str) -> str:
         """将差异 payload 写入 JSON 文件.
 
         Returns
@@ -84,9 +79,7 @@ class PayloadStore:
             with open(diff_path, "w", encoding="utf-8") as f:
                 json.dump(diff_payload, f, ensure_ascii=False, default=str)
         except (OSError, IOError, TypeError, ValueError) as exc:
-            raise ProjectionError(
-                f"差异 payload 持久化失败: {exc}"
-            ) from exc
+            raise ProjectionError(f"差异 payload 持久化失败: {exc}") from exc
         return diff_path
 
 

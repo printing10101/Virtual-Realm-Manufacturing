@@ -3,6 +3,7 @@
 定义插件元数据、能力声明、依赖与配置 schema，供 PluginLoader 加载时校验。
 与 ``__init__.PLUGIN_MANIFEST`` 保持一致。
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -14,8 +15,7 @@ MANIFEST: dict[str, Any] = {
     "version": "1.0.0",
     "author": "灵境制造团队",
     "description": (
-        "加工过程世界模型：预测状态轨迹（颤振概率/刀具磨损/表面质量）"
-        "在未来 N 步的演化，为 RL agent 提供想象环境。"
+        "加工过程世界模型：预测状态轨迹（颤振概率/刀具磨损/表面质量）在未来 N 步的演化，为 RL agent 提供想象环境。"
     ),
     "entry_point": "app.plugins.world_model:WorldModelPlugin",
     "plugin_type": "analyzer",
@@ -73,28 +73,19 @@ MANIFEST: dict[str, Any] = {
             },
             "feature_dim": {
                 "type": "integer",
-                "description": (
-                    "几何特征向量维度（ADR-007 平面/圆柱/孔统计向量）。"
-                    "仅 use_fusion=True 时生效。"
-                ),
+                "description": ("几何特征向量维度（ADR-007 平面/圆柱/孔统计向量）。仅 use_fusion=True 时生效。"),
                 "default": 32,
                 "minimum": 1,
             },
             "d_model": {
                 "type": "integer",
-                "description": (
-                    "GeometryEncoder/DynamicsEncoder 输出维度。"
-                    "仅 use_fusion=True 时生效。"
-                ),
+                "description": ("GeometryEncoder/DynamicsEncoder 输出维度。仅 use_fusion=True 时生效。"),
                 "default": 64,
                 "minimum": 1,
             },
             "fused_dim": {
                 "type": "integer",
-                "description": (
-                    "FusionLayer 输出维度（融合 embedding 维度）。"
-                    "仅 use_fusion=True 时生效。"
-                ),
+                "description": ("FusionLayer 输出维度（融合 embedding 维度）。仅 use_fusion=True 时生效。"),
                 "default": 128,
                 "minimum": 1,
             },

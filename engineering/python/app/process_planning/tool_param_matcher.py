@@ -29,6 +29,7 @@ class MatchedTool:
         match_reason: 匹配原因说明
         warnings: 使用注意事项
     """
+
     tool: ToolEntry
     cutting_params: Optional[CuttingParameterEntry] = None
     suitability_score: float = 80.0
@@ -56,8 +57,7 @@ class MatchedTool:
         if self.cutting_params:
             result["cutting_parameters"] = {
                 "cutting_speed_m_per_min": (
-                    f"{self.cutting_params.cutting_speed_min_mpm}-"
-                    f"{self.cutting_params.cutting_speed_max_mpm}"
+                    f"{self.cutting_params.cutting_speed_min_mpm}-{self.cutting_params.cutting_speed_max_mpm}"
                 ),
                 "feed_rate": (
                     f"{self.cutting_params.feed_min_mmpr}-"
@@ -80,6 +80,7 @@ class HoleProcessPlan:
             例如对于通孔：["打中心孔", "钻孔"]
             对于精密通孔：["打中心孔", "钻孔", "铰孔"]
     """
+
     hole_id: str
     hole_type: str
     operations: list[str] = field(default_factory=list)
@@ -201,10 +202,7 @@ class ToolParamMatcher:
                     application=process_name,
                 ),
                 suitability_score=30.0,
-                match_reason=(
-                    f"知识库中未找到 {material_category}+{process_name} 的刀具，"
-                    f"返回通用刀具建议"
-                ),
+                match_reason=(f"知识库中未找到 {material_category}+{process_name} 的刀具，返回通用刀具建议"),
                 warnings=["建议向知识库添加该组合的专用刀具数据"],
             )
 
@@ -411,7 +409,7 @@ class ToolParamMatcher:
         elif dia_diff <= 3.0:
             score += 10  # 偏差 ≤ 3mm
         else:
-            score += 5   # 偏差较大
+            score += 5  # 偏差较大
 
         # 切削参数评分
         if params:
@@ -441,10 +439,7 @@ class ToolParamMatcher:
         if dia_diff == 0:
             dia_reason = f"刀具直径φ{tool.diameter_mm}mm与孔直径φ{target_diameter}mm精确匹配"
         else:
-            dia_reason = (
-                f"刀具直径φ{tool.diameter_mm}mm覆盖目标直径φ{target_diameter}mm"
-                f"(偏差{dia_diff:.1f}mm)"
-            )
+            dia_reason = f"刀具直径φ{tool.diameter_mm}mm覆盖目标直径φ{target_diameter}mm(偏差{dia_diff:.1f}mm)"
 
         mat_reason = {
             "carbide": "硬质合金材质，适用于高效高速钻孔",
@@ -453,10 +448,7 @@ class ToolParamMatcher:
         }.get(tool.material, f"{tool.material}材质")
 
         if params:
-            param_reason = (
-                f"，切削参数来自知识库: "
-                f"{params.cutting_speed_min_mpm}-{params.cutting_speed_max_mpm} m/min"
-            )
+            param_reason = f"，切削参数来自知识库: {params.cutting_speed_min_mpm}-{params.cutting_speed_max_mpm} m/min"
         else:
             param_reason = "，建议根据经验设定切削参数"
 
@@ -479,16 +471,10 @@ class ToolParamMatcher:
         dia_diff = abs(tool.diameter_mm - target_diameter)
 
         if dia_diff >= 2.0:
-            warnings.append(
-                f"刀具直径偏差{dia_diff:.1f}mm较大，"
-                f"建议检查孔加工余量是否可接受"
-            )
+            warnings.append(f"刀具直径偏差{dia_diff:.1f}mm较大，建议检查孔加工余量是否可接受")
 
         if params is None:
-            warnings.append(
-                "该组合暂无切削参数数据，请根据实际工况设定"
-                "切削速度和进给量"
-            )
+            warnings.append("该组合暂无切削参数数据，请根据实际工况设定切削速度和进给量")
 
         return warnings
 

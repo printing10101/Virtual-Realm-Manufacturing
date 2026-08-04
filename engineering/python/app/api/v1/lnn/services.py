@@ -6,9 +6,8 @@ import asyncio
 import uuid
 import logging
 from typing import Callable
-from datetime import datetime, timezone
+from datetime import timezone
 
-import numpy as np
 
 # 阶段2 解耦改造：torch 训练栈已迁移到 research/。工程侧仅消费 ONNX 模型，
 # 不再依赖 torch。此处保留 try/except 兼容旧路径，torch 缺失时降级为 None，
@@ -16,6 +15,7 @@ import numpy as np
 try:
     import torch
     from torch.utils.data import DataLoader, TensorDataset
+
     _HAS_TORCH = True
 except ImportError:
     torch = None
@@ -23,14 +23,9 @@ except ImportError:
     TensorDataset = None
     _HAS_TORCH = False
 
-from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
-from app.audit.audit_log import AIModule, UserDecision, OperationStatus
-from app.dependencies import get_ring_log_buffer
-from app.ai.lnn.inference.predictor import LNNPredictor, PredictionResult
+from app.ai.lnn.inference.predictor import LNNPredictor
 from app.ai.lnn.inference.registry import (
-    get_torch_model_class,
-    is_quantized_model,
     get_quantized_model_name,
 )
 
@@ -46,6 +41,7 @@ mlflow_log_model = None
 detect_device = None
 get_optimal_batch_size = None
 get_optimal_num_workers = None
+
 
 def _lazy_init_training_stack() -> bool:
     """延迟初始化训练栈（首次调用时执行，避免模块加载期 ImportError）。"""
@@ -66,6 +62,7 @@ def _lazy_init_training_stack() -> bool:
             get_device_optimal_batch_size,
             get_device_optimal_num_workers,
         )
+
         LNNConfig = get_lnn_config_factory()
         LNNTrainer = get_trainer_factory()
         mlflow_start_run = get_mlflow_start_run()
@@ -75,15 +72,14 @@ def _lazy_init_training_stack() -> bool:
         detect_device = get_device_detect()
         get_optimal_batch_size = get_device_optimal_batch_size()
         get_optimal_num_workers = get_device_optimal_num_workers()
-        _HAS_TRAINING_STACK = all(
-            x is not None for x in (LNNConfig, LNNTrainer, detect_device)
-        )
+        _HAS_TRAINING_STACK = all(x is not None for x in (LNNConfig, LNNTrainer, detect_device))
     except Exception:
         _HAS_TRAINING_STACK = False
     return _HAS_TRAINING_STACK
-from app.tasks.task_manager import TaskType, TaskStatus
+
+
+from app.tasks.task_manager import TaskStatus
 from app.models.schemas import (
-    LNNModelInfo,
     AlternativePlan,
 )
 from app.api.v1.sse import sse_manager
@@ -119,17 +115,11 @@ def _generate_prediction_reasoning(
 
     if confidence is not None:
         if confidence >= 0.8:
-            reasoning_parts.append(
-                f"置信度较高 ({confidence:.2f}),表明模型对当前输入数据的预测结果有较高的把握。"
-            )
+            reasoning_parts.append(f"置信度较高 ({confidence:.2f}),表明模型对当前输入数据的预测结果有较高的把握。")
         elif confidence >= 0.5:
-            reasoning_parts.append(
-                f"置信度中等 ({confidence:.2f}),建议结合实际情况综合判断预测结果。"
-            )
+            reasoning_parts.append(f"置信度中等 ({confidence:.2f}),建议结合实际情况综合判断预测结果。")
         else:
-            reasoning_parts.append(
-                f"置信度较低 ({confidence:.2f}),建议参考备选方案或调整输入数据后重新预测。"
-            )
+            reasoning_parts.append(f"置信度较低 ({confidence:.2f}),建议参考备选方案或调整输入数据后重新预测。")
 
     reasoning_parts.append(f"推理耗时 {inference_time:.2f}ms。")
 
@@ -281,9 +271,7 @@ async def run_training_task_v2(
 
         await progress_updater(15.0, f"Starting training on {device.type}...")
 
-        model, trainer, hidden_size, entry = _build_trainer(
-            model_name, input_dim, hyperparameters, device, use_amp
-        )
+        model, trainer, hidden_size, entry = _build_trainer(model_name, input_dim, hyperparameters, device, use_amp)
 
         return await _execute_training_loop(
             trainer,
@@ -644,9 +632,7 @@ async def run_batch_inference_v2(
         # 使用 predict_batch 替代逐样本 predict，将 N 次 forward pass 合并为 1 次。
         # 同时通过 asyncio.to_thread 将 CPU/GPU 密集型推理移至工作线程，
         # 避免阻塞事件循环（SSE 心跳、取消信号等其他协程可继续运行）。
-        batch_predictions = await asyncio.to_thread(
-            predictor.predict_batch, batch, len(batch)
-        )
+        batch_predictions = await asyncio.to_thread(predictor.predict_batch, batch, len(batch))
 
         for result in batch_predictions:
             value = result.value

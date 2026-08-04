@@ -14,27 +14,13 @@ References Paperclip's Persistent Agent State design:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
-import os
 import time
 import zlib
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Optional
 
 # shared imports moved to state/__init__.py
-from app.state.exceptions import StatePersistenceError, StateConflictError, StateNotFoundError
-from app.models.agent_state import (
-    AgentState,
-    AgentStatus,
-    Checkpoint,
-    MemoryEntry,
-    SessionContext,
-    StateVersion,
-    CURRENT_SCHEMA_VERSION,
-    migrate_state,
-)
 
 HEARTBEAT_INTERVAL_SECONDS = 15 * 60
 CHECKPOINT_MAX_AGE_SECONDS = 7 * 24 * 3600
@@ -94,17 +80,13 @@ class CheckpointLifecycleManager:
         agent_dir = self.get_agent_checkpoint_dir(agent_id)
         return sum(f.stat().st_size for f in agent_dir.glob("*.pt"))
 
-    def save_checkpoint_file(
-        self, agent_id: str, checkpoint_id: str, data: bytes
-    ) -> Path:
+    def save_checkpoint_file(self, agent_id: str, checkpoint_id: str, data: bytes) -> Path:
         path = self.get_checkpoint_path(agent_id, checkpoint_id)
         compressed = zlib.compress(data, level=6)
         path.write_bytes(compressed)
         return path
 
-    def load_checkpoint_file(
-        self, agent_id: str, checkpoint_id: str
-    ) -> Optional[bytes]:
+    def load_checkpoint_file(self, agent_id: str, checkpoint_id: str) -> Optional[bytes]:
         path = self.get_checkpoint_path(agent_id, checkpoint_id)
         if not path.exists():
             return None

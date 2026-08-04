@@ -38,13 +38,17 @@ def _spawn(coro):
     t.add_done_callback(_background_tasks.discard)
     return t
 
+
 _pipeline: CuttingParametersPipeline | None = None
+
+
 def _get_pipeline() -> CuttingParametersPipeline:
     """获取 pipeline 单例。"""
     global _pipeline
     if _pipeline is None:
         _pipeline = CuttingParametersPipeline(cfg=config.cutting_parameters)
     return _pipeline
+
 
 def _disclaimer_dict(
     task: CuttingParametersTask | None = None,
@@ -63,10 +67,7 @@ def _disclaimer_dict(
                 material = get_material_resolver().get_material(task.material_id)
             except MaterialResolverError:
                 material = None
-        cal_status = (
-            material.calibration_status if material is not None
-            else "pending_calibration"
-        )
+        cal_status = material.calibration_status if material is not None else "pending_calibration"
         return build_cutting_disclaimer(
             mesh_calibrated=task.mesh_calibrated,
             feature_source=task.input_features_path,
@@ -90,6 +91,7 @@ def _disclaimer_dict(
         chatter_params_ready=False,
     ).to_dict()
 
+
 def _resolve_upstream_calibrated(
     source_parametric_geometry_task_id: str,
 ) -> tuple[bool, str]:
@@ -112,8 +114,7 @@ def _resolve_upstream_calibrated(
         from app.parametric_geometry import ParametricGeometryTaskStatus
     except ImportError:
         logger.warning(
-            "parametric_geometry 模块未启用，无法追溯上游 mesh_calibrated 状态 "
-            "source_pg_task_id=%s，按未标定处理",
+            "parametric_geometry 模块未启用，无法追溯上游 mesh_calibrated 状态 source_pg_task_id=%s，按未标定处理",
             source_parametric_geometry_task_id,
         )
         return False, "external_upload"
@@ -129,8 +130,7 @@ def _resolve_upstream_calibrated(
 
         if pg_task.status != ParametricGeometryTaskStatus.SUCCEEDED.value:
             logger.warning(
-                "上游 parametric_geometry 任务未 SUCCEEDED task_id=%s status=%s，"
-                "按未标定处理",
+                "上游 parametric_geometry 任务未 SUCCEEDED task_id=%s status=%s，按未标定处理",
                 source_parametric_geometry_task_id,
                 pg_task.status,
             )
@@ -139,13 +139,10 @@ def _resolve_upstream_calibrated(
         return bool(pg_task.mesh_calibrated), source_parametric_geometry_task_id
 
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cutting_parameters.resolve_upstream_calibrated"
-        )
+        safe = safe_error_message(e, context="cutting_parameters.resolve_upstream_calibrated")
         logger.warning(
             "查询上游任务异常 source_pg_task_id=%s error_id=%s，按未标定处理",
             source_parametric_geometry_task_id,
             safe.get("error_id"),
         )
         return False, "external_upload"
-

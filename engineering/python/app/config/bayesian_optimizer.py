@@ -37,6 +37,7 @@
 
 稳定性承诺：本文件为 Stable 契约 v1.0.0 实现，向后兼容扩展。
 """
+
 from __future__ import annotations
 
 import math
@@ -186,10 +187,7 @@ class BayesianOptimizer:
             candidates = self._get_candidates()
             observed_flats = {self._config_key(f) for f, _ in self._observations}
 
-            unobserved = [
-                c for c in candidates
-                if self._config_key(flatten_dict(c)) not in observed_flats
-            ]
+            unobserved = [c for c in candidates if self._config_key(flatten_dict(c)) not in observed_flats]
             if not unobserved:
                 return None
 
@@ -240,14 +238,14 @@ class BayesianOptimizer:
         with self._lock:
             if not self._observations:
                 raise RuntimeError(
-                    "BayesianOptimizer.best(): no observations yet. "
-                    "Call warmup() + update() or optimize() first."
+                    "BayesianOptimizer.best(): no observations yet. Call warmup() + update() or optimize() first."
                 )
             if self._maximize:
                 best_flat, best_score = max(self._observations, key=lambda x: x[1])
             else:
                 best_flat, best_score = min(self._observations, key=lambda x: x[1])
             from app.config.yaml_loader import unflatten_dict
+
             return unflatten_dict(best_flat), best_score
 
     @property
@@ -297,10 +295,7 @@ class BayesianOptimizer:
             field_value_maps[fname] = {v: float(i) for i, v in enumerate(unique_vals)}
 
         def encode(flat: dict[str, Any]) -> list[float]:
-            return [
-                field_value_maps[fname].get(flat.get(fname, ""), 0.0)
-                for fname in field_names
-            ]
+            return [field_value_maps[fname].get(flat.get(fname, ""), 0.0) for fname in field_names]
 
         X_train = [encode(f) for f, _ in self._observations]
         y_train = [s for _, s in self._observations]

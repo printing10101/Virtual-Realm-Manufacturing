@@ -72,9 +72,7 @@ class HealthReportGenerator:
         lines.append("")
 
         # 矛盾关系详情
-        lines.extend(
-            self._generate_contradictory_edges_section(result.contradictory_edges)
-        )
+        lines.extend(self._generate_contradictory_edges_section(result.contradictory_edges))
         lines.append("")
 
         # 老旧数据详情
@@ -132,9 +130,7 @@ class HealthReportGenerator:
 
         return lines
 
-    def _generate_isolated_nodes_section(
-        self, isolated_nodes: list[IsolatedNodeResult]
-    ) -> list[str]:
+    def _generate_isolated_nodes_section(self, isolated_nodes: list[IsolatedNodeResult]) -> list[str]:
         """生成孤立节点详情部分。"""
         lines: list[str] = []
 
@@ -158,9 +154,7 @@ class HealthReportGenerator:
             lines.append("")
             lines.append("| 节点类型 | 数量 |")
             lines.append("|----------|------|")
-            for node_type, count in sorted(
-                type_counts.items(), key=lambda x: x[1], reverse=True
-            ):
+            for node_type, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True):
                 lines.append(f"| {node_type} | {count} |")
             lines.append("")
 
@@ -178,15 +172,11 @@ class HealthReportGenerator:
 
         if len(isolated_nodes) > max_display:
             lines.append("")
-            lines.append(
-                f"*注：仅显示前 {max_display} 个，共 {len(isolated_nodes)} 个孤立节点。*"
-            )
+            lines.append(f"*注：仅显示前 {max_display} 个，共 {len(isolated_nodes)} 个孤立节点。*")
 
         return lines
 
-    def _generate_contradictory_edges_section(
-        self, contradictory_edges: list[ContradictoryEdgeResult]
-    ) -> list[str]:
+    def _generate_contradictory_edges_section(self, contradictory_edges: list[ContradictoryEdgeResult]) -> list[str]:
         """生成矛盾关系详情部分。"""
         lines: list[str] = []
 
@@ -197,13 +187,9 @@ class HealthReportGenerator:
             lines.append("未发现矛盾关系（互逆关系对）。")
             return lines
 
-        lines.append(
-            f"共发现 **{len(contradictory_edges)}** 对互逆关系（A→B 且 B→A）。"
-        )
+        lines.append(f"共发现 **{len(contradictory_edges)}** 对互逆关系（A→B 且 B→A）。")
         lines.append("")
-        lines.append(
-            "互逆关系可能表示数据录入错误或业务逻辑冲突，建议人工审核。"
-        )
+        lines.append("互逆关系可能表示数据录入错误或业务逻辑冲突，建议人工审核。")
         lines.append("")
 
         # 详情列表
@@ -212,12 +198,8 @@ class HealthReportGenerator:
 
         lines.append("### 详情列表")
         lines.append("")
-        lines.append(
-            "| 节点 A | 节点 B | A→B 关系类型 | B→A 关系类型 | A→B 创建时间 | B→A 创建时间 |"
-        )
-        lines.append(
-            "|--------|--------|--------------|--------------|--------------|--------------|"
-        )
+        lines.append("| 节点 A | 节点 B | A→B 关系类型 | B→A 关系类型 | A→B 创建时间 | B→A 创建时间 |")
+        lines.append("|--------|--------|--------------|--------------|--------------|--------------|")
         for edge in display_edges:
             forward_time = self._format_timestamp(edge.forward_created_at) or "-"
             reverse_time = self._format_timestamp(edge.reverse_created_at) or "-"
@@ -229,15 +211,11 @@ class HealthReportGenerator:
 
         if len(contradictory_edges) > max_display:
             lines.append("")
-            lines.append(
-                f"*注：仅显示前 {max_display} 对，共 {len(contradictory_edges)} 对互逆关系。*"
-            )
+            lines.append(f"*注：仅显示前 {max_display} 对，共 {len(contradictory_edges)} 对互逆关系。*")
 
         return lines
 
-    def _generate_stale_nodes_section(
-        self, stale_nodes: list[StaleNodeResult]
-    ) -> list[str]:
+    def _generate_stale_nodes_section(self, stale_nodes: list[StaleNodeResult]) -> list[str]:
         """生成老旧数据详情部分。"""
         lines: list[str] = []
 
@@ -248,13 +226,9 @@ class HealthReportGenerator:
             lines.append("未发现超过 5 年未更新的节点。")
             return lines
 
-        lines.append(
-            f"共发现 **{len(stale_nodes)}** 个节点超过 5 年未更新。"
-        )
+        lines.append(f"共发现 **{len(stale_nodes)}** 个节点超过 5 年未更新。")
         lines.append("")
-        lines.append(
-            "老旧数据可能已过时，建议审核并更新或归档。"
-        )
+        lines.append("老旧数据可能已过时，建议审核并更新或归档。")
         lines.append("")
 
         # 按类型分组统计
@@ -267,9 +241,7 @@ class HealthReportGenerator:
             lines.append("")
             lines.append("| 节点类型 | 数量 |")
             lines.append("|----------|------|")
-            for node_type, count in sorted(
-                type_counts.items(), key=lambda x: x[1], reverse=True
-            ):
+            for node_type, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True):
                 lines.append(f"| {node_type} | {count} |")
             lines.append("")
 
@@ -279,25 +251,18 @@ class HealthReportGenerator:
 
         lines.append("### 详情列表（按数据存活时长降序）")
         lines.append("")
-        lines.append(
-            "| 节点 ID | 节点类型 | 最后更新时间 | 存活时长（天） | 存活时长（年） |"
-        )
-        lines.append(
-            "|---------|----------|--------------|----------------|----------------|"
-        )
+        lines.append("| 节点 ID | 节点类型 | 最后更新时间 | 存活时长（天） | 存活时长（年） |")
+        lines.append("|---------|----------|--------------|----------------|----------------|")
         for node in display_nodes:
             last_updated = self._format_timestamp(node.last_updated) or "未知"
             age_years = node.age_days / 365.0
             lines.append(
-                f"| `{node.node_id}` | {node.node_type} | "
-                f"{last_updated} | {node.age_days:,} | {age_years:.1f} |"
+                f"| `{node.node_id}` | {node.node_type} | {last_updated} | {node.age_days:,} | {age_years:.1f} |"
             )
 
         if len(stale_nodes) > max_display:
             lines.append("")
-            lines.append(
-                f"*注：仅显示前 {max_display} 个，共 {len(stale_nodes)} 个老旧节点。*"
-            )
+            lines.append(f"*注：仅显示前 {max_display} 个，共 {len(stale_nodes)} 个老旧节点。*")
 
         return lines
 

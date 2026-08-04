@@ -23,6 +23,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+
 # [H18] 补充 Optional 导入——dataclass 字段多处使用 Optional[str]/Optional[float]
 from typing import Any, Callable, Optional
 
@@ -108,9 +109,7 @@ class AgentOrchestrator:
     """
 
     def __init__(self, trace_log_dir: Optional[str] = None):
-        self._trace_log_dir = trace_log_dir or os.path.join(
-            os.getcwd(), "data", "traces"
-        )
+        self._trace_log_dir = trace_log_dir or os.path.join(os.getcwd(), "data", "traces")
         self._pipeline_history: list[PipelineResult] = []
         self._step_registry: dict[str, Callable] = {}
         self._validate_dependencies()
@@ -118,7 +117,7 @@ class AgentOrchestrator:
 
     def _validate_dependencies(self) -> None:
         """Validate that required pipeline step modules are available.
-        
+
         Logs warnings for missing modules but does not prevent initialization,
         as modules may be loaded lazily at runtime.
         """
@@ -128,19 +127,19 @@ class AgentOrchestrator:
             ("app.process_planning.pipeline", "Process planning"),
             ("app.process_planning.gcode_generator", "G-code generation"),
         ]
-        
+
         missing = []
         for module_name, description in required_modules:
             try:
                 __import__(module_name)
             except ImportError:
                 missing.append((module_name, description))
-        
+
         if missing:
             logger.warning(
                 "Some pipeline dependencies are not available: %s. "
                 "Pipeline steps using these modules will use fallback implementations or simplified logic.",
-                ", ".join(f"{desc} ({mod})" for mod, desc in missing)
+                ", ".join(f"{desc} ({mod})" for mod, desc in missing),
             )
 
     def _register_default_steps(self) -> None:
@@ -186,9 +185,7 @@ class AgentOrchestrator:
             context: dict[str, Any] = {"input": input_data}
 
             for step_name, step_config in steps:
-                step_result = await self._execute_step(
-                    step_name, step_config, context, pipeline_id
-                )
+                step_result = await self._execute_step(step_name, step_config, context, pipeline_id)
                 result.steps.append(step_result)
 
                 if step_result.status == StepStatus.FAILED:
@@ -206,10 +203,7 @@ class AgentOrchestrator:
 
                 context[step_name] = step_result.output
 
-            result.success = all(
-                s.status in (StepStatus.COMPLETED, StepStatus.SKIPPED)
-                for s in result.steps
-            )
+            result.success = all(s.status in (StepStatus.COMPLETED, StepStatus.SKIPPED) for s in result.steps)
             result.final_output = self._extract_final_output(context, result.steps)
 
         except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
@@ -290,9 +284,7 @@ class AgentOrchestrator:
     # Default step handlers
     # -----------------------------------------------------------------------
 
-    async def _step_dxf_parse(
-        self, input_data: Any, context: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _step_dxf_parse(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
         """Parse DXF file and extract features."""
         dxf_path = input_data if isinstance(input_data, str) else input_data.get("dxf_path", "")
         if not dxf_path:
@@ -304,22 +296,22 @@ class AgentOrchestrator:
             svc = DxfProcessService()
             # [A-H9] DXF 解析涉及文件 I/O + CPU 计算，用 asyncio.to_thread 包装
             parse_result = await asyncio.to_thread(svc.process_dxf, dxf_path)
-            
+
             # parse_result 是 DxfProcessResult 对象，需要转换为 dict
-            if hasattr(parse_result, 'features'):
+            if hasattr(parse_result, "features"):
                 features = parse_result.features
             elif isinstance(parse_result, dict):
                 features = parse_result.get("features", [])
             else:
                 features = []
-            
-            if hasattr(parse_result, 'metadata'):
+
+            if hasattr(parse_result, "metadata"):
                 metadata = parse_result.metadata
             elif isinstance(parse_result, dict):
                 metadata = parse_result.get("metadata", {})
             else:
                 metadata = {}
-            
+
             return {
                 "status": "success",
                 "features": features,
@@ -328,13 +320,9 @@ class AgentOrchestrator:
             }
         except ImportError as e:
             logger.error("DXF module not available: %s", e)
-            raise RuntimeError(
-                f"DXF解析模块不可用，请确保已安装依赖: {e}"
-            ) from e
+            raise RuntimeError(f"DXF解析模块不可用，请确保已安装依赖: {e}") from e
 
-    async def _step_process_understanding(
-        self, input_data: Any, context: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _step_process_understanding(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
         """Analyze part features and determine process requirements."""
         try:
             from app.ai.process_understanding.engine import ProcessUnderstandingEngine
@@ -352,13 +340,9 @@ class AgentOrchestrator:
             }
         except ImportError as e:
             logger.error("Process understanding module not available: %s", e)
-            raise RuntimeError(
-                f"过程理解模块不可用，请确保已安装依赖: {e}"
-            ) from e
+            raise RuntimeError(f"过程理解模块不可用，请确保已安装依赖: {e}") from e
 
-    async def _step_parameter_recommend(
-        self, input_data: Any, context: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _step_parameter_recommend(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
         """Recommend machining parameters based on features and material."""
         try:
             from app.process_planning.pipeline import ProcessPlanningPipeline
@@ -367,29 +351,29 @@ class AgentOrchestrator:
             part_desc = input_data if isinstance(input_data, dict) else {"description": str(input_data)}
             # [A-H9] 工艺规划流水线涉及多步计算，用 asyncio.to_thread 包装
             plan_result = await asyncio.to_thread(pipeline.run, part_desc)
-            
+
             # plan_result 是 PipelineResult 对象，需要提取属性
-            if hasattr(plan_result, 'parameters'):
+            if hasattr(plan_result, "parameters"):
                 parameters = plan_result.parameters
             elif isinstance(plan_result, dict):
                 parameters = plan_result.get("parameters", {})
             else:
                 parameters = {}
-            
-            if hasattr(plan_result, 'operations'):
+
+            if hasattr(plan_result, "operations"):
                 operations = plan_result.operations
             elif isinstance(plan_result, dict):
                 operations = plan_result.get("operations", [])
             else:
                 operations = []
-            
-            if hasattr(plan_result, 'confidence'):
+
+            if hasattr(plan_result, "confidence"):
                 confidence = plan_result.confidence
             elif isinstance(plan_result, dict):
                 confidence = plan_result.get("confidence", 0.0)
             else:
                 confidence = 0.0
-            
+
             return {
                 "status": "success",
                 "parameters": parameters,
@@ -398,13 +382,9 @@ class AgentOrchestrator:
             }
         except ImportError as e:
             logger.error("Parameter recommendation module not available: %s", e)
-            raise RuntimeError(
-                f"参数推荐模块不可用，请确保已安装依赖: {e}"
-            ) from e
+            raise RuntimeError(f"参数推荐模块不可用，请确保已安装依赖: {e}") from e
 
-    async def _step_gcode_generate(
-        self, input_data: Any, context: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _step_gcode_generate(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
         """Generate G-code from process plan and parameters."""
         try:
             from app.process_planning.gcode_generator import GCodeGenerator
@@ -422,18 +402,20 @@ class AgentOrchestrator:
                     if isinstance(op_data, Operation):
                         operations.append(op_data)
                     elif isinstance(op_data, dict):
-                        operations.append(Operation(
-                            seq=op_data.get("seq", 0),
-                            name=op_data.get("name", ""),
-                            feature_name=op_data.get("feature_name", ""),
-                            machining_method=op_data.get("machining_method", ""),
-                            surface=op_data.get("surface", ""),
-                            tolerance_grade=op_data.get("tolerance_grade", ""),
-                            tool_type=op_data.get("tool_type", ""),
-                            cutting_params=op_data.get("cutting_params", {}),
-                            estimated_time_min=op_data.get("estimated_time_min", 0.0),
-                            notes=op_data.get("notes", ""),
-                        ))
+                        operations.append(
+                            Operation(
+                                seq=op_data.get("seq", 0),
+                                name=op_data.get("name", ""),
+                                feature_name=op_data.get("feature_name", ""),
+                                machining_method=op_data.get("machining_method", ""),
+                                surface=op_data.get("surface", ""),
+                                tolerance_grade=op_data.get("tolerance_grade", ""),
+                                tool_type=op_data.get("tool_type", ""),
+                                cutting_params=op_data.get("cutting_params", {}),
+                                estimated_time_min=op_data.get("estimated_time_min", 0.0),
+                                notes=op_data.get("notes", ""),
+                            )
+                        )
 
                 setups_data = input_data.get("setups", [])
                 setups = []
@@ -441,13 +423,15 @@ class AgentOrchestrator:
                     if isinstance(setup_data, Setup):
                         setups.append(setup_data)
                     elif isinstance(setup_data, dict):
-                        setups.append(Setup(
-                            name=setup_data.get("name", ""),
-                            surface=setup_data.get("surface", "A"),
-                            datum_features=setup_data.get("datum_features", []),
-                            fixture_type=setup_data.get("fixture_type", ""),
-                            clamped_features=setup_data.get("clamped_features", []),
-                        ))
+                        setups.append(
+                            Setup(
+                                name=setup_data.get("name", ""),
+                                surface=setup_data.get("surface", "A"),
+                                datum_features=setup_data.get("datum_features", []),
+                                fixture_type=setup_data.get("fixture_type", ""),
+                                clamped_features=setup_data.get("clamped_features", []),
+                            )
+                        )
 
                 operation_plan = OperationPlan(
                     operations=operations,
@@ -458,12 +442,12 @@ class AgentOrchestrator:
             elif isinstance(input_data, OperationPlan):
                 operation_plan = input_data
             else:
-                raise TypeError(
-                    f"input_data 必须是 dict 或 OperationPlan，实际类型: {type(input_data).__name__}"
-                )
+                raise TypeError(f"input_data 必须是 dict 或 OperationPlan，实际类型: {type(input_data).__name__}")
 
             # 从 context 中提取额外参数
-            controller_type = input_data.get("controller_type", "fanuc_0i") if isinstance(input_data, dict) else "fanuc_0i"
+            controller_type = (
+                input_data.get("controller_type", "fanuc_0i") if isinstance(input_data, dict) else "fanuc_0i"
+            )
             material_name = input_data.get("material_name", "45#钢") if isinstance(input_data, dict) else "45#钢"
             program_number = input_data.get("program_number", 1000) if isinstance(input_data, dict) else 1000
             safe_z = input_data.get("safe_z", 50.0) if isinstance(input_data, dict) else 50.0
@@ -485,17 +469,15 @@ class AgentOrchestrator:
             }
         except ImportError as e:
             logger.error("G-code generator not available: %s", e)
-            raise RuntimeError(
-                f"G-code生成器不可用，请确保已安装依赖: {e}"
-            ) from e
+            raise RuntimeError(f"G-code生成器不可用，请确保已安装依赖: {e}") from e
 
     def _extract_final_output(self, context: dict[str, Any], steps: list[StepResult]) -> dict[str, Any]:
         """Extract the final output from pipeline context.
-        
+
         Args:
             context: Pipeline execution context
             steps: List of step results
-            
+
         Returns:
             Final output dictionary
         """
@@ -503,7 +485,7 @@ class AgentOrchestrator:
         for step in reversed(steps):
             if step.status in (StepStatus.COMPLETED, StepStatus.SKIPPED):
                 return step.output
-        
+
         # Fallback to context if no successful steps
         return context.get("input", {})
 
@@ -530,11 +512,11 @@ class AgentOrchestrator:
 
     def get_pipeline_history(self, limit: int = 50, offset: int = 0) -> list[PipelineResult]:
         """Get pipeline execution history with pagination.
-        
+
         Args:
             limit: Maximum number of records to return
             offset: Number of records to skip
-            
+
         Returns:
             List of PipelineResult records
         """
@@ -545,10 +527,10 @@ class AgentOrchestrator:
 
     def get_pipeline_trace(self, pipeline_id: str) -> dict[str, Any] | None:
         """Get detailed trace for a specific pipeline execution.
-        
+
         Args:
             pipeline_id: The pipeline ID to look up
-            
+
         Returns:
             Dictionary with trace details or None if not found
         """

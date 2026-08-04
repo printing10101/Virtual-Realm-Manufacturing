@@ -31,7 +31,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from typing import List, Optional, Sequence
+from typing import Optional, Sequence
 
 from app.integrations._common import (
     build_tdengine_client,
@@ -68,15 +68,14 @@ async def ensure_table(database: str, table: str) -> bool:
             return False
         # Use the canonical DDL defined by the adapter.
         from app.integrations.opcua.adapter import build_table_ddl
+
         return await tdc.create_table_if_not_exists(
             table_name=table,
             columns=list(build_table_ddl()),
             database=database,
         )
     except (RuntimeError, OSError) as exc:  # pragma: no cover - defensive
-        logging.getLogger(__name__).warning(
-            "ensure_table(%s.%s) failed: %s", database, table, exc
-        )
+        logging.getLogger(__name__).warning("ensure_table(%s.%s) failed: %s", database, table, exc)
         return False
 
 
@@ -90,26 +89,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m app.integrations.opcua.cli",
         description=(
-            "Subscribe to an OPC UA server, parse spindle/feedrate/execution "
-            "data items and persist them to TDengine."
+            "Subscribe to an OPC UA server, parse spindle/feedrate/execution data items and persist them to TDengine."
         ),
     )
     parser.add_argument(
         "--endpoint",
         default=DEFAULT_ENDPOINT,
-        help=(
-            "OPC UA server endpoint URL "
-            f"(default: {DEFAULT_ENDPOINT})"
-        ),
+        help=(f"OPC UA server endpoint URL (default: {DEFAULT_ENDPOINT})"),
     )
     parser.add_argument(
         "--duration",
         type=float,
         default=None,
-        help=(
-            "How long to run the subscription loop, in seconds. "
-            "Omit to run until Ctrl-C."
-        ),
+        help=("How long to run the subscription loop, in seconds. Omit to run until Ctrl-C."),
     )
     parser.add_argument(
         "--interval",
@@ -120,11 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         default=DEFAULT_OUTPUT,
-        help=(
-            "TDengine connection string of the form "
-            "``tds://host:port/database`` (default: "
-            f"{DEFAULT_OUTPUT})."
-        ),
+        help=(f"TDengine connection string of the form ``tds://host:port/database`` (default: {DEFAULT_OUTPUT})."),
     )
     parser.add_argument(
         "--batch-size",
@@ -136,10 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--batch-interval",
         type=float,
         default=5.0,
-        help=(
-            "Maximum age of buffered samples before forcing a flush, "
-            "in seconds (default: 5.0)."
-        ),
+        help=("Maximum age of buffered samples before forcing a flush, in seconds (default: 5.0)."),
     )
     parser.add_argument(
         "--max-retries",
@@ -162,10 +147,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help=(
-            "Skip the TDengine wiring – useful for smoke-testing the "
-            "network/connection path without a database."
-        ),
+        help=("Skip the TDengine wiring – useful for smoke-testing the network/connection path without a database."),
     )
     parser.add_argument(
         "--node",
@@ -212,12 +194,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         tdengine, _db, _tdc = build_tdengine_client(args.output)
         if tdengine is None:
             log.warning(
-                "TDengine client could not be initialised; continuing "
-                "in read-only mode (no rows will be persisted)."
+                "TDengine client could not be initialised; continuing in read-only mode (no rows will be persisted)."
             )
         else:
             # Ensure table exists.  This is a best-effort step.
             import asyncio
+
             try:
                 asyncio.run(ensure_table(database, config.table))
             except (RuntimeError, OSError) as exc:  # pragma: no cover
@@ -279,11 +261,7 @@ def _print_sample(sample: Sample) -> None:
 
 def _print_summary(adapter: OPCUAAdapter, ingested: int) -> None:
     """Print the final tally so the user gets immediate feedback."""
-    sys.stdout.write(
-        f"已写入 {ingested} 条 "
-        f"(errors={adapter.error_count}, "
-        f"buffer_left={adapter.buffer_size})\n"
-    )
+    sys.stdout.write(f"已写入 {ingested} 条 (errors={adapter.error_count}, buffer_left={adapter.buffer_size})\n")
     sys.stdout.flush()
 
 

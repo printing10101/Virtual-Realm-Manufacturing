@@ -87,9 +87,7 @@ class CamAdapter:
 
         # 手动校验清单输出目录（manual 后端使用）
         # 默认使用 config.output_dir 下的 manual_checklists/ 子目录
-        self._manual_output_dir: str = os.path.join(
-            config.output_dir, "manual_checklists"
-        )
+        self._manual_output_dir: str = os.path.join(config.output_dir, "manual_checklists")
 
     def validate(
         self,
@@ -113,17 +111,13 @@ class CamAdapter:
         """
         # 1. 校验 cam_backend 合法性
         if cam_backend not in _VALID_BACKENDS:
-            raise CamAdapterError(
-                f"未知 CAM 后端：{cam_backend}。"
-                f"合法后端：{sorted(_VALID_BACKENDS)}。"
-            )
+            raise CamAdapterError(f"未知 CAM 后端：{cam_backend}。合法后端：{sorted(_VALID_BACKENDS)}。")
 
         # 2. 检查 G 代码文件存在性（所有后端共享的前置校验）
         if not gcode_file_path or not Path(gcode_file_path).is_file():
             # G 代码文件不存在：降级到 manual（不抛错，由 pipeline 决定是否 FAILED）
             logger.warning(
-                "CamAdapter: G 代码文件不存在或为空：%s，"
-                "降级到 manual 后端生成校验清单。",
+                "CamAdapter: G 代码文件不存在或为空：%s，降级到 manual 后端生成校验清单。",
                 gcode_file_path,
             )
             manual = self._backends["manual"]
@@ -131,8 +125,7 @@ class CamAdapter:
             report = manual.validate(gcode_file_path or "(empty)", controller_type)
             report.degraded = True
             report.degradation_reason = (
-                f"G 代码文件不存在或路径为空：{gcode_file_path}。"
-                "无法执行 CAM 软件校验，降级到 manual。"
+                f"G 代码文件不存在或路径为空：{gcode_file_path}。无法执行 CAM 软件校验，降级到 manual。"
             )
             report.messages.insert(0, f"[G 代码缺失降级] {report.degradation_reason}")
             return report
@@ -141,10 +134,7 @@ class CamAdapter:
         backend = self._backends.get(cam_backend)
         if backend is None:
             # 理论上不会走到这里（步骤 1 已校验），但保留防御性兜底
-            raise CamAdapterError(
-                f"CAM 后端实例未找到：{cam_backend}（虽然名称合法）。"
-                "可能是 CamAdapter 初始化异常。"
-            )
+            raise CamAdapterError(f"CAM 后端实例未找到：{cam_backend}（虽然名称合法）。可能是 CamAdapter 初始化异常。")
 
         # 4. manual 后端注入输出目录
         if isinstance(backend, _ManualBackend):
@@ -165,13 +155,8 @@ class CamAdapter:
             self._inject_manual_output_dir(manual)
             report = manual.validate(gcode_file_path, controller_type)
             report.degraded = True
-            report.degradation_reason = (
-                f"子后端 {cam_backend} 抛出未捕获异常：{e}。"
-                "自动降级到 manual 后端。"
-            )
-            report.messages.insert(
-                0, f"[子后端异常降级] {report.degradation_reason}"
-            )
+            report.degradation_reason = f"子后端 {cam_backend} 抛出未捕获异常：{e}。自动降级到 manual 后端。"
+            report.messages.insert(0, f"[子后端异常降级] {report.degradation_reason}")
 
         # 6. 校验归一化报告的 status 合法性
         if report.status not in _VALID_STATUSES:
@@ -181,13 +166,10 @@ class CamAdapter:
                 report.status,
             )
             report.status = "error"
-            report.messages.append(
-                f"[归一化警告] 子后端返回非法 status，已改为 error。"
-            )
+            report.messages.append("[归一化警告] 子后端返回非法 status，已改为 error。")
 
         logger.info(
-            "CamAdapter.validate 完成：backend=%s → used=%s, status=%s, "
-            "degraded=%s, collisions=%d",
+            "CamAdapter.validate 完成：backend=%s → used=%s, status=%s, degraded=%s, collisions=%d",
             cam_backend,
             report.backend_used,
             report.status,
@@ -210,51 +192,58 @@ class CamAdapter:
         backends_info: list[dict[str, Any]] = []
 
         # internal_only：始终可用
-        backends_info.append({
-            "name": "internal_only",
-            "available": True,
-            "reason": "",
-            "description": "仅内部预校验（AABB 包围盒），秒级反馈，不可上机",
-        })
+        backends_info.append(
+            {
+                "name": "internal_only",
+                "available": True,
+                "reason": "",
+                "description": "仅内部预校验（AABB 包围盒），秒级反馈，不可上机",
+            }
+        )
 
         # pycam
         # 可用性判定：包装器脚本文件存在（脚本内部自检 pycam 包是否可导入）
-        pycam_available = bool(self._config.pycam_executable) and \
-            Path(self._config.pycam_executable).is_file()
-        backends_info.append({
-            "name": "pycam",
-            "available": pycam_available,
-            "reason": "" if pycam_available else "PyCAM 包装器脚本未配置或文件不存在（LNN_CAM_PYCAM_EXECUTABLE）",
-            "description": "开源 PyCAM 刀轨校验（4 项基础检查，无需许可证）",
-        })
+        pycam_available = bool(self._config.pycam_executable) and Path(self._config.pycam_executable).is_file()
+        backends_info.append(
+            {
+                "name": "pycam",
+                "available": pycam_available,
+                "reason": "" if pycam_available else "PyCAM 包装器脚本未配置或文件不存在（LNN_CAM_PYCAM_EXECUTABLE）",
+                "description": "开源 PyCAM 刀轨校验（4 项基础检查，无需许可证）",
+            }
+        )
 
         # nx_open
-        nx_available = bool(self._config.nx_open_executable) and \
-            Path(self._config.nx_open_executable).is_file()
-        backends_info.append({
-            "name": "nx_open",
-            "available": nx_available,
-            "reason": "" if nx_available else "NX Open 脚本未配置或文件不存在",
-            "description": "Siemens NX Open 工业级刀轨仿真（需许可证）",
-        })
+        nx_available = bool(self._config.nx_open_executable) and Path(self._config.nx_open_executable).is_file()
+        backends_info.append(
+            {
+                "name": "nx_open",
+                "available": nx_available,
+                "reason": "" if nx_available else "NX Open 脚本未配置或文件不存在",
+                "description": "Siemens NX Open 工业级刀轨仿真（需许可证）",
+            }
+        )
 
         # powermill
-        pm_available = bool(self._config.powermill_executable) and \
-            Path(self._config.powermill_executable).exists()
-        backends_info.append({
-            "name": "powermill",
-            "available": pm_available,
-            "reason": "" if pm_available else "PowerMill 可执行文件未配置或不存在",
-            "description": "Autodesk PowerMill 工业级刀轨仿真（需许可证）",
-        })
+        pm_available = bool(self._config.powermill_executable) and Path(self._config.powermill_executable).exists()
+        backends_info.append(
+            {
+                "name": "powermill",
+                "available": pm_available,
+                "reason": "" if pm_available else "PowerMill 可执行文件未配置或不存在",
+                "description": "Autodesk PowerMill 工业级刀轨仿真（需许可证）",
+            }
+        )
 
         # manual：始终可用
-        backends_info.append({
-            "name": "manual",
-            "available": True,
-            "reason": "",
-            "description": "手动校验清单 + 工程师回填（兜底，永不失败）",
-        })
+        backends_info.append(
+            {
+                "name": "manual",
+                "available": True,
+                "reason": "",
+                "description": "手动校验清单 + 工程师回填（兜底，永不失败）",
+            }
+        )
 
         return backends_info
 

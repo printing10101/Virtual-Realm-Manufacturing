@@ -78,9 +78,7 @@ class ArchiverMixin:
             # 计算归档前的文件哈希指纹
             archive_hash = self._compute_file_hash(log_file)
             archive_timestamp = int(time.time())
-            archive_path = log_file.with_name(
-                f"audit.log.archived.{archive_timestamp}"
-            )
+            archive_path = log_file.with_name(f"audit.log.archived.{archive_timestamp}")
 
             # H15 修复：先创建新的空日志文件（临时名），确保归档后立即有可用日志。
             # 这样即使 os.replace(旧→归档) 成功但后续步骤失败，
@@ -157,17 +155,11 @@ class ArchiverMixin:
         返回: {"cleared_count": N, "backup_path": ..., "authorizer": ...}
         """
         if not authorizer_id or not isinstance(authorizer_id, str):
-            raise ValueError(
-                "authorizer_id is required and must be a non-empty string"
-            )
+            raise ValueError("authorizer_id is required and must be a non-empty string")
         if not authorizer_role or not isinstance(authorizer_role, str):
-            raise ValueError(
-                "authorizer_role is required and must be a non-empty string"
-            )
+            raise ValueError("authorizer_role is required and must be a non-empty string")
         if not reason or not isinstance(reason, str):
-            raise ValueError(
-                "reason is required and must be a non-empty string"
-            )
+            raise ValueError("reason is required and must be a non-empty string")
 
         # 统计当前条数并准备归档文件列表
         log_files = self._get_all_log_files(include_archived=True)
@@ -243,9 +235,7 @@ class ArchiverMixin:
         with self._chain_lock:
             clear_entry.chain_seq = self._chain_seq
             clear_entry.prev_hash = self._last_hash
-            clear_entry.entry_hash = self._compute_entry_hash(
-                clear_entry, self._last_hash
-            )
+            clear_entry.entry_hash = self._compute_entry_hash(clear_entry, self._last_hash)
 
             # 写入新日志文件
             new_log_file = self._get_current_log_file()
@@ -258,8 +248,7 @@ class ArchiverMixin:
             self._save_chain_state()
 
         logger.warning(
-            "Audit logs cleared with authorization by %s (%s): "
-            "%d entries archived to %s",
+            "Audit logs cleared with authorization by %s (%s): %d entries archived to %s",
             authorizer_id,
             authorizer_role,
             cleared_count,

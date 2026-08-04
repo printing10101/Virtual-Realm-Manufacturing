@@ -29,7 +29,6 @@ from app.core.safe_errors import safe_error_message  # rewrite_nc_code 内层 tr
 from app.auth.permissions import require_permission
 from app.toolpath.dynamic_adjustment import (
     CurrentParameters,
-    DynamicAdjustmentOrchestrator,
     WearState,
     get_dynamic_adjustment_orchestrator,
 )
@@ -54,9 +53,7 @@ class WearStateRequest(BaseModel):
     tool_id: int = Field(..., description="刀具 ID")
     wear_amount: float = Field(..., ge=0.0, description="当前磨损量 VB (mm)")
     usage_time: float = Field(..., ge=0.0, description="累计使用时间 (分钟)")
-    wear_threshold: float = Field(
-        default=0.3, gt=0.0, description="更换阈值 (mm)"
-    )
+    wear_threshold: float = Field(default=0.3, gt=0.0, description="更换阈值 (mm)")
     material_type: str = Field(default="steel_45", description="材料类型")
     tool_type: str = Field(default="carbide", description="刀具类型")
     tool_diameter: float = Field(default=10.0, gt=0.0, description="刀具直径 (mm)")
@@ -70,25 +67,17 @@ class CurrentParametersRequest(BaseModel):
     feed_rate: float = Field(..., gt=0.0, description="每转进给 (mm/rev)")
     depth_of_cut: float = Field(..., gt=0.0, description="轴向切深 ap (mm)")
     width_of_cut: float = Field(default=0.0, ge=0.0, description="径向切深 ae (mm)")
-    spindle_rpm: Optional[float] = Field(
-        default=None, ge=0.0, description="主轴转速 (RPM, None 时由切削速度反算)"
-    )
+    spindle_rpm: Optional[float] = Field(default=None, ge=0.0, description="主轴转速 (RPM, None 时由切削速度反算)")
     coolant_flow: float = Field(default=10.0, ge=0.0, description="冷却液流量 (L/min)")
 
 
 class MachineCapabilities(BaseModel):
     """机床能力上限。"""
 
-    max_spindle_speed: Optional[float] = Field(
-        default=None, ge=0.0, description="最大主轴转速 (RPM)"
-    )
-    max_feed_rate: Optional[float] = Field(
-        default=None, ge=0.0, description="最大进给速度 (mm/min)"
-    )
+    max_spindle_speed: Optional[float] = Field(default=None, ge=0.0, description="最大主轴转速 (RPM)")
+    max_feed_rate: Optional[float] = Field(default=None, ge=0.0, description="最大进给速度 (mm/min)")
     max_power: Optional[float] = Field(default=None, ge=0.0, description="最大功率 (kW)")
-    max_torque: Optional[float] = Field(
-        default=None, ge=0.0, description="最大扭矩 (N·m)"
-    )
+    max_torque: Optional[float] = Field(default=None, ge=0.0, description="最大扭矩 (N·m)")
 
 
 class CalibrationInput(BaseModel):
@@ -102,13 +91,10 @@ class CalibrationInput(BaseModel):
     sensor_features: dict[str, float] = Field(
         ...,
         description=(
-            "传感器特征字典，支持 vibration_rms (g) / cutting_force (N) / "
-            "temperature (°C) / acoustic_emission 等字段"
+            "传感器特征字典，支持 vibration_rms (g) / cutting_force (N) / temperature (°C) / acoustic_emission 等字段"
         ),
     )
-    elapsed_time: float = Field(
-        ..., gt=0.0, description="自上次校正以来的加工时间 (min)"
-    )
+    elapsed_time: float = Field(..., gt=0.0, description="自上次校正以来的加工时间 (min)")
 
 
 class DecideRequest(BaseModel):
@@ -125,10 +111,7 @@ class DecideRequest(BaseModel):
     )
     calibration: Optional[CalibrationInput] = Field(
         default=None,
-        description=(
-            "可选实时校正入参。提供时启用 EWMA 校正闭环，"
-            "用校正后磨损值驱动决策；未提供时走原始磨损值路径"
-        ),
+        description=("可选实时校正入参。提供时启用 EWMA 校正闭环，用校正后磨损值驱动决策；未提供时走原始磨损值路径"),
     )
 
 
@@ -164,15 +147,9 @@ class RewriteNCRequest(BaseModel):
 
     nc_code: str = Field(..., min_length=1, description="NC/G 代码文本")
     # P2-批次2 修复：裸 dict 改为强类型子模型，强制校验字段类型与枚举值。
-    decision: AdjustmentDecisionInput = Field(
-        ..., description="由 /decide 返回的决策对象"
-    )
-    controller_type: str = Field(
-        default="fanuc", description="控制器方言 (fanuc/siemens/heidenhain)"
-    )
-    apply_to_motion_only: bool = Field(
-        default=True, description="仅改写切削进给段（G01/G02/G03），跳过 G00"
-    )
+    decision: AdjustmentDecisionInput = Field(..., description="由 /decide 返回的决策对象")
+    controller_type: str = Field(default="fanuc", description="控制器方言 (fanuc/siemens/heidenhain)")
+    apply_to_motion_only: bool = Field(default=True, description="仅改写切削进给段（G01/G02/G03），跳过 G00")
 
 
 class ClosedLoopRequest(BaseModel):
@@ -187,10 +164,7 @@ class ClosedLoopRequest(BaseModel):
     apply_to_motion_only: bool = Field(default=True)
     calibration: Optional[CalibrationInput] = Field(
         default=None,
-        description=(
-            "可选实时校正入参。提供时启用 EWMA 校正闭环，"
-            "用校正后磨损值驱动决策与 NC 改写"
-        ),
+        description=("可选实时校正入参。提供时启用 EWMA 校正闭环，用校正后磨损值驱动决策与 NC 改写"),
     )
 
 
@@ -203,7 +177,8 @@ class CalibrateWearRequest(BaseModel):
     )
     elapsed_time: float = Field(..., gt=0.0, description="自上次校正以来的时间 (分钟)")
     input_parameters: dict[str, Any] = Field(
-        ..., description="当前切削参数（cutting_speed/feed_rate/depth_of_cut/material_type/tool_type/tool_diameter/current_wear）"
+        ...,
+        description="当前切削参数（cutting_speed/feed_rate/depth_of_cut/material_type/tool_type/tool_diameter/current_wear）",
     )
 
 
@@ -306,7 +281,6 @@ async def decide_adjustment(req: DecideRequest):
         },
         message=f"调整策略: {decision.strategy}（紧急度: {decision.urgency}）",
     )
-
 
 
 # =====================================================================
@@ -418,10 +392,7 @@ async def closed_loop_adjustment(req: ClosedLoopRequest):
             },
             "calibration_enabled": bool(calibration_kwargs),
         },
-        message=(
-            f"闭环完成：策略={decision.strategy}, "
-            f"改写={rewrite.segments_adjusted}/{rewrite.segments_total} 段"
-        ),
+        message=(f"闭环完成：策略={decision.strategy}, 改写={rewrite.segments_adjusted}/{rewrite.segments_total} 段"),
     )
 
 

@@ -32,14 +32,12 @@
 from __future__ import annotations
 
 import logging
-import math
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 
 from app.simulation.cutting_force.kienzle import (
-    DEFAULT_MATERIAL_COEFFICIENTS,
     compute_cutting_force_fz,
     get_kienzle_coefficients,
 )
@@ -48,15 +46,15 @@ logger = logging.getLogger(__name__)
 
 
 # ── 物理常量与默认约束 ───────────────────────────────────────────────
-DEFAULT_TARGET_FORCE_N = 800.0       # 目标切削力 800N（中等直径立铣刀典型值）
-DEFAULT_MAX_AXIAL_DEPTH_MM = 30.0    # 默认最大轴向切深（刀具刃长约束）
-DEFAULT_MIN_AXIAL_DEPTH_MM = 0.1     # 最小轴向切深
-DEFAULT_MAX_FZ_MM = 0.3              # 最大每齿进给（表面粗糙度约束）
-DEFAULT_MIN_FZ_MM = 0.02             # 最小每齿进给（避免 rubbing）
-DEFAULT_MAX_FEED_MM_PER_MIN = 5000.0 # 机床最大进给速度
+DEFAULT_TARGET_FORCE_N = 800.0  # 目标切削力 800N（中等直径立铣刀典型值）
+DEFAULT_MAX_AXIAL_DEPTH_MM = 30.0  # 默认最大轴向切深（刀具刃长约束）
+DEFAULT_MIN_AXIAL_DEPTH_MM = 0.1  # 最小轴向切深
+DEFAULT_MAX_FZ_MM = 0.3  # 最大每齿进给（表面粗糙度约束）
+DEFAULT_MIN_FZ_MM = 0.02  # 最小每齿进给（避免 rubbing）
+DEFAULT_MAX_FEED_MM_PER_MIN = 5000.0  # 机床最大进给速度
 DEFAULT_MIN_FEED_MM_PER_MIN = 100.0
 DEFAULT_RUBBING_THRESHOLD_FZ = 0.02  # 低于此值进入 rubbing 区
-DEFAULT_EFFECTIVE_FACTOR = 1.0       # 径向切入效率系数（端铣满刃=1.0）
+DEFAULT_EFFECTIVE_FACTOR = 1.0  # 径向切入效率系数（端铣满刃=1.0）
 
 
 @dataclass
@@ -121,7 +119,8 @@ class AdaptiveMillingParams:
         except ValueError as e:
             logger.warning(
                 "材料 '%s' 未配置 Kienzle 系数，降级到 45steel: %s",
-                self.material, e,
+                self.material,
+                e,
             )
             coeffs = get_kienzle_coefficients("45steel")
             self.material = "45steel"
@@ -134,9 +133,7 @@ class AdaptiveMillingParams:
         # mc>1 时指数为负导致数学异常。Kienzle 切削力指数物理合理范围为 0.1 < mc < 0.5，
         # 违反时抛 ValueError，避免下游反向校核 fz 时崩溃。
         if not (0.1 < self.mc < 0.5):
-            raise ValueError(
-                f"mc 切削力指数必须在物理合理范围 (0.1, 0.5) 内，当前: {self.mc}"
-            )
+            raise ValueError(f"mc 切削力指数必须在物理合理范围 (0.1, 0.5) 内，当前: {self.mc}")
 
 
 @dataclass
@@ -295,11 +292,7 @@ class AdaptiveMillingSolver:
             constraint = "stability"
 
         # 3c. 材料余量约束（如该段余量不足 ap_max，则降至余量）
-        if (
-            material_remainder_mm is not None
-            and material_remainder_mm > 0
-            and ap_max > material_remainder_mm
-        ):
+        if material_remainder_mm is not None and material_remainder_mm > 0 and ap_max > material_remainder_mm:
             ap_max = material_remainder_mm
             constraint = "material_remainder"
 
@@ -322,9 +315,7 @@ class AdaptiveMillingSolver:
         #   - 真正触发本分支的场景：ap_max 被外部的 stability_limit_ap 或 max_axial_depth
         #     “放大”到比 ap_max_force 还大的情况（理论上不应发生，但作为安全网保留）。
         if p.kc1_1 > 0 and ap_max > 0:
-            fz_max_by_force = (
-                target_force / (p.kc1_1 * ap_max)
-            ) ** (1.0 / (1.0 - p.mc))
+            fz_max_by_force = (target_force / (p.kc1_1 * ap_max)) ** (1.0 / (1.0 - p.mc))
         else:
             fz_max_by_force = p.max_fz
 
@@ -364,9 +355,7 @@ class AdaptiveMillingSolver:
         mrr = self._compute_mrr(ap_max, fz, vf)
 
         # 置信度：基于绑定约束的松弛程度
-        confidence = self._compute_confidence(
-            ap_max, fz, target_force, final_force
-        )
+        confidence = self._compute_confidence(ap_max, fz, target_force, final_force)
 
         return SegmentSolution(
             segment_id=segment_id,
@@ -405,13 +394,9 @@ class AdaptiveMillingSolver:
 
         # 长度对齐校验
         if material_remainders is not None and len(material_remainders) != n:
-            raise ValueError(
-                f"material_remainders 长度 {len(material_remainders)} != 段数 {n}"
-            )
+            raise ValueError(f"material_remainders 长度 {len(material_remainders)} != 段数 {n}")
         if force_overrides is not None and len(force_overrides) != n:
-            raise ValueError(
-                f"force_overrides 长度 {len(force_overrides)} != 段数 {n}"
-            )
+            raise ValueError(f"force_overrides 长度 {len(force_overrides)} != 段数 {n}")
 
         segments: list[SegmentSolution] = []
         for i in range(n):
@@ -433,9 +418,7 @@ class AdaptiveMillingSolver:
         for c in constraints:
             constraint_counts[c] = constraint_counts.get(c, 0) + 1
 
-        summary = self._build_summary(
-            n, total_mrr, avg_force, max_force, constraint_counts
-        )
+        summary = self._build_summary(n, total_mrr, avg_force, max_force, constraint_counts)
 
         return AdaptiveMillingResult(
             material=self._params.material,
@@ -493,9 +476,7 @@ class AdaptiveMillingSolver:
         p = self._params
         ap_range = p.max_axial_depth - p.min_axial_depth
         if ap_range > 0:
-            ap_margin = 1.0 - abs(ap - (p.max_axial_depth + p.min_axial_depth) / 2) / (
-                ap_range / 2
-            )
+            ap_margin = 1.0 - abs(ap - (p.max_axial_depth + p.min_axial_depth) / 2) / (ap_range / 2)
         else:
             ap_margin = 0.5
 

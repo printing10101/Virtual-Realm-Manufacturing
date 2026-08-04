@@ -58,12 +58,14 @@ from app.gcode_generation.gcode_store import (
     get_file_extension,
     get_task_store,
 )
+
 # 精度告知 + 工业硬门槛
 from app.gcode_generation.gcode_disclaimer import (
     GCodeDisclaimer,
     INDUSTRIAL_HARD_GATES,
     build_gcode_disclaimer,
 )
+
 # ChatterReport 加载器
 from app.gcode_generation.chatter_report_loader import (
     ChatterReportLoader,
@@ -71,12 +73,14 @@ from app.gcode_generation.chatter_report_loader import (
     REQUIRED_FEATURE_FIELDS,
     REQUIRED_REPORT_FIELDS,
 )
+
 # GeneratorAdapter（封装现有 GCodeGenerator）
 from app.gcode_generation.generator_adapter import (
     GeneratorAdapter,
     GeneratorAdapterError,
     load_operation_plan,
 )
+
 # 流水线编排器
 from app.gcode_generation.pipeline import (
     GCodeGenerationPipeline,

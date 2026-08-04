@@ -13,7 +13,6 @@ from fastapi.responses import FileResponse
 
 from app.api.v1.feature_extraction.schemas import (
     ExportResponse,
-    FeatureItemResponse,
     ReviewRequest,
     ReviewResponse,
     TaskCreateFromPathRequest,
@@ -30,21 +29,12 @@ from app.utils.utils import get_upload_dir, sanitize_filename
 from app.utils.upload_security import validate_upload
 
 from app.feature_extraction import (
-    FeatureExtractionPipeline,
     FeatureExtractionTaskStatus,
     FeatureReviewError,
     FeatureReviewStatus,
     MeshLoadError,
-    build_feature_disclaimer,
     get_feature_store,
 )
-
-logger = logging.getLogger(__name__)
-
-# 后台任务引用集合（C5 修复：asyncio.create_task 不保存引用会被 GC 回收）
-_background_tasks: set = set()
-
-
 
 from app.api.v1.feature_extraction._helpers import (
     _spawn,
@@ -52,6 +42,15 @@ from app.api.v1.feature_extraction._helpers import (
     _disclaimer_dict,
     _resolve_upstream_calibrated,
 )
+
+logger = logging.getLogger(__name__)
+
+# 后台任务引用集合（C5 修复：asyncio.create_task 不保存引用会被 GC 回收）
+_background_tasks: set = set()
+
+# mesh 上传校验常量（F821 修复：历史实现引用但从未定义，端点运行期会 NameError）
+ALLOWED_MESH_EXTENSIONS: set[str] = {".stl", ".obj", ".step", ".stp", ".iges", ".igs"}
+MAX_MESH_SIZE: int = 200 * 1024 * 1024  # 200 MB（单位：字节，见 validate_upload）
 
 router = APIRouter(
     prefix="/api/v1/feature_extraction",
@@ -61,6 +60,7 @@ router = APIRouter(
 
 # mesh 上传目录（用于外部上传的 mesh 文件，区别于 image_to_3d 链路）
 UPLOAD_DIR = get_upload_dir("feature_extraction")
+
 
 @router.get("/precision_info")
 async def get_precision_info() -> dict[str, Any]:
@@ -150,25 +150,18 @@ async def create_task_from_path(
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=f"mesh 文件不存在: {mesh_path}",
-            suggestion=(
-                "请确认 mesh 路径正确，或改用 POST /tasks/upload 上传 mesh 文件。"
-            ),
+            suggestion=("请确认 mesh 路径正确，或改用 POST /tasks/upload 上传 mesh 文件。"),
         )
 
     suffix = mesh_path.suffix.lower()
     if suffix not in ALLOWED_MESH_EXTENSIONS:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"不支持的 mesh 格式: {suffix}，"
-                f"仅支持 {sorted(ALLOWED_MESH_EXTENSIONS)}"
-            ),
+            message=(f"不支持的 mesh 格式: {suffix}，仅支持 {sorted(ALLOWED_MESH_EXTENSIONS)}"),
         )
 
     # 查询上游 image_to_3d 任务的标定状态（软依赖）
-    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(
-        body.source_reconstruction_task_id
-    )
+    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(body.source_reconstruction_task_id)
 
     try:
         pipeline = _get_pipeline()
@@ -208,10 +201,7 @@ async def create_task_from_path(
                 mesh_source=mesh_source,
             ),
         },
-        message=(
-            f"任务已创建 task_id={task.task_id}，"
-            f"请调用 POST /tasks/{task.task_id}/run 触发执行"
-        ),
+        message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
 
@@ -277,9 +267,7 @@ async def create_task_from_upload(
         )
 
     # 上传文件默认未标定
-    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(
-        source_reconstruction_task_id
-    )
+    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(source_reconstruction_task_id)
     # 即便上游任务存在且 calibrated=True，本地上传的 mesh 也可能与上游不同
     # 此处保守起见，若用户明确上传了文件，则按上游查询结果处理（不强置 False）
 
@@ -315,10 +303,7 @@ async def create_task_from_upload(
                 mesh_source=mesh_source,
             ),
         },
-        message=(
-            f"任务已创建 task_id={task.task_id}，"
-            f"请调用 POST /tasks/{task.task_id}/run 触发执行"
-        ),
+        message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
 
@@ -353,10 +338,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
     ):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态不允许执行当前操作 status={task.status}。"
-                "仅 PENDING / FAILED 状态可触发执行。"
-            ),
+            message=(f"任务状态不允许执行当前操作 status={task.status}。仅 PENDING / FAILED 状态可触发执行。"),
         )
 
     # 重试场景：清空错误信息
@@ -395,9 +377,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
         )
 
     # 查询 mesh_calibrated（软依赖上游 image_to_3d）
-    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(
-        task.source_reconstruction_task_id
-    )
+    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(task.source_reconstruction_task_id)
 
     # 统计各类特征数量
     plane_count = sum(1 for f in task.features if f.feature_type == "plane")
@@ -500,16 +480,11 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
     if task.status not in allowed_states:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许获取结果，"
-                f"仅 {sorted(allowed_states)} 状态可获取。"
-            ),
+            message=(f"任务状态 {task.status} 不允许获取结果，仅 {sorted(allowed_states)} 状态可获取。"),
             suggestion="请等待状态变为 features_extracted 后再调用此端点",
         )
 
-    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(
-        task.source_reconstruction_task_id
-    )
+    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(task.source_reconstruction_task_id)
 
     plane_count = sum(1 for f in task.features if f.feature_type == "plane")
     cylinder_count = sum(1 for f in task.features if f.feature_type == "cylinder")
@@ -650,14 +625,9 @@ async def review_feature(
             message="审核后任务丢失，请检查任务存储",
         )
 
-    all_reviewed = all(
-        f.review_status != FeatureReviewStatus.PENDING.value
-        for f in task_after.features
-    )
+    all_reviewed = all(f.review_status != FeatureReviewStatus.PENDING.value for f in task_after.features)
 
-    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(
-        task_after.source_reconstruction_task_id
-    )
+    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(task_after.source_reconstruction_task_id)
 
     return success(
         data={
@@ -736,10 +706,7 @@ async def export_confirmed_features(task_id: str) -> dict[str, Any]:
     if task.status not in allowed_states:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许导出，"
-                f"仅 {sorted(allowed_states)} 状态可导出"
-            ),
+            message=(f"任务状态 {task.status} 不允许导出，仅 {sorted(allowed_states)} 状态可导出"),
             suggestion="请等待算法提取完成并至少审核一个特征后再导出",
         )
 
@@ -754,26 +721,24 @@ async def export_confirmed_features(task_id: str) -> dict[str, Any]:
         exported_path = Path(task.exported_features_path)
         # 重新统计已确认特征数
         confirmed_count = sum(
-            1 for f in task.features
-            if f.review_status in (
+            1
+            for f in task.features
+            if f.review_status
+            in (
                 FeatureReviewStatus.CONFIRMED.value,
                 FeatureReviewStatus.EDITED.value,
             )
         )
     else:
         try:
-            exported_path = await asyncio.to_thread(
-                pipeline.export_confirmed_features, task_id
-            )
+            exported_path = await asyncio.to_thread(pipeline.export_confirmed_features, task_id)
         except FeatureReviewError as e:
             return error(
                 code=ErrorCode.INVALID_REQUEST,
                 message=str(e),
             )
         except Exception as e:
-            safe = safe_error_message(
-                e, context="feature_extraction.export_confirmed_features"
-            )
+            safe = safe_error_message(e, context="feature_extraction.export_confirmed_features")
             logger.error(
                 "导出已确认特征失败 task_id=%s | error_id=%s | exc=%s",
                 task_id,
@@ -793,16 +758,16 @@ async def export_confirmed_features(task_id: str) -> dict[str, Any]:
                 message="导出后任务丢失，请检查任务存储",
             )
         confirmed_count = sum(
-            1 for f in task_after.features
-            if f.review_status in (
+            1
+            for f in task_after.features
+            if f.review_status
+            in (
                 FeatureReviewStatus.CONFIRMED.value,
                 FeatureReviewStatus.EDITED.value,
             )
         )
 
-    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(
-        task.source_reconstruction_task_id
-    )
+    mesh_calibrated, mesh_source = _resolve_upstream_calibrated(task.source_reconstruction_task_id)
 
     return success(
         data={
@@ -810,9 +775,7 @@ async def export_confirmed_features(task_id: str) -> dict[str, Any]:
             "status": FeatureExtractionTaskStatus.SUCCEEDED.value,
             "exported_features_path": str(exported_path),
             "confirmed_feature_count": confirmed_count,
-            "download_url": (
-                f"/api/v1/feature_extraction/tasks/{task_id}/export/download"
-            ),
+            "download_url": (f"/api/v1/feature_extraction/tasks/{task_id}/export/download"),
             "feature_disclaimer": _disclaimer_dict(
                 mesh_calibrated=mesh_calibrated,
                 mesh_source=mesh_source,
@@ -844,8 +807,7 @@ async def download_exported_features(task_id: str) -> FileResponse:
         raise HTTPException(
             status_code=400,
             detail=(
-                f"任务未完成导出 status={task.status}，无法下载。"
-                "请先调用 GET /tasks/{task_id}/export 触发导出。"
+                f"任务未完成导出 status={task.status}，无法下载。请先调用 GET /tasks/{{task_id}}/export 触发导出。"
             ),
         )
 
@@ -893,10 +855,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     if task.status == FeatureExtractionTaskStatus.SUCCEEDED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务 {task_id} 已 SUCCEEDED，禁止删除。"
-                "已导出的特征集可能已被阶段 3 参数化 STEP 生成模块引用。"
-            ),
+            message=(f"任务 {task_id} 已 SUCCEEDED，禁止删除。已导出的特征集可能已被阶段 3 参数化 STEP 生成模块引用。"),
             suggestion="如确需删除，请先手动清理阶段 3 引用，再删除任务",
         )
 

@@ -84,9 +84,7 @@ class CollectionProxy:
             meta = metadatas[i] if i < len(metadatas) else {}
             emb = embeddings[i] if embeddings and i < len(embeddings) else None
             ents = entities_list[i] if i < len(entities_list) else None
-            self._store.add(
-                doc, metadata=meta, doc_id=doc_id, embedding=emb, entities=ents
-            )
+            self._store.add(doc, metadata=meta, doc_id=doc_id, embedding=emb, entities=ents)
 
     def count(self):
         return self._store.count()
@@ -150,7 +148,9 @@ class KnowledgeStore:
             except (OSError, RuntimeError, ValueError) as e:
                 logger.debug(
                     "EntityIndex add failed for doc %s: %s",
-                    doc_id, e, exc_info=True,
+                    doc_id,
+                    e,
+                    exc_info=True,
                 )
 
         return doc_id
@@ -181,9 +181,7 @@ class KnowledgeStore:
                 results.append(doc)
         return results
 
-    def query(
-        self, text: str, top_k: int = 5, filters: dict | None = None
-    ) -> list[dict[str, Any]]:
+    def query(self, text: str, top_k: int = 5, filters: dict | None = None) -> list[dict[str, Any]]:
         query_embedding = self._emb.embed(text)
         chroma_filters = None
         if filters:
@@ -199,12 +197,14 @@ class KnowledgeStore:
         metas_list = result.get("metadatas", [[]])[0]
         dists_list = result.get("distances", [[]])[0]
         for i in range(len(ids_list)):
-            records.append({
-                "id": ids_list[i],
-                "document": docs_list[i] if i < len(docs_list) else "",
-                "metadata": metas_list[i] if i < len(metas_list) else {},
-                "distance": dists_list[i] if i < len(dists_list) else 1.0,
-            })
+            records.append(
+                {
+                    "id": ids_list[i],
+                    "document": docs_list[i] if i < len(docs_list) else "",
+                    "metadata": metas_list[i] if i < len(metas_list) else {},
+                    "distance": dists_list[i] if i < len(dists_list) else 1.0,
+                }
+            )
         return records
 
     def query_by_source(
@@ -257,7 +257,9 @@ class KnowledgeStore:
         except (OSError, RuntimeError, ValueError) as e:
             logger.debug(
                 "EntityIndex remove failed for doc %s: %s",
-                doc_id, e, exc_info=True,
+                doc_id,
+                e,
+                exc_info=True,
             )
         return self._vs.count() < before
 
@@ -266,14 +268,12 @@ class KnowledgeStore:
         docs_to_clean: list[str] = []
         try:
             all_docs = self._vs.list_documents(limit=DEFAULT_QUERY_LIMIT)
-            docs_to_clean = [
-                d["id"] for d in all_docs
-                if d.get("metadata", {}).get("source") == source
-            ]
+            docs_to_clean = [d["id"] for d in all_docs if d.get("metadata", {}).get("source") == source]
         except (OSError, RuntimeError, ValueError, KeyError) as e:
             logger.debug(
                 "Failed to list docs for entity index cleanup: %s",
-                e, exc_info=True,
+                e,
+                exc_info=True,
             )
 
         before = self._vs.count()
@@ -287,7 +287,9 @@ class KnowledgeStore:
                     self._entity_index.remove_chunk(doc_id)
             except (OSError, RuntimeError, ValueError) as e:
                 logger.debug(
-                    "EntityIndex batch remove failed: %s", e, exc_info=True,
+                    "EntityIndex batch remove failed: %s",
+                    e,
+                    exc_info=True,
                 )
 
         return deleted_count
@@ -372,11 +374,7 @@ class KnowledgeStore:
             for item in items:
                 try:
                     doc_id = item.get("id") or item.get("doc_id")
-                    document = (
-                        item.get("document")
-                        or item.get("content")
-                        or item.get("text", "")
-                    )
+                    document = item.get("document") or item.get("content") or item.get("text", "")
                     metadata = item.get("metadata") or item.get("meta", {})
                     if not document:
                         stats["skipped"] += 1
@@ -388,7 +386,8 @@ class KnowledgeStore:
                     # 单条 JSON 项目字段缺失/类型错误时跳过，不阻塞整体导入
                     logger.debug(
                         "Skipped malformed item in batch import: %s",
-                        parse_err, exc_info=True,
+                        parse_err,
+                        exc_info=True,
                     )
                     stats["skipped"] += 1
             if batch_docs:
@@ -406,7 +405,8 @@ class KnowledgeStore:
             # 向量库写入或 embedding 计算失败（IO/运行时/类型错误）
             logger.debug(
                 "Failed to import knowledge batch: %s",
-                store_err, exc_info=True,
+                store_err,
+                exc_info=True,
             )
             stats["errors"] += 1
         return stats
@@ -439,14 +439,10 @@ class KnowledgeBase:
             doc_id: 文档 ID
             entities: 实体列表（写入倒排索引）
         """
-        doc_id = self._store.add(
-            document, metadata=metadata, doc_id=doc_id, entities=entities
-        )
+        doc_id = self._store.add(document, metadata=metadata, doc_id=doc_id, entities=entities)
         return {"doc_id": doc_id}
 
-    def query(
-        self, query_text: str = "", n_results: int = 5, top_k: int = 5
-    ) -> dict[str, Any]:
+    def query(self, query_text: str = "", n_results: int = 5, top_k: int = 5) -> dict[str, Any]:
         results = self._store.query(query_text, top_k=n_results or top_k)
         return {"documents": results, "total_results": len(results)}
 
@@ -482,9 +478,7 @@ class KnowledgeBase:
         n_results: int = 5,
         extra_filters: dict | None = None,
     ) -> dict:
-        return self._store.query_by_source(
-            source, query, n_results, extra_filters=extra_filters
-        )
+        return self._store.query_by_source(source, query, n_results, extra_filters=extra_filters)
 
     def delete_by_source(self, source: str) -> int:
         return self._store.delete_by_source(source)

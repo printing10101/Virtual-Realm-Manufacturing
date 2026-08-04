@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -74,15 +73,10 @@ class ValidationReport:
         total_relations = len(self.relation_results)
         valid_relations = sum(1 for r in self.relation_results if r.is_valid)
 
-        entity_pass_rate = (
-            valid_entities / total_entities if total_entities > 0 else 0.0
-        )
-        relation_pass_rate = (
-            valid_relations / total_relations if total_relations > 0 else 0.0
-        )
+        entity_pass_rate = valid_entities / total_entities if total_entities > 0 else 0.0
+        relation_pass_rate = valid_relations / total_relations if total_relations > 0 else 0.0
         overall_pass_rate = (
-            (valid_entities + valid_relations)
-            / (total_entities + total_relations)
+            (valid_entities + valid_relations) / (total_entities + total_relations)
             if (total_entities + total_relations) > 0
             else 0.0
         )
@@ -180,9 +174,7 @@ class ExtractionValidator:
 
         return report
 
-    def _validate_entity(
-        self, entity: dict[str, Any]
-    ) -> EntityValidationResult:
+    def _validate_entity(self, entity: dict[str, Any]) -> EntityValidationResult:
         """验证单个实体的结构。"""
         result = EntityValidationResult(entity=entity, is_valid=True)
 
@@ -257,14 +249,10 @@ class ExtractionValidator:
         if confidence is not None:
             if not isinstance(confidence, (int, float)):
                 result.is_valid = False
-                result.errors.append(
-                    f"confidence 必须为数值，当前: {type(confidence).__name__}"
-                )
+                result.errors.append(f"confidence 必须为数值，当前: {type(confidence).__name__}")
             elif not (0 <= float(confidence) <= 100):
                 result.is_valid = False
-                result.errors.append(
-                    f"confidence 必须在 [0, 100] 范围内，当前: {confidence}"
-                )
+                result.errors.append(f"confidence 必须在 [0, 100] 范围内，当前: {confidence}")
 
         # 使用 Pydantic 关系模型验证
         entity_type_map = {e["id"]: e.get("entity_type") for e in entities}
@@ -339,17 +327,11 @@ class ExtractionValidator:
             target_id = rel.get("target_id", "")
 
             if source_id and source_id not in entity_ids:
-                issue = (
-                    f"关系 #{i + 1} 的 source_id '{source_id}' "
-                    f"不在已抽取实体列表中"
-                )
+                issue = f"关系 #{i + 1} 的 source_id '{source_id}' 不在已抽取实体列表中"
                 report.consistency_issues.append(issue)
 
             if target_id and target_id not in entity_ids:
-                issue = (
-                    f"关系 #{i + 1} 的 target_id '{target_id}' "
-                    f"不在已抽取实体列表中"
-                )
+                issue = f"关系 #{i + 1} 的 target_id '{target_id}' 不在已抽取实体列表中"
                 report.consistency_issues.append(issue)
 
         # 检查实体 ID 前缀是否与类型匹配
@@ -359,8 +341,7 @@ class ExtractionValidator:
             expected_prefix = _ENTITY_ID_PREFIX.get(entity_type)
             if expected_prefix and not entity_id.startswith(expected_prefix):
                 report.warnings.append(
-                    f"实体 '{entity_id}' 的 ID 前缀与类型 "
-                    f"'{entity_type}' 不匹配（期望前缀: '{expected_prefix}'）"
+                    f"实体 '{entity_id}' 的 ID 前缀与类型 '{entity_type}' 不匹配（期望前缀: '{expected_prefix}'）"
                 )
 
     def _check_reasonableness(
@@ -376,9 +357,7 @@ class ExtractionValidator:
 
             # 检查自环
             if source_id == target_id:
-                report.warnings.append(
-                    f"关系 #{i + 1} 存在自环: {source_id} -> {target_id}"
-                )
+                report.warnings.append(f"关系 #{i + 1} 存在自环: {source_id} -> {target_id}")
 
         # 检查重复关系
         seen_relations: set[tuple[str, str, str]] = set()
@@ -410,9 +389,7 @@ class ExtractionValidator:
         # 一致性问题和警告扣分
         consistency_penalty = len(report.consistency_issues) * 2
         warning_penalty = len(report.warnings) * 0.5
-        report.accuracy_score = max(
-            0, report.accuracy_score - consistency_penalty - warning_penalty
-        )
+        report.accuracy_score = max(0, report.accuracy_score - consistency_penalty - warning_penalty)
 
         # 判定是否通过
         report.overall_valid = report.accuracy_score >= 70

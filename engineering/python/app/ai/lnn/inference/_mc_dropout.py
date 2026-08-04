@@ -29,19 +29,13 @@ except ImportError:
     HAS_TORCH = False
 
 try:
-    from torch.cuda.amp import autocast
-
-    HAS_AMP = True
-except ImportError:
-    HAS_AMP = False
-
-try:
     from app.ai.lnn.models.base_lnn import BaseLNNModel
 
     _HAS_TORCH_MODELS = True
 except ImportError:
     BaseLNNModel = None
     _HAS_TORCH_MODELS = False
+
 
 if TYPE_CHECKING:
     from app.ai.lnn.inference.predictor import PredictionResult
@@ -85,9 +79,7 @@ class _MCDropoutMixin:
             model_info={"mc_n_samples": 1, "mc_std": 0.0},
         )
 
-    def _mc_setup_dropout_and_train_mode(
-        self, dropout_override: Optional[float]
-    ) -> tuple[Any, Any]:
+    def _mc_setup_dropout_and_train_mode(self, dropout_override: Optional[float]) -> tuple[Any, Any]:
         """配置临时 dropout 并切换模型到训练模式以激活 dropout 层。
 
         Args:
@@ -105,9 +97,7 @@ class _MCDropoutMixin:
             try:
                 self.model.dropout_rate = float(dropout_override)
             except (AttributeError, TypeError, ValueError) as exc:
-                logger.debug(
-                    "predict_mc_dropout: 无法覆盖 dropout: %s", exc
-                )
+                logger.debug("predict_mc_dropout: 无法覆盖 dropout: %s", exc)
 
         was_training = getattr(self.model, "training", False)
         try:
@@ -122,9 +112,7 @@ class _MCDropoutMixin:
 
         return original_dropout, was_training
 
-    def _mc_run_forward_samples(
-        self, features: Any, n_samples: int
-    ) -> List[np.ndarray]:
+    def _mc_run_forward_samples(self, features: Any, n_samples: int) -> List[np.ndarray]:
         """执行 ``n_samples`` 次前向传播并收集样本输出。
 
         若模型为 :class:`BaseLNNModel`，调用其 ``predict``；否则使用
@@ -157,9 +145,7 @@ class _MCDropoutMixin:
             samples.append(np.asarray(output, dtype=float))
         return samples
 
-    def _mc_restore_model_state(
-        self, original_dropout: Any, was_training: Any
-    ) -> None:
+    def _mc_restore_model_state(self, original_dropout: Any, was_training: Any) -> None:
         """恢复模型原始训练/推理模式与 dropout 概率。
 
         Args:
@@ -224,18 +210,14 @@ class _MCDropoutMixin:
             mean = np.mean(stacked, axis=0)
             std = np.std(stacked, axis=0)
         except (ValueError, TypeError) as exc:
-            logger.warning(
-                "predict_mc_dropout: 样本堆叠失败，回退到首样本: %s", exc
-            )
+            logger.warning("predict_mc_dropout: 样本堆叠失败，回退到首样本: %s", exc)
             mean = samples[0] if samples else np.array(0.0)
             std = np.zeros_like(mean)
 
         mean_value = self._maybe_inverse_transform(mean)
         processed = self._postprocess(mean_value, hidden)
 
-        scalar_mean = (
-            float(np.mean(processed)) if isinstance(processed, np.ndarray) else float(processed)
-        )
+        scalar_mean = float(np.mean(processed)) if isinstance(processed, np.ndarray) else float(processed)
         scalar_std = float(np.mean(std)) if std.size else 0.0
 
         mean_abs = abs(scalar_mean) if scalar_mean != 0 else 1.0
@@ -303,9 +285,7 @@ class _MCDropoutMixin:
             if not HAS_TORCH:
                 return self._mc_fallback_no_torch(input_data)
 
-            original_dropout, was_training = self._mc_setup_dropout_and_train_mode(
-                dropout_override
-            )
+            original_dropout, was_training = self._mc_setup_dropout_and_train_mode(dropout_override)
 
             start_ts = time.perf_counter()
             try:
@@ -314,6 +294,4 @@ class _MCDropoutMixin:
                 self._mc_restore_model_state(original_dropout, was_training)
 
             inference_time = (time.perf_counter() - start_ts) * 1000.0
-            return self._mc_compute_statistics(
-                samples, hidden, features, inference_time, n_samples
-            )
+            return self._mc_compute_statistics(samples, hidden, features, inference_time, n_samples)

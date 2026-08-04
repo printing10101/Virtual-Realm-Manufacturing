@@ -33,6 +33,7 @@ ADR-020 思路 1 的 P0 数据解锁工具。将 ADR-017 的 legacy ``current_st
 
 对应 ADR：ADR-020 思路 1 / ADR-017 世界模型与 RL 模块
 """
+
 from __future__ import annotations
 
 import logging
@@ -212,8 +213,7 @@ class DynamicsStateBridge:
 
         if missing:
             logger.warning(
-                "DynamicsStateBridge: current_state 缺失 %d/%d 个动力学字段: %s. "
-                "这些字段用 %s 填充，融合路径可能降级.",
+                "DynamicsStateBridge: current_state 缺失 %d/%d 个动力学字段: %s. 这些字段用 %s 填充，融合路径可能降级.",
                 len(missing),
                 len(REQUIRED_FIELDS),
                 missing,
@@ -251,9 +251,7 @@ class DynamicsStateBridge:
         ValueError
             若 ``current_state`` 缺失任一动力学字段.
         """
-        missing: list[str] = [
-            f for f in REQUIRED_FIELDS if f not in current_state
-        ]
+        missing: list[str] = [f for f in REQUIRED_FIELDS if f not in current_state]
         if missing:
             raise ValueError(
                 f"current_state 缺失动力学字段: {missing}. "
@@ -279,9 +277,7 @@ class DynamicsStateBridge:
         bool
             ``True`` 表示 ``defaulted_fields`` 数量 >= 阈值，应降级.
         """
-        thresh = (
-            DynamicsStateBridge.DEGRADE_THRESHOLD if threshold is None else threshold
-        )
+        thresh = DynamicsStateBridge.DEGRADE_THRESHOLD if threshold is None else threshold
         return len(result.defaulted_fields) >= thresh
 
 

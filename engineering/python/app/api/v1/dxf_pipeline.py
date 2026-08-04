@@ -68,9 +68,7 @@ def _validate_dxf_path(user_path: str) -> Path:
         )
     except ValueError as exc:
         # 包装异常消息，避免直接回显内部错误细节
-        safe = safe_error_message(
-            exc, context="dxf_pipeline.validate_user_path", fallback="DXF 路径校验失败"
-        )
+        safe = safe_error_message(exc, context="dxf_pipeline.validate_user_path", fallback="DXF 路径校验失败")
         raise HTTPException(
             status_code=400,
             detail=safe["message"],

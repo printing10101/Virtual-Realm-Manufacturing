@@ -3,11 +3,11 @@
 这些是产品轨的核心 3D 建模扩展。
 新功能通过 CadQueryGenerator.generate_with_features 入口调用。
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 import cadquery as cq
 
@@ -23,6 +23,7 @@ class ChamferSpec:
         length: 倒角长度（mm）
         angle: 倒角角度（度），默认 45°
     """
+
     length: float = 1.0
     angle: float = 45.0
     edges_selector: str = "|"
@@ -39,6 +40,7 @@ class ChamferSpec:
 @dataclass
 class FilletSpec:
     """圆角规格。"""
+
     radius: float = 1.0
     edges_selector: str = "|"
 
@@ -62,6 +64,7 @@ class StepSpec:
         width: 沿 Y 方向新宽度（None 表示不变）
         height: 沿 Z 方向新高度（None 表示不变）
     """
+
     offset_x: float = 0.0
     offset_y: float = 0.0
     offset_z: float = 0.0
@@ -94,6 +97,7 @@ class SlotSpec:
         axis: 'x' 或 'y'，键槽延伸方向
         surface_z: 键槽所在加工面 Z 坐标（None 表示顶面）
     """
+
     center_x: float = 0.0
     center_y: float = 0.0
     length: float = 20.0
@@ -150,7 +154,11 @@ class AdvancedFeatureBuilder:
             except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
                 logger.error(
                     "特征应用失败 type=%s params=%s err=%s: %s",
-                    ftype, spec, type(e).__name__, e, exc_info=True,
+                    ftype,
+                    spec,
+                    type(e).__name__,
+                    e,
+                    exc_info=True,
                 )
         return result
 
@@ -171,9 +179,6 @@ class AdvancedFeatureBuilder:
         """
         length_new = spec.get("length")
         width_new = spec.get("width")
-        offset_x = float(spec.get("offset_x", 0.0))
-        offset_y = float(spec.get("offset_y", 0.0))
-        offset_z = float(spec.get("offset_z", 0.0))
         height_new = spec.get("height")
 
         if length_new is None and width_new is None and height_new is None:
@@ -197,17 +202,13 @@ class AdvancedFeatureBuilder:
             # 创建比当前模型大一圈的 cut box
             cut_wp = (
                 cq.Workplane("XY")
-                .transformed(
-                    offset=(bb.xmin - 1, bb.ymin - 1, bb.zmin + new_h)
-                )
+                .transformed(offset=(bb.xmin - 1, bb.ymin - 1, bb.zmin + new_h))
                 .box(cur_len + 2, cur_wid + 2, cut_h + 1)
             )
             wp = wp.cut(cut_wp)
 
         # 2. 如果长度或宽度变化，缩小
-        if (length_new is not None and new_len < cur_len) or (
-            width_new is not None and new_wid < cur_wid
-        ):
+        if (length_new is not None and new_len < cur_len) or (width_new is not None and new_wid < cur_wid):
             cut_x = (cur_len - new_len) / 2
             cut_y = (cur_wid - new_wid) / 2
             if cut_x > 0:
@@ -283,11 +284,7 @@ class AdvancedFeatureBuilder:
         else:
             sx, sy, sz = width, length, depth
 
-        slot = (
-            cq.Workplane("XY")
-            .transformed(offset=(cx - sx / 2, cy - sy / 2, top_z - depth))
-            .box(sx, sy, sz + 0.5)
-        )
+        slot = cq.Workplane("XY").transformed(offset=(cx - sx / 2, cy - sy / 2, top_z - depth)).box(sx, sy, sz + 0.5)
         return wp.cut(slot)
 
 

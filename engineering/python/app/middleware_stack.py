@@ -13,6 +13,7 @@
 会因缺少 Authorization 头被 auth 拦截返回 401，导致跨域前端无法工作。
 RequestId 在最外层确保所有中间件日志都可关联同一请求 ID。
 """
+
 from __future__ import annotations
 
 import logging
@@ -65,7 +66,8 @@ def register_middleware_stack(
         )
         logger.info(
             "IdleAutoShutdownMiddleware enabled (timeout=%ds, state_file=%s)",
-            idle_timeout_seconds, state_file_path,
+            idle_timeout_seconds,
+            state_file_path,
         )
     else:
         logger.info("IdleAutoShutdownMiddleware disabled (LNN_IDLE_AUTO_SHUTDOWN=false)")
@@ -106,9 +108,7 @@ def register_middleware_stack(
     if config.security.rate_limit_enabled:
         app.state.limiter = limiter
         app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
-        logger.info(
-            "Rate limiting enabled (default: 100 req/min per IP, per-endpoint overrides apply)"
-        )
+        logger.info("Rate limiting enabled (default: 100 req/min per IP, per-endpoint overrides apply)")
     else:
         logger.info("Rate limiting is disabled via config")
 

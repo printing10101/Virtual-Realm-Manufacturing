@@ -179,15 +179,21 @@ class ToolpathParser:
                 # 去掉行号前缀（如 "1  BLK FORM" -> "BLK FORM"）
                 parts = upper.split(None, 1)
                 content = parts[1] if len(parts) > 1 else upper
-                
+
                 # 跳过 Heidenhain 非运动指令（检查原始行和去掉行号后的内容）
-                if any(upper.startswith(prefix) or content.startswith(prefix) for prefix in (
-                    "BEGIN PGM", "END PGM",       # 程序开始/结束
-                    "BLK FORM",                     # 毛坯定义
-                    "TOOL CALL",                    # 刀具调用
-                    "CYCL DEF", "CYCL CALL",        # 固定循环定义/调用
-                    "LBL CALL", "LBL 0",            # 子程序调用/结束
-                )):
+                if any(
+                    upper.startswith(prefix) or content.startswith(prefix)
+                    for prefix in (
+                        "BEGIN PGM",
+                        "END PGM",  # 程序开始/结束
+                        "BLK FORM",  # 毛坯定义
+                        "TOOL CALL",  # 刀具调用
+                        "CYCL DEF",
+                        "CYCL CALL",  # 固定循环定义/调用
+                        "LBL CALL",
+                        "LBL 0",  # 子程序调用/结束
+                    )
+                ):
                     continue
                 # 跳过辅助功能（M代码）
                 if upper.startswith("M") and len(upper) > 1 and upper[1:2].isdigit():

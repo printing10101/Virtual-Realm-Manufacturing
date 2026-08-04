@@ -27,8 +27,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
-
 from app.process_planning.hole_recognizer import (
     HoleFeatureRecognizer,
     HoleRecognitionResult,
@@ -46,8 +44,10 @@ from app.process_planning.gcode_generator import GCodeGenerator, GCodeResult
 from app.process_planning.boss_recognizer import BossFeature
 from app.process_planning.cavity_recognizer import CavityFeature
 from app.process_planning.plane_recognizer import PlaneFeature
-from app.process_planning.sim_integration import SimulationIntegration, SimulationResult
+from app.process_planning.sim_integration import SimulationIntegration
 from app.data.process_data_manager import ProcessPlanningDataManager, DataLoadError, QueryError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -63,6 +63,7 @@ class PipelineStage:
         errors: 该阶段的错误列表
         warnings: 该阶段的警告列表
     """
+
     name: str
     status: str = "pending"
     duration_ms: float = 0.0
@@ -97,6 +98,7 @@ class PipelineResult:
         total_duration_ms: 总耗时(毫秒)
         summary: 流水线执行摘要
     """
+
     success: bool = False
     stages: list[PipelineStage] = field(default_factory=list)
     hole_recognition: Optional[HoleRecognitionResult] = None
@@ -134,16 +136,20 @@ class PipelineResult:
                 "errors": self.gcode_result.errors,
             }
         # 始终包含仿真字段，确保接口一致性
-        result["simulation"] = self.simulation if self.simulation else {
-            "status": "not_run",
-            "score": 0.0,
-            "passed": False,
-            "recommendation": "not_recommended",
-            "cutting_force": None,
-            "chatter_stability": None,
-            "duration_ms": 0.0,
-            "error_message": "仿真未执行（流水线提前终止）",
-        }
+        result["simulation"] = (
+            self.simulation
+            if self.simulation
+            else {
+                "status": "not_run",
+                "score": 0.0,
+                "passed": False,
+                "recommendation": "not_recommended",
+                "cutting_force": None,
+                "chatter_stability": None,
+                "duration_ms": 0.0,
+                "error_message": "仿真未执行（流水线提前终止）",
+            }
+        )
         return result
 
 
@@ -240,10 +246,7 @@ class ProcessPlanningPipeline:
             status="success" if not hole_result.errors else "failed",
             duration_ms=(time.time() - stage2_start) * 1000,
             input_summary=f"零件材料: {material_name}",
-            output_summary=(
-                f"识别孔数: {hole_result.total_count}, "
-                f"类型分布: {hole_result.type_summary}"
-            ),
+            output_summary=(f"识别孔数: {hole_result.total_count}, 类型分布: {hole_result.type_summary}"),
             errors=hole_result.errors,
             warnings=hole_result.warnings,
         )
@@ -300,13 +303,15 @@ class ProcessPlanningPipeline:
                 unmatched_holes += 1
                 stage2.warnings.append(f"孔{hole.hole_id}刀具匹配失败: {e}")
                 # 使用默认参数创建方案
-                process_plans.append(HoleProcessPlan(
-                    hole_id=hole.hole_id,
-                    hole_type=hole.type,
-                    operations=["钻中心孔", "钻孔"],
-                    tools=[],
-                    estimated_time_min=2.0,
-                ))
+                process_plans.append(
+                    HoleProcessPlan(
+                        hole_id=hole.hole_id,
+                        hole_type=hole.type,
+                        operations=["钻中心孔", "钻孔"],
+                        tools=[],
+                        estimated_time_min=2.0,
+                    )
+                )
 
         stage3 = PipelineStage(
             name="知识库查询",
@@ -365,7 +370,6 @@ class ProcessPlanningPipeline:
         result.operation_plan = operation_plan
 
         # ========== Stage 4.5: 仿真验证 ==========
-        stage4_5_start = time.time()
         simulation_result = self._run_simulation(
             material=material_name,
             operation_plan=operation_plan,
@@ -435,10 +439,7 @@ class ProcessPlanningPipeline:
             name="结果验证",
             status="success" if not validation_errors else "failed",
             duration_ms=(time.time() - stage6_start) * 1000,
-            output_summary=(
-                "验证通过" if not validation_errors
-                else f"发现{len(validation_errors)}个错误"
-            ),
+            output_summary=("验证通过" if not validation_errors else f"发现{len(validation_errors)}个错误"),
             errors=validation_errors,
             warnings=validation_warnings,
         )
@@ -454,8 +455,7 @@ class ProcessPlanningPipeline:
             f"流水线执行{'成功' if result.success else '部分失败'} ({result.total_duration_ms:.0f}ms)",
             f"零件: {material_name}({part_type})",
             f"孔识别: {hole_result.total_count}个孔 ({hole_result.type_summary})",
-            f"工序规划: {len(operation_plan.operations)}个工序, "
-            f"{operation_plan.estimated_time_min:.1f}min预估工时",
+            f"工序规划: {len(operation_plan.operations)}个工序, {operation_plan.estimated_time_min:.1f}min预估工时",
         ]
         if gcode_result:
             summary_parts.append(
@@ -511,9 +511,7 @@ class ProcessPlanningPipeline:
             stage.input_summary += f", 孔数据: {len(holes)}条"
 
         if not self._data_valid:
-            warnings.append(
-                "工艺知识库加载失败，将使用内置默认值进行刀具和参数匹配"
-            )
+            warnings.append("工艺知识库加载失败，将使用内置默认值进行刀具和参数匹配")
 
         stage.status = "success" if not errors else "failed"
         stage.errors = errors
@@ -528,17 +526,19 @@ class ProcessPlanningPipeline:
     ) -> list[MachiningFeature]:
         features: list[MachiningFeature] = []
 
-        features.append(MachiningFeature(
-            name="基准面A-上表面",
-            type="plane_surface",
-            geometric_type="plane",
-            tolerance_grade="IT7",
-            surface_roughness_ra=1.6,
-            is_datum_candidate=True,
-            priority="high",
-            surface="A",
-            dimensions={"area": 20000, "length": 200, "width": 100},
-        ))
+        features.append(
+            MachiningFeature(
+                name="基准面A-上表面",
+                type="plane_surface",
+                geometric_type="plane",
+                tolerance_grade="IT7",
+                surface_roughness_ra=1.6,
+                is_datum_candidate=True,
+                priority="high",
+                surface="A",
+                dimensions={"area": 20000, "length": 200, "width": 100},
+            )
+        )
 
         for hole, plan in zip(hole_result.holes, process_plans):
             hole_dict = hole.to_machining_feature()
@@ -569,19 +569,21 @@ class ProcessPlanningPipeline:
                 d = cav
             else:
                 continue
-            features.append(MachiningFeature(
-                name=d["name"],
-                type=d["type"],
-                geometric_type=d["geometric_type"],
-                tolerance_grade=d["tolerance_grade"],
-                surface_roughness_ra=d["surface_roughness_ra"],
-                is_datum_candidate=d["is_datum_candidate"],
-                priority=d["priority"],
-                surface=d["surface"],
-                dimensions=d["dimensions"],
-                parent_feature=d["parent_feature"],
-                tolerances=d["tolerances"],
-            ))
+            features.append(
+                MachiningFeature(
+                    name=d["name"],
+                    type=d["type"],
+                    geometric_type=d["geometric_type"],
+                    tolerance_grade=d["tolerance_grade"],
+                    surface_roughness_ra=d["surface_roughness_ra"],
+                    is_datum_candidate=d["is_datum_candidate"],
+                    priority=d["priority"],
+                    surface=d["surface"],
+                    dimensions=d["dimensions"],
+                    parent_feature=d["parent_feature"],
+                    tolerances=d["tolerances"],
+                )
+            )
 
         boss_features = part_description.get("bosses", [])
         for boss in boss_features:
@@ -591,19 +593,21 @@ class ProcessPlanningPipeline:
                 d = boss
             else:
                 continue
-            features.append(MachiningFeature(
-                name=d["name"],
-                type=d["type"],
-                geometric_type=d["geometric_type"],
-                tolerance_grade=d["tolerance_grade"],
-                surface_roughness_ra=d["surface_roughness_ra"],
-                is_datum_candidate=d["is_datum_candidate"],
-                priority=d["priority"],
-                surface=d["surface"],
-                dimensions=d["dimensions"],
-                parent_feature=d["parent_feature"],
-                tolerances=d["tolerances"],
-            ))
+            features.append(
+                MachiningFeature(
+                    name=d["name"],
+                    type=d["type"],
+                    geometric_type=d["geometric_type"],
+                    tolerance_grade=d["tolerance_grade"],
+                    surface_roughness_ra=d["surface_roughness_ra"],
+                    is_datum_candidate=d["is_datum_candidate"],
+                    priority=d["priority"],
+                    surface=d["surface"],
+                    dimensions=d["dimensions"],
+                    parent_feature=d["parent_feature"],
+                    tolerances=d["tolerances"],
+                )
+            )
 
         plane_features = part_description.get("planes", [])
         for plane in plane_features:
@@ -613,19 +617,21 @@ class ProcessPlanningPipeline:
                 d = plane
             else:
                 continue
-            features.append(MachiningFeature(
-                name=d["name"],
-                type=d["type"],
-                geometric_type=d["geometric_type"],
-                tolerance_grade=d["tolerance_grade"],
-                surface_roughness_ra=d["surface_roughness_ra"],
-                is_datum_candidate=d["is_datum_candidate"],
-                priority=d["priority"],
-                surface=d["surface"],
-                dimensions=d["dimensions"],
-                parent_feature=d["parent_feature"],
-                tolerances=d["tolerances"],
-            ))
+            features.append(
+                MachiningFeature(
+                    name=d["name"],
+                    type=d["type"],
+                    geometric_type=d["geometric_type"],
+                    tolerance_grade=d["tolerance_grade"],
+                    surface_roughness_ra=d["surface_roughness_ra"],
+                    is_datum_candidate=d["is_datum_candidate"],
+                    priority=d["priority"],
+                    surface=d["surface"],
+                    dimensions=d["dimensions"],
+                    parent_feature=d["parent_feature"],
+                    tolerances=d["tolerances"],
+                )
+            )
 
         return features
 
@@ -647,9 +653,7 @@ class ProcessPlanningPipeline:
         if result.hole_recognition:
             hr = result.hole_recognition
             if not hr.is_reliable:
-                warnings.append(
-                    f"孔识别可靠性偏低: {hr.accuracy_metrics.get('overall', 0):.1%}"
-                )
+                warnings.append(f"孔识别可靠性偏低: {hr.accuracy_metrics.get('overall', 0):.1%}")
             if hr.warnings:
                 warnings.extend(hr.warnings)
 
@@ -708,11 +712,11 @@ class ProcessPlanningPipeline:
             if operation_plan.operations:
                 first_op = operation_plan.operations[0]
                 # 从工序中提取切削参数（如果存在）
-                cutting_params = first_op.get("cutting_params", {})
+                cutting_params = first_op.cutting_params
                 spindle_rpm = cutting_params.get("spindle_rpm", 8000)
                 feed_rate = cutting_params.get("feed_rate", 1200)
                 depth_of_cut = cutting_params.get("depth_of_cut", 2.0)
-                tool = first_op.get("tool", "endmill_d10")
+                tool = first_op.tool_type or "endmill_d10"
             else:
                 # 默认参数
                 spindle_rpm = 8000
@@ -782,10 +786,12 @@ def plan_process(
 
     # 如果指定了特征类型，添加到 features
     if feature:
-        part_description["features"].append({
-            "type": feature,
-            "name": f"{feature}_001",
-        })
+        part_description["features"].append(
+            {
+                "type": feature,
+                "name": f"{feature}_001",
+            }
+        )
 
     # 执行工艺规划流水线
     result = pipeline.run(

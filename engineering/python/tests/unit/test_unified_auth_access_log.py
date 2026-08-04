@@ -122,7 +122,7 @@ class TestLogAccess:
 
     def test_log_access_writes_info(self, caplog):
         """默认级别为 INFO，应记录访问日志。"""
-        with caplog.at_level(logging.INFO, logger="app.auth.unified_auth"):
+        with caplog.at_level(logging.INFO, logger="app.auth.middleware"):
             _log_access(
                 method="GET",
                 path="/api/test",
@@ -136,7 +136,7 @@ class TestLogAccess:
 
     def test_log_access_supports_custom_level(self, caplog):
         """支持自定义日志级别。"""
-        with caplog.at_level(logging.WARNING, logger="app.auth.unified_auth"):
+        with caplog.at_level(logging.WARNING, logger="app.auth.middleware"):
             _log_access(
                 method="POST",
                 path="/api/secure",
@@ -162,7 +162,7 @@ class TestAccessLogWhenPermissionDisabled:
         """通过认证的请求应当产生一条访问日志。"""
         client = TestClient(app_with_middleware)
         with caplog.at_level(
-            logging.INFO, logger="app.auth.unified_auth"
+            logging.INFO, logger="app.auth.middleware"
         ):
             response = client.get(
                 "/protected",
@@ -178,7 +178,7 @@ class TestAccessLogWhenPermissionDisabled:
         """公共端点也应记录访问日志。"""
         client = TestClient(app_with_middleware)
         with caplog.at_level(
-            logging.INFO, logger="app.auth.unified_auth"
+            logging.INFO, logger="app.auth.middleware"
         ):
             response = client.get("/api/health")
         assert response.status_code == 200
@@ -191,7 +191,7 @@ class TestAccessLogWhenPermissionDisabled:
         """权限检查被关闭时，应记录 INFO 审计日志提示绕过检查。"""
         client = TestClient(app_with_middleware)
         with caplog.at_level(
-            logging.INFO, logger="app.auth.unified_auth"
+            logging.INFO, logger="app.auth.middleware"
         ):
             response = client.get(
                 "/protected",

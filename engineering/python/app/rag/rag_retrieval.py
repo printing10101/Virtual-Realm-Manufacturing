@@ -18,11 +18,7 @@ import hashlib
 import logging
 import os
 import re
-import threading
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
-from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +54,7 @@ from ._retrieval_models import (
     _ResultCache,
 )
 
+
 class RagRetrievalEngine:
     """RAG 检索规则引擎
 
@@ -85,8 +82,7 @@ class RagRetrievalEngine:
         self.rules = RETRIEVAL_RULES
         # 预计算小写关键词，避免每次查询都转换
         self._intent_keywords_lower = {
-            intent: [kw.lower() for kw in keywords]
-            for intent, keywords in INTENT_KEYWORDS.items()
+            intent: [kw.lower() for kw in keywords] for intent, keywords in INTENT_KEYWORDS.items()
         }
         # 预计算 keyword_boost 的小写版本
         self._keyword_boost_lower = {
@@ -112,6 +108,7 @@ class RagRetrievalEngine:
         if ENABLE_QUERY_REWRITE or ENABLE_HYDE:
             try:
                 from app.rag.query_rewriter import get_query_rewriter
+
                 self._query_rewriter = get_query_rewriter()
             except (ImportError, RuntimeError) as e:
                 logger.warning("Failed to load query rewriter: %s", e)
@@ -121,6 +118,7 @@ class RagRetrievalEngine:
         if ENABLE_HYBRID_SEARCH:
             try:
                 from app.rag.hybrid_search import get_hybrid_search_engine
+
                 self._hybrid_engine = get_hybrid_search_engine()
             except (ImportError, RuntimeError) as e:
                 logger.warning("Failed to load hybrid search engine: %s", e)
@@ -130,6 +128,7 @@ class RagRetrievalEngine:
         if ENABLE_RERANKER:
             try:
                 from app.rag.reranker import get_reranker_service
+
                 self._reranker = get_reranker_service()
             except (ImportError, RuntimeError) as e:
                 logger.warning("Failed to load reranker service: %s", e)
@@ -227,7 +226,9 @@ class RagRetrievalEngine:
         if source_filters:
             if ENABLE_PARALLEL_RETRIEVAL and len(source_filters) > 1:
                 results = self._parallel_source_query(
-                    vector_query, source_filters, actual_n,
+                    vector_query,
+                    source_filters,
+                    actual_n,
                     where_filters=metadata_where,
                 )
             else:
@@ -245,7 +246,9 @@ class RagRetrievalEngine:
                     except (OSError, RuntimeError, ValueError, KeyError) as e:
                         logger.warning(
                             "Source query failed for %s: %s",
-                            source, e, exc_info=True,
+                            source,
+                            e,
+                            exc_info=True,
                         )
 
         # 5. entity 倒排索引扩展检索（跨源补充精确匹配的 chunk）
@@ -308,9 +311,7 @@ class RagRetrievalEngine:
 
         # 8. 关键词 boost 调整（fast 或 reranker 不可用时）
         if not rerank_used:
-            candidates = self._rerank_by_keywords(
-                candidates, search_query, rule.keyword_boost
-            )
+            candidates = self._rerank_by_keywords(candidates, search_query, rule.keyword_boost)
 
         final_results = candidates[:actual_n]
 
@@ -391,9 +392,7 @@ class RagRetrievalEngine:
 
         with ThreadPoolExecutor(max_workers=min(len(sources), PARALLEL_RETRIEVAL_WORKERS)) as executor:
             future_to_source = {
-                executor.submit(
-                    self._query_source, query, source, n_results, where_filters
-                ): source
+                executor.submit(self._query_source, query, source, n_results, where_filters): source
                 for source in sources
             }
             for future in as_completed(future_to_source):
@@ -407,20 +406,21 @@ class RagRetrievalEngine:
                     errors.append((source, e))
                     logger.warning(
                         "Parallel source query failed for %s: %s",
-                        source, e, exc_info=True,
+                        source,
+                        e,
+                        exc_info=True,
                     )
 
         if errors:
             logger.info(
                 "Parallel retrieval completed with %d/%d source failures",
-                len(errors), len(sources),
+                len(errors),
+                len(sources),
             )
 
         return results
 
-    def retrieve_by_material(
-        self, material: str, query: str, n_results: int = 5
-    ) -> dict:
+    def retrieve_by_material(self, material: str, query: str, n_results: int = 5) -> dict:
         # 学术诚信修复：统一子串匹配，原 material.upper()=="TC4" 精确匹配漏匹配"TC4钛合金"等
         if "TC4" in material.upper() or "钛" in material:
             intent = QueryIntent.MATERIAL_WEAR
@@ -432,13 +432,9 @@ class RagRetrievalEngine:
             intent = QueryIntent.GENERAL
             override = None
 
-        return self.retrieve(
-            query=query, intent=intent, n_results=n_results, override_source=override
-        )
+        return self.retrieve(query=query, intent=intent, n_results=n_results, override_source=override)
 
-    def retrieve_by_signal_type(
-        self, signal_type: str, query: str, n_results: int = 5
-    ) -> dict:
+    def retrieve_by_signal_type(self, signal_type: str, query: str, n_results: int = 5) -> dict:
         if "vibration" in signal_type.lower() or "振动" in signal_type:
             intent = QueryIntent.VIBRATION_WEAR
         else:
@@ -484,9 +480,7 @@ class RagRetrievalEngine:
         """
         # 降级路径：未注入 signal_fusion_kb 时走通用 RAG 检索
         if self.signal_fusion_kb is None:
-            logger.debug(
-                "signal_fusion_kb 未注入，retrieve_from_signal_fusion 降级到通用 RAG 检索"
-            )
+            logger.debug("signal_fusion_kb 未注入，retrieve_from_signal_fusion 降级到通用 RAG 检索")
             fallback = self.retrieve(
                 query=query or "signal_fusion",
                 intent=QueryIntent.SIGNAL_FUSION,
@@ -514,7 +508,8 @@ class RagRetrievalEngine:
         except (RuntimeError, OSError, ValueError, KeyError) as e:
             logger.warning(
                 "SignalFusionKnowledgeBase.retrieve_similar 失败，降级到通用 RAG: %s",
-                e, exc_info=True,
+                e,
+                exc_info=True,
             )
             fallback = self.retrieve(
                 query=query or "signal_fusion",
@@ -569,16 +564,16 @@ class RagRetrievalEngine:
             all_results: list[dict] = []
             for source in sources:
                 try:
-                    source_results = self._query_source(
-                        query=search_query, source=source, n_results=n_results
-                    )
+                    source_results = self._query_source(query=search_query, source=source, n_results=n_results)
                     for r in source_results:
                         r["_retrieval_source_filter"] = source
                     all_results.extend(source_results)
                 except (OSError, RuntimeError, ValueError, KeyError) as e:
                     logger.warning(
                         "Cross-source query failed for %s: %s",
-                        source, e, exc_info=True,
+                        source,
+                        e,
+                        exc_info=True,
                     )
 
         deduplicated = self._deduplicate(all_results)
@@ -614,14 +609,18 @@ class RagRetrievalEngine:
     ) -> list[dict]:
         try:
             raw = self.kb.query_by_source(
-                source=source, query=query, n_results=n_results,
+                source=source,
+                query=query,
+                n_results=n_results,
                 extra_filters=where_filters,
             )
         except (OSError, RuntimeError, ValueError, KeyError) as kb_err:
             # 单源查询失败时回退到通用检索，记录失败原因
             logger.debug(
                 "Source query failed for %s, falling back to general: %s",
-                source, kb_err, exc_info=True,
+                source,
+                kb_err,
+                exc_info=True,
             )
             return self._query_general(query, n_results)
         return self._parse_chroma_result(raw)
@@ -632,7 +631,9 @@ class RagRetrievalEngine:
         except (OSError, RuntimeError, ValueError, KeyError) as kb_err:
             # 通用查询失败时返回空列表，记录以便后续排查
             logger.debug(
-                "General query failed: %s", kb_err, exc_info=True,
+                "General query failed: %s",
+                kb_err,
+                exc_info=True,
             )
             return []
         return self._parse_chroma_result(raw)
@@ -754,29 +755,18 @@ class RagRetrievalEngine:
             "result_cache": ENABLE_RESULT_CACHE,
             "result_cache_stats": self._cache.stats(),
             "hybrid_search": ENABLE_HYBRID_SEARCH and self._hybrid_engine is not None,
-            "hybrid_search_stats": (
-                self._hybrid_engine.get_stats()
-                if self._hybrid_engine is not None
-                else None
-            ),
+            "hybrid_search_stats": (self._hybrid_engine.get_stats() if self._hybrid_engine is not None else None),
             "reranker": ENABLE_RERANKER and self._reranker is not None,
-            "reranker_stats": (
-                self._reranker.get_performance_metrics()
-                if self._reranker is not None
-                else None
-            ),
+            "reranker_stats": (self._reranker.get_performance_metrics() if self._reranker is not None else None),
             "query_rewrite": ENABLE_QUERY_REWRITE and self._query_rewriter is not None,
             "hyde": ENABLE_HYDE and self._query_rewriter is not None,
-            "query_rewriter_stats": (
-                self._query_rewriter.get_stats()
-                if self._query_rewriter is not None
-                else None
-            ),
+            "query_rewriter_stats": (self._query_rewriter.get_stats() if self._query_rewriter is not None else None),
         }
 
     def clear_cache(self) -> None:
         """清空检索结果缓存。"""
         self._cache.clear()
+
 
 # ===========================================================================
 # 以下符号由安装验证（2026-08-03）发现拆分/迁移丢失，从 592aedb 恢复
@@ -788,9 +778,9 @@ _CLUSTER_TAG_FILTERS: dict[str, dict] = {
     "material_wear": {"category": "tool_wear"},
     "cutting_params": {"category": "tool_wear"},
     "vibration_wear": {"has_vibration": True},
-    "material_compare": {},   # 依赖 source_filters 即可
-    "cross_source": {},       # 跨源检索不额外限制
-    "signal_fusion": {},      # signal_fusion source 已通过 source_filters 过滤
+    "material_compare": {},  # 依赖 source_filters 即可
+    "cross_source": {},  # 跨源检索不额外限制
+    "signal_fusion": {},  # signal_fusion source 已通过 source_filters 过滤
 }
 
 # 查询实体提取模式（历史缺失，2026-08-03 安装验证补齐）：
@@ -799,6 +789,7 @@ _QUERY_ENTITY_PATTERNS: list[re.Pattern] = [
     re.compile(r"[\u4e00-\u9fff]{2,6}"),
     re.compile(r"[a-zA-Z][a-zA-Z0-9_-]{1,31}"),
 ]
+
 
 def _extract_query_entities(query: str) -> list[str]:
     """从查询文本中提取制造领域实体（小写形式）。
@@ -814,5 +805,3 @@ def _extract_query_entities(query: str) -> list[str]:
             if len(entity) >= 2:
                 found.add(entity)
     return sorted(found)
-
-

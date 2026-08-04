@@ -470,8 +470,9 @@ class TestAgentAuditLog:
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.setenv("USERPROFILE", str(tmp_path))
         log = AgentAuditLog()
-        # 应在 home/.lingjing/agent_audit.log
-        assert log._log_path.parent.name == ".lingjing"
+        # V2.7.0 起日志目录改为项目 logs/audit/（原 ~/.lingjing/）
+        assert log._log_path.parent.name == "audit"
+        assert log._log_path.parent.parent.name == "logs"
         assert log._log_path.name == "agent_audit.log"
 
 
@@ -645,7 +646,10 @@ class TestAgentPathBranch:
         client = TestClient(app_factory(agent_auth_enabled=True))
         response = client.post("/api/agent/v1/predict", json={})
         assert response.status_code == 401
-        assert "lj_agent_" in response.text or "agent" in response.text.lower()
+        # P1-16 安全修复：错误响应不得泄露 lj_agent_ 前缀（降低枚举成本）
+        data = response.json()
+        assert data["error"] == "unauthorized"
+        assert "lj_agent_" not in response.text
 
     def test_agent_predict_with_invalid_token_returns_401(self, app_factory):
         client = TestClient(app_factory(agent_auth_enabled=True))
@@ -667,7 +671,9 @@ class TestAgentPathBranch:
 
     def test_agent_rate_limit_returns_429(self, app_factory, monkeypatch):
         # 注入一个会立即返回 False 的速率限制器
-        from app.auth import unified_auth as ua
+        # 注意：middleware 通过 `from unified_auth import agent_rate_limiter` 绑定引用，
+        # 必须 patch middleware 模块命名空间（patch unified_auth 不生效）
+        from app.auth import middleware as mw
 
         class _RL:
             def check_rate_limit(self, agent_id):
@@ -675,7 +681,7 @@ class TestAgentPathBranch:
 
             _max_rpm = 60
 
-        monkeypatch.setattr(ua, "agent_rate_limiter", _RL())
+        monkeypatch.setattr(mw, "agent_rate_limiter", _RL())
 
         # 注入一个能返回 agent_token 的 store
         class _Store:
@@ -691,9 +697,9 @@ class TestAgentPathBranch:
                 t.scopes = ["T"]
                 return t
 
-        from app.auth import unified_auth as ua2
+        from app.auth import middleware as mw
 
-        monkeypatch.setattr(ua2, "_get_agent_token_store", lambda: _Store())
+        monkeypatch.setattr(mw, "_get_agent_token_store", lambda: _Store())
 
         client = TestClient(app_factory(agent_auth_enabled=True))
         response = client.post(
@@ -727,7 +733,9 @@ class TestAgentPathBranch:
                 t.scopes = ["T", "B"]
                 return t
 
-        monkeypatch.setattr(ua, "_get_agent_token_store", lambda: _Store())
+        from app.auth import middleware as mw
+
+        monkeypatch.setattr(mw, "_get_agent_token_store", lambda: _Store())
 
         client = TestClient(app_factory(agent_auth_enabled=True))
         # POST /api/agent/v1/train requires idempotency key (B-class)
@@ -762,7 +770,9 @@ class TestAgentPathBranch:
                 t.scopes = ["T", "B"]
                 return t
 
-        monkeypatch.setattr(ua, "_get_agent_token_store", lambda: _Store())
+        from app.auth import middleware as mw
+
+        monkeypatch.setattr(mw, "_get_agent_token_store", lambda: _Store())
 
         # 预存幂等键
         ua.idempotency_store.store("idem-1", "a1", {"status": "queued"})
@@ -880,8 +890,11 @@ class TestCheckLnnAuth:
             def get_required_permission(self, method, path):
                 return PermissionLevel.R
 
-        # Patch permission_checker inside unified_auth
-        with patch.object(ua, "_get_token_metadata", return_value={"level": "T"}):
+        # Patch middleware 层（LNN 鉴权实际调用 middleware._get_token_metadata）
+        with patch(
+            "app.auth.middleware._get_token_metadata",
+            return_value={"level": "T"},
+        ):
             with patch(
                 "app.auth.permissions.permission_checker",
                 _PermChecker(),

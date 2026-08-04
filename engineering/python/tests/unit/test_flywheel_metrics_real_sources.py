@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
 import json
 import warnings
 from datetime import datetime, timedelta, timezone
@@ -237,7 +238,9 @@ class InMemorySnapshotStore(ISnapshotStore):
         created_by: str,
         notes: str = "",
     ) -> ExperimentSnapshot:
-        snapshot_id = f"snap-{hashlib.sha256(str(datetime.utcnow()).encode()).hexdigest()[:12]}"
+        # Windows 时钟精度低：str(datetime.utcnow()) 在连续调用时可能相同，
+        # 导致 snapshot_id 碰撞、后建快照覆盖先建快照（历史 flaky 根因）。
+        snapshot_id = f"snap-{uuid.uuid4().hex[:12]}"
         snap = ExperimentSnapshot(
             snapshot_id=snapshot_id,
             created_at=datetime.utcnow(),
@@ -263,7 +266,8 @@ class InMemorySnapshotStore(ISnapshotStore):
         self, *, filters: Optional[dict[str, Any]] = None
     ) -> list[ExperimentSnapshot]:
         if self.list_should_fail:
-            self.list_should_fail = False
+            # 持续失败（不自动重置）：模拟真实故障——collect 内多个指标
+            # 各自调用 list，一次性失败会让后续调用读到数据（测试意图破坏）
             raise RuntimeError("模拟 list 失败")
         snaps = list(self._snapshots.values())
         # 按 created_at 降序

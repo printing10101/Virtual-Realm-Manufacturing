@@ -1,4 +1,5 @@
 """Agent 状态 Repository（V3.0 Repository 层）。"""
+
 from __future__ import annotations
 
 from app.state.manager import StatePersistenceManager, get_state_persistence

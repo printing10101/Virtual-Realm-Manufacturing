@@ -6,6 +6,7 @@
     2. 工作流至少有一个终止节点（出度为 0）
     3. 节点 task_type 在 ITaskRegistry 中已注册（可选，由 runner 在运行时检查）
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -74,9 +75,7 @@ def validate_workflow_spec(
         if registered_types:
             for node in spec.nodes:
                 if node.task_type not in registered_types:
-                    errors.append(
-                        f"节点 {node.node_id} 的 task_type '{node.task_type}' 未在注册表中注册"
-                    )
+                    errors.append(f"节点 {node.node_id} 的 task_type '{node.task_type}' 未在注册表中注册")
 
     return errors
 

@@ -74,12 +74,14 @@ class PredictorAdapterError(Exception):
 
 # HRC52 材料 ID 列表（项目记忆硬约束：HRC52 不可使用纯文献数据）
 # 这些材料 ID 触发 pending_calibration 标注 + 置信度降低
-PENDING_CALIBRATION_MATERIALS: frozenset[str] = frozenset({
-    "steel_hrc52",
-    "hrc52",
-    "hrc_52",
-    "hardened_steel_hrc52",
-})
+PENDING_CALIBRATION_MATERIALS: frozenset[str] = frozenset(
+    {
+        "steel_hrc52",
+        "hrc52",
+        "hrc_52",
+        "hardened_steel_hrc52",
+    }
+)
 
 # 默认置信度
 DEFAULT_CONFIDENCE = 0.8
@@ -111,7 +113,10 @@ def check_ltc_model_available() -> bool:
         # 与 predictor.py 中 _model_dir 保持一致
         model_dir = os.path.join(
             os.path.dirname(__file__),
-            "..", "simulation", "chatter", "checkpoints",
+            "..",
+            "simulation",
+            "chatter",
+            "checkpoints",
         )
         model_dir = os.path.normpath(model_dir)
         # 阶段2 解耦：优先 ONNX，向后兼容 torch 检查点
@@ -215,10 +220,7 @@ class ChatterPredictorAdapter:
         # HRC52 标定状态注入
         material_calibration_status = self._resolve_calibration_status(material_id)
         if material_calibration_status == "pending_calibration":
-            warnings.append(
-                f"材料 {material_id} 标注 pending_calibration，"
-                f"K_s 为工程估算值，置信度已强制降低"
-            )
+            warnings.append(f"材料 {material_id} 标注 pending_calibration，K_s 为工程估算值，置信度已强制降低")
 
         # 双路径预测
         prediction = self._predict_dual_path(
@@ -244,7 +246,7 @@ class ChatterPredictorAdapter:
         if prediction.limit_depth_mm > 0 and axial_depth > SAFETY_MARGIN_RATIO * prediction.limit_depth_mm:
             warnings.append(
                 f"实际切深 {axial_depth:.2f}mm 超过极限切深 {prediction.limit_depth_mm:.2f}mm "
-                f"的 {SAFETY_MARGIN_RATIO*100:.0f}%，建议降低切深或主轴转速"
+                f"的 {SAFETY_MARGIN_RATIO * 100:.0f}%，建议降低切深或主轴转速"
             )
 
         return FeatureChatterResult(
@@ -333,7 +335,6 @@ class ChatterPredictorAdapter:
             tool=tool_id,
         )
 
-        method = result.get("method", "analytical")
         ltc_active = bool(result.get("ltc_active", False))
         limit_depth = float(result.get("limit_depth", 0.0))
         stable = bool(result.get("stable", True))

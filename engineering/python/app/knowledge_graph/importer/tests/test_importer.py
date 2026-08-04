@@ -17,16 +17,13 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from app.knowledge_graph.graph_store import GraphStore
 from app.knowledge_graph.importer import (
     ImportReport,
-    ImportStats,
     RuleParser,
     import_all,
     import_machines,
@@ -53,7 +50,6 @@ from app.knowledge_graph.importer.json_importer import (
     _slugify_id,
 )
 from app.knowledge_graph.importer.rule_parser import (
-    ParsedFeature,
     ParsedRule,
 )
 
@@ -284,24 +280,16 @@ class TestMaterialDeduper:
 class TestToolDeduper:
     def test_dedup_by_series_and_diameter(self) -> None:
         d = _ToolDeduper()
-        nid1, is_dup1 = d.resolve(
-            {"id": "a", "series": "twist_drill", "diameter_mm": 5}
-        )
-        nid2, is_dup2 = d.resolve(
-            {"id": "b", "series": "twist_drill", "diameter_mm": 5}
-        )
+        nid1, is_dup1 = d.resolve({"id": "a", "series": "twist_drill", "diameter_mm": 5})
+        nid2, is_dup2 = d.resolve({"id": "b", "series": "twist_drill", "diameter_mm": 5})
         assert not is_dup1
         assert is_dup2
         assert nid1 == nid2
 
     def test_dedup_different_diameter(self) -> None:
         d = _ToolDeduper()
-        nid1, _ = d.resolve(
-            {"id": "a", "series": "twist_drill", "diameter_mm": 5}
-        )
-        nid2, _ = d.resolve(
-            {"id": "b", "series": "twist_drill", "diameter_mm": 6}
-        )
+        nid1, _ = d.resolve({"id": "a", "series": "twist_drill", "diameter_mm": 5})
+        nid2, _ = d.resolve({"id": "b", "series": "twist_drill", "diameter_mm": 6})
         assert nid1 != nid2
 
     def test_dedup_missing_fields_falls_back(self) -> None:
@@ -313,9 +301,7 @@ class TestToolDeduper:
 
     def test_dedup_invalid_diameter(self) -> None:
         d = _ToolDeduper()
-        nid, is_dup = d.resolve(
-            {"id": "x", "series": "twist_drill", "diameter_mm": "not-a-number"}
-        )
+        nid, is_dup = d.resolve({"id": "x", "series": "twist_drill", "diameter_mm": "not-a-number"})
         # 直径不是 float 时返回 (None, False)
         assert nid is None
         assert not is_dup
@@ -384,12 +370,8 @@ class TestRuleParser:
     def test_parse_dedup_shared_features(self) -> None:
         """跨规则共享 feature 时不应创建重复 feature_id。"""
         parser = RuleParser()
-        r1 = parser.parse_single_rule(
-            {"id": "r1", "name": "平面加工", "description": "", "details": {}}
-        )
-        r2 = parser.parse_single_rule(
-            {"id": "r2", "name": "定位平面", "description": "", "details": {}}
-        )
+        r1 = parser.parse_single_rule({"id": "r1", "name": "平面加工", "description": "", "details": {}})
+        r2 = parser.parse_single_rule({"id": "r2", "name": "定位平面", "description": "", "details": {}})
         names_r1 = {f.name for f in r1.features}
         names_r2 = {f.name for f in r2.features}
         # 都应至少包含"面"
@@ -548,9 +530,7 @@ class TestImportProcessRules:
 
 
 class TestImportAll:
-    def test_returns_report(
-        self, monkeypatch: pytest.MonkeyPatch, sample_data_set: dict[str, Path]
-    ) -> None:
+    def test_returns_report(self, monkeypatch: pytest.MonkeyPatch, sample_data_set: dict[str, Path]) -> None:
         """通过 monkeypatch 把 4 个 JSON 路径替换为临时文件，再调用 import_all。"""
         from app.knowledge_graph.importer import json_importer
 
@@ -582,9 +562,7 @@ class TestImportAll:
         md = report.render_markdown()
         assert "知识图谱导入结果报告" in md
 
-    def test_report_to_dict(
-        self, monkeypatch: pytest.MonkeyPatch, sample_data_set: dict[str, Path]
-    ) -> None:
+    def test_report_to_dict(self, monkeypatch: pytest.MonkeyPatch, sample_data_set: dict[str, Path]) -> None:
         from app.knowledge_graph.importer import json_importer
 
         monkeypatch.setattr(json_importer, "MATERIALS_JSON", sample_data_set["materials"])
@@ -630,13 +608,11 @@ class TestEndToEndRealData:
 
     def test_duplicate_import_does_not_grow(self) -> None:
         g = GraphStore(auto_load=False)
-        r1 = import_all(graph=g, flush_to_db=False)
+        import_all(graph=g, flush_to_db=False)
         nodes1 = g.node_count()
-        edges1 = g.edge_count()
         # 第二次导入：所有节点都应识别为重复，不应增长
         r2 = import_all(graph=g, flush_to_db=False)
         nodes2 = g.node_count()
-        edges2 = g.edge_count()
         # 节点数不会增长（节点层去重）；但 MultiDiGraph 边层可能增长
         # 因为不同 import 调用会再次 add_edge 同 (u,v,key)
         # MultiDiGraph 允许多个相同 key 的边，第二次导入会增长。
@@ -660,8 +636,6 @@ class TestLoadFromRepository:
         # 在无 DB_URL 的测试环境中 mock 掉 sessionmaker，避免长时间阻塞
         from app.knowledge_graph import repository as _repo
 
-        monkeypatch.setattr(
-            _repo, "get_sync_sessionmaker", lambda: None, raising=False
-        )
+        monkeypatch.setattr(_repo, "get_sync_sessionmaker", lambda: None, raising=False)
         g = load_graph_from_repository()
         assert isinstance(g, GraphStore)

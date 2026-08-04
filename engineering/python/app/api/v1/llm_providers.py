@@ -22,11 +22,10 @@ from app.ai.llm.provider_base import (
     ProviderConfig,
     ProviderType,
 )
-from app.ai.llm.provider_registry import ProviderRegistry, get_registry
+from app.ai.llm.provider_registry import get_registry
 from app.ai.llm.auto_detect import get_detector
 from app.ai.llm.router import (
     RoutingStrategy,
-    RoutingRequest,
     get_router,
 )
 from app.auth.permissions import require_permission
@@ -72,9 +71,7 @@ class ProviderUpdateRequest(BaseModel):
 
     name: str | None = None
     base_url: str | None = None
-    api_key: str | None = Field(
-        None, description="留空表示不更新；显式传空串表示清除"
-    )
+    api_key: str | None = Field(None, description="留空表示不更新；显式传空串表示清除")
     default_model: str | None = None
     timeout: int | None = Field(None, ge=5, le=600)
     max_retries: int | None = Field(None, ge=0, le=10)
@@ -88,9 +85,7 @@ class ProviderUpdateRequest(BaseModel):
 class ChatTestRequest(BaseModel):
     """Provider 调用测试请求体。"""
 
-    messages: list[dict[str, str]] = Field(
-        ..., description="消息列表，例如 [{'role':'user','content':'hello'}]"
-    )
+    messages: list[dict[str, str]] = Field(..., description="消息列表，例如 [{'role':'user','content':'hello'}]")
     max_tokens: int = Field(256, ge=1, le=8192)
     temperature: float = Field(0.7, ge=0.0, le=2.0)
     model: str | None = Field(None, description="可选，覆盖默认模型")
@@ -147,9 +142,7 @@ def _build_config(req: ProviderCreateRequest) -> ProviderConfig:
     )
 
 
-def _apply_update(
-    config: ProviderConfig, req: ProviderUpdateRequest
-) -> ProviderConfig:
+def _apply_update(config: ProviderConfig, req: ProviderUpdateRequest) -> ProviderConfig:
     """将部分更新应用到现有 ProviderConfig。"""
     if req.name is not None:
         config.name = req.name
@@ -249,10 +242,7 @@ async def list_provider_types():
 async def list_capabilities():
     return {
         "ok": True,
-        "data": [
-            {"value": c.value, "label": c.value}
-            for c in ProviderCapability
-        ],
+        "data": [{"value": c.value, "label": c.value} for c in ProviderCapability],
     }
 
 
@@ -261,9 +251,7 @@ async def detect_preview():
     """扫描本机 LLM 服务，返回探测结果，不修改任何配置。"""
     detector = get_detector()
     try:
-        results = await asyncio.wait_for(
-            detector.detect_all(), timeout=LLM_DETECT_TIMEOUT_SEC
-        )
+        results = await asyncio.wait_for(detector.detect_all(), timeout=LLM_DETECT_TIMEOUT_SEC)
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
@@ -289,9 +277,7 @@ async def detect_and_import():
     """
     detector = get_detector()
     try:
-        results = await asyncio.wait_for(
-            detector.detect_all(), timeout=LLM_DETECT_TIMEOUT_SEC
-        )
+        results = await asyncio.wait_for(detector.detect_all(), timeout=LLM_DETECT_TIMEOUT_SEC)
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
@@ -405,9 +391,7 @@ async def health_check_provider(provider_id: str):
     try:
         status = await instance.health_check()
     except Exception as e:
-        logger.warning(
-            "健康检查失败 (%s): %s", provider_id, e, exc_info=True
-        )
+        logger.warning("健康检查失败 (%s): %s", provider_id, e, exc_info=True)
         return {
             "ok": True,
             "data": {
@@ -454,9 +438,7 @@ async def create_provider(req: ProviderCreateRequest):
     summary="更新 Provider 配置",
     dependencies=[Depends(require_permission("system:config"))],
 )
-async def update_provider(
-    provider_id: str, req: ProviderUpdateRequest
-):
+async def update_provider(provider_id: str, req: ProviderUpdateRequest):
     registry = get_registry()
     existing = registry.get_provider(provider_id)
     if existing is None:
@@ -505,9 +487,7 @@ async def activate_provider(provider_id: str):
     summary="启用/禁用 Provider",
     dependencies=[Depends(require_permission("system:config"))],
 )
-async def enable_provider(
-    provider_id: str, enabled: bool = Query(..., description="True=启用，False=禁用")
-):
+async def enable_provider(provider_id: str, enabled: bool = Query(..., description="True=启用，False=禁用")):
     registry = get_registry()
     success = registry.set_enabled(provider_id, enabled)
     if not success:
@@ -524,9 +504,7 @@ async def enable_provider(
     summary="测试 Provider 调用（发送一条对话）",
     dependencies=[Depends(require_permission("system:config"))],
 )
-async def test_provider(
-    provider_id: str, req: ChatTestRequest
-):
+async def test_provider(provider_id: str, req: ChatTestRequest):
     """向指定 Provider 发送一条测试对话，返回响应内容与延迟。"""
     registry = get_registry()
     instance = registry.get_provider_instance(provider_id)
@@ -547,9 +525,7 @@ async def test_provider(
         )
     except Exception as e:
         elapsed_ms = (time.time() - start) * 1000
-        logger.warning(
-            "Provider 测试失败 (%s): %s", provider_id, e, exc_info=True
-        )
+        logger.warning("Provider 测试失败 (%s): %s", provider_id, e, exc_info=True)
         # 包装异常消息，避免直接回显内部错误细节
         safe = safe_error_message(
             e, context=f"llm_providers.test_provider[{provider_id}]", fallback="Provider 测试失败"

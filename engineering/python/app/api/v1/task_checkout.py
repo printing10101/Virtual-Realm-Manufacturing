@@ -5,9 +5,8 @@ Endpoints for atomic task checkout, execution lock management,
 task board, and checkout queue processing.
 """
 
-
 import logging
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, Field
@@ -55,9 +54,7 @@ class RegisterTaskRequest(BaseModel):
     parent_goal_id: Optional[str] = Field(default=None, description="父目标 ID")
     project_id: Optional[str] = Field(default=None, description="项目 ID")
     required_gpu_memory: float = Field(default=0.0, description="所需 GPU 显存")
-    blockers: Union[list[str], str] = Field(
-        default_factory=list, description="阻塞依赖（列表或 JSON 字符串）"
-    )
+    blockers: Union[list[str], str] = Field(default_factory=list, description="阻塞依赖（列表或 JSON 字符串）")
     priority: int = Field(default=3, ge=1, le=5, description="优先级 1-5")
 
 
@@ -158,9 +155,7 @@ async def checkout_task(data: CheckoutTaskRequest):
     agent_id = data.agent_id
 
     if not task_id or not agent_id:
-        return error(
-            code=ErrorCode.INVALID_REQUEST, message="task_id and agent_id are required"
-        )
+        return error(code=ErrorCode.INVALID_REQUEST, message="task_id and agent_id are required")
 
     try:
         agent_mode = AgentMode(data.agent_mode)
@@ -198,9 +193,7 @@ async def checkout_task(data: CheckoutTaskRequest):
             code=ErrorCode.INVALID_REQUEST,
             message=result.message,
             detail={
-                "failure_reason": result.failure_reason.value
-                if result.failure_reason
-                else None,
+                "failure_reason": result.failure_reason.value if result.failure_reason else None,
                 "retry_recommended": result.retry_recommended,
                 "retry_delay_minutes": result.retry_delay_minutes,
             },
@@ -247,11 +240,7 @@ async def complete_task(task_id: str, data: CompleteTaskRequest):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=result.message,
-            detail={
-                "failure_reason": result.failure_reason.value
-                if result.failure_reason
-                else None
-            },
+            detail={"failure_reason": result.failure_reason.value if result.failure_reason else None},
         )
 
 
@@ -272,11 +261,7 @@ async def fail_task(task_id: str, data: FailTaskRequest):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=result.message,
-            detail={
-                "failure_reason": result.failure_reason.value
-                if result.failure_reason
-                else None
-            },
+            detail={"failure_reason": result.failure_reason.value if result.failure_reason else None},
         )
 
 
@@ -296,11 +281,7 @@ async def abandon_task(task_id: str, data: AbandonTaskRequest):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=result.message,
-            detail={
-                "failure_reason": result.failure_reason.value
-                if result.failure_reason
-                else None
-            },
+            detail={"failure_reason": result.failure_reason.value if result.failure_reason else None},
         )
 
 
@@ -352,11 +333,7 @@ async def force_release_lock(
         return error(
             code=ErrorCode.NOT_FOUND,
             message=result.message,
-            detail={
-                "failure_reason": result.failure_reason.value
-                if result.failure_reason
-                else None
-            },
+            detail={"failure_reason": result.failure_reason.value if result.failure_reason else None},
         )
 
 
@@ -386,9 +363,7 @@ async def enqueue_checkout(data: EnqueueCheckoutRequest):
     agent_id = data.agent_id
 
     if not task_id or not agent_id:
-        return error(
-            code=ErrorCode.INVALID_REQUEST, message="task_id and agent_id are required"
-        )
+        return error(code=ErrorCode.INVALID_REQUEST, message="task_id and agent_id are required")
 
     try:
         priority = CheckoutPriority(int(data.priority))

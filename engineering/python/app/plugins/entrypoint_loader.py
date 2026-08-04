@@ -39,6 +39,7 @@ legacy PluginMetadata.entry_point 格式为文件路径（如 ``main.py``），
     - 模块名使用 plugin_<id> 命名空间，避免与已加载模块冲突
     - 重复加载同名插件时，先从 sys.modules 移除旧模块，确保最新代码生效
 """
+
 from __future__ import annotations
 
 import importlib
@@ -408,19 +409,20 @@ def create_plugin_instance(
             if actual.id != manifest.id:
                 logger.warning(
                     "Plugin '%s' manifest().id ('%s') 与加载时 manifest.id ('%s') 不一致",
-                    manifest.id, actual.id, manifest.id,
+                    manifest.id,
+                    actual.id,
+                    manifest.id,
                 )
         except (RuntimeError, ValueError) as e:
             logger.warning(
                 "Plugin '%s' manifest() 调用失败，跳过一致性校验: %s",
-                manifest.id, e,
+                manifest.id,
+                e,
             )
         return instance
 
     # legacy 插件：构造 metadata 并用 adapter 包装
-    metadata = _build_legacy_metadata_from_manifest(
-        manifest, plugin_path=plugin_path
-    )
+    metadata = _build_legacy_metadata_from_manifest(manifest, plugin_path=plugin_path)
     try:
         legacy_instance = cls()
     except (RuntimeError, ValueError, TypeError) as e:
@@ -436,7 +438,8 @@ def create_plugin_instance(
         except (RuntimeError, ValueError) as e:
             logger.warning(
                 "Legacy plugin '%s' set_metadata failed: %s",
-                manifest.id, e,
+                manifest.id,
+                e,
             )
 
     return LegacyPluginInstanceAdapter(

@@ -51,9 +51,7 @@ class UniwearKnowledgeBuilder:
 
         lines: list[str] = []
         lines.append("【Uniwear 多材料刀具磨损数据集概述】")
-        lines.append(
-            "Uniwear 是一个面向刀具磨损预测与健康监测的多材料数据集，包含两个子数据集："
-        )
+        lines.append("Uniwear 是一个面向刀具磨损预测与健康监测的多材料数据集，包含两个子数据集：")
         lines.append("")
 
         for ds_key, ds_info in summary.get("datasets", {}).items():
@@ -64,9 +62,7 @@ class UniwearKnowledgeBuilder:
             lines.append(f"- 样本数：{ds_info.get('rows', 0):,} 行")
             lines.append(f"- 特征列数：{ds_info.get('columns', 0)}")
             lines.append(f"- 实验数：{ds_info.get('experiment_count', 0)}")
-            lines.append(
-                f"- 材料：{ds_info.get('material_full', ds_info.get('material', 'N/A'))}"
-            )
+            lines.append(f"- 材料：{ds_info.get('material_full', ds_info.get('material', 'N/A'))}")
             lines.append(f"- 信号类型：{ds_info.get('signal_types', 'N/A')}")
             lines.append(f"- 实验编号：{', '.join(ds_info.get('experiments', []))}")
             lines.append("")
@@ -79,9 +75,7 @@ class UniwearKnowledgeBuilder:
             wear_rates = []
             for exp_name, exp_data in mat_info.get("experiments", {}).items():
                 if "error" not in exp_data:
-                    wear_rates.append(
-                        f"  · {exp_name}：磨损率 {exp_data.get('wear_rate', 0):.6f}"
-                    )
+                    wear_rates.append(f"  · {exp_name}：磨损率 {exp_data.get('wear_rate', 0):.6f}")
             if wear_rates:
                 lines.append("- 各实验磨损率：")
                 lines.extend(wear_rates)
@@ -89,20 +83,27 @@ class UniwearKnowledgeBuilder:
 
         lines.append("## 应用场景")
         lines.append("- NUAA数据集（TC4钛合金）：适用于航空航天材料加工刀具磨损预测")
-        lines.append(
-            "- PHM2010数据集（HRC52不锈钢）：适用于高硬度不锈钢加工刀具状态监测"
-        )
+        lines.append("- PHM2010数据集（HRC52不锈钢）：适用于高硬度不锈钢加工刀具状态监测")
         lines.append("- 联合分析可支持跨材料迁移学习，提高模型泛化能力")
 
         doc_id = "uniwear_dataset_overview"
         document = "\n".join(lines)
         # 结构化实体：数据集概述涵盖所有数据集与材料
         overview_entities = [
-            "uniwear", "nuaa", "phm2010",
-            NUAA_MATERIAL.lower(), PHM2010_MATERIAL.lower(),
-            NUAA_MATERIAL_FULL.lower(), PHM2010_MATERIAL_FULL.lower(),
-            "tc4", "hrc52", "钛合金", "不锈钢",
-            "刀具磨损", "多材料", "数据集",
+            "uniwear",
+            "nuaa",
+            "phm2010",
+            NUAA_MATERIAL.lower(),
+            PHM2010_MATERIAL.lower(),
+            NUAA_MATERIAL_FULL.lower(),
+            PHM2010_MATERIAL_FULL.lower(),
+            "tc4",
+            "hrc52",
+            "钛合金",
+            "不锈钢",
+            "刀具磨损",
+            "多材料",
+            "数据集",
         ]
         try:
             self.kb.add_knowledge(
@@ -120,7 +121,8 @@ class UniwearKnowledgeBuilder:
         except (ValueError, RuntimeError, ConnectionError, OSError) as kb_err:
             # 主 doc_id 冲突时，UUID 后缀兜底；其他异常（序列化/类型错误等）也一并捕获
             logger.debug(
-                "Primary doc_id collision, retrying with uuid suffix: %s", kb_err,
+                "Primary doc_id collision, retrying with uuid suffix: %s",
+                kb_err,
                 exc_info=True,
             )
             doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
@@ -154,9 +156,7 @@ class UniwearKnowledgeBuilder:
             if exp_df.empty:
                 continue
 
-            stats = self.loader.compute_statistics(
-                UniwearDataset.NUAA, experiment_tag=exp
-            )
+            stats = self.loader.compute_statistics(UniwearDataset.NUAA, experiment_tag=exp)
             self.loader.get_wear_data(UniwearDataset.NUAA, experiment_tag=exp)
 
             lines: list[str] = []
@@ -193,26 +193,32 @@ class UniwearKnowledgeBuilder:
             lines.append("")
             lines.append("## 工艺建议（TC4钛合金）")
             lines.append("- 钛合金TC4导热性差，建议使用充足冷却液降低切削温度")
-            lines.append(
-                "- 推荐使用硬质合金涂层刀具（TiAlN涂层），切削速度80-120 m/min"
-            )
+            lines.append("- 推荐使用硬质合金涂层刀具（TiAlN涂层），切削速度80-120 m/min")
             lines.append("- 进给量建议0.05-0.15 mm/tooth，背吃刀量1-3 mm")
             lines.append("- 钛合金易产生加工硬化，需保持稳定切削避免刀具振动")
-            lines.append(
-                f"- 基于本实验数据，平均磨损率为 {ws.get('mean_wear_rate', 'N/A')} mm/样本"
-            )
+            lines.append(f"- 基于本实验数据，平均磨损率为 {ws.get('mean_wear_rate', 'N/A')} mm/样本")
 
             doc_id = f"uniwear_nuaa_{exp}"
             document = "\n".join(lines)
             # 结构化实体：实验编号 + 材料 + 数据集 + 信号类型 + 工艺
             nuaa_entities = [
-                "nuaa", "uniwear",
-                NUAA_MATERIAL.lower(), NUAA_MATERIAL_FULL.lower(),
-                "tc4", "钛合金", "ti-6al-4v",
+                "nuaa",
+                "uniwear",
+                NUAA_MATERIAL.lower(),
+                NUAA_MATERIAL_FULL.lower(),
+                "tc4",
+                "钛合金",
+                "ti-6al-4v",
                 exp.lower(),
                 PROCESS_CN_MAP.get(exp, "").lower(),
-                "正交切削", "刀具磨损", "振动", "切削力", "主轴功率",
-                "force", "vibration", "power",
+                "正交切削",
+                "刀具磨损",
+                "振动",
+                "切削力",
+                "主轴功率",
+                "force",
+                "vibration",
+                "power",
             ]
             for attempt in range(3):
                 try:
@@ -263,9 +269,7 @@ class UniwearKnowledgeBuilder:
             if exp_df.empty:
                 continue
 
-            stats = self.loader.compute_statistics(
-                UniwearDataset.PHM2010, experiment_tag=exp
-            )
+            stats = self.loader.compute_statistics(UniwearDataset.PHM2010, experiment_tag=exp)
 
             lines: list[str] = []
             lines.append(f"【PHM2010 不锈钢HRC52 实验报告】{exp}")
@@ -297,21 +301,28 @@ class UniwearKnowledgeBuilder:
             lines.append("- 切削速度建议60-100 m/min，进给量0.05-0.12 mm/r")
             lines.append("- 不锈钢加工易产生积屑瘤，需保持充分冷却和润滑")
             lines.append("- 注意监控切削力和振动信号，及时发现异常磨损")
-            lines.append(
-                f"- 基于本实验数据，平均磨损率为 {ws.get('mean_wear_rate', 'N/A')} mm/样本"
-            )
+            lines.append(f"- 基于本实验数据，平均磨损率为 {ws.get('mean_wear_rate', 'N/A')} mm/样本")
 
             doc_id = f"uniwear_phm2010_{exp}"
             document = "\n".join(lines)
             # 结构化实体：实验编号 + 材料 + 数据集 + 信号类型 + 工艺
             phm_entities = [
-                "phm2010", "uniwear",
-                PHM2010_MATERIAL.lower(), PHM2010_MATERIAL_FULL.lower(),
-                "hrc52", "不锈钢",
+                "phm2010",
+                "uniwear",
+                PHM2010_MATERIAL.lower(),
+                PHM2010_MATERIAL_FULL.lower(),
+                "hrc52",
+                "不锈钢",
                 exp.lower(),
                 PROCESS_CN_MAP.get(exp, "").lower(),
-                "全寿命切削", "刀具磨损", "振动", "切削力", "声发射",
-                "force", "vibration", "acoustic",
+                "全寿命切削",
+                "刀具磨损",
+                "振动",
+                "切削力",
+                "声发射",
+                "force",
+                "vibration",
+                "acoustic",
             ]
             for attempt in range(3):
                 try:
@@ -389,11 +400,25 @@ class UniwearKnowledgeBuilder:
         document = "\n".join(lines)
         # 结构化实体：两材料 + 信号类型 + 对比维度
         comparison_entities = [
-            "tc4", "hrc52", "钛合金", "不锈钢", "ti-6al-4v",
-            NUAA_MATERIAL.lower(), PHM2010_MATERIAL.lower(),
-            "nuaa", "phm2010", "uniwear",
-            "材料对比", "磨损特征", "振动分析", "跨材料迁移",
-            "振动", "切削力", "声发射", "弹性模量", "导热系数",
+            "tc4",
+            "hrc52",
+            "钛合金",
+            "不锈钢",
+            "ti-6al-4v",
+            NUAA_MATERIAL.lower(),
+            PHM2010_MATERIAL.lower(),
+            "nuaa",
+            "phm2010",
+            "uniwear",
+            "材料对比",
+            "磨损特征",
+            "振动分析",
+            "跨材料迁移",
+            "振动",
+            "切削力",
+            "声发射",
+            "弹性模量",
+            "导热系数",
         ]
         for attempt in range(3):
             try:
@@ -415,7 +440,9 @@ class UniwearKnowledgeBuilder:
                 # 知识库单条写入失败时，使用 UUID 后缀重试以避免 doc_id 冲突
                 logger.debug(
                     "Failed to add material comparison (attempt=%d), retrying with uuid suffix: %s",
-                    attempt, kb_err, exc_info=True,
+                    attempt,
+                    kb_err,
+                    exc_info=True,
                 )
                 doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
 
@@ -463,11 +490,25 @@ class UniwearKnowledgeBuilder:
         document = "\n".join(lines)
         # 结构化实体：信号类型 + 磨损阶段 + 监测策略
         vib_entities = [
-            "振动", "vibration", "rms", "声发射", "acoustic",
-            "频域", "频谱", "切削力", "主轴功率",
-            "振动磨损", "磨损关联", "信号分析", "监测策略",
-            "初期磨损", "稳态磨损", "加速磨损",
-            "多源融合", "uniwear", "刀具磨损",
+            "振动",
+            "vibration",
+            "rms",
+            "声发射",
+            "acoustic",
+            "频域",
+            "频谱",
+            "切削力",
+            "主轴功率",
+            "振动磨损",
+            "磨损关联",
+            "信号分析",
+            "监测策略",
+            "初期磨损",
+            "稳态磨损",
+            "加速磨损",
+            "多源融合",
+            "uniwear",
+            "刀具磨损",
         ]
         for attempt in range(3):
             try:
@@ -491,7 +532,9 @@ class UniwearKnowledgeBuilder:
                 # 知识库单条写入失败时，使用 UUID 后缀重试以避免 doc_id 冲突
                 logger.debug(
                     "Failed to add vibration-wear correlation (attempt=%d), retrying: %s",
-                    attempt, kb_err, exc_info=True,
+                    attempt,
+                    kb_err,
+                    exc_info=True,
                 )
                 doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
 
@@ -527,11 +570,28 @@ class UniwearKnowledgeBuilder:
         document = "\n".join(lines)
         # 结构化实体：所有数据源 + 材料 + 信号类型 + 验证策略
         cross_entities = [
-            "bosch", "bosch_cnc", "nuaa", "phm2010", "uniwear",
-            "tc4", "hrc52", "钛合金", "不锈钢", "铸铁",
-            "振动", "切削力", "声发射", "主轴功率",
-            "多源对比", "交叉验证", "振动分析", "磨损预测", "联合标定",
-            "铣削", "正交切削", "全寿命切削",
+            "bosch",
+            "bosch_cnc",
+            "nuaa",
+            "phm2010",
+            "uniwear",
+            "tc4",
+            "hrc52",
+            "钛合金",
+            "不锈钢",
+            "铸铁",
+            "振动",
+            "切削力",
+            "声发射",
+            "主轴功率",
+            "多源对比",
+            "交叉验证",
+            "振动分析",
+            "磨损预测",
+            "联合标定",
+            "铣削",
+            "正交切削",
+            "全寿命切削",
         ]
         for attempt in range(3):
             try:
@@ -552,7 +612,9 @@ class UniwearKnowledgeBuilder:
                 # 知识库单条写入失败时，使用 UUID 后缀重试以避免 doc_id 冲突
                 logger.debug(
                     "Failed to add cross-source comparison (attempt=%d), retrying: %s",
-                    attempt, kb_err, exc_info=True,
+                    attempt,
+                    kb_err,
+                    exc_info=True,
                 )
                 doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
 

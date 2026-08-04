@@ -14,6 +14,8 @@ OOM 风险）功能重复。
 
 from __future__ import annotations
 
+# ruff: noqa: F822  # re-export shim：__all__ 符号经 __getattr__ 惰性解析（见模块 docstring）
+
 __all__ = ["IdempotencyStore", "idempotency_store"]
 
 

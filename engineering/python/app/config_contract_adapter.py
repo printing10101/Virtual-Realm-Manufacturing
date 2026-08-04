@@ -30,6 +30,7 @@
 
 稳定性承诺：本文件为 Stable 契约 v1.0.0 实现，向后兼容扩展，breaking change 需新开 ADR。
 """
+
 from __future__ import annotations
 
 import os

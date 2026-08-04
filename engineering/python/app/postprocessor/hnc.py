@@ -21,11 +21,11 @@ HNC 与 Fanuc 0i 的关键差异：
 
 实现策略：继承 Fanuc 0i，只 override 跟 HNC 不同的方法。
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple
 
-from app.postprocessor.base import BasePostProcessor
 from app.postprocessor.fanuc import FanucPostProcessor
 
 
@@ -100,10 +100,7 @@ class HNCPostProcessor(FanucPostProcessor):
         i = center[0] - start[0]
         j = center[1] - start[1]
         feed = self._fmt(self.get_feed_rate(self.rapid_feed))
-        return (
-            f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} "
-            f"I{self._fmt(i)} J{self._fmt(j)} F{feed}"
-        )
+        return f"{g_code} X{self._fmt(end[0])} Y{self._fmt(end[1])} I{self._fmt(i)} J{self._fmt(j)} F{feed}"
 
     def format_cycle_drill(
         self,

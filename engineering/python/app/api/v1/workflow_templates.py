@@ -53,8 +53,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/workflow-templates", tags=["Workflow Templates"])
 
 
-
-
 # ---------------------------------------------------------------------------
 # Pydantic 请求模型
 # ---------------------------------------------------------------------------
@@ -84,18 +82,14 @@ class PublishRequestModel(BaseModel):
     version / description / author / license / spec 等字段。
     """
 
-    template_dict: dict[str, Any] = Field(
-        ..., description="模板 manifest 字典（template.yaml 的反序列化形式）"
-    )
+    template_dict: dict[str, Any] = Field(..., description="模板 manifest 字典（template.yaml 的反序列化形式）")
     changelog: str = Field(default="", description="版本变更说明")
 
 
 class RateRequestModel(BaseModel):
     """评分请求体."""
 
-    rating: float = Field(
-        ..., ge=1.0, le=5.0, description="评分（1.0-5.0）", examples=[4.5]
-    )
+    rating: float = Field(..., ge=1.0, le=5.0, description="评分（1.0-5.0）", examples=[4.5])
 
 
 # ---------------------------------------------------------------------------

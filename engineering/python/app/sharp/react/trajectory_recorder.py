@@ -185,9 +185,7 @@ class TrajectoryRecorder:
         step_idx = len(self._steps) + 1
         tool_name = tool_call.tool_name if tool_call else "finish"
         tool_args = tool_call.arguments if tool_call else {}
-        observation = self._truncate_observation(
-            tool_result.output if tool_result else None
-        )
+        observation = self._truncate_observation(tool_result.output if tool_result else None)
         success = tool_result.success if tool_result else True
 
         # 计算本步的 confidence_delta（修复时序缺陷）
@@ -220,9 +218,7 @@ class TrajectoryRecorder:
         if observation is None:
             return None
         if isinstance(observation, str):
-            return observation[: self._max_obs_len] + (
-                "...（截断）" if len(observation) > self._max_obs_len else ""
-            )
+            return observation[: self._max_obs_len] + ("...（截断）" if len(observation) > self._max_obs_len else "")
         return observation  # dict/list 在 to_dict 时再截断
 
     # ------------------------------------------------------------------

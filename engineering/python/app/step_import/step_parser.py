@@ -120,9 +120,7 @@ class StepParser:
             raise StepParseError(f"文件不存在: {file_path}")
 
         if file_path.suffix.lower() not in (".step", ".stp"):
-            raise StepParseError(
-                f"不支持的文件格式: {file_path.suffix}，请使用 .step 或 .stp 文件"
-            )
+            raise StepParseError(f"不支持的文件格式: {file_path.suffix}，请使用 .step 或 .stp 文件")
 
         file_size = file_path.stat().st_size
         logger.info("开始解析STEP文件: %s (%d bytes)", file_path.name, file_size)
@@ -393,9 +391,7 @@ class StepParser:
                     name="Solid",
                     entity_index=0,
                     volume=round(shape.Volume() if hasattr(shape, "Volume") else 0, 4),
-                    surface_area=round(
-                        shape.Area() if hasattr(shape, "Area") else 0, 4
-                    ),
+                    surface_area=round(shape.Area() if hasattr(shape, "Area") else 0, 4),
                     bounding_box=bbox,
                     center_of_mass=center,
                     face_count=face_count,

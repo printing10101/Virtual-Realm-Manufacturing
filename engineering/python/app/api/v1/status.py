@@ -10,6 +10,7 @@
     - GET /api/v1/status/research-bridge
         桥接层日志与 feature flag
 """
+
 from __future__ import annotations
 
 import logging
@@ -54,9 +55,7 @@ def get_status() -> dict[str, Any]:
             "shadow_mode_master": is_shadow_mode(),
             "rollout": {
                 name.value: {
-                    "status": cfg["status"].value
-                    if hasattr(cfg["status"], "value")
-                    else str(cfg["status"]),
+                    "status": cfg["status"].value if hasattr(cfg["status"], "value") else str(cfg["status"]),
                     "whitelist": cfg.get("whitelist", []),
                     "rollout_pct": cfg.get("rollout_pct", 0.0),
                 }
@@ -116,9 +115,7 @@ def get_postprocessors() -> dict[str, Any]:
         }
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.warning("get_postprocessors failed: %s", e)
-        return safe_error_message(
-            e, fallback="postprocessors 列表查询失败", context="status.get_postprocessors"
-        )
+        return safe_error_message(e, fallback="postprocessors 列表查询失败", context="status.get_postprocessors")
 
 
 @router.get("/research-bridge")
@@ -131,9 +128,7 @@ def get_bridge() -> dict[str, Any]:
         return {"health": c.health_check(), "summary": c.summary()}
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.warning("get_bridge failed: %s", e)
-        return safe_error_message(
-            e, fallback="research_bridge 详情查询失败", context="status.get_bridge"
-        )
+        return safe_error_message(e, fallback="research_bridge 详情查询失败", context="status.get_bridge")
 
 
 __all__ = ["router"]

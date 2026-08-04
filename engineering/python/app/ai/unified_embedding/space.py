@@ -147,13 +147,38 @@ class ProcessAxis(SemanticAxis):
     ITEM_TOOL = "tool_geometry"
 
     PROCESS_TYPES = [
-        "turning", "milling", "drilling", "grinding", "boring",
-        "reaming", "tapping", "broaching", "planing", "shaping",
-        "honing", "lapping", "edm", "ecm", "laser_cutting",
-        "plasma_cutting", "waterjet", "additive", "forging", "casting",
-        "welding", "heat_treatment", "surface_treatment", "coating",
-        "polishing", "threading", "knurling", "grooving", "parting", "facing",
-        "chamfering", "undercutting",
+        "turning",
+        "milling",
+        "drilling",
+        "grinding",
+        "boring",
+        "reaming",
+        "tapping",
+        "broaching",
+        "planing",
+        "shaping",
+        "honing",
+        "lapping",
+        "edm",
+        "ecm",
+        "laser_cutting",
+        "plasma_cutting",
+        "waterjet",
+        "additive",
+        "forging",
+        "casting",
+        "welding",
+        "heat_treatment",
+        "surface_treatment",
+        "coating",
+        "polishing",
+        "threading",
+        "knurling",
+        "grooving",
+        "parting",
+        "facing",
+        "chamfering",
+        "undercutting",
     ]
 
     def __init__(self):
@@ -202,7 +227,7 @@ class ProcessAxis(SemanticAxis):
             process_type_encoded = self.encode_process_type(op.get("type", "turning"))
             type_score = float(np.sum(process_type_encoded)) / 32.0
             position_weight = 1.0 - (i / n_ops) if n_ops > 0 else 0.0
-            vector[pos:pos + 4] = type_score * position_weight
+            vector[pos : pos + 4] = type_score * position_weight
         return vector
 
     def encode_tool_geometry(
@@ -234,13 +259,25 @@ class PrecisionAxis(SemanticAxis):
     """
 
     IT_GRADE_MAP = {
-        "IT5": -1.00, "IT6": -0.714, "IT7": -0.429, "IT8": -0.143,
-        "IT9": 0.143, "IT10": 0.429, "IT11": 0.714, "IT12": 1.000,
+        "IT5": -1.00,
+        "IT6": -0.714,
+        "IT7": -0.429,
+        "IT8": -0.143,
+        "IT9": 0.143,
+        "IT10": 0.429,
+        "IT11": 0.714,
+        "IT12": 1.000,
     }
 
     IT_NUMERIC_MAP = {
-        5: -1.00, 6: -0.714, 7: -0.429, 8: -0.143,
-        9: 0.143, 10: 0.429, 11: 0.714, 12: 1.000,
+        5: -1.00,
+        6: -0.714,
+        7: -0.429,
+        8: -0.143,
+        9: 0.143,
+        10: 0.429,
+        11: 0.714,
+        12: 1.000,
     }
 
     ITEM_DIMENSIONAL = "dimensional_tolerance"
@@ -444,27 +481,27 @@ class EmbeddingSpace:
     ) -> np.ndarray:
         embedding = self.create_empty()
         if material_vec is not None:
-            embedding[MATERIAL_OFFSET:MATERIAL_OFFSET + MATERIAL_DIMS] = material_vec[:MATERIAL_DIMS]
+            embedding[MATERIAL_OFFSET : MATERIAL_OFFSET + MATERIAL_DIMS] = material_vec[:MATERIAL_DIMS]
         if process_vec is not None:
-            embedding[PROCESS_OFFSET:PROCESS_OFFSET + PROCESS_DIMS] = process_vec[:PROCESS_DIMS]
+            embedding[PROCESS_OFFSET : PROCESS_OFFSET + PROCESS_DIMS] = process_vec[:PROCESS_DIMS]
         if precision_vec is not None:
-            embedding[PRECISION_OFFSET:PRECISION_OFFSET + PRECISION_DIMS] = precision_vec[:PRECISION_DIMS]
+            embedding[PRECISION_OFFSET : PRECISION_OFFSET + PRECISION_DIMS] = precision_vec[:PRECISION_DIMS]
         if state_vec is not None:
-            embedding[STATE_OFFSET:STATE_OFFSET + STATE_DIMS] = state_vec[:STATE_DIMS]
+            embedding[STATE_OFFSET : STATE_OFFSET + STATE_DIMS] = state_vec[:STATE_DIMS]
         if risk_vec is not None:
-            embedding[RISK_OFFSET:RISK_OFFSET + RISK_DIMS] = risk_vec[:RISK_DIMS]
+            embedding[RISK_OFFSET : RISK_OFFSET + RISK_DIMS] = risk_vec[:RISK_DIMS]
         if reserved_vec is not None:
-            embedding[RESERVED_OFFSET:RESERVED_OFFSET + RESERVED_DIMS] = reserved_vec[:RESERVED_DIMS]
+            embedding[RESERVED_OFFSET : RESERVED_OFFSET + RESERVED_DIMS] = reserved_vec[:RESERVED_DIMS]
         return embedding
 
     def decompose(self, embedding: np.ndarray) -> Dict[str, np.ndarray]:
         return {
-            "material": embedding[MATERIAL_OFFSET:MATERIAL_OFFSET + MATERIAL_DIMS].copy(),
-            "process": embedding[PROCESS_OFFSET:PROCESS_OFFSET + PROCESS_DIMS].copy(),
-            "precision": embedding[PRECISION_OFFSET:PRECISION_OFFSET + PRECISION_DIMS].copy(),
-            "state": embedding[STATE_OFFSET:STATE_OFFSET + STATE_DIMS].copy(),
-            "risk": embedding[RISK_OFFSET:RISK_OFFSET + RISK_DIMS].copy(),
-            "reserved": embedding[RESERVED_OFFSET:RESERVED_OFFSET + RESERVED_DIMS].copy(),
+            "material": embedding[MATERIAL_OFFSET : MATERIAL_OFFSET + MATERIAL_DIMS].copy(),
+            "process": embedding[PROCESS_OFFSET : PROCESS_OFFSET + PROCESS_DIMS].copy(),
+            "precision": embedding[PRECISION_OFFSET : PRECISION_OFFSET + PRECISION_DIMS].copy(),
+            "state": embedding[STATE_OFFSET : STATE_OFFSET + STATE_DIMS].copy(),
+            "risk": embedding[RISK_OFFSET : RISK_OFFSET + RISK_DIMS].copy(),
+            "reserved": embedding[RESERVED_OFFSET : RESERVED_OFFSET + RESERVED_DIMS].copy(),
         }
 
     def validate(self, embedding: np.ndarray) -> Dict[str, float]:
@@ -479,7 +516,7 @@ class EmbeddingSpace:
         metrics.update(self.precision.validate(embedding))
         metrics.update(self.state.validate(embedding))
         metrics.update(self.risk.validate(embedding))
-        reserved = embedding[RESERVED_OFFSET:RESERVED_OFFSET + RESERVED_DIMS]
+        reserved = embedding[RESERVED_OFFSET : RESERVED_OFFSET + RESERVED_DIMS]
         metrics["reserved_mean"] = float(np.mean(reserved))
         metrics["reserved_std"] = float(np.std(reserved))
         metrics["total_norm"] = float(np.linalg.norm(embedding))
@@ -495,9 +532,7 @@ class EmbeddingSpace:
             norms = np.linalg.norm(embedding, axis=1, keepdims=True)
             norms = np.where(norms < 1e-10, 1.0, norms)
             return embedding / norms
-        raise ValueError(
-            f"嵌入归一化失败：输入维度为 {embedding.ndim}，期望1维或2维。"
-        )
+        raise ValueError(f"嵌入归一化失败：输入维度为 {embedding.ndim}，期望1维或2维。")
 
     def similarity(self, a: np.ndarray, b: np.ndarray) -> float:
         a_norm = a / (np.linalg.norm(a) + 1e-10)
@@ -507,24 +542,24 @@ class EmbeddingSpace:
     def axis_similarity(self, a: np.ndarray, b: np.ndarray) -> Dict[str, float]:
         return {
             "material": self.similarity(
-                a[MATERIAL_OFFSET:MATERIAL_OFFSET + MATERIAL_DIMS],
-                b[MATERIAL_OFFSET:MATERIAL_OFFSET + MATERIAL_DIMS],
+                a[MATERIAL_OFFSET : MATERIAL_OFFSET + MATERIAL_DIMS],
+                b[MATERIAL_OFFSET : MATERIAL_OFFSET + MATERIAL_DIMS],
             ),
             "process": self.similarity(
-                a[PROCESS_OFFSET:PROCESS_OFFSET + PROCESS_DIMS],
-                b[PROCESS_OFFSET:PROCESS_OFFSET + PROCESS_DIMS],
+                a[PROCESS_OFFSET : PROCESS_OFFSET + PROCESS_DIMS],
+                b[PROCESS_OFFSET : PROCESS_OFFSET + PROCESS_DIMS],
             ),
             "precision": self.similarity(
-                a[PRECISION_OFFSET:PRECISION_OFFSET + PRECISION_DIMS],
-                b[PRECISION_OFFSET:PRECISION_OFFSET + PRECISION_DIMS],
+                a[PRECISION_OFFSET : PRECISION_OFFSET + PRECISION_DIMS],
+                b[PRECISION_OFFSET : PRECISION_OFFSET + PRECISION_DIMS],
             ),
             "state": self.similarity(
-                a[STATE_OFFSET:STATE_OFFSET + STATE_DIMS],
-                b[STATE_OFFSET:STATE_OFFSET + STATE_DIMS],
+                a[STATE_OFFSET : STATE_OFFSET + STATE_DIMS],
+                b[STATE_OFFSET : STATE_OFFSET + STATE_DIMS],
             ),
             "risk": self.similarity(
-                a[RISK_OFFSET:RISK_OFFSET + RISK_DIMS],
-                b[RISK_OFFSET:RISK_OFFSET + RISK_DIMS],
+                a[RISK_OFFSET : RISK_OFFSET + RISK_DIMS],
+                b[RISK_OFFSET : RISK_OFFSET + RISK_DIMS],
             ),
         }
 

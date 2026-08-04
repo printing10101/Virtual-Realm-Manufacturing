@@ -14,12 +14,10 @@
 端点前缀：/api/chatter
 """
 
-
 import csv
 import io
 import json
 import logging
-from dataclasses import dataclass, asdict
 from typing import Any, Optional
 
 import numpy as np
@@ -27,18 +25,14 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
-from app.core.response import success, error, ErrorCode
+from app.core.response import success
 from app.core.safe_errors import safe_error_message
 from app.simulation.chatter.stability import (
-    ChatterParams,
     MachineParams,
     ToolParams,
-    DEFAULT_MACHINE_PARAMS,
     DEFAULT_TOOL_PARAMS,
     compute_stability_lobe,
-    compute_stability_limit,
     get_machine_params,
-    _compute_frf,
 )
 from app.simulation.chatter.predictor import predict_stability
 from app.utils.upload_security import validate_upload
@@ -57,8 +51,10 @@ router = APIRouter(prefix="/api/chatter", tags=["Chatter"])
 # 请求/响应模型
 # =====================================================================
 
+
 class SLDRequest(BaseModel):
     """稳定性叶图请求。"""
+
     machine_id: str = Field(default="vmc_850", description="机床标识")
     tool_id: str = Field(default="endmill_d10", description="刀具标识")
     speed_min: float = Field(default=1000.0, gt=0, description="起始转速 rpm")
@@ -68,10 +64,7 @@ class SLDRequest(BaseModel):
     # 自定义模态参数（可选，覆盖默认机床参数）
     custom_modal: Optional[dict] = Field(
         default=None,
-        description=(
-            "自定义模态参数，覆盖机床默认值。"
-            "字段：stiffness_z, damping_ratio, natural_freq, modal_mass"
-        ),
+        description=("自定义模态参数，覆盖机床默认值。字段：stiffness_z, damping_ratio, natural_freq, modal_mass"),
     )
     # 实际加工切深（可选，用于计算不稳定转速区间）
     # 未传时默认 2.0mm，并在响应中标注 depth_source="default"
@@ -84,6 +77,7 @@ class SLDRequest(BaseModel):
 
 class ModalIdentificationRequest(BaseModel):
     """在线模态辨识请求。"""
+
     freqs: list[float] = Field(..., description="频率序列 Hz")
     re_frf: list[float] = Field(..., description="FRF 实部序列 mm/N")
     im_frf: list[float] = Field(..., description="FRF 虚部序列 mm/N")
@@ -92,17 +86,17 @@ class ModalIdentificationRequest(BaseModel):
 
 class PredictRequest(BaseModel):
     """单点稳定性预测请求。"""
+
     spindle_rpm: float = Field(..., gt=0, description="主轴转速 rpm")
     machine_id: str = Field(default="vmc_850")
     tool_id: str = Field(default="endmill_d10")
-    axial_depth: Optional[float] = Field(
-        default=None, gt=0, description="实际轴向切深 mm，用于判定稳定性"
-    )
+    axial_depth: Optional[float] = Field(default=None, gt=0, description="实际轴向切深 mm，用于判定稳定性")
 
 
 # =====================================================================
 # 1. SLD 稳定性叶图可视化端点
 # =====================================================================
+
 
 @router.post("/sld", dependencies=[Depends(require_permission("chatter:write"))])
 async def get_stability_lobe_diagram(req: SLDRequest):
@@ -141,61 +135,63 @@ async def get_stability_lobe_diagram(req: SLDRequest):
         for idx, (speeds, depths) in enumerate(result["lobes"]):
             if not speeds:
                 continue
-            series_data = [
-                {"speed": round(s, 1), "depth": round(d, 3)}
-                for s, d in zip(speeds, depths)
-            ]
-            lobe_series.append({
-                "name": f"Lobe {idx}",
-                "data": series_data,
-            })
+            series_data = [{"speed": round(s, 1), "depth": round(d, 3)} for s, d in zip(speeds, depths)]
+            lobe_series.append(
+                {
+                    "name": f"Lobe {idx}",
+                    "data": series_data,
+                }
+            )
             # 找出该叶图中极限切深最大的点
             max_idx = int(np.argmax(depths))
-            best_points.append({
-                "lobe": idx,
-                "speed": round(speeds[max_idx], 1),
-                "depth": round(depths[max_idx], 3),
-            })
+            best_points.append(
+                {
+                    "lobe": idx,
+                    "speed": round(speeds[max_idx], 1),
+                    "depth": round(depths[max_idx], 3),
+                }
+            )
 
         # 计算不稳定区域：优先使用用户传入的实际切深
         assumed_depth = req.actual_axial_depth if req.actual_axial_depth else 2.0
         depth_source = "actual" if req.actual_axial_depth else "default"
         unstable_ranges = _compute_unstable_ranges(result, assumed_depth)
 
-        return success(data={
-            "machine_id": req.machine_id,
-            "tool_id": req.tool_id,
-            "speed_range": [req.speed_min, req.speed_max],
-            "lobe_series": lobe_series,
-            "best_points": best_points,
-            "unstable_ranges": unstable_ranges,
-            "assumed_depth_mm": assumed_depth,
-            "depth_source": depth_source,
-            "modal_params": {
-                "natural_freq_hz": machine.natural_freq,
-                "damping_ratio": machine.damping_ratio,
-                "stiffness_z": machine.stiffness_z,
-                "modal_mass": machine.modal_mass,
-            },
-            "tool_params": {
-                "diameter": tool.diameter,
-                "num_flutes": tool.num_flutes,
-                "cutting_force_coeff": tool.cutting_force_coeff,
-            },
-        })
+        return success(
+            data={
+                "machine_id": req.machine_id,
+                "tool_id": req.tool_id,
+                "speed_range": [req.speed_min, req.speed_max],
+                "lobe_series": lobe_series,
+                "best_points": best_points,
+                "unstable_ranges": unstable_ranges,
+                "assumed_depth_mm": assumed_depth,
+                "depth_source": depth_source,
+                "modal_params": {
+                    "natural_freq_hz": machine.natural_freq,
+                    "damping_ratio": machine.damping_ratio,
+                    "stiffness_z": machine.stiffness_z,
+                    "modal_mass": machine.modal_mass,
+                },
+                "tool_params": {
+                    "diameter": tool.diameter,
+                    "num_flutes": tool.num_flutes,
+                    "cutting_force_coeff": tool.cutting_force_coeff,
+                },
+            }
+        )
 
     except (ValueError, KeyError, TypeError) as e:
         # [P0-18] 避免异常详情泄露：safe_error_message 内部已 logger.exception 记录堆栈
         # 并生成 error_id 供报障关联；生产环境仅返回通用提示，不暴露 {e}
-        safe = safe_error_message(
-            e, fallback="SLD 生成失败，请检查输入参数", context="chatter.sld"
-        )
+        safe = safe_error_message(e, fallback="SLD 生成失败，请检查输入参数", context="chatter.sld")
         raise HTTPException(status_code=400, detail=safe) from e
 
 
 # =====================================================================
 # 2. 模态参数输入接口（锤击测试数据上传）
 # =====================================================================
+
 
 @router.post("/modal/upload", dependencies=[Depends(require_permission("chatter:write"))])
 async def upload_modal_data(
@@ -250,31 +246,32 @@ async def upload_modal_data(
             max_modes=3,
         )
 
-        return success(data={
-            "machine_id": machine_id,
-            "sample_count": int(len(freqs)),
-            "freq_range_hz": [float(freqs.min()), float(freqs.max())],
-            "identified_modes": modal_params,
-            "raw_frf_preview": {
-                "freqs": freqs[:50].tolist(),
-                "re_frf": re_frf[:50].tolist(),
-                "im_frf": im_frf[:50].tolist(),
-            },
-        })
+        return success(
+            data={
+                "machine_id": machine_id,
+                "sample_count": int(len(freqs)),
+                "freq_range_hz": [float(freqs.min()), float(freqs.max())],
+                "identified_modes": modal_params,
+                "raw_frf_preview": {
+                    "freqs": freqs[:50].tolist(),
+                    "re_frf": re_frf[:50].tolist(),
+                    "im_frf": im_frf[:50].tolist(),
+                },
+            }
+        )
 
     except HTTPException:
         raise
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         # [P0-18] 避免异常详情泄露：文件解析错误不回传原始异常文本
-        safe = safe_error_message(
-            e, fallback="模态数据解析失败，请检查文件格式", context="chatter.modal_upload"
-        )
+        safe = safe_error_message(e, fallback="模态数据解析失败，请检查文件格式", context="chatter.modal_upload")
         raise HTTPException(status_code=400, detail=safe) from e
 
 
 # =====================================================================
 # 3. 在线模态辨识（直接基于频响函数序列）
 # =====================================================================
+
 
 @router.post("/modal/identify", dependencies=[Depends(require_permission("chatter:write"))])
 async def identify_modal(req: ModalIdentificationRequest):
@@ -304,25 +301,26 @@ async def identify_modal(req: ModalIdentificationRequest):
             max_modes=req.max_modes,
         )
 
-        return success(data={
-            "sample_count": int(len(freqs)),
-            "freq_range_hz": [float(freqs.min()), float(freqs.max())],
-            "identified_modes": modes,
-        })
+        return success(
+            data={
+                "sample_count": int(len(freqs)),
+                "freq_range_hz": [float(freqs.min()), float(freqs.max())],
+                "identified_modes": modes,
+            }
+        )
 
     except HTTPException:
         raise
     except (ValueError, TypeError) as e:
         # [P0-18] 避免异常详情泄露
-        safe = safe_error_message(
-            e, fallback="模态辨识失败，请检查频响数据", context="chatter.modal_identify"
-        )
+        safe = safe_error_message(e, fallback="模态辨识失败，请检查频响数据", context="chatter.modal_identify")
         raise HTTPException(status_code=400, detail=safe) from e
 
 
 # =====================================================================
 # 4. 单点稳定性预测（兼容旧接口，补充切深判定）
 # =====================================================================
+
 
 @router.post("/predict", dependencies=[Depends(require_permission("chatter:write"))])
 async def predict_chatter_stability(req: PredictRequest):
@@ -343,23 +341,20 @@ async def predict_chatter_stability(req: PredictRequest):
             stable = req.axial_depth < limit_depth
             result["actual_depth"] = req.axial_depth
             result["stable"] = stable
-            result["safety_margin"] = round(
-                (limit_depth - req.axial_depth) / req.axial_depth * 100, 2
-            )
+            result["safety_margin"] = round((limit_depth - req.axial_depth) / req.axial_depth * 100, 2)
 
         return success(data=result)
 
     except (ValueError, KeyError, TypeError) as e:
         # [P0-18] 避免异常详情泄露
-        safe = safe_error_message(
-            e, fallback="稳定性预测失败，请检查参数配置", context="chatter.predict"
-        )
+        safe = safe_error_message(e, fallback="稳定性预测失败，请检查参数配置", context="chatter.predict")
         raise HTTPException(status_code=400, detail=safe) from e
 
 
 # =====================================================================
 # 辅助函数
 # =====================================================================
+
 
 def _apply_custom_modal(machine: MachineParams, custom: dict) -> MachineParams:
     """应用用户自定义模态参数到机床对象。"""
@@ -394,17 +389,21 @@ def _compute_unstable_ranges(
                 range_start = s
             elif d >= assumed_depth and in_unstable:
                 in_unstable = False
-                unstable_ranges.append({
+                unstable_ranges.append(
+                    {
+                        "lobe": idx,
+                        "speed_start": round(range_start, 1),
+                        "speed_end": round(s, 1),
+                    }
+                )
+        if in_unstable:
+            unstable_ranges.append(
+                {
                     "lobe": idx,
                     "speed_start": round(range_start, 1),
-                    "speed_end": round(s, 1),
-                })
-        if in_unstable:
-            unstable_ranges.append({
-                "lobe": idx,
-                "speed_start": round(range_start, 1),
-                "speed_end": round(speeds[-1], 1),
-            })
+                    "speed_end": round(speeds[-1], 1),
+                }
+            )
     return unstable_ranges
 
 
@@ -484,14 +483,16 @@ def identify_modal_parameters(
             stiffness = 1.5e7
             modal_mass = 50.0
 
-        modes.append({
-            "natural_freq_hz": round(float(f_n), 2),
-            "damping_ratio": round(float(zeta), 4),
-            "stiffness_n_per_m": round(float(stiffness), 1),
-            "modal_mass_kg": round(float(modal_mass), 3),
-            "peak_magnitude_mm_per_n": round(float(peak_mag), 6),
-            "bandwidth_hz": round(float(bandwidth), 2),
-        })
+        modes.append(
+            {
+                "natural_freq_hz": round(float(f_n), 2),
+                "damping_ratio": round(float(zeta), 4),
+                "stiffness_n_per_m": round(float(stiffness), 1),
+                "modal_mass_kg": round(float(modal_mass), 3),
+                "peak_magnitude_mm_per_n": round(float(peak_mag), 6),
+                "bandwidth_hz": round(float(bandwidth), 2),
+            }
+        )
 
     # 按频率升序排序
     modes.sort(key=lambda x: x["natural_freq_hz"])

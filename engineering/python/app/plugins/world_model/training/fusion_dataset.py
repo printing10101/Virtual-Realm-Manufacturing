@@ -31,6 +31,7 @@ target_trajectory 作为 MSE 监督信号。
 - 严格类型校验：拒绝 ``tuple("not_a_list")`` 类隐患（与 P0-3 修复一致），
   geometry/dynamics/actions/target 必须是 list/np.ndarray，不能是 str。
 """
+
 from __future__ import annotations
 
 import logging
@@ -61,34 +62,22 @@ class FusionSampleError(ValueError):
     """单个训练样本格式/形状非法。"""
 
 
-def _coerce_to_ndarray(
-    value: Any, name: str, expected_dim: int
-) -> np.ndarray:
+def _coerce_to_ndarray(value: Any, name: str, expected_dim: int) -> np.ndarray:
     """把输入强制转为 float32 ndarray 并校验最后一维.
 
     严格类型校验：拒绝 str 等可迭代但语义错误的类型
     （``np.asarray("abc")`` 会产生 shape=() 的字符串数组，污染数据）。
     """
-    if isinstance(value, str) or not isinstance(
-        value, (list, tuple, np.ndarray)
-    ):
-        raise FusionSampleError(
-            f"{name} 必须为 list/tuple/np.ndarray，实际类型={type(value).__name__}"
-        )
+    if isinstance(value, str) or not isinstance(value, (list, tuple, np.ndarray)):
+        raise FusionSampleError(f"{name} 必须为 list/tuple/np.ndarray，实际类型={type(value).__name__}")
     try:
         arr = np.asarray(value, dtype=np.float32)
     except (ValueError, TypeError) as exc:
-        raise FusionSampleError(
-            f"{name} 无法转为 float32 ndarray: {exc}"
-        ) from exc
+        raise FusionSampleError(f"{name} 无法转为 float32 ndarray: {exc}") from exc
     if arr.ndim < 2:
-        raise FusionSampleError(
-            f"{name} 至少 2 维 [T, {expected_dim}]，实际 ndim={arr.ndim}"
-        )
+        raise FusionSampleError(f"{name} 至少 2 维 [T, {expected_dim}]，实际 ndim={arr.ndim}")
     if arr.shape[-1] != expected_dim:
-        raise FusionSampleError(
-            f"{name} 最后一维必须为 {expected_dim}，实际={arr.shape[-1]}"
-        )
+        raise FusionSampleError(f"{name} 最后一维必须为 {expected_dim}，实际={arr.shape[-1]}")
     if not np.all(np.isfinite(arr)):
         raise FusionSampleError(f"{name} 含 NaN/Inf，无法训练")
     return arr
@@ -133,23 +122,17 @@ def validate_sample(
     geo = _coerce_to_ndarray(geometry_seq, "geometry_seq", geo_input_dim)
     dyn = _coerce_to_ndarray(dynamics_seq, "dynamics_seq", dynamics_input_dim)
     act = _coerce_to_ndarray(actions, "actions", action_dim)
-    tgt = _coerce_to_ndarray(
-        target_trajectory, "target_trajectory", state_dim
-    )
+    tgt = _coerce_to_ndarray(target_trajectory, "target_trajectory", state_dim)
 
     T_geo = geo.shape[0]
     T_dyn = dyn.shape[0]
     if T_geo != T_dyn:
-        raise FusionSampleError(
-            f"geometry_seq 与 dynamics_seq 时间维度必须一致: "
-            f"T_geo={T_geo} T_dyn={T_dyn}"
-        )
+        raise FusionSampleError(f"geometry_seq 与 dynamics_seq 时间维度必须一致: T_geo={T_geo} T_dyn={T_dyn}")
     T = T_geo
     horizon = tgt.shape[0]
     if act.shape[0] != T + horizon:
         raise FusionSampleError(
-            f"actions 时间维度 ({act.shape[0]}) 必须等于 T + horizon "
-            f"({T} + {horizon} = {T + horizon})"
+            f"actions 时间维度 ({act.shape[0]}) 必须等于 T + horizon ({T} + {horizon} = {T + horizon})"
         )
     if T < 1:
         raise FusionSampleError("历史序列长度 T 必须 >= 1")
@@ -202,9 +185,7 @@ class FusionTrajectoryDataset(Dataset):
                 "请安装 torch 或在纯 numpy 环境下使用 validate_sample 做预处理校验。"
             )
         if not isinstance(samples, (list, tuple)):
-            raise TypeError(
-                f"samples 必须为 list/tuple，实际={type(samples).__name__}"
-            )
+            raise TypeError(f"samples 必须为 list/tuple，实际={type(samples).__name__}")
         self._geo_input_dim = geo_input_dim
         self._dynamics_input_dim = dynamics_input_dim
         self._action_dim = action_dim
@@ -213,9 +194,7 @@ class FusionTrajectoryDataset(Dataset):
 
         for idx, raw in enumerate(samples):
             if not isinstance(raw, dict):
-                raise FusionSampleError(
-                    f"samples[{idx}] 必须为 dict，实际={type(raw).__name__}"
-                )
+                raise FusionSampleError(f"samples[{idx}] 必须为 dict，实际={type(raw).__name__}")
             try:
                 geo, dyn, act, tgt = validate_sample(
                     raw["geometry_seq"],
@@ -228,9 +207,7 @@ class FusionTrajectoryDataset(Dataset):
                     state_dim=state_dim,
                 )
             except KeyError as exc:
-                raise FusionSampleError(
-                    f"samples[{idx}] 缺少必需字段: {exc}"
-                ) from exc
+                raise FusionSampleError(f"samples[{idx}] 缺少必需字段: {exc}") from exc
             self._samples.append(
                 {
                     "geometry_seq": geo,
@@ -242,8 +219,7 @@ class FusionTrajectoryDataset(Dataset):
         if strict and not self._samples:
             logger.warning("FusionTrajectoryDataset 为空（0 个样本）")
         logger.info(
-            "FusionTrajectoryDataset 初始化: samples=%d geo_dim=%d dyn_dim=%d "
-            "action_dim=%d state_dim=%d",
+            "FusionTrajectoryDataset 初始化: samples=%d geo_dim=%d dyn_dim=%d action_dim=%d state_dim=%d",
             len(self._samples),
             geo_input_dim,
             dynamics_input_dim,
@@ -254,9 +230,7 @@ class FusionTrajectoryDataset(Dataset):
     def __len__(self) -> int:
         return len(self._samples)
 
-    def __getitem__(
-        self, idx: int
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def __getitem__(self, idx: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         sample = self._samples[idx]
         return (
             sample["geometry_seq"],
@@ -283,9 +257,7 @@ class FusionTrajectoryDataset(Dataset):
 
 
 def fusion_collate_fn(
-    batch: Sequence[
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-    ],
+    batch: Sequence[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
 ) -> tuple[
     "torch.Tensor",
     "torch.Tensor",
@@ -316,13 +288,10 @@ def fusion_collate_fn(
     horizon0 = tgt_list[0].shape[0]
     for i, (g, t) in enumerate(zip(geo_list, tgt_list, strict=True)):
         if g.shape[0] != T0:
-            raise ValueError(
-                f"batch 内 T 不一致: samples[0].T={T0} samples[{i}].T={g.shape[0]}"
-            )
+            raise ValueError(f"batch 内 T 不一致: samples[0].T={T0} samples[{i}].T={g.shape[0]}")
         if t.shape[0] != horizon0:
             raise ValueError(
-                f"batch 内 horizon 不一致: samples[0].horizon={horizon0} "
-                f"samples[{i}].horizon={t.shape[0]}"
+                f"batch 内 horizon 不一致: samples[0].horizon={horizon0} samples[{i}].horizon={t.shape[0]}"
             )
 
     geometry = torch.from_numpy(np.stack(geo_list)).float()  # [B, T, geo_dim]

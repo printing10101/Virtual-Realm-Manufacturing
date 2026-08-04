@@ -13,9 +13,6 @@ P1-2 重构将其拆分为三个子模块：
 本文件仅作为向后兼容的 re-export 入口：所有 ``from app.budget.budget_enforcer
 import XXX`` 形式的旧导入仍可正常工作，类签名与运行时行为保持不变。
 """
-from app.dependencies import get_cost_optimizer
-
-from app.dependencies import get_budget_enforcer
 
 from app.budget.models import EnforcementAction, EnforcementResult
 

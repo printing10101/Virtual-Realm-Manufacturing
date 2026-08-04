@@ -5,7 +5,6 @@ Endpoints for goal hierarchy management, task goal association,
 alignment verification, and progress tracking.
 """
 
-
 import time
 import uuid
 import logging
@@ -44,6 +43,7 @@ router = APIRouter(
 # Pydantic 请求模型替换 data: dict 弱验证
 # 参考 cost_budget.py 的 B13 修复模式：FastAPI 端点接收强类型模型而非裸 dict
 # ---------------------------------------------------------------------------
+
 
 class GoalCreateRequest(BaseModel):
     """目标对齐创建请求模型。
@@ -132,9 +132,7 @@ async def get_goal_tree():
 
 @router.get("/goals")
 async def list_goals(
-    level: Optional[str] = Query(
-        None, description="Filter by level: mission/strategic_goal/project/task"
-    ),
+    level: Optional[str] = Query(None, description="Filter by level: mission/strategic_goal/project/task"),
 ):
     store = get_goal_chain_store()
     lvl = GoalLevel(level) if level else None
@@ -184,9 +182,7 @@ async def get_goal_history(goal_id: str, limit: int = Query(50, ge=1, le=100)):
     if goal is None:
         return error(code=ErrorCode.NOT_FOUND, message=f"Goal '{goal_id}' not found")
     versions = store.get_version_history(goal_id, limit)
-    return success(
-        data=[v.to_dict() for v in versions], message="Version history retrieved"
-    )
+    return success(data=[v.to_dict() for v in versions], message="Version history retrieved")
 
 
 @router.post("/goals", dependencies=[Depends(require_permission("goal:write"))])
@@ -233,9 +229,7 @@ async def create_goal(request: GoalCreateRequest):
 
     existing = store.get_goal(goal_id)
     if existing:
-        return error(
-            code=ErrorCode.INVALID_REQUEST, message=f"Goal '{goal_id}' already exists"
-        )
+        return error(code=ErrorCode.INVALID_REQUEST, message=f"Goal '{goal_id}' already exists")
 
     store.add_goal(goal)
     return success(data=goal.to_dict(), message="Goal created")
@@ -285,9 +279,7 @@ async def delete_goal(goal_id: str):
     if goal is None:
         return error(code=ErrorCode.NOT_FOUND, message=f"Goal '{goal_id}' not found")
     if goal.level == GoalLevel.MISSION:
-        return error(
-            code=ErrorCode.INVALID_REQUEST, message="Cannot delete the mission"
-        )
+        return error(code=ErrorCode.INVALID_REQUEST, message="Cannot delete the mission")
 
     store.delete_goal(goal_id)
     return success(message="Goal deleted")
@@ -393,11 +385,7 @@ async def update_task_status(
         )
 
     if new_status == EnhancedTaskStatus.IN_PROGRESS and not task.are_blockers_resolved(
-        set(
-            tid
-            for tid, t in checker._task_map.items()
-            if t.status == EnhancedTaskStatus.COMPLETED
-        )
+        set(tid for tid, t in checker._task_map.items() if t.status == EnhancedTaskStatus.COMPLETED)
     ):
         return error(
             code=ErrorCode.INVALID_REQUEST,
@@ -475,9 +463,7 @@ async def get_all_progress(
     checker: GoalAlignmentChecker = Depends(get_alignment_checker),
 ):
     progresses = checker.compute_all_progress()
-    return success(
-        data=[p.to_dict() for p in progresses], message="All progress computed"
-    )
+    return success(data=[p.to_dict() for p in progresses], message="All progress computed")
 
 
 @router.post("/goals/{goal_id}/propagate", dependencies=[Depends(require_permission("goal:write"))])

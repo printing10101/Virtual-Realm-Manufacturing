@@ -6,6 +6,7 @@
 - 通用下载端点实现
 - 通用异常处理装饰器（handle_sovereignty_errors）
 """
+
 from __future__ import annotations
 
 import asyncio

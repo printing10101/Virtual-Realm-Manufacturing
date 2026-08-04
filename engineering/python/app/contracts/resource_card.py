@@ -21,6 +21,7 @@ app/database/models/resource_card.py（ORM 持久化）。
     model://<model_name>/<version>
     dataset://<dataset_id>/<version>
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -193,20 +194,13 @@ class ModelArtifact:
         if not self.model_uri:
             raise ValueError("ModelArtifact.model_uri 不能为空")
         if not self.model_uri.startswith("model://"):
-            raise ValueError(
-                f"ModelArtifact.model_uri 必须以 model:// 开头: {self.model_uri}"
-            )
+            raise ValueError(f"ModelArtifact.model_uri 必须以 model:// 开头: {self.model_uri}")
         if not self.name:
             raise ValueError("ModelArtifact.name 不能为空")
         if not ModelArtifactType.is_valid(self.model_type):
-            raise ValueError(
-                f"ModelArtifact.model_type 不合法: {self.model_type}，"
-                f"合法值: {ModelArtifactType.all()}"
-            )
+            raise ValueError(f"ModelArtifact.model_type 不合法: {self.model_type}，合法值: {ModelArtifactType.all()}")
         if not _is_valid_semver(self.version):
-            raise ValueError(
-                f"ModelArtifact.version 不是合法 semver: {self.version}"
-            )
+            raise ValueError(f"ModelArtifact.version 不是合法 semver: {self.version}")
         if not self.framework:
             raise ValueError("ModelArtifact.framework 不能为空")
         if not self.storage_uri:
@@ -214,10 +208,7 @@ class ModelArtifact:
         if not self.owner_id:
             raise ValueError("ModelArtifact.owner_id 不能为空")
         if not ModelArtifactStatus.is_valid(self.status):
-            raise ValueError(
-                f"ModelArtifact.status 不合法: {self.status}，"
-                f"合法值: {ModelArtifactStatus.all()}"
-            )
+            raise ValueError(f"ModelArtifact.status 不合法: {self.status}，合法值: {ModelArtifactStatus.all()}")
 
     def can_transition_to(self, new_status: str) -> bool:
         """检查状态转换是否合法."""
@@ -269,9 +260,7 @@ class DatasetReadme:
         if not self.updated_by:
             raise ValueError("DatasetReadme.updated_by 不能为空")
         if self.version is not None and not _is_valid_semver(self.version):
-            raise ValueError(
-                f"DatasetReadme.version 不是合法 semver: {self.version}"
-            )
+            raise ValueError(f"DatasetReadme.version 不是合法 semver: {self.version}")
 
     @property
     def scope(self) -> str:
@@ -317,17 +306,11 @@ class LineageSummary:
         if not self.target_uri:
             raise ValueError("LineageSummary.target_uri 不能为空")
         if self.upstream_count < 0:
-            raise ValueError(
-                f"LineageSummary.upstream_count 不能为负数: {self.upstream_count}"
-            )
+            raise ValueError(f"LineageSummary.upstream_count 不能为负数: {self.upstream_count}")
         if self.downstream_count < 0:
-            raise ValueError(
-                f"LineageSummary.downstream_count 不能为负数: {self.downstream_count}"
-            )
+            raise ValueError(f"LineageSummary.downstream_count 不能为负数: {self.downstream_count}")
         if self.total_nodes < 0:
-            raise ValueError(
-                f"LineageSummary.total_nodes 不能为负数: {self.total_nodes}"
-            )
+            raise ValueError(f"LineageSummary.total_nodes 不能为负数: {self.total_nodes}")
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典."""
@@ -377,17 +360,11 @@ class DatasetCard:
         if not self.owner_id:
             raise ValueError("DatasetCard.owner_id 不能为空")
         if self.version_count < 0:
-            raise ValueError(
-                f"DatasetCard.version_count 不能为负数: {self.version_count}"
-            )
+            raise ValueError(f"DatasetCard.version_count 不能为负数: {self.version_count}")
         if self.total_rows < 0:
-            raise ValueError(
-                f"DatasetCard.total_rows 不能为负数: {self.total_rows}"
-            )
+            raise ValueError(f"DatasetCard.total_rows 不能为负数: {self.total_rows}")
         if self.total_size_bytes < 0:
-            raise ValueError(
-                f"DatasetCard.total_size_bytes 不能为负数: {self.total_size_bytes}"
-            )
+            raise ValueError(f"DatasetCard.total_size_bytes 不能为负数: {self.total_size_bytes}")
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典（用于 API 响应）."""
@@ -403,9 +380,7 @@ class DatasetCard:
             "total_size_bytes": self.total_size_bytes,
             "latest_version": dict(self.latest_version) if self.latest_version else None,
             "readme": self.readme.to_dict() if self.readme else None,
-            "lineage_summary": (
-                self.lineage_summary.to_dict() if self.lineage_summary else None
-            ),
+            "lineage_summary": (self.lineage_summary.to_dict() if self.lineage_summary else None),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -429,21 +404,15 @@ class ModelCard:
 
     def __post_init__(self) -> None:
         if self.snapshot_count < 0:
-            raise ValueError(
-                f"ModelCard.snapshot_count 不能为负数: {self.snapshot_count}"
-            )
+            raise ValueError(f"ModelCard.snapshot_count 不能为负数: {self.snapshot_count}")
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典（用于 API 响应）."""
         return {
             "model": self.model.to_dict(),
             "snapshot_count": self.snapshot_count,
-            "lineage_summary": (
-                self.lineage_summary.to_dict() if self.lineage_summary else None
-            ),
-            "latest_snapshot": (
-                dict(self.latest_snapshot) if self.latest_snapshot else None
-            ),
+            "lineage_summary": (self.lineage_summary.to_dict() if self.lineage_summary else None),
+            "latest_snapshot": (dict(self.latest_snapshot) if self.latest_snapshot else None),
         }
 
 

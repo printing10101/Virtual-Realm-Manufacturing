@@ -1,10 +1,9 @@
 """Process router for CAD-related process management."""
 
-
 import logging
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.response import success, error, ErrorCode
@@ -20,12 +19,14 @@ router = APIRouter(prefix="/api/process", tags=["Process"])
 # 使用 extra="allow" 保持对灵活输入的向后兼容（part features / geometry 等）
 # ---------------------------------------------------------------------------
 
+
 class ProcessPlanRequest(BaseModel):
     """工艺规划请求体。
 
     接受零件特征、材料和约束条件，返回结构化工艺路线。
     额外字段允许透传给下游 pipeline.run()。
     """
+
     model_config = ConfigDict(extra="allow")
 
     material: Optional[str] = Field(None, description="材料名称或牌号")
@@ -39,6 +40,7 @@ class FeatureRecognitionRequest(BaseModel):
     接受几何数据（如 DXF 解析结果），返回识别到的加工特征。
     额外字段允许透传给下游 extractor.extract()。
     """
+
     model_config = ConfigDict(extra="allow")
 
     geometry: Optional[dict[str, Any]] = Field(None, description="几何数据")
@@ -51,6 +53,7 @@ class ParameterRecommendationRequest(BaseModel):
     接受特征描述和材料信息，返回推荐切削参数。
     额外字段允许透传给下游 matcher.match()。
     """
+
     model_config = ConfigDict(extra="allow")
 
     material: Optional[str] = Field(None, description="材料名称或牌号")
@@ -60,16 +63,18 @@ class ParameterRecommendationRequest(BaseModel):
 @router.get("/info")
 async def get_process_info() -> dict[str, Any]:
     """Get process service information."""
-    return success(data={
-        "status": "active",
-        "version": "1.0.0",
-        "capabilities": [
-            "process_plan_generation",
-            "parameter_recommendation",
-            "feature_recognition",
-            "tool_path_optimization",
-        ],
-    })
+    return success(
+        data={
+            "status": "active",
+            "version": "1.0.0",
+            "capabilities": [
+                "process_plan_generation",
+                "parameter_recommendation",
+                "feature_recognition",
+                "tool_path_optimization",
+            ],
+        }
+    )
 
 
 @router.post("/plan")
@@ -85,11 +90,13 @@ async def generate_process_plan(body: ProcessPlanRequest) -> dict[str, Any]:
         pipeline = ProcessPlanningPipeline()
         result = pipeline.run(body.model_dump())
 
-        return success(data={
-            "plan": result.get("operations", []),
-            "parameters": result.get("parameters", {}),
-            "confidence": result.get("confidence", 0.0),
-        })
+        return success(
+            data={
+                "plan": result.get("operations", []),
+                "parameters": result.get("parameters", {}),
+                "confidence": result.get("confidence", 0.0),
+            }
+        )
 
     except ImportError:
         logger.warning("Process planning module not available")
@@ -120,10 +127,12 @@ async def recognize_features(body: FeatureRecognitionRequest) -> dict[str, Any]:
         extractor = FeatureExtractor()
         features = extractor.extract(body.model_dump())
 
-        return success(data={
-            "features": features,
-            "count": len(features),
-        })
+        return success(
+            data={
+                "features": features,
+                "count": len(features),
+            }
+        )
 
     except ImportError:
         logger.warning("Feature extraction module not available")
@@ -154,10 +163,12 @@ async def recommend_parameters(body: ParameterRecommendationRequest) -> dict[str
         matcher = ToolParamMatcher()
         params = matcher.match(body.model_dump())
 
-        return success(data={
-            "parameters": params,
-            "source": "rule_based",
-        })
+        return success(
+            data={
+                "parameters": params,
+                "source": "rule_based",
+            }
+        )
 
     except ImportError:
         logger.warning("Parameter recommendation module not available")

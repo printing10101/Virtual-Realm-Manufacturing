@@ -51,7 +51,6 @@ from typing import Any, Optional
 
 from app.contracts.dataset import (
     DatasetSchema,
-    DatasetStatus,
     DatasetVersion,
     IDatasetStore,
     LineageRecord,
@@ -527,7 +526,9 @@ class FeedbackCollector:
                 FEEDBACK_DATASET_NAME,
             )
         except Exception as e:  # noqa: BLE001
-            # name 唯一约束冲突 → 复用稳定 ID（与 TrainingDataLakeAdapter 一致）
+            # name 唯一约束冲突 → 复用稳定 ID（与 TrainingDataLakeAdapter 一致）。
+            # 前提：store 已按同一稳定规则存在 fb- 数据集（另一实例创建），
+            # 否则 flush 会提交失败并放回缓冲区（ERROR 日志，数据不丢）。
             import hashlib
 
             stable_id = "fb-" + hashlib.sha256(
@@ -547,7 +548,7 @@ class FeedbackCollector:
             record_id=f"lineage-{uuid.uuid4().hex}",
             target=f"dataset://{FEEDBACK_DATASET_NAME}/latest",
             source_type="manual",
-            source_ref=f"plugin:data_flywheel:feedback_collector",
+            source_ref=f"{self._owner_id}:feedback_collector",
             inputs=[],  # 反馈来自用户交互，无上游 artifact
             outputs=[f"dataset://{FEEDBACK_DATASET_NAME}/latest"],
             operation="feedback_collection",

@@ -14,5 +14,3 @@
 
 新代码请直接使用 ``from app.services.explainability import ...``。
 """
-from app.dependencies import get_explainability_service
-

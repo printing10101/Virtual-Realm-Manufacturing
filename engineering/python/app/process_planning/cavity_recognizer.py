@@ -41,6 +41,7 @@ class CavityFeature:
         bottom_type: Bottom surface type ('flat' or other).
         metadata: Additional metadata dictionary.
     """
+
     cavity_id: str
     type: str
     length: float
@@ -144,8 +145,13 @@ class CavityFeature:
 
     def _it_grade_from_tolerance(self) -> str:
         grade_map = {
-            "H5": "IT5", "H6": "IT6", "H7": "IT7",
-            "H8": "IT8", "H9": "IT9", "H10": "IT10", "H11": "IT11",
+            "H5": "IT5",
+            "H6": "IT6",
+            "H7": "IT7",
+            "H8": "IT8",
+            "H9": "IT9",
+            "H10": "IT10",
+            "H11": "IT11",
         }
         return grade_map.get(self.tolerance_grade.upper(), "IT8")
 
@@ -162,6 +168,7 @@ class CavityRecognitionResult:
         errors: Error messages from the recognition process.
         accuracy_metrics: Recognition accuracy metrics.
     """
+
     cavities: list[CavityFeature] = field(default_factory=list)
     total_count: int = 0
     type_summary: dict[str, int] = field(default_factory=dict)
@@ -207,6 +214,7 @@ class CavityRecognizer:
         MAX_CAVITY_DIMENSION: Maximum recognizable cavity dimension (mm).
         RECTANGULAR_ANGLE_TOLERANCE: Angle tolerance for rectangular corners (degrees).
     """
+
     MIN_CAVITY_DIMENSION = 0.5
     MAX_CAVITY_DIMENSION = 5000.0
     RECTANGULAR_ANGLE_TOLERANCE = 2.0
@@ -241,37 +249,42 @@ class CavityRecognizer:
         raw_cavities = part_description.get("cavities", part_description.get("pockets", []))
         raw_features = part_description.get("features", [])
         pocket_features = [
-            f for f in raw_features
+            f
+            for f in raw_features
             if f.get("geometric_type") in ("pocket", "cavity", "rectangular_pocket")
             or f.get("type") in ("through_pocket", "blind_pocket", "cavity")
         ]
         for pf in pocket_features:
             pos = pf.get("position", {})
             dims = pf.get("dimensions", {})
-            raw_cavities.append({
-                "id": pf.get("name", f"C{len(raw_cavities) + 1:03d}"),
-                "type": pf.get("type", "blind_pocket"),
-                "position": pos,
-                "length": dims.get("length", pf.get("length", 0)),
-                "width": dims.get("width", pf.get("width", 0)),
-                "depth": dims.get("depth", pf.get("depth", 0)),
-                "tolerance_grade": pf.get("tolerance_grade", "H8"),
-                "surface": pf.get("surface", "A"),
-            })
+            raw_cavities.append(
+                {
+                    "id": pf.get("name", f"C{len(raw_cavities) + 1:03d}"),
+                    "type": pf.get("type", "blind_pocket"),
+                    "position": pos,
+                    "length": dims.get("length", pf.get("length", 0)),
+                    "width": dims.get("width", pf.get("width", 0)),
+                    "depth": dims.get("depth", pf.get("depth", 0)),
+                    "tolerance_grade": pf.get("tolerance_grade", "H8"),
+                    "surface": pf.get("surface", "A"),
+                }
+            )
 
         contours = part_description.get("contours", part_description.get("entities", []))
         for i, contour in enumerate(contours):
             if self._is_rectangular_contour(contour):
                 fig_id = f"C{i + 1:03d}"
                 if not any(c.get("id") == fig_id for c in raw_cavities):
-                    raw_cavities.append({
-                        "id": fig_id,
-                        "type": contour.get("type", "blind_pocket"),
-                        "position": contour.get("center", contour.get("position", {})),
-                        "length": contour.get("length", contour.get("width", 0)),
-                        "width": contour.get("height", contour.get("depth", 0)),
-                        "depth": contour.get("depth", contour.get("z_depth", 0)),
-                    })
+                    raw_cavities.append(
+                        {
+                            "id": fig_id,
+                            "type": contour.get("type", "blind_pocket"),
+                            "position": contour.get("center", contour.get("position", {})),
+                            "length": contour.get("length", contour.get("width", 0)),
+                            "width": contour.get("height", contour.get("depth", 0)),
+                            "depth": contour.get("depth", contour.get("z_depth", 0)),
+                        }
+                    )
 
         if not raw_cavities:
             warnings.append("未找到任何型腔特征定义")
@@ -334,9 +347,7 @@ class CavityRecognizer:
                 cavities.append(cavity)
 
             except (ValueError, TypeError, KeyError) as e:
-                errors.append(
-                    f"解析型腔条目 {raw.get('id', i)} 时出错: {type(e).__name__}"
-                )
+                errors.append(f"解析型腔条目 {raw.get('id', i)} 时出错: {type(e).__name__}")
                 continue
 
         type_summary: dict[str, int] = {}
@@ -418,26 +429,22 @@ class CavityRecognizer:
             if result.total_count == expected_count:
                 passed.append(f"型腔数量匹配: {result.total_count} == {expected_count}")
             else:
-                issues.append(
-                    f"型腔数量不匹配: 识别到{result.total_count}个，期望{expected_count}个"
-                )
+                issues.append(f"型腔数量不匹配: 识别到{result.total_count}个，期望{expected_count}个")
         else:
             passed.append(f"型腔总数: {result.total_count}")
 
         invalid_size = [c for c in result.cavities if c.length <= 0 or c.width <= 0]
         if invalid_size:
-            issues.append(
-                f"{len(invalid_size)}个型腔尺寸无效: "
-                f"{', '.join(c.cavity_id for c in invalid_size)}"
-            )
+            issues.append(f"{len(invalid_size)}个型腔尺寸无效: {', '.join(c.cavity_id for c in invalid_size)}")
         else:
             passed.append("所有型腔尺寸有效")
 
         import math
+
         invalid_pos = [
-            c for c in result.cavities
-            if any(math.isnan(v) or math.isinf(v)
-                   for v in [c.center_x, c.center_y, c.center_z])
+            c
+            for c in result.cavities
+            if any(math.isnan(v) or math.isinf(v) for v in [c.center_x, c.center_y, c.center_z])
         ]
         if invalid_pos:
             issues.append(f"{len(invalid_pos)}个型腔位置坐标无效")

@@ -43,6 +43,7 @@ YAML 文件结构示例::
 
 稳定性承诺：本文件为 Stable 契约 v1.0.0 实现，向后兼容扩展，breaking change 需新开 ADR。
 """
+
 from __future__ import annotations
 
 import os
@@ -262,9 +263,7 @@ class YamlLoader:
         # 循环检测
         if cache_key in inherit_visited:
             chain = " → ".join(list(inherit_visited) + [cache_key])
-            raise YamlInheritanceError(
-                f"Circular YAML inheritance detected: {chain}"
-            )
+            raise YamlInheritanceError(f"Circular YAML inheritance detected: {chain}")
         inherit_visited = inherit_visited | {cache_key}
 
         # 读取文件
@@ -279,14 +278,9 @@ class YamlLoader:
         if parent_name and isinstance(parent_name, str):
             parent_path = (resolved.parent / parent_name).resolve()
             if not parent_path.exists():
-                raise YamlInheritanceError(
-                    f"Parent YAML file not found: {parent_path} "
-                    f"(referenced from {resolved})"
-                )
+                raise YamlInheritanceError(f"Parent YAML file not found: {parent_path} (referenced from {resolved})")
             if str(parent_path) == cache_key:
-                raise YamlInheritanceError(
-                    f"YAML file cannot be its own parent: {resolved}"
-                )
+                raise YamlInheritanceError(f"YAML file cannot be its own parent: {resolved}")
             parent_flat = self._load_recursive(
                 parent_path,
                 inherit_depth=inherit_depth + 1,
@@ -299,10 +293,7 @@ class YamlLoader:
         # 解析 overrides
         overrides = raw.get("overrides", {}) or {}
         if not isinstance(overrides, dict):
-            raise YamlSchemaError(
-                f"YAML 'overrides' must be a mapping, got "
-                f"{type(overrides).__name__}: {resolved}"
-            )
+            raise YamlSchemaError(f"YAML 'overrides' must be a mapping, got {type(overrides).__name__}: {resolved}")
 
         # $ref 解析（在 overrides 内部）
         if resolve_refs:
@@ -332,10 +323,7 @@ class YamlLoader:
         try:
             import yaml
         except ImportError as e:
-            raise ImportError(
-                "PyYAML is required for YAML loading. "
-                "Install with: pip install pyyaml"
-            ) from e
+            raise ImportError("PyYAML is required for YAML loading. Install with: pip install pyyaml") from e
 
         if not path.exists():
             raise FileNotFoundError(f"YAML config file not found: {path}")
@@ -344,15 +332,10 @@ class YamlLoader:
             with open(path, "r", encoding="utf-8") as f:
                 raw = yaml.safe_load(f) or {}
         except yaml.YAMLError as e:
-            raise YamlSchemaError(
-                f"YAML parse error in {path}: {e}"
-            ) from e
+            raise YamlSchemaError(f"YAML parse error in {path}: {e}") from e
 
         if not isinstance(raw, dict):
-            raise YamlSchemaError(
-                f"YAML config file must be a mapping at top level, "
-                f"got {type(raw).__name__}: {path}"
-            )
+            raise YamlSchemaError(f"YAML config file must be a mapping at top level, got {type(raw).__name__}: {path}")
 
         return raw
 
@@ -378,16 +361,12 @@ class YamlLoader:
         for key, expected_type in type_checks:
             if key in raw and not isinstance(raw[key], expected_type):
                 raise YamlSchemaError(
-                    f"YAML field {key!r} must be {expected_type.__name__}, "
-                    f"got {type(raw[key]).__name__}: {path}"
+                    f"YAML field {key!r} must be {expected_type.__name__}, got {type(raw[key]).__name__}: {path}"
                 )
 
         for key in ("overrides", "metadata"):
             if key in raw and not isinstance(raw[key], dict):
-                raise YamlSchemaError(
-                    f"YAML field {key!r} must be a mapping, "
-                    f"got {type(raw[key]).__name__}: {path}"
-                )
+                raise YamlSchemaError(f"YAML field {key!r} must be a mapping, got {type(raw[key]).__name__}: {path}")
 
     # ------------------------------------------------------------------
     # 内部实现：$ref 跨文件引用
@@ -421,19 +400,11 @@ class YamlLoader:
         if isinstance(data, dict):
             # 检查是否是 $ref 整字段引用（dict 只含 $ref 一个 key）
             if "$ref" in data and len(data) == 1:
-                return self._resolve_single_ref(
-                    data["$ref"], base_dir, ref_depth=ref_depth
-                )
+                return self._resolve_single_ref(data["$ref"], base_dir, ref_depth=ref_depth)
             # 递归处理 dict 的值
-            return {
-                k: self._resolve_refs(v, base_dir, ref_depth=ref_depth)
-                for k, v in data.items()
-            }
+            return {k: self._resolve_refs(v, base_dir, ref_depth=ref_depth) for k, v in data.items()}
         if isinstance(data, list):
-            return [
-                self._resolve_refs(item, base_dir, ref_depth=ref_depth)
-                for item in data
-            ]
+            return [self._resolve_refs(item, base_dir, ref_depth=ref_depth) for item in data]
         return data
 
     def _resolve_single_ref(
@@ -453,14 +424,11 @@ class YamlLoader:
         """
         if ref_depth >= self._max_ref_depth:
             raise YamlRefError(
-                f"$ref nesting depth exceeds {self._max_ref_depth}. "
-                f"Possible circular $ref. Last ref: {ref_str!r}"
+                f"$ref nesting depth exceeds {self._max_ref_depth}. Possible circular $ref. Last ref: {ref_str!r}"
             )
 
         if not isinstance(ref_str, str) or not ref_str:
-            raise YamlRefError(
-                f"$ref must be a non-empty string, got {ref_str!r}"
-            )
+            raise YamlRefError(f"$ref must be a non-empty string, got {ref_str!r}")
 
         match = _REF_PATTERN.match(ref_str)
         if not match:
@@ -470,16 +438,11 @@ class YamlLoader:
         keypath = match.group("keypath")
 
         if not ref_path_part:
-            raise YamlRefError(
-                f"$ref must contain a file path: {ref_str!r}"
-            )
+            raise YamlRefError(f"$ref must contain a file path: {ref_str!r}")
 
         ref_file = (base_dir / ref_path_part).resolve()
         if not ref_file.exists():
-            raise YamlRefError(
-                f"$ref target file not found: {ref_file} "
-                f"(referenced via {ref_str!r})"
-            )
+            raise YamlRefError(f"$ref target file not found: {ref_file} (referenced via {ref_str!r})")
 
         # 加载引用文件（独立继承链，但 $ref 深度 +1）
         ref_flat = self._load_recursive(
@@ -505,7 +468,7 @@ class YamlLoader:
         prefix = keypath + "."
         for k, v in ref_flat.items():
             if k.startswith(prefix):
-                sub_key = k[len(prefix):]
+                sub_key = k[len(prefix) :]
                 subtree[sub_key] = v
         if subtree:
             return unflatten_dict(subtree)
@@ -550,9 +513,7 @@ class YamlLoader:
             return s
 
         # 检查是否是单个 ${...}（整字段引用，保留原始类型）
-        full_match = re.match(
-            r"^\$\{([A-Za-z_][A-Za-z0-9_]*)(?::([^}]*))?\}$", s
-        )
+        full_match = re.match(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)(?::([^}]*))?\}$", s)
         if full_match:
             var_name = full_match.group(1)
             default = full_match.group(2)
@@ -591,8 +552,7 @@ class YamlLoader:
             raw_value = default
         else:
             raise YamlInterpolationError(
-                f"Environment variable {var_name!r} is not set and no default "
-                f"provided (in {context!r})"
+                f"Environment variable {var_name!r} is not set and no default provided (in {context!r})"
             )
 
         # 类型推断

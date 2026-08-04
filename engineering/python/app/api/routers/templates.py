@@ -9,6 +9,7 @@
 - flywheel                     — 飞轮（模板系统产物，已从 tasks 域迁移）
 - template_market              — 模板市场
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

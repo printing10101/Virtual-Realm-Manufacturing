@@ -20,6 +20,7 @@
 - ``register`` 返回 ``dict[str, bool]`` 表示各阶段模块的导入可用状态，
   由 ``router_registry`` 接收并写入同名全局变量，供测试与外部观察使用
 """
+
 from __future__ import annotations
 
 import importlib
@@ -88,7 +89,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     # === 阶段 1：拍照重建（ADR-006）===
     # 手机多角度拍照 → COLMAP SfM → OpenMVS 稠密化 → 标定块尺度归一化 mesh
     flags["_IMAGE_TO_3D_AVAILABLE"] = _try_include_router(
-        app, "app.api.v1.image_to_3d.routes",
+        app,
+        "app.api.v1.image_to_3d.routes",
         enabled=config.image_to_3d.enabled,
     )
 
@@ -97,7 +99,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     # 设计原则：mesh → 参数化 CAD 自动转换工业上未解决，本模块输出「算法建议特征」，
     # 必须经工程师逐条审核（confirmed / rejected / edited）后才允许进入阶段 3。
     flags["_FEATURE_EXTRACTION_AVAILABLE"] = _try_include_router(
-        app, "app.api.v1.feature_extraction.routes",
+        app,
+        "app.api.v1.feature_extraction.routes",
         enabled=config.feature_extraction.enabled,
     )
 
@@ -106,7 +109,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     # 设计约束：工程师必须两轮审核（STEP_GENERATED + finalize）后才允许下载最终 STEP；
     # 最终 STEP 必须经 CAM 软件（NX/PowerMill/PyCAM）二次校验后才允许上机床。
     flags["_PARAMETRIC_GEOMETRY_AVAILABLE"] = _try_include_router(
-        app, "app.api.v1.parametric_geometry.routes",
+        app,
+        "app.api.v1.parametric_geometry.routes",
         enabled=config.parametric_geometry.enabled,
     )
 
@@ -116,7 +120,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     # SUCCEEDED 状态禁止删除（阶段 5 颤振预测可能已引用其 ChatterParams）；
     # HRC52 数据待自采校准，K_s 标记为 pending_calibration。
     flags["_CUTTING_PARAMETERS_AVAILABLE"] = _try_include_router(
-        app, "app.api.v1.cutting_parameters.routes",
+        app,
+        "app.api.v1.cutting_parameters.routes",
         enabled=config.cutting_parameters.enabled,
     )
 
@@ -127,7 +132,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     # SUCCEEDED 状态禁止删除（阶段 6 G 代码生成可能已引用其 ChatterReport）；
     # cam_validation_required 始终 True。
     flags["_CHATTER_PREDICTION_AVAILABLE"] = _try_include_router(
-        app, "app.api.v1.chatter_prediction.routes",
+        app,
+        "app.api.v1.chatter_prediction.routes",
         enabled=config.chatter_prediction.enabled,
     )
 
@@ -138,7 +144,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     # SUCCEEDED 状态禁止删除（阶段 7 CAM 校验可能已引用 G 代码产物）；
     # cam_validation_required 始终 True；系统绝不直接接口 CNC 控制器。
     flags["_GCODE_GENERATION_AVAILABLE"] = _try_include_router(
-        app, "app.api.v1.gcode_generation.routes",
+        app,
+        "app.api.v1.gcode_generation.routes",
         enabled=config.gcode_generation.enabled,
     )
 
@@ -147,7 +154,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     #        → 校验报告 → 工程师确认 → 上机许可
     # 设计约束：cam_validation_required 始终 True；最终上机仍需持证操作员 + 导师签字 + 保险。
     flags["_CAM_VALIDATION_AVAILABLE"] = _try_include_router(
-        app, "app.api.v1.cam_validation.routes",
+        app,
+        "app.api.v1.cam_validation.routes",
         enabled=config.cam_validation.enabled,
     )
 

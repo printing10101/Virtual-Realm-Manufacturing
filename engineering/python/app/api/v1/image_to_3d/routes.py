@@ -25,12 +25,9 @@ from app.image_to_3d import (
     get_task_store,
     build_precision_disclaimer,
 )
-from app.image_to_3d.colmap_runner import ColmapError
 from app.image_to_3d.task_store import (
-    ReconstructionTask,
     ReconstructionTaskStatus,
 )
-from app.image_to_3d.pipeline import ReconstructionResult
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +41,7 @@ def _spawn(coro):
     _background_tasks.add(t)
     t.add_done_callback(_background_tasks.discard)
     return t
+
 
 router = APIRouter(
     prefix="/api/v1/image_to_3d",
@@ -89,6 +87,7 @@ def _disclaimer_dict(calibrated: bool = False, scale_factor: float = 1.0) -> dic
 
 class TaskCreateRequest(BaseModel):
     """创建任务时的可选元数据。"""
+
     calibration_anchor_distance: float | None = Field(
         default=None,
         description=(
@@ -145,8 +144,7 @@ async def get_precision_info() -> dict[str, Any]:
             "calibration_block_guidance": {
                 "recommended": "30mm 量块（量具店约 50 元，精度 ±0.0005mm）",
                 "purpose": (
-                    "放在拍摄场景中，重建后用作尺度归一化的参照物。"
-                    "没有标定块的 mesh 是无量纲的，无法用于工艺仿真。"
+                    "放在拍摄场景中，重建后用作尺度归一化的参照物。没有标定块的 mesh 是无量纲的，无法用于工艺仿真。"
                 ),
                 "placement": (
                     "1) 标定块与零件在同一水平面上；"
@@ -202,10 +200,7 @@ async def create_task(
     if len(files) < config.image_to_3d.min_photos:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"照片数量不足：上传 {len(files)} 张，"
-                f"最少需要 {config.image_to_3d.min_photos} 张"
-            ),
+            message=(f"照片数量不足：上传 {len(files)} 张，最少需要 {config.image_to_3d.min_photos} 张"),
             suggestion=(
                 f"建议拍摄 {config.image_to_3d.min_photos}-"
                 f"{config.image_to_3d.max_photos} 张，环绕零件一周，"
@@ -216,14 +211,8 @@ async def create_task(
     if len(files) > config.image_to_3d.max_photos:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"照片数量过多：上传 {len(files)} 张，"
-                f"最多允许 {config.image_to_3d.max_photos} 张"
-            ),
-            suggestion=(
-                f"SfM 在 {config.image_to_3d.max_photos} 张以上耗时显著增加，"
-                "建议精简到关键视角。"
-            ),
+            message=(f"照片数量过多：上传 {len(files)} 张，最多允许 {config.image_to_3d.max_photos} 张"),
+            suggestion=(f"SfM 在 {config.image_to_3d.max_photos} 张以上耗时显著增加，建议精简到关键视角。"),
         )
 
     # 校验 + 保存每张照片到临时上传目录
@@ -320,8 +309,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=(
-                f"任务状态不允许执行当前操作 status={task.status}。"
-                "仅 PENDING / FAILED / TIMEOUT 状态可触发执行。"
+                f"任务状态不允许执行当前操作 status={task.status}。仅 PENDING / FAILED / TIMEOUT 状态可触发执行。"
             ),
         )
 
@@ -430,10 +418,7 @@ async def download_result(task_id: str) -> FileResponse:
     if task.status != ReconstructionTaskStatus.SUCCEEDED.value:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"任务未完成 status={task.status}，无法下载结果。"
-                "请等待 status=succeeded 后重试。"
-            ),
+            detail=(f"任务未完成 status={task.status}，无法下载结果。请等待 status=succeeded 后重试。"),
         )
 
     if not task.output_mesh_path:
@@ -510,6 +495,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     if workspace_dir.exists():
         try:
             import shutil
+
             await asyncio.to_thread(shutil.rmtree, workspace_dir, ignore_errors=True)
         except OSError as e:
             logger.warning("清理 workspace 失败 task_id=%s: %s", task_id, e)

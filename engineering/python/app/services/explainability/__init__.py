@@ -15,5 +15,5 @@
 ``from app.services.explainability_service import ...`` 与
 ``from app.services.explainability import ...`` 行为完全等价。
 """
-from app.dependencies import get_explainability_service
 
+from app.dependencies import get_explainability_service

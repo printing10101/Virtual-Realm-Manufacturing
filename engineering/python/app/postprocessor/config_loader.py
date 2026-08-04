@@ -10,6 +10,7 @@ import copy
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
@@ -68,15 +69,13 @@ REQUIRED_BASE_KEYS = (
 )
 REQUIRED_SPINDLE_KEYS = ("min_rpm", "max_rpm", "default_rpm")
 REQUIRED_FEED_KEYS = ("min_rate", "max_rate", "default_rate")
-REQUIRED_WORK_COORD_KEYS = tuple(f"G{n}" for n in range(54, 60)) + (
-    "default_coordinate_system",
-)
+REQUIRED_WORK_COORD_KEYS = tuple(f"G{n}" for n in range(54, 60)) + ("default_coordinate_system",)
 REQUIRED_TOOL_OFFSET_KEYS = ("length_registers", "radius_registers")
 REQUIRED_FIXED_CYCLE_GROUPS = ("drilling", "tapping", "boring", "threading")
 REQUIRED_DRILLING_CYCLES = ("G81", "G83")
-REQUIRED_TAPPING_CYCLES = ("G84")
+REQUIRED_TAPPING_CYCLES = "G84"
 REQUIRED_BORING_CYCLES = ("G86", "G89")
-REQUIRED_THREADING_CYCLES = ("G76")
+REQUIRED_THREADING_CYCLES = "G76"
 REQUIRED_SUBPROGRAM_KEYS = (
     "call_format",
     "end_code",
@@ -270,11 +269,7 @@ class ConfigValidator:
                     path,
                     f"min_rpm ({min_rpm}) 必须小于 max_rpm ({max_rpm})",
                 )
-        if (
-            isinstance(default_rpm, int)
-            and isinstance(min_rpm, int)
-            and isinstance(max_rpm, int)
-        ):
+        if isinstance(default_rpm, int) and isinstance(min_rpm, int) and isinstance(max_rpm, int):
             if not (min_rpm <= default_rpm <= max_rpm):
                 self._add_warning(
                     path,
@@ -341,19 +336,13 @@ class ConfigValidator:
             self._check_positive_int(f"{path}.{key}.start", reg.get("start"))
             self._check_positive_int(f"{path}.{key}.end", reg.get("end"))
 
-            if (
-                isinstance(reg.get("start"), int)
-                and isinstance(reg.get("end"), int)
-                and reg["start"] > reg["end"]
-            ):
+            if isinstance(reg.get("start"), int) and isinstance(reg.get("end"), int) and reg["start"] > reg["end"]:
                 self._add_error(
                     f"{path}.{key}",
                     f"start ({reg['start']}) 不能大于 end ({reg['end']})",
                 )
 
-            self._check_positive_float(
-                f"{path}.{key}.default_offset", reg.get("default_offset")
-            )
+            self._check_positive_float(f"{path}.{key}.default_offset", reg.get("default_offset"))
 
         self._validate_radius_compensation_types(tool_offset)
 
@@ -459,24 +448,21 @@ class ConfigValidator:
             if cycle.get("decrement_type") not in VALID_DECREMENT_TYPES:
                 self._add_error(
                     path,
-                    f"decrement_type 无效: {cycle.get('decrement_type')}, "
-                    f"有效值: {VALID_DECREMENT_TYPES}",
+                    f"decrement_type 无效: {cycle.get('decrement_type')}, 有效值: {VALID_DECREMENT_TYPES}",
                 )
 
     def _validate_tapping_cycle(self, path: str, cycle: dict) -> None:
         if cycle.get("spindle_direction") not in VALID_SPINDLE_DIRECTIONS:
             self._add_error(
                 path,
-                f"spindle_direction 无效: {cycle.get('spindle_direction')}, "
-                f"有效值: {VALID_SPINDLE_DIRECTIONS}",
+                f"spindle_direction 无效: {cycle.get('spindle_direction')}, 有效值: {VALID_SPINDLE_DIRECTIONS}",
             )
         self._check_type(f"{path}.feed_per_rev", cycle.get("feed_per_rev"), bool)
         self._check_positive_float(f"{path}.dwell_time", cycle.get("dwell_time"))
         if cycle.get("retract_spindle_direction") not in VALID_SPINDLE_DIRECTIONS:
             self._add_error(
                 path,
-                f"retract_spindle_direction 无效: "
-                f"{cycle.get('retract_spindle_direction')}",
+                f"retract_spindle_direction 无效: {cycle.get('retract_spindle_direction')}",
             )
 
     def _validate_boring_cycle(self, path: str, cycle: dict) -> None:
@@ -526,8 +512,7 @@ class ConfigValidator:
         if cycle.get("infeed_method") not in VALID_INFEED_METHODS:
             self._add_error(
                 path,
-                f"infeed_method 无效: {cycle.get('infeed_method')}, "
-                f"有效值: {VALID_INFEED_METHODS}",
+                f"infeed_method 无效: {cycle.get('infeed_method')}, 有效值: {VALID_INFEED_METHODS}",
             )
 
     def _validate_subprogram(self, sub: dict) -> None:
@@ -611,13 +596,19 @@ class ConfigLimiter:
             rpm = float(self._spindle_min)
             logger.warning(
                 "主轴转速超下限 [%s]: 原始值 %.1f RPM -> 限制值 %.1f RPM (min: %d)",
-                context, original, rpm, self._spindle_min,
+                context,
+                original,
+                rpm,
+                self._spindle_min,
             )
         elif rpm > self._spindle_max:
             rpm = float(self._spindle_max)
             logger.warning(
                 "主轴转速超上限 [%s]: 原始值 %.1f RPM -> 限制值 %.1f RPM (max: %d)",
-                context, original, rpm, self._spindle_max,
+                context,
+                original,
+                rpm,
+                self._spindle_max,
             )
         return rpm
 
@@ -636,13 +627,19 @@ class ConfigLimiter:
             feed = self._feed_min
             logger.warning(
                 "进给速度超下限 [%s]: 原始值 %.2f mm/min -> 限制值 %.2f mm/min (min: %.2f)",
-                context, original, feed, self._feed_min,
+                context,
+                original,
+                feed,
+                self._feed_min,
             )
         elif feed > self._feed_max:
             feed = self._feed_max
             logger.warning(
                 "进给速度超上限 [%s]: 原始值 %.2f mm/min -> 限制值 %.2f mm/min (max: %.2f)",
-                context, original, feed, self._feed_max,
+                context,
+                original,
+                feed,
+                self._feed_max,
             )
         return feed
 
@@ -682,13 +679,21 @@ class ConfigLimiter:
             position = min_val
             logger.warning(
                 "坐标轴软限位超下限 [%s]: %s轴 原始值 %.3f mm -> 限制值 %.3f mm (min: %.3f)",
-                context, axis, original, position, min_val,
+                context,
+                axis,
+                original,
+                position,
+                min_val,
             )
         elif position > max_val:
             position = max_val
             logger.warning(
                 "坐标轴软限位超上限 [%s]: %s轴 原始值 %.3f mm -> 限制值 %.3f mm (max: %.3f)",
-                context, axis, original, position, max_val,
+                context,
+                axis,
+                original,
+                position,
+                max_val,
             )
 
         return position
@@ -730,10 +735,7 @@ class ConfigLoader:
             logger.info("已清除全部配置缓存")
         else:
             # 缓存键格式为 "{config_path}:{controller_id}"，需匹配后缀
-            keys_to_delete = [
-                key for key in cls._cache
-                if key.endswith(f":{controller_id}")
-            ]
+            keys_to_delete = [key for key in cls._cache if key.endswith(f":{controller_id}")]
             for key in keys_to_delete:
                 del cls._cache[key]
             if keys_to_delete:
@@ -751,21 +753,22 @@ class ConfigLoader:
             解析后的绝对路径
         """
         if config_path is None:
-            project_root = os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
+            # 向上逐级搜索 config/postprocessor_config.yaml：
+            # 开发布局（仓库根 config/）与打包布局（backend/config/）均可命中。
+            # V2.7.0 解耦后 config/ 位于仓库根，固定 dirname 层级已不可靠。
+            probe = Path(os.path.abspath(__file__))
+            for parent in probe.parents:
+                candidate = parent / "config" / "postprocessor_config.yaml"
+                if candidate.exists():
+                    return str(candidate)
+            raise FileNotFoundError(
+                f"未找到 postprocessor_config.yaml：已从 {os.path.dirname(probe)} 向上逐级搜索，均不存在。"
             )
-            return os.path.join(project_root, "config", "postprocessor_config.yaml")
 
         if os.path.isabs(config_path):
             return config_path
 
-        project_root = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            )
-        )
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         return os.path.join(project_root, config_path)
 
     def load(
@@ -816,14 +819,9 @@ class ConfigLoader:
             controller_id = self._resolve_controller_id(raw_config, base_config)
 
         if controller_id not in VALID_CONTROLLER_IDS:
-            raise ConfigLoadError(
-                f"无效的控制器标识: '{controller_id}', "
-                f"有效值: {VALID_CONTROLLER_IDS}"
-            )
+            raise ConfigLoadError(f"无效的控制器标识: '{controller_id}', 有效值: {VALID_CONTROLLER_IDS}")
 
-        controller_specific = (
-            raw_config.get("controllers", {}).get(controller_id, {})
-        )
+        controller_specific = raw_config.get("controllers", {}).get(controller_id, {})
 
         merged_config = _deep_merge(base_config, controller_specific)
 
@@ -833,14 +831,10 @@ class ConfigLoader:
         validator = ConfigValidator()
         if not validator.validate(merged_config):
             error_details = "\n".join(validator.errors)
-            raise ConfigValidationError(
-                f"配置验证失败 ({len(validator.errors)} 错误):\n{error_details}"
-            )
+            raise ConfigValidationError(f"配置验证失败 ({len(validator.errors)} 错误):\n{error_details}")
 
         self._cache[cache_key] = (copy.deepcopy(merged_config), time.time())
-        logger.info(
-            "配置加载成功: 控制器=%s, 路径=%s", controller_id, resolved_path
-        )
+        logger.info("配置加载成功: 控制器=%s, 路径=%s", controller_id, resolved_path)
 
         return merged_config
 
@@ -870,9 +864,7 @@ class ConfigLoader:
             raise ConfigLoadError(f"配置文件为空: {file_path}")
 
         if not isinstance(data, dict):
-            raise ConfigLoadError(
-                f"配置文件格式错误: 期望字典类型, 实际 {type(data).__name__}"
-            )
+            raise ConfigLoadError(f"配置文件格式错误: 期望字典类型, 实际 {type(data).__name__}")
 
         return data
 
@@ -897,9 +889,7 @@ class ConfigLoader:
             if ctrl.get("target_controller") == full_name:
                 return cid
 
-        logger.warning(
-            "无法确定控制器类型，使用默认: fanuc"
-        )
+        logger.warning("无法确定控制器类型，使用默认: fanuc")
         return "fanuc"
 
     def load_for_controller(

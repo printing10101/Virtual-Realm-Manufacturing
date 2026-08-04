@@ -47,10 +47,7 @@ class TaskCreateRequest(BaseModel):
     )
     precision_tier: str = Field(
         default="standard",
-        description=(
-            "精度档位（继承自阶段 1/2）：coarse / standard / high。"
-            "本模块不引入新档位，仅用于显示告知。"
-        ),
+        description=("精度档位（继承自阶段 1/2）：coarse / standard / high。本模块不引入新档位，仅用于显示告知。"),
     )
     mesh_calibrated: bool | None = Field(
         default=None,

@@ -3,7 +3,6 @@
 提供G代码和刀路碰撞检测的REST API接口。
 """
 
-
 import logging
 from typing import Any
 
@@ -13,11 +12,10 @@ from pydantic import BaseModel, Field
 from app.auth.permissions import require_permission
 from app.simulation.collision_detector import (
     CollisionDetector,
-    CollisionReport,
     WorkspaceLimits,
 )
 from app.simulation.stock_model import StockModel
-from app.simulation.toolpath_parser import ToolpathParser, ToolpathSegment
+from app.simulation.toolpath_parser import ToolpathSegment
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +52,7 @@ class CollisionCheckRequest(BaseModel):
     segments: list[ToolpathSegmentRequest] = Field(..., description="刀路段列表")
     safe_z_height: float = Field(10.0, description="安全Z高度 (mm)")
     mode: str = Field("3axis", description="检测模式 (3axis/5axis)")
-    workspace_limits: dict[str, float] | None = Field(
-        None, description="机床工作空间限制"
-    )
+    workspace_limits: dict[str, float] | None = Field(None, description="机床工作空间限制")
 
 
 class CollisionCheckResponse(BaseModel):
@@ -67,7 +63,11 @@ class CollisionCheckResponse(BaseModel):
     data: dict[str, Any] = Field(..., description="碰撞检测报告")
 
 
-@router.post("/collision-check", response_model=CollisionCheckResponse, dependencies=[Depends(require_permission("collision:check"))])
+@router.post(
+    "/collision-check",
+    response_model=CollisionCheckResponse,
+    dependencies=[Depends(require_permission("collision:check"))],
+)
 async def check_collision(request: CollisionCheckRequest) -> CollisionCheckResponse:
     """执行碰撞检测。
 
@@ -147,7 +147,7 @@ async def check_collision(request: CollisionCheckRequest) -> CollisionCheckRespo
             data=report.to_dict(),
         )
 
-    except Exception as e:
+    except Exception:
         logger.exception("碰撞检测失败")
         raise HTTPException(status_code=500, detail="碰撞检测失败，请联系管理员")
 

@@ -19,12 +19,13 @@ CLI 用法：
 
 稳定性承诺：本文件为 Stable 契约 v1.0.0，向后兼容扩展，breaking change 需新开 ADR。
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import sys
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import field, fields, is_dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -304,16 +305,10 @@ def _constant_class_to_enum_schema(cls: type) -> dict[str, Any]:
     """
     all_method = getattr(cls, "all", None)
     if all_method is None or not callable(all_method):
-        raise ValueError(
-            f"{cls.__name__} 没有 all() classmethod，无法转为 enum schema"
-        )
+        raise ValueError(f"{cls.__name__} 没有 all() classmethod，无法转为 enum schema")
     values = all_method()
-    if not isinstance(values, list) or not all(
-        isinstance(v, str) for v in values
-    ):
-        raise ValueError(
-            f"{cls.__name__}.all() 必须返回 list[str]，实际返回: {type(values)}"
-        )
+    if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+        raise ValueError(f"{cls.__name__}.all() 必须返回 list[str]，实际返回: {type(values)}")
     return {"type": "string", "enum": values}
 
 
@@ -410,9 +405,7 @@ def verify_openapi(path: Optional[Union[str, Path]] = None) -> tuple[bool, str]:
         diffs.append(f"extra schemas: {sorted(extra)}")
     # 内容差异
     common = existing_keys & generated_keys
-    content_diffs = [
-        name for name in sorted(common) if existing_schemas[name] != generated_schemas[name]
-    ]
+    content_diffs = [name for name in sorted(common) if existing_schemas[name] != generated_schemas[name]]
     if content_diffs:
         diffs.append(f"content changed: {content_diffs}")
     return False, "OpenAPI schemas inconsistent: " + "; ".join(diffs)

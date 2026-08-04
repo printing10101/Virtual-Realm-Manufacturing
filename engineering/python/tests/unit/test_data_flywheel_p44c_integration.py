@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -36,6 +37,12 @@ from app.contracts.dataset import (
     IDatasetStore,
     LineageRecord,
 )
+
+
+def _bump_patch(version: str) -> str:
+    """semver patch 自增（如 1.0.0 → 1.0.1）."""
+    major, minor, patch = (int(x) for x in version.split("."))
+    return f"{major}.{minor}.{patch + 1}"
 from app.contracts.observability import ExperimentSnapshot, ISnapshotStore
 from app.contracts.plugin import PluginContext
 from app.metrics.flywheel_metrics import (
@@ -58,17 +65,18 @@ _PLUGIN_DIR = Path(__file__).resolve().parents[2] / "plugins" / "data_flywheel"
 
 
 class InMemoryDatasetStore(IDatasetStore):
-    """内存版 IDatasetStore 测试替身.
+    """内存版 IDatasetStore 测试替身（契约签名：owner_id / version / lineage）.
 
     与 ``test_feedback_collector.py`` 中的实现保持一致，确保 FeedbackCollector
     能正常 create/commit_version/read。
     """
 
     def __init__(self) -> None:
-        self._datasets: dict[str, DatasetSchema] = {}
+        self._datasets: dict[str, dict[str, Any]] = {}  # dataset_id -> meta
+        self._name_to_id: dict[str, str] = {}  # name -> dataset_id（唯一约束）
         self._versions: dict[str, list[DatasetVersion]] = {}
+        self._records: dict[str, list[dict[str, Any]]] = {}
         self._lineages: list[LineageRecord] = []
-        self._counter = 0
         # 故障注入标志（本测试不使用，保留接口对称）
         self.get_version_should_fail = False
         self.read_should_fail = False
@@ -76,88 +84,96 @@ class InMemoryDatasetStore(IDatasetStore):
 
     async def create(
         self,
-        *,
         name: str,
         schema: DatasetSchema,
-        owner: str,
+        *,
+        owner_id: str,
         description: str = "",
-        tags: Optional[list[str]] = None,
     ) -> str:
-        if name in self._datasets:
-            # 复用已存在的 dataset_id（FeedbackCollector 期望这种语义）
-            for did, ds in self._datasets.items():
-                if ds.name == name:
-                    return did
-        self._counter += 1
-        dataset_id = f"ds-{self._counter:04d}-{hashlib.sha256(name.encode()).hexdigest()[:8]}"
-        # 复制 schema 并设置 name（DatasetSchema 不可变，这里假设可变）
-        self._datasets[dataset_id] = schema
+        if name in self._name_to_id:
+            raise ValueError(f"dataset name 已存在: {name}")
+        dataset_id = f"ds-{hashlib.sha256(name.encode()).hexdigest()[:12]}"
+        self._datasets[dataset_id] = {
+            "name": name,
+            "schema": schema,
+            "owner_id": owner_id,
+            "description": description,
+            "status": DatasetStatus.DRAFT,
+        }
+        self._name_to_id[name] = dataset_id
         self._versions[dataset_id] = []
+        self._records[dataset_id] = []
         return dataset_id
 
     async def commit_version(
         self,
-        *,
         dataset_id: str,
         records: list[dict[str, Any]],
-        created_by: str,
-        metadata: Optional[dict[str, Any]] = None,
+        *,
+        version: Optional[str] = None,
+        lineage: Optional[LineageRecord] = None,
     ) -> DatasetVersion:
         if self.commit_should_fail:
             self.commit_should_fail = False
             raise RuntimeError("模拟 commit_version 失败")
         if dataset_id not in self._datasets:
-            raise KeyError(f"数据集不存在: {dataset_id}")
+            raise KeyError(f"dataset 不存在: {dataset_id}")
+        if version is None:
+            existing = self._versions[dataset_id]
+            version = (
+                _bump_patch(existing[-1].version) if existing else "1.0.0"
+            )
         content = repr(sorted(records, key=lambda r: str(r.get("feedback_id", ""))))
         content_hash = "sha256:" + hashlib.sha256(content.encode()).hexdigest()
-        version_id = f"v-{len(self._versions[dataset_id]) + 1:04d}"
-        version = DatasetVersion(
-            version_id=version_id,
+        v = DatasetVersion(
             dataset_id=dataset_id,
+            version=version,
+            status=DatasetStatus.PUBLISHED,
+            schema=self._datasets[dataset_id]["schema"],
             content_hash=content_hash,
             row_count=len(records),
-            created_at=datetime.utcnow(),
-            created_by=created_by,
-            metadata=metadata or {},
-            status=DatasetStatus.ACTIVE,
+            size_bytes=len(content.encode("utf-8")),
+            created_at=datetime.now(timezone.utc),
+            created_by=self._datasets[dataset_id]["owner_id"],
+            storage_uri=f"memory://{dataset_id}/{version}",
+            lineage=lineage.record_id if lineage else None,
         )
-        self._versions[dataset_id].append(version)
+        self._versions[dataset_id].append(v)
+        self._records[dataset_id] = list(records)
         # 记录 lineage
-        self._lineages.append(
-            LineageRecord(
-                record_id=f"lin-{len(self._lineages):04d}",
-                source_type="manual",
-                source_ref=created_by,
-                operation="feedback_collection",
-                dataset_id=dataset_id,
-                version_id=version_id,
-                timestamp=datetime.utcnow(),
-                metadata=metadata or {},
-            )
-        )
-        return version
+        if lineage is not None:
+            self._lineages.append(lineage)
+        return v
 
-    async def get_version(self, dataset_id: str) -> DatasetVersion:
+    async def get_version(
+        self, dataset_id: str, version: Optional[str] = None
+    ) -> DatasetVersion:
         if self.get_version_should_fail:
             self.get_version_should_fail = False
             raise RuntimeError("模拟 get_version 失败")
         versions = self._versions.get(dataset_id, [])
         if not versions:
-            raise KeyError(f"数据集无版本: {dataset_id}")
-        return versions[-1]
+            raise KeyError(f"dataset 无版本: {dataset_id}")
+        if version is None:
+            return versions[-1]
+        for v in versions:
+            if v.version == version:
+                return v
+        raise KeyError(f"版本不存在: {dataset_id}/{version}")
 
     async def read(
         self,
         dataset_id: str,
+        version: Optional[str] = None,
         *,
-        version_id: Optional[str] = None,
-        filters: Optional[dict[str, Any]] = None,
-    ) -> list[dict[str, Any]]:
+        batch_size: int = 1000,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
         if self.read_should_fail:
             self.read_should_fail = False
             raise RuntimeError("模拟 read 失败")
-        # 本测试替身不实际持久化 records，返回空列表（飞轮指标采集会得到 0）
-        return []
+        records = self._records.get(dataset_id, [])
+        for i in range(0, len(records), batch_size):
+            yield records[i : i + batch_size]
 
     async def list_versions(
         self, dataset_id: str
@@ -168,14 +184,17 @@ class InMemoryDatasetStore(IDatasetStore):
         if dataset_id in self._versions and self._versions[dataset_id]:
             last = self._versions[dataset_id][-1]
             self._versions[dataset_id][-1] = DatasetVersion(
-                version_id=last.version_id,
                 dataset_id=last.dataset_id,
+                version=last.version,
+                status=DatasetStatus.DEPRECATED,
+                schema=last.schema,
                 content_hash=last.content_hash,
                 row_count=last.row_count,
+                size_bytes=last.size_bytes,
                 created_at=last.created_at,
                 created_by=last.created_by,
-                metadata=last.metadata,
-                status=DatasetStatus.DEPRECATED,
+                storage_uri=last.storage_uri,
+                lineage=last.lineage,
             )
 
 
@@ -270,16 +289,22 @@ def _reset_global_collector():
 
 
 @pytest.fixture(autouse=True)
-def _mock_resolve_snapshot_store(snapshot_store, monkeypatch):
+def _mock_resolve_snapshot_store(snapshot_store, monkeypatch, request):
     """mock Plugin._resolve_snapshot_store 返回测试替身，避免依赖 app.observability.
 
     通过 monkeypatch 替换实例方法，确保 on_load 时注入的是测试用 InMemorySnapshotStore。
+    注意：``TestResolveSnapshotStoreDegradation`` 专门验证真实实现（observability
+    不可用降级），本 fixture 必须跳过该类。
     """
+    if request.cls and request.cls.__name__ == "TestResolveSnapshotStoreDegradation":
+        yield
+        return
     from plugins.data_flywheel.main import Plugin
 
     monkeypatch.setattr(
         Plugin, "_resolve_snapshot_store", lambda self: snapshot_store
     )
+    yield
 
 
 def _make_context(store: Optional[IDatasetStore] = None) -> PluginContext:

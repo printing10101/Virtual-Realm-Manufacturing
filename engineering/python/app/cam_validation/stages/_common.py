@@ -120,7 +120,5 @@ class CamValidationResult:
             "cam_report_path": self.cam_report_path,
             "internal_report_path": self.internal_report_path,
             "error_message": self.error_message,
-            "disclaimer": (
-                self.disclaimer.to_dict() if self.disclaimer else None
-            ),
+            "disclaimer": (self.disclaimer.to_dict() if self.disclaimer else None),
         }

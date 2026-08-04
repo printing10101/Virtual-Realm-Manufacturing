@@ -5,6 +5,7 @@ ResourceCardService / ProjectPackageService / ProjectSyncService /
 ExplainabilityService / WorldModelService / WorkflowTemplateService /
 ModelRegistryService）的样板代码（单例 + 锁 + _get_session + reset）。
 """
+
 from app.services._shared.service_base import BaseSingletonService
 
 __all__ = ["BaseSingletonService"]

@@ -12,6 +12,7 @@
 
 对应 ADR：ADR-020 思路 1 / ADR-017 世界模型与 RL 模块
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -36,11 +37,7 @@ class GeometryFeatures:
 
     def to_tensor_input(self) -> list[float]:
         """展平为 GeometryEncoder 输入向量。"""
-        return (
-            list(self.bbox_dimensions)
-            + list(self.feature_vector)
-            + [self.symmetry_score, self.complexity_score]
-        )
+        return list(self.bbox_dimensions) + list(self.feature_vector) + [self.symmetry_score, self.complexity_score]
 
 
 @dataclass
@@ -129,14 +126,10 @@ class UnifiedState:
         # 避免 tuple("abc") 产生 ('a','b','c') 长度恰好为 3 的脏数据污染下游
         bbox_raw = geo["bbox_dimensions"]
         if not isinstance(bbox_raw, (list, tuple)):
-            raise ValueError(
-                f"bbox_dimensions 必须为 list/tuple，得到 {type(bbox_raw).__name__}"
-            )
+            raise ValueError(f"bbox_dimensions 必须为 list/tuple，得到 {type(bbox_raw).__name__}")
         feat_raw = geo["feature_vector"]
         if not isinstance(feat_raw, (list, tuple)):
-            raise ValueError(
-                f"feature_vector 必须为 list/tuple，得到 {type(feat_raw).__name__}"
-            )
+            raise ValueError(f"feature_vector 必须为 list/tuple，得到 {type(feat_raw).__name__}")
         return cls(
             geometry=GeometryFeatures(
                 bbox_dimensions=tuple(bbox_raw),

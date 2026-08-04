@@ -21,6 +21,7 @@
 8. **异常层级**：``WorldModelError`` 基类 → ``PredictionError`` / ``ModelNotFound`` /
    ``InvalidStateError`` 子类，与现有服务层异常风格一致
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -154,16 +155,11 @@ class WorldModelPredictRequest:
     def __post_init__(self) -> None:
         # 融合模式下 current_state 可为空（由 unified_state 提供状态信息）
         if not self.current_state and not self.unified_state:
-            raise ValueError(
-                "current_state 不能为空（除非提供 unified_state 走融合模式）"
-            )
+            raise ValueError("current_state 不能为空（除非提供 unified_state 走融合模式）")
         if not self.candidate_action:
             raise ValueError("candidate_action 不能为空")
         if not MIN_HORIZON <= self.horizon <= MAX_HORIZON:
-            raise ValueError(
-                f"horizon 必须在 [{MIN_HORIZON}, {MAX_HORIZON}], "
-                f"当前: {self.horizon}"
-            )
+            raise ValueError(f"horizon 必须在 [{MIN_HORIZON}, {MAX_HORIZON}], 当前: {self.horizon}")
         if not self.model_uri:
             raise ValueError("model_uri 不能为空")
 
@@ -199,23 +195,13 @@ class TrajectoryStep:
         if self.step < 0:
             raise ValueError(f"step 不能为负数: {self.step}")
         if not 0.0 <= self.chatter_probability <= 1.0:
-            raise ValueError(
-                f"chatter_probability 必须在 [0, 1]: "
-                f"{self.chatter_probability}"
-            )
+            raise ValueError(f"chatter_probability 必须在 [0, 1]: {self.chatter_probability}")
         if not 0.0 <= self.confidence <= 1.0:
-            raise ValueError(
-                f"confidence 必须在 [0, 1]: {self.confidence}"
-            )
+            raise ValueError(f"confidence 必须在 [0, 1]: {self.confidence}")
         if self.tool_wear_increment < 0:
-            raise ValueError(
-                f"tool_wear_increment 不能为负数: "
-                f"{self.tool_wear_increment}"
-            )
+            raise ValueError(f"tool_wear_increment 不能为负数: {self.tool_wear_increment}")
         if self.surface_roughness < 0:
-            raise ValueError(
-                f"surface_roughness 不能为负数: {self.surface_roughness}"
-            )
+            raise ValueError(f"surface_roughness 不能为负数: {self.surface_roughness}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -251,25 +237,13 @@ class TrajectoryMetrics:
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.mean_chatter_probability <= 1.0:
-            raise ValueError(
-                f"mean_chatter_probability 必须在 [0, 1]: "
-                f"{self.mean_chatter_probability}"
-            )
+            raise ValueError(f"mean_chatter_probability 必须在 [0, 1]: {self.mean_chatter_probability}")
         if not 0.0 <= self.max_chatter_probability <= 1.0:
-            raise ValueError(
-                f"max_chatter_probability 必须在 [0, 1]: "
-                f"{self.max_chatter_probability}"
-            )
+            raise ValueError(f"max_chatter_probability 必须在 [0, 1]: {self.max_chatter_probability}")
         if self.cumulative_tool_wear < 0:
-            raise ValueError(
-                f"cumulative_tool_wear 不能为负数: "
-                f"{self.cumulative_tool_wear}"
-            )
+            raise ValueError(f"cumulative_tool_wear 不能为负数: {self.cumulative_tool_wear}")
         if self.final_surface_roughness < 0:
-            raise ValueError(
-                f"final_surface_roughness 不能为负数: "
-                f"{self.final_surface_roughness}"
-            )
+            raise ValueError(f"final_surface_roughness 不能为负数: {self.final_surface_roughness}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -305,20 +279,11 @@ class WorldModelInfo:
         if not self.world_model_version:
             raise ValueError("world_model_version 不能为空")
         if self.training_data_size < 0:
-            raise ValueError(
-                f"training_data_size 不能为负数: "
-                f"{self.training_data_size}"
-            )
+            raise ValueError(f"training_data_size 不能为负数: {self.training_data_size}")
         if not MIN_HORIZON <= self.prediction_horizon <= MAX_HORIZON:
-            raise ValueError(
-                f"prediction_horizon 必须在 [{MIN_HORIZON}, {MAX_HORIZON}]: "
-                f"{self.prediction_horizon}"
-            )
+            raise ValueError(f"prediction_horizon 必须在 [{MIN_HORIZON}, {MAX_HORIZON}]: {self.prediction_horizon}")
         if not 0.0 <= self.uncertainty_estimate <= 1.0:
-            raise ValueError(
-                f"uncertainty_estimate 必须在 [0, 1]: "
-                f"{self.uncertainty_estimate}"
-            )
+            raise ValueError(f"uncertainty_estimate 必须在 [0, 1]: {self.uncertainty_estimate}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -353,9 +318,7 @@ class WorldModelPredictResponse:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "predicted_trajectory": [
-                s.to_dict() for s in self.predicted_trajectory
-            ],
+            "predicted_trajectory": [s.to_dict() for s in self.predicted_trajectory],
             "trajectory_metrics": self.trajectory_metrics.to_dict(),
             "model_info": self.model_info.to_dict(),
         }

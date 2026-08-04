@@ -33,7 +33,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import yaml
 
@@ -50,6 +50,7 @@ _SAFE_EXPR_CACHE_MAX = 512
 
 class Priority(str, Enum):
     """安全规则优先级 - 数值越小优先级越高"""
+
     P0 = "P0"  # 最高：人员安全，任何情况下不可被覆盖
     P1 = "P1"  # 设备安全：机床/刀具保护
     P2 = "P2"  # 产品质量：公差/表面质量
@@ -70,22 +71,24 @@ class Priority(str, Enum):
 
 class ActionType(str, Enum):
     """动作类型"""
-    OVERRIDE = "override"           # 强制覆盖目标参数值
-    ALERT = "alert"                 # 告警
+
+    OVERRIDE = "override"  # 强制覆盖目标参数值
+    ALERT = "alert"  # 告警
     ALERT_AND_OVERRIDE = "alert_and_override"  # 告警+覆盖
-    STOP = "stop"                   # 立即停机
+    STOP = "stop"  # 立即停机
     PAUSE_AND_ALERT = "pause_and_alert"  # 暂停+报警
-    FORCE_CHANGE = "force_change"   # 强制更换（如换刀）
-    E_STOP = "e_stop"               # 急停（物理安全回路联锁）[F-P0-3]
-    HOLD = "hold"                   # 保持当前状态等待人工干预 [F-P0-3]
+    FORCE_CHANGE = "force_change"  # 强制更换（如换刀）
+    E_STOP = "e_stop"  # 急停（物理安全回路联锁）[F-P0-3]
+    HOLD = "hold"  # 保持当前状态等待人工干预 [F-P0-3]
 
 
 class RuleCategory(str, Enum):
     """规则类别"""
-    MACHINE = "M"    # 机床
-    TOOL = "T"       # 刀具
-    PROCESS = "P"    # 工艺
-    SAFETY = "S"     # 物理安全 [F-P0-3]
+
+    MACHINE = "M"  # 机床
+    TOOL = "T"  # 刀具
+    PROCESS = "P"  # 工艺
+    SAFETY = "S"  # 物理安全 [F-P0-3]
 
 
 VALID_OPERATORS = {"<", ">", "<=", ">=", "==", "!="}
@@ -111,6 +114,7 @@ PRIORITY_ORDER: List[Priority] = [Priority.P0, Priority.P1, Priority.P2, Priorit
 @dataclass
 class RuleCondition:
     """规则触发条件"""
+
     condition_type: str  # threshold, composite
     field: str
     operator: str
@@ -137,6 +141,7 @@ class RuleCondition:
 @dataclass
 class RuleAction:
     """规则执行动作"""
+
     action_type: ActionType
     target: str
     value: Any
@@ -181,13 +186,14 @@ class RuleAction:
 @dataclass
 class SafetyRule:
     """单条制造安全约束规则"""
-    rule_id: str               # M-001, T-001, P-001 ...
-    name: str                  # 规则名称
-    priority: Priority         # P0-P3
-    category: RuleCategory     # M/T/P
-    condition: RuleCondition   # 触发条件
-    action: RuleAction         # 执行动作
-    audit: bool = True         # 是否记录审计日志
+
+    rule_id: str  # M-001, T-001, P-001 ...
+    name: str  # 规则名称
+    priority: Priority  # P0-P3
+    category: RuleCategory  # M/T/P
+    condition: RuleCondition  # 触发条件
+    action: RuleAction  # 执行动作
+    audit: bool = True  # 是否记录审计日志
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -217,11 +223,12 @@ class SafetyRule:
 @dataclass
 class AuditEntry:
     """审计日志条目"""
-    timestamp: float           # Unix时间戳
-    rule_id: str               # 触发规则ID
+
+    timestamp: float  # Unix时间戳
+    rule_id: str  # 触发规则ID
     condition_values: Dict[str, Any]  # 触发时的条件值
-    action: Dict[str, Any]     # 执行的动作
-    result: str                # 执行结果 description
+    action: Dict[str, Any]  # 执行的动作
+    result: str  # 执行结果 description
     priority: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
@@ -243,6 +250,7 @@ class AuditEntry:
 @dataclass
 class ValidationError:
     """验证错误"""
+
     rule_id: str
     field: str
     message: str
@@ -279,15 +287,12 @@ def _check_syntax(rules: List[SafetyRule]) -> List[ValidationError]:
         if not rule.rule_id:
             errors.append(ValidationError("", "rule_id", "rule_id不能为空"))
         elif not _is_valid_rule_id(rule.rule_id):
-            errors.append(ValidationError(
-                rule.rule_id, "rule_id",
-                f"rule_id格式无效: '{rule.rule_id}'，应为 大写字母-三位数字"
-            ))
+            errors.append(
+                ValidationError(rule.rule_id, "rule_id", f"rule_id格式无效: '{rule.rule_id}'，应为 大写字母-三位数字")
+            )
         else:
             if rule.rule_id in seen_ids:
-                errors.append(ValidationError(
-                    rule.rule_id, "rule_id", f"rule_id重复: {rule.rule_id}"
-                ))
+                errors.append(ValidationError(rule.rule_id, "rule_id", f"rule_id重复: {rule.rule_id}"))
             seen_ids.add(rule.rule_id)
 
         if not rule.name:
@@ -297,10 +302,13 @@ def _check_syntax(rules: List[SafetyRule]) -> List[ValidationError]:
             errors.append(ValidationError(rule.rule_id, "condition.field", "条件字段不能为空"))
 
         if rule.condition.operator not in VALID_OPERATORS:
-            errors.append(ValidationError(
-                rule.rule_id, "condition.operator",
-                f"无效运算符: '{rule.condition.operator}'，支持: {VALID_OPERATORS}"
-            ))
+            errors.append(
+                ValidationError(
+                    rule.rule_id,
+                    "condition.operator",
+                    f"无效运算符: '{rule.condition.operator}'，支持: {VALID_OPERATORS}",
+                )
+            )
 
         if not rule.action.target:
             errors.append(ValidationError(rule.rule_id, "action.target", "动作目标不能为空"))
@@ -310,7 +318,7 @@ def _check_syntax(rules: List[SafetyRule]) -> List[ValidationError]:
 
 def _is_valid_rule_id(rule_id: str) -> bool:
     """检查规则ID格式: 大写字母-三位数字"""
-    return bool(re.match(r'^[A-Z]-\d{3}$', rule_id))
+    return bool(re.match(r"^[A-Z]-\d{3}$", rule_id))
 
 
 def _check_field_existence(rules: List[SafetyRule]) -> List[ValidationError]:
@@ -319,31 +327,43 @@ def _check_field_existence(rules: List[SafetyRule]) -> List[ValidationError]:
 
     known_fields = {
         # 机床状态
-        "spindle_speed", "spindle_temperature", "vibration_rms",
-        "feed_rate", "max_feed_rate", "max_spindle_speed",
+        "spindle_speed",
+        "spindle_temperature",
+        "vibration_rms",
+        "feed_rate",
+        "max_feed_rate",
+        "max_spindle_speed",
         # 刀具状态
-        "tool_wear", "acoustic_emission", "tool_life_used",
-        "tool_rated_life", "cutting_force", "material_force_limit",
-        "dimension_deviation", "tolerance_band", "overcut_detected",
+        "tool_wear",
+        "acoustic_emission",
+        "tool_life_used",
+        "tool_rated_life",
+        "cutting_force",
+        "material_force_limit",
+        "dimension_deviation",
+        "tolerance_band",
+        "overcut_detected",
         # 物理安全信号 [F-P0-3] - IEC 62443 / ISO 10218 合规
-        "emergency_stop_active", "guard_door_open", "light_curtain_broken",
-        "operator_present", "two_hand_button_engaged", "safety_mat_occupied",
+        "emergency_stop_active",
+        "guard_door_open",
+        "light_curtain_broken",
+        "operator_present",
+        "two_hand_button_engaged",
+        "safety_mat_occupied",
     }
 
     for rule in rules:
         fld = rule.condition.field
         if fld and fld not in known_fields:
-            errors.append(ValidationError(
-                rule.rule_id, "condition.field",
-                f"未知条件字段: '{fld}'，已知字段: {sorted(known_fields)}"
-            ))
+            errors.append(
+                ValidationError(
+                    rule.rule_id, "condition.field", f"未知条件字段: '{fld}'，已知字段: {sorted(known_fields)}"
+                )
+            )
 
         target = rule.action.target
         if target and target not in known_fields:
-            errors.append(ValidationError(
-                rule.rule_id, "action.target",
-                f"未知动作目标字段: '{target}'"
-            ))
+            errors.append(ValidationError(rule.rule_id, "action.target", f"未知动作目标字段: '{target}'"))
 
     return errors
 
@@ -351,8 +371,13 @@ def _check_field_existence(rules: List[SafetyRule]) -> List[ValidationError]:
 # 合法动作类型枚举集合 [F-P0-3]
 # 需与 config/safety_rules.yaml 的 action_types 声明保持同步
 VALID_ACTION_TYPES = {
-    "override", "alert_and_override", "stop", "force_change",
-    "pause_and_alert", "e_stop", "hold",
+    "override",
+    "alert_and_override",
+    "stop",
+    "force_change",
+    "pause_and_alert",
+    "e_stop",
+    "hold",
 }
 
 
@@ -365,10 +390,11 @@ def _check_action_type(rules: List[SafetyRule]) -> List[ValidationError]:
         atype = rule.action.action_type
         atype_str = atype.value if isinstance(atype, ActionType) else str(atype)
         if atype_str and atype_str not in VALID_ACTION_TYPES:
-            errors.append(ValidationError(
-                rule.rule_id, "action.type",
-                f"未知动作类型: '{atype_str}'，合法类型: {sorted(VALID_ACTION_TYPES)}"
-            ))
+            errors.append(
+                ValidationError(
+                    rule.rule_id, "action.type", f"未知动作类型: '{atype_str}'，合法类型: {sorted(VALID_ACTION_TYPES)}"
+                )
+            )
     return errors
 
 
@@ -381,12 +407,15 @@ def _check_priority_dependency(rules: List[SafetyRule]) -> List[ValidationError]
         if rule.priority != Priority.P0:
             for p0 in p0_rules:
                 if rule.action.target == p0.condition.field:
-                    errors.append(ValidationError(
-                        rule.rule_id, "priority",
-                        f"规则 {rule.rule_id}({rule.priority.value}) "
-                        f"尝试修改P0规则 {p0.rule_id} 监控的字段 '{p0.condition.field}'，"
-                        f"存在优先级依赖冲突"
-                    ))
+                    errors.append(
+                        ValidationError(
+                            rule.rule_id,
+                            "priority",
+                            f"规则 {rule.rule_id}({rule.priority.value}) "
+                            f"尝试修改P0规则 {p0.rule_id} 监控的字段 '{p0.condition.field}'，"
+                            f"存在优先级依赖冲突",
+                        )
+                    )
 
     return errors
 
@@ -401,17 +430,17 @@ def _check_action_target_validity(rules: List[SafetyRule]) -> List[ValidationErr
 
         if atype in (ActionType.OVERRIDE, ActionType.ALERT_AND_OVERRIDE):
             if not target:
-                errors.append(ValidationError(
-                    rule.rule_id, "action.target",
-                    f"动作类型 '{atype.value}' 必须指定覆盖目标"
-                ))
+                errors.append(
+                    ValidationError(rule.rule_id, "action.target", f"动作类型 '{atype.value}' 必须指定覆盖目标")
+                )
 
         if atype == ActionType.STOP:
             if target and target not in ("spindle_speed", "feed_rate"):
-                errors.append(ValidationError(
-                    rule.rule_id, "action.target",
-                    f"STOP类型动作目标通常应为机床参数，当前: '{target}'"
-                ))
+                errors.append(
+                    ValidationError(
+                        rule.rule_id, "action.target", f"STOP类型动作目标通常应为机床参数，当前: '{target}'"
+                    )
+                )
 
     return errors
 
@@ -618,9 +647,7 @@ class SafetyRuleEngine:
 
         return triggered
 
-    def _evaluate_condition(
-        self, condition: RuleCondition, sensor_data: Dict[str, Any]
-    ) -> bool:
+    def _evaluate_condition(self, condition: RuleCondition, sensor_data: Dict[str, Any]) -> bool:
         """
         评估单个条件是否满足
 
@@ -664,15 +691,11 @@ class SafetyRuleEngine:
             return a != e
         return False
 
-    def _build_action_result(
-        self, rule: SafetyRule, sensor_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _build_action_result(self, rule: SafetyRule, sensor_data: Dict[str, Any]) -> Dict[str, Any]:
         """构建动作结果"""
         action_value = rule.action.value
         if isinstance(action_value, str) and "*" in action_value:
-            action_value = self._resolve_expression(
-                action_value, sensor_data
-            )
+            action_value = self._resolve_expression(action_value, sensor_data)
 
         return {
             "rule_id": rule.rule_id,
@@ -685,9 +708,7 @@ class SafetyRuleEngine:
             "timestamp": time.time(),
         }
 
-    def _resolve_expression(
-        self, expr: str, sensor_data: Dict[str, Any]
-    ) -> float:
+    def _resolve_expression(self, expr: str, sensor_data: Dict[str, Any]) -> float:
         """
         解析简单算术表达式，如 ``max_spindle_speed * 0.9``。
 
@@ -716,10 +737,7 @@ class SafetyRuleEngine:
             logger.warning("规则表达式求值失败: expr=%s, error=%s", expr, e)
             return 0.0
 
-    def _record_audit(
-        self, rule: SafetyRule, sensor_data: Dict[str, Any],
-        action_result: Dict[str, Any]
-    ) -> None:
+    def _record_audit(self, rule: SafetyRule, sensor_data: Dict[str, Any], action_result: Dict[str, Any]) -> None:
         """记录审计日志"""
         entry = AuditEntry(
             timestamp=time.time(),

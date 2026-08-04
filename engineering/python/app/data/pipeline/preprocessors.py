@@ -80,16 +80,11 @@ class ImagePreprocessor(BasePreprocessor):
             img = img[:, :, :3]
 
         if raw_input.bit_depth not in self.config.supported_bit_depths:
-            raise ValueError(
-                f"不支持的图像位深度: {raw_input.bit_depth}-bit。"
-                f"支持: {self.config.supported_bit_depths}"
-            )
+            raise ValueError(f"不支持的图像位深度: {raw_input.bit_depth}-bit。支持: {self.config.supported_bit_depths}")
 
         # 校验图像尺寸：零维图像无法进行 zoom 缩放，会触发 ZeroDivisionError
         if img.shape[0] == 0 or img.shape[1] == 0:
-            raise ValueError(
-                f"图像尺寸无效: {img.shape[:2]}，高度和宽度必须大于 0"
-            )
+            raise ValueError(f"图像尺寸无效: {img.shape[:2]}，高度和宽度必须大于 0")
 
         if raw_input.bit_depth == 16:
             img = (img / 65535.0).astype(np.float32)
@@ -97,6 +92,7 @@ class ImagePreprocessor(BasePreprocessor):
             img = (img / 255.0).astype(np.float32)
 
         from scipy.ndimage import zoom
+
         h, w = img.shape[:2]
         zoom_h = self.config.image_size / h
         zoom_w = self.config.image_size / w
@@ -151,6 +147,7 @@ class TimeSeriesPreprocessor(BasePreprocessor):
             return
         try:
             from scipy.signal import butter
+
             params = self.config.denoise_params
             nyq = 0.5 * self.config.sample_rate
             cutoff = params.get("cutoff_ratio", 0.1) * nyq
@@ -166,20 +163,18 @@ class TimeSeriesPreprocessor(BasePreprocessor):
                 self._design_butterworth_filter()
             if self._filter_coeff is not None:
                 from scipy.signal import filtfilt
+
                 b, a = self._filter_coeff
                 return filtfilt(b, a, data, axis=0)
         elif algorithm == "moving_average":
             window = 5
             kernel = np.ones(window) / window
-            result = np.apply_along_axis(
-                lambda x: np.convolve(x, kernel, mode="same"), 0, data
-            )
+            result = np.apply_along_axis(lambda x: np.convolve(x, kernel, mode="same"), 0, data)
             return result
         elif algorithm == "median":
             from scipy.signal import medfilt
-            return np.apply_along_axis(
-                lambda x: medfilt(x, kernel_size=5), 0, data
-            )
+
+            return np.apply_along_axis(lambda x: medfilt(x, kernel_size=5), 0, data)
         return data
 
     def preprocess(self, raw_input: TimeSeriesInput) -> ProcessedData:
@@ -201,7 +196,7 @@ class TimeSeriesPreprocessor(BasePreprocessor):
         windows = np.zeros((n_windows, window_size, data.shape[1]), dtype=np.float32)
         for i in range(n_windows):
             start = i * step
-            windows[i] = data[start:start + window_size]
+            windows[i] = data[start : start + window_size]
 
         windows = self._apply_denoising(windows.reshape(-1, data.shape[1])).reshape(
             n_windows, window_size, data.shape[1]
@@ -247,18 +242,18 @@ class TextPreprocessor(BasePreprocessor):
     def __init__(self, config: TextProcessorConfig):
         super().__init__(config)
         self._cleaning_patterns = [
-            (re.compile(r'\s+'), ' '),
-            (re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]'), ''),
+            (re.compile(r"\s+"), " "),
+            (re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]"), ""),
         ]
 
     def _clean_text(self, text: str) -> str:
         if self.config.normalize_whitespace:
-            text = re.sub(r'\s+', ' ', text)
+            text = re.sub(r"\s+", " ", text)
         if self.config.clean_special_chars:
-            text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+            text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", "", text)
         text = text.strip()
         if len(text) > self.config.max_text_length:
-            text = text[:self.config.max_text_length]
+            text = text[: self.config.max_text_length]
         return text
 
     def preprocess(self, raw_input: TextInput) -> ProcessedData:
@@ -281,7 +276,7 @@ class TextPreprocessor(BasePreprocessor):
             source_type=DataSourceType.TEXT,
             original_data=raw_input.data,
             processed_data=np.array(
-                [ord(c) / 65535.0 for c in cleaned[:self.config.max_text_length]],
+                [ord(c) / 65535.0 for c in cleaned[: self.config.max_text_length]],
                 dtype=np.float32,
             ),
             feature_dim=self.config.bge_embedding_dim,
@@ -407,8 +402,8 @@ class GCodePreprocessor(BasePreprocessor):
     def __init__(self, config: GCodeProcessorConfig):
         super().__init__(config)
         self._instruction_pattern = re.compile(
-            r'(G\d+|M\d+|T\d+|S\d+|F[\d.]+|X[\d.\-]+|Y[\d.\-]+|Z[\d.\-]+|I[\d.\-]+|J[\d.\-]+|K[\d.\-]+|'
-            r'N\d+|O\d+|L\d+|P\d+|D\d+|H\d+|A[\d.\-]+|B[\d.\-]+|C[\d.\-]+|R[\d.\-]+)',
+            r"(G\d+|M\d+|T\d+|S\d+|F[\d.]+|X[\d.\-]+|Y[\d.\-]+|Z[\d.\-]+|I[\d.\-]+|J[\d.\-]+|K[\d.\-]+|"
+            r"N\d+|O\d+|L\d+|P\d+|D\d+|H\d+|A[\d.\-]+|B[\d.\-]+|C[\d.\-]+|R[\d.\-]+)",
             re.IGNORECASE,
         )
         self._operation_markers = {
@@ -448,11 +443,13 @@ class GCodePreprocessor(BasePreprocessor):
                 continue
             tokens = self._instruction_pattern.findall(line)
             if tokens:
-                instructions.append({
-                    "line": line_num,
-                    "tokens": tokens,
-                    "text": line,
-                })
+                instructions.append(
+                    {
+                        "line": line_num,
+                        "tokens": tokens,
+                        "text": line,
+                    }
+                )
         return instructions
 
     def _segment_by_operation(self, instructions: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
@@ -479,10 +476,27 @@ class GCodePreprocessor(BasePreprocessor):
 
     def _encode_instructions(self, instructions: List[Dict[str, Any]]) -> np.ndarray:
         vocab = {
-            "G": 0, "M": 1, "T": 2, "S": 3, "F": 4,
-            "X": 5, "Y": 6, "Z": 7, "I": 8, "J": 9, "K": 10,
-            "A": 11, "B": 12, "C": 13, "R": 14, "N": 15, "O": 16,
-            "L": 17, "P": 18, "D": 19, "H": 20,
+            "G": 0,
+            "M": 1,
+            "T": 2,
+            "S": 3,
+            "F": 4,
+            "X": 5,
+            "Y": 6,
+            "Z": 7,
+            "I": 8,
+            "J": 9,
+            "K": 10,
+            "A": 11,
+            "B": 12,
+            "C": 13,
+            "R": 14,
+            "N": 15,
+            "O": 16,
+            "L": 17,
+            "P": 18,
+            "D": 19,
+            "H": 20,
         }
         encoded = np.zeros((len(instructions), len(vocab)), dtype=np.float32)
         for i, inst in enumerate(instructions):
@@ -494,9 +508,7 @@ class GCodePreprocessor(BasePreprocessor):
                     except ValueError as e:
                         # P2-批次2 修复：改用 %s 懒求值。此处在嵌套 for 循环内，
                         # G 代码 token 编码热路径，debug 关闭时避免字符串插值开销。
-                        logger.debug(
-                            "G代码 token %r 数值解析失败，使用默认值 0.0: %s", token, e
-                        )
+                        logger.debug("G代码 token %r 数值解析失败，使用默认值 0.0: %s", token, e)
                         val = 0.0
                     encoded[i, vocab[prefix]] = val
         return encoded
@@ -506,8 +518,7 @@ class GCodePreprocessor(BasePreprocessor):
 
         if raw_input.controller_type not in self.config.supported_controllers:
             raise ValueError(
-                f"不支持的控制器类型: {raw_input.controller_type}。"
-                f"支持: {self.config.supported_controllers}"
+                f"不支持的控制器类型: {raw_input.controller_type}。支持: {self.config.supported_controllers}"
             )
 
         instructions = self._parse_instructions(raw_input.data)
@@ -520,7 +531,7 @@ class GCodePreprocessor(BasePreprocessor):
         encoded_segments = []
         for seg in segments:
             if len(seg) > self.config.max_instructions_per_segment:
-                seg = seg[:self.config.max_instructions_per_segment]
+                seg = seg[: self.config.max_instructions_per_segment]
             encoded_segments.append(self._encode_instructions(seg))
 
         delay = (time.perf_counter() - t0) * 1000

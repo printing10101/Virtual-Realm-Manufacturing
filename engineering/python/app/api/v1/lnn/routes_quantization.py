@@ -21,7 +21,6 @@ from app.models.schemas import LNNQuantizeRequest
 from app.tasks.task_manager import TaskType, TaskStatus
 from app.ai.lnn.inference.registry import (
     is_quantized_model,
-    get_quantized_model_name,
 )
 
 from app.api.v1.lnn.dependencies import (
@@ -86,9 +85,7 @@ async def quantize_model(request: Request, model_name: str, body: LNNQuantizeReq
             )
 
         # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
-        quantize_task = asyncio.create_task(
-            task_manager.execute_task(task_id, quantization_executor)
-        )
+        quantize_task = asyncio.create_task(task_manager.execute_task(task_id, quantization_executor))
         _active_quantize_tasks.add(quantize_task)
 
         def _on_quantize_done(t: asyncio.Task) -> None:

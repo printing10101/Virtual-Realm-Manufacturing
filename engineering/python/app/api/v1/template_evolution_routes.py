@@ -1,6 +1,5 @@
 """Template Evolution API Routes."""
 
-
 import logging
 from typing import Any, Dict, Optional
 

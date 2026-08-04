@@ -25,10 +25,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import random
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -70,20 +69,20 @@ class AdapterConfig:
     timeout: float = 10.0
 
     # Subscription
-    interval: float = 1.0            # seconds between samples (1 Hz default)
+    interval: float = 1.0  # seconds between samples (1 Hz default)
 
     # Batching
-    batch_size: int = 10             # flush after this many samples
-    batch_interval: float = 5.0      # ...or after this many seconds
+    batch_size: int = 10  # flush after this many samples
+    batch_interval: float = 5.0  # ...or after this many seconds
 
     # Retry
-    max_retries: int = 5             # bounded – never spin forever
-    initial_backoff: float = 0.5     # seconds for the first retry
-    max_backoff: float = 16.0        # ...but capped so we don't sleep forever
+    max_retries: int = 5  # bounded – never spin forever
+    initial_backoff: float = 0.5  # seconds for the first retry
+    max_backoff: float = 16.0  # ...but capped so we don't sleep forever
 
     # Storage
-    database: str = "test"           # TDengine DB (override per env)
-    table: str = "opcua"             # TDengine super/sub-table name
+    database: str = "test"  # TDengine DB (override per env)
+    table: str = "opcua"  # TDengine super/sub-table name
 
     # Node configuration
     node_ids: Optional[List[str]] = None  # OPC UA node IDs to subscribe
@@ -103,9 +102,7 @@ class AdapterConfig:
         # Normalize the endpoint URL
         self.endpoint = self.endpoint.strip()
         if not self.endpoint.lower().startswith("opc.tcp://"):
-            raise ValueError(
-                f"endpoint must be an opc.tcp:// URL, got: {self.endpoint!r}"
-            )
+            raise ValueError(f"endpoint must be an opc.tcp:// URL, got: {self.endpoint!r}")
         # 凭据支持从环境变量读取（未显式传入时），便于生产环境经 env 注入。
         if self.username is None:
             self.username = os.environ.get("LNN_OPCUA_USERNAME")
@@ -221,6 +218,7 @@ class OPCUAAdapter:
                     from asyncua.crypto.security_policies import (
                         SecurityPolicyBasic256Sha256,
                     )
+
                     self._client.set_security(
                         SecurityPolicyBasic256Sha256,
                         certificate=self.config.cert_path,
@@ -250,19 +248,13 @@ class OPCUAAdapter:
                 self._run_coro(self._client.connect())
 
                 # Get server info
-                server_uri = self._run_coro(
-                    self._client.get_node(ua.ObjectIds.Server_ServerArray).get_value()
-                )
-                server_name = self._run_coro(
-                    self._client.get_node(ua.ObjectIds.Server_ServerStatus).get_value()
-                )
+                server_uri = self._run_coro(self._client.get_node(ua.ObjectIds.Server_ServerArray).get_value())
+                server_name = self._run_coro(self._client.get_node(ua.ObjectIds.Server_ServerStatus).get_value())
 
                 # Create subscription
                 handler = SubHandler(self)
                 self._subscription = self._run_coro(
-                    self._client.create_subscription(
-                        self.config.interval * 1000, handler
-                    )
+                    self._client.create_subscription(self.config.interval * 1000, handler)
                 )
 
                 # Subscribe to nodes
@@ -270,21 +262,19 @@ class OPCUAAdapter:
                 if not nodes_to_subscribe:
                     # Auto-discover nodes: look for common CNC data items
                     nodes_to_subscribe = self._discover_cnc_nodes()
-                    logger.info("Auto-discovered %d CNC nodes: %s",
-                              len(nodes_to_subscribe), nodes_to_subscribe)
+                    logger.info("Auto-discovered %d CNC nodes: %s", len(nodes_to_subscribe), nodes_to_subscribe)
 
                 if nodes_to_subscribe:
                     nodes = [self._client.get_node(node_id) for node_id in nodes_to_subscribe]
-                    
+
                     # Cache node names for use in the sync callback
                     for node in nodes:
                         try:
                             browse_name = self._run_coro(node.read_browse_name())
                             handler._node_names[node.nodeid.to_string()] = browse_name.Name
                         except (asyncio.TimeoutError, TimeoutError, OSError) as exc:
-                            logger.warning("Failed to cache node name for %s: %s", 
-                                         node.nodeid.to_string(), exc)
-                    
+                            logger.warning("Failed to cache node name for %s: %s", node.nodeid.to_string(), exc)
+
                     self._run_coro(self._subscription.subscribe_data_change(nodes))
                     logger.info("Subscribed to %d nodes", len(nodes))
 
@@ -297,7 +287,7 @@ class OPCUAAdapter:
                 logger.info("Connection established: %s", result)
                 return result
 
-            except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
+            except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError):
                 # Clean up on connection failure
                 if self._client:
                     try:
@@ -308,8 +298,7 @@ class OPCUAAdapter:
 
         except ImportError as exc:
             raise RuntimeError(
-                f"OPC UA client library 'asyncua' not installed: {exc}\n"
-                "Install with: pip install asyncua"
+                f"OPC UA client library 'asyncua' not installed: {exc}\nInstall with: pip install asyncua"
             ) from exc
         except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
             logger.error("Failed to connect to OPC UA server: %s", exc)
@@ -326,9 +315,7 @@ class OPCUAAdapter:
             for task in pending:
                 task.cancel()
             if pending:
-                self._loop.run_until_complete(
-                    asyncio.gather(*pending, return_exceptions=True)
-                )
+                self._loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
             self._loop.run_until_complete(self._loop.shutdown_asyncgens())
             self._loop.close()
 
@@ -352,8 +339,13 @@ class OPCUAAdapter:
 
         discovered_nodes = []
         target_names = {
-            "spindlespeed", "spindleload", "feedrate", "execution",
-            "spindle_speed", "spindle_load", "feed_rate",
+            "spindlespeed",
+            "spindleload",
+            "feedrate",
+            "execution",
+            "spindle_speed",
+            "spindle_load",
+            "feed_rate",
         }
 
         try:
@@ -420,7 +412,7 @@ class OPCUAAdapter:
                 # Stop the background event loop
                 if self._loop and self._loop.is_running():
                     self._loop.call_soon_threadsafe(self._loop.stop)
-                if hasattr(self, '_loop_thread') and self._loop_thread.is_alive():
+                if hasattr(self, "_loop_thread") and self._loop_thread.is_alive():
                     self._loop_thread.join(timeout=DEFAULT_THREAD_JOIN_TIMEOUT_SEC)
                 self._loop = None
 
@@ -459,7 +451,7 @@ class OPCUAAdapter:
         # Main loop - just wait and flush periodically
         consecutive_errors = 0
         max_consecutive_errors = 10  # 连续错误次数上限
-        
+
         while not self._stop_event.is_set():
             if deadline is not None and time.monotonic() >= deadline:
                 logger.info("Reached duration deadline, stopping")
@@ -475,7 +467,7 @@ class OPCUAAdapter:
                         logger.error("Max reconnection attempts reached, stopping")
                         break
                     continue
-                
+
                 # Reset error counter on successful health check
                 consecutive_errors = 0
 
@@ -490,14 +482,15 @@ class OPCUAAdapter:
                 logger.error("Runtime error in subscription loop: %s", exc, exc_info=True)
                 self._error_count += 1
                 consecutive_errors += 1
-                
+
                 if consecutive_errors >= max_consecutive_errors:
                     logger.error("Max consecutive errors reached, stopping")
                     break
-                
+
                 # Wait before retry
-                backoff_time = min(self.config.initial_backoff * (2 ** (consecutive_errors - 1)), 
-                                  self.config.max_backoff)
+                backoff_time = min(
+                    self.config.initial_backoff * (2 ** (consecutive_errors - 1)), self.config.max_backoff
+                )
                 logger.info("Waiting %.2f seconds before retry", backoff_time)
                 if self._stop_event.wait(backoff_time):
                     break
@@ -512,9 +505,7 @@ class OPCUAAdapter:
             try:
                 self.disconnect()
             except Exception as exc:
-                logger.warning(
-                    "disconnect failed during run() cleanup: %s", exc, exc_info=True
-                )
+                logger.warning("disconnect failed during run() cleanup: %s", exc, exc_info=True)
         logger.info(
             "Subscription stopped. ingested=%d, errors=%d",
             self.ingested_count,
@@ -524,19 +515,18 @@ class OPCUAAdapter:
 
     def _check_connection_health(self) -> bool:
         """Check if the OPC UA connection is still healthy.
-        
+
         Returns:
             bool: True if connection is healthy, False otherwise
         """
         if not self._client or not self._connected:
             return False
-        
+
         try:
             # Try to read a simple node to verify connection
             from asyncua import ua
-            self._run_coro(
-                self._client.get_node(ua.ObjectIds.Server_ServerStatus).get_value()
-            )
+
+            self._run_coro(self._client.get_node(ua.ObjectIds.Server_ServerStatus).get_value())
             return True
         except (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError) as exc:
             logger.debug("Connection health check failed: %s", exc)
@@ -557,7 +547,7 @@ class OPCUAAdapter:
             bool: True if reconnection succeeded, False otherwise
         """
         logger.info("Attempting to reconnect to OPC UA server...")
-        
+
         try:
             # Clean up old connection
             if self._client:
@@ -565,19 +555,19 @@ class OPCUAAdapter:
                     self._run_coro(self._client.disconnect())
                 except Exception as exc:
                     logger.debug("Error during disconnect: %s", exc)
-            
+
             self._connected = False
             self._client = None
             self._subscription = None
-            
+
             # Wait before reconnect
             time.sleep(self.config.initial_backoff)
-            
+
             # Try to reconnect
             self.connect()
             logger.info("Reconnection successful")
             return True
-            
+
         except (ConnectionError, OSError, TimeoutError, RuntimeError) as exc:
             logger.error("Reconnection failed: %s", exc)
             return False
@@ -645,9 +635,7 @@ class OPCUAAdapter:
         """Flush if either the size or the age threshold is met."""
         with self._buffer_lock:
             too_many = len(self._buffer) >= self.config.batch_size
-            too_old = (
-                time.monotonic() - self._last_flush
-            ) >= self.config.batch_interval and bool(self._buffer)
+            too_old = (time.monotonic() - self._last_flush) >= self.config.batch_interval and bool(self._buffer)
         if too_many or too_old:
             self.flush()
 
@@ -693,10 +681,7 @@ class OPCUAAdapter:
             # Cannot use run_until_complete() or asyncio.run() here.
             # Use run_coroutine_threadsafe() to schedule on the loop from this thread.
             try:
-                future = asyncio.run_coroutine_threadsafe(
-                    self._insert_async(client, insert, rows),
-                    loop
-                )
+                future = asyncio.run_coroutine_threadsafe(self._insert_async(client, insert, rows), loop)
                 # Wait for the result with a timeout
                 return future.result(timeout=self.config.timeout)
             except (RuntimeError, TimeoutError, Exception) as exc:
@@ -743,7 +728,7 @@ class SubHandler:
             # Get cached node name (avoid async call in sync callback)
             node_id_str = node.nodeid.to_string()
             node_name = self._node_names.get(node_id_str)
-            
+
             if node_name is None:
                 # Fallback: try to get from node (shouldn't happen normally)
                 logger.warning("Node name not cached for %s, using node_id", node_id_str)

@@ -30,6 +30,7 @@ class MachiningFeature:
         parent_feature: Parent feature name for nested features.
         tolerances: Tolerance values dictionary.
     """
+
     name: str
     type: str
     geometric_type: str = ""
@@ -141,6 +142,7 @@ class Setup:
         fixture_type: Fixture type description.
         clamped_features: List of feature names clamped in this setup.
     """
+
     name: str
     surface: str = "A"
     datum_features: list[str] = field(default_factory=list)
@@ -157,6 +159,7 @@ class FeatureEdge:
         to_feature: Successor feature name (machined after predecessor).
         relation: Dependency relation type, e.g. 'face_before_hole'.
     """
+
     from_feature: str
     to_feature: str
     relation: str
@@ -169,6 +172,7 @@ class FeatureDependencyGraph:
     principles (face before hole, rough before finish, datum first), then
     produces an optimal machining sequence via topological sort.
     """
+
     def __init__(self) -> None:
         """Initialize an empty dependency graph."""
         self._features: dict[str, MachiningFeature] = {}
@@ -230,11 +234,7 @@ class FeatureDependencyGraph:
             return
 
         # 粗加工优先于精加工
-        if (
-            pred.is_rough()
-            and succ.is_finish()
-            and pred.geometric_type == succ.geometric_type
-        ):
+        if pred.is_rough() and succ.is_finish() and pred.geometric_type == succ.geometric_type:
             self._add_edge(pred.name, succ.name, "rough_before_finish")
             return
 

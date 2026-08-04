@@ -43,6 +43,7 @@ class PlaneFeature:
         is_datum_candidate: Whether this plane can serve as a datum feature.
         metadata: Additional metadata dictionary.
     """
+
     plane_id: str
     type: str
     area: float = 0.0
@@ -153,6 +154,7 @@ class PlaneRecognitionResult:
         errors: Error messages from the recognition process.
         accuracy_metrics: Recognition accuracy metrics.
     """
+
     planes: list[PlaneFeature] = field(default_factory=list)
     total_count: int = 0
     type_summary: dict[str, int] = field(default_factory=dict)
@@ -197,6 +199,7 @@ class PlaneRecognizer:
         MIN_PLANE_AREA: Minimum recognizable plane area (mm²).
         MAX_PLANE_AREA: Maximum recognizable plane area (mm²).
     """
+
     MIN_PLANE_AREA = 1.0
     MAX_PLANE_AREA = 1_000_000.0
 
@@ -230,7 +233,8 @@ class PlaneRecognizer:
         raw_planes = part_description.get("planes", [])
         raw_features = part_description.get("features", [])
         plane_features = [
-            f for f in raw_features
+            f
+            for f in raw_features
             if f.get("geometric_type") in ("plane", "planar_surface", "end_face")
             or f.get("type") in ("top_plane", "bottom_plane", "side_plane", "end_face", "plane")
         ]
@@ -238,19 +242,21 @@ class PlaneRecognizer:
             pos = pf.get("position", {})
             dims = pf.get("dimensions", {})
             normal = pf.get("normal", pf.get("normal_vector", [0, 0, 1]))
-            raw_planes.append({
-                "id": pf.get("name", f"P{len(raw_planes) + 1:03d}"),
-                "type": pf.get("type", "top_plane"),
-                "position": pos,
-                "length": dims.get("length", pf.get("length", 0)),
-                "width": dims.get("width", pf.get("width", 0)),
-                "area": dims.get("area", pf.get("area", 0)),
-                "normal": normal,
-                "tolerance_grade": pf.get("tolerance_grade", "IT8"),
-                "surface": pf.get("surface", "A"),
-                "is_datum_candidate": pf.get("is_datum_candidate", False),
-                "boundary": pf.get("boundary", pf.get("boundary_contour", [])),
-            })
+            raw_planes.append(
+                {
+                    "id": pf.get("name", f"P{len(raw_planes) + 1:03d}"),
+                    "type": pf.get("type", "top_plane"),
+                    "position": pos,
+                    "length": dims.get("length", pf.get("length", 0)),
+                    "width": dims.get("width", pf.get("width", 0)),
+                    "area": dims.get("area", pf.get("area", 0)),
+                    "normal": normal,
+                    "tolerance_grade": pf.get("tolerance_grade", "IT8"),
+                    "surface": pf.get("surface", "A"),
+                    "is_datum_candidate": pf.get("is_datum_candidate", False),
+                    "boundary": pf.get("boundary", pf.get("boundary_contour", [])),
+                }
+            )
 
         contours = part_description.get("contours", part_description.get("entities", []))
         for i, contour in enumerate(contours):
@@ -265,17 +271,19 @@ class PlaneRecognizer:
                     boundary = contour.get("boundary", contour.get("vertices", contour.get("points", [])))
                     length, width = self._estimate_dimensions(boundary)
 
-                    raw_planes.append({
-                        "id": fig_id,
-                        "type": plane_type,
-                        "position": contour.get("center", contour.get("position", {})),
-                        "length": contour.get("length", length),
-                        "width": contour.get("width", width),
-                        "area": contour.get("area", length * width),
-                        "normal": normal,
-                        "boundary": boundary,
-                        "surface": contour.get("surface", "A"),
-                    })
+                    raw_planes.append(
+                        {
+                            "id": fig_id,
+                            "type": plane_type,
+                            "position": contour.get("center", contour.get("position", {})),
+                            "length": contour.get("length", length),
+                            "width": contour.get("width", width),
+                            "area": contour.get("area", length * width),
+                            "normal": normal,
+                            "boundary": boundary,
+                            "surface": contour.get("surface", "A"),
+                        }
+                    )
 
         if not raw_planes:
             warnings.append("未找到任何平面特征定义")
@@ -322,16 +330,12 @@ class PlaneRecognizer:
 
                 if area < self.MIN_PLANE_AREA:
                     warnings.append(
-                        f"平面 {plane_id} 面积过小 ({area:.2f}mm²)，"
-                        f"低于最小可识别面积 {self.MIN_PLANE_AREA}mm²"
+                        f"平面 {plane_id} 面积过小 ({area:.2f}mm²)，低于最小可识别面积 {self.MIN_PLANE_AREA}mm²"
                     )
 
                 boundary = raw.get("boundary", raw.get("boundary_contour", []))
                 if isinstance(boundary, list) and boundary and isinstance(boundary[0], dict):
-                    boundary = [
-                        [float(pt.get("x", 0)), float(pt.get("y", 0))]
-                        for pt in boundary
-                    ]
+                    boundary = [[float(pt.get("x", 0)), float(pt.get("y", 0))] for pt in boundary]
 
                 if not isinstance(boundary, list):
                     boundary = []
@@ -361,9 +365,7 @@ class PlaneRecognizer:
                 planes.append(plane)
 
             except (ValueError, TypeError, KeyError) as e:
-                errors.append(
-                    f"解析平面条目 {raw.get('id', i)} 时出错: {type(e).__name__}"
-                )
+                errors.append(f"解析平面条目 {raw.get('id', i)} 时出错: {type(e).__name__}")
                 continue
 
         type_summary: dict[str, int] = {}
@@ -498,38 +500,28 @@ class PlaneRecognizer:
             if result.total_count == expected_count:
                 passed.append(f"平面数量匹配: {result.total_count} == {expected_count}")
             else:
-                issues.append(
-                    f"平面数量不匹配: 识别到{result.total_count}个，期望{expected_count}个"
-                )
+                issues.append(f"平面数量不匹配: 识别到{result.total_count}个，期望{expected_count}个")
         else:
             passed.append(f"平面总数: {result.total_count}")
 
         invalid_area = [p for p in result.planes if p.area <= 0]
         if invalid_area:
-            issues.append(
-                f"{len(invalid_area)}个平面面积无效: "
-                f"{', '.join(p.plane_id for p in invalid_area)}"
-            )
+            issues.append(f"{len(invalid_area)}个平面面积无效: {', '.join(p.plane_id for p in invalid_area)}")
         else:
             passed.append("所有平面面积有效")
 
         import math
-        invalid_normal = [
-            p for p in result.planes
-            if all(abs(v) < 0.001 for v in [p.normal_x, p.normal_y, p.normal_z])
-        ]
+
+        invalid_normal = [p for p in result.planes if all(abs(v) < 0.001 for v in [p.normal_x, p.normal_y, p.normal_z])]
         if invalid_normal:
-            issues.append(
-                f"{len(invalid_normal)}个平面法向量为零: "
-                f"{', '.join(p.plane_id for p in invalid_normal)}"
-            )
+            issues.append(f"{len(invalid_normal)}个平面法向量为零: {', '.join(p.plane_id for p in invalid_normal)}")
         else:
             passed.append("所有平面法向量有效")
 
         invalid_pos = [
-            p for p in result.planes
-            if any(math.isnan(v) or math.isinf(v)
-                   for v in [p.center_x, p.center_y, p.center_z])
+            p
+            for p in result.planes
+            if any(math.isnan(v) or math.isinf(v) for v in [p.center_x, p.center_y, p.center_z])
         ]
         if invalid_pos:
             issues.append(f"{len(invalid_pos)}个平面位置坐标无效")

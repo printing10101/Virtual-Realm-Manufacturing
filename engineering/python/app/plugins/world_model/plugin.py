@@ -25,6 +25,7 @@
 - 不直接接 CNC 控制器，预测结果仅供决策参考
 - 物理执行需"持证操作员 + 导师签字 + 保险"，本插件不涉及
 """
+
 from __future__ import annotations
 
 import logging
@@ -196,9 +197,7 @@ class WorldModelPlugin:
             current_state_artifact = ctx.inputs.get("current_state")
             candidate_action = self._load_artifact_data(ctx.inputs.get("candidate_action"))
             horizon = int(ctx.config.get("horizon", 10))
-            model_uri = ctx.config.get(
-                "model_uri", "model://world_model/1.0.0"
-            )
+            model_uri = ctx.config.get("model_uri", "model://world_model/1.0.0")
 
             if current_state_artifact is None:
                 return TaskResult(
@@ -221,9 +220,7 @@ class WorldModelPlugin:
             # 但含组装原料（geometry_features + dynamics_state）时，由
             # UnifiedStateAssembler 自动组装，让真实数据源产出真正流入融合路径
             if unified_state is None and self._config.use_fusion:
-                assembled = self._try_assemble_unified_state(
-                    current_state_artifact
-                )
+                assembled = self._try_assemble_unified_state(current_state_artifact)
                 if assembled is not None:
                     unified_state = assembled.unified_state
                     assembly_diagnostics = assembled.to_dict()
@@ -237,21 +234,40 @@ class WorldModelPlugin:
                             assembled.dynamics_degraded,
                             assembled.completeness_ratio,
                         )
+                else:
+                    # 无预组装 unified_state 也无组装原料：零向量融合兜底。
+                    # 走融合路径（维度 fused_dim+action_dim 与 torch 模型匹配），
+                    # 预测结果无实际意义，但保证 use_fusion=True 下工作流不因
+                    # 维度不匹配而中断（与 predictor 的零向量降级语义一致）。
+                    logger.warning(
+                        "WorldModelPlugin 无 unified_state 且无组装原料，使用零向量融合兜底（预测无实际意义）。"
+                    )
+                    unified_state = UnifiedState(
+                        geometry=GeometryFeatures(
+                            bbox_dimensions=(0.0, 0.0, 0.0),
+                            feature_vector=[0.0] * self._config.feature_dim,
+                            symmetry_score=0.0,
+                            complexity_score=0.0,
+                        ),
+                        dynamics=DynamicsState(
+                            spindle_speed=0.0,
+                            feed_rate=0.0,
+                            depth_of_cut=0.0,
+                            tool_wear=0.0,
+                            vibration_rms=0.0,
+                            temperature=0.0,
+                        ),
+                    )
 
             if unified_state is not None:
                 current_state: Union[np.ndarray, UnifiedState] = unified_state
-                input_mode = (
-                    "fusion_assembled" if assembly_diagnostics else "fusion"
-                )
+                input_mode = "fusion_assembled" if assembly_diagnostics else "fusion"
             else:
                 current_state = self._load_artifact_data(current_state_artifact)
                 if current_state is None:
                     return TaskResult(
                         status=TaskStatus.FAILED,
-                        error=(
-                            "current_state 加载失败（既无 unified_state 也无"
-                            "组装原料也无可加载的数组数据）"
-                        ),
+                        error=("current_state 加载失败（既无 unified_state 也无组装原料也无可加载的数组数据）"),
                         error_code="INVALID_INPUT",
                     )
                 input_mode = "legacy"
@@ -279,19 +295,12 @@ class WorldModelPlugin:
                         ctx.job_id,
                         fusion_exc,
                     )
-                    legacy_state = self._load_artifact_data(
-                        current_state_artifact
-                    )
+                    legacy_state = self._load_artifact_data(current_state_artifact)
                     if not isinstance(legacy_state, np.ndarray):
                         # UnifiedState 输入无法降级为 np.ndarray，
                         # 构造零向量兜底（仅满足接口契约，预测无意义）
-                        logger.warning(
-                            "降级兜底：current_state 无法转为 np.ndarray，"
-                            "使用零向量（预测无意义）。"
-                        )
-                        legacy_state = np.zeros(
-                            (1, self._config.state_dim), dtype=np.float32
-                        )
+                        logger.warning("降级兜底：current_state 无法转为 np.ndarray，使用零向量（预测无意义）。")
+                        legacy_state = np.zeros((1, self._config.state_dim), dtype=np.float32)
                     prediction = predictor.predict(
                         current_state=legacy_state,
                         candidate_action=candidate_action,
@@ -498,8 +507,7 @@ class WorldModelPlugin:
             #   降级为随机初始化 + 警告，保持 _resolve_weights_path 既有
             #   "None = random init" 契约，不引入新失败路径
             logger.warning(
-                "world_model 约定式权重路径解析失败，使用随机初始化: "
-                "uri=%s err=%s",
+                "world_model 约定式权重路径解析失败，使用随机初始化: uri=%s err=%s",
                 model_uri,
                 exc,
             )
@@ -526,7 +534,7 @@ class WorldModelPlugin:
         # 从 URI 加载（实际部署中应支持 file:// / metrics:// 等协议）
         uri = artifact.uri
         if uri.startswith("file://"):
-            path = uri[len("file://"):]
+            path = uri[len("file://") :]
             try:
                 return np.load(path, allow_pickle=False)
             except (OSError, ValueError) as exc:
@@ -540,9 +548,7 @@ class WorldModelPlugin:
         )
         return None
 
-    def _try_load_unified_state(
-        self, artifact: Artifact | None
-    ) -> UnifiedState | None:
+    def _try_load_unified_state(self, artifact: Artifact | None) -> UnifiedState | None:
         """尝试从 Artifact.metadata 解析 UnifiedState（融合模式检测）.
 
         检测规则：
@@ -591,9 +597,7 @@ class WorldModelPlugin:
         )
         return unified
 
-    def _try_assemble_unified_state(
-        self, artifact: Artifact | None
-    ) -> "AssemblerResult | None":
+    def _try_assemble_unified_state(self, artifact: Artifact | None) -> "AssemblerResult | None":
         """P0-3 自动组装：从 metadata 中的组装原料组装 UnifiedState.
 
         当 ``_try_load_unified_state`` 返回 None（metadata 无预组装
@@ -658,15 +662,14 @@ class WorldModelPlugin:
         feature_vec_raw = geo_dict.get("feature_vector")
         if not isinstance(bbox_raw, (list, tuple)) or len(bbox_raw) != 3:
             logger.warning(
-                "自动组装失败：bbox_dimensions 必须是长度为 3 的 list/tuple, "
-                "实际类型=%s, 值=%r",
-                type(bbox_raw).__name__, bbox_raw,
+                "自动组装失败：bbox_dimensions 必须是长度为 3 的 list/tuple, 实际类型=%s, 值=%r",
+                type(bbox_raw).__name__,
+                bbox_raw,
             )
             return None
         if not isinstance(feature_vec_raw, (list, tuple)):
             logger.warning(
-                "自动组装失败：feature_vector 必须是 list/tuple, "
-                "实际类型=%s",
+                "自动组装失败：feature_vector 必须是 list/tuple, 实际类型=%s",
                 type(feature_vec_raw).__name__,
             )
             return None
@@ -699,17 +702,21 @@ class WorldModelPlugin:
                 temperature=float(dyn_dict.get("temperature", 0.0)),
             )
         except (TypeError, ValueError) as exc:
-            logger.warning(
-                "自动组装失败：dynamics_state 类型错误: %s", exc
-            )
+            logger.warning("自动组装失败：dynamics_state 类型错误: %s", exc)
             return None
 
         # 标记 defaulted：用 0.0 填充的字段（与 Bridge 语义一致）
         dynamics_defaulted = [
-            f for f in (
-                "spindle_speed", "feed_rate", "depth_of_cut",
-                "tool_wear", "vibration_rms", "temperature",
-            ) if f not in dyn_dict
+            f
+            for f in (
+                "spindle_speed",
+                "feed_rate",
+                "depth_of_cut",
+                "tool_wear",
+                "vibration_rms",
+                "temperature",
+            )
+            if f not in dyn_dict
         ]
 
         # 几何侧：半成品 dict 视为完整（已由 Deriver 派生过），无 defaulted
@@ -726,9 +733,7 @@ class WorldModelPlugin:
             source="legacy_current_state",
         )
 
-        assembled = UnifiedStateAssembler.assemble_from_results(
-            geometry_result, dynamics_result
-        )
+        assembled = UnifiedStateAssembler.assemble_from_results(geometry_result, dynamics_result)
         logger.debug(
             "自动组装 UnifiedState: bbox=%s spindle=%s degraded=%s",
             assembled.unified_state.geometry.bbox_dimensions,

@@ -121,7 +121,7 @@ class LLMReasonTool(BaseTool):
 
     def __init__(self, llm_router) -> None:
         """Args:
-            llm_router: `LLMRouter` 实例（含 `chat_completion` 异步方法）
+        llm_router: `LLMRouter` 实例（含 `chat_completion` 异步方法）
         """
         self._router = llm_router
 
@@ -132,8 +132,7 @@ class LLMReasonTool(BaseTool):
     @property
     def description(self) -> str:
         return (
-            "基于三元组与已收集证据调用 LLM 综合推理，得出验证结论"
-            "（supported/refuted/uncertain + 置信度 + 推理过程）"
+            "基于三元组与已收集证据调用 LLM 综合推理，得出验证结论（supported/refuted/uncertain + 置信度 + 推理过程）"
         )
 
     @property
@@ -223,7 +222,7 @@ class LLMExtractTool(BaseTool):
 
     def __init__(self, llm_router) -> None:
         """Args:
-            llm_router: `LLMRouter` 实例
+        llm_router: `LLMRouter` 实例
         """
         self._router = llm_router
 
@@ -233,10 +232,7 @@ class LLMExtractTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return (
-            "从自由文本中抽取制造领域三元组（head-relation-tail），"
-            "用于发现候选关系或验证实体语义边界"
-        )
+        return "从自由文本中抽取制造领域三元组（head-relation-tail），用于发现候选关系或验证实体语义边界"
 
     @property
     def arguments_schema(self) -> dict[str, str]:

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
 
 import numpy as np
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 try:
     from skimage import measure as skmeasure
+
     HAS_SKIMAGE = True
 except ImportError:
     HAS_SKIMAGE = False
@@ -101,31 +102,19 @@ class ToolModel:
 
     def __post_init__(self) -> None:
         if self.tool_type not in self._VALID_TOOL_TYPES:
-            raise ValueError(
-                f"ToolModel.tool_type='{self.tool_type}'无效，可选: {sorted(self._VALID_TOOL_TYPES)}"
-            )
+            raise ValueError(f"ToolModel.tool_type='{self.tool_type}'无效，可选: {sorted(self._VALID_TOOL_TYPES)}")
         if self.material not in self._VALID_MATERIALS:
-            raise ValueError(
-                f"ToolModel.material='{self.material}'无效，可选: {sorted(self._VALID_MATERIALS)}"
-            )
+            raise ValueError(f"ToolModel.material='{self.material}'无效，可选: {sorted(self._VALID_MATERIALS)}")
         if self.corner_radius > self.diameter / 2.0:
-            raise ValueError(
-                f"corner_radius({self.corner_radius})不能超过半径({self.diameter / 2.0})"
-            )
+            raise ValueError(f"corner_radius({self.corner_radius})不能超过半径({self.diameter / 2.0})")
         if self.cutting_length > self.overall_length:
-            raise ValueError(
-                f"cutting_length({self.cutting_length})不能超过overall_length({self.overall_length})"
-            )
+            raise ValueError(f"cutting_length({self.cutting_length})不能超过overall_length({self.overall_length})")
         if self.shank_diameter > self.diameter * 2.0:
-            raise ValueError(
-                f"shank_diameter({self.shank_diameter})与diameter({self.diameter})比例不合理"
-            )
+            raise ValueError(f"shank_diameter({self.shank_diameter})与diameter({self.diameter})比例不合理")
         for field_name, (low, high) in self._PHYSICAL_CONSTRAINTS.items():
             value = getattr(self, field_name)
             if value < low or value > high:
-                raise ValueError(
-                    f"ToolModel.{field_name}={value}超出物理约束范围[{low}, {high}]"
-                )
+                raise ValueError(f"ToolModel.{field_name}={value}超出物理约束范围[{low}, {high}]")
 
         if self.tool_type == "ball" and self.corner_radius < 0.001:
             self.corner_radius = self.diameter / 2.0
@@ -187,8 +176,11 @@ class ToolModel:
             active_length = min(self.length, r * 0.3)
 
         X, Y, Z = np.meshgrid(
-            grid_range, grid_range, grid_range,
-            indexing="ij", sparse=False,
+            grid_range,
+            grid_range,
+            grid_range,
+            indexing="ij",
+            sparse=False,
         )
 
         radial_sq = X * X + Y * Y
@@ -201,19 +193,12 @@ class ToolModel:
 
         if self.tool_type == "flat":
             if self.corner_radius > 0:
-                is_corner_flat = (
-                    (z_effective >= -self.corner_radius)
-                    & (radial_dist <= r - self.corner_radius)
-                )
+                is_corner_flat = (z_effective >= -self.corner_radius) & (radial_dist <= r - self.corner_radius)
                 is_corner_fillet = (
-                    (z_effective >= -self.corner_radius)
-                    & (radial_dist <= r)
-                    & (z_effective >= -radial_dist)
+                    (z_effective >= -self.corner_radius) & (radial_dist <= r) & (z_effective >= -radial_dist)
                 )
                 is_corner_region = is_corner_flat | is_corner_fillet
-                is_cylinder = (z_effective < -self.corner_radius) & (
-                    radial_dist <= r
-                )
+                is_cylinder = (z_effective < -self.corner_radius) & (radial_dist <= r)
                 mask = valid_region & (is_corner_region | is_cylinder)
             else:
                 mask = valid_region & (radial_dist <= r)
@@ -221,9 +206,7 @@ class ToolModel:
         elif self.tool_type == "ball":
             r_eff = self.corner_radius
             z_center = -r_eff + z_offset
-            dist_to_center = np.sqrt(
-                radial_sq + (z_effective - z_center) ** 2
-            )
+            dist_to_center = np.sqrt(radial_sq + (z_effective - z_center) ** 2)
             mask = valid_region & (dist_to_center <= r_eff + 1e-9)
 
         elif self.tool_type == "drill":
@@ -306,9 +289,7 @@ def _voxelize_contains(
             for iz in range(nz):
                 z = bbox_min[2] - padding + (iz + 0.5) * voxel_size
                 all_points_list.append([x, y, z])
-                all_indices_list.append(
-                    (np.array([ix]), np.array([iy]), np.array([iz]))
-                )
+                all_indices_list.append((np.array([ix]), np.array([iy]), np.array([iz])))
 
                 if len(all_points_list) >= batch_size:
                     pts = np.array(all_points_list)
@@ -381,9 +362,7 @@ def reconstruct_mesh(
 
             if len(verts) == 0 or len(faces) == 0:
                 logger.warning("Marching Cubes未生成有效网格")
-                return _reconstruct_mesh_fallback(
-                    voxel_grid, bbox_min, voxel_size, trimesh
-                )
+                return _reconstruct_mesh_fallback(voxel_grid, bbox_min, voxel_size, trimesh)
 
             mesh = trimesh.Trimesh(
                 vertices=verts_world,
@@ -394,9 +373,7 @@ def reconstruct_mesh(
             non_degenerate = mesh.nondegenerate_faces()
             mesh.update_faces(non_degenerate)
             if len(mesh.faces) == 0:
-                return _reconstruct_mesh_fallback(
-                    voxel_grid, bbox_min, voxel_size, trimesh
-                )
+                return _reconstruct_mesh_fallback(voxel_grid, bbox_min, voxel_size, trimesh)
 
             mesh.fix_normals()
             return mesh
@@ -407,13 +384,9 @@ def reconstruct_mesh(
                 exc,
                 exc_info=True,
             )
-            return _reconstruct_mesh_fallback(
-                voxel_grid, bbox_min, voxel_size, trimesh
-            )
+            return _reconstruct_mesh_fallback(voxel_grid, bbox_min, voxel_size, trimesh)
     else:
-        return _reconstruct_mesh_fallback(
-            voxel_grid, bbox_min, voxel_size, trimesh
-        )
+        return _reconstruct_mesh_fallback(voxel_grid, bbox_min, voxel_size, trimesh)
 
 
 def _reconstruct_mesh_fallback(

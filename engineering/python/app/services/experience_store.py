@@ -193,17 +193,11 @@ class ExperienceStore:
                 consistency_rate = 0.0
                 last_validated = None
         else:
-            consistent_count = sum(
-                1
-                for h in history
-                if h.get("validation_result", {}).get("is_consistent", False)
-            )
+            consistent_count = sum(1 for h in history if h.get("validation_result", {}).get("is_consistent", False))
             consistency_rate = consistent_count / validation_count
             last_validated = history[-1]["timestamp"]
 
-        reliability_score = self._calculate_reliability_score(
-            validation_count, consistency_rate
-        )
+        reliability_score = self._calculate_reliability_score(validation_count, consistency_rate)
 
         return {
             "reliability_score": round(reliability_score, 4),
@@ -226,8 +220,7 @@ class ExperienceStore:
                 param_similarity = sum(
                     1.0
                     - min(
-                        abs(query_params[k] - exp_params[k])
-                        / max(abs(query_params[k]), 1e-10),
+                        abs(query_params[k] - exp_params[k]) / max(abs(query_params[k]), 1e-10),
                         1.0,
                     )
                     for k in common_keys
@@ -242,8 +235,7 @@ class ExperienceStore:
                 metric_similarity = sum(
                     1.0
                     - min(
-                        abs(query_metrics[k] - exp_metrics[k])
-                        / max(abs(query_metrics[k]), 1e-10),
+                        abs(query_metrics[k] - exp_metrics[k]) / max(abs(query_metrics[k]), 1e-10),
                         1.0,
                     )
                     for k in common_keys
@@ -253,9 +245,7 @@ class ExperienceStore:
         return score
 
     @staticmethod
-    def _calculate_reliability_score(
-        validation_count: int, consistency_rate: float
-    ) -> float:
+    def _calculate_reliability_score(validation_count: int, consistency_rate: float) -> float:
         if validation_count == 0:
             return 0.5
 
@@ -305,11 +295,7 @@ class ExperienceStore:
                 "min_wear_rate": mat_data["min_wear_rate"],
                 "max_wear_rate": mat_data["max_wear_rate"],
                 "datasets": sorted(
-                    {
-                        e.get("dataset", "unknown")
-                        for e in mat_data.get("experiments", [])
-                        if isinstance(e, dict)
-                    }
+                    {e.get("dataset", "unknown") for e in mat_data.get("experiments", []) if isinstance(e, dict)}
                 ),
             }
         return result
@@ -334,9 +320,7 @@ class ExperienceStore:
             backup_path = file_path.with_suffix(".json.bak")
             try:
                 file_path.rename(backup_path)
-                logger.warning(
-                    "Corrupted experiences file backed up to %s", backup_path
-                )
+                logger.warning("Corrupted experiences file backed up to %s", backup_path)
             except (OSError, ValueError) as be:
                 logger.error("Failed to backup corrupted experiences file: %s", be)
 
@@ -376,11 +360,7 @@ class ExperienceStore:
                     wear_stats = stats.get("wear_stats", {})
                     signal_stats = stats.get("signal_stats", {})
 
-                    process_name = (
-                        f"{ds_key.upper()}正交切削"
-                        if ds_key == "nuaa"
-                        else f"{ds_key.upper()}全寿命切削"
-                    )
+                    process_name = f"{ds_key.upper()}正交切削" if ds_key == "nuaa" else f"{ds_key.upper()}全寿命切削"
 
                     experience_data = {
                         "parameters": {
@@ -395,9 +375,7 @@ class ExperienceStore:
                             "final_wear": wear_stats.get("final_wear", 0),
                             "max_wear": wear_stats.get("max_wear", 0),
                             "mean_wear_rate": wear_stats.get("mean_wear_rate", 0),
-                            "total_wear_increment": wear_stats.get(
-                                "total_wear_increment", 0
-                            ),
+                            "total_wear_increment": wear_stats.get("total_wear_increment", 0),
                             "sample_count": wear_stats.get("sample_count", 0),
                         },
                         "signal_summary": {
@@ -450,9 +428,7 @@ class ExperienceStore:
             "experience_ids": imported,
         }
 
-    def query_by_material(
-        self, material: str, limit: int = 20, fuzzy: bool = False
-    ) -> list[dict]:
+    def query_by_material(self, material: str, limit: int = 20, fuzzy: bool = False) -> list[dict]:
         results = []
         for exp in self._experiences.values():
             exp_params = exp.parameters if isinstance(exp.parameters, dict) else {}
@@ -499,22 +475,12 @@ class ExperienceStore:
 
         summary = {}
         for mat, exps in materials.items():
-            wear_rates = [
-                e["mean_wear_rate"]
-                for e in exps
-                if e["mean_wear_rate"] and e["mean_wear_rate"] > 0
-            ]
+            wear_rates = [e["mean_wear_rate"] for e in exps if e["mean_wear_rate"] and e["mean_wear_rate"] > 0]
             summary[mat] = {
                 "experiment_count": len(exps),
-                "avg_wear_rate": round(float(np.mean(wear_rates)), 8)
-                if wear_rates
-                else 0,
-                "max_wear_rate": round(float(np.max(wear_rates)), 8)
-                if wear_rates
-                else 0,
-                "min_wear_rate": round(float(np.min(wear_rates)), 8)
-                if wear_rates
-                else 0,
+                "avg_wear_rate": round(float(np.mean(wear_rates)), 8) if wear_rates else 0,
+                "max_wear_rate": round(float(np.max(wear_rates)), 8) if wear_rates else 0,
+                "min_wear_rate": round(float(np.min(wear_rates)), 8) if wear_rates else 0,
                 "experiments": exps,
             }
 

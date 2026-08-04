@@ -21,7 +21,6 @@ import json
 import logging
 import os
 import re
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -35,7 +34,6 @@ from app.ai.llm_client import (
 )
 from app.knowledge_graph.extractor.pdf_extractor import (
     DocumentPage,
-    ExtractedDocument,
     chunk_pages,
     extract_document,
 )
@@ -45,7 +43,6 @@ from app.knowledge_graph.extractor.prompts import (
 )
 from app.knowledge_graph.extractor.validator import (
     ExtractionValidator,
-    ValidationReport,
 )
 
 logger = logging.getLogger(__name__)
@@ -305,9 +302,7 @@ class LLMExtractor:
                 )
                 content = response.get("content", "")
                 if content:
-                    logger.debug(
-                        "批次 %d: LLM 响应长度=%d", batch_idx, len(content)
-                    )
+                    logger.debug("批次 %d: LLM 响应长度=%d", batch_idx, len(content))
                     return content
                 else:
                     logger.warning("批次 %d: LLM 返回空内容", batch_idx)
@@ -342,9 +337,7 @@ class LLMExtractor:
         )
         return None
 
-    def _parse_llm_response(
-        self, response_text: str
-    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    def _parse_llm_response(self, response_text: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """解析 LLM 响应文本。
 
         Args:
@@ -543,9 +536,7 @@ async def _async_main():  # pragma: no cover
     """异步主函数。"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="LLM 文档知识抽取工具（M1.4）"
-    )
+    parser = argparse.ArgumentParser(description="LLM 文档知识抽取工具（M1.4）")
     parser.add_argument("--input", "-i", required=True, help="输入文档路径")
     parser.add_argument("--output", "-o", help="输出 JSON 文件路径")
     parser.add_argument(
@@ -604,8 +595,8 @@ async def _async_main():  # pragma: no cover
 """
     if result.validation_report:
         vs = result.validation_report.get("summary", {})
-        summary += f"""  - 验证准确率: {vs.get('accuracy_score', 0):.1f}%
-  - 建议: {vs.get('recommendation', 'N/A')}
+        summary += f"""  - 验证准确率: {vs.get("accuracy_score", 0):.1f}%
+  - 建议: {vs.get("recommendation", "N/A")}
 """
     logger.info(summary)
 

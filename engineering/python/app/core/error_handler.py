@@ -44,14 +44,14 @@ logger = logging.getLogger(__name__)
 class ErrorType(str, Enum):
     """错误大类分类。"""
 
-    BUSINESS = "business"          # 业务错误 (1xxx)
-    SYSTEM = "system"              # 系统错误 (2xxx)
-    EXTERNAL = "external"          # 外部服务错误 (6xxx)
-    REPOSITORY = "repository"      # 数据仓库错误 (3xxx)
-    VALIDATION = "validation"      # 参数校验错误 (1002)
-    AUTH = "auth"                  # 认证授权错误 (1003/1004)
-    MANUFACTURING = "manufacturing" # 制造工艺错误 (Exxx)
-    UNKNOWN = "unknown"            # 未知错误
+    BUSINESS = "business"  # 业务错误 (1xxx)
+    SYSTEM = "system"  # 系统错误 (2xxx)
+    EXTERNAL = "external"  # 外部服务错误 (6xxx)
+    REPOSITORY = "repository"  # 数据仓库错误 (3xxx)
+    VALIDATION = "validation"  # 参数校验错误 (1002)
+    AUTH = "auth"  # 认证授权错误 (1003/1004)
+    MANUFACTURING = "manufacturing"  # 制造工艺错误 (Exxx)
+    UNKNOWN = "unknown"  # 未知错误
 
 
 class ErrorSeverity(str, Enum):
@@ -231,9 +231,7 @@ def build_error_response(
     """
     request_id = get_request_id()
     error_type = classify_error_by_code(code)
-    resolved_severity = severity or classify_severity(
-        http_status=http_status, code=code
-    ).value
+    resolved_severity = severity or classify_severity(http_status=http_status, code=code).value
     resolved_error_code = error_code or get_string_error_code(code)
 
     response: dict[str, Any] = {
@@ -357,10 +355,13 @@ class ErrorContext:
         self.http_status = http_status
         self.detail = detail
         self.suggestion = suggestion
-        self.severity = severity or classify_severity(
-            http_status=http_status,
-            code=error_code if isinstance(error_code, int) else None,
-        ).value
+        self.severity = (
+            severity
+            or classify_severity(
+                http_status=http_status,
+                code=error_code if isinstance(error_code, int) else None,
+            ).value
+        )
         self.component = component
         self.user_action = user_action
         self.timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")

@@ -86,8 +86,7 @@ class MachiningRecord(Base):
     tdengine_series_id = Column(
         String(128),
         nullable=True,
-        comment="TDengine 时序数据引用 ID，spindle_actual / feed_actual / "
-        "vibration 等高频数据存储在 TDengine",
+        comment="TDengine 时序数据引用 ID，spindle_actual / feed_actual / vibration 等高频数据存储在 TDengine",
     )
     process_params = Column(
         # 生产环境使用 PostgreSQL JSONB；测试环境（SQLite）回退为 JSON，
@@ -97,8 +96,7 @@ class MachiningRecord(Base):
         JSONB().with_variant(JSON(), "sqlite"),
         nullable=False,
         default=dict,
-        comment="附加工艺参数（depth_of_cut / coolant / operation 等），"
-        "使用 PostgreSQL JSONB 类型以支持高效查询与索引",
+        comment="附加工艺参数（depth_of_cut / coolant / operation 等），使用 PostgreSQL JSONB 类型以支持高效查询与索引",
     )
     created_at = Column(
         DateTime(timezone=True),

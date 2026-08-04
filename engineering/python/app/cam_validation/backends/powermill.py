@@ -52,8 +52,7 @@ class _PowerMillBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                "PowerMill 可执行文件未配置（LNN_CAM_POWERMILL_EXECUTABLE 为空），"
-                "自动降级到 manual 后端。",
+                "PowerMill 可执行文件未配置（LNN_CAM_POWERMILL_EXECUTABLE 为空），自动降级到 manual 后端。",
             )
 
         # 2. 检查可执行文件是否存在
@@ -62,8 +61,7 @@ class _PowerMillBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                f"PowerMill 可执行文件不存在：{self._powermill_executable}。"
-                "自动降级到 manual 后端。",
+                f"PowerMill 可执行文件不存在：{self._powermill_executable}。自动降级到 manual 后端。",
             )
 
         # 3. subprocess 调用 PowerMill
@@ -71,9 +69,7 @@ class _PowerMillBackend(_BaseBackend):
         # 期望 stdout 输出 JSON：{"status": "pass"/"fail", "collisions": [...], "messages": [...]}
         try:
             result = subprocess.run(
-                [self._powermill_executable,
-                 f"/run=autorun_gcode_check.mac",
-                 gcode_file_path, controller_type],
+                [self._powermill_executable, "/run=autorun_gcode_check.mac", gcode_file_path, controller_type],
                 capture_output=True,
                 text=True,
                 timeout=600,
@@ -115,8 +111,7 @@ class _PowerMillBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                f"PowerMill 输出 JSON 解析失败：{e}。"
-                f"stdout 预览：{stdout_preview}。自动降级到 manual 后端。",
+                f"PowerMill 输出 JSON 解析失败：{e}。stdout 预览：{stdout_preview}。自动降级到 manual 后端。",
             )
 
         # 5. 归一化字段
@@ -124,12 +119,8 @@ class _PowerMillBackend(_BaseBackend):
         if status not in {"pass", "fail"}:
             status = "error"
 
-        collisions = self._normalize_collisions(
-            payload.get(_JSON_COLLISIONS_FIELD)
-        )
-        messages = self._normalize_messages(
-            payload.get(_JSON_MESSAGES_FIELD)
-        )
+        collisions = self._normalize_collisions(payload.get(_JSON_COLLISIONS_FIELD))
+        messages = self._normalize_messages(payload.get(_JSON_MESSAGES_FIELD))
 
         if status == "error":
             return self._degrade_to_manual(
@@ -165,9 +156,7 @@ class _PowerMillBackend(_BaseBackend):
         reason: str,
     ) -> CamSoftwareReport:
         """降级到 manual 后端（不抛错）。"""
-        logger.warning(
-            "CamAdapter(powermill): 降级到 manual。原因：%s", reason
-        )
+        logger.warning("CamAdapter(powermill): 降级到 manual。原因：%s", reason)
         manual = _ManualBackend()
         report = manual.validate(gcode_file_path, controller_type)
         report.degraded = True

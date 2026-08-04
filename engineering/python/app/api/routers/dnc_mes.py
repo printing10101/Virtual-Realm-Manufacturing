@@ -4,6 +4,7 @@
 - DNC 机床通信（dnc）
 - MES / ERP 集成（app.integrations.mes.api）
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

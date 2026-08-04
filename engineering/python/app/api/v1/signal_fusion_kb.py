@@ -17,7 +17,6 @@
 12. GET   /health                   健康检查
 """
 
-
 import logging
 from typing import Any, Optional
 
@@ -28,6 +27,7 @@ from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
 from app.core.endpoint_handler import safe_endpoint
 from app.auth.permissions import require_permission
+
 # P2-4-5 修复：引入共享速率限制器，信号检索/融合端点消耗向量计算资源，需速率限制防止 DoS。
 from app.middleware.rate_limiter import limiter
 from app.rag.signal_fusion_kb import (
@@ -59,9 +59,7 @@ class SignalSampleRequest(BaseModel):
     sensor_features: dict[str, float] = Field(
         default_factory=dict, description="传感器读数（与 ToolWearPredictor 对齐）"
     )
-    process_context: dict[str, Any] = Field(
-        default_factory=dict, description="工艺上下文"
-    )
+    process_context: dict[str, Any] = Field(default_factory=dict, description="工艺上下文")
     machine_id: str = Field(default="", description="机床 ID")
     tool_id: Optional[int] = Field(default=None, description="刀具 ID")
     material: str = Field(default="", description="工件材料")
@@ -103,7 +101,8 @@ class FuseRequest(BaseModel):
         description="融合策略: weighted 或 attention",
     )
     weights: Optional[dict[str, float]] = Field(
-        default=None, description="自定义权重（仅 weighted 策略）",
+        default=None,
+        description="自定义权重（仅 weighted 策略）",
     )
 
 
@@ -111,10 +110,12 @@ class CorrelateWearRequest(BaseModel):
     """磨损关联请求。"""
 
     sample_ids: list[str] = Field(
-        default_factory=list, description="信号样本 ID 列表",
+        default_factory=list,
+        description="信号样本 ID 列表",
     )
     samples: list[SignalSampleRequest] = Field(
-        default_factory=list, description="直接传入样本数据",
+        default_factory=list,
+        description="直接传入样本数据",
     )
 
 
@@ -122,10 +123,12 @@ class CorrelateChatterRequest(BaseModel):
     """颤振关联请求。"""
 
     sample_ids: list[str] = Field(
-        default_factory=list, description="信号样本 ID 列表",
+        default_factory=list,
+        description="信号样本 ID 列表",
     )
     samples: list[SignalSampleRequest] = Field(
-        default_factory=list, description="直接传入样本数据",
+        default_factory=list,
+        description="直接传入样本数据",
     )
     process_context: dict[str, Any] = Field(
         default_factory=dict,
@@ -176,6 +179,7 @@ def _collect_samples(
 # 1. 注册单个样本
 # =====================================================================
 
+
 @router.post("/samples", dependencies=[Depends(require_permission("signal_kb:write"))])
 # P2-4-5 修复：样本注册端点添加速率限制，限制为 120/minute。
 @limiter.limit("120/minute")
@@ -194,6 +198,7 @@ async def register_sample(request: Request, req: SignalSampleRequest):
 # =====================================================================
 # 2. 批量注册
 # =====================================================================
+
 
 @router.post("/samples/batch", dependencies=[Depends(require_permission("signal_kb:write"))])
 # P2-4-5 修复：批量注册（最多 500 样本）资源消耗较高，限制为 30/minute。
@@ -219,6 +224,7 @@ async def register_samples_batch(request: Request, req: BatchSamplesRequest):
 # =====================================================================
 # 3. 列出样本（分页）
 # =====================================================================
+
 
 @router.get("/samples")
 # P2-4-5 修复：查询端点添加速率限制，限制为 120/minute。
@@ -249,6 +255,7 @@ async def list_samples(
 # =====================================================================
 # 4. 按信号类型列出
 # =====================================================================
+
 
 @router.get("/samples/by-type/{signal_type}")
 # P2-4-5 修复：查询端点添加速率限制，限制为 120/minute。
@@ -285,6 +292,7 @@ async def list_by_type(
 # 5. 检索相似样本
 # =====================================================================
 
+
 @router.post("/retrieve", dependencies=[Depends(require_permission("signal_kb:read"))])
 # P2-4-5 修复：相似样本检索涉及向量计算，限制为 60/minute。
 @limiter.limit("60/minute")
@@ -318,6 +326,7 @@ async def retrieve_similar(request: Request, req: RetrieveRequest):
 # =====================================================================
 # 6. 多源信号融合
 # =====================================================================
+
 
 @router.post("/fuse", dependencies=[Depends(require_permission("signal_kb:read"))])
 # P2-4-5 修复：多源信号融合涉及加权/注意力计算，限制为 60/minute。
@@ -366,6 +375,7 @@ async def fuse_signals(request: Request, req: FuseRequest):
 # 7. 关联磨损状态
 # =====================================================================
 
+
 @router.post("/correlate/wear", dependencies=[Depends(require_permission("signal_kb:read"))])
 # P2-4-5 修复：磨损关联涉及样本聚合计算，限制为 60/minute。
 @limiter.limit("60/minute")
@@ -401,6 +411,7 @@ async def correlate_wear(request: Request, req: CorrelateWearRequest):
 # =====================================================================
 # 8. 关联颤振状态
 # =====================================================================
+
 
 @router.post("/correlate/chatter", dependencies=[Depends(require_permission("signal_kb:read"))])
 # P2-4-5 修复：颤振关联涉及样本聚合计算，限制为 60/minute。
@@ -441,6 +452,7 @@ async def correlate_chatter(request: Request, req: CorrelateChatterRequest):
 # 9. 知识库统计
 # =====================================================================
 
+
 @router.get("/stats")
 # P2-4-5 修复：查询端点添加速率限制，限制为 120/minute。
 @limiter.limit("120/minute")
@@ -457,6 +469,7 @@ async def stats(request: Request):
 # =====================================================================
 # 10. 按样本 ID 删除
 # =====================================================================
+
 
 @router.delete("/samples/{sample_id}", dependencies=[Depends(require_permission("signal_kb:write"))])
 # P2-4-5 修复：删除端点添加速率限制，限制为 120/minute。
@@ -478,6 +491,7 @@ async def delete_sample(request: Request, sample_id: str):
 # =====================================================================
 # 11. 按信号类型批量删除
 # =====================================================================
+
 
 @router.delete("/samples/by-type/{signal_type}", dependencies=[Depends(require_permission("signal_kb:write"))])
 # P2-4-5 修复：批量删除可能影响大量数据，限制为 30/minute。
@@ -505,6 +519,7 @@ async def delete_by_type(request: Request, signal_type: str):
 # =====================================================================
 # 12. 健康检查
 # =====================================================================
+
 
 @router.get("/health")
 # P2-4-5 修复：健康检查端点添加速率限制，限制为 120/minute。

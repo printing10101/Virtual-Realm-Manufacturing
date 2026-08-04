@@ -14,9 +14,7 @@ MTConnect 客户端实现
   避免调用方误判传输成功而启动机床加工导致人员伤害。
 """
 
-import asyncio
 import logging
-import random
 import xml.etree.ElementTree as ET
 from typing import Optional, Dict, Any, Callable
 from datetime import datetime, timezone
@@ -72,7 +70,7 @@ class MTConnectClient:
             failure_callback: 失败告警回调，签名 callback(operation_name, error, attempt)
             audit_log: 审计日志记录器，为 None 时仅使用 logger
         """
-        self.agent_url = agent_url.rstrip('/')
+        self.agent_url = agent_url.rstrip("/")
         self.device_name = device_name
         self.client: Optional[httpx.AsyncClient] = None
         self.connected = False
@@ -155,6 +153,7 @@ class MTConnectClient:
         Raises:
             RuntimeError: 达到最大重试次数后仍失败（不静默返回 False）
         """
+
         async def _do_connect():
             # 连接池复用：仅在 client 为空或已关闭时才新建 AsyncClient，避免每次重试重建连接池
             if self.client is not None and not getattr(self.client, "is_closed", False):
@@ -172,9 +171,7 @@ class MTConnectClient:
                 self.client = httpx.AsyncClient(timeout=DEFAULT_MTCONNECT_HTTP_TIMEOUT_SEC)
             response = await self.client.get(f"{self.agent_url}/probe")
             if response.status_code != 200:
-                raise RuntimeError(
-                    f"MTConnect 连接失败: HTTP {response.status_code}"
-                )
+                raise RuntimeError(f"MTConnect 连接失败: HTTP {response.status_code}")
             self.connected = True
             logger.info("MTConnect 连接成功: %s", self.agent_url)
             return True
@@ -213,22 +210,17 @@ class MTConnectClient:
             if not self.client:
                 raise RuntimeError("MTConnect 客户端未初始化")
             response = await self.client.get(
-                f"{self.agent_url}/current",
-                params={"path": f"//Device[@name='{self.device_name}']"}
+                f"{self.agent_url}/current", params={"path": f"//Device[@name='{self.device_name}']"}
             )
             if response.status_code != 200:
                 raise RuntimeError(f"HTTP {response.status_code}")
             return self._parse_current_response(response.text)
 
         try:
-            return await self._retry_with_backoff(
-                _fetch_status, "MTConnect get_current_status"
-            )
+            return await self._retry_with_backoff(_fetch_status, "MTConnect get_current_status")
         except RuntimeError as e:
             logger.error("获取 MTConnect 状态失败: %s", e)
-            return safe_error_message(
-                e, fallback="MTConnect 状态查询失败", context="mtconnect.get_current_status"
-            )
+            return safe_error_message(e, fallback="MTConnect 状态查询失败", context="mtconnect.get_current_status")
 
     def _parse_current_response(self, xml_content: str) -> Dict[str, Any]:
         """解析 MTConnect Current 响应"""
@@ -239,21 +231,18 @@ class MTConnectClient:
 
         try:
             root = ET.fromstring(xml_content)
-            namespaces = {
-                'mt': 'urn:mtconnect.org:MTConnect:2.0',
-                'm': 'urn:mtconnect.org:MTConnect:2.0'
-            }
+            namespaces = {"mt": "urn:mtconnect.org:MTConnect:2.0", "m": "urn:mtconnect.org:MTConnect:2.0"}
 
             # 提取关键数据项
             data_items = {
-                'spindle_speed': ('SpindleSpeed', 'ACTUAL'),
-                'feed_rate': ('PathFeedrate', 'ACTUAL'),
-                'x_position': ('Xabs', 'ACTUAL'),
-                'y_position': ('Yabs', 'ACTUAL'),
-                'z_position': ('Zabs', 'ACTUAL'),
-                'execution_mode': ('Execution', None),
-                'controller_mode': ('ControllerMode', None),
-                'availability': ('Availability', None),
+                "spindle_speed": ("SpindleSpeed", "ACTUAL"),
+                "feed_rate": ("PathFeedrate", "ACTUAL"),
+                "x_position": ("Xabs", "ACTUAL"),
+                "y_position": ("Yabs", "ACTUAL"),
+                "z_position": ("Zabs", "ACTUAL"),
+                "execution_mode": ("Execution", None),
+                "controller_mode": ("ControllerMode", None),
+                "availability": ("Availability", None),
             }
 
             for key, (item_type, sub_type) in data_items.items():
@@ -266,12 +255,14 @@ class MTConnectClient:
 
         return status
 
-    def _find_data_item(self, root: ET.Element, item_type: str, sub_type: Optional[str], namespaces: Dict) -> Optional[Any]:
+    def _find_data_item(
+        self, root: ET.Element, item_type: str, sub_type: Optional[str], namespaces: Dict
+    ) -> Optional[Any]:
         """查找特定类型的数据项"""
         # 简化实现，实际需要根据 MTConnect 标准解析
         for elem in root.iter():
             if item_type in elem.tag:
-                if sub_type is None or elem.get('subType') == sub_type:
+                if sub_type is None or elem.get("subType") == sub_type:
                     return elem.text
         return None
 
@@ -287,8 +278,7 @@ class MTConnectClient:
 
         try:
             response = await self.client.get(
-                f"{self.agent_url}/current",
-                params={"path": f"//Device[@name='{self.device_name}']//Condition"}
+                f"{self.agent_url}/current", params={"path": f"//Device[@name='{self.device_name}']//Condition"}
             )
 
             if response.status_code != 200:
@@ -306,13 +296,15 @@ class MTConnectClient:
         try:
             root = ET.fromstring(xml_content)
             for elem in root.iter():
-                if 'Fault' in elem.tag or 'Warning' in elem.tag:
-                    alarms.append({
-                        "type": "Fault" if "Fault" in elem.tag else "Warning",
-                        "code": elem.get('code', ''),
-                        "message": elem.text or '',
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    })
+                if "Fault" in elem.tag or "Warning" in elem.tag:
+                    alarms.append(
+                        {
+                            "type": "Fault" if "Fault" in elem.tag else "Warning",
+                            "code": elem.get("code", ""),
+                            "message": elem.text or "",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
         except Exception as e:
             logger.error("解析报警信息失败: %s", e)
 
@@ -344,11 +336,11 @@ class MTConnectClient:
 
         logger.error(
             "MTConnect 标准不支持 NC 程序传输: %s (agent=%s)",
-            program_name, self.agent_url,
+            program_name,
+            self.agent_url,
         )
         raise RuntimeError(
-            "MTConnect standard does not support NC program transfer; "
-            "use OPC UA or vendor-specific interface"
+            "MTConnect standard does not support NC program transfer; use OPC UA or vendor-specific interface"
         )
 
     async def health_check(self) -> bool:

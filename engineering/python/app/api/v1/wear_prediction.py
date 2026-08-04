@@ -8,6 +8,7 @@ from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 from app.services.tool_wear_predictor import ToolWearPredictor
+
 # P2-4-5 修复：引入共享速率限制器，磨损预测/训练端点消耗计算资源，需速率限制防止 DoS。
 from app.middleware.rate_limiter import limiter
 
@@ -85,9 +86,7 @@ class CompensationRequest(BaseModel):
     material_type: str = Field(default="steel_45", description="材料类型")
     tool_type: str = Field(default="carbide", description="刀具类型")
     tool_diameter: float = Field(default=10.0, description="刀具直径 (mm)")
-    machine_capabilities: dict[str, float] | None = Field(
-        default=None, description="机床能力限制（可选）"
-    )
+    machine_capabilities: dict[str, float] | None = Field(default=None, description="机床能力限制（可选）")
 
 
 @router.post("/predict")
@@ -106,9 +105,7 @@ async def predict_wear(request: Request, body: WearPredictRequest):
             "max_time": body.max_time,
         }
         curve = predictor.predict_wear_curve(params)
-        return success(
-            data=curve.to_dict(), message="Wear curve predicted successfully"
-        )
+        return success(data=curve.to_dict(), message="Wear curve predicted successfully")
     except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
         # 数值计算异常：磨损曲线预测涉及大量数学运算（math.exp、除法等）
         safe = safe_error_message(e, context="wear_prediction.predict")
@@ -176,12 +173,8 @@ async def suggest_adjustment(request: Request, body: SuggestRequest):
             "material_type": body.material_type,
             "tool_type": body.tool_type,
         }
-        suggestion = predictor.suggest_parameter_adjustment(
-            body.current_wear, body.remaining_life, current_params
-        )
-        return success(
-            data=suggestion.to_dict(), message="Adjustment suggestions generated"
-        )
+        suggestion = predictor.suggest_parameter_adjustment(body.current_wear, body.remaining_life, current_params)
+        return success(data=suggestion.to_dict(), message="Adjustment suggestions generated")
     except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
         # 数值计算异常：参数建议涉及Taylor公式计算与磨损率评估
         safe = safe_error_message(e, context="wear_prediction.suggest")
@@ -274,9 +267,7 @@ async def calibrate_prediction(request: Request, body: CalibrateRequest):
             "material_type": body.material_type,
             "tool_type": body.tool_type,
         }
-        result = predictor.calibrate_with_measurement(
-            body.measured_wear, body.elapsed_time, params
-        )
+        result = predictor.calibrate_with_measurement(body.measured_wear, body.elapsed_time, params)
         return success(data=result, message="Prediction calibrated successfully")
     except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
         # 数值计算异常：标定涉及磨损曲线预测与偏差计算
@@ -312,9 +303,7 @@ async def calibrate_with_real_time_data(request: Request, body: RealTimeCalibrat
             elapsed_time=body.elapsed_time,
             input_parameters=params,
         )
-        return success(
-            data=result, message="Real-time calibration completed successfully"
-        )
+        return success(data=result, message="Real-time calibration completed successfully")
     except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
         # 数值计算异常：实时校正涉及 EWMA 融合与传感器修正
         safe = safe_error_message(e, context="wear_prediction.calibrate_realtime")
@@ -349,9 +338,7 @@ async def get_compensation_suggestions(request: Request, body: CompensationReque
             input_parameters=params,
             machine_capabilities=body.machine_capabilities,
         )
-        return success(
-            data=result, message="Compensation suggestions generated successfully"
-        )
+        return success(data=result, message="Compensation suggestions generated successfully")
     except (ValueError, TypeError, ZeroDivisionError, OverflowError) as e:
         # 数值计算异常：补偿建议涉及 Taylor 公式与机床能力校验
         safe = safe_error_message(e, context="wear_prediction.compensation")
@@ -377,9 +364,7 @@ async def train_uniwear_model(
     model_type: str = "random_forest",
 ):
     try:
-        result = predictor.train_with_uniwear_data(
-            data_dir=data_dir, model_type=model_type
-        )
+        result = predictor.train_with_uniwear_data(data_dir=data_dir, model_type=model_type)
         return success(data=result, message="Uniwear model training completed")
     except (OSError, ImportError, ValueError, RuntimeError) as e:
         # 文件 I/O 或依赖导入异常：Uniwear 训练涉及数据加载与模型训练
@@ -406,9 +391,7 @@ async def predict_wear_from_signal_features(
     material: str = "tc4",
 ):
     try:
-        result = predictor.predict_wear_from_signals(
-            signal_features=features, material=material
-        )
+        result = predictor.predict_wear_from_signals(signal_features=features, material=material)
         return success(data=result, message="Wear predicted from signal features")
     except (ValueError, TypeError, RuntimeError) as e:
         # 数值计算或模型推理异常：信号特征预测涉及 numpy 运算与模型推理

@@ -15,13 +15,14 @@ import re
 import sys
 import threading
 
-logger = logging.getLogger(__name__)
 import time as _time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.core.request_id import get_request_id
 from app.config.limits import DEFAULT_MAX_BYTES
+
+logger = logging.getLogger(__name__)
 
 LOG_FORMAT = "[%(asctime)s] [%(levelname)-5s] [%(name)s] [%(request_id)s] %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -54,32 +55,32 @@ class SensitiveDataFilter(logging.Filter):
 
     # 敏感信息模式（顺序保持稳定，便于阅读与维护）
     PATTERNS = [
-        (re.compile(r'password["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'password=***'),
-        (re.compile(r'passwd["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'passwd=***'),
-        (re.compile(r'pwd["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'pwd=***'),
-        (re.compile(r'token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'token=***'),
-        (re.compile(r'refresh[_-]?token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'refresh_token=***'),
-        (re.compile(r'secret["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'secret=***'),
-        (re.compile(r'api[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'api_key=***'),
-        (re.compile(r'access[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'access_key=***'),
-        (re.compile(r'authorization["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'authorization=***'),
-        (re.compile(r'cookie["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'cookie=***'),
-        (re.compile(r'private[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), 'private_key=***'),
+        (re.compile(r'password["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "password=***"),
+        (re.compile(r'passwd["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "passwd=***"),
+        (re.compile(r'pwd["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "pwd=***"),
+        (re.compile(r'token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "token=***"),
+        (re.compile(r'refresh[_-]?token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "refresh_token=***"),
+        (re.compile(r'secret["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "secret=***"),
+        (re.compile(r'api[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "api_key=***"),
+        (re.compile(r'access[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "access_key=***"),
+        (re.compile(r'authorization["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "authorization=***"),
+        (re.compile(r'cookie["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "cookie=***"),
+        (re.compile(r'private[_-]?key["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', re.IGNORECASE), "private_key=***"),
         # JWT token
-        (re.compile(r'eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'), 'jwt=***'),
+        (re.compile(r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"), "jwt=***"),
         # 邮箱
-        (re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'), 'email=***'),
+        (re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"), "email=***"),
         # 身份证号（中国）
-        (re.compile(r'\d{17}[\dXx]'), 'id_card=***'),
+        (re.compile(r"\d{17}[\dXx]"), "id_card=***"),
         # 手机号（中国）
-        (re.compile(r'1[3-9]\d{9}'), 'phone=***'),
+        (re.compile(r"1[3-9]\d{9}"), "phone=***"),
     ]
 
     # 组合哨兵：任一敏感关键字命中即触发逐条替换
     # 选择"出现概率极低但匹配廉价"的子串作为哨兵
     _SENTINEL = re.compile(
-        r'password|passwd|pwd|token|refresh[_-]?token|secret|api[_-]?key|'
-        r'access[_-]?key|authorization|cookie|private[_-]?key|eyJ|@|\d{17}|1[3-9]\d{9}',
+        r"password|passwd|pwd|token|refresh[_-]?token|secret|api[_-]?key|"
+        r"access[_-]?key|authorization|cookie|private[_-]?key|eyJ|@|\d{17}|1[3-9]\d{9}",
         re.IGNORECASE,
     )
 
@@ -90,10 +91,12 @@ class SensitiveDataFilter(logging.Filter):
         self._log_sanitizer = None
         try:
             from app.core.log_sanitizer import sanitizer as _sanitizer_instance
+
             self._log_sanitizer = _sanitizer_instance
         except Exception as init_err:
             # 初始化失败不阻断日志系统，记录到 stderr（此时日志系统可能未就绪）
             import sys as _sys
+
             _sys.stderr.write(
                 f"[SensitiveDataFilter] LogSanitizer init failed, "
                 f"degraded mode (process params/paths NOT sanitized): {init_err}\n"
@@ -148,15 +151,9 @@ class SensitiveDataFilter(logging.Filter):
         # 若 args 仍存在（合并失败），对 args 中的字符串逐一脱敏
         if record.args:
             if isinstance(record.args, tuple):
-                record.args = tuple(
-                    self._sanitize_text(a) if isinstance(a, str) else a
-                    for a in record.args
-                )
+                record.args = tuple(self._sanitize_text(a) if isinstance(a, str) else a for a in record.args)
             elif isinstance(record.args, dict):
-                record.args = {
-                    k: self._sanitize_text(v) if isinstance(v, str) else v
-                    for k, v in record.args.items()
-                }
+                record.args = {k: self._sanitize_text(v) if isinstance(v, str) else v for k, v in record.args.items()}
 
         return True
 
@@ -196,11 +193,11 @@ class RequestIdFilter(logging.Filter):
 
 class JSONFormatter(logging.Formatter):
     """JSON 格式化器，用于结构化日志输出"""
-    
+
     def __init__(self, include_context: bool = True):
         super().__init__()
         self.include_context = include_context
-    
+
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat() + f".{int(record.msecs):03d}Z",
@@ -211,18 +208,18 @@ class JSONFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno,
         }
-        
+
         if self.include_context:
             log_data["request_id"] = get_request_id()
-        
+
         # 添加异常信息
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
-        
+
         # 添加额外字段
         if hasattr(record, "extra_data"):
             log_data["data"] = record.extra_data
-        
+
         return json.dumps(log_data, ensure_ascii=False, default=str)
 
 
@@ -339,9 +336,7 @@ class _DailySizeRotatingHandler(logging.Handler):
         self._open_stream()
 
     def _cleanup_old_dirs(self):
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=self._retention_days)).strftime(
-            "%Y-%m-%d"
-        )
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=self._retention_days)).strftime("%Y-%m-%d")
         try:
             for item in sorted(self._log_root.iterdir()):
                 if item.is_dir() and item.name < cutoff:
@@ -385,7 +380,7 @@ def configure_logging(
     enable_sentry: bool = False,
 ) -> None:
     """配置日志系统
-    
+
     Args:
         level: 日志级别
         log_root: 日志文件根目录
@@ -442,16 +437,17 @@ def configure_logging(
         # file_handler 完成，因此这里不再为 queue_handler 设置 filter/formatter。
         root_logger.addHandler(queue_handler)
 
-        queue_listener = logging.handlers.QueueListener(
-            log_queue, file_handler, respect_handler_level=True
-        )
+        queue_listener = logging.handlers.QueueListener(log_queue, file_handler, respect_handler_level=True)
         queue_listener.start()
         # 将 listener 挂到 logger 模块属性上，便于 shutdown 时 enqueued 处理
         root_logger._file_queue_listener = queue_listener  # type: ignore[attr-defined]
 
         root_logger.info(
             "File logging enabled: root=%s module=%s max_bytes=%d retention=%dd",
-            log_root, module_name, max_bytes, retention_days,
+            log_root,
+            module_name,
+            max_bytes,
+            retention_days,
         )
 
     # Sentry 集成
@@ -465,11 +461,21 @@ def configure_logging(
                 # P2-2-1/P2-2-2 修复：添加 before_send 回调过滤敏感信息，
                 # 并显式设置 send_default_pii=False，防止 Sentry 自动采集
                 # 用户 IP、Cookie、Authorization 头等 PII，满足 GDPR/SOC 2 合规。
-                _sentry_sensitive_keys = frozenset({
-                    "password", "token", "secret", "api_key", "apikey",
-                    "authorization", "cookie", "refresh_token",
-                    "access_token", "private_key", "session_id",
-                })
+                _sentry_sensitive_keys = frozenset(
+                    {
+                        "password",
+                        "token",
+                        "secret",
+                        "api_key",
+                        "apikey",
+                        "authorization",
+                        "cookie",
+                        "refresh_token",
+                        "access_token",
+                        "private_key",
+                        "session_id",
+                    }
+                )
 
                 def _sentry_scrub(obj):
                     """递归脱敏 Sentry event 中的敏感字段。"""
@@ -572,8 +578,13 @@ if __name__ == "__main__":
 
     # 1. 参数化日志（tuple args）—— 修复核心场景
     record = logging.LogRecord(
-        name="test", level=logging.INFO, pathname=__file__, lineno=0,
-        msg="user %s login", args=("password=s3cr3t",), exc_info=None,
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=0,
+        msg="user %s login",
+        args=("password=s3cr3t",),
+        exc_info=None,
     )
     f.filter(record)
     output = record.getMessage()
@@ -583,8 +594,13 @@ if __name__ == "__main__":
 
     # 2. dict 参数
     record2 = logging.LogRecord(
-        name="test", level=logging.INFO, pathname=__file__, lineno=0,
-        msg="login token=%(token)s", args={"token": "tk_abc123def"}, exc_info=None,
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=0,
+        msg="login token=%(token)s",
+        args={"token": "tk_abc123def"},
+        exc_info=None,
     )
     f.filter(record2)
     output2 = record2.getMessage()
@@ -593,8 +609,13 @@ if __name__ == "__main__":
 
     # 3. 普通 msg 脱敏（无 args）
     record3 = logging.LogRecord(
-        name="test", level=logging.INFO, pathname=__file__, lineno=0,
-        msg="db connect with password=hunter2 ok", args=None, exc_info=None,
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=0,
+        msg="db connect with password=hunter2 ok",
+        args=None,
+        exc_info=None,
     )
     f.filter(record3)
     output3 = record3.getMessage()
@@ -602,11 +623,22 @@ if __name__ == "__main__":
     print(f"[OK] 普通 msg 脱敏: {output3!r}")
 
     # 4. 新增关键词覆盖验证
-    for kw in ("cookie=abc123", "private_key=PEMDATA", "access_key=AKIA123",
-               "refresh_token=rt_456", "passwd=p@ss", "pwd=short"):
+    for kw in (
+        "cookie=abc123",
+        "private_key=PEMDATA",
+        "access_key=AKIA123",
+        "refresh_token=rt_456",
+        "passwd=p@ss",
+        "pwd=short",
+    ):
         rec = logging.LogRecord(
-            name="test", level=logging.INFO, pathname=__file__, lineno=0,
-            msg=f"config {kw}", args=None, exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=0,
+            msg=f"config {kw}",
+            args=None,
+            exc_info=None,
         )
         f.filter(rec)
         out = rec.getMessage()
@@ -616,8 +648,13 @@ if __name__ == "__main__":
 
     # 5. 大小写不敏感验证
     record5 = logging.LogRecord(
-        name="test", level=logging.INFO, pathname=__file__, lineno=0,
-        msg="PASSWORD=MySecret TOKEN=abc", args=None, exc_info=None,
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=0,
+        msg="PASSWORD=MySecret TOKEN=abc",
+        args=None,
+        exc_info=None,
     )
     f.filter(record5)
     output5 = record5.getMessage()
@@ -627,8 +664,13 @@ if __name__ == "__main__":
 
     # 6. 无敏感信息日志不受影响
     record6 = logging.LogRecord(
-        name="test", level=logging.INFO, pathname=__file__, lineno=0,
-        msg="task %s completed in %d ms", args=("train_001", 300), exc_info=None,
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=0,
+        msg="task %s completed in %d ms",
+        args=("train_001", 300),
+        exc_info=None,
     )
     f.filter(record6)
     output6 = record6.getMessage()

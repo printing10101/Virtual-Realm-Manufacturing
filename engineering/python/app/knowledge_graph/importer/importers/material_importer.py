@@ -72,9 +72,7 @@ def import_materials(
                 continue
             if not nid:
                 stats.failed += 1
-                stats.error_messages.append(
-                    f"material skipped: missing name ({raw.get('id', '?')})"
-                )
+                stats.error_messages.append(f"material skipped: missing name ({raw.get('id', '?')})")
                 continue
             if is_dup or nid in local_seen or graph.has_node(nid):
                 stats.duplicate += 1
@@ -98,14 +96,10 @@ def import_materials(
             graph.add_node(NODE_TYPE_MATERIAL, nid, properties)
             local_seen.add(nid)
             stats.success += 1
-            stats.node_type_breakdown[NODE_TYPE_MATERIAL] = (
-                stats.node_type_breakdown.get(NODE_TYPE_MATERIAL, 0) + 1
-            )
+            stats.node_type_breakdown[NODE_TYPE_MATERIAL] = stats.node_type_breakdown.get(NODE_TYPE_MATERIAL, 0) + 1
 
     try:
-        _retry_with_backoff(
-            _do_import, retries=retries, label="import_materials"
-        )
+        _retry_with_backoff(_do_import, retries=retries, label="import_materials")
     except (OSError, RuntimeError, ValueError, KeyError) as exc:
         stats.failed += 1
         stats.error_messages.append(f"materials import aborted: {exc}")

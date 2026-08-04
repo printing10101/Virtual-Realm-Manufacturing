@@ -76,9 +76,7 @@ class EntityIndex:
             return
 
         # 统一小写、去重、去空
-        normalized = {
-            e.strip().lower() for e in entities if e and e.strip()
-        }
+        normalized = {e.strip().lower() for e in entities if e and e.strip()}
         if not normalized:
             return
 
@@ -110,9 +108,7 @@ class EntityIndex:
             for chunk_id, entities in items:
                 if not chunk_id or not entities:
                     continue
-                normalized = {
-                    e.strip().lower() for e in entities if e and e.strip()
-                }
+                normalized = {e.strip().lower() for e in entities if e and e.strip()}
                 if not normalized:
                     continue
 
@@ -236,12 +232,8 @@ class EntityIndex:
                 os.makedirs(self._persist_dir, exist_ok=True)
                 # 转换 set 为 list 以便 JSON 序列化
                 serializable = {
-                    "index": {
-                        k: list(v) for k, v in self._index.items() if v
-                    },
-                    "chunk_entities": {
-                        k: list(v) for k, v in self._chunk_entities.items() if v
-                    },
+                    "index": {k: list(v) for k, v in self._index.items() if v},
+                    "chunk_entities": {k: list(v) for k, v in self._chunk_entities.items() if v},
                     "stats": {
                         "total_add_calls": self._total_add_calls,
                         "total_query_calls": self._total_query_calls,
@@ -260,7 +252,9 @@ class EntityIndex:
             except (OSError, TypeError, ValueError) as e:
                 logger.warning(
                     "Failed to flush entity index to %s: %s",
-                    self._persist_path, e, exc_info=True,
+                    self._persist_path,
+                    e,
+                    exc_info=True,
                 )
                 return False
 
@@ -290,12 +284,15 @@ class EntityIndex:
             self._dirty = False
             logger.info(
                 "EntityIndex loaded from disk: %d entities, %d chunks",
-                len(self._index), len(self._chunk_entities),
+                len(self._index),
+                len(self._chunk_entities),
             )
         except (json.JSONDecodeError, OSError, TypeError, ValueError) as e:
             logger.warning(
                 "Failed to load entity index from %s: %s",
-                self._persist_path, e, exc_info=True,
+                self._persist_path,
+                e,
+                exc_info=True,
             )
 
     # ------------------------------------------------------------------
@@ -307,9 +304,7 @@ class EntityIndex:
         with self._lock:
             total_chunks = len(self._chunk_entities)
             total_relations = sum(len(v) for v in self._index.values())
-            avg_entities_per_chunk = (
-                total_relations / total_chunks if total_chunks > 0 else 0.0
-            )
+            avg_entities_per_chunk = total_relations / total_chunks if total_chunks > 0 else 0.0
             return {
                 "entity_count": len(self._index),
                 "chunk_count": total_chunks,
@@ -321,9 +316,7 @@ class EntityIndex:
                 "total_query_calls": self._total_query_calls,
                 "total_query_hits": self._total_query_hits,
                 "query_hit_rate": (
-                    round(self._total_query_hits / self._total_query_calls, 4)
-                    if self._total_query_calls > 0
-                    else 0.0
+                    round(self._total_query_hits / self._total_query_calls, 4) if self._total_query_calls > 0 else 0.0
                 ),
             }
 
@@ -361,9 +354,7 @@ def get_entity_index(persist_dir: str | None = None) -> EntityIndex:
 
         if persist_dir is None:
             # 默认持久化到 data/entity_index/
-            project_root = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "..", "..")
-            )
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
             persist_dir = os.path.join(project_root, "data", "entity_index")
 
         _entity_index_instance = EntityIndex(persist_dir=persist_dir)

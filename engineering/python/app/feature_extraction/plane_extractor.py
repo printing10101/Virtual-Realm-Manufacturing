@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -59,8 +59,7 @@ def _try_import_sklearn() -> tuple[Any, Any]:
         return RANSACRegressor, LinearRegression
     except ImportError:
         logger.info(
-            "sklearn 未安装，平面提取退化为纯 numpy RANSAC 实现。"
-            "如需更稳定的拟合，请安装：pip install scikit-learn"
+            "sklearn 未安装，平面提取退化为纯 numpy RANSAC 实现。如需更稳定的拟合，请安装：pip install scikit-learn"
         )
         return None, None
 
@@ -255,7 +254,7 @@ class PlaneExtractor:
 
         # 用 X, Y 预测 Z
         X = vertices[:, :2]  # (N, 2)
-        z = vertices[:, 2]   # (N,)
+        z = vertices[:, 2]  # (N,)
 
         try:
             ransac = RANSACRegressor(
@@ -277,7 +276,6 @@ class PlaneExtractor:
         # z = a*x + b*y + c => a*x + b*y - z + c = 0
         # 法向量 (-a, -b, 1)
         a, b = ransac.estimator_.coef_
-        c = ransac.estimator_.intercept_
         normal = np.array([-a, -b, 1.0])
         norm = np.linalg.norm(normal)
         if norm < 1e-10:

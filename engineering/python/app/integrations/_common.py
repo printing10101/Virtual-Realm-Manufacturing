@@ -40,9 +40,7 @@ def parse_tds_url(url: str) -> Tuple[str, int, str]:
     """
     match = _TDS_URL_RE.match(url)
     if not match:
-        raise ValueError(
-            f"Invalid TDS URL: {url!r}. Expected tds://host:port/database"
-        )
+        raise ValueError(f"Invalid TDS URL: {url!r}. Expected tds://host:port/database")
     host, port, database = match.group(1), int(match.group(2)), match.group(3)
     return host, port, database
 
@@ -62,8 +60,7 @@ def format_sample(sample: "Sample") -> str:
 
     Missing values are rendered as ``-`` so columns stay aligned.
     """
-    ts = (sample.observed_at.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-          if sample.observed_at else "-")
+    ts = sample.observed_at.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] if sample.observed_at else "-"
     speed = _fmt(sample.spindle_speed)
     load = _fmt(sample.spindle_load)
     feed = _fmt(sample.feedrate)
@@ -97,9 +94,7 @@ def build_tdengine_client(output_url: str):
     logger = logging.getLogger(__name__)
     password = os.environ.get("TDENGINE_PASSWORD", "")
     if not password:
-        logger.warning(
-            "TDENGINE_PASSWORD not set. Please configure it in .env file."
-        )
+        logger.warning("TDENGINE_PASSWORD not set. Please configure it in .env file.")
     os.environ["TDENGINE_URL"] = f"taos://root:{password}@{host}:{port}"
     os.environ["TDENGINE_DB"] = database
 

@@ -10,6 +10,7 @@
 - **容错**：枚举字段允许字符串输入，Pydantic 会自动转换与校验
 - **可观测**：响应模型包含完整证据链与轨迹，便于前端可视化与调试
 """
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -138,9 +139,7 @@ class EvidenceItem(BaseModel):
     confidence: float = Field(..., description="证据置信度")
     weight: float = Field(..., description="来源权重")
     weighted_score: float = Field(..., description="加权分数")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict, description="额外元数据"
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="额外元数据")
 
 
 class TrajectoryStep(BaseModel):
@@ -169,15 +168,9 @@ class VerifyResponse(BaseModel):
     )
     confidence: float = Field(..., description="聚合置信度 [0, 1]")
     reasoning: str = Field("", description="LLM 推理依据（自然语言）")
-    evidence_chain: list[EvidenceItem] = Field(
-        default_factory=list, description="证据链（按加权分数降序）"
-    )
-    strategy: dict[str, Any] = Field(
-        default_factory=dict, description="本次使用的验证策略"
-    )
-    stopping_decision: dict[str, Any] = Field(
-        default_factory=dict, description="终止原因"
-    )
+    evidence_chain: list[EvidenceItem] = Field(default_factory=list, description="证据链（按加权分数降序）")
+    strategy: dict[str, Any] = Field(default_factory=dict, description="本次使用的验证策略")
+    stopping_decision: dict[str, Any] = Field(default_factory=dict, description="终止原因")
     steps_taken: int = Field(0, description="实际执行步数")
     elapsed_ms: float = Field(0.0, description="总耗时（毫秒）")
     trajectory: list[TrajectoryStep] = Field(
@@ -198,12 +191,8 @@ class VerifyResponse(BaseModel):
             return_trajectory: 是否包含完整轨迹
         """
         d = result.to_dict()
-        trajectory = [
-            TrajectoryStep(**step) for step in d.get("trajectory", [])
-        ] if return_trajectory else []
-        evidence = [
-            EvidenceItem(**ev) for ev in d.get("evidence_chain", [])
-        ]
+        trajectory = [TrajectoryStep(**step) for step in d.get("trajectory", [])] if return_trajectory else []
+        evidence = [EvidenceItem(**ev) for ev in d.get("evidence_chain", [])]
         return cls(
             verification_id=d["verification_id"],
             triple=d["triple_detail"],
@@ -263,9 +252,7 @@ class TrajectoryRecord(BaseModel):
     steps_taken: int = Field(0, description="步数")
     elapsed_ms: float = Field(0.0, description="耗时")
     timestamp: float = Field(..., description="时间戳")
-    key_evidence: list[str] = Field(
-        default_factory=list, description="关键证据片段"
-    )
+    key_evidence: list[str] = Field(default_factory=list, description="关键证据片段")
 
 
 class TrajectoryListResponse(BaseModel):
@@ -287,9 +274,7 @@ class AblationInfo(BaseModel):
     """消融模式信息。"""
 
     current_mode: Optional[str] = Field(..., description="当前消融模式")
-    available_modes: list[Optional[str]] = Field(
-        ..., description="可选消融模式列表（None 表示完整 SHARP）"
-    )
+    available_modes: list[Optional[str]] = Field(..., description="可选消融模式列表（None 表示完整 SHARP）")
     description: str = Field(..., description="当前模式说明")
 
 
@@ -298,10 +283,7 @@ class AblationUpdateRequest(BaseModel):
 
     mode: Optional[str] = Field(
         None,
-        description=(
-            "消融模式：None / 'no_schema' / 'no_memory' / "
-            "'no_react' / 'no_toolset'"
-        ),
+        description=("消融模式：None / 'no_schema' / 'no_memory' / 'no_react' / 'no_toolset'"),
     )
 
 
@@ -309,9 +291,7 @@ class StatusResponse(BaseModel):
     """SHARP 服务状态响应。"""
 
     version: str = Field(..., description="SHARP 模块版本")
-    enabled_components: dict[str, bool] = Field(
-        ..., description="各组件启用状态"
-    )
+    enabled_components: dict[str, bool] = Field(..., description="各组件启用状态")
     tool_registry_size: int = Field(..., description="已注册工具数")
     trajectory_count: int = Field(..., description="历史轨迹数")
     ablation_mode: Optional[str] = Field(..., description="当前消融模式")

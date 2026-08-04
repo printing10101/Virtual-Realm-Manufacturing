@@ -106,7 +106,6 @@ Environment variable reference
 from __future__ import annotations
 
 import logging
-import os
 import re
 from typing import List, Optional
 
@@ -118,6 +117,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
+
 
 class CorsConfigError(Exception):
     """Raised when CORS configuration is invalid or insecure.
@@ -241,6 +241,7 @@ def _contains_wildcard(origins: Optional[List[str]]) -> bool:
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
+
 
 def validate_cors_config(
     allow_origins: Optional[List[str]],
@@ -405,6 +406,7 @@ def _resolve_environment() -> str:
 # Settings class
 # ---------------------------------------------------------------------------
 
+
 class CorsSettings:
     """Environment-aware CORS settings.
 
@@ -544,6 +546,7 @@ cors_settings = CorsSettings()
 # ---------------------------------------------------------------------------
 # Standalone helper functions
 # ---------------------------------------------------------------------------
+
 
 def get_environment() -> str:
     """Return the current environment name (``"development"`` or ``"production"``).
@@ -703,10 +706,6 @@ if PRODUCTION_ORIGIN_REGEX != r"http://localhost(:\d+)?":
         "contract.  This is a CORS security regression and must not ship."
     )
 if any(_is_wildcard_origin(o) for o in DEVELOPMENT_ORIGINS):
-    raise CorsConfigError(
-        "DEVELOPMENT_ORIGINS contains a wildcard — CORS security regression."
-    )
+    raise CorsConfigError("DEVELOPMENT_ORIGINS contains a wildcard — CORS security regression.")
 if any(_is_wildcard_origin(o) for o in PRODUCTION_ORIGINS):
-    raise CorsConfigError(
-        "PRODUCTION_ORIGINS contains a wildcard — CORS security regression."
-    )
+    raise CorsConfigError("PRODUCTION_ORIGINS contains a wildcard — CORS security regression.")

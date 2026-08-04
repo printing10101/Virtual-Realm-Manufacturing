@@ -47,7 +47,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, Field
 
 from app.api.v1._shared.task_infra import (
     build_file_download_response,
@@ -61,22 +60,12 @@ from app.core.safe_errors import safe_error_message
 from app.contracts._shared import TaskListResponse
 
 from app.cam_validation import (
-    CamAdapterError,
     CamReviewStatus,
     CamValidationError,
-    CamValidationPipeline,
     CamValidationPipelineError,
-    CamValidationTask,
     CamValidationTaskStatus,
-    FeatureValidationResult,
-    GCodeReportLoadError,
-    InternalValidationError,
-    PENDING_CALIBRATION_MATERIALS,
     ReviewError,
-    SAFETY_MARGIN_RATIO,
     VALID_CAM_BACKENDS,
-    build_cam_disclaimer,
-    generate_task_id,
     get_task_store,
     is_valid_cam_backend,
 )
@@ -92,12 +81,12 @@ from app.api.v1.cam_validation._schemas import (
     TaskCreateRequest,
     TaskCreateResponse,
     TaskStatusResponse,
-    FeatureValidationResultResponse,
     TaskResultResponse,
     ReviewRequest,
     ReviewResponse,
     ConfirmTaskResponse,
 )
+
 router = APIRouter(
     prefix="/api/v1/cam-validation",
     tags=["CAM Validation (Engineer-Assisted Production Handoff)"],
@@ -107,22 +96,6 @@ router = APIRouter(
 # =============================================================================
 # 请求 / 响应模型
 # =============================================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # =============================================================================
@@ -161,36 +134,23 @@ async def get_precision_info() -> dict[str, Any]:
                 "pycam_executable": config.cam_validation.pycam_executable,
             },
             "supported_cam_backends": {
-                "internal_only": (
-                    "仅内部预校验（CollisionDetector AABB 包围盒），"
-                    "不调用 CAM 软件。用于快速预筛。"
-                ),
+                "internal_only": ("仅内部预校验（CollisionDetector AABB 包围盒），不调用 CAM 软件。用于快速预筛。"),
                 "pycam": (
-                    "PyCAM 开源刀轨校验（subprocess 调用包装器脚本，4 项基础检查），"
-                    "适合无 NX/PowerMill 许可证场景。"
+                    "PyCAM 开源刀轨校验（subprocess 调用包装器脚本，4 项基础检查），适合无 NX/PowerMill 许可证场景。"
                 ),
                 "nx_open": (
-                    "Siemens NX Open（高端 CAM 软件，支持 5-axis + 后处理器语法校验），"
-                    "需配置 nx_open_executable 路径。"
+                    "Siemens NX Open（高端 CAM 软件，支持 5-axis + 后处理器语法校验），需配置 nx_open_executable 路径。"
                 ),
-                "powermill": (
-                    "Autodesk PowerMill（模具五轴 CAM），"
-                    "需配置 powermill_executable 路径。"
-                ),
-                "manual": (
-                    "人工校验（CAM 软件不可用时的降级策略），"
-                    "生成校验清单 + 工程师手动回填结果。"
-                ),
+                "powermill": ("Autodesk PowerMill（模具五轴 CAM），需配置 powermill_executable 路径。"),
+                "manual": ("人工校验（CAM 软件不可用时的降级策略），生成校验清单 + 工程师手动回填结果。"),
             },
             "industrial_hard_gates": [
                 "系统定位「工程师助手」，非「全自动 CAM 校验器」，最终决策权在工程师",
-                "内部预校验（CollisionDetector）是 AABB 包围盒级别快速预筛，"
-                "不可替代 CAM 软件二次校验",
+                "内部预校验（CollisionDetector）是 AABB 包围盒级别快速预筛，不可替代 CAM 软件二次校验",
                 "系统绝不直接接口 CNC 控制器，CAM 软件调用通过 subprocess",
                 "CAM 二次校验强制：cam_validation_required 始终 True，不可由环境变量关闭",
                 "阶段 7 产物终止于「CAM 校验报告 JSON」，不触及物理机床",
-                "实际加工必须经持证操作员 + 导师签字 + 保险，"
-                "大一独立项目不可独立完成机床执行",
+                "实际加工必须经持证操作员 + 导师签字 + 保险，大一独立项目不可独立完成机床执行",
                 "SUCCEEDED 状态禁止删除（cam_report.json 是链路最终产物，供审计追溯）",
                 "HRC52 pending_calibration 由阶段 5 标注，阶段 7 仅继承并体现在告知文本",
                 "极限切深为理论值，实际加工必须留 20% 安全裕度（SAFETY_MARGIN_RATIO=0.8）",
@@ -199,17 +159,11 @@ async def get_precision_info() -> dict[str, Any]:
             "cam_disclaimer": _disclaimer_dict(),
             "workflow_summary": {
                 "step_1": (
-                    "POST /tasks 创建任务（输入 G 代码报告路径 + G 代码文件路径 "
-                    "+ 控制器类型 + 材料名称 + CAM 后端）"
+                    "POST /tasks 创建任务（输入 G 代码报告路径 + G 代码文件路径 + 控制器类型 + 材料名称 + CAM 后端）"
                 ),
-                "step_2": (
-                    "POST /tasks/{task_id}/run 异步触发双层校验流水线"
-                    "（内部预校验 + CAM 软件二次校验）"
-                ),
+                "step_2": ("POST /tasks/{task_id}/run 异步触发双层校验流水线（内部预校验 + CAM 软件二次校验）"),
                 "step_3": "GET /tasks/{task_id} 轮询状态（PENDING → RUNNING → VALIDATED）",
-                "step_4": (
-                    "POST /tasks/{task_id}/review?feature_id=... 工程师逐条审核校验结果"
-                ),
+                "step_4": ("POST /tasks/{task_id}/review?feature_id=... 工程师逐条审核校验结果"),
                 "step_5": (
                     "POST /tasks/{task_id}/confirm 确认任务（REVIEWED → SUCCEEDED + "
                     "导出 cam_report.json + internal_report.json）"
@@ -256,9 +210,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
         upstream_stock_top_z,
         _upstream_pending_calibration,
         _upstream_prediction_method,
-    ) = _resolve_upstream_gcode_calibrated(
-        body.source_gcode_generation_task_id
-    )
+    ) = _resolve_upstream_gcode_calibrated(body.source_gcode_generation_task_id)
 
     # 解析 gcode_report_path（显式 > 上游 > 报错）
     gcode_report_path = body.gcode_report_path or upstream_gcode_report_path
@@ -270,10 +222,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
                 f"source_gcode_generation_task_id="
                 f"{body.source_gcode_generation_task_id}"
             ),
-            suggestion=(
-                "请显式提供 gcode_report_path，或确认上游阶段 6 任务已 SUCCEEDED "
-                "且已导出 G 代码报告 JSON。"
-            ),
+            suggestion=("请显式提供 gcode_report_path，或确认上游阶段 6 任务已 SUCCEEDED 且已导出 G 代码报告 JSON。"),
         )
 
     # 校验 G 代码报告 JSON 文件存在
@@ -288,29 +237,20 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
     gcode_file_path = body.gcode_file_path or upstream_gcode_file_path
 
     # 解析 controller_type（显式 > 上游 > 默认值）
-    controller_type = (
-        body.controller_type
-        or upstream_controller_type
-        or "fanuc_0i"
-    )
+    controller_type = body.controller_type or upstream_controller_type or "fanuc_0i"
 
     # 解析 material_name（显式 > 上游 > 默认值）
     material_name = body.material_name or upstream_material_name or "45#钢"
 
     # 解析 safe_z / stock_top_z（显式 > 上游 > 默认值）
     safe_z = body.safe_z if body.safe_z != 80.0 else upstream_safe_z
-    stock_top_z = (
-        body.stock_top_z if body.stock_top_z != 50.0 else upstream_stock_top_z
-    )
+    stock_top_z = body.stock_top_z if body.stock_top_z != 50.0 else upstream_stock_top_z
 
     # 校验 cam_backend 合法性
     if not is_valid_cam_backend(body.cam_backend):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"非法 cam_backend: {body.cam_backend}，"
-                f"合法值：{sorted(VALID_CAM_BACKENDS)}"
-            ),
+            message=(f"非法 cam_backend: {body.cam_backend}，合法值：{sorted(VALID_CAM_BACKENDS)}"),
         )
 
     try:
@@ -357,10 +297,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
             "cam_validation_required": task.cam_validation_required,
             "cam_disclaimer": _disclaimer_dict(task=task),
         },
-        message=(
-            f"任务已创建 task_id={task.task_id}，"
-            f"请调用 POST /tasks/{task.task_id}/run 触发执行"
-        ),
+        message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
 
@@ -399,10 +336,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
     ):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态不允许执行当前操作 status={task.status}。"
-                "仅 PENDING / FAILED 状态可触发执行。"
-            ),
+            message=(f"任务状态不允许执行当前操作 status={task.status}。仅 PENDING / FAILED 状态可触发执行。"),
         )
 
     # 重试场景：清空错误信息
@@ -448,21 +382,15 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
 
     # 统计审核进度
     pending_review_count = sum(
-        1 for r in task.feature_validation_results
-        if r.review_status == CamReviewStatus.PENDING.value
+        1 for r in task.feature_validation_results if r.review_status == CamReviewStatus.PENDING.value
     )
     confirmed_count = sum(
-        1 for r in task.feature_validation_results
-        if r.review_status == CamReviewStatus.CONFIRMED.value
+        1 for r in task.feature_validation_results if r.review_status == CamReviewStatus.CONFIRMED.value
     )
     rejected_count = sum(
-        1 for r in task.feature_validation_results
-        if r.review_status == CamReviewStatus.REJECTED.value
+        1 for r in task.feature_validation_results if r.review_status == CamReviewStatus.REJECTED.value
     )
-    edited_count = sum(
-        1 for r in task.feature_validation_results
-        if r.review_status == CamReviewStatus.EDITED.value
-    )
+    edited_count = sum(1 for r in task.feature_validation_results if r.review_status == CamReviewStatus.EDITED.value)
 
     cam_report_exported = bool(task.cam_report_path)
 
@@ -499,9 +427,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
             "reviewed_at": task.reviewed_at,
             "warnings": list(task.warnings),
             "errors": list(task.errors),
-            "cam_disclaimer": _disclaimer_dict(
-                task=task, cam_report_exported=cam_report_exported
-            ),
+            "cam_disclaimer": _disclaimer_dict(task=task, cam_report_exported=cam_report_exported),
         },
     )
 
@@ -596,10 +522,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
     if task.status not in allowed_states:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许获取结果，"
-                f"仅 {sorted(allowed_states)} 状态可获取。"
-            ),
+            message=(f"任务状态 {task.status} 不允许获取结果，仅 {sorted(allowed_states)} 状态可获取。"),
             suggestion="请等待状态变为 validated 后再调用此端点",
         )
 
@@ -647,9 +570,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
             "internal_report_path": task.internal_report_path or None,
             "error_message": task.error_message or None,
             "feature_results": feature_results_data,
-            "cam_disclaimer": _disclaimer_dict(
-                task=task, cam_report_exported=cam_report_exported
-            ),
+            "cam_disclaimer": _disclaimer_dict(task=task, cam_report_exported=cam_report_exported),
         },
     )
 
@@ -699,10 +620,7 @@ async def review_feature(
     if task.status != CamValidationTaskStatus.VALIDATED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许审核，"
-                f"仅 {CamValidationTaskStatus.VALIDATED.value} 状态可审核"
-            ),
+            message=(f"任务状态 {task.status} 不允许审核，仅 {CamValidationTaskStatus.VALIDATED.value} 状态可审核"),
             suggestion="请等待流水线执行完成（状态变为 validated）后再审核",
         )
 
@@ -723,10 +641,7 @@ async def review_feature(
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message="action=edited 时必须提供 edited_params",
-            suggestion=(
-                "请提供编辑后的参数（字段可为 safe_z / cam_backend / "
-                "stock_top_z 的子集）"
-            ),
+            suggestion=("请提供编辑后的参数（字段可为 safe_z / cam_backend / stock_top_z 的子集）"),
         )
 
     try:
@@ -750,9 +665,7 @@ async def review_feature(
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cam_validation.review_feature"
-        )
+        safe = safe_error_message(e, context="cam_validation.review_feature")
         logger.error(
             "审核特征失败 task_id=%s feature_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -775,10 +688,7 @@ async def review_feature(
             message="审核后任务丢失，请检查任务存储",
         )
 
-    all_reviewed = all(
-        r.review_status != CamReviewStatus.PENDING.value
-        for r in task_after.feature_validation_results
-    )
+    all_reviewed = all(r.review_status != CamReviewStatus.PENDING.value for r in task_after.feature_validation_results)
 
     return success(
         data={
@@ -794,8 +704,7 @@ async def review_feature(
         message=(
             f"特征 {feature_id} 已审核（action={body.action}）。"
             + (
-                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/confirm "
-                "导出 CAM 校验报告 JSON。"
+                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/confirm 导出 CAM 校验报告 JSON。"
                 if all_reviewed
                 else " 仍有特征待审核。"
             )
@@ -844,10 +753,7 @@ async def confirm_task(
     if task.status != CamValidationTaskStatus.REVIEWED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许确认，"
-                f"仅 {CamValidationTaskStatus.REVIEWED.value} 状态可确认"
-            ),
+            message=(f"任务状态 {task.status} 不允许确认，仅 {CamValidationTaskStatus.REVIEWED.value} 状态可确认"),
             suggestion="请先完成所有特征的审核（状态变为 reviewed）后再确认导出",
         )
 
@@ -865,9 +771,7 @@ async def confirm_task(
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cam_validation.confirm_task"
-        )
+        safe = safe_error_message(e, context="cam_validation.confirm_task")
         logger.error(
             "确认任务失败 task_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -889,12 +793,8 @@ async def confirm_task(
             message="确认后任务丢失，请检查任务存储",
         )
 
-    report_download_url = (
-        f"/api/v1/cam-validation/tasks/{task_id}/report/download"
-    )
-    internal_report_download_url = (
-        f"/api/v1/cam-validation/tasks/{task_id}/internal_report/download"
-    )
+    report_download_url = f"/api/v1/cam-validation/tasks/{task_id}/report/download"
+    internal_report_download_url = f"/api/v1/cam-validation/tasks/{task_id}/internal_report/download"
 
     return success(
         data={
@@ -911,9 +811,7 @@ async def confirm_task(
             "report_download_url": report_download_url,
             "internal_report_download_url": internal_report_download_url,
             "cam_validation_required": task_after.cam_validation_required,
-            "cam_disclaimer": _disclaimer_dict(
-                task=task_after, cam_report_exported=True
-            ),
+            "cam_disclaimer": _disclaimer_dict(task=task_after, cam_report_exported=True),
         },
         message=(
             f"CAM 校验报告已导出 cam_report={result.cam_report_path}。"
@@ -1051,10 +949,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     if task.status == CamValidationTaskStatus.SUCCEEDED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务 {task_id} 已 SUCCEEDED，禁止删除。"
-                "cam_report.json 是链路最终产物，需保留供审计追溯。"
-            ),
+            message=(f"任务 {task_id} 已 SUCCEEDED，禁止删除。cam_report.json 是链路最终产物，需保留供审计追溯。"),
             suggestion="如确需删除，请先手动清理审计引用，再删除任务",
         )
 
@@ -1069,9 +964,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
         try:
             store.update_task(task)
         except Exception as e:
-            safe = safe_error_message(
-                e, context="cam_validation.delete_task.cancel"
-            )
+            safe = safe_error_message(e, context="cam_validation.delete_task.cancel")
             logger.error(
                 "取消任务失败 task_id=%s | error_id=%s | exc=%s",
                 task_id,
@@ -1100,9 +993,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="cam_validation.delete_task"
-        )
+        safe = safe_error_message(e, context="cam_validation.delete_task")
         logger.error(
             "删除任务失败 task_id=%s | error_id=%s | exc=%s",
             task_id,

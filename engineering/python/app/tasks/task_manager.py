@@ -12,6 +12,8 @@ from dataclasses import dataclass
 # 此处保留 re-import 以兼容历史代码
 from app.contracts.task import TaskType
 
+__all__ = ["TaskType", "TaskStatus", "TaskResult"]
+
 
 class TaskStatus(str, Enum):
     """Task lifecycle status"""

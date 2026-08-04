@@ -18,13 +18,10 @@ import asyncio
 import json
 import logging
 import os
-import time
-import zlib
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 # shared imports moved to state/__init__.py
-from app.state.exceptions import StatePersistenceError, StateConflictError, StateNotFoundError
 from app.models.agent_state import (
     AgentState,
     AgentStatus,
@@ -32,9 +29,13 @@ from app.models.agent_state import (
     MemoryEntry,
     SessionContext,
     StateVersion,
-    CURRENT_SCHEMA_VERSION,
-    migrate_state,
 )
+
+# F821 修复：checkpoint/compressor/migration 为 V3.0 独立子模块，
+# 直接子模块导入，避免经由 state/__init__.py 造成循环导入
+from app.state.checkpoint import CheckpointLifecycleManager
+from app.state.compressor import StateCompressor
+from app.state.migration import StateMigrationEngine
 
 HEARTBEAT_INTERVAL_SECONDS = 15 * 60
 CHECKPOINT_MAX_AGE_SECONDS = 7 * 24 * 3600
@@ -83,9 +84,7 @@ class StatePersistenceManager:
         if self._heartbeat_tasks:
             for task in list(self._heartbeat_tasks.values()):
                 task.cancel()
-            await asyncio.gather(
-                *self._heartbeat_tasks.values(), return_exceptions=True
-            )
+            await asyncio.gather(*self._heartbeat_tasks.values(), return_exceptions=True)
             self._heartbeat_tasks.clear()
 
         # dispose async engine
@@ -107,9 +106,7 @@ class StatePersistenceManager:
         # 关闭 Redis
         if self._redis is not None:
             try:
-                close_fn = getattr(self._redis, "aclose", None) or getattr(
-                    self._redis, "close", None
-                )
+                close_fn = getattr(self._redis, "aclose", None) or getattr(self._redis, "close", None)
                 if close_fn:
                     result = close_fn()
                     if asyncio.iscoroutine(result):
@@ -138,9 +135,7 @@ class StatePersistenceManager:
         try:
             key = self._redis_key(state.agent_id)
             data = json.dumps(state.to_dict(), ensure_ascii=False)
-            await asyncio.to_thread(
-                self._redis.setex, key, self._heartbeat_interval * 2, data
-            )
+            await asyncio.to_thread(self._redis.setex, key, self._heartbeat_interval * 2, data)
         except (ConnectionError, OSError, ValueError) as e:
             # Redis 缓存写入失败不影响主流程，但需记录以便排查
             logger.warning(
@@ -156,16 +151,12 @@ class StatePersistenceManager:
             key = self._redis_key(agent_id)
             data = await asyncio.to_thread(self._redis.get, key)
             if data:
-                raw = json.loads(
-                    data.decode("utf-8") if isinstance(data, bytes) else data
-                )
+                raw = json.loads(data.decode("utf-8") if isinstance(data, bytes) else data)
                 raw = self._migration_engine.migrate(raw)
                 return AgentState.from_dict(raw)
         except (ConnectionError, OSError, ValueError, KeyError, TypeError) as e:
             # Redis 读取或反序列化失败时返回 None，让上层回退到 DB 层
-            logger.warning(
-                "Failed to load state from Redis: agent=%s error=%s", agent_id, e
-            )
+            logger.warning("Failed to load state from Redis: agent=%s error=%s", agent_id, e)
         return None
 
     async def _save_db(self, state: AgentState):
@@ -203,22 +194,14 @@ class StatePersistenceManager:
                     {
                         "agent_id": state.agent_id,
                         "task_id": state.current_task_id,
-                        "session_ctx": json.dumps(
-                            state.session_context.to_dict(), ensure_ascii=False
-                        ),
-                        "memory": json.dumps(
-                            [m.to_dict() for m in state.memory], ensure_ascii=False
-                        ),
-                        "checkpoint": json.dumps(
-                            state.checkpoint.to_dict(), ensure_ascii=False
-                        )
+                        "session_ctx": json.dumps(state.session_context.to_dict(), ensure_ascii=False),
+                        "memory": json.dumps([m.to_dict() for m in state.memory], ensure_ascii=False),
+                        "checkpoint": json.dumps(state.checkpoint.to_dict(), ensure_ascii=False)
                         if state.checkpoint
                         else None,
                         "hb": state.last_heartbeat,
                         "status": state.status.value,
-                        "sv": json.dumps(
-                            state.state_version.to_dict(), ensure_ascii=False
-                        ),
+                        "sv": json.dumps(state.state_version.to_dict(), ensure_ascii=False),
                         "meta": json.dumps(state.metadata, ensure_ascii=False),
                         "compressed": compressed,
                     },
@@ -238,15 +221,9 @@ class StatePersistenceManager:
                     {
                         "agent_id": state.agent_id,
                         "task_id": state.current_task_id,
-                        "session_ctx": json.dumps(
-                            state.session_context.to_dict(), ensure_ascii=False
-                        ),
-                        "memory": json.dumps(
-                            [m.to_dict() for m in state.memory], ensure_ascii=False
-                        ),
-                        "checkpoint": json.dumps(
-                            state.checkpoint.to_dict(), ensure_ascii=False
-                        )
+                        "session_ctx": json.dumps(state.session_context.to_dict(), ensure_ascii=False),
+                        "memory": json.dumps([m.to_dict() for m in state.memory], ensure_ascii=False),
+                        "checkpoint": json.dumps(state.checkpoint.to_dict(), ensure_ascii=False)
                         if state.checkpoint
                         else None,
                         "hb": state.last_heartbeat,
@@ -255,9 +232,7 @@ class StatePersistenceManager:
                             [c.to_dict() for c in state.checkpoints_history],
                             ensure_ascii=False,
                         ),
-                        "sv": json.dumps(
-                            state.state_version.to_dict(), ensure_ascii=False
-                        ),
+                        "sv": json.dumps(state.state_version.to_dict(), ensure_ascii=False),
                         "meta": json.dumps(state.metadata, ensure_ascii=False),
                         "compressed": compressed,
                     },
@@ -273,11 +248,18 @@ class StatePersistenceManager:
                 except Exception as rollback_err:
                     logger.error(
                         "DB rollback failed for agent %s (consecutive failures=%d): %s",
-                        state.agent_id, self._db_consecutive_failures, rollback_err,
+                        state.agent_id,
+                        self._db_consecutive_failures,
+                        rollback_err,
                         exc_info=True,
                     )
-            logger.error("DB save failed for agent %s (consecutive=%d): %s",
-                         state.agent_id, self._db_consecutive_failures, e, exc_info=True)
+            logger.error(
+                "DB save failed for agent %s (consecutive=%d): %s",
+                state.agent_id,
+                self._db_consecutive_failures,
+                e,
+                exc_info=True,
+            )
         except Exception as e:
             # 捕获 SQLAlchemyError 及其他数据库异常，显式 rollback
             # 注意：保留 Exception 兜底，因 try 块内 import sqlalchemy 可能抛 ImportError，
@@ -290,11 +272,18 @@ class StatePersistenceManager:
                 except Exception as rollback_err:
                     logger.error(
                         "DB rollback failed for agent %s (consecutive failures=%d): %s",
-                        state.agent_id, self._db_consecutive_failures, rollback_err,
+                        state.agent_id,
+                        self._db_consecutive_failures,
+                        rollback_err,
                         exc_info=True,
                     )
-            logger.error("DB save failed for agent %s (consecutive=%d): %s",
-                         state.agent_id, self._db_consecutive_failures, e, exc_info=True)
+            logger.error(
+                "DB save failed for agent %s (consecutive=%d): %s",
+                state.agent_id,
+                self._db_consecutive_failures,
+                e,
+                exc_info=True,
+            )
         finally:
             if session is not None:
                 try:
@@ -303,7 +292,9 @@ class StatePersistenceManager:
                     self._db_consecutive_failures += 1
                     logger.error(
                         "DB session close failed for agent %s (consecutive failures=%d): %s",
-                        state.agent_id, self._db_consecutive_failures, close_err,
+                        state.agent_id,
+                        self._db_consecutive_failures,
+                        close_err,
                         exc_info=True,
                     )
         # 连续失败超过阈值时发出健康告警
@@ -340,14 +331,8 @@ class StatePersistenceManager:
 
             session_ctx = json.loads(row.session_context) if row.session_context else {}
             memory = json.loads(row.memory_json) if row.memory_json else []
-            checkpoint = (
-                json.loads(row.checkpoint_json) if row.checkpoint_json else None
-            )
-            chk_hist = (
-                json.loads(row.checkpoints_history_json)
-                if row.checkpoints_history_json
-                else []
-            )
+            checkpoint = json.loads(row.checkpoint_json) if row.checkpoint_json else None
+            chk_hist = json.loads(row.checkpoints_history_json) if row.checkpoints_history_json else []
             state_ver = json.loads(row.state_version) if row.state_version else {}
             metadata = json.loads(row.metadata_json) if row.metadata_json else {}
 
@@ -380,9 +365,7 @@ class StatePersistenceManager:
                 try:
                     await session.close()
                 except Exception as close_err:
-                    logger.warning(
-                        "Failed to close DB session in _load_db: %s", close_err
-                    )
+                    logger.warning("Failed to close DB session in _load_db: %s", close_err)
         return None
 
     async def _save_checkpoint_files(self, state: AgentState):
@@ -392,9 +375,7 @@ class StatePersistenceManager:
         ckpt = state.checkpoint
         if ckpt.state_dict_path and os.path.exists(ckpt.state_dict_path):
             data = Path(ckpt.state_dict_path).read_bytes()
-            path = self._checkpoint_manager.save_checkpoint_file(
-                agent_id, ckpt.checkpoint_id, data
-            )
+            path = self._checkpoint_manager.save_checkpoint_file(agent_id, ckpt.checkpoint_id, data)
             ckpt.file_size_bytes = os.path.getsize(path)
 
     async def _load_checkpoint_files(self, state: AgentState):
@@ -402,19 +383,13 @@ class StatePersistenceManager:
             return
         agent_id = state.agent_id
         ckpt = state.checkpoint
-        data = self._checkpoint_manager.load_checkpoint_file(
-            agent_id, ckpt.checkpoint_id
-        )
+        data = self._checkpoint_manager.load_checkpoint_file(agent_id, ckpt.checkpoint_id)
         if data:
-            temp_path = self._checkpoint_manager.get_checkpoint_path(
-                agent_id, ckpt.checkpoint_id
-            )
+            temp_path = self._checkpoint_manager.get_checkpoint_path(agent_id, ckpt.checkpoint_id)
             ckpt.state_dict_path = str(temp_path.with_suffix(".restored.pt"))
             Path(ckpt.state_dict_path).write_bytes(data)
 
-    async def save_state(
-        self, state: AgentState, trigger: str = "manual"
-    ) -> AgentState:
+    async def save_state(self, state: AgentState, trigger: str = "manual") -> AgentState:
         """Atomic save to all three storage tiers"""
         lock = self._get_lock(state.agent_id)
         async with lock:
@@ -454,9 +429,7 @@ class StatePersistenceManager:
             try:
                 await asyncio.to_thread(self._redis.delete, self._redis_key(agent_id))
             except (ConnectionError, OSError, ValueError) as e:
-                logger.warning(
-                    "Failed to delete state from Redis: agent=%s error=%s", agent_id, e
-                )
+                logger.warning("Failed to delete state from Redis: agent=%s error=%s", agent_id, e)
         if self._db_session_factory:
             # P0-3 修复：session 必须在 finally 块中关闭，防止异常路径下 session 泄漏
             session = None
@@ -531,9 +504,7 @@ class StatePersistenceManager:
     def _start_heartbeat(self, agent_id: str):
         if agent_id in self._heartbeat_tasks:
             return
-        self._heartbeat_tasks[agent_id] = asyncio.create_task(
-            self._heartbeat_loop(agent_id)
-        )
+        self._heartbeat_tasks[agent_id] = asyncio.create_task(self._heartbeat_loop(agent_id))
 
     def _stop_heartbeat(self, agent_id: str):
         task = self._heartbeat_tasks.pop(agent_id, None)
@@ -572,9 +543,7 @@ class StatePersistenceManager:
         if self._redis:
             try:
                 data = json.dumps(state.to_dict(), ensure_ascii=False)
-                await asyncio.to_thread(
-                    self._redis.setex, rollback_key, 86400 * 7, data
-                )
+                await asyncio.to_thread(self._redis.setex, rollback_key, 86400 * 7, data)
             except (TypeError, ValueError, ConnectionError, OSError) as e:
                 # Redis 回滚快照写入失败不应阻塞当前状态保存
                 logger.warning(
@@ -682,9 +651,7 @@ class StatePersistenceManager:
                     "last_heartbeat": r.last_heartbeat.isoformat()
                     if hasattr(r.last_heartbeat, "isoformat")
                     else r.last_heartbeat,
-                    "updated_at": r.updated_at.isoformat()
-                    if hasattr(r.updated_at, "isoformat")
-                    else r.updated_at,
+                    "updated_at": r.updated_at.isoformat() if hasattr(r.updated_at, "isoformat") else r.updated_at,
                 }
                 for r in rows
             ]

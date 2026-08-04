@@ -176,11 +176,7 @@ class BenchmarkDataset:
 
     def __init__(self, root_dir: str | None = None) -> None:
         if root_dir is None:
-            project_root = os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-            )
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
             root_dir = os.path.join(project_root, "tests", "benchmark", "geometric")
         self.root_dir = Path(root_dir)
         self._cache: dict[str, PartMetadata] = {}
@@ -200,9 +196,7 @@ class BenchmarkDataset:
 
         metadata_path = self.root_dir / part_id / "metadata.json"
         if not metadata_path.exists():
-            raise FileNotFoundError(
-                f"Metadata not found for part '{part_id}': {metadata_path}"
-            )
+            raise FileNotFoundError(f"Metadata not found for part '{part_id}': {metadata_path}")
 
         with open(metadata_path, "r", encoding="utf-8") as f:
             data = json.load(f)

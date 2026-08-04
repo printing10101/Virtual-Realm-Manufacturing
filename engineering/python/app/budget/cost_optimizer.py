@@ -6,10 +6,11 @@
 向后兼容：``app/budget/budget_enforcer.py`` 仍作为 re-export shim 暴露
 本模块的全部公开符号。
 """
+
 import logging
 import threading
 import time
-from typing import ClassVar, List, Optional
+from typing import List, Optional
 
 from app.models.budget import CostOptimizationSuggestion
 from app.services._shared.service_base import BaseSingletonService
@@ -124,12 +125,8 @@ class CostOptimizer(BaseSingletonService):
                         ),
                         current_cost=summary.total_cost,
                         estimated_savings=savings,
-                        savings_percentage=(savings / summary.total_cost * 100)
-                        if summary.total_cost > 0
-                        else 0,
-                        priority="high"
-                        if savings > summary.total_cost * 0.3
-                        else "medium",
+                        savings_percentage=(savings / summary.total_cost * 100) if summary.total_cost > 0 else 0,
+                        priority="high" if savings > summary.total_cost * 0.3 else "medium",
                         recommendation=f"建议将 {model_name} 相关任务迁移至 {alt['model']} 模型",
                         metrics={
                             "current_model": model_name,
@@ -143,9 +140,7 @@ class CostOptimizer(BaseSingletonService):
 
         return suggestions
 
-    def analyze_gpu_utilization(
-        self, gpu_utilization_threshold: float = 0.5
-    ) -> List[CostOptimizationSuggestion]:
+    def analyze_gpu_utilization(self, gpu_utilization_threshold: float = 0.5) -> List[CostOptimizationSuggestion]:
         suggestions = []
 
         if self._cost_tracker is None:
@@ -158,11 +153,7 @@ class CostOptimizer(BaseSingletonService):
             s
             for s in gpu_summary
             if s.total_gpu_seconds > 0
-            and (
-                s.total_gpu_memory_gb_seconds / s.total_gpu_seconds
-                if s.total_gpu_seconds > 0
-                else 1.0
-            )
+            and (s.total_gpu_memory_gb_seconds / s.total_gpu_seconds if s.total_gpu_seconds > 0 else 1.0)
             < gpu_utilization_threshold
         ]
 
@@ -216,8 +207,7 @@ class CostOptimizer(BaseSingletonService):
                     savings_percentage=40.0,
                     priority="high",
                     recommendation=(
-                        f"为 {summary.scope_id} 启用预训练模型缓存，"
-                        f"对相似任务复用已有模型权重，减少冗余训练"
+                        f"为 {summary.scope_id} 启用预训练模型缓存，对相似任务复用已有模型权重，减少冗余训练"
                     ),
                     metrics={
                         "model": summary.scope_id,

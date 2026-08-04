@@ -237,8 +237,7 @@ class SessionStore:
         return [
             {"role": m.role, "content": m.content}
             for m in msgs
-            if m.role in ("user", "assistant", "system")
-            and not m.metadata.get("event")
+            if m.role in ("user", "assistant", "system") and not m.metadata.get("event")
         ]
 
     async def clear_session(self, session_id: str) -> int:
@@ -308,7 +307,9 @@ class SessionStore:
                     logger.debug("ROLLBACK failed: %s", rb_err, exc_info=True)
                 logger.error(
                     "add_message 事务失败 (session=%s): %s",
-                    msg.session_id, e, exc_info=True,
+                    msg.session_id,
+                    e,
+                    exc_info=True,
                 )
                 raise
 
@@ -366,7 +367,9 @@ class SessionStore:
                     logger.debug("ROLLBACK failed: %s", rb_err, exc_info=True)
                 logger.error(
                     "clear_session 事务失败 (session=%s): %s",
-                    session_id, e, exc_info=True,
+                    session_id,
+                    e,
+                    exc_info=True,
                 )
                 raise
 
@@ -396,7 +399,9 @@ class SessionStore:
                     # （外层 except 已记录原始事务异常并 re-raise）
                     logger.debug("ROLLBACK failed: %s", rb_err, exc_info=True)
                 logger.error(
-                    "cleanup_expired 事务失败: %s", e, exc_info=True,
+                    "cleanup_expired 事务失败: %s",
+                    e,
+                    exc_info=True,
                 )
                 raise
 

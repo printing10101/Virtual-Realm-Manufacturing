@@ -10,6 +10,7 @@
 - **分析**（``compute_*`` / ``scan_*``）：纯 numpy 数值计算
 - **差异**（``compute_diff``）：两个 payload 的差异计算
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,10 +19,7 @@ from typing import Any, Optional
 import numpy as np
 
 from app.contracts.explainability import (
-    ConfidenceExplanation,
-    CounterfactualExplanation,
     ExplanationValidationError,
-    GateDynamicsExplanation,
     HiddenStateExplanation,
     ProjectionError,
     SamplingError,
@@ -33,9 +31,7 @@ logger = logging.getLogger(__name__)
 # ── 隐状态 ──────────────────────────────────────────────────────────
 
 
-def collect_hidden_state_intermediates(
-    predictor: Any, *, max_frames: int
-) -> tuple[dict[str, Any], np.ndarray]:
+def collect_hidden_state_intermediates(predictor: Any, *, max_frames: int) -> tuple[dict[str, Any], np.ndarray]:
     """调用 predictor 捕获隐状态序列并下采样.
 
     Returns
@@ -51,13 +47,9 @@ def collect_hidden_state_intermediates(
         model_config = getattr(predictor.model, "config", None)
         input_dim = getattr(model_config, "input_size", 8) if model_config else 8
         probe_input = np.zeros((1, input_dim), dtype=np.float32)
-        result = predictor.predict_with_intermediates(
-            probe_input, capture_hidden=True, capture_gates=False
-        )
+        result = predictor.predict_with_intermediates(probe_input, capture_hidden=True, capture_gates=False)
     except (ValueError, TypeError, RuntimeError) as exc:
-        raise ProjectionError(
-            f"predict_with_intermediates 调用失败: {exc}"
-        ) from exc
+        raise ProjectionError(f"predict_with_intermediates 调用失败: {exc}") from exc
 
     intermediates = result.model_info.get("intermediates", {}) or {}
     hidden_states_raw = intermediates.get("hidden_states", [])
@@ -70,9 +62,7 @@ def collect_hidden_state_intermediates(
     hidden_array = np.asarray(hidden_states_raw, dtype=np.float32)
     # 下采样到 max_frames
     if hidden_array.shape[0] > max_frames:
-        indices = np.linspace(
-            0, hidden_array.shape[0] - 1, max_frames, dtype=int
-        )
+        indices = np.linspace(0, hidden_array.shape[0] - 1, max_frames, dtype=int)
         hidden_array = hidden_array[indices]
     return intermediates, hidden_array
 
@@ -90,11 +80,7 @@ def build_hidden_state_explanation(
     计算能量（L2 范数平方均值）与关键帧标记（v1 全部为 True）。
     """
     # 计算能量（L2 范数平方均值）
-    energies = (
-        np.mean(hidden_array ** 2, axis=1).astype(float).tolist()
-        if hidden_array.size > 0
-        else []
-    )
+    energies = np.mean(hidden_array**2, axis=1).astype(float).tolist() if hidden_array.size > 0 else []
     # v1：所有帧标记为关键帧（不从 StreamingPredictor 获取关键帧标记）
     keyframe_flags = [True] * len(hidden_array)
     frame_ids = list(range(len(hidden_array)))
@@ -115,9 +101,7 @@ def build_hidden_state_explanation(
 # ── 门控动力学 ──────────────────────────────────────────────────────
 
 
-def collect_gate_intermediates(
-    predictor: Any
-) -> tuple[dict[str, Any], list, list]:
+def collect_gate_intermediates(predictor: Any) -> tuple[dict[str, Any], list, list]:
     """调用 predictor 捕获门控值与时间常数.
 
     Returns
@@ -129,13 +113,9 @@ def collect_gate_intermediates(
         model_config = getattr(predictor.model, "config", None)
         input_dim = getattr(model_config, "input_size", 8) if model_config else 8
         probe_input = np.zeros((1, input_dim), dtype=np.float32)
-        result = predictor.predict_with_intermediates(
-            probe_input, capture_hidden=True, capture_gates=True
-        )
+        result = predictor.predict_with_intermediates(probe_input, capture_hidden=True, capture_gates=True)
     except (ValueError, TypeError, RuntimeError) as exc:
-        raise ProjectionError(
-            f"predict_with_intermediates 调用失败: {exc}"
-        ) from exc
+        raise ProjectionError(f"predict_with_intermediates 调用失败: {exc}") from exc
 
     intermediates = result.model_info.get("intermediates", {}) or {}
     gate_values_raw = intermediates.get("gate_values", [])
@@ -150,19 +130,13 @@ def collect_gate_intermediates(
     return intermediates, gate_values_raw, time_constants_raw
 
 
-def compute_gate_anomalies(
-    gate_array: np.ndarray, anomaly_sigma: float
-) -> tuple[list[float], list[int]]:
+def compute_gate_anomalies(gate_array: np.ndarray, anomaly_sigma: float) -> tuple[list[float], list[int]]:
     """计算每个特征的全局平均门控值与异常帧索引.
 
     异常帧定义：门控值偏离均值超过 ``anomaly_sigma * std``。
     """
     # 每个特征的全局平均门控值
-    mean_gate_per_feature = (
-        np.mean(gate_array, axis=0).astype(float).tolist()
-        if gate_array.size > 0
-        else []
-    )
+    mean_gate_per_feature = np.mean(gate_array, axis=0).astype(float).tolist() if gate_array.size > 0 else []
 
     # 异常帧检测：门控值超过 mean ± sigma*std
     anomaly_frames: list[int] = []
@@ -190,10 +164,7 @@ def build_perturbation_range(
     if perturbation_range is None:
         # 默认 ±20%，步长 perturbation_step
         steps = int(0.2 / perturbation_step)
-        perturbation_range = [
-            round(-0.2 + i * perturbation_step, 4)
-            for i in range(-steps, steps + 1)
-        ]
+        perturbation_range = [round(-0.2 + i * perturbation_step, 4) for i in range(-steps, steps + 1)]
     if not perturbation_range:
         raise ExplanationValidationError("perturbation_range 不能为空")
     return perturbation_range
@@ -216,13 +187,9 @@ def scan_counterfactual_outputs(
         perturbed_input[perturbed_feature] = base_value * (1.0 + perturbation)
         try:
             # 构造输入向量（按 base_input 的值顺序）
-            input_vector = np.array(
-                list(perturbed_input.values()), dtype=np.float32
-            ).reshape(1, -1)
+            input_vector = np.array(list(perturbed_input.values()), dtype=np.float32).reshape(1, -1)
             result = predictor.predict(input_vector)
-            output_value = result if not isinstance(result, dict) else (
-                result.get("value", 0.0)
-            )
+            output_value = result if not isinstance(result, dict) else (result.get("value", 0.0))
             # 标量化
             if hasattr(output_value, "item"):
                 output_value = float(output_value.item())
@@ -256,9 +223,7 @@ def compute_counterfactual_metrics(
     # 计算敏感度（一阶导数均值）
     outputs_array = np.asarray(outputs, dtype=np.float32)
     if len(outputs) >= 2:
-        diffs = np.diff(outputs_array) / (
-            np.diff(perturbation_range) + 1e-8
-        )
+        diffs = np.diff(outputs_array) / (np.diff(perturbation_range) + 1e-8)
         sensitivity = float(np.mean(np.abs(diffs)))
     else:
         sensitivity = 0.0
@@ -298,9 +263,7 @@ def collect_mc_dropout_samples(
         MC dropout 采样失败。
     """
     try:
-        mc_result = predictor.predict_mc_dropout(
-            input_vector, n_samples=sample_count
-        )
+        mc_result = predictor.predict_mc_dropout(input_vector, n_samples=sample_count)
     except (ValueError, TypeError, RuntimeError) as exc:
         raise SamplingError(f"MC dropout 采样失败: {exc}") from exc
 
@@ -333,18 +296,14 @@ def build_confidence_distribution(
 
     # 直方图（基于正态假设生成 20 个 bin 的计数）
     if mc_std > 0:
-        bins = np.linspace(
-            mc_mean - 3 * mc_std, mc_mean + 3 * mc_std, 21
-        ).tolist()
+        bins = np.linspace(mc_mean - 3 * mc_std, mc_mean + 3 * mc_std, 21).tolist()
         # 简化：使用正态分布 CDF 差分估算计数
         from math import erf, sqrt
 
         counts = []
         for i in range(len(bins) - 1):
             cdf_low = 0.5 * (1 + erf((bins[i] - mc_mean) / (mc_std * sqrt(2))))
-            cdf_high = 0.5 * (
-                1 + erf((bins[i + 1] - mc_mean) / (mc_std * sqrt(2)))
-            )
+            cdf_high = 0.5 * (1 + erf((bins[i + 1] - mc_mean) / (mc_std * sqrt(2))))
             counts.append(int((cdf_high - cdf_low) * sample_count))
         histogram = {"bins": bins, "counts": counts}
     else:
@@ -397,15 +356,11 @@ def compute_diff(
         # 对齐长度后计算距离
         min_len = min(len(base_proj), len(comp_proj))
         if min_len > 0:
-            distances = np.linalg.norm(
-                base_proj[:min_len] - comp_proj[:min_len], axis=1
-            )
+            distances = np.linalg.norm(base_proj[:min_len] - comp_proj[:min_len], axis=1)
             diff["differences"] = {
                 "mean_distance": float(np.mean(distances)),
                 "max_distance": float(np.max(distances)),
-                "energy_diff": float(
-                    np.mean(comp_energy[:min_len] - base_energy[:min_len])
-                ),
+                "energy_diff": float(np.mean(comp_energy[:min_len] - base_energy[:min_len])),
             }
 
     elif explanation_type == ExplanationType.GATE_DYNAMICS:
@@ -444,10 +399,7 @@ def compute_diff(
             diff["differences"] = {
                 "mean_output_diff": float(np.mean(output_diffs)),
                 "max_output_diff": float(np.max(np.abs(output_diffs))),
-                "sensitivity_diff": float(
-                    base.get("sensitivity", 0.0)
-                    - compared.get("sensitivity", 0.0)
-                ),
+                "sensitivity_diff": float(base.get("sensitivity", 0.0) - compared.get("sensitivity", 0.0)),
             }
 
     elif explanation_type == ExplanationType.CONFIDENCE:
@@ -462,16 +414,9 @@ def compute_diff(
             "anomaly_score": compared.get("anomaly_score", 0.0),
         }
         diff["differences"] = {
-            "mean_diff": float(
-                base.get("mean", 0.0) - compared.get("mean", 0.0)
-            ),
-            "std_diff": float(
-                base.get("std", 0.0) - compared.get("std", 0.0)
-            ),
-            "anomaly_score_diff": float(
-                base.get("anomaly_score", 0.0)
-                - compared.get("anomaly_score", 0.0)
-            ),
+            "mean_diff": float(base.get("mean", 0.0) - compared.get("mean", 0.0)),
+            "std_diff": float(base.get("std", 0.0) - compared.get("std", 0.0)),
+            "anomaly_score_diff": float(base.get("anomaly_score", 0.0) - compared.get("anomaly_score", 0.0)),
         }
 
     return diff

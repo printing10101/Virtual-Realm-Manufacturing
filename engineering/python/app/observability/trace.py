@@ -11,6 +11,7 @@
 
 不依赖网络/外部服务，适合桌面应用本地部署。
 """
+
 from __future__ import annotations
 
 import json
@@ -87,9 +88,7 @@ class TraceSink(ITraceSink):
     def end_span(self, span_id: str, status: str = "ok") -> None:
         """结束一个 span."""
         if status not in VALID_SPAN_STATUSES:
-            raise ValueError(
-                f"TraceSink.end_span: status 必须是 {sorted(VALID_SPAN_STATUSES)}, 得到 {status!r}"
-            )
+            raise ValueError(f"TraceSink.end_span: status 必须是 {sorted(VALID_SPAN_STATUSES)}, 得到 {status!r}")
         with self._lock:
             span = self._spans.get(span_id)
             if span is None:
@@ -117,9 +116,7 @@ class TraceSink(ITraceSink):
             if span is None:
                 logger.warning("TraceSink.add_event: span %s 不存在", span_id)
                 return
-            span.events.append(
-                {"name": name, "ts": time.time(), "payload": payload}
-            )
+            span.events.append({"name": name, "ts": time.time(), "payload": payload})
 
     # ------------------------------------------------------------------
     # 查询 API（非契约部分，便于调试/前端拉取）
@@ -130,9 +127,7 @@ class TraceSink(ITraceSink):
         with self._lock:
             return self._spans.get(span_id)
 
-    def list_spans(
-        self, *, trace_id: Optional[str] = None, limit: int = 100
-    ) -> list[TraceSpan]:
+    def list_spans(self, *, trace_id: Optional[str] = None, limit: int = 100) -> list[TraceSpan]:
         """列出 span（按 start_ts 倒序）."""
         with self._lock:
             spans = list(self._spans.values())
@@ -192,21 +187,15 @@ class MetricSink(IMetricSink):
     # IMetricSink 实现
     # ------------------------------------------------------------------
 
-    def counter(
-        self, name: str, value: float = 1, labels: Optional[dict[str, str]] = None
-    ) -> None:
+    def counter(self, name: str, value: float = 1, labels: Optional[dict[str, str]] = None) -> None:
         """递增计数器."""
         self._record(name, value, labels, unit="counter")
 
-    def gauge(
-        self, name: str, value: float, labels: Optional[dict[str, str]] = None
-    ) -> None:
+    def gauge(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
         """设置 gauge 当前值."""
         self._record(name, value, labels, unit="gauge")
 
-    def histogram(
-        self, name: str, value: float, labels: Optional[dict[str, str]] = None
-    ) -> None:
+    def histogram(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
         """记录 histogram 样本."""
         self._record(name, value, labels, unit="histogram")
 
@@ -326,12 +315,12 @@ class LogSink(ILogSink):
         with self._lock:
             logs = list(self._logs)
         if level:
-            logs = [l for l in logs if l.level == level]
+            logs = [entry for entry in logs if entry.level == level]
         if logger_name:
-            logs = [l for l in logs if l.logger == logger_name]
+            logs = [entry for entry in logs if entry.logger == logger_name]
         if trace_id:
-            logs = [l for l in logs if l.trace_id == trace_id]
-        logs.sort(key=lambda l: l.timestamp, reverse=True)
+            logs = [entry for entry in logs if entry.trace_id == trace_id]
+        logs.sort(key=lambda entry: entry.timestamp, reverse=True)
         return logs[:limit]
 
     # ------------------------------------------------------------------
@@ -404,19 +393,13 @@ class CompositeObservabilitySink(ITraceSink, IMetricSink, ILogSink):
         self._trace.add_event(span_id, name, payload)
 
     # IMetricSink
-    def counter(
-        self, name: str, value: float = 1, labels: Optional[dict[str, str]] = None
-    ) -> None:
+    def counter(self, name: str, value: float = 1, labels: Optional[dict[str, str]] = None) -> None:
         self._metric.counter(name, value, labels)
 
-    def gauge(
-        self, name: str, value: float, labels: Optional[dict[str, str]] = None
-    ) -> None:
+    def gauge(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
         self._metric.gauge(name, value, labels)
 
-    def histogram(
-        self, name: str, value: float, labels: Optional[dict[str, str]] = None
-    ) -> None:
+    def histogram(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
         self._metric.histogram(name, value, labels)
 
     # ILogSink

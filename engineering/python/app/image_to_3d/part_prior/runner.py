@@ -23,6 +23,7 @@
 - 每次推理的输入点云 hash + 输出 mesh hash 必须记录到 MLflow
 - 不允许在推理路径上做 fit_transform（只能用训练时拟合好的预处理器）
 """
+
 from __future__ import annotations
 
 import logging
@@ -126,9 +127,7 @@ class PartPriorRunner:
         # 1. 加载稀疏点云（PLY → torch.Tensor）
         sparse_points = self._load_ply_points(sparse_points_path, torch)
         num_input = sparse_points.shape[0]
-        logger.info(
-            "part_prior[%s] 加载稀疏点云: %d 点", task_id, num_input
-        )
+        logger.info("part_prior[%s] 加载稀疏点云: %d 点", task_id, num_input)
 
         # 2. 先验补全
         completer = PartPriorCompleter(self.vae, voxel_dim=self.voxel_dim)
@@ -177,15 +176,11 @@ class PartPriorRunner:
             import numpy as np
             from plyfile import PlyData
         except ImportError as e:
-            raise RuntimeError(
-                f"part_prior 路径需要 numpy + plyfile，但当前环境不可用: {e}"
-            ) from e
+            raise RuntimeError(f"part_prior 路径需要 numpy + plyfile，但当前环境不可用: {e}") from e
 
         plydata = PlyData.read(str(ply_path))
         vertex = plydata["vertex"]
-        points = np.stack(
-            [vertex["x"], vertex["y"], vertex["z"]], axis=-1
-        ).astype(np.float32)
+        points = np.stack([vertex["x"], vertex["y"], vertex["z"]], axis=-1).astype(np.float32)
         return torch_module.from_numpy(points)
 
     def _voxel_to_mesh(
@@ -210,9 +205,7 @@ class PartPriorRunner:
             from skimage import measure
             from trimesh import Trimesh
         except ImportError as e:
-            raise RuntimeError(
-                f"part_prior 路径需要 scikit-image + trimesh，但当前环境不可用: {e}"
-            ) from e
+            raise RuntimeError(f"part_prior 路径需要 scikit-image + trimesh，但当前环境不可用: {e}") from e
 
         # 转 numpy
         if hasattr(voxel, "detach"):
@@ -225,13 +218,9 @@ class PartPriorRunner:
 
         # marching cubes
         try:
-            verts, faces, normals, _ = measure.marching_cubes(
-                binary, level=0.5
-            )
+            verts, faces, normals, _ = measure.marching_cubes(binary, level=0.5)
         except (ValueError, RuntimeError) as e:
-            logger.warning(
-                "marching_cubes 失败（可能是空体素）: %s，输出空 mesh", e
-            )
+            logger.warning("marching_cubes 失败（可能是空体素）: %s，输出空 mesh", e)
             verts = np.zeros((0, 3), dtype=np.float32)
             faces = np.zeros((0, 3), dtype=np.int64)
 

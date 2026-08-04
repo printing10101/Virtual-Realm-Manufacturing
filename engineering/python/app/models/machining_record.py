@@ -101,8 +101,7 @@ class MachiningRecordBase(BaseModel):
     )
     process_params: dict[str, Any] = Field(
         default_factory=dict,
-        description="附加工艺参数（depth_of_cut / coolant / operation 等），"
-        "持久化时映射到 PostgreSQL JSONB",
+        description="附加工艺参数（depth_of_cut / coolant / operation 等），持久化时映射到 PostgreSQL JSONB",
     )
 
 

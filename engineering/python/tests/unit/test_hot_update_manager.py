@@ -39,6 +39,7 @@ from typing import Any, Optional
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 
 from app.contracts.dataset import (
     DatasetSchema,
@@ -1556,7 +1557,7 @@ class TestPluginIntegration:
 class TestHotUpdateRequestDispatch:
     """_handle_hot_update_request 7 action 分发."""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def loaded_plugin(self, fresh_registry, fake_registry_service) -> Any:
         """已 on_load 的 Plugin 实例（yield pattern）."""
         from plugins.data_flywheel.main import Plugin

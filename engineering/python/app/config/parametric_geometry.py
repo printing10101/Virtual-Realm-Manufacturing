@@ -29,58 +29,41 @@ class ParametricGeometryConfig:
     """
 
     # 总开关：桌面轻量档位下可关闭，避免 pythonOCC/FreeCAD 依赖探测开销
-    enabled: bool = field(
-        default_factory=lambda: _bool_env("LNN_PG_ENABLED", True)
-    )
+    enabled: bool = field(default_factory=lambda: _bool_env("LNN_PG_ENABLED", True))
 
     # 输出目录：存放每次参数化几何任务的工作目录（含 STEP/assembly_plan/brep_shapes）
     output_dir: str = field(
-        default_factory=lambda: _path(
-            "LNN_PG_OUTPUT_DIR", os.path.join("output", "parametric_geometry")
-        )
+        default_factory=lambda: _path("LNN_PG_OUTPUT_DIR", os.path.join("output", "parametric_geometry"))
     )
 
     # 并发约束：STEP 写入是 CPU 密集型（pythonOCC 布尔运算），桌面模式默认串行
-    max_concurrent: int = field(
-        default_factory=lambda: _int_env("LNN_PG_MAX_CONCURRENT", 1)
-    )
+    max_concurrent: int = field(default_factory=lambda: _int_env("LNN_PG_MAX_CONCURRENT", 1))
 
     # 任务超时（秒）：pythonOCC 在 50 个形状的布尔运算下约 10-60 秒；
     # 复杂零件（100+ 形状）可能数分钟，默认 600 秒兜底
-    task_timeout_seconds: int = field(
-        default_factory=lambda: _int_env("LNN_PG_TASK_TIMEOUT", 600)
-    )
+    task_timeout_seconds: int = field(default_factory=lambda: _int_env("LNN_PG_TASK_TIMEOUT", 600))
 
     # 任务历史保留时长（小时）：与阶段 2 一致，工程师审核需要时间
-    task_retention_hours: int = field(
-        default_factory=lambda: _int_env("LNN_PG_TASK_RETENTION_HOURS", 168)
-    )
+    task_retention_hours: int = field(default_factory=lambda: _int_env("LNN_PG_TASK_RETENTION_HOURS", 168))
 
     # 毛坯余量（mm）：装配器在 add 形状 bbox 并集外扩此值得到毛坯尺寸
     # 2.0mm 是粗加工常见余量；精加工余量 0.5mm 由阶段 4 切削参数推荐覆盖
-    blank_margin_mm: float = field(
-        default_factory=lambda: _float_env("LNN_PG_BLANK_MARGIN_MM", 2.0)
-    )
+    blank_margin_mm: float = field(default_factory=lambda: _float_env("LNN_PG_BLANK_MARGIN_MM", 2.0))
 
     # 精度档位（仅用于显示告知，实际精度由上游 mesh 决定）
     # 继承自阶段 1/2，本模块不引入新档位
-    precision_tier: str = field(
-        default_factory=lambda: _env("LNN_PG_PRECISION_TIER", "standard")
-    )
+    precision_tier: str = field(default_factory=lambda: _env("LNN_PG_PRECISION_TIER", "standard"))
 
     # 默认 mesh 标定状态：当任务创建时未显式传入 mesh_calibrated 时使用
     # 保守默认为 False，强制上游显式声明已标定
-    default_mesh_calibrated: bool = field(
-        default_factory=lambda: _bool_env("LNN_PG_DEFAULT_MESH_CALIBRATED", False)
-    )
+    default_mesh_calibrated: bool = field(default_factory=lambda: _bool_env("LNN_PG_DEFAULT_MESH_CALIBRATED", False))
 
     def __post_init__(self) -> None:
         """启动时校验配置合法性。"""
         valid_tiers = {"coarse", "standard", "high"}
         if self.precision_tier not in valid_tiers:
             logger.warning(
-                "Invalid LNN_PG_PRECISION_TIER='%s', expected one of %s. "
-                "Falling back to 'standard'.",
+                "Invalid LNN_PG_PRECISION_TIER='%s', expected one of %s. Falling back to 'standard'.",
                 self.precision_tier,
                 sorted(valid_tiers),
             )
@@ -88,8 +71,7 @@ class ParametricGeometryConfig:
 
         if self.blank_margin_mm <= 0:
             logger.warning(
-                "LNN_PG_BLANK_MARGIN_MM=%s invalid, must be > 0. "
-                "Setting to 2.0 (default roughing margin).",
+                "LNN_PG_BLANK_MARGIN_MM=%s invalid, must be > 0. Setting to 2.0 (default roughing margin).",
                 self.blank_margin_mm,
             )
             self.blank_margin_mm = 2.0
@@ -103,16 +85,14 @@ class ParametricGeometryConfig:
 
         if self.max_concurrent < 1:
             logger.warning(
-                "LNN_PG_MAX_CONCURRENT=%s invalid, must be >= 1. "
-                "Setting to 1 (serial).",
+                "LNN_PG_MAX_CONCURRENT=%s invalid, must be >= 1. Setting to 1 (serial).",
                 self.max_concurrent,
             )
             self.max_concurrent = 1
 
         if self.task_timeout_seconds < 60:
             logger.warning(
-                "LNN_PG_TASK_TIMEOUT=%s too small (<60s), "
-                "pythonOCC 布尔运算可能未完成。Setting to 600.",
+                "LNN_PG_TASK_TIMEOUT=%s too small (<60s), pythonOCC 布尔运算可能未完成。Setting to 600.",
                 self.task_timeout_seconds,
             )
             self.task_timeout_seconds = 600

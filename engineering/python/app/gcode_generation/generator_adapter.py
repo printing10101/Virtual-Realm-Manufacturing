@@ -75,8 +75,7 @@ class GeneratorAdapterError(GCodeGenerationError):
 
 
 # OperationPlan.to_dict() 输出的必填字段
-_REQUIRED_OPERATION_FIELDS = {"seq", "name", "feature_name", "machining_method",
-                              "surface", "tolerance_grade"}
+_REQUIRED_OPERATION_FIELDS = {"seq", "name", "feature_name", "machining_method", "surface", "tolerance_grade"}
 _REQUIRED_SETUP_FIELDS = {"name", "surface"}
 
 
@@ -103,16 +102,12 @@ def load_operation_plan(json_path: str) -> OperationPlan:
     """
     path = Path(json_path)
     if not path.exists():
-        raise OperationPlanLoadError(
-            f"阶段 3 OperationPlan 不存在: {json_path}"
-        )
+        raise OperationPlanLoadError(f"阶段 3 OperationPlan 不存在: {json_path}")
 
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        raise OperationPlanLoadError(
-            f"OperationPlan JSON 格式错误: {e}"
-        ) from e
+        raise OperationPlanLoadError(f"OperationPlan JSON 格式错误: {e}") from e
 
     if not isinstance(raw, dict):
         raise OperationPlanLoadError("OperationPlan JSON 顶层必须是 dict")
@@ -125,31 +120,27 @@ def load_operation_plan(json_path: str) -> OperationPlan:
     operations: list[Operation] = []
     for i, raw_op in enumerate(raw_operations):
         if not isinstance(raw_op, dict):
-            raise OperationPlanLoadError(
-                f"operations[{i}] 必须是 dict"
-            )
+            raise OperationPlanLoadError(f"operations[{i}] 必须是 dict")
         missing = _REQUIRED_OPERATION_FIELDS - set(raw_op.keys())
         if missing:
-            raise OperationPlanLoadError(
-                f"operations[{i}] 缺少必填字段: {missing}"
+            raise OperationPlanLoadError(f"operations[{i}] 缺少必填字段: {missing}")
+        operations.append(
+            Operation(
+                seq=int(raw_op["seq"]),
+                name=str(raw_op["name"]),
+                feature_name=str(raw_op["feature_name"]),
+                machining_method=str(raw_op["machining_method"]),
+                surface=str(raw_op["surface"]),
+                tolerance_grade=str(raw_op["tolerance_grade"]),
+                tool_type=str(raw_op.get("tool_type", "")),
+                cutting_params=dict(raw_op.get("cutting_params", {})),
+                estimated_time_min=float(raw_op.get("estimated_time_min", 0.0)),
+                notes=str(raw_op.get("notes", "")),
             )
-        operations.append(Operation(
-            seq=int(raw_op["seq"]),
-            name=str(raw_op["name"]),
-            feature_name=str(raw_op["feature_name"]),
-            machining_method=str(raw_op["machining_method"]),
-            surface=str(raw_op["surface"]),
-            tolerance_grade=str(raw_op["tolerance_grade"]),
-            tool_type=str(raw_op.get("tool_type", "")),
-            cutting_params=dict(raw_op.get("cutting_params", {})),
-            estimated_time_min=float(raw_op.get("estimated_time_min", 0.0)),
-            notes=str(raw_op.get("notes", "")),
-        ))
+        )
 
     if not operations:
-        raise OperationPlanLoadError(
-            "OperationPlan operations 为空，无法生成 G 代码"
-        )
+        raise OperationPlanLoadError("OperationPlan operations 为空，无法生成 G 代码")
 
     # 反序列化 setups（generate() 仅用 len() + name/surface/fixture_type）
     raw_setups = raw.get("setups", [])
@@ -161,16 +152,20 @@ def load_operation_plan(json_path: str) -> OperationPlan:
             missing = _REQUIRED_SETUP_FIELDS - set(raw_setup.keys())
             if missing:
                 logger.warning(
-                    "setups[%d] 缺少字段 %s，跳过", i, missing,
+                    "setups[%d] 缺少字段 %s，跳过",
+                    i,
+                    missing,
                 )
                 continue
-            setups.append(Setup(
-                name=str(raw_setup["name"]),
-                surface=str(raw_setup["surface"]),
-                datum_features=list(raw_setup.get("datum_features", [])),
-                fixture_type=str(raw_setup.get("fixture_type", "")),
-                clamped_features=list(raw_setup.get("clamped_features", [])),
-            ))
+            setups.append(
+                Setup(
+                    name=str(raw_setup["name"]),
+                    surface=str(raw_setup["surface"]),
+                    datum_features=list(raw_setup.get("datum_features", [])),
+                    fixture_type=str(raw_setup.get("fixture_type", "")),
+                    clamped_features=list(raw_setup.get("clamped_features", [])),
+                )
+            )
 
     return OperationPlan(
         operations=operations,
@@ -206,7 +201,7 @@ class GeneratorAdapter:
             # 含 unstable 特征或语法错误，禁止导出
             ...
         for fr in feature_results:
-            print(fr.feature_id, fr.safety_margin_ratio, fr.warning)
+            logger.info("特征 %s: 安全裕度 %.2f, 警告 %s", fr.feature_id, fr.safety_margin_ratio, fr.warning)
     """
 
     def __init__(self, machine_config: dict[str, Any] | None = None) -> None:
@@ -265,8 +260,7 @@ class GeneratorAdapter:
         """
         if not chatter_results:
             raise GeneratorAdapterError(
-                "chatter_results 为空，无法执行安全裕度适配"
-                "（阶段 5 ChatterReport 必须包含至少一个特征）"
+                "chatter_results 为空，无法执行安全裕度适配（阶段 5 ChatterReport 必须包含至少一个特征）"
             )
 
         # 1. 调用 GCodeGenerator.generate() 生成基础 G 代码
@@ -282,9 +276,7 @@ class GeneratorAdapter:
                 stock_top_z=stock_top_z,
             )
         except ValueError as e:
-            raise GeneratorAdapterError(
-                f"GCodeGenerator.generate() 失败: {e}"
-            ) from e
+            raise GeneratorAdapterError(f"GCodeGenerator.generate() 失败: {e}") from e
 
         # 2. 追加 unstable 特征错误（使 is_valid=False，禁止导出）
         unstable_features = [f for f in chatter_results if not f.stable]
@@ -301,13 +293,8 @@ class GeneratorAdapter:
                 f.feature_id,
             )
 
-        # 3. 构建 feature_id → operation 索引（用于匹配 checkpoints）
-        feature_to_operations = self._build_feature_operation_map(operation_plan)
-
-        # 4. 构建 feature_id → (start_line, end_line) 映射（基于 checkpoints）
-        feature_line_ranges = self._build_feature_line_ranges(
-            base_result, operation_plan
-        )
+        # 3. 构建 feature_id → (start_line, end_line) 映射（基于 checkpoints）
+        feature_line_ranges = self._build_feature_line_ranges(base_result, operation_plan)
 
         # 5. 切分 G 代码行（program_text → list[str]）
         program_lines = base_result.program_text.split("\n") if base_result.program_text else []
@@ -315,9 +302,7 @@ class GeneratorAdapter:
         # 6. 遍历 chatter_results，生成 FeatureGCodeResult
         feature_gcode_results: list[FeatureGCodeResult] = []
         for f in chatter_results:
-            safety_margin_ratio = self._compute_safety_margin(
-                f.axial_depth_mm, f.limit_depth_mm
-            )
+            safety_margin_ratio = self._compute_safety_margin(f.axial_depth_mm, f.limit_depth_mm)
 
             # 安全裕度警告
             warning = ""
@@ -331,29 +316,31 @@ class GeneratorAdapter:
                     warning += "（且颤振预测为不稳定）"
                 logger.info(
                     "特征 %s 安全裕度不足 ratio=%.3f axial=%.3f limit=%.3f",
-                    f.feature_id, safety_margin_ratio,
-                    f.axial_depth_mm, f.limit_depth_mm,
+                    f.feature_id,
+                    safety_margin_ratio,
+                    f.axial_depth_mm,
+                    f.limit_depth_mm,
                 )
 
             # 提取特征 G 代码片段
             line_range = feature_line_ranges.get(f.feature_id, (0, 0))
-            gcode_lines = self._extract_feature_gcode_lines(
-                program_lines, line_range
-            )
+            gcode_lines = self._extract_feature_gcode_lines(program_lines, line_range)
 
-            feature_gcode_results.append(FeatureGCodeResult(
-                feature_id=f.feature_id,
-                feature_type=f.feature_type,
-                material_id=f.material_id,
-                spindle_rpm=f.spindle_rpm,
-                axial_depth_mm=f.axial_depth_mm,
-                limit_depth_mm=f.limit_depth_mm,
-                stable=f.stable,
-                safety_margin_ratio=safety_margin_ratio,
-                gcode_lines=gcode_lines,
-                line_range=line_range,
-                warning=warning,
-            ))
+            feature_gcode_results.append(
+                FeatureGCodeResult(
+                    feature_id=f.feature_id,
+                    feature_type=f.feature_type,
+                    material_id=f.material_id,
+                    spindle_rpm=f.spindle_rpm,
+                    axial_depth_mm=f.axial_depth_mm,
+                    limit_depth_mm=f.limit_depth_mm,
+                    stable=f.stable,
+                    safety_margin_ratio=safety_margin_ratio,
+                    gcode_lines=gcode_lines,
+                    line_range=line_range,
+                    warning=warning,
+                )
+            )
 
         logger.info(
             "GeneratorAdapter.adapt() 完成 controller=%s features=%d stable=%d unstable=%d "
@@ -493,4 +480,4 @@ class GeneratorAdapter:
         # 边界保护
         start = max(0, min(start, len(program_lines) - 1))
         end = max(start, min(end, len(program_lines) - 1))
-        return program_lines[start:end + 1]
+        return program_lines[start : end + 1]

@@ -6,7 +6,6 @@ P1-7：从原 ``agent_gateway.py`` 拆分而来，包含：
 - ``_run_agent_training`` —— 后台训练 worker（使用 :class:`TrainingCoordinator` 控制并发）
 """
 
-
 import asyncio
 import logging
 import os
@@ -69,6 +68,7 @@ async def _run_agent_training(
             import torch
             import numpy as np
             from torch.utils.data import DataLoader, TensorDataset
+
             # P0#3 解耦: 通过 research_bridge 延迟导入，避免工程侧直接依赖 research/
             from app.ai.lnn._research_bridge import (
                 get_lnn_config_factory,
@@ -78,6 +78,7 @@ async def _run_agent_training(
                 get_device_optimal_num_workers,
                 get_trainer_factory,
             )
+
             LNNConfig = get_lnn_config_factory()
             TorchCFCModel = get_cfc_model_factory()
             LNNTrainer = get_trainer_factory()
@@ -103,9 +104,7 @@ async def _run_agent_training(
             y_tensor = torch.FloatTensor(y)
             dataset = TensorDataset(X_tensor, y_tensor)
             train_size = int(0.8 * len(dataset))
-            train_ds, val_ds = torch.utils.data.random_split(
-                dataset, [train_size, len(dataset) - train_size]
-            )
+            train_ds, val_ds = torch.utils.data.random_split(dataset, [train_size, len(dataset) - train_size])
 
             device_obj, _ = detect_device(device)
             batch_size = hyperparameters.get("batch_size", 32)
@@ -113,12 +112,8 @@ async def _run_agent_training(
                 batch_size = get_optimal_batch_size(device_obj, batch_size)
             num_workers = get_optimal_num_workers()
 
-            train_loader = DataLoader(
-                train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers
-            )
-            val_loader = DataLoader(
-                val_ds, batch_size=batch_size, num_workers=num_workers
-            )
+            train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+            val_loader = DataLoader(val_ds, batch_size=batch_size, num_workers=num_workers)
 
             hidden_size = min(256, max(64, input_dim * 2))
             config_obj = LNNConfig(
@@ -168,9 +163,7 @@ async def _run_agent_training(
             except (RuntimeError, ValueError, KeyError, OSError, TypeError, AttributeError) as e:
                 # 修复：使用 safe_error_message 包装异常，避免直接
                 # 将 str(e) 写入 training_tasks.message 暴露内部错误详情。
-                safe = safe_error_message(
-                    e, context=f"agent.train_worker[{task_id}]"
-                )
+                safe = safe_error_message(e, context=f"agent.train_worker[{task_id}]")
                 logger.error(
                     "Agent training worker failed | task_id=%s | error_id=%s | exc=%s: %s",
                     task_id,
@@ -242,9 +235,7 @@ async def agent_train(request: Request, body: AgentTrainRequest):
     except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
         # 修复：使用 safe_error_message 包装异常，避免直接
         # 将 str(e) 暴露到 HTTP 错误响应中。
-        safe = safe_error_message(
-            e, context=f"agent.train_init[{body.model_name}]"
-        )
+        safe = safe_error_message(e, context=f"agent.train_init[{body.model_name}]")
         logger.warning(
             "Training initiation failed | model=%s | error_id=%s | exc=%s: %s",
             body.model_name,
@@ -268,9 +259,7 @@ async def agent_train(request: Request, body: AgentTrainRequest):
 async def get_train_status(job_id: str):
     """训练状态（R类）"""
     if job_id not in training_tasks:
-        return error(
-            code=ErrorCode.NOT_FOUND, message=f"Training task '{job_id}' not found"
-        )
+        return error(code=ErrorCode.NOT_FOUND, message=f"Training task '{job_id}' not found")
 
     result = training_tasks[job_id]
     return success(

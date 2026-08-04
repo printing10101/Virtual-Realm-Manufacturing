@@ -3,16 +3,14 @@ Job-related Pydantic schemas for async task system.
 """
 
 from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 # [P0-17] 公共约束：dict 字段允许的标量值类型
 _ScalarValue = Union[str, int, float, bool, None]
 
 
 class CreateJobRequest(BaseModel):
-    task_type: str = Field(
-        ..., description="任务类型: lnn_training, lnn_batch_inference"
-    )
+    task_type: str = Field(..., description="任务类型: lnn_training, lnn_batch_inference")
     # [P0-17] 限制任务参数键值数量与值类型，防止注入任意嵌套结构
     params: Dict[str, _ScalarValue] = Field(
         ...,
@@ -30,13 +28,9 @@ class JobResponse(BaseModel):
     started_at: Optional[str] = Field(default=None, description="开始时间")
     completed_at: Optional[str] = Field(default=None, description="完成时间")
     # [P0-17] 限制响应字典键值数量，防止异常输出过大
-    result: Optional[Dict[str, _ScalarValue]] = Field(
-        default=None, max_length=50, description="任务结果"
-    )
+    result: Optional[Dict[str, _ScalarValue]] = Field(default=None, max_length=50, description="任务结果")
     error: Optional[str] = Field(default=None, description="错误信息")
-    metrics: Optional[Dict[str, _ScalarValue]] = Field(
-        default=None, max_length=50, description="任务指标"
-    )
+    metrics: Optional[Dict[str, _ScalarValue]] = Field(default=None, max_length=50, description="任务指标")
 
 
 class JobListItem(BaseModel):

@@ -266,9 +266,7 @@ def parse_process_rules(
     Returns:
         :class:`ParsedRule` 列表。
     """
-    parser = RuleParser(
-        keywords=keywords, default_confidence=default_confidence
-    )
+    parser = RuleParser(keywords=keywords, default_confidence=default_confidence)
     return parser.parse_rules_file(rules)
 
 

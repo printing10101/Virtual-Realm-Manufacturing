@@ -19,6 +19,7 @@
 - **异常包装**：所有端点 try-except 把内部异常转为 503，避免堆栈泄露
 - **OpenAPI 友好**：所有请求/响应均使用 Pydantic 模型，自动生成 schema
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,7 +29,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth.permissions import require_permission
 from app.core.safe_errors import safe_error_message
-from app.sharp import __version__
 from app.sharp.schemas import (
     AblationInfo,
     AblationUpdateRequest,
@@ -95,9 +95,7 @@ async def verify_triple(request: VerifyRequest) -> VerifyResponse:
             ablation_mode=request.ablation_mode,
             max_react_steps=request.max_react_steps,
         )
-        return VerifyResponse.from_result(
-            result, return_trajectory=request.return_trajectory
-        )
+        return VerifyResponse.from_result(result, return_trajectory=request.return_trajectory)
     except HTTPException:
         raise
     except ValueError as e:
@@ -121,9 +119,7 @@ async def verify_triple(request: VerifyRequest) -> VerifyResponse:
 async def verify_batch(request: BatchVerifyRequest) -> BatchVerifyResponse:
     """批量验证三元组（单次最多 50 条）。"""
     try:
-        triples = [
-            Triple.from_dict(t.to_triple_dict()) for t in request.triples
-        ]
+        triples = [Triple.from_dict(t.to_triple_dict()) for t in request.triples]
         service = SharpService.instance()
         raw_results = await service.batch_verify(
             triples=triples,
@@ -315,9 +311,7 @@ async def get_ablation() -> AblationInfo:
         return AblationInfo(
             current_mode=current,
             available_modes=list(VALID_ABLATION_MODES),
-            description=descriptions.get(
-                current, "未知模式"
-            ),
+            description=descriptions.get(current, "未知模式"),
         )
     except (RuntimeError, OSError, AttributeError) as e:
         logger.exception("SHARP ablation get failed")

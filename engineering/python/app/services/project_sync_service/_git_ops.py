@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 195-277、550-622 迁移而来。
 """
+
 from __future__ import annotations
 
 import logging
@@ -48,16 +49,10 @@ class _GitOpsMixin:
                 )
                 self._git_available = result.returncode == 0
             except FileNotFoundError:
-                logger.warning(
-                    "ProjectSyncService: 系统未安装 git，"
-                    "Git 写操作将不可用（查询类操作仍可执行）"
-                )
+                logger.warning("ProjectSyncService: 系统未安装 git，Git 写操作将不可用（查询类操作仍可执行）")
                 self._git_available = False
             except subprocess.TimeoutExpired:
-                logger.warning(
-                    "ProjectSyncService: git --version 超时，"
-                    "Git 写操作将不可用"
-                )
+                logger.warning("ProjectSyncService: git --version 超时，Git 写操作将不可用")
                 self._git_available = False
             return self._git_available
 
@@ -65,8 +60,7 @@ class _GitOpsMixin:
         """断言 git 可用，否则抛 GitUnavailableError."""
         if not self._check_git_available():
             raise GitUnavailableError(
-                "系统未安装 git 或 git 不可用，无法执行 Git 写操作。"
-                "请安装 git 并确保其在 PATH 中。"
+                "系统未安装 git 或 git 不可用，无法执行 Git 写操作。请安装 git 并确保其在 PATH 中。"
             )
 
     def _run_git(
@@ -104,9 +98,7 @@ class _GitOpsMixin:
         except FileNotFoundError as e:
             raise GitUnavailableError("系统未安装 git") from e
         except subprocess.TimeoutExpired as e:
-            raise GitOperationError(
-                args, -1, f"git 命令超时 ({actual_timeout}s)"
-            ) from e
+            raise GitOperationError(args, -1, f"git 命令超时 ({actual_timeout}s)") from e
 
         if result.returncode != 0:
             raise GitOperationError(args, result.returncode, result.stderr)

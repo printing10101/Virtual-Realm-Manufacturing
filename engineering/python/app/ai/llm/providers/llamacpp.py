@@ -77,11 +77,7 @@ class LlamaCppProvider(LLMProvider):
             if response.status_code != 200:
                 return []
             data = response.json()
-            return [
-                m.get("id", "")
-                for m in data.get("data", [])
-                if m.get("id")
-            ]
+            return [m.get("id", "") for m in data.get("data", []) if m.get("id")]
         except Exception as e:
             logger.warning("LlamaCpp list_models failed: %s", e)
             return []
@@ -110,9 +106,7 @@ class LlamaCppProvider(LLMProvider):
         )
         self._measure_latency(start)
         if response.status_code != 200:
-            raise ProviderError(
-                f"LlamaCpp API error: {response.status_code} - {response.text}"
-            )
+            raise ProviderError(f"LlamaCpp API error: {response.status_code} - {response.text}")
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         choices = data.get("choices", [])

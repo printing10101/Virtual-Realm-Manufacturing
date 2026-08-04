@@ -36,6 +36,7 @@
    ``ValueError`` / ``ProjectionError`` / ``SamplingError`` 子类，
    与现有服务层异常风格一致（参考 ``project_package_service.py``）。
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -189,26 +190,18 @@ class HiddenStateExplanation:
             raise ValueError("HiddenStateExplanation.frame_ids 不能为空")
         if len(self.frame_ids) != len(self.projections):
             raise ValueError(
-                f"frame_ids 长度 ({len(self.frame_ids)}) 与 projections 长度 "
-                f"({len(self.projections)}) 不一致"
+                f"frame_ids 长度 ({len(self.frame_ids)}) 与 projections 长度 ({len(self.projections)}) 不一致"
             )
         if len(self.energies) != len(self.frame_ids):
             raise ValueError("energies 长度必须与 frame_ids 一致")
         if len(self.keyframe_flags) != len(self.frame_ids):
             raise ValueError("keyframe_flags 长度必须与 frame_ids 一致")
         if not ProjectionMethod.is_valid(self.projection_method):
-            raise ValueError(
-                f"projection_method 不合法: {self.projection_method}"
-            )
+            raise ValueError(f"projection_method 不合法: {self.projection_method}")
         if self.projection_dim not in (2, 3):
-            raise ValueError(
-                f"projection_dim 必须为 2 或 3，当前: {self.projection_dim}"
-            )
+            raise ValueError(f"projection_dim 必须为 2 或 3，当前: {self.projection_dim}")
         if self.sample_count != len(self.frame_ids):
-            raise ValueError(
-                f"sample_count ({self.sample_count}) 与 frame_ids 长度 "
-                f"({len(self.frame_ids)}) 不一致"
-            )
+            raise ValueError(f"sample_count ({self.sample_count}) 与 frame_ids 长度 ({len(self.frame_ids)}) 不一致")
 
     def to_payload(self) -> dict[str, Any]:
         """序列化为可持久化的 payload 字典."""
@@ -322,9 +315,7 @@ class CounterfactualExplanation:
         if not self.perturbed_feature:
             raise ValueError("perturbed_feature 不能为空")
         if len(self.perturbation_range) != len(self.outputs):
-            raise ValueError(
-                "perturbation_range 长度必须与 outputs 一致"
-            )
+            raise ValueError("perturbation_range 长度必须与 outputs 一致")
 
     def to_payload(self) -> dict[str, Any]:
         """序列化为可持久化的 payload 字典."""
@@ -381,9 +372,7 @@ class ConfidenceExplanation:
 
     def __post_init__(self) -> None:
         if self.sample_count <= 0:
-            raise ValueError(
-                f"sample_count 必须为正数，当前: {self.sample_count}"
-            )
+            raise ValueError(f"sample_count 必须为正数，当前: {self.sample_count}")
         if self.std < 0:
             raise ValueError(f"std 不能为负数: {self.std}")
         if self.epistemic < 0:
@@ -447,9 +436,7 @@ class ExplanationRequest:
 
     def __post_init__(self) -> None:
         if not ExplanationType.is_valid(self.explanation_type):
-            raise ValueError(
-                f"explanation_type 不合法: {self.explanation_type}"
-            )
+            raise ValueError(f"explanation_type 不合法: {self.explanation_type}")
         if not self.model_uri:
             raise ValueError("model_uri 不能为空")
 
@@ -524,17 +511,13 @@ class ExplanationRecord:
         if not self.id:
             raise ValueError("ExplanationRecord.id 不能为空")
         if not ExplanationType.is_valid(self.explanation_type):
-            raise ValueError(
-                f"explanation_type 不合法: {self.explanation_type}"
-            )
+            raise ValueError(f"explanation_type 不合法: {self.explanation_type}")
         if not self.model_uri:
             raise ValueError("model_uri 不能为空")
         if not self.payload_path:
             raise ValueError("payload_path 不能为空")
         if self.payload_size_bytes < 0:
-            raise ValueError(
-                f"payload_size_bytes 不能为负数: {self.payload_size_bytes}"
-            )
+            raise ValueError(f"payload_size_bytes 不能为负数: {self.payload_size_bytes}")
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典（API 响应）."""
@@ -596,9 +579,7 @@ class ExplanationComparison:
         if self.base_explanation_id == self.compared_explanation_id:
             raise ValueError("base 与 compared 不能相同")
         if not ComparisonType.is_valid(self.comparison_type):
-            raise ValueError(
-                f"comparison_type 不合法: {self.comparison_type}"
-            )
+            raise ValueError(f"comparison_type 不合法: {self.comparison_type}")
         if not self.diff_payload_path:
             raise ValueError("diff_payload_path 不能为空")
 
@@ -784,9 +765,7 @@ class IExplainabilityService(ABC):
         """
 
     @abstractmethod
-    async def get_explanation(
-        self, explanation_id: str, *, include_payload: bool = False
-    ) -> dict[str, Any]:
+    async def get_explanation(self, explanation_id: str, *, include_payload: bool = False) -> dict[str, Any]:
         """查询解释结果.
 
         Args:

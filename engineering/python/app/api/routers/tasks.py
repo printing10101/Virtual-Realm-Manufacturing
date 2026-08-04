@@ -14,6 +14,7 @@
 
 注：flywheel 在原 registry 中归属模板系统块，已迁移至 templates 领域
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

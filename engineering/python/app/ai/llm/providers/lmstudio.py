@@ -87,11 +87,7 @@ class LMStudioProvider(LLMProvider):
             if response.status_code != 200:
                 return []
             data = response.json()
-            return [
-                m.get("id", "")
-                for m in data.get("data", [])
-                if m.get("id")
-            ]
+            return [m.get("id", "") for m in data.get("data", []) if m.get("id")]
         except Exception as e:
             logger.warning("LMStudio list_models failed: %s", e)
             return []
@@ -120,9 +116,7 @@ class LMStudioProvider(LLMProvider):
         )
         self._measure_latency(start)
         if response.status_code != 200:
-            raise ProviderError(
-                f"LMStudio API error: {response.status_code} - {response.text}"
-            )
+            raise ProviderError(f"LMStudio API error: {response.status_code} - {response.text}")
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         choices = data.get("choices", [])

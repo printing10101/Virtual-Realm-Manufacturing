@@ -64,14 +64,14 @@ async def get_ollama_status() -> dict[str, Any]:
             e,
             exc_info=True,
         )
-        
+
         # 提供有用的错误信息，帮助用户诊断问题
         error_msg = safe["message"]
         if "Connection" in str(e) or "Network" in str(e):
             error_msg += "。请检查 Ollama 服务是否正在运行，以及 OLLAMA_BASE_URL 配置是否正确。"
         elif "Timeout" in str(e):
             error_msg += "。Ollama 服务响应超时，请检查服务状态或增加超时时间。"
-        
+
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message=error_msg,
@@ -101,9 +101,7 @@ async def list_ollama_models() -> dict[str, Any]:
                     }
                 )
             else:
-                logger.warning(
-                    "Ollama returned status %d for model listing", response.status_code
-                )
+                logger.warning("Ollama returned status %d for model listing", response.status_code)
                 return error(
                     code=ErrorCode.SERVICE_UNAVAILABLE,
                     message=f"Ollama returned status {response.status_code}",
@@ -117,12 +115,12 @@ async def list_ollama_models() -> dict[str, Any]:
             e,
             exc_info=True,
         )
-        
+
         # 提供有用的错误信息
         error_msg = safe["message"]
         if "Connection" in str(e) or "Network" in str(e):
             error_msg += "。无法连接到 Ollama 服务，请检查服务是否正在运行。"
-        
+
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message=error_msg,

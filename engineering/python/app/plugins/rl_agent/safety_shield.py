@@ -75,9 +75,7 @@ class SafetyConstraints:
             if rng[0] >= rng[1]:
                 raise ValueError(f"{name} 下界必须小于上界: {rng}")
         if not 0.0 < self.max_action_delta <= 1.0:
-            raise ValueError(
-                f"max_action_delta 必须在 (0, 1], 当前: {self.max_action_delta}"
-            )
+            raise ValueError(f"max_action_delta 必须在 (0, 1], 当前: {self.max_action_delta}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -259,9 +257,7 @@ class SafetyShield:
         """
         violations: list[str] = []
         if action.size < 4:
-            violations.append(
-                f"action_dim 不足 4, 当前: {action.size}"
-            )
+            violations.append(f"action_dim 不足 4, 当前: {action.size}")
             return violations
 
         c = self._constraints
@@ -277,14 +273,10 @@ class SafetyShield:
             half = (rng[1] - rng[0]) / 2.0
             abs_val = mid + float(action[idx]) * half
             if abs_val < rng[0] or abs_val > rng[1]:
-                violations.append(
-                    f"{name}={abs_val:.2f} 超出范围 {rng}"
-                )
+                violations.append(f"{name}={abs_val:.2f} 超出范围 {rng}")
         return violations
 
-    def _check_delta(
-        self, action: np.ndarray, prev: np.ndarray
-    ) -> list[str]:
+    def _check_delta(self, action: np.ndarray, prev: np.ndarray) -> list[str]:
         """检查相邻动作变化率."""
         violations: list[str] = []
         max_delta = self._constraints.max_action_delta
@@ -293,27 +285,21 @@ class SafetyShield:
         n = min(diff.size, prev.size)
         for i in range(n):
             if diff[i] > max_delta:
-                violations.append(
-                    f"action[{i}] 变化 {diff[i]:.2f} 超过最大 {max_delta}"
-                )
+                violations.append(f"action[{i}] 变化 {diff[i]:.2f} 超过最大 {max_delta}")
         return violations
 
     def _clip_to_bounds(self, action: np.ndarray) -> np.ndarray:
         """裁剪动作到合法 delta 区间 [-1, 1]."""
         return np.clip(action, -1.0, 1.0).astype(np.float32)
 
-    def _clip_delta(
-        self, action: np.ndarray, prev: np.ndarray
-    ) -> np.ndarray:
+    def _clip_delta(self, action: np.ndarray, prev: np.ndarray) -> np.ndarray:
         """裁剪动作变化率."""
         max_delta = self._constraints.max_action_delta
         diff = action - prev
         clipped_diff = np.clip(diff, -max_delta, max_delta)
         return (prev + clipped_diff).astype(np.float32)
 
-    def _resolve_reference(
-        self, prev_action: Optional[np.ndarray]
-    ) -> np.ndarray:
+    def _resolve_reference(self, prev_action: Optional[np.ndarray]) -> np.ndarray:
         """解析参考动作（用于变化率检查）."""
         if prev_action is not None:
             return np.asarray(prev_action, dtype=np.float32)

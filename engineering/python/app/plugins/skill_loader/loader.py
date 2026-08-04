@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from typing import Any, Dict, List, Optional, Set
 
@@ -23,23 +22,17 @@ from app.config import config
 
 from .lifecycle import SkillFileWatcher
 from .models import (
-    PRIORITY_MAP,
     Skill,
     SkillLevel,
-    SkillMetadata,
-    SkillPriority,
-    SkillVersion,
 )
 from .path_safety import PathSafetyMixin
 from .registry import SkillRegistry
 from .sandbox_executor import (
     SecurityError,
     SandboxExecutorMixin,
-    _SubprocessSkillExecutor,
 )
 from .skill_compiler import SkillCompilerMixin
 from .skill_discovery import SkillDiscoveryMixin
-from .validator import MarkdownSkillParser
 from .version_control import VersionControlMixin
 
 logger = logging.getLogger(__name__)
@@ -102,9 +95,7 @@ class SkillLoader(
 
         if project_id:
             project_skills = self.load_project_skills(project_id)
-            skills.extend(
-                [s for s in project_skills if s.metadata.applicable_to(task_type)]
-            )
+            skills.extend([s for s in project_skills if s.metadata.applicable_to(task_type)])
 
         if agent_id:
             agent_skills = self.load_agent_skills(agent_id)
@@ -113,9 +104,7 @@ class SkillLoader(
         skills.sort(key=lambda s: s.metadata.priority.value)
 
         if available_context is not None:
-            skills = [
-                s for s in skills if s.metadata.contexts_satisfied(available_context)[0]
-            ]
+            skills = [s for s in skills if s.metadata.contexts_satisfied(available_context)[0]]
 
         logger.info(
             "Retrieved %d skills for task=%s project=%s agent=%s",
@@ -154,8 +143,7 @@ class SkillLoader(
                     "status": "success",
                     "result": result,
                 }
-            except (TypeError, ValueError, RuntimeError, KeyError,
-                    AttributeError, OSError) as e:
+            except (TypeError, ValueError, RuntimeError, KeyError, AttributeError, OSError) as e:
                 from app.core.safe_errors import safe_error_message
 
                 safe = safe_error_message(
@@ -170,7 +158,9 @@ class SkillLoader(
                 }
                 logger.error(
                     "Skill execution failed %s: %s",
-                    skill.metadata.name, e, exc_info=True,
+                    skill.metadata.name,
+                    e,
+                    exc_info=True,
                 )
 
         return results
@@ -182,9 +172,7 @@ class SkillLoader(
         agent_id: Optional[str] = None,
         available_context: Optional[Set[str]] = None,
     ) -> str:
-        skills = self.get_skills_for_task(
-            task_type, project_id, agent_id, available_context
-        )
+        skills = self.get_skills_for_task(task_type, project_id, agent_id, available_context)
         return self._merge_skills_to_context(skills)
 
     def _merge_skills_to_context(self, skills: List[Skill]) -> str:
@@ -239,9 +227,7 @@ class SkillLoader(
             skill = self.registry.get(skill_id)
             if skill and skill.metadata.source_path:
                 level = skill.metadata.level
-                new_skill = self._load_skill_from_file(
-                    skill.metadata.source_path, level
-                )
+                new_skill = self._load_skill_from_file(skill.metadata.source_path, level)
                 if new_skill:
                     self.registry.register(new_skill)
                     return {"status": "reloaded", "skill_id": skill_id}
@@ -282,9 +268,7 @@ class SkillLoader(
     def get_stats(self) -> Dict[str, Any]:
         registry_stats = self.registry.get_stats()
         registry_stats["skills_base_dir"] = self.skills_base
-        registry_stats["watcher_active"] = (
-            self._watcher is not None and self._watcher._running
-        )
+        registry_stats["watcher_active"] = self._watcher is not None and self._watcher._running
         return registry_stats
 
     def shutdown(self) -> None:
@@ -339,9 +323,7 @@ async def inject_skills(
     available_context: Optional[Set[str]] = None,
 ) -> str:
     loader = get_skill_loader()
-    return await loader.inject_skills(
-        task_type, project_id, agent_id, available_context
-    )
+    return await loader.inject_skills(task_type, project_id, agent_id, available_context)
 
 
 __all__ = [

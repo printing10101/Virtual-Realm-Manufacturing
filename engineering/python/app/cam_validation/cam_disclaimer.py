@@ -108,9 +108,7 @@ class CamDisclaimer:
     requires_engineer_review: bool = True
     requires_cam_validation: bool = True  # 始终 True（项目记忆硬约束）
     cam_report_exported: bool = False  # 是否已导出 CAM 校验报告 JSON
-    industrial_hard_gates: list[str] = field(
-        default_factory=lambda: list(INDUSTRIAL_HARD_GATES)
-    )
+    industrial_hard_gates: list[str] = field(default_factory=lambda: list(INDUSTRIAL_HARD_GATES))
     warning_message: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -167,24 +165,17 @@ def build_cam_disclaimer(
 
     # HRC52 待校准材料告知（继承阶段 5）
     if pending_calibration:
-        warnings.append(
-            "含 HRC52 待校准材料，阶段 5 颤振预测置信度已强制降至 0.5，"
-            "阶段 7 仅继承告知不二次拟合"
-        )
+        warnings.append("含 HRC52 待校准材料，阶段 5 颤振预测置信度已强制降至 0.5，阶段 7 仅继承告知不二次拟合")
 
     # 失败特征告知
     if failed_features > 0:
         warnings.append(
-            f"含 {failed_features} 个未通过双层校验的特征，"
-            "需工程师审核（确认 / 拒绝 / 编辑）后才能确认 CAM 校验报告"
+            f"含 {failed_features} 个未通过双层校验的特征，需工程师审核（确认 / 拒绝 / 编辑）后才能确认 CAM 校验报告"
         )
 
     # LTC 实验性路径告知（继承阶段 5）
     if ltc_experiment_used:
-        warnings.append(
-            "阶段 5 使用了 LTC 神经网络实验性路径，"
-            "稳定性判断需特别关注（chatter_model.pt 可能未充分训练）"
-        )
+        warnings.append("阶段 5 使用了 LTC 神经网络实验性路径，稳定性判断需特别关注（chatter_model.pt 可能未充分训练）")
 
     # CAM 后端降级告知
     if cam_backend_fallback_reason:
@@ -195,16 +186,12 @@ def build_cam_disclaimer(
 
     # internal_only 后端告知（仅内部预校验，未执行 CAM 软件二次校验）
     if cam_backend_used == "internal_only":
-        warnings.append(
-            "本次仅执行内部预校验（CollisionDetector），未执行 CAM 软件二次校验，"
-            "G 代码不可直接上机床"
-        )
+        warnings.append("本次仅执行内部预校验（CollisionDetector），未执行 CAM 软件二次校验，G 代码不可直接上机床")
 
     # manual 后端告知（手动校验流程）
     if cam_backend_used == "manual":
         warnings.append(
-            "已降级到「手动校验流程」模式：系统生成校验清单，"
-            "工程师需手动加载 G 代码到 CAM 软件并回填校验结果"
+            "已降级到「手动校验流程」模式：系统生成校验清单，工程师需手动加载 G 代码到 CAM 软件并回填校验结果"
         )
 
     # 工业硬门槛兜底（项目记忆硬约束）：即使上述特定警告均未触发，

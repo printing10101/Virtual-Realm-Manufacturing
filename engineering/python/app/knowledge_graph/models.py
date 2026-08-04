@@ -51,12 +51,8 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
     try:
         # 判定驱动是否为 sqlite3，通过 dialect 名判断
         # 注意：此处 connection_record.engine.dialect.name 包含 "sqlite"
-        dialect_name = getattr(
-            getattr(connection_record, "engine", None), "dialect", None
-        )
-        if dialect_name is not None and dialect_name.name.startswith(
-            "sqlite"
-        ):
+        dialect_name = getattr(getattr(connection_record, "engine", None), "dialect", None)
+        if dialect_name is not None and dialect_name.name.startswith("sqlite"):
             cursor = dbapi_connection.cursor()
             try:
                 cursor.execute("PRAGMA foreign_keys=ON")
@@ -114,9 +110,7 @@ class KGNode(Base):
         comment="记录最后更新时间（ISO8601 字符串，跨库兼容）",
     )
 
-    __table_args__ = (
-        Index("ix_kg_nodes_node_type", "node_type"),
-    )
+    __table_args__ = (Index("ix_kg_nodes_node_type", "node_type"),)
 
     def to_dict(self) -> dict:
         """序列化为可 JSON 化的字典。"""

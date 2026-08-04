@@ -48,14 +48,12 @@ from app.chatter_prediction.chatter_store import (
     ChatterPredictionTaskStatus,
     ChatterReviewStatus,
     FeatureChatterResult,
-    ReviewError,
     generate_task_id,
     get_task_store,
 )
 from app.chatter_prediction.predictor_adapter import (
     ChatterPredictorAdapter,
     PredictorAdapterError,
-    check_ltc_model_available,
 )
 from app.core.safe_errors import safe_error_message
 
@@ -202,7 +200,10 @@ class ChatterPredictionPipeline:
         self._store.create_task(task)
         logger.info(
             "创建颤振预测任务 task_id=%s source_cp_task_id=%s material=%s tier=%s ltc=%s",
-            task_id, source_cutting_parameters_task_id, material_id, precision_tier,
+            task_id,
+            source_cutting_parameters_task_id,
+            material_id,
+            precision_tier,
             self._adapter.ltc_model_available,
         )
         return task
@@ -231,9 +232,7 @@ class ChatterPredictionPipeline:
             ChatterPredictionTaskStatus.PENDING.value,
             ChatterPredictionTaskStatus.FAILED.value,
         ):
-            raise ChatterPredictionPipelineError(
-                f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）"
-            )
+            raise ChatterPredictionPipelineError(f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）")
 
         # 标记为 RUNNING
         task.status = ChatterPredictionTaskStatus.RUNNING.value
@@ -245,14 +244,9 @@ class ChatterPredictionPipeline:
         try:
             # 1. 加载阶段 4 ChatterParams JSON
             # H10 修复：_load_chatter_params 涉及文件 I/O + JSON 解析，转移到线程池。
-            chatter_params_list = await asyncio.to_thread(
-                self._load_chatter_params, task.chatter_params_path
-            )
+            chatter_params_list = await asyncio.to_thread(self._load_chatter_params, task.chatter_params_path)
             if not chatter_params_list:
-                raise ChatterParamsLoadError(
-                    f"阶段 4 ChatterParams JSON 中无任何特征: "
-                    f"{task.chatter_params_path}"
-                )
+                raise ChatterParamsLoadError(f"阶段 4 ChatterParams JSON 中无任何特征: {task.chatter_params_path}")
 
             # 2. 对每个特征执行双路径预测
             results: list[FeatureChatterResult] = []
@@ -262,11 +256,13 @@ class ChatterPredictionPipeline:
                 feature_type = str(item.get("feature_type", ""))
                 cp_dict = item.get("chatter_params")
                 if not cp_dict or not isinstance(cp_dict, dict):
-                    skipped.append({
-                        "feature_id": feature_id,
-                        "feature_type": feature_type,
-                        "error": "chatter_params 字段缺失或非 dict",
-                    })
+                    skipped.append(
+                        {
+                            "feature_id": feature_id,
+                            "feature_type": feature_type,
+                            "error": "chatter_params 字段缺失或非 dict",
+                        }
+                    )
                     continue
 
                 try:
@@ -281,20 +277,22 @@ class ChatterPredictionPipeline:
                     )
                     results.append(result)
                 except (PredictorAdapterError, ValueError, KeyError) as e:
-                    skipped.append({
-                        "feature_id": feature_id,
-                        "feature_type": feature_type,
-                        "error": str(e),
-                    })
+                    skipped.append(
+                        {
+                            "feature_id": feature_id,
+                            "feature_type": feature_type,
+                            "error": str(e),
+                        }
+                    )
                     logger.warning(
                         "任务 %s 特征 %s 预测失败: %s",
-                        task_id, feature_id, e,
+                        task_id,
+                        feature_id,
+                        e,
                     )
 
             if not results:
-                raise ChatterPredictionPipelineError(
-                    f"所有特征颤振预测均失败，skipped={len(skipped)}"
-                )
+                raise ChatterPredictionPipelineError(f"所有特征颤振预测均失败，skipped={len(skipped)}")
 
             # 3. 统计预测方法分布
             analytical_count = sum(1 for r in results if r.method == "analytical")
@@ -326,8 +324,12 @@ class ChatterPredictionPipeline:
 
             logger.info(
                 "任务 %s 预测完成 predicted=%d skipped=%d analytical=%d nn=%d fallback=%d",
-                task_id, len(results), len(skipped),
-                analytical_count, nn_count, fb_count,
+                task_id,
+                len(results),
+                len(skipped),
+                analytical_count,
+                nn_count,
+                fb_count,
             )
 
             return ChatterPredictionResult(
@@ -348,15 +350,15 @@ class ChatterPredictionPipeline:
             )
 
         except Exception as e:
-            safe = safe_error_message(
-                e, context="chatter_prediction.run_pipeline"
-            )
+            safe = safe_error_message(e, context="chatter_prediction.run_pipeline")
             task.status = ChatterPredictionTaskStatus.FAILED.value
             task.error_message = safe.get("message", "")
             self._store.update_task(task)
             logger.error(
                 "任务 %s 执行失败 error_id=%s message=%s",
-                task_id, safe.get("error_id"), safe.get("message"),
+                task_id,
+                safe.get("error_id"),
+                safe.get("message"),
             )
             return ChatterPredictionResult(
                 task_id=task_id,
@@ -410,9 +412,7 @@ class ChatterPredictionPipeline:
             raise ChatterReviewError(f"任务不存在: {task_id}")
 
         if task.status != ChatterPredictionTaskStatus.PREDICTED.value:
-            raise ChatterReviewError(
-                f"任务状态不允许审核: {task.status}（仅 predicted 可审核）"
-            )
+            raise ChatterReviewError(f"任务状态不允许审核: {task.status}（仅 predicted 可审核）")
 
         # 校验 review_status
         valid_statuses = {
@@ -421,16 +421,12 @@ class ChatterPredictionPipeline:
             ChatterReviewStatus.EDITED.value,
         }
         if review_status not in valid_statuses:
-            raise ChatterReviewError(
-                f"无效审核状态: {review_status}，合法值: {sorted(valid_statuses)}"
-            )
+            raise ChatterReviewError(f"无效审核状态: {review_status}，合法值: {sorted(valid_statuses)}")
 
         # edited 必须提供 edited_params
         if review_status == ChatterReviewStatus.EDITED.value:
             if not edited_params:
-                raise ChatterReviewError(
-                    "review_status=edited 时必须提供 edited_params"
-                )
+                raise ChatterReviewError("review_status=edited 时必须提供 edited_params")
 
         # 查找特征
         target: FeatureChatterResult | None = None
@@ -439,9 +435,7 @@ class ChatterPredictionPipeline:
                 target = result
                 break
         if target is None:
-            raise ChatterReviewError(
-                f"特征 ID 不存在于预测结果列表中: {feature_id}"
-            )
+            raise ChatterReviewError(f"特征 ID 不存在于预测结果列表中: {feature_id}")
 
         # 应用审核
         target.review_status = review_status
@@ -461,15 +455,10 @@ class ChatterPredictionPipeline:
                 target.axial_depth_mm = float(edited_params["axial_depth_mm"])
                 # 重新计算稳定性裕度
                 if target.limit_depth_mm > 0:
-                    target.stability_margin = (
-                        target.axial_depth_mm / target.limit_depth_mm
-                    )
+                    target.stability_margin = target.axial_depth_mm / target.limit_depth_mm
 
         # 检查是否全部审核完毕 → REVIEWED
-        all_reviewed = all(
-            r.review_status != ChatterReviewStatus.PENDING.value
-            for r in task.feature_results
-        )
+        all_reviewed = all(r.review_status != ChatterReviewStatus.PENDING.value for r in task.feature_results)
         if all_reviewed:
             task.status = ChatterPredictionTaskStatus.REVIEWED.value
             task.reviewed_by = reviewed_by
@@ -478,7 +467,10 @@ class ChatterPredictionPipeline:
         self._store.update_task(task)
         logger.info(
             "任务 %s 特征 %s 审核为 %s by %s",
-            task_id, feature_id, review_status, reviewed_by,
+            task_id,
+            feature_id,
+            review_status,
+            reviewed_by,
         )
         return target
 
@@ -503,23 +495,20 @@ class ChatterPredictionPipeline:
             raise ChatterPredictionPipelineError(f"任务不存在: {task_id}")
 
         if task.status != ChatterPredictionTaskStatus.REVIEWED.value:
-            raise ChatterPredictionPipelineError(
-                f"任务状态不允许导出: {task.status}（仅 reviewed 可导出）"
-            )
+            raise ChatterPredictionPipelineError(f"任务状态不允许导出: {task.status}（仅 reviewed 可导出）")
 
         # 仅导出 confirmed + edited 的特征（rejected 排除）
         exportable = [
-            r for r in task.feature_results
-            if r.review_status in (
+            r
+            for r in task.feature_results
+            if r.review_status
+            in (
                 ChatterReviewStatus.CONFIRMED.value,
                 ChatterReviewStatus.EDITED.value,
             )
         ]
         if not exportable:
-            raise ChatterPredictionPipelineError(
-                f"任务 {task_id} 无可导出的预测结果"
-                f"（所有特征均被 rejected）"
-            )
+            raise ChatterPredictionPipelineError(f"任务 {task_id} 无可导出的预测结果（所有特征均被 rejected）")
 
         # 构造 ChatterReport
         # 显式写入 task_status + prediction_method，供阶段 6 加载器校验契约
@@ -563,9 +552,7 @@ class ChatterPredictionPipeline:
                 encoding="utf-8",
             )
         except OSError as e:
-            raise ChatterPredictionPipelineError(
-                f"ChatterReport 写入失败: {e}"
-            ) from e
+            raise ChatterPredictionPipelineError(f"ChatterReport 写入失败: {e}") from e
 
         # 状态置为 SUCCEEDED
         task.status = ChatterPredictionTaskStatus.SUCCEEDED.value
@@ -575,7 +562,9 @@ class ChatterPredictionPipeline:
 
         logger.info(
             "任务 %s ChatterReport 导出完成 path=%s features=%d",
-            task_id, export_path, len(exportable),
+            task_id,
+            export_path,
+            len(exportable),
         )
         return str(export_path)
 
@@ -605,16 +594,12 @@ class ChatterPredictionPipeline:
         """
         path = Path(chatter_params_path)
         if not path.exists():
-            raise ChatterParamsLoadError(
-                f"阶段 4 ChatterParams JSON 不存在: {chatter_params_path}"
-            )
+            raise ChatterParamsLoadError(f"阶段 4 ChatterParams JSON 不存在: {chatter_params_path}")
 
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as e:
-            raise ChatterParamsLoadError(
-                f"阶段 4 ChatterParams JSON 解析失败: {e}"
-            ) from e
+            raise ChatterParamsLoadError(f"阶段 4 ChatterParams JSON 解析失败: {e}") from e
 
         if isinstance(data, list):
             return data
@@ -623,8 +608,7 @@ class ChatterPredictionPipeline:
                 if key in data and isinstance(data[key], list):
                     return data[key]
         raise ChatterParamsLoadError(
-            f"阶段 4 ChatterParams JSON 格式不支持，"
-            f"应为 list 或含 'chatter_params_list'/'features' 键的 dict"
+            "阶段 4 ChatterParams JSON 格式不支持，应为 list 或含 'chatter_params_list'/'features' 键的 dict"
         )
 
     def _resolve_prediction_method(
@@ -657,9 +641,7 @@ class ChatterPredictionPipeline:
 
         material_id_lower = task.material_id.lower()
         material_calibration_status = (
-            "pending_calibration"
-            if material_id_lower in PENDING_CALIBRATION_MATERIALS
-            else "calibrated"
+            "pending_calibration" if material_id_lower in PENDING_CALIBRATION_MATERIALS else "calibrated"
         )
 
         return build_chatter_disclaimer(
@@ -675,9 +657,7 @@ class ChatterPredictionPipeline:
             chatter_report_ready=chatter_report_ready,
         )
 
-    def _persist_skipped_features(
-        self, task_id: str, skipped: list[dict[str, Any]]
-    ) -> None:
+    def _persist_skipped_features(self, task_id: str, skipped: list[dict[str, Any]]) -> None:
         """持久化跳过的特征列表（便于工程师回溯）。"""
         task = self._store.get_task(task_id)
         if task is None:

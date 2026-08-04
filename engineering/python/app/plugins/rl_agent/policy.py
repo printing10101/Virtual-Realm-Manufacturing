@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -74,9 +74,7 @@ class PolicyConfig:
         if self.hidden_dim < 1:
             raise ValueError(f"hidden_dim 必须 >= 1, 当前: {self.hidden_dim}")
         if self.max_action_norm <= 0:
-            raise ValueError(
-                f"max_action_norm 必须为正数, 当前: {self.max_action_norm}"
-            )
+            raise ValueError(f"max_action_norm 必须为正数, 当前: {self.max_action_norm}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -118,9 +116,7 @@ if HAS_TORCH:
             # log_std 作为可学习参数（PPO 标准做法），初始化为 0（std=1）
             self.log_std = nn.Parameter(torch.zeros(config.action_dim))
 
-        def forward(
-            self, state: torch.Tensor
-        ) -> dict[str, torch.Tensor]:
+        def forward(self, state: torch.Tensor) -> dict[str, torch.Tensor]:
             """前向传播.
 
             Returns
@@ -175,24 +171,15 @@ else:
             rng = np.random.RandomState(config.seed)
 
             # 随机初始化权重（仅推理回退，无训练意义）
-            self._w1 = rng.randn(
-                config.state_dim, config.hidden_dim
-            ).astype(np.float32) * 0.1
+            self._w1 = rng.randn(config.state_dim, config.hidden_dim).astype(np.float32) * 0.1
             self._b1 = np.zeros(config.hidden_dim, dtype=np.float32)
-            self._w2 = rng.randn(
-                config.hidden_dim, config.hidden_dim
-            ).astype(np.float32) * 0.1
+            self._w2 = rng.randn(config.hidden_dim, config.hidden_dim).astype(np.float32) * 0.1
             self._b2 = np.zeros(config.hidden_dim, dtype=np.float32)
-            self._w_mean = rng.randn(
-                config.hidden_dim, config.action_dim
-            ).astype(np.float32) * 0.1
+            self._w_mean = rng.randn(config.hidden_dim, config.action_dim).astype(np.float32) * 0.1
             self._b_mean = np.zeros(config.action_dim, dtype=np.float32)
             self._log_std = np.zeros(config.action_dim, dtype=np.float32)
 
-            logger.warning(
-                "PolicyNet: torch 不可用，使用 NumPy 回退实现。"
-                "输出动作仅用于接口验证，不具备训练意义。"
-            )
+            logger.warning("PolicyNet: torch 不可用，使用 NumPy 回退实现。输出动作仅用于接口验证，不具备训练意义。")
 
         def __call__(self, state: Any) -> dict[str, np.ndarray]:
             state_arr = np.asarray(state, dtype=np.float32)

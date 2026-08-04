@@ -14,7 +14,10 @@ from app.dependencies import get_system_repo
 from app.infrastructure.repositories.system_repo import SystemRepo
 
 __all__ = [
-    "AgentStateRepo", "get_agent_state_repo",
-    "NotificationRepo", "get_notification_repo",
-    "SystemRepo", "get_system_repo",
+    "AgentStateRepo",
+    "get_agent_state_repo",
+    "NotificationRepo",
+    "get_notification_repo",
+    "SystemRepo",
+    "get_system_repo",
 ]

@@ -9,6 +9,7 @@
     4. spec/inputs/outputs/params/result/metrics 使用 JSONB（PostgreSQL）或 JSON（SQLite）
     5. 断点续跑：通过 node status 字段判断已完成节点，避免重跑
 """
+
 from __future__ import annotations
 
 import uuid

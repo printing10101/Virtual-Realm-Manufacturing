@@ -26,18 +26,12 @@
 9. **异常层级**：``RLAgentError`` 基类 → ``PolicyError`` / ``TrainingError`` /
    ``SafetyViolationError`` / ``PolicyNotFoundError`` 子类
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional
-
-from app.contracts.world_model import (
-    DEFAULT_ACTION_DIM,
-    DEFAULT_STATE_DIM,
-    ActionField,
-    StateField,
-)
 
 
 # ---------------------------------------------------------------------------
@@ -200,20 +194,11 @@ class SafetyConstraintsSpec:
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.max_chatter_probability <= 1.0:
-            raise ValueError(
-                f"max_chatter_probability 必须在 [0, 1]: "
-                f"{self.max_chatter_probability}"
-            )
+            raise ValueError(f"max_chatter_probability 必须在 [0, 1]: {self.max_chatter_probability}")
         if self.max_tool_wear_increment <= 0:
-            raise ValueError(
-                f"max_tool_wear_increment 必须为正数: "
-                f"{self.max_tool_wear_increment}"
-            )
+            raise ValueError(f"max_tool_wear_increment 必须为正数: {self.max_tool_wear_increment}")
         if not 0.0 <= self.min_surface_quality <= 1.0:
-            raise ValueError(
-                f"min_surface_quality 必须在 [0, 1]: "
-                f"{self.min_surface_quality}"
-            )
+            raise ValueError(f"min_surface_quality 必须在 [0, 1]: {self.min_surface_quality}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -244,9 +229,7 @@ class RLActRequest:
     current_state: dict[str, float]
     candidate_actions: list[dict[str, float]]
     optimization_target: str = OptimizationTarget.BALANCE
-    safety_constraints: SafetyConstraintsSpec = field(
-        default_factory=SafetyConstraintsSpec
-    )
+    safety_constraints: SafetyConstraintsSpec = field(default_factory=SafetyConstraintsSpec)
     model_uri: str = "model://rl_agent/1.0.0"
 
     def __post_init__(self) -> None:
@@ -255,9 +238,7 @@ class RLActRequest:
         if not self.candidate_actions:
             raise ValueError("candidate_actions 不能为空")
         if not OptimizationTarget.is_valid(self.optimization_target):
-            raise ValueError(
-                f"optimization_target 不合法: {self.optimization_target}"
-            )
+            raise ValueError(f"optimization_target 不合法: {self.optimization_target}")
         if not self.model_uri:
             raise ValueError("model_uri 不能为空")
 
@@ -291,15 +272,9 @@ class ActionEvaluation:
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.predicted_chatter_prob <= 1.0:
-            raise ValueError(
-                f"predicted_chatter_prob 必须在 [0, 1]: "
-                f"{self.predicted_chatter_prob}"
-            )
+            raise ValueError(f"predicted_chatter_prob 必须在 [0, 1]: {self.predicted_chatter_prob}")
         if self.predicted_tool_wear < 0:
-            raise ValueError(
-                f"predicted_tool_wear 不能为负数: "
-                f"{self.predicted_tool_wear}"
-            )
+            raise ValueError(f"predicted_tool_wear 不能为负数: {self.predicted_tool_wear}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -339,15 +314,9 @@ class PolicyInfo:
         if not self.policy_version:
             raise ValueError("policy_version 不能为空")
         if self.training_episodes < 0:
-            raise ValueError(
-                f"training_episodes 不能为负数: "
-                f"{self.training_episodes}"
-            )
+            raise ValueError(f"training_episodes 不能为负数: {self.training_episodes}")
         if not 0.0 <= self.exploration_rate <= 1.0:
-            raise ValueError(
-                f"exploration_rate 必须在 [0, 1]: "
-                f"{self.exploration_rate}"
-            )
+            raise ValueError(f"exploration_rate 必须在 [0, 1]: {self.exploration_rate}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -408,9 +377,7 @@ class RLActResponse:
     def to_dict(self) -> dict[str, Any]:
         return {
             "recommended_action": self.recommended_action.to_dict(),
-            "action_evaluation": [
-                e.to_dict() for e in self.action_evaluation
-            ],
+            "action_evaluation": [e.to_dict() for e in self.action_evaluation],
             "policy_info": self.policy_info.to_dict(),
         }
 
@@ -574,15 +541,11 @@ class TrainingStatusInfo:
         if not TrainingStatus.is_valid(self.status):
             raise ValueError(f"status 不合法: {self.status}")
         if self.current_step < 0:
-            raise ValueError(
-                f"current_step 不能为负数: {self.current_step}"
-            )
+            raise ValueError(f"current_step 不能为负数: {self.current_step}")
         if self.max_steps <= 0:
             raise ValueError(f"max_steps 必须为正数: {self.max_steps}")
         if self.current_episode < 0:
-            raise ValueError(
-                f"current_episode 不能为负数: {self.current_episode}"
-            )
+            raise ValueError(f"current_episode 不能为负数: {self.current_episode}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -624,9 +587,7 @@ class TrainingStartRequest:
         if not PolicyAlgorithm.is_valid(self.algorithm):
             raise ValueError(f"algorithm 不合法: {self.algorithm}")
         if not OptimizationTarget.is_valid(self.optimization_target):
-            raise ValueError(
-                f"optimization_target 不合法: {self.optimization_target}"
-            )
+            raise ValueError(f"optimization_target 不合法: {self.optimization_target}")
         if self.seed is not None and self.seed < 0:
             raise ValueError(f"seed 不能为负数: {self.seed}")
 

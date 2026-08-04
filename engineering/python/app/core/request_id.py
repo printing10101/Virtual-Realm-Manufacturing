@@ -58,6 +58,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         # P1-2 修复：记录请求方法，供 get_db() 决定是否 commit。
         # GET / HEAD / OPTIONS 按语义为只读，不应触发事务提交。
         from app.database.connection import set_request_method
+
         token = set_request_method(request.method)
         try:
             response = await call_next(request)
@@ -66,4 +67,5 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         finally:
             # contextvar 在请求结束时通过 reset 恢复默认值，避免线程复用导致串请求
             from app.database.connection import _current_request_method
+
             _current_request_method.reset(token)

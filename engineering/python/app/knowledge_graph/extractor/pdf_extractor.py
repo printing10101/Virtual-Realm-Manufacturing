@@ -16,7 +16,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -177,9 +177,7 @@ class PDFExtractor:
             import pytesseract
             from pdf2image import convert_from_path
         except ImportError:
-            logger.warning(
-                "OCR 依赖未安装（需要 pytesseract + pdf2image），跳过 OCR"
-            )
+            logger.warning("OCR 依赖未安装（需要 pytesseract + pdf2image），跳过 OCR")
             return []
 
         pages: list[DocumentPage] = []
@@ -327,9 +325,7 @@ def extract_document(file_path: str | Path) -> ExtractedDocument:
         raise ValueError(f"不支持的文件格式: {suffix}（仅支持 .pdf / .docx / .doc）")
 
 
-def chunk_pages(
-    pages: list[DocumentPage], max_pages: int = 10
-) -> list[list[DocumentPage]]:
+def chunk_pages(pages: list[DocumentPage], max_pages: int = 10) -> list[list[DocumentPage]]:
     """将页面列表按 max_pages 分块。
 
     Args:
@@ -365,9 +361,7 @@ def main():  # pragma: no cover
         "source_path": result.source_path,
         "total_pages": result.total_pages,
         "extraction_method": result.extraction_method,
-        "pages": [
-            {"page_number": p.page_number, "text": p.text} for p in result.pages
-        ],
+        "pages": [{"page_number": p.page_number, "text": p.text} for p in result.pages],
         "full_text": result.full_text,
     }
 

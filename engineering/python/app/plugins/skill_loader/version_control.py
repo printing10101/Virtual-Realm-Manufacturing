@@ -56,9 +56,7 @@ class VersionControlMixin:
                     "content_hash": ver_obj.content_hash,
                     "file_path": ver_obj.file_path,
                     "created_at": ver_obj.created_at,
-                    "created_at_iso": datetime.fromtimestamp(
-                        ver_obj.created_at, tz=timezone.utc
-                    ).isoformat(),
+                    "created_at_iso": datetime.fromtimestamp(ver_obj.created_at, tz=timezone.utc).isoformat(),
                 }
             )
 
@@ -77,9 +75,7 @@ class VersionControlMixin:
             target_dir = os.path.join(self.skills_base, "global")
         elif level == SkillLevel.PROJECT:
             if not sub_id:
-                raise ValueError(
-                    "sub_id (project_id) required for PROJECT level skills"
-                )
+                raise ValueError("sub_id (project_id) required for PROJECT level skills")
             target_dir = self._resolve_safe_subpath("projects", sub_id)
         elif level == SkillLevel.AGENT:
             if not sub_id:

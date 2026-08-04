@@ -80,9 +80,7 @@ def import_tools(
                 continue
             if not nid:
                 stats.failed += 1
-                stats.error_messages.append(
-                    f"tool skipped: missing series/diameter ({raw.get('id', '?')})"
-                )
+                stats.error_messages.append(f"tool skipped: missing series/diameter ({raw.get('id', '?')})")
                 continue
             if is_dup or nid in local_seen or graph.has_node(nid):
                 stats.duplicate += 1
@@ -101,15 +99,11 @@ def import_tools(
             graph.add_node(NODE_TYPE_TOOL, nid, properties)
             local_seen.add(nid)
             stats.success += 1
-            stats.node_type_breakdown[NODE_TYPE_TOOL] = (
-                stats.node_type_breakdown.get(NODE_TYPE_TOOL, 0) + 1
-            )
+            stats.node_type_breakdown[NODE_TYPE_TOOL] = stats.node_type_breakdown.get(NODE_TYPE_TOOL, 0) + 1
 
             # --- 关系 1：Tool -> Feature (SUITABLE_FOR) ---
             series = properties["series"]
-            for feature_id, feature_name, feature_type in _SERIES_TO_FEATURES.get(
-                series, []
-            ):
+            for feature_id, feature_name, feature_type in _SERIES_TO_FEATURES.get(series, []):
                 # 确保 feature 节点存在
                 if not graph.has_node(feature_id):
                     graph.add_node(
@@ -139,9 +133,7 @@ def import_tools(
                         stats.edge_type_breakdown.get(EDGE_SUITABLE_FOR, 0) + 1
                     )
                 except ValueError as exc:
-                    stats.error_messages.append(
-                        f"tool->feature edge error: {exc}"
-                    )
+                    stats.error_messages.append(f"tool->feature edge error: {exc}")
 
             # --- 关系 2：Tool -> Material (SUITABLE_FOR) ---
             # 按材料 category 与刀具材料 (HSS / carbide) 设置 confidence
@@ -193,14 +185,10 @@ def import_tools(
                         stats.edge_type_breakdown.get(EDGE_SUITABLE_FOR, 0) + 1
                     )
                 except ValueError as exc:
-                    stats.error_messages.append(
-                        f"tool->material edge error: {exc}"
-                    )
+                    stats.error_messages.append(f"tool->material edge error: {exc}")
 
     try:
-        _retry_with_backoff(
-            _do_import, retries=retries, label="import_tools"
-        )
+        _retry_with_backoff(_do_import, retries=retries, label="import_tools")
     except (OSError, RuntimeError, ValueError, KeyError) as exc:
         stats.failed += 1
         stats.error_messages.append(f"tools import aborted: {exc}")

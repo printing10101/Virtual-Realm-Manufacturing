@@ -29,7 +29,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 import time
@@ -65,10 +64,10 @@ logger = logging.getLogger(__name__)
 # 生产环境必须配置内网 Agent URL，启动时 CollectorConfig 会校验非空。
 DEFAULT_AGENT_URL = os.getenv("MTCONNECT_AGENT_URL", "")
 DEFAULT_FLUSH_INTERVAL = 5.0  # seconds
-DEFAULT_BATCH_SIZE = 100      # records per flush
+DEFAULT_BATCH_SIZE = 100  # records per flush
 DEFAULT_RETRY_BACKOFF = 2.0
 DEFAULT_MAX_WRITE_RETRIES = 3
-DEFAULT_POLL_INTERVAL = 1.0   # MTConnect 1 Hz 默认
+DEFAULT_POLL_INTERVAL = 1.0  # MTConnect 1 Hz 默认
 
 
 @dataclass
@@ -180,9 +179,7 @@ async def postgres_sink(
     else:
         factory = get_sync_sessionmaker()
         if factory is None:
-            raise RuntimeError(
-                "PostgreSQL 未配置：请设置 DB_URL 或通过 session_factory 注入"
-            )
+            raise RuntimeError("PostgreSQL 未配置：请设置 DB_URL 或通过 session_factory 注入")
         repo = MachiningRecordRepository(session_factory=factory)
 
     def _sync_create() -> int:
@@ -319,9 +316,7 @@ class MachiningCollector:
                     exc,
                 )
 
-            self._run_task = asyncio.create_task(
-                self._run_loop(), name=f"collector-loop-{self._job_id}"
-            )
+            self._run_task = asyncio.create_task(self._run_loop(), name=f"collector-loop-{self._job_id}")
             logger.info(
                 "Collector[%s] started agent=%s interval=%.2fs batch=%d flush=%.1fs",
                 self._job_id,
@@ -353,9 +348,7 @@ class MachiningCollector:
             try:
                 await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
-                logger.warning(
-                    "Collector[%s] did not stop within %.1fs; cancelling", self._job_id, timeout
-                )
+                logger.warning("Collector[%s] did not stop within %.1fs; cancelling", self._job_id, timeout)
                 task.cancel()
                 try:
                     await task
@@ -374,9 +367,7 @@ class MachiningCollector:
                 logger.warning("Final flush failed: %s", e, exc_info=True)
 
             self._stats.stopped_at = time.time()
-            logger.info(
-                "Collector[%s] stopped. stats=%s", self._job_id, self._stats.to_dict()
-            )
+            logger.info("Collector[%s] stopped. stats=%s", self._job_id, self._stats.to_dict())
             return self.get_stats()
 
     # ------------------------------------------------------------------ loop
@@ -396,9 +387,7 @@ class MachiningCollector:
                         self.config.sample_interval,
                     )
                     try:
-                        await asyncio.wait_for(
-                            self._stop_event.wait(), timeout=self.config.sample_interval
-                        )
+                        await asyncio.wait_for(self._stop_event.wait(), timeout=self.config.sample_interval)
                     except asyncio.TimeoutError:
                         pass
                     continue
@@ -406,9 +395,7 @@ class MachiningCollector:
                 if sample is None:
                     # 拉取失败但已重试：略过本轮
                     try:
-                        await asyncio.wait_for(
-                            self._stop_event.wait(), timeout=self.config.sample_interval
-                        )
+                        await asyncio.wait_for(self._stop_event.wait(), timeout=self.config.sample_interval)
                     except asyncio.TimeoutError:
                         pass
                     continue
@@ -429,9 +416,7 @@ class MachiningCollector:
                         )
 
                 try:
-                    await asyncio.wait_for(
-                        self._stop_event.wait(), timeout=self.config.sample_interval
-                    )
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=self.config.sample_interval)
                 except asyncio.TimeoutError:
                     # 超时是预期行为：wait_for(stop_event.wait(), timeout=X) 用作"可中断睡眠"，
                     # 超时表示睡眠完成，无需任何处理；stop 事件触发时提前唤醒走正常流程
@@ -474,9 +459,7 @@ class MachiningCollector:
                 )
                 records.append(record)
             except ValueError as exc:
-                logger.warning(
-                    "Collector[%s] aggregation skipped: %s", self._job_id, exc
-                )
+                logger.warning("Collector[%s] aggregation skipped: %s", self._job_id, exc)
             self._aggregator.mark_flushed()
 
         # 合并待重试的 records
@@ -503,17 +486,13 @@ class MachiningCollector:
                 self._tdengine_retry.extend(samples_to_write)
                 self._stats.write_failures += len(samples_to_write)
 
-    async def _write_with_retry(
-        self, records: Sequence[MachiningRecordCreate]
-    ) -> int:
+    async def _write_with_retry(self, records: Sequence[MachiningRecordCreate]) -> int:
         """通过 record_sink 写 PostgreSQL，失败时重试。"""
         if not records:
             return 0
 
         async def _attempt() -> int:
-            sink = self._record_sink or (
-                lambda recs: postgres_sink(recs)
-            )
+            sink = self._record_sink or (lambda recs: postgres_sink(recs))
             return await sink(list(records))
 
         backoff = self.config.retry_backoff
@@ -540,9 +519,7 @@ class MachiningCollector:
                     sleep_for,
                 )
                 try:
-                    await asyncio.wait_for(
-                        self._stop_event.wait(), timeout=sleep_for
-                    )
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=sleep_for)
                     # 若 stop 事件被触发，则中断重试
                     return 0
                 except asyncio.TimeoutError:
@@ -552,19 +529,13 @@ class MachiningCollector:
                 backoff = min(backoff * 2, 30.0)
         return 0
 
-    async def _write_tdengine_with_retry(
-        self, samples: Sequence[Sample]
-    ) -> int:
+    async def _write_tdengine_with_retry(self, samples: Sequence[Sample]) -> int:
         """通过 tdengine_sink 写时序数据，失败时重试。"""
         if not samples:
             return 0
 
         async def _attempt() -> int:
-            sink = self._tdengine_sink or (
-                lambda s: tdengine_sink(
-                    s, table_name=self.config.tdengine_table
-                )
-            )
+            sink = self._tdengine_sink or (lambda s: tdengine_sink(s, table_name=self.config.tdengine_table))
             return await sink(list(samples))
 
         backoff = self.config.retry_backoff
@@ -593,9 +564,7 @@ class MachiningCollector:
                     sleep_for,
                 )
                 try:
-                    await asyncio.wait_for(
-                        self._stop_event.wait(), timeout=sleep_for
-                    )
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=sleep_for)
                     return 0
                 except asyncio.TimeoutError:
                     # 超时是预期行为：wait_for(stop_event.wait(), timeout=X) 用作"可中断睡眠"，
@@ -691,9 +660,7 @@ async def start_collector(
             for v in (agent_url, machine_id, tool_id, material, sample_interval, batch_size, flush_interval)
         ):
             # 用户显式提供 config 同时又传了字段，config 优先；仅记录一次告警
-            logger.info(
-                "start_collector: 同时提供 config 与字段参数，config 优先"
-            )
+            logger.info("start_collector: 同时提供 config 与字段参数，config 优先")
 
         _collector_singleton = MachiningCollector(
             config=config,

@@ -211,15 +211,11 @@ class ToolpathVisualizer:
 
         for y_val in y:
             xz_x, xz_z = np.meshgrid(x, z)
-            ax.plot_surface(
-                xz_x, np.full_like(xz_x, y_val), xz_z, alpha=0.1, color=COLOR_STOCK
-            )
+            ax.plot_surface(xz_x, np.full_like(xz_x, y_val), xz_z, alpha=0.1, color=COLOR_STOCK)
 
         for x_val in x:
             yz_y, yz_z = np.meshgrid(y, z)
-            ax.plot_surface(
-                np.full_like(yz_y, x_val), yz_y, yz_z, alpha=0.1, color=COLOR_STOCK
-            )
+            ax.plot_surface(np.full_like(yz_y, x_val), yz_y, yz_z, alpha=0.1, color=COLOR_STOCK)
 
     def _draw_segments(self, ax: Any, segments: list[ToolpathSegment]) -> None:
         """Draw all toolpath segments with color coding by motion type.
@@ -285,12 +281,8 @@ class ToolpathVisualizer:
 
         if self.stock:
             bbox = self.stock.get_bbox()
-            ax.set_xlim(
-                bbox.x_min - STOCK_PADDING, bbox.x_max + STOCK_PADDING
-            )
-            ax.set_ylim(
-                bbox.y_min - STOCK_PADDING, bbox.y_max + STOCK_PADDING
-            )
+            ax.set_xlim(bbox.x_min - STOCK_PADDING, bbox.x_max + STOCK_PADDING)
+            ax.set_ylim(bbox.y_min - STOCK_PADDING, bbox.y_max + STOCK_PADDING)
             ax.set_zlim(
                 bbox.z_min - STOCK_PADDING,
                 bbox.z_max + STOCK_PADDING + STOCK_Z_PADDING_EXTRA,

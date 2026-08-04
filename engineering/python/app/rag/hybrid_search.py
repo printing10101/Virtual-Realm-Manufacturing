@@ -11,10 +11,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import threading
-import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -142,10 +140,7 @@ class BM25Index:
                     self._index_rebuild_count,
                 )
             except ImportError:
-                logger.warning(
-                    "rank_bm25 not installed, BM25 search disabled. "
-                    "Install with: pip install rank_bm25"
-                )
+                logger.warning("rank_bm25 not installed, BM25 search disabled. Install with: pip install rank_bm25")
                 self._bm25 = None
             except (ValueError, RuntimeError) as e:
                 logger.warning("BM25 index build failed: %s", e, exc_info=True)
@@ -277,9 +272,7 @@ class HybridSearchEngine:
             融合后的结果列表
         """
         # BM25 检索
-        bm25_results = self._bm25_index.search(
-            query, top_k=top_k * 2, source_filter=source_filter
-        )
+        bm25_results = self._bm25_index.search(query, top_k=top_k * 2, source_filter=source_filter)
 
         if not bm25_results:
             # 无 BM25 结果时直接返回向量结果

@@ -13,7 +13,6 @@ import logging
 import math
 import os
 import time
-from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,9 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 from ._eval_models import (
-    EvaluationQuery, EvaluationResult, EvaluationReport,
-    AblationResult, ComparisonReport, EvaluationDataset,
+    EvaluationQuery,
+    EvaluationResult,
+    EvaluationReport,
+    AblationResult,
+    ComparisonReport,
+    EvaluationDataset,
 )
+
 
 class RetrievalEvaluator:
     def __init__(self, knowledge_base, reranker_service=None, rag_engine=None):
@@ -32,27 +36,19 @@ class RetrievalEvaluator:
         self.rag_engine = rag_engine
         self.dataset = EvaluationDataset()
 
-    def calculate_precision_at_k(
-        self, expected: list[str], retrieved: list[str], k: int
-    ) -> float:
+    def calculate_precision_at_k(self, expected: list[str], retrieved: list[str], k: int) -> float:
         if k == 0 or not retrieved:
             return 0.0
         # 用 set 加速 in 查找（expected 通常很小，但 retrieved 较大时受益明显）
         expected_set = set(expected)
-        relevant_retrieved = [
-            doc_id for doc_id in retrieved[:k] if doc_id in expected_set
-        ]
+        relevant_retrieved = [doc_id for doc_id in retrieved[:k] if doc_id in expected_set]
         return len(relevant_retrieved) / k
 
-    def calculate_recall_at_k(
-        self, expected: list[str], retrieved: list[str], k: int
-    ) -> float:
+    def calculate_recall_at_k(self, expected: list[str], retrieved: list[str], k: int) -> float:
         if not expected:
             return 0.0
         expected_set = set(expected)
-        relevant_retrieved = [
-            doc_id for doc_id in retrieved[:k] if doc_id in expected_set
-        ]
+        relevant_retrieved = [doc_id for doc_id in retrieved[:k] if doc_id in expected_set]
         return len(relevant_retrieved) / len(expected)
 
     def calculate_f1_score(self, precision: float, recall: float) -> float:
@@ -67,9 +63,7 @@ class RetrievalEvaluator:
                 return 1.0 / (i + 1)
         return 0.0
 
-    def calculate_ndcg_at_k(
-        self, expected: list[str], retrieved: list[str], k: int
-    ) -> float:
+    def calculate_ndcg_at_k(self, expected: list[str], retrieved: list[str], k: int) -> float:
         """NDCG@k：标准 DCG 使用 log2(position+1) 折损。
 
         修复：原实现使用 ``rel / (i + 1)``（即 1/(rank)）折损，
@@ -101,9 +95,7 @@ class RetrievalEvaluator:
             return 0.0
         return dcg / idcg
 
-    def evaluate_single_query(
-        self, query: EvaluationQuery, top_k: int = 3
-    ) -> EvaluationResult:
+    def evaluate_single_query(self, query: EvaluationQuery, top_k: int = 3) -> EvaluationResult:
         """baseline 评估：直接调用 knowledge_base.query()，可选 reranker。
 
         为了同时支持 top-3 / top-5 准确率计算，这里始终检索
@@ -114,28 +106,23 @@ class RetrievalEvaluator:
         start_time = time.time()
 
         retrieve_k = max(top_k, 5)
-        raw_results = self.knowledge_base.query(
-            query_text=query.query_text, n_results=retrieve_k * 2
-        )
+        raw_results = self.knowledge_base.query(query_text=query.query_text, n_results=retrieve_k * 2)
 
         if self.reranker_service and raw_results.get("documents"):
             formatted_results = []
             docs = (
                 raw_results["documents"][0]
-                if raw_results["documents"]
-                and isinstance(raw_results["documents"][0], list)
+                if raw_results["documents"] and isinstance(raw_results["documents"][0], list)
                 else raw_results["documents"]
             )
             metas = (
                 raw_results["metadatas"][0]
-                if raw_results["metadatas"]
-                and isinstance(raw_results["metadatas"][0], list)
+                if raw_results["metadatas"] and isinstance(raw_results["metadatas"][0], list)
                 else raw_results["metadatas"]
             )
             dists = (
                 raw_results["distances"][0]
-                if raw_results["distances"]
-                and isinstance(raw_results["distances"][0], list)
+                if raw_results["distances"] and isinstance(raw_results["distances"][0], list)
                 else raw_results["distances"]
             )
             ids = (
@@ -154,16 +141,11 @@ class RetrievalEvaluator:
                     }
                 )
 
-            reranked_results = self.reranker_service.rerank(
-                query=query.query_text, results=formatted_results
-            )
+            reranked_results = self.reranker_service.rerank(query=query.query_text, results=formatted_results)
 
             # 修复 bug：reranker 返回字段为 "id" 而非 "doc_id"
             # 保留 retrieve_k 条以便 evaluate_all 计算 top5 准确率
-            retrieved_ids = [
-                r.get("id") or r.get("doc_id") or ""
-                for r in reranked_results[:retrieve_k]
-            ]
+            retrieved_ids = [r.get("id") or r.get("doc_id") or "" for r in reranked_results[:retrieve_k]]
         else:
             raw_ids = raw_results.get("ids", [])
             if raw_ids and isinstance(raw_ids[0], list):
@@ -175,21 +157,13 @@ class RetrievalEvaluator:
 
         # 评估指标基于前 top_k 条，但 retrieved_doc_ids 保留 retrieve_k 条
         # 以便 evaluate_all 据此分别计算 top3 / top5 准确率
-        precision = self.calculate_precision_at_k(
-            query.expected_doc_ids, retrieved_ids[:top_k], top_k
-        )
-        recall = self.calculate_recall_at_k(
-            query.expected_doc_ids, retrieved_ids[:top_k], top_k
-        )
+        precision = self.calculate_precision_at_k(query.expected_doc_ids, retrieved_ids[:top_k], top_k)
+        recall = self.calculate_recall_at_k(query.expected_doc_ids, retrieved_ids[:top_k], top_k)
         f1 = self.calculate_f1_score(precision, recall)
         mrr = self.calculate_mrr(query.expected_doc_ids, retrieved_ids)
-        ndcg = self.calculate_ndcg_at_k(
-            query.expected_doc_ids, retrieved_ids[:top_k], top_k
-        )
+        ndcg = self.calculate_ndcg_at_k(query.expected_doc_ids, retrieved_ids[:top_k], top_k)
 
-        hits = len(
-            [doc_id for doc_id in retrieved_ids[:top_k] if doc_id in query.expected_doc_ids]
-        )
+        hits = len([doc_id for doc_id in retrieved_ids[:top_k] if doc_id in query.expected_doc_ids])
 
         return EvaluationResult(
             query_id=query.query_id,
@@ -206,9 +180,7 @@ class RetrievalEvaluator:
             retrieval_time_ms=round(elapsed_time, 2),
         )
 
-    def evaluate_with_rag_engine(
-        self, query: EvaluationQuery, top_k: int = 3
-    ) -> EvaluationResult:
+    def evaluate_with_rag_engine(self, query: EvaluationQuery, top_k: int = 3) -> EvaluationResult:
         """使用完整 RAG pipeline 评估单条查询。
 
         调用 RagRetrievalEngine.retrieve()，利用所有已启用的增强模块
@@ -218,20 +190,18 @@ class RetrievalEvaluator:
         以便 ``evaluate_all`` 据此分别计算 top3 / top5 准确率。
         """
         if self.rag_engine is None:
-            raise RuntimeError(
-                "rag_engine not configured. Pass rag_engine to RetrievalEvaluator."
-            )
+            raise RuntimeError("rag_engine not configured. Pass rag_engine to RetrievalEvaluator.")
 
         retrieve_k = max(top_k, 5)
         start_time = time.time()
         try:
-            rag_result = self.rag_engine.retrieve(
-                query=query.query_text, n_results=retrieve_k
-            )
+            rag_result = self.rag_engine.retrieve(query=query.query_text, n_results=retrieve_k)
         except (OSError, RuntimeError, ValueError, KeyError) as e:
             logger.warning(
                 "RAG engine retrieval failed for query %s: %s",
-                query.query_id, e, exc_info=True,
+                query.query_id,
+                e,
+                exc_info=True,
             )
             rag_result = {"results": [], "enhancements": {}}
 
@@ -244,21 +214,13 @@ class RetrievalEvaluator:
                 retrieved_ids.append(doc_id)
 
         # 评估指标基于前 top_k 条，retrieved_doc_ids 保留 retrieve_k 条
-        precision = self.calculate_precision_at_k(
-            query.expected_doc_ids, retrieved_ids[:top_k], top_k
-        )
-        recall = self.calculate_recall_at_k(
-            query.expected_doc_ids, retrieved_ids[:top_k], top_k
-        )
+        precision = self.calculate_precision_at_k(query.expected_doc_ids, retrieved_ids[:top_k], top_k)
+        recall = self.calculate_recall_at_k(query.expected_doc_ids, retrieved_ids[:top_k], top_k)
         f1 = self.calculate_f1_score(precision, recall)
         mrr = self.calculate_mrr(query.expected_doc_ids, retrieved_ids)
-        ndcg = self.calculate_ndcg_at_k(
-            query.expected_doc_ids, retrieved_ids[:top_k], top_k
-        )
+        ndcg = self.calculate_ndcg_at_k(query.expected_doc_ids, retrieved_ids[:top_k], top_k)
 
-        hits = len(
-            [doc_id for doc_id in retrieved_ids[:top_k] if doc_id in query.expected_doc_ids]
-        )
+        hits = len([doc_id for doc_id in retrieved_ids[:top_k] if doc_id in query.expected_doc_ids])
 
         return EvaluationResult(
             query_id=query.query_id,
@@ -302,7 +264,9 @@ class RetrievalEvaluator:
             except (RuntimeError, OSError, ValueError) as e:
                 logger.warning(
                     "Evaluation failed for query %s: %s",
-                    query.query_id, e, exc_info=True,
+                    query.query_id,
+                    e,
+                    exc_info=True,
                 )
                 # 失败时生成零值结果，保持报告完整性
                 result = EvaluationResult(
@@ -321,17 +285,12 @@ class RetrievalEvaluator:
                 )
             results.append(result)
 
-        avg_precision = (
-            sum(r.precision for r in results) / len(results) if results else 0.0
-        )
+        avg_precision = sum(r.precision for r in results) / len(results) if results else 0.0
         avg_recall = sum(r.recall for r in results) / len(results) if results else 0.0
         avg_f1 = sum(r.f1_score for r in results) / len(results) if results else 0.0
         avg_mrr = sum(r.mrr for r in results) / len(results) if results else 0.0
         avg_ndcg = sum(r.ndcg for r in results) / len(results) if results else 0.0
-        avg_time = (
-            sum(r.retrieval_time_ms for r in results) / len(results)
-            if results else 0.0
-        )
+        avg_time = sum(r.retrieval_time_ms for r in results) / len(results) if results else 0.0
 
         # top-3 命中：基于前 top_k 条的命中数（hits 已基于 retrieved_doc_ids[:top_k] 计算）
         top3_correct = sum(1 for r in results if r.hits > 0)
@@ -340,12 +299,7 @@ class RetrievalEvaluator:
         # top-5 命中：独立计算，基于 retrieved_doc_ids[:5] 中是否命中 expected_doc_ids
         # 注意 retrieved_doc_ids 保留 max(top_k, 5) 条，足以支持 top-5 评估
         top5_correct = sum(
-            1
-            for r in results
-            if any(
-                doc_id in r.expected_doc_ids
-                for doc_id in r.retrieved_doc_ids[:5]
-            )
+            1 for r in results if any(doc_id in r.expected_doc_ids for doc_id in r.retrieved_doc_ids[:5])
         )
         top5_accuracy = top5_correct / len(results) if results else 0.0
 
@@ -363,9 +317,7 @@ class RetrievalEvaluator:
         for cat in category_perf:
             total = category_perf[cat]["total"]
             correct = category_perf[cat]["correct"]
-            category_perf[cat]["accuracy"] = (
-                round(correct / total, 4) if total > 0 else 0.0
-            )
+            category_perf[cat]["accuracy"] = round(correct / total, 4) if total > 0 else 0.0
 
         target_accuracy = 0.80
         performance_target_met = top3_accuracy >= target_accuracy
@@ -427,12 +379,8 @@ class RetrievalEvaluator:
             各配置下的评估结果列表
         """
         if self.rag_engine is None:
-            logger.warning(
-                "Ablation study requires rag_engine. Returning baseline only."
-            )
-            baseline_report = self.evaluate_all(
-                top_k=top_k, category=category, difficulty=difficulty
-            )
+            logger.warning("Ablation study requires rag_engine. Returning baseline only.")
+            baseline_report = self.evaluate_all(top_k=top_k, category=category, difficulty=difficulty)
             return [
                 AblationResult(
                     config_name="baseline",
@@ -451,60 +399,88 @@ class RetrievalEvaluator:
 
         # 定义各实验配置
         configs = [
-            ("baseline", "所有增强关闭", {
-                "ENABLE_RERANKER": "0",
-                "ENABLE_HYBRID_SEARCH": "0",
-                "ENABLE_QUERY_REWRITE": "0",
-                "ENABLE_HYDE": "0",
-                "ENABLE_PARALLEL_RETRIEVAL": "0",
-                "ENABLE_RESULT_CACHE": "0",
-            }),
-            ("reranker_only", "仅 Cross-Encoder 重排序", {
-                "ENABLE_RERANKER": "1",
-                "ENABLE_HYBRID_SEARCH": "0",
-                "ENABLE_QUERY_REWRITE": "0",
-                "ENABLE_HYDE": "0",
-                "ENABLE_PARALLEL_RETRIEVAL": "0",
-                "ENABLE_RESULT_CACHE": "0",
-            }),
-            ("hybrid_only", "仅混合检索（BM25+Vector RRF）", {
-                "ENABLE_RERANKER": "0",
-                "ENABLE_HYBRID_SEARCH": "1",
-                "ENABLE_QUERY_REWRITE": "0",
-                "ENABLE_HYDE": "0",
-                "ENABLE_PARALLEL_RETRIEVAL": "0",
-                "ENABLE_RESULT_CACHE": "0",
-            }),
-            ("rewrite_only", "仅查询改写", {
-                "ENABLE_RERANKER": "0",
-                "ENABLE_HYBRID_SEARCH": "0",
-                "ENABLE_QUERY_REWRITE": "1",
-                "ENABLE_HYDE": "0",
-                "ENABLE_PARALLEL_RETRIEVAL": "0",
-                "ENABLE_RESULT_CACHE": "0",
-            }),
-            ("parallel_cache_only", "仅并行检索+缓存（性能优化）", {
-                "ENABLE_RERANKER": "0",
-                "ENABLE_HYBRID_SEARCH": "0",
-                "ENABLE_QUERY_REWRITE": "0",
-                "ENABLE_HYDE": "0",
-                "ENABLE_PARALLEL_RETRIEVAL": "1",
-                "ENABLE_RESULT_CACHE": "1",
-            }),
-            ("full_pipeline", "全部增强开启", {
-                "ENABLE_RERANKER": "1",
-                "ENABLE_HYBRID_SEARCH": "1",
-                "ENABLE_QUERY_REWRITE": "1",
-                "ENABLE_HYDE": "0",
-                "ENABLE_PARALLEL_RETRIEVAL": "1",
-                "ENABLE_RESULT_CACHE": "1",
-            }),
+            (
+                "baseline",
+                "所有增强关闭",
+                {
+                    "ENABLE_RERANKER": "0",
+                    "ENABLE_HYBRID_SEARCH": "0",
+                    "ENABLE_QUERY_REWRITE": "0",
+                    "ENABLE_HYDE": "0",
+                    "ENABLE_PARALLEL_RETRIEVAL": "0",
+                    "ENABLE_RESULT_CACHE": "0",
+                },
+            ),
+            (
+                "reranker_only",
+                "仅 Cross-Encoder 重排序",
+                {
+                    "ENABLE_RERANKER": "1",
+                    "ENABLE_HYBRID_SEARCH": "0",
+                    "ENABLE_QUERY_REWRITE": "0",
+                    "ENABLE_HYDE": "0",
+                    "ENABLE_PARALLEL_RETRIEVAL": "0",
+                    "ENABLE_RESULT_CACHE": "0",
+                },
+            ),
+            (
+                "hybrid_only",
+                "仅混合检索（BM25+Vector RRF）",
+                {
+                    "ENABLE_RERANKER": "0",
+                    "ENABLE_HYBRID_SEARCH": "1",
+                    "ENABLE_QUERY_REWRITE": "0",
+                    "ENABLE_HYDE": "0",
+                    "ENABLE_PARALLEL_RETRIEVAL": "0",
+                    "ENABLE_RESULT_CACHE": "0",
+                },
+            ),
+            (
+                "rewrite_only",
+                "仅查询改写",
+                {
+                    "ENABLE_RERANKER": "0",
+                    "ENABLE_HYBRID_SEARCH": "0",
+                    "ENABLE_QUERY_REWRITE": "1",
+                    "ENABLE_HYDE": "0",
+                    "ENABLE_PARALLEL_RETRIEVAL": "0",
+                    "ENABLE_RESULT_CACHE": "0",
+                },
+            ),
+            (
+                "parallel_cache_only",
+                "仅并行检索+缓存（性能优化）",
+                {
+                    "ENABLE_RERANKER": "0",
+                    "ENABLE_HYBRID_SEARCH": "0",
+                    "ENABLE_QUERY_REWRITE": "0",
+                    "ENABLE_HYDE": "0",
+                    "ENABLE_PARALLEL_RETRIEVAL": "1",
+                    "ENABLE_RESULT_CACHE": "1",
+                },
+            ),
+            (
+                "full_pipeline",
+                "全部增强开启",
+                {
+                    "ENABLE_RERANKER": "1",
+                    "ENABLE_HYBRID_SEARCH": "1",
+                    "ENABLE_QUERY_REWRITE": "1",
+                    "ENABLE_HYDE": "0",
+                    "ENABLE_PARALLEL_RETRIEVAL": "1",
+                    "ENABLE_RESULT_CACHE": "1",
+                },
+            ),
         ]
 
         # 保存原始环境变量
         env_keys = [
-            "ENABLE_RERANKER", "ENABLE_HYBRID_SEARCH", "ENABLE_QUERY_REWRITE",
-            "ENABLE_HYDE", "ENABLE_PARALLEL_RETRIEVAL", "ENABLE_RESULT_CACHE",
+            "ENABLE_RERANKER",
+            "ENABLE_HYBRID_SEARCH",
+            "ENABLE_QUERY_REWRITE",
+            "ENABLE_HYDE",
+            "ENABLE_PARALLEL_RETRIEVAL",
+            "ENABLE_RESULT_CACHE",
         ]
         original_env = {k: os.environ.get(k) for k in env_keys}
 
@@ -528,35 +504,42 @@ class RetrievalEvaluator:
                     except (RuntimeError, OSError) as cache_err:
                         # clear_cache 失败不阻塞评估（可能产生少量过期命中），
                         # 记录便于排查：评估结果可能存在轻微污染
-                        logger.debug("clear_cache failed during ablation: %s",
-                                     cache_err, exc_info=True)
+                        logger.debug("clear_cache failed during ablation: %s", cache_err, exc_info=True)
 
                 # 运行评估
                 report = self.evaluate_all(
-                    top_k=top_k, category=category, difficulty=difficulty,
+                    top_k=top_k,
+                    category=category,
+                    difficulty=difficulty,
                     use_rag_engine=True,
                 )
 
                 enhancements_enabled = {
                     k: (env_overrides.get(k, "0") == "1")
-                    for k in ["ENABLE_RERANKER", "ENABLE_HYBRID_SEARCH",
-                              "ENABLE_QUERY_REWRITE", "ENABLE_PARALLEL_RETRIEVAL",
-                              "ENABLE_RESULT_CACHE"]
+                    for k in [
+                        "ENABLE_RERANKER",
+                        "ENABLE_HYBRID_SEARCH",
+                        "ENABLE_QUERY_REWRITE",
+                        "ENABLE_PARALLEL_RETRIEVAL",
+                        "ENABLE_RESULT_CACHE",
+                    ]
                 }
 
-                ablation_results.append(AblationResult(
-                    config_name=config_name,
-                    config_description=description,
-                    enhancements_enabled=enhancements_enabled,
-                    avg_precision=report.avg_precision,
-                    avg_recall=report.avg_recall,
-                    avg_f1_score=report.avg_f1_score,
-                    avg_mrr=report.avg_mrr,
-                    avg_ndcg=report.avg_ndcg,
-                    top3_accuracy=report.top3_accuracy,
-                    avg_retrieval_time_ms=report.avg_retrieval_time_ms,
-                    total_queries=report.total_queries,
-                ))
+                ablation_results.append(
+                    AblationResult(
+                        config_name=config_name,
+                        config_description=description,
+                        enhancements_enabled=enhancements_enabled,
+                        avg_precision=report.avg_precision,
+                        avg_recall=report.avg_recall,
+                        avg_f1_score=report.avg_f1_score,
+                        avg_mrr=report.avg_mrr,
+                        avg_ndcg=report.avg_ndcg,
+                        top3_accuracy=report.top3_accuracy,
+                        avg_retrieval_time_ms=report.avg_retrieval_time_ms,
+                        total_queries=report.total_queries,
+                    )
+                )
         finally:
             # 恢复原始环境变量
             for key, value in original_env.items():
@@ -578,6 +561,7 @@ class RetrievalEvaluator:
             # 重新导入配置常量
             import importlib
             import app.rag.rag_retrieval as rr_module
+
             importlib.reload(rr_module)
             # 重置 engine 的懒加载标志和模块引用
             self.rag_engine._enhancement_loaded = False
@@ -608,42 +592,24 @@ class RetrievalEvaluator:
             ComparisonReport 对比报告
         """
         logger.info("Starting baseline evaluation...")
-        baseline_report = self.evaluate_all(
-            top_k=top_k, category=category, difficulty=difficulty, use_rag_engine=False
-        )
+        baseline_report = self.evaluate_all(top_k=top_k, category=category, difficulty=difficulty, use_rag_engine=False)
 
         logger.info("Starting enhanced (RAG pipeline) evaluation...")
-        enhanced_report = self.evaluate_all(
-            top_k=top_k, category=category, difficulty=difficulty, use_rag_engine=True
-        )
+        enhanced_report = self.evaluate_all(top_k=top_k, category=category, difficulty=difficulty, use_rag_engine=True)
 
         # 计算提升幅度
         def _improvement(baseline_val: float, enhanced_val: float) -> float:
             if baseline_val == 0:
                 return 0.0 if enhanced_val == 0 else 100.0
-            return round(
-                ((enhanced_val - baseline_val) / baseline_val) * 100, 2
-            )
+            return round(((enhanced_val - baseline_val) / baseline_val) * 100, 2)
 
         improvement = {
-            "precision_pct": _improvement(
-                baseline_report.avg_precision, enhanced_report.avg_precision
-            ),
-            "recall_pct": _improvement(
-                baseline_report.avg_recall, enhanced_report.avg_recall
-            ),
-            "f1_score_pct": _improvement(
-                baseline_report.avg_f1_score, enhanced_report.avg_f1_score
-            ),
-            "mrr_pct": _improvement(
-                baseline_report.avg_mrr, enhanced_report.avg_mrr
-            ),
-            "ndcg_pct": _improvement(
-                baseline_report.avg_ndcg, enhanced_report.avg_ndcg
-            ),
-            "top3_accuracy_pct": _improvement(
-                baseline_report.top3_accuracy, enhanced_report.top3_accuracy
-            ),
+            "precision_pct": _improvement(baseline_report.avg_precision, enhanced_report.avg_precision),
+            "recall_pct": _improvement(baseline_report.avg_recall, enhanced_report.avg_recall),
+            "f1_score_pct": _improvement(baseline_report.avg_f1_score, enhanced_report.avg_f1_score),
+            "mrr_pct": _improvement(baseline_report.avg_mrr, enhanced_report.avg_mrr),
+            "ndcg_pct": _improvement(baseline_report.avg_ndcg, enhanced_report.avg_ndcg),
+            "top3_accuracy_pct": _improvement(baseline_report.top3_accuracy, enhanced_report.top3_accuracy),
             "retrieval_time_pct": _improvement(
                 baseline_report.avg_retrieval_time_ms,
                 enhanced_report.avg_retrieval_time_ms,
@@ -655,29 +621,21 @@ class RetrievalEvaluator:
         if run_ablation:
             logger.info("Running ablation study...")
             try:
-                ablation_results = self.run_ablation_study(
-                    top_k=top_k, category=category, difficulty=difficulty
-                )
+                ablation_results = self.run_ablation_study(top_k=top_k, category=category, difficulty=difficulty)
                 ablation_data = [r.to_dict() for r in ablation_results]
             except (RuntimeError, OSError, ValueError) as e:
                 logger.warning("Ablation study failed: %s", e, exc_info=True)
 
         # 生成结论
         if improvement["f1_score_pct"] > 5:
-            conclusion = (
-                f"RAG pipeline 显著提升检索质量（F1 +{improvement['f1_score_pct']}%），"
-                f"建议全面启用。"
-            )
+            conclusion = f"RAG pipeline 显著提升检索质量（F1 +{improvement['f1_score_pct']}%），建议全面启用。"
         elif improvement["f1_score_pct"] > 0:
             conclusion = (
                 f"RAG pipeline 有正向提升（F1 +{improvement['f1_score_pct']}%），"
                 f"可根据 ablation 结果选择性启用增强模块。"
             )
         else:
-            conclusion = (
-                "RAG pipeline 未带来明显质量提升，建议检查 "
-                "enhancement 配置或评估数据集。"
-            )
+            conclusion = "RAG pipeline 未带来明显质量提升，建议检查 enhancement 配置或评估数据集。"
 
         return ComparisonReport(
             report_id=f"CR_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -689,9 +647,7 @@ class RetrievalEvaluator:
             conclusion=conclusion,
         )
 
-    def generate_report(
-        self, report: EvaluationReport, output_path: str | None = None
-    ) -> str:
+    def generate_report(self, report: EvaluationReport, output_path: str | None = None) -> str:
         report_content = {
             "report_id": report.report_id,
             "evaluation_time": report.evaluation_time,
@@ -725,9 +681,7 @@ class RetrievalEvaluator:
 
         return json.dumps(report_content, ensure_ascii=False, indent=2)
 
-    def generate_comparison_report_output(
-        self, comparison: ComparisonReport, output_path: str | None = None
-    ) -> str:
+    def generate_comparison_report_output(self, comparison: ComparisonReport, output_path: str | None = None) -> str:
         """生成对比报告并保存到文件。"""
         report_content = {
             "report_id": comparison.report_id,
@@ -742,9 +696,7 @@ class RetrievalEvaluator:
                 "avg_mrr": comparison.baseline.get("avg_mrr", 0.0),
                 "avg_ndcg": comparison.baseline.get("avg_ndcg", 0.0),
                 "top3_accuracy": comparison.baseline.get("top3_accuracy", 0.0),
-                "avg_retrieval_time_ms": comparison.baseline.get(
-                    "avg_retrieval_time_ms", 0.0
-                ),
+                "avg_retrieval_time_ms": comparison.baseline.get("avg_retrieval_time_ms", 0.0),
             },
             "enhanced_summary": {
                 "total_queries": comparison.enhanced.get("total_queries", 0),
@@ -754,9 +706,7 @@ class RetrievalEvaluator:
                 "avg_mrr": comparison.enhanced.get("avg_mrr", 0.0),
                 "avg_ndcg": comparison.enhanced.get("avg_ndcg", 0.0),
                 "top3_accuracy": comparison.enhanced.get("top3_accuracy", 0.0),
-                "avg_retrieval_time_ms": comparison.enhanced.get(
-                    "avg_retrieval_time_ms", 0.0
-                ),
+                "avg_retrieval_time_ms": comparison.enhanced.get("avg_retrieval_time_ms", 0.0),
             },
             "ablation_results": comparison.ablation_results,
         }

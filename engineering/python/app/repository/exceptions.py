@@ -43,9 +43,7 @@ class StorageError(RepositoryError):
 class ValidationError(RepositoryError):
     """数据校验失败（400）。"""
 
-    def __init__(
-        self, message: str = "数据校验失败", repository_type: str = "generic"
-    ):
+    def __init__(self, message: str = "数据校验失败", repository_type: str = "generic"):
         super().__init__(
             code=3003,
             message=message,

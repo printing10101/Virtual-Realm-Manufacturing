@@ -52,8 +52,7 @@ class _NxOpenBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                "NX Open 可执行脚本未配置（LNN_CAM_NX_OPEN_EXECUTABLE 为空），"
-                "自动降级到 manual 后端。",
+                "NX Open 可执行脚本未配置（LNN_CAM_NX_OPEN_EXECUTABLE 为空），自动降级到 manual 后端。",
             )
 
         # 2. 检查脚本文件是否存在
@@ -62,8 +61,7 @@ class _NxOpenBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                f"NX Open 脚本文件不存在：{self._nx_open_executable}。"
-                "自动降级到 manual 后端。",
+                f"NX Open 脚本文件不存在：{self._nx_open_executable}。自动降级到 manual 后端。",
             )
 
         # 3. subprocess 调用 NX Open
@@ -71,8 +69,7 @@ class _NxOpenBackend(_BaseBackend):
         # 期望 stdout 输出 JSON：{"status": "pass"/"fail", "collisions": [...], "messages": [...]}
         try:
             result = subprocess.run(
-                [sys.executable, str(script_path),
-                 gcode_file_path, controller_type],
+                [sys.executable, str(script_path), gcode_file_path, controller_type],
                 capture_output=True,
                 text=True,
                 timeout=600,  # NX Open 仿真耗时较长，留 10 分钟
@@ -88,8 +85,7 @@ class _NxOpenBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                f"Python 解释器或 NX Open 脚本未找到：{e}。"
-                "自动降级到 manual 后端。",
+                f"Python 解释器或 NX Open 脚本未找到：{e}。自动降级到 manual 后端。",
             )
         except subprocess.SubprocessError as e:
             return self._degrade_to_manual(
@@ -115,8 +111,7 @@ class _NxOpenBackend(_BaseBackend):
             return self._degrade_to_manual(
                 gcode_file_path,
                 controller_type,
-                f"NX Open 输出 JSON 解析失败：{e}。"
-                f"stdout 预览：{stdout_preview}。自动降级到 manual 后端。",
+                f"NX Open 输出 JSON 解析失败：{e}。stdout 预览：{stdout_preview}。自动降级到 manual 后端。",
             )
 
         # 5. 归一化字段
@@ -124,12 +119,8 @@ class _NxOpenBackend(_BaseBackend):
         if status not in {"pass", "fail"}:
             status = "error"
 
-        collisions = self._normalize_collisions(
-            payload.get(_JSON_COLLISIONS_FIELD)
-        )
-        messages = self._normalize_messages(
-            payload.get(_JSON_MESSAGES_FIELD)
-        )
+        collisions = self._normalize_collisions(payload.get(_JSON_COLLISIONS_FIELD))
+        messages = self._normalize_messages(payload.get(_JSON_MESSAGES_FIELD))
 
         if status == "error":
             return self._degrade_to_manual(
@@ -165,9 +156,7 @@ class _NxOpenBackend(_BaseBackend):
         reason: str,
     ) -> CamSoftwareReport:
         """降级到 manual 后端（不抛错）。"""
-        logger.warning(
-            "CamAdapter(nx_open): 降级到 manual。原因：%s", reason
-        )
+        logger.warning("CamAdapter(nx_open): 降级到 manual。原因：%s", reason)
         manual = _ManualBackend()
         report = manual.validate(gcode_file_path, controller_type)
         report.degraded = True

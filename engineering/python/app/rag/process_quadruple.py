@@ -50,6 +50,7 @@ class ProcessQuadruple:
         chunk_ids: 关联 RAG chunk（用于溯源到原始文档）
         tags: 自定义标签
     """
+
     feature: str
     process: str
     tool: str
@@ -218,13 +219,19 @@ class ProcessQuadrupleIndex:
                 except (RuntimeError, OSError, ValueError, TypeError) as e:
                     logger.warning(
                         "EntityIndex.add 失败 (chunk_id=%s, entities=%s): %s",
-                        chunk_id, entities, e, exc_info=True,
+                        chunk_id,
+                        entities,
+                        e,
+                        exc_info=True,
                     )
         except (RuntimeError, OSError, ValueError, TypeError) as e:
             # 兜底保护：任何意外异常都不应阻断 add 主链路
             logger.warning(
                 "_sync_to_entity_index 整体失败 (quad=%s/%s): %s",
-                quad.feature, quad.process, e, exc_info=True,
+                quad.feature,
+                quad.process,
+                e,
+                exc_info=True,
             )
 
     def add(self, quad: ProcessQuadruple) -> None:
@@ -275,7 +282,9 @@ class ProcessQuadrupleIndex:
                 except (RuntimeError, OSError, ValueError, TypeError) as e:
                     logger.warning(
                         "EntityIndex.add_batch 失败 (%d items): %s",
-                        len(items), e, exc_info=True,
+                        len(items),
+                        e,
+                        exc_info=True,
                     )
 
         # 批量写入是低频高价值操作（如 seed_default_quadruples、知识库重建），
@@ -318,7 +327,9 @@ class ProcessQuadrupleIndex:
         except (RuntimeError, OSError, ValueError, TypeError) as e:
             logger.warning(
                 "rebuild_entity_index_links 失败 (%d items): %s",
-                len(items), e, exc_info=True,
+                len(items),
+                e,
+                exc_info=True,
             )
             return 0
 
@@ -374,10 +385,12 @@ class ProcessQuadrupleIndex:
     ) -> list[ProcessQuadruple]:
         """按 (feature, process) 精确查找。"""
         with self._lock:
-            return list(self._by_feature_process.get(
-                (feature.strip().lower(), process.strip().lower()),
-                [],
-            ))
+            return list(
+                self._by_feature_process.get(
+                    (feature.strip().lower(), process.strip().lower()),
+                    [],
+                )
+            )
 
     def find_similar(
         self,
@@ -397,20 +410,11 @@ class ProcessQuadrupleIndex:
 
         with self._lock:
             # 层级 1：精确匹配
-            exact = [
-                q for q in self._by_feature.get(feature, [])
-                if q.material == material
-            ]
+            exact = [q for q in self._by_feature.get(feature, []) if q.material == material]
             # 层级 2：同特征不同材料
-            same_feature = [
-                q for q in self._by_feature.get(feature, [])
-                if q.material != material
-            ]
+            same_feature = [q for q in self._by_feature.get(feature, []) if q.material != material]
             # 层级 3：同材料不同特征（材料迁移参考）
-            same_material = [
-                q for q in self._by_material.get(material, [])
-                if q.feature != feature
-            ]
+            same_material = [q for q in self._by_material.get(material, []) if q.feature != feature]
 
         results = []
         for q in exact:
@@ -495,7 +499,8 @@ class ProcessQuadrupleIndex:
                 except (KeyError, ValueError) as e:
                     logger.warning("跳过无效四元组: %s", e)
             logger.info(
-                "已加载 %d 条工艺四元组", len(self._all),
+                "已加载 %d 条工艺四元组",
+                len(self._all),
             )
         except (OSError, json.JSONDecodeError) as e:
             logger.warning("加载工艺四元组索引失败: %s", e)
@@ -513,7 +518,9 @@ class ProcessQuadrupleIndex:
                     )
             except (RuntimeError, OSError, ValueError, TypeError) as e:
                 logger.warning(
-                    "磁盘加载后回填 EntityIndex 失败: %s", e, exc_info=True,
+                    "磁盘加载后回填 EntityIndex 失败: %s",
+                    e,
+                    exc_info=True,
                 )
 
     # ------------------------------------------------------------------
@@ -585,27 +592,31 @@ class ProcessQuadrupleIndex:
                 query_entities.append(material_norm)
             try:
                 extended_chunk_ids = self._entity_index.get_chunks(
-                    query_entities, mode="intersection",
+                    query_entities,
+                    mode="intersection",
                 )
                 extended_mode_used = "intersection"
 
                 # intersection 无结果且实体数 > 1：降级到 union
                 if not extended_chunk_ids and len(query_entities) > 1:
                     union_ids = self._entity_index.get_chunks(
-                        query_entities, mode="union",
+                        query_entities,
+                        mode="union",
                     )
                     if union_ids:
                         logger.debug(
-                            "intersection 模式无结果 (entities=%s)，"
-                            "降级到 union 模式（命中 %d 条）",
-                            query_entities, len(union_ids),
+                            "intersection 模式无结果 (entities=%s)，降级到 union 模式（命中 %d 条）",
+                            query_entities,
+                            len(union_ids),
                         )
                         extended_chunk_ids = union_ids
                         extended_mode_used = "union_fallback"
             except (RuntimeError, OSError, ValueError, TypeError) as e:
                 logger.warning(
                     "EntityIndex.get_chunks 失败 (entities=%s): %s",
-                    query_entities, e, exc_info=True,
+                    query_entities,
+                    e,
+                    exc_info=True,
                 )
 
         # 合并 direct + extended，去重
@@ -635,16 +646,15 @@ class ProcessQuadrupleIndex:
                 except (RuntimeError, OSError, ValueError, TypeError) as e:
                     logger.debug(
                         "knowledge_base.get_by_id 失败 (chunk_id=%s): %s",
-                        cid, e,
+                        cid,
+                        e,
                     )
 
         return {
             "feature": feature,
             "material": material_norm,
             "chunk_ids_direct": direct_unique,
-            "chunk_ids_extended": [
-                cid for cid in all_chunk_ids if cid not in direct_unique
-            ],
+            "chunk_ids_extended": [cid for cid in all_chunk_ids if cid not in direct_unique],
             "chunk_ids_all": all_chunk_ids,
             "documents": documents,
             "total_found": len(all_chunk_ids),
@@ -689,11 +699,13 @@ def get_process_quadruple_index(
                 if entity_index is None:
                     try:
                         from app.rag.entity_index import get_entity_index
+
                         entity_index = get_entity_index()
                     except (ImportError, RuntimeError) as e:
                         logger.warning(
                             "无法注入 EntityIndex 单例（集成点 4 降级）: %s",
-                            e, exc_info=True,
+                            e,
+                            exc_info=True,
                         )
                         entity_index = None
 
@@ -703,8 +715,7 @@ def get_process_quadruple_index(
                     knowledge_base=knowledge_base,
                 )
                 logger.info(
-                    "ProcessQuadrupleIndex singleton initialized "
-                    "(entity_index=%s, knowledge_base=%s)",
+                    "ProcessQuadrupleIndex singleton initialized (entity_index=%s, knowledge_base=%s)",
                     "injected" if entity_index is not None else "none",
                     "injected" if knowledge_base is not None else "none",
                 )
@@ -722,8 +733,10 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "rough_mill",
         "tool": "endmill_d10",
         "parameters": {
-            "spindle_rpm": 6000, "feed_rate_mm_per_min": 800,
-            "depth_of_cut_mm": 2.0, "width_of_cut_mm": 5.0,
+            "spindle_rpm": 6000,
+            "feed_rate_mm_per_min": 800,
+            "depth_of_cut_mm": 2.0,
+            "width_of_cut_mm": 5.0,
             "stepover_pct": 50,
         },
         "material": "aluminum",
@@ -736,8 +749,10 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "finish_mill",
         "tool": "endmill_d10",
         "parameters": {
-            "spindle_rpm": 8000, "feed_rate_mm_per_min": 600,
-            "depth_of_cut_mm": 0.5, "width_of_cut_mm": 0.5,
+            "spindle_rpm": 8000,
+            "feed_rate_mm_per_min": 600,
+            "depth_of_cut_mm": 0.5,
+            "width_of_cut_mm": 0.5,
             "stepover_pct": 5,
         },
         "material": "aluminum",
@@ -751,8 +766,10 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "rough_mill",
         "tool": "endmill_d8",
         "parameters": {
-            "spindle_rpm": 7000, "feed_rate_mm_per_min": 600,
-            "depth_of_cut_mm": 1.5, "width_of_cut_mm": 4.0,
+            "spindle_rpm": 7000,
+            "feed_rate_mm_per_min": 600,
+            "depth_of_cut_mm": 1.5,
+            "width_of_cut_mm": 4.0,
         },
         "material": "aluminum",
         "confidence": 0.85,
@@ -764,8 +781,10 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "drill",
         "tool": "drill_d8",
         "parameters": {
-            "spindle_rpm": 3000, "feed_rate_mm_per_min": 150,
-            "depth_of_cut_mm": 25.0, "peck_enable": True,
+            "spindle_rpm": 3000,
+            "feed_rate_mm_per_min": 150,
+            "depth_of_cut_mm": 25.0,
+            "peck_enable": True,
         },
         "material": "aluminum",
         "confidence": 0.95,
@@ -776,7 +795,8 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "ream",
         "tool": "reamer_d8",
         "parameters": {
-            "spindle_rpm": 1500, "feed_rate_mm_per_min": 100,
+            "spindle_rpm": 1500,
+            "feed_rate_mm_per_min": 100,
             "depth_of_cut_mm": 0.2,
         },
         "material": "aluminum",
@@ -789,7 +809,8 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "tap",
         "tool": "tap_m8",
         "parameters": {
-            "spindle_rpm": 400, "feed_rate_mm_per_min": 0,
+            "spindle_rpm": 400,
+            "feed_rate_mm_per_min": 0,
             "rigid_tapping": True,
         },
         "material": "aluminum",
@@ -802,8 +823,10 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "contour",
         "tool": "endmill_d10",
         "parameters": {
-            "spindle_rpm": 7000, "feed_rate_mm_per_min": 700,
-            "depth_of_cut_mm": 1.0, "width_of_cut_mm": 1.0,
+            "spindle_rpm": 7000,
+            "feed_rate_mm_per_min": 700,
+            "depth_of_cut_mm": 1.0,
+            "width_of_cut_mm": 1.0,
         },
         "material": "aluminum",
         "confidence": 0.85,
@@ -815,8 +838,10 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "face_mill",
         "tool": "facemill_d50",
         "parameters": {
-            "spindle_rpm": 4000, "feed_rate_mm_per_min": 1000,
-            "depth_of_cut_mm": 1.0, "width_of_cut_mm": 40.0,
+            "spindle_rpm": 4000,
+            "feed_rate_mm_per_min": 1000,
+            "depth_of_cut_mm": 1.0,
+            "width_of_cut_mm": 40.0,
         },
         "material": "aluminum",
         "confidence": 0.95,
@@ -828,7 +853,8 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "chamfer_mill",
         "tool": "chamfer_d10",
         "parameters": {
-            "spindle_rpm": 8000, "feed_rate_mm_per_min": 500,
+            "spindle_rpm": 8000,
+            "feed_rate_mm_per_min": 500,
             "depth_of_cut_mm": 1.0,
         },
         "material": "aluminum",
@@ -841,8 +867,10 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "rough_mill",
         "tool": "endmill_d10",
         "parameters": {
-            "spindle_rpm": 2500, "feed_rate_mm_per_min": 400,
-            "depth_of_cut_mm": 1.5, "width_of_cut_mm": 4.0,
+            "spindle_rpm": 2500,
+            "feed_rate_mm_per_min": 400,
+            "depth_of_cut_mm": 1.5,
+            "width_of_cut_mm": 4.0,
         },
         "material": "steel",
         "confidence": 0.85,
@@ -853,8 +881,10 @@ DEFAULT_QUADRUPLES: list[dict] = [
         "process": "rough_mill",
         "tool": "endmill_d10",
         "parameters": {
-            "spindle_rpm": 1500, "feed_rate_mm_per_min": 200,
-            "depth_of_cut_mm": 1.0, "width_of_cut_mm": 3.0,
+            "spindle_rpm": 1500,
+            "feed_rate_mm_per_min": 200,
+            "depth_of_cut_mm": 1.0,
+            "width_of_cut_mm": 3.0,
         },
         "material": "titanium",
         "confidence": 0.8,

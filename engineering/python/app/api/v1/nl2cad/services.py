@@ -67,9 +67,7 @@ class NL2CADService:
         except Exception as e:
             # 软依赖降级：LLM 不可用时，使用基于规则的参数提取，避免整个 NL2CAD 功能崩溃。
             # 与 app/rag/query_rewriter.py 的 _rule_based_rewrite 降级模式一致。
-            logger.warning(
-                "LLM 不可用，NL2CAD 降级到规则参数提取。原因: %s", e, exc_info=True
-            )
+            logger.warning("LLM 不可用，NL2CAD 降级到规则参数提取。原因: %s", e, exc_info=True)
             params = self._rule_based_extract_params(description)
             params["confidence"] = 0.3  # 降级标志：低置信度
             params["_fallback"] = "rule_based"
@@ -117,9 +115,7 @@ class NL2CADService:
 
         except Exception as e:
             # 软依赖降级：LLM 不可用时，保持原参数不变，避免整个精炼流程崩溃。
-            logger.warning(
-                "LLM 不可用，NL2CAD 精炼降级为返回原参数。原因: %s", e, exc_info=True
-            )
+            logger.warning("LLM 不可用，NL2CAD 精炼降级为返回原参数。原因: %s", e, exc_info=True)
             fallback_params = dict(current_params)
             fallback_params["confidence"] = 0.3  # 降级标志：低置信度
             fallback_params["_fallback"] = "rule_based"
@@ -164,21 +160,27 @@ class NL2CADService:
         dimensions: dict[str, float] = {}
 
         if shape_type == "box":
-            length = _extract_dim([
-                r"长度\s*[:：]?\s*(\d+(?:\.\d+)?)",
-                r"length\s*[:：=]?\s*(\d+(?:\.\d+)?)",
-                r"长\s*(\d+(?:\.\d+)?)",
-            ])
-            width = _extract_dim([
-                r"宽度\s*[:：]?\s*(\d+(?:\.\d+)?)",
-                r"width\s*[:：=]?\s*(\d+(?:\.\d+)?)",
-                r"宽\s*(\d+(?:\.\d+)?)",
-            ])
-            height = _extract_dim([
-                r"高度\s*[:：]?\s*(\d+(?:\.\d+)?)",
-                r"height\s*[:：=]?\s*(\d+(?:\.\d+)?)",
-                r"高\s*(\d+(?:\.\d+)?)",
-            ])
+            length = _extract_dim(
+                [
+                    r"长度\s*[:：]?\s*(\d+(?:\.\d+)?)",
+                    r"length\s*[:：=]?\s*(\d+(?:\.\d+)?)",
+                    r"长\s*(\d+(?:\.\d+)?)",
+                ]
+            )
+            width = _extract_dim(
+                [
+                    r"宽度\s*[:：]?\s*(\d+(?:\.\d+)?)",
+                    r"width\s*[:：=]?\s*(\d+(?:\.\d+)?)",
+                    r"宽\s*(\d+(?:\.\d+)?)",
+                ]
+            )
+            height = _extract_dim(
+                [
+                    r"高度\s*[:：]?\s*(\d+(?:\.\d+)?)",
+                    r"height\s*[:：=]?\s*(\d+(?:\.\d+)?)",
+                    r"高\s*(\d+(?:\.\d+)?)",
+                ]
+            )
             if length is not None:
                 dimensions["length"] = length
             if width is not None:
@@ -186,17 +188,21 @@ class NL2CADService:
             if height is not None:
                 dimensions["height"] = height
         elif shape_type in ("cylinder", "cone"):
-            radius = _extract_dim([
-                r"半径\s*[:：]?\s*(\d+(?:\.\d+)?)",
-                r"radius\s*[:：=]?\s*(\d+(?:\.\d+)?)",
-                r"直径\s*[:：]?\s*(\d+(?:\.\d+)?)",
-                r"diameter\s*[:：=]?\s*(\d+(?:\.\d+)?)",
-            ])
-            height = _extract_dim([
-                r"高度\s*[:：]?\s*(\d+(?:\.\d+)?)",
-                r"height\s*[:：=]?\s*(\d+(?:\.\d+)?)",
-                r"高\s*(\d+(?:\.\d+)?)",
-            ])
+            radius = _extract_dim(
+                [
+                    r"半径\s*[:：]?\s*(\d+(?:\.\d+)?)",
+                    r"radius\s*[:：=]?\s*(\d+(?:\.\d+)?)",
+                    r"直径\s*[:：]?\s*(\d+(?:\.\d+)?)",
+                    r"diameter\s*[:：=]?\s*(\d+(?:\.\d+)?)",
+                ]
+            )
+            height = _extract_dim(
+                [
+                    r"高度\s*[:：]?\s*(\d+(?:\.\d+)?)",
+                    r"height\s*[:：=]?\s*(\d+(?:\.\d+)?)",
+                    r"高\s*(\d+(?:\.\d+)?)",
+                ]
+            )
             if radius is not None:
                 # 若匹配到"直径"，需转换为半径
                 if re.search(r"直径|diameter", text):
@@ -205,12 +211,14 @@ class NL2CADService:
             if height is not None:
                 dimensions["height"] = height
         elif shape_type == "sphere":
-            radius = _extract_dim([
-                r"半径\s*[:：]?\s*(\d+(?:\.\d+)?)",
-                r"radius\s*[:：=]?\s*(\d+(?:\.\d+)?)",
-                r"直径\s*[:：]?\s*(\d+(?:\.\d+)?)",
-                r"diameter\s*[:：=]?\s*(\d+(?:\.\d+)?)",
-            ])
+            radius = _extract_dim(
+                [
+                    r"半径\s*[:：]?\s*(\d+(?:\.\d+)?)",
+                    r"radius\s*[:：=]?\s*(\d+(?:\.\d+)?)",
+                    r"直径\s*[:：]?\s*(\d+(?:\.\d+)?)",
+                    r"diameter\s*[:：=]?\s*(\d+(?:\.\d+)?)",
+                ]
+            )
             if radius is not None:
                 if re.search(r"直径|diameter", text):
                     radius = radius / 2

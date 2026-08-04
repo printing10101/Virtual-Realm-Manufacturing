@@ -26,6 +26,14 @@ from app.contracts.project_package import (
 from app.utils.time import utcnow_filename_suffix
 
 
+class PackageFormatError(ValueError):
+    """包格式不合法（manifest 解析失败 / 版本不兼容）。
+
+    F821 修复：D5 拆分时异常类滞留在 project_package_service，本模块
+    引用却从未导入；现定义于此，project_package_service 处改为 re-export。
+    """
+
+
 def _resolve_output_path(output_dir: str, options: ExportOptions) -> str:
     """解析导出包输出路径.
 
@@ -43,10 +51,9 @@ def _resolve_output_path(output_dir: str, options: ExportOptions) -> str:
             filename += PACKAGE_FILE_EXTENSION
     else:
         timestamp = utcnow_filename_suffix()
-        filename = PACKAGE_FILENAME_TEMPLATE.format(
-            name="project", timestamp=timestamp
-        )
+        filename = PACKAGE_FILENAME_TEMPLATE.format(name="project", timestamp=timestamp)
     return os.path.abspath(os.path.join(output_dir, filename))
+
 
 def _resolve_resource_path(ref: dict[str, Any]) -> Optional[str]:
     """从资源引用 metadata 解析实际文件路径.
@@ -64,13 +71,12 @@ def _resolve_resource_path(ref: dict[str, Any]) -> Optional[str]:
         return None
     # 处理 file:// URI
     if path.startswith("file://"):
-        path = path[len("file://"):]
+        path = path[len("file://") :]
     # 相对路径基于 output_dir 解析
     if not os.path.isabs(path):
-        path = os.path.join(
-            os.path.abspath(config.storage.output_dir), path
-        )
+        path = os.path.join(os.path.abspath(config.storage.output_dir), path)
     return path if os.path.exists(path) else None
+
 
 def _compute_sha256(file_path: str) -> str:
     """计算文件 sha256（流式读取，64KB 缓冲）."""
@@ -82,6 +88,7 @@ def _compute_sha256(file_path: str) -> str:
                 break
             h.update(chunk)
     return h.hexdigest()
+
 
 def _compute_manifest_checksum(manifest_dict: dict[str, Any]) -> str:
     """计算 manifest.json 的 sha256 校验和（排除 checksum 字段本身）.
@@ -97,6 +104,7 @@ def _compute_manifest_checksum(manifest_dict: dict[str, Any]) -> str:
     content = json.dumps(data, ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
+
 def _get_source_machine_info() -> SourceMachineInfo:
     """获取当前机器信息."""
     return SourceMachineInfo(
@@ -105,15 +113,15 @@ def _get_source_machine_info() -> SourceMachineInfo:
         platform=platform.system().lower() or SOURCE_MACHINE_INFO_DEFAULTS["platform"],
     )
 
-def _build_package_path(
-    resource_type: str, resource_uri: str, ext: str
-) -> str:
+
+def _build_package_path(resource_type: str, resource_uri: str, ext: str) -> str:
     """构造包内路径（基于 resource_type + URI）."""
     # URI 格式：<scheme>://<path>
     path_part = resource_uri.split("://", 1)[1] if "://" in resource_uri else resource_uri
     # 替换非法字符
     safe_path = path_part.replace("/", "_").replace(":", "_")
     return f"{resource_type}s/{safe_path}{ext}"
+
 
 def _read_manifest(package_path: str) -> PackageManifest:
     """从 .lomo 包读取 manifest.json."""
@@ -123,17 +131,12 @@ def _read_manifest(package_path: str) -> PackageManifest:
                 data = json.loads(f.read().decode("utf-8"))
         return PackageManifest.from_dict(data)
     except (KeyError, json.JSONDecodeError) as e:
-        raise PackageFormatError(
-            f"manifest.json 解析失败: {e}"
-        ) from e
+        raise PackageFormatError(f"manifest.json 解析失败: {e}") from e
     except zipfile.BadZipFile as e:
-        raise PackageFormatError(
-            f"ZIP 文件损坏: {e}"
-        ) from e
+        raise PackageFormatError(f"ZIP 文件损坏: {e}") from e
 
-def _check_existing_resources(
-    manifest: PackageManifest, repo_path: str
-) -> list[str]:
+
+def _check_existing_resources(manifest: PackageManifest, repo_path: str) -> list[str]:
     """检查目标目录已存在的资源 URI（用于 conflict_strategy=fail）."""
     existing = []
     for entry in manifest.resources:
@@ -143,6 +146,7 @@ def _check_existing_resources(
         if os.path.exists(target_path):
             existing.append(entry.resource_uri)
     return existing
+
 
 def _rename_target_path(path: str) -> str:
     """生成重命名后的目标路径（追加 _imported_<timestamp> 后缀）."""

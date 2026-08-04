@@ -26,7 +26,7 @@ import logging
 from typing import Any, Optional
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -172,9 +172,7 @@ def _lineage_to_dict(rec: LineageRecord) -> dict[str, Any]:
 @router.get("")
 async def list_datasets(
     owner_id: Optional[str] = Query(None, description="按 owner 过滤"),
-    status: Optional[str] = Query(
-        None, description="按状态过滤: draft/published/deprecated/archived"
-    ),
+    status: Optional[str] = Query(None, description="按状态过滤: draft/published/deprecated/archived"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
@@ -191,9 +189,7 @@ async def list_datasets(
                 detail=str(e),
             )
     try:
-        items = await store.list_datasets(
-            owner_id=owner_id, status=status_enum, limit=limit, offset=offset
-        )
+        items = await store.list_datasets(owner_id=owner_id, status=status_enum, limit=limit, offset=offset)
     except ValueError as e:
         return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
     return success(data={"items": items, "limit": limit, "offset": offset})
@@ -300,20 +296,14 @@ async def read_dataset(
 
     async def _stream():
         try:
-            async for batch in store.read(
-                dataset_id, version, batch_size=batch_size
-            ):
+            async for batch in store.read(dataset_id, version, batch_size=batch_size):
                 for record in batch:
                     yield json.dumps(record, ensure_ascii=False, default=str) + "\n"
         except ValueError as e:
             # 流式响应中错误以 JSON 行形式给出
-            yield json.dumps(
-                {"error": "INVALID_REQUEST", "message": str(e)}, ensure_ascii=False
-            ) + "\n"
+            yield json.dumps({"error": "INVALID_REQUEST", "message": str(e)}, ensure_ascii=False) + "\n"
         except FileNotFoundError as e:
-            yield json.dumps(
-                {"error": "FILE_NOT_FOUND", "message": str(e)}, ensure_ascii=False
-            ) + "\n"
+            yield json.dumps({"error": "FILE_NOT_FOUND", "message": str(e)}, ensure_ascii=False) + "\n"
 
     return StreamingResponse(
         _stream(),
@@ -326,9 +316,7 @@ async def read_dataset(
     "/{dataset_id}/deprecate",
     dependencies=[Depends(require_permission("dataset:manage"))],
 )
-async def deprecate_version(
-    dataset_id: str, version: str = Query(..., description="要废弃的版本号")
-):
+async def deprecate_version(dataset_id: str, version: str = Query(..., description="要废弃的版本号")):
     """废弃某版本（不可逆，但内容仍可读）。"""
     store = get_dataset_store()
     try:

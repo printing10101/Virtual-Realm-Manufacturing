@@ -8,6 +8,10 @@ from app.ai.llm.providers.cloud.gemini_provider import GeminiProvider
 from app.ai.llm.providers.cloud.openai_compatible import OpenAICompatibleProvider
 
 __all__ = [
-    "OpenAIProvider", "AnthropicProvider", "DeepSeekProvider",
-    "QwenProvider", "GeminiProvider", "OpenAICompatibleProvider",
+    "OpenAIProvider",
+    "AnthropicProvider",
+    "DeepSeekProvider",
+    "QwenProvider",
+    "GeminiProvider",
+    "OpenAICompatibleProvider",
 ]

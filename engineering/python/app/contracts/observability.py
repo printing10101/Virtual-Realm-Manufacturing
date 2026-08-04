@@ -10,6 +10,7 @@
 
 稳定性承诺：本文件为 Stable 契约 v1.0.0，向后兼容扩展，breaking change 需新开 ADR。
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -75,14 +76,9 @@ class TraceSpan:
         if not self.trace_id or not isinstance(self.trace_id, str):
             raise ValueError("TraceSpan.trace_id must be a non-empty string")
         if self.status not in VALID_SPAN_STATUSES:
-            raise ValueError(
-                f"TraceSpan.status must be one of {sorted(VALID_SPAN_STATUSES)}, "
-                f"got {self.status!r}"
-            )
+            raise ValueError(f"TraceSpan.status must be one of {sorted(VALID_SPAN_STATUSES)}, got {self.status!r}")
         if self.end_ts is not None and self.end_ts < self.start_ts:
-            raise ValueError(
-                f"TraceSpan {self.span_id!r}: end_ts {self.end_ts} < start_ts {self.start_ts}"
-            )
+            raise ValueError(f"TraceSpan {self.span_id!r}: end_ts {self.end_ts} < start_ts {self.start_ts}")
 
 
 # ---------------------------------------------------------------------------
@@ -112,15 +108,11 @@ class Metric:
         if not self.name or not isinstance(self.name, str):
             raise ValueError("Metric.name must be a non-empty string")
         if not isinstance(self.value, (int, float)) or isinstance(self.value, bool):
-            raise ValueError(
-                f"Metric {self.name!r}: value must be numeric, got {type(self.value).__name__}"
-            )
+            raise ValueError(f"Metric {self.name!r}: value must be numeric, got {type(self.value).__name__}")
         # 强制转 float（统一序列化）
         self.value = float(self.value)
         if not isinstance(self.timestamp, (int, float)) or isinstance(self.timestamp, bool):
-            raise ValueError(
-                f"Metric {self.name!r}: timestamp must be numeric, got {type(self.timestamp).__name__}"
-            )
+            raise ValueError(f"Metric {self.name!r}: timestamp must be numeric, got {type(self.timestamp).__name__}")
         self.timestamp = float(self.timestamp)
 
 
@@ -153,22 +145,16 @@ class LogEntry:
 
     def __post_init__(self) -> None:
         if not isinstance(self.timestamp, (int, float)) or isinstance(self.timestamp, bool):
-            raise ValueError(
-                f"LogEntry.timestamp must be numeric, got {type(self.timestamp).__name__}"
-            )
+            raise ValueError(f"LogEntry.timestamp must be numeric, got {type(self.timestamp).__name__}")
         self.timestamp = float(self.timestamp)
         # 兼容字符串形式（便于从 JSON 反序列化）
         if isinstance(self.level, str):
             try:
                 self.level = LogLevel(self.level)
             except ValueError as e:
-                raise ValueError(
-                    f"LogEntry.level must be a valid LogLevel, got {self.level!r}"
-                ) from e
+                raise ValueError(f"LogEntry.level must be a valid LogLevel, got {self.level!r}") from e
         if not isinstance(self.level, LogLevel):
-            raise ValueError(
-                f"LogEntry.level must be LogLevel or valid string, got {self.level!r}"
-            )
+            raise ValueError(f"LogEntry.level must be LogLevel or valid string, got {self.level!r}")
         if not isinstance(self.message, str):
             raise ValueError("LogEntry.message must be a string")
 
@@ -216,9 +202,7 @@ class ExperimentSnapshot:
         if not self.snapshot_id or not isinstance(self.snapshot_id, str):
             raise ValueError("ExperimentSnapshot.snapshot_id must be a non-empty string")
         if not isinstance(self.created_at, datetime):
-            raise ValueError(
-                f"ExperimentSnapshot.created_at must be datetime, got {type(self.created_at).__name__}"
-            )
+            raise ValueError(f"ExperimentSnapshot.created_at must be datetime, got {type(self.created_at).__name__}")
         if not self.created_by or not isinstance(self.created_by, str):
             raise ValueError("ExperimentSnapshot.created_by must be a non-empty string")
         if not self.git_sha or not isinstance(self.git_sha, str):
@@ -238,9 +222,7 @@ class ExperimentSnapshot:
         # 强制 metrics 值转 float
         for k, v in self.metrics.items():
             if not isinstance(v, (int, float)) or isinstance(v, bool):
-                raise ValueError(
-                    f"ExperimentSnapshot.metrics[{k!r}] must be numeric, got {type(v).__name__}"
-                )
+                raise ValueError(f"ExperimentSnapshot.metrics[{k!r}] must be numeric, got {type(v).__name__}")
         self.metrics = {k: float(v) for k, v in self.metrics.items()}
 
 
@@ -370,9 +352,7 @@ class ISnapshotStore(ABC):
         """按 ID 取快照，不存在抛 KeyError。"""
 
     @abstractmethod
-    async def list(
-        self, *, filters: Optional[dict[str, Any]] = None
-    ) -> list[ExperimentSnapshot]:
+    async def list(self, *, filters: Optional[dict[str, Any]] = None) -> list[ExperimentSnapshot]:
         """列出快照，可选过滤。
 
         Args:

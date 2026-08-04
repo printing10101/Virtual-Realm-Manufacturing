@@ -20,6 +20,7 @@ from app.models.budget import (
     BudgetPolicy,
 )
 from app.auth.permissions import require_permission
+from app.budget.cost_tracker import CostDimension
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +36,17 @@ router = APIRouter(
 # B13 安全修复：Pydantic 请求模型替换 data: dict 弱验证
 # ---------------------------------------------------------------------------
 
+
 class SetUnitPriceRequest(BaseModel):
     """设置单价请求模型。"""
+
     key: str = Field(..., min_length=1, description="单价键名")
     value: float = Field(..., description="单价数值")
 
 
 class SetBudgetPolicyRequest(BaseModel):
     """设置预算策略请求模型。"""
+
     level: str = Field("global", description="预算层级")
     scope_id: str = Field("default", description="范围ID")
     resource_type: str = Field("total_cost", description="资源类型")
@@ -56,6 +60,7 @@ class SetBudgetPolicyRequest(BaseModel):
 
 class AdjustBudgetRequest(BaseModel):
     """调整预算请求模型。"""
+
     level: str = Field(..., description="预算层级")
     scope_id: str = Field("default", description="范围ID")
     resource_type: str = Field(..., description="资源类型")
@@ -66,6 +71,7 @@ class AdjustBudgetRequest(BaseModel):
 
 class CheckBudgetRequest(BaseModel):
     """检查预算请求模型。"""
+
     level: str = Field("global", description="预算层级")
     scope_id: str = Field("default", description="范围ID")
     resource_type: str = Field("total_cost", description="资源类型")
@@ -74,6 +80,7 @@ class CheckBudgetRequest(BaseModel):
 
 class CheckBudgetCascadeRequest(BaseModel):
     """级联检查预算请求模型。"""
+
     agent_id: str = Field("", description="Agent ID")
     project_id: str = Field("default", description="项目ID")
     resource_type: str = Field("total_cost", description="资源类型")
@@ -82,6 +89,7 @@ class CheckBudgetCascadeRequest(BaseModel):
 
 class EnforceBudgetRequest(BaseModel):
     """强制预算请求模型。"""
+
     level: str = Field("global", description="预算层级")
     scope_id: str = Field("default", description="范围ID")
     resource_type: str = Field("total_cost", description="资源类型")
@@ -90,6 +98,7 @@ class EnforceBudgetRequest(BaseModel):
 
 class ResetBudgetPeriodRequest(BaseModel):
     """重置预算周期请求模型。"""
+
     level: str = Field(..., description="预算层级")
     scope_id: str = Field("default", description="范围ID")
     resource_type: str = Field(..., description="资源类型")
@@ -97,9 +106,7 @@ class ResetBudgetPeriodRequest(BaseModel):
 
 @router.get("/summary")
 async def get_cost_summary(
-    dimension: str = Query(
-        "agent", description="汇总维度: agent/project/goal/task/provider/model"
-    ),
+    dimension: str = Query("agent", description="汇总维度: agent/project/goal/task/provider/model"),
     scope_id: str = Query("", description="范围ID"),
     start_time: Optional[float] = Query(None, description="起始Unix时间戳"),
     end_time: Optional[float] = Query(None, description="结束Unix时间戳"),
@@ -225,9 +232,7 @@ async def adjust_budget(payload: AdjustBudgetRequest):
         # 修复：不回显异常详情
         raise HTTPException(400, "Invalid adjustment data")
 
-    updated = enforcer.adjust_budget(
-        level, scope_id, resource_type, new_limit, reason, adjusted_by
-    )
+    updated = enforcer.adjust_budget(level, scope_id, resource_type, new_limit, reason, adjusted_by)
     return {"ok": True, "data": updated.to_dict() if updated else None}
 
 
@@ -270,9 +275,7 @@ async def check_budget_cascade(payload: CheckBudgetCascadeRequest):
         logger.info("Invalid resource_type: %s", resource_type_str)
         raise HTTPException(400, "Invalid resource_type")
 
-    result = enforcer.check_budget_cascade(
-        agent_id, project_id, resource_type, planned_usage
-    )
+    result = enforcer.check_budget_cascade(agent_id, project_id, resource_type, planned_usage)
     return {"ok": True, "data": result.to_dict()}
 
 
@@ -295,9 +298,7 @@ async def enforce_budget(payload: EnforceBudgetRequest):
         "data": {
             "actions": [a.value for a in result.actions_taken],
             "passed": result.check_result.passed if result.check_result else False,
-            "status": result.check_result.status.value
-            if result.check_result
-            else "unknown",
+            "status": result.check_result.status.value if result.check_result else "unknown",
             "alerts": [a.to_dict() for a in result.alerts_generated],
         },
     }

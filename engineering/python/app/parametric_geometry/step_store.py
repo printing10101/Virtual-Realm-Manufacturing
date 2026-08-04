@@ -118,10 +118,7 @@ class ReviewedFeatureRef:
         与阶段 2 ExtractedFeature.effective_params() 行为一致，
         保证阶段 3 装配器始终使用工程师确认后的参数生成 STEP。
         """
-        if (
-            self.review_status == StepReviewStatus.EDITED.value
-            and self.edited_params
-        ):
+        if self.review_status == StepReviewStatus.EDITED.value and self.edited_params:
             # 合并 source_params + edited_params（edited_params 优先）
             merged = dict(self.source_params)
             merged.update(self.edited_params)
@@ -276,18 +273,13 @@ class TaskStore:
             return
         try:
             self._persist_path.parent.mkdir(parents=True, exist_ok=True)
-            data = {
-                task_id: task.to_dict()
-                for task_id, task in self._tasks.items()
-            }
+            data = {task_id: task.to_dict() for task_id, task in self._tasks.items()}
             self._persist_path.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
         except Exception as e:
-            safe = safe_error_message(
-                e, context="parametric_geometry.TaskStore._persist"
-            )
+            safe = safe_error_message(e, context="parametric_geometry.TaskStore._persist")
             logger.error(
                 "TaskStore 持久化失败 error_id=%s message=%s",
                 safe.get("error_id"),
@@ -302,21 +294,13 @@ class TaskStore:
             data = json.loads(self._persist_path.read_text(encoding="utf-8"))
             for task_id, task_dict in data.items():
                 # 重建 ReviewedFeatureRef 列表
-                features = [
-                    ReviewedFeatureRef(**f)
-                    for f in task_dict.pop("input_features", [])
-                ]
-                task = ParametricGeometryTask(
-                    **{**task_dict, "input_features": features}
-                )
+                features = [ReviewedFeatureRef(**f) for f in task_dict.pop("input_features", [])]
+                task = ParametricGeometryTask(**{**task_dict, "input_features": features})
                 self._tasks[task_id] = task
         except Exception as e:
-            safe = safe_error_message(
-                e, context="parametric_geometry.TaskStore._load_from_disk"
-            )
+            safe = safe_error_message(e, context="parametric_geometry.TaskStore._load_from_disk")
             logger.warning(
-                "TaskStore 加载历史数据失败 error_id=%s message=%s，"
-                "将以空 store 启动",
+                "TaskStore 加载历史数据失败 error_id=%s message=%s，将以空 store 启动",
                 safe.get("error_id"),
                 safe.get("message"),
             )

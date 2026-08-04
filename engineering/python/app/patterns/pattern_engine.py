@@ -10,7 +10,6 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from app.utils.utils import get_output_dir
 from app.utils.sqlite_pool import get_sqlite_manager
 
 logger = logging.getLogger(__name__)
@@ -133,9 +132,7 @@ class PatternEngine:
         logger.info("PatternEngine initialized: db=%s", self.db_path)
 
     def _load_data(self) -> None:
-        cursor = self._db.execute(
-            "SELECT * FROM pattern_executions ORDER BY created_at"
-        )
+        cursor = self._db.execute("SELECT * FROM pattern_executions ORDER BY created_at")
         for row in cursor.fetchall():
             self._executions.append(
                 ExecutionRecord(
@@ -157,9 +154,7 @@ class PatternEngine:
                     pattern_type=row["pattern_type"],
                     description=row["description"],
                     elements=json.loads(row["elements"]) if row["elements"] else {},
-                    conditions=json.loads(row["conditions"])
-                    if row["conditions"]
-                    else {},
+                    conditions=json.loads(row["conditions"]) if row["conditions"] else {},
                     metrics=json.loads(row["metrics"]) if row["metrics"] else {},
                     sample_size=row["sample_size"],
                     suggestion=row["suggestion"],
@@ -257,12 +252,8 @@ class PatternEngine:
                 continue
 
             success_rate = sum(1 for r in records if r.success) / len(records)
-            avg_time = sum(r.metrics.get("execution_time", 0) for r in records) / len(
-                records
-            )
-            avg_cost = sum(r.metrics.get("resource_cost", 0) for r in records) / len(
-                records
-            )
+            avg_time = sum(r.metrics.get("execution_time", 0) for r in records) / len(records)
+            avg_cost = sum(r.metrics.get("resource_cost", 0) for r in records) / len(records)
 
             if success_rate >= 0.9 and avg_time > 0:
                 elements = json.loads(key)
@@ -296,12 +287,8 @@ class PatternEngine:
                 continue
 
             error_rate = sum(1 for r in records if not r.success) / len(records)
-            avg_retries = sum(r.metrics.get("retry_count", 0) for r in records) / len(
-                records
-            )
-            avg_cost = sum(r.metrics.get("resource_cost", 0) for r in records) / len(
-                records
-            )
+            avg_retries = sum(r.metrics.get("retry_count", 0) for r in records) / len(records)
+            avg_cost = sum(r.metrics.get("resource_cost", 0) for r in records) / len(records)
 
             is_anti = False
             reason = ""
@@ -312,14 +299,12 @@ class PatternEngine:
                 is_anti = True
                 reason = f"frequent retries (avg {avg_retries:.1f})"
             elif avg_cost > 0 and len(records) > min_samples:
-                baseline_cost = sum(
-                    r.metrics.get("resource_cost", 0) for r in self._executions
-                ) / max(len(self._executions), 1)
+                baseline_cost = sum(r.metrics.get("resource_cost", 0) for r in self._executions) / max(
+                    len(self._executions), 1
+                )
                 if avg_cost > baseline_cost * 1.5:
                     is_anti = True
-                    reason = (
-                        f"resource waste ({avg_cost / baseline_cost:.1f}x baseline)"
-                    )
+                    reason = f"resource waste ({avg_cost / baseline_cost:.1f}x baseline)"
 
             if is_anti:
                 elements = json.loads(key)
@@ -361,9 +346,7 @@ class PatternEngine:
                 if len(elem_records) < min_samples:
                     continue
 
-                success_rate = sum(1 for r in elem_records if r.success) / len(
-                    elem_records
-                )
+                success_rate = sum(1 for r in elem_records if r.success) / len(elem_records)
                 baseline = sum(1 for r in records if r.success) / len(records)
 
                 if success_rate > baseline + 0.1 and success_rate > 0.8:
@@ -380,9 +363,7 @@ class PatternEngine:
                             "success_rate": round(success_rate, 3),
                             "baseline_rate": round(baseline, 3),
                             "improvement_pct": improvement,
-                            "confidence": min(
-                                0.99, round(0.5 + len(elem_records) * 0.004, 2)
-                            ),
+                            "confidence": min(0.99, round(0.5 + len(elem_records) * 0.004, 2)),
                         },
                         sample_size=len(elem_records),
                         suggestion=f"Use this combination when conditions match: improvement {improvement}%",
@@ -401,11 +382,7 @@ class PatternEngine:
             if pattern_type:
                 patterns = [p for p in patterns if p.pattern_type == pattern_type]
             if conditions:
-                patterns = [
-                    p
-                    for p in patterns
-                    if all(p.conditions.get(k) == v for k, v in conditions.items())
-                ]
+                patterns = [p for p in patterns if all(p.conditions.get(k) == v for k, v in conditions.items())]
             return sorted(patterns, key=lambda p: p.sample_size, reverse=True)
 
     def get_anti_patterns(self) -> List[Pattern]:
@@ -413,9 +390,7 @@ class PatternEngine:
 
     def generate_suggestions(self, pattern_id: str) -> Optional[Dict[str, Any]]:
         with self._lock:
-            pattern = next(
-                (p for p in self._patterns if p.pattern_id == pattern_id), None
-            )
+            pattern = next((p for p in self._patterns if p.pattern_id == pattern_id), None)
             if pattern is None:
                 return None
             return {

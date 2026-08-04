@@ -70,22 +70,13 @@ class StepDisclaimer:
 
 # 引擎表达精度等级描述
 _ENGINE_PRECISION_NOTES = {
-    "pythonocc": (
-        "pythonOCC (OpenCASCADE)：完整 B-rep 表达，"
-        "支持平面/圆柱/孔/凸台/布尔运算，工业可信度最高"
-    ),
-    "freecad": (
-        "FreeCAD Python API：基于 OpenCASCADE，"
-        "支持完整 B-rep 但接口层有抽象损失，部分高级特征可能简化"
-    ),
+    "pythonocc": ("pythonOCC (OpenCASCADE)：完整 B-rep 表达，支持平面/圆柱/孔/凸台/布尔运算，工业可信度最高"),
+    "freecad": ("FreeCAD Python API：基于 OpenCASCADE，支持完整 B-rep 但接口层有抽象损失，部分高级特征可能简化"),
     "template": (
         "简易 STEP 模板：仅支持基础平面/圆柱/孔，"
         "无法表达复杂拓扑（相切/同心/垂直等），STEP 可能被 NX/PowerMill 部分拒绝"
     ),
-    "unavailable": (
-        "无可用 STEP 引擎：pythonOCC / FreeCAD / 模板均不可用，"
-        "本任务无法生成 STEP 文件"
-    ),
+    "unavailable": ("无可用 STEP 引擎：pythonOCC / FreeCAD / 模板均不可用，本任务无法生成 STEP 文件"),
 }
 
 

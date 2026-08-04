@@ -22,21 +22,20 @@
     - 资源已存在 → ValueError 子类
     - 业务状态非法 → ResourceCardError 子类
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import threading
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.contracts.resource_card import (
     DatasetCard,
     DatasetReadme,
-    DatasetReadmeScope,
     LineageSummary,
     ModelArtifact,
     ModelArtifactStatus,
@@ -52,7 +51,6 @@ from app.services._shared.service_base import BaseSingletonService
 
 from app.services._card_helpers import (
     _json_dumps,
-    _json_loads,
     _orm_to_model_artifact,
     _orm_to_dataset_readme,
     _parse_iso_datetime,
@@ -60,6 +58,7 @@ from app.services._card_helpers import (
     _collect_unique_nodes,
     _extract_key_path,
 )
+
 logger = logging.getLogger(__name__)
 
 
@@ -206,14 +205,10 @@ class ResourceCardService(BaseSingletonService):
             async with await self._get_session() as session:
                 # 检查唯一性
                 existing = await session.execute(
-                    select(ModelArtifactORM).where(
-                        ModelArtifactORM.model_uri == model_uri
-                    )
+                    select(ModelArtifactORM).where(ModelArtifactORM.model_uri == model_uri)
                 )
                 if existing.scalar_one_or_none() is not None:
-                    raise ModelArtifactAlreadyExistsError(
-                        f"模型 URI 已存在: {model_uri}"
-                    )
+                    raise ModelArtifactAlreadyExistsError(f"模型 URI 已存在: {model_uri}")
 
                 orm = ModelArtifactORM(
                     model_uri=artifact.model_uri,
@@ -234,9 +229,7 @@ class ResourceCardService(BaseSingletonService):
                     await session.commit()
                 except IntegrityError as e:
                     await session.rollback()
-                    raise ModelArtifactAlreadyExistsError(
-                        f"模型 URI 已存在: {model_uri}"
-                    ) from e
+                    raise ModelArtifactAlreadyExistsError(f"模型 URI 已存在: {model_uri}") from e
 
                 # expire_on_commit=False，可直接访问 ORM 字段
                 logger.info(
@@ -254,14 +247,10 @@ class ResourceCardService(BaseSingletonService):
             ModelArtifactNotFoundError: 模型不存在
         """
         async with await self._get_session() as session:
-            result = await session.execute(
-                select(ModelArtifactORM).where(ModelArtifactORM.id == model_id)
-            )
+            result = await session.execute(select(ModelArtifactORM).where(ModelArtifactORM.id == model_id))
             orm = result.scalar_one_or_none()
             if orm is None:
-                raise ModelArtifactNotFoundError(
-                    f"模型产物不存在: {model_id}"
-                )
+                raise ModelArtifactNotFoundError(f"模型产物不存在: {model_id}")
             return _orm_to_model_artifact(orm)
 
     async def get_model_by_uri(self, model_uri: str) -> ModelArtifact:
@@ -271,16 +260,10 @@ class ResourceCardService(BaseSingletonService):
             ModelArtifactNotFoundError: 模型不存在
         """
         async with await self._get_session() as session:
-            result = await session.execute(
-                select(ModelArtifactORM).where(
-                    ModelArtifactORM.model_uri == model_uri
-                )
-            )
+            result = await session.execute(select(ModelArtifactORM).where(ModelArtifactORM.model_uri == model_uri))
             orm = result.scalar_one_or_none()
             if orm is None:
-                raise ModelArtifactNotFoundError(
-                    f"模型产物不存在（model_uri={model_uri}）"
-                )
+                raise ModelArtifactNotFoundError(f"模型产物不存在（model_uri={model_uri}）")
             return _orm_to_model_artifact(orm)
 
     async def list_models(
@@ -303,13 +286,9 @@ class ResourceCardService(BaseSingletonService):
         if offset < 0:
             raise ValueError(f"offset 不能为负数: {offset}")
         if model_type is not None and not ModelArtifactType.is_valid(model_type):
-            raise ValueError(
-                f"model_type 不合法: {model_type}，合法值: {ModelArtifactType.all()}"
-            )
+            raise ValueError(f"model_type 不合法: {model_type}，合法值: {ModelArtifactType.all()}")
         if status is not None and not ModelArtifactStatus.is_valid(status):
-            raise ValueError(
-                f"status 不合法: {status}，合法值: {ModelArtifactStatus.all()}"
-            )
+            raise ValueError(f"status 不合法: {status}，合法值: {ModelArtifactStatus.all()}")
 
         async with await self._get_session() as session:
             # 构造查询
@@ -362,31 +341,24 @@ class ResourceCardService(BaseSingletonService):
             ValueError: 参数校验失败
         """
         if status is not None and not ModelArtifactStatus.is_valid(status):
-            raise ValueError(
-                f"status 不合法: {status}，合法值: {ModelArtifactStatus.all()}"
-            )
+            raise ValueError(f"status 不合法: {status}，合法值: {ModelArtifactStatus.all()}")
         if tags is not None and not isinstance(tags, list):
             raise ValueError(f"tags 必须是列表: {type(tags)}")
 
         lock = self._get_lock(f"model_id:{model_id}")
         with lock:
             async with await self._get_session() as session:
-                result = await session.execute(
-                    select(ModelArtifactORM).where(ModelArtifactORM.id == model_id)
-                )
+                result = await session.execute(select(ModelArtifactORM).where(ModelArtifactORM.id == model_id))
                 orm = result.scalar_one_or_none()
                 if orm is None:
-                    raise ModelArtifactNotFoundError(
-                        f"模型产物不存在: {model_id}"
-                    )
+                    raise ModelArtifactNotFoundError(f"模型产物不存在: {model_id}")
 
                 # 状态机校验
                 if status is not None and status != orm.status:
                     allowed = VALID_MODEL_STATUS_TRANSITIONS.get(orm.status, set())
                     if status not in allowed:
                         raise InvalidModelStatusTransitionError(
-                            f"模型状态转换非法: {orm.status} → {status}，"
-                            f"允许的目标状态: {sorted(allowed) or '<none>'}"
+                            f"模型状态转换非法: {orm.status} → {status}，允许的目标状态: {sorted(allowed) or '<none>'}"
                         )
                     orm.status = status
 
@@ -421,14 +393,10 @@ class ResourceCardService(BaseSingletonService):
         lock = self._get_lock(f"model_id:{model_id}")
         with lock:
             async with await self._get_session() as session:
-                result = await session.execute(
-                    select(ModelArtifactORM).where(ModelArtifactORM.id == model_id)
-                )
+                result = await session.execute(select(ModelArtifactORM).where(ModelArtifactORM.id == model_id))
                 orm = result.scalar_one_or_none()
                 if orm is None:
-                    raise ModelArtifactNotFoundError(
-                        f"模型产物不存在: {model_id}"
-                    )
+                    raise ModelArtifactNotFoundError(f"模型产物不存在: {model_id}")
                 await session.delete(orm)
                 await session.commit()
                 logger.info("Deleted model artifact: %s", model_id)
@@ -452,14 +420,10 @@ class ResourceCardService(BaseSingletonService):
         lock = self._get_lock(f"model_id:{model_id}")
         with lock:
             async with await self._get_session() as session:
-                result = await session.execute(
-                    select(ModelArtifactORM).where(ModelArtifactORM.id == model_id)
-                )
+                result = await session.execute(select(ModelArtifactORM).where(ModelArtifactORM.id == model_id))
                 orm = result.scalar_one_or_none()
                 if orm is None:
-                    raise ModelArtifactNotFoundError(
-                        f"模型产物不存在: {model_id}"
-                    )
+                    raise ModelArtifactNotFoundError(f"模型产物不存在: {model_id}")
 
                 orm.append_metrics(metrics, timestamp=timestamp)
                 await session.commit()
@@ -588,10 +552,7 @@ class ResourceCardService(BaseSingletonService):
                     await session.commit()
                 except IntegrityError as e:
                     await session.rollback()
-                    raise ValueError(
-                        f"数据集 README 唯一约束冲突（dataset_id={dataset_id}, "
-                        f"version={version}）"
-                    ) from e
+                    raise ValueError(f"数据集 README 唯一约束冲突（dataset_id={dataset_id}, version={version}）") from e
 
                 return _orm_to_dataset_readme(orm)
 
@@ -627,8 +588,7 @@ class ResourceCardService(BaseSingletonService):
                 orm = result.scalar_one_or_none()
                 if orm is None:
                     raise DatasetReadmeNotFoundError(
-                        f"数据集 README 不存在（dataset_id={dataset_id}, "
-                        f"version={version}）"
+                        f"数据集 README 不存在（dataset_id={dataset_id}, version={version}）"
                     )
                 await session.delete(orm)
                 await session.commit()
@@ -654,13 +614,11 @@ class ResourceCardService(BaseSingletonService):
             ValueError: 数据集不存在（透传 DatasetStore 异常）
         """
         from app.dependencies import get_dataset_store
-        from app.data.lineage_store import get_lineage_store
 
         if lineage_depth < 1 or lineage_depth > 10:
             raise ValueError(f"lineage_depth 越界（1-10）: {lineage_depth}")
 
         dataset_store = get_dataset_store()
-        lineage_store = get_lineage_store()
 
         # 获取数据集详情（dict，含 versions 列表）
         detail = await dataset_store.get_dataset(dataset_id)
@@ -675,9 +633,7 @@ class ResourceCardService(BaseSingletonService):
         readme: Optional[DatasetReadme] = None
         try:
             if latest_version is not None:
-                readme = await self.get_dataset_readme(
-                    dataset_id, version=latest_version.get("version")
-                )
+                readme = await self.get_dataset_readme(dataset_id, version=latest_version.get("version"))
             if readme is None:
                 readme = await self.get_dataset_readme(dataset_id, version=None)
         except Exception as e:
@@ -691,13 +647,9 @@ class ResourceCardService(BaseSingletonService):
         # 获取 lineage 摘要
         lineage_summary: Optional[LineageSummary] = None
         if include_lineage and latest_version is not None:
-            target_uri = (
-                f"dataset://{dataset_id}/{latest_version.get('version', 'latest')}"
-            )
+            target_uri = f"dataset://{dataset_id}/{latest_version.get('version', 'latest')}"
             try:
-                lineage_summary = await self.get_lineage_summary(
-                    target_uri, max_depth=lineage_depth
-                )
+                lineage_summary = await self.get_lineage_summary(target_uri, max_depth=lineage_depth)
             except Exception as e:
                 logger.warning(
                     "Failed to build lineage summary (target=%s): %s",
@@ -748,19 +700,13 @@ class ResourceCardService(BaseSingletonService):
         latest_snapshot: Optional[dict[str, Any]] = None
         try:
             snapshot_store = get_snapshot_store()
-            snapshots = await snapshot_store.list(
-                filters={"model_uri": artifact.model_uri}
-            )
+            snapshots = await snapshot_store.list(filters={"model_uri": artifact.model_uri})
             snapshot_count = len(snapshots)
             if snapshots:
                 latest = snapshots[0]  # 已按 created_at desc 排序
                 latest_snapshot = {
                     "snapshot_id": latest.snapshot_id,
-                    "created_at": (
-                        latest.created_at.isoformat()
-                        if latest.created_at
-                        else None
-                    ),
+                    "created_at": (latest.created_at.isoformat() if latest.created_at else None),
                     "created_by": latest.created_by,
                     "git_sha": latest.git_sha,
                     "metrics": dict(latest.metrics) if latest.metrics else {},
@@ -778,9 +724,7 @@ class ResourceCardService(BaseSingletonService):
         lineage_summary: Optional[LineageSummary] = None
         if include_lineage:
             try:
-                lineage_summary = await self.get_lineage_summary(
-                    artifact.model_uri, max_depth=lineage_depth
-                )
+                lineage_summary = await self.get_lineage_summary(artifact.model_uri, max_depth=lineage_depth)
             except Exception as e:
                 logger.warning(
                     "Failed to build lineage summary (target=%s): %s",
@@ -834,9 +778,7 @@ class ResourceCardService(BaseSingletonService):
         if max_depth < 1 or max_depth > 10:
             raise ValueError(f"max_depth 越界（1-10）: {max_depth}")
         if max_nodes_per_layer < 1 or max_nodes_per_layer > 100:
-            raise ValueError(
-                f"max_nodes_per_layer 越界（1-100）: {max_nodes_per_layer}"
-            )
+            raise ValueError(f"max_nodes_per_layer 越界（1-100）: {max_nodes_per_layer}")
 
         from app.data.lineage_store import get_lineage_store
 
@@ -844,32 +786,28 @@ class ResourceCardService(BaseSingletonService):
 
         try:
             # 取近邻层（用于 layers 展示）
-            upstream_records = await lineage_store.get_upstream(
-                target_uri, depth=max_depth
-            )
-            downstream_records = await lineage_store.get_downstream(
-                target_uri, depth=max_depth
-            )
+            upstream_records = await lineage_store.get_upstream(target_uri, depth=max_depth)
+            downstream_records = await lineage_store.get_downstream(target_uri, depth=max_depth)
 
             # 取全量计数（depth 较大但不返回节点列表）
-            upstream_full = await lineage_store.get_upstream(
-                target_uri, depth=50
-            )
-            downstream_full = await lineage_store.get_downstream(
-                target_uri, depth=50
-            )
+            upstream_full = await lineage_store.get_upstream(target_uri, depth=50)
+            downstream_full = await lineage_store.get_downstream(target_uri, depth=50)
         except Exception as e:
-            raise LineageSummaryError(
-                f"lineage 查询失败 (target={target_uri}): {e}"
-            ) from e
+            raise LineageSummaryError(f"lineage 查询失败 (target={target_uri}): {e}") from e
 
         # 构造 BFS 分层
         upstream_layers = _build_layers(
-            target_uri, upstream_records, max_depth, max_nodes_per_layer,
+            target_uri,
+            upstream_records,
+            max_depth,
+            max_nodes_per_layer,
             direction="upstream",
         )
         downstream_layers = _build_layers(
-            target_uri, downstream_records, max_depth, max_nodes_per_layer,
+            target_uri,
+            downstream_records,
+            max_depth,
+            max_nodes_per_layer,
             direction="downstream",
         )
 
@@ -897,22 +835,6 @@ class ResourceCardService(BaseSingletonService):
 # ---------------------------------------------------------------------------
 # 辅助函数
 # ---------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 __all__ = [

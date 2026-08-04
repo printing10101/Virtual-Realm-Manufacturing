@@ -1,15 +1,14 @@
 """RAG 检索模型（V3.0 自 rag_retrieval.py 拆分）。"""
+
 from __future__ import annotations
 
 import hashlib
-import logging
 import os
 import re
 import threading
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
+
 
 class QueryIntent(Enum):
     MATERIAL_WEAR = "material_wear"
@@ -254,9 +253,9 @@ _CLUSTER_TAG_FILTERS: dict[str, dict] = {
     "material_wear": {"category": "tool_wear"},
     "cutting_params": {"category": "tool_wear"},
     "vibration_wear": {"has_vibration": True},
-    "material_compare": {},   # 依赖 source_filters 即可
-    "cross_source": {},       # 跨源检索不额外限制
-    "signal_fusion": {},      # signal_fusion source 已通过 source_filters 过滤
+    "material_compare": {},  # 依赖 source_filters 即可
+    "cross_source": {},  # 跨源检索不额外限制
+    "signal_fusion": {},  # signal_fusion source 已通过 source_filters 过滤
 }
 
 
@@ -309,6 +308,7 @@ def _extract_query_entities(query: str) -> list[str]:
 
 # 独立于 rag_retrieval.py 的模块常量（避免循环依赖：本模块被 rag_retrieval 先 import）
 RESULT_CACHE_ENABLED = os.getenv("RESULT_CACHE_ENABLED", "1") == "1"
+
 
 class _ResultCache:
     """线程安全的 LRU 检索结果缓存。
@@ -412,5 +412,3 @@ class _ResultCache:
 # ---------------------------------------------------------------------------
 # 主引擎
 # ---------------------------------------------------------------------------
-
-

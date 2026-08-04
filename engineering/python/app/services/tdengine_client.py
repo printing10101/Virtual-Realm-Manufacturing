@@ -37,7 +37,7 @@ import os
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -51,26 +51,14 @@ logger = logging.getLogger(__name__)
 class TDengineConfig:
     """TDengine 连接配置，从环境变量惰性加载。"""
 
-    url: str = field(
-        default_factory=lambda: os.environ.get("TDENGINE_URL", "")
-    )
-    user: str = field(
-        default_factory=lambda: os.environ.get("TDENGINE_USER", "root")
-    )
-    password: str = field(
-        default_factory=lambda: os.environ.get("TDENGINE_PASSWORD", "")
-    )
-    database: str = field(
-        default_factory=lambda: os.environ.get("TDENGINE_DB", "lnn_tsdb")
-    )
-    connect_timeout: int = field(
-        default_factory=lambda: int(os.environ.get("TDENGINE_CONNECT_TIMEOUT", "10"))
-    )
+    url: str = field(default_factory=lambda: os.environ.get("TDENGINE_URL", ""))
+    user: str = field(default_factory=lambda: os.environ.get("TDENGINE_USER", "root"))
+    password: str = field(default_factory=lambda: os.environ.get("TDENGINE_PASSWORD", ""))
+    database: str = field(default_factory=lambda: os.environ.get("TDENGINE_DB", "lnn_tsdb"))
+    connect_timeout: int = field(default_factory=lambda: int(os.environ.get("TDENGINE_CONNECT_TIMEOUT", "10")))
     health_url: str = field(
         # 统一使用 127.0.0.1（项目约定），避免 localhost 解析差异
-        default_factory=lambda: os.environ.get(
-            "TDENGINE_HEALTH_URL", "http://127.0.0.1:6041/api/health"
-        )
+        default_factory=lambda: os.environ.get("TDENGINE_HEALTH_URL", "http://127.0.0.1:6041/api/health")
     )
 
     @property
@@ -111,10 +99,7 @@ class _TdengineHolder:
                 return self._client
 
             # 冷却期短路：避免对持续不可用的服务做重复连接尝试
-            if (
-                self._last_failure_ts > 0
-                and (time.monotonic() - self._last_failure_ts) < self._COOLDOWN_SECONDS
-            ):
+            if self._last_failure_ts > 0 and (time.monotonic() - self._last_failure_ts) < self._COOLDOWN_SECONDS:
                 return None
 
             config = TDengineConfig()
@@ -139,9 +124,7 @@ class _TdengineHolder:
                 logger.info("TDengine client connected: %s", config.url)
                 return client
             except ImportError:
-                logger.warning(
-                    "taospy library not installed, TDengine client disabled"
-                )
+                logger.warning("taospy library not installed, TDengine client disabled")
                 # 缺失原生库视为永久性错误：拉长冷却时间
                 self._last_failure_ts = time.monotonic()
                 return None
@@ -290,10 +273,7 @@ def _validate_identifier(name: str, kind: str = "identifier") -> None:
         ValueError: 当标识符不符合白名单规则时。
     """
     if not isinstance(name, str) or not _IDENTIFIER_RE.match(name):
-        raise ValueError(
-            f"Invalid {kind} identifier: {name!r}. "
-            "Must match ^[A-Za-z_][A-Za-z0-9_]{0,62}$"
-        )
+        raise ValueError(f"Invalid {kind} identifier: {name!r}. Must match ^[A-Za-z_][A-Za-z0-9_]{{0,62}}$")
 
 
 async def ensure_database(database: Optional[str] = None) -> bool:
@@ -356,9 +336,7 @@ async def create_table_if_not_exists(
     table_name = _safe_ident(table_name, "table")
     # 列定义白名单：允许字母/数字/下划线/空格/逗号/括号及常见 SQL 类型关键字
     # 禁止分号、注释（--、/* */）、引号转义等注入向量
-    _COLUMN_DEF_RE = _re.compile(
-        r"^[A-Za-z_][A-Za-z0-9_(),\s]*$"
-    )
+    _COLUMN_DEF_RE = _re.compile(r"^[A-Za-z_][A-Za-z0-9_(),\s]*$")
     for col_def in columns:
         if not isinstance(col_def, str) or not _COLUMN_DEF_RE.match(col_def.strip()):
             logger.error(
@@ -400,14 +378,14 @@ async def insert_rows(
     table_name = _safe_ident(table_name, "table")
     sql = f"INSERT INTO {db_name}.{table_name} VALUES"
     try:
+
         def _insert() -> int:
             # ``taos`` 驱动提供了 ``insert_lines`` 方法（更高吞吐），
             # 此处使用 ``execute`` 拼接方式，语义清晰且与 SQL 一致。
-            values = " ".join(
-                "(" + ",".join(_format_value(v) for v in row) + ")" for row in rows
-            )
+            values = " ".join("(" + ",".join(_format_value(v) for v in row) + ")" for row in rows)
             affected = client.execute(sql + " " + values)
             return int(affected) if affected is not None else len(rows)
+
         return await _run_sync(_insert)
     except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
         logger.error("Failed to insert rows into %s.%s: %s", db_name, table_name, e)
@@ -458,6 +436,7 @@ async def query_time_range(
         f"ORDER BY ts ASC LIMIT {int(limit)}"
     )
     try:
+
         def _query() -> List[List[Any]]:
             result = client.execute(sql)
             if result is None:
@@ -466,11 +445,10 @@ async def query_time_range(
             for row in result:
                 rows.append([_coerce(v) for v in row])
             return rows
+
         return await _run_sync(_query)
     except (ConnectionError, OSError, TimeoutError, ValueError, TypeError) as e:
-        logger.error(
-            "Failed to query time range on %s.%s: %s", db_name, table_name, e
-        )
+        logger.error("Failed to query time range on %s.%s: %s", db_name, table_name, e)
         return []
 
 
@@ -539,9 +517,7 @@ def _format_value(value: Any) -> str:
 #   - 纯数字（毫秒时间戳，如 "1700000000000"）
 #   - 单引号包裹的 ISO 时间字符串（如 "'2024-01-01 00:00:00.000000'"）
 _TIMESTAMP_DIGIT_RE = _re.compile(r"^\d+$")
-_TIMESTAMP_QUOTED_RE = _re.compile(
-    r"^'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(\.\d+)?)?'$"
-)
+_TIMESTAMP_QUOTED_RE = _re.compile(r"^'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(\.\d+)?)?'$")
 
 
 def _validate_timestamp_literal(val: str) -> str:

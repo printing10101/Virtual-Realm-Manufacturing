@@ -90,7 +90,7 @@ class GeminiProvider(LLMProvider):
             for m in data.get("models", []):
                 name = m.get("name", "")
                 if name.startswith("models/"):
-                    name = name[len("models/"):]
+                    name = name[len("models/") :]
                 if name:
                     models.append(name)
             return models
@@ -120,10 +120,12 @@ class GeminiProvider(LLMProvider):
             if role == "assistant":
                 role = "model"
             text = msg.get("content", "")
-            contents.append({
-                "role": role,
-                "parts": [{"text": text}],
-            })
+            contents.append(
+                {
+                    "role": role,
+                    "parts": [{"text": text}],
+                }
+            )
         payload = {
             "contents": contents,
             "generationConfig": {
@@ -132,18 +134,13 @@ class GeminiProvider(LLMProvider):
             },
         }
         headers = self._build_auth_headers()
-        url = (
-            f"{self.config.base_url}/models/{target_model}:generateContent"
-            f"{self._build_auth_query()}"
-        )
+        url = f"{self.config.base_url}/models/{target_model}:generateContent{self._build_auth_query()}"
         start = time.time()
         response = await self._http_post(url, payload, headers)
         self._measure_latency(start)
         if response.status_code != 200:
             self._update_status(ProviderStatus.OFFLINE)
-            raise ProviderError(
-                f"API error: {response.status_code} - {response.text}"
-            )
+            raise ProviderError(f"API error: {response.status_code} - {response.text}")
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         # 响应解析：candidates[0].content.parts[0].text

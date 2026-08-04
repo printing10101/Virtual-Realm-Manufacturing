@@ -6,6 +6,7 @@
 向后兼容：``app/budget/budget_enforcer.py`` 仍作为 re-export shim 暴露
 本模块的全部公开符号。
 """
+
 import json
 import logging
 import sqlite3
@@ -144,9 +145,7 @@ class BudgetEnforcer(BaseSingletonService):
         self._conn.commit()
 
     def _load_policies(self) -> None:
-        rows = self._conn.execute(
-            "SELECT * FROM budget_policies ORDER BY level, scope_id"
-        ).fetchall()
+        rows = self._conn.execute("SELECT * FROM budget_policies ORDER BY level, scope_id").fetchall()
 
         for row in rows:
             key = self._policy_key(row["level"], row["scope_id"], row["resource_type"])
@@ -170,9 +169,7 @@ class BudgetEnforcer(BaseSingletonService):
 
     def _load_default_policies(self) -> None:
         for policy in DEFAULT_GLOBAL_BUDGETS:
-            key = self._policy_key(
-                policy.level.value, policy.scope_id, policy.resource_type.value
-            )
+            key = self._policy_key(policy.level.value, policy.scope_id, policy.resource_type.value)
             if key not in self._policies:
                 self.set_policy(policy)
 
@@ -186,9 +183,7 @@ class BudgetEnforcer(BaseSingletonService):
             policy.created_at = now
         policy.updated_at = now
 
-        key = self._policy_key(
-            policy.level.value, policy.scope_id, policy.resource_type.value
-        )
+        key = self._policy_key(policy.level.value, policy.scope_id, policy.resource_type.value)
 
         self._conn.execute(
             """INSERT OR REPLACE INTO budget_policies
@@ -221,9 +216,7 @@ class BudgetEnforcer(BaseSingletonService):
             policy.period.value,
         )
 
-    def get_policy(
-        self, level: BudgetLevel, scope_id: str, resource_type: ResourceType
-    ) -> Optional[BudgetPolicy]:
+    def get_policy(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> Optional[BudgetPolicy]:
         key = self._policy_key(level.value, scope_id, resource_type.value)
         return self._policies.get(key)
 
@@ -323,9 +316,7 @@ class BudgetEnforcer(BaseSingletonService):
         if not policy.enabled:
             result.status = BudgetStatus.DISABLED
             result.passed = False
-            result.block_reason = (
-                f"Budget policy disabled: {scope_id}/{resource_type.value}"
-            )
+            result.block_reason = f"Budget policy disabled: {scope_id}/{resource_type.value}"
         elif projected_ratio >= 1.0:
             result.status = BudgetStatus.EXCEEDED
             if policy.hard_stop:
@@ -338,8 +329,7 @@ class BudgetEnforcer(BaseSingletonService):
             else:
                 result.passed = True
                 result.warnings.append(
-                    f"Budget exceeded but hard_stop is disabled: "
-                    f"{projected_usage:.2f}/{policy.limit:.2f}"
+                    f"Budget exceeded but hard_stop is disabled: {projected_usage:.2f}/{policy.limit:.2f}"
                 )
         elif projected_ratio >= policy.warning_threshold:
             result.status = BudgetStatus.WARNING
@@ -440,9 +430,7 @@ class BudgetEnforcer(BaseSingletonService):
             if check.status == BudgetStatus.WARNING:
                 result.actions_taken.append(EnforcementAction.WARN)
 
-                alert = self._create_alert(
-                    level, scope_id, resource_type, check, "warning"
-                )
+                alert = self._create_alert(level, scope_id, resource_type, check, "warning")
                 result.alerts_generated.append(alert)
             return result
 
@@ -466,8 +454,7 @@ class BudgetEnforcer(BaseSingletonService):
                 if self._agent_suspender:
                     self._agent_suspender(
                         scope_id,
-                        f"Budget exceeded: {resource_type.value} "
-                        f"({check.usage_ratio:.1%})",
+                        f"Budget exceeded: {resource_type.value} ({check.usage_ratio:.1%})",
                     )
 
         if policy and policy.auto_notify:
@@ -504,14 +491,10 @@ class BudgetEnforcer(BaseSingletonService):
 
         return EnforcementResult(
             actions_taken=[EnforcementAction.ALLOW],
-            check_result=BudgetCheckResult(
-                passed=True, status=BudgetStatus.OK, checked_at=time.time()
-            ),
+            check_result=BudgetCheckResult(passed=True, status=BudgetStatus.OK, checked_at=time.time()),
         )
 
-    def reset_period(
-        self, level: BudgetLevel, scope_id: str, resource_type: ResourceType
-    ) -> None:
+    def reset_period(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> None:
         """手动重置预算周期"""
         policy = self.get_policy(level, scope_id, resource_type)
         if policy is None:
@@ -699,9 +682,7 @@ class BudgetEnforcer(BaseSingletonService):
             level=level,
             scope_id=scope_id,
             resource_type=resource_type,
-            status=BudgetStatus.WARNING
-            if alert_type == "warning"
-            else BudgetStatus.EXCEEDED,
+            status=BudgetStatus.WARNING if alert_type == "warning" else BudgetStatus.EXCEEDED,
             current_usage=check.limit * check.usage_ratio,
             limit=check.limit,
             usage_ratio=check.usage_ratio,
@@ -731,7 +712,7 @@ class BudgetEnforcer(BaseSingletonService):
         for callback in self._alert_callbacks:
             try:
                 callback(alert)
-            except (RuntimeError, ValueError, TypeError, AttributeError) as e:
+            except (RuntimeError, ValueError, TypeError, AttributeError):
                 logger.error("Alert callback error", exc_info=True)
 
         return alert
@@ -765,9 +746,7 @@ class BudgetEnforcer(BaseSingletonService):
         return [dict(row) for row in rows]
 
     def mark_alert_read(self, alert_id: int) -> None:
-        self._conn.execute(
-            "UPDATE budget_alerts SET is_read = 1 WHERE id = ?", (alert_id,)
-        )
+        self._conn.execute("UPDATE budget_alerts SET is_read = 1 WHERE id = ?", (alert_id,))
         self._conn.commit()
 
     def mark_all_alerts_read(self) -> None:
@@ -790,9 +769,7 @@ class BudgetEnforcer(BaseSingletonService):
     def set_cost_tracker(self, cost_tracker) -> None:
         self._cost_tracker_ref = cost_tracker
 
-    def _cancel_pending_tasks(
-        self, level: BudgetLevel, scope_id: str, resource_type: ResourceType
-    ) -> List[str]:
+    def _cancel_pending_tasks(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> List[str]:
         cancelled = []
         if self._task_canceller:
             try:
@@ -802,7 +779,7 @@ class BudgetEnforcer(BaseSingletonService):
                 elif level == BudgetLevel.GLOBAL:
                     self._task_canceller("global")
                     cancelled.append("global")
-            except (RuntimeError, ValueError, OSError) as e:
+            except (RuntimeError, ValueError, OSError):
                 logger.error("Task cancellation error", exc_info=True)
         return cancelled
 
@@ -843,9 +820,7 @@ class BudgetEnforcer(BaseSingletonService):
         return [dict(row) for row in rows]
 
     def get_reset_log(self, limit: int = 100) -> List[Dict[str, Any]]:
-        rows = self._conn.execute(
-            "SELECT * FROM budget_reset_log ORDER BY reset_at DESC LIMIT ?", (limit,)
-        ).fetchall()
+        rows = self._conn.execute("SELECT * FROM budget_reset_log ORDER BY reset_at DESC LIMIT ?", (limit,)).fetchall()
         return [dict(row) for row in rows]
 
     # H2 bug 修复：删除重复定义的 close 方法。

@@ -22,6 +22,7 @@ from typing import Callable, Optional
 # pyserial 是可选依赖，只在需要串口时导入
 try:
     import serial
+
     SERIAL_AVAILABLE = True
 except ImportError:
     SERIAL_AVAILABLE = False
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class DNCStatus(Enum):
     """DNC 传输状态枚举"""
+
     IDLE = "idle"
     CONNECTING = "connecting"
     TRANSFERRING = "transferring"
@@ -40,6 +42,7 @@ class DNCStatus(Enum):
 
 class ControllerType(Enum):
     """CNC 控制器类型"""
+
     FANUC = "fanuc"
     SIEMENS = "siemens"
     HEIDENHAIN = "heidenhain"
@@ -47,6 +50,7 @@ class ControllerType(Enum):
 
 class Protocol(Enum):
     """传输协议类型"""
+
     SERIAL = "serial"
     TCP = "tcp"
 
@@ -54,6 +58,7 @@ class Protocol(Enum):
 @dataclass
 class DNCConfig:
     """DNC 传输配置"""
+
     controller_type: ControllerType = ControllerType.FANUC
     protocol: Protocol = Protocol.TCP
     host: str = "localhost"
@@ -73,6 +78,7 @@ class DNCConfig:
 @dataclass
 class DNCTarget:
     """DNC 传输目标"""
+
     host: str
     port: int
     protocol: Protocol
@@ -83,6 +89,7 @@ class DNCTarget:
 @dataclass
 class DNCResult:
     """DNC 传输结果"""
+
     success: bool
     bytes_sent: int
     duration_seconds: float
@@ -91,11 +98,11 @@ class DNCResult:
 
 class DNCTransfer:
     """DNC 传输核心类
-    
+
     支持通过串口和 TCP 发送 G-code 到机床。
-    
+
     示例::
-    
+
         transfer = DNCTransfer()
         target = DNCTarget(
             host="192.168.1.100",
@@ -105,10 +112,10 @@ class DNCTransfer:
         )
         result = transfer.send_file(Path("program.nc"), target)
     """
-    
+
     def __init__(self, config: Optional[DNCConfig] = None) -> None:
         """初始化 DNC 传输模块
-        
+
         Args:
             config: DNC 配置，如果未提供则使用默认配置
         """
@@ -116,12 +123,12 @@ class DNCTransfer:
         self._status = DNCStatus.IDLE
         self._socket: Optional[socket.socket] = None
         self._serial: Optional["serial.Serial"] = None
-        
+
     @property
     def status(self) -> DNCStatus:
         """获取当前传输状态"""
         return self._status
-    
+
     def send_gcode(
         self,
         gcode: str,
@@ -143,12 +150,11 @@ class DNCTransfer:
         """
         start_time = time.time()
         bytes_sent = 0
-        
+
         try:
             self._status = DNCStatus.CONNECTING
-            logger.info("开始连接到 %s:%s (协议: %s)", 
-                       target.host, target.port, target.protocol.value)
-            
+            logger.info("开始连接到 %s:%s (协议: %s)", target.host, target.port, target.protocol.value)
+
             # 建立连接
             if target.protocol == Protocol.TCP:
                 self._connect_tcp(target)
@@ -156,10 +162,10 @@ class DNCTransfer:
                 self._connect_serial(target)
             else:
                 raise ValueError(f"不支持的协议: {target.protocol}")
-            
+
             self._status = DNCStatus.TRANSFERRING
             logger.info("连接成功，开始传输 G-code")
-            
+
             # 准备 G-code（添加控制器特定的头部和尾部）
             prepared_gcode = self._prepare_gcode(gcode, target.controller_type)
             data_bytes = prepared_gcode.encode("utf-8")
@@ -170,52 +176,40 @@ class DNCTransfer:
                 bytes_sent = self._send_tcp(data_bytes, on_progress, total_bytes)
             else:
                 bytes_sent = self._send_serial(data_bytes, on_progress, total_bytes)
-            
+
             self._status = DNCStatus.COMPLETE
             duration = time.time() - start_time
             logger.info("传输完成: %d 字节, 耗时 %.2f 秒", bytes_sent, duration)
-            
-            return DNCResult(
-                success=True,
-                bytes_sent=bytes_sent,
-                duration_seconds=duration
-            )
-            
+
+            return DNCResult(success=True, bytes_sent=bytes_sent, duration_seconds=duration)
+
         except Exception as e:
             self._status = DNCStatus.ERROR
             duration = time.time() - start_time
             error_msg = "传输失败: 连接异常或发送中断，请检查机床连接"
             logger.error("传输失败: %s", e, exc_info=True)
-            
-            return DNCResult(
-                success=False,
-                bytes_sent=bytes_sent,
-                duration_seconds=duration,
-                error_message=error_msg
-            )
+
+            return DNCResult(success=False, bytes_sent=bytes_sent, duration_seconds=duration, error_message=error_msg)
         finally:
             self._disconnect()
-    
+
     def send_file(self, file_path: Path, target: DNCTarget) -> DNCResult:
         """发送 G-code 文件到目标机床
-        
+
         Args:
             file_path: G-code 文件路径
             target: 传输目标配置
-            
+
         Returns:
             DNCResult: 传输结果
         """
         logger.info("读取文件: %s", file_path)
-        
+
         if not file_path.exists():
             return DNCResult(
-                success=False,
-                bytes_sent=0,
-                duration_seconds=0.0,
-                error_message=f"文件不存在: {file_path}"
+                success=False, bytes_sent=0, duration_seconds=0.0, error_message=f"文件不存在: {file_path}"
             )
-        
+
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 gcode = f.read()
@@ -228,43 +222,40 @@ class DNCTransfer:
         except Exception as e:
             logger.error("读取文件失败: %s", e, exc_info=True)
             return DNCResult(
-                success=False,
-                bytes_sent=0,
-                duration_seconds=0.0,
-                error_message="读取文件失败: 文件不可读或权限不足"
+                success=False, bytes_sent=0, duration_seconds=0.0, error_message="读取文件失败: 文件不可读或权限不足"
             )
-    
+
     def test_connection(self, target: DNCTarget) -> bool:
         """测试与目标机床的连接
-        
+
         Args:
             target: 传输目标配置
-            
+
         Returns:
             bool: 连接是否成功
         """
         try:
             self._status = DNCStatus.CONNECTING
             logger.info("测试连接到 %s:%s", target.host, target.port)
-            
+
             if target.protocol == Protocol.TCP:
                 self._connect_tcp(target)
             elif target.protocol == Protocol.SERIAL:
                 self._connect_serial(target)
             else:
                 raise ValueError(f"不支持的协议: {target.protocol}")
-            
+
             self._disconnect()
             self._status = DNCStatus.IDLE
             logger.info("连接测试成功")
             return True
-            
+
         except Exception as e:
             self._status = DNCStatus.ERROR
             logger.error("连接测试失败: %s", str(e))
             self._disconnect()
             return False
-    
+
     def _connect_tcp(self, target: DNCTarget) -> None:
         """建立 TCP 连接"""
         try:
@@ -275,13 +266,11 @@ class DNCTransfer:
         except socket.error as e:
             logger.warning("TCP connect failed: %s", e)
             raise ConnectionError("TCP 连接失败: 无法连接到目标地址或网络不通") from e
-    
+
     def _connect_serial(self, target: DNCTarget) -> None:
         """建立串口连接"""
         if not SERIAL_AVAILABLE:
-            raise RuntimeError(
-                "pyserial 未安装。请运行: pip install pyserial"
-            )
+            raise RuntimeError("pyserial 未安装。请运行: pip install pyserial")
 
         try:
             # 解析数据位
@@ -289,8 +278,13 @@ class DNCTransfer:
             data_bits = data_bits_map.get(self.config.data_bits, serial.EIGHTBITS)
 
             # 解析校验位
-            parity_map = {"N": serial.PARITY_NONE, "E": serial.PARITY_EVEN, "O": serial.PARITY_ODD,
-                         "M": serial.PARITY_MARK, "S": serial.PARITY_SPACE}
+            parity_map = {
+                "N": serial.PARITY_NONE,
+                "E": serial.PARITY_EVEN,
+                "O": serial.PARITY_ODD,
+                "M": serial.PARITY_MARK,
+                "S": serial.PARITY_SPACE,
+            }
             parity = parity_map.get(self.config.parity.upper(), serial.PARITY_NONE)
 
             # 解析停止位
@@ -299,9 +293,9 @@ class DNCTransfer:
 
             # 根据流控模式配置
             flow = self.config.flow_control.lower()
-            xonxoff = (flow == "xonxoff")
-            rtscts = (flow == "rtscts")
-            dsrdtr = (flow == "dsrdtr")
+            xonxoff = flow == "xonxoff"
+            rtscts = flow == "rtscts"
+            dsrdtr = flow == "dsrdtr"
 
             # 对于串口，host 应该是串口名称（如 COM1 或 /dev/ttyUSB0）
             self._serial = serial.Serial(
@@ -315,13 +309,19 @@ class DNCTransfer:
                 rtscts=rtscts,
                 dsrdtr=dsrdtr,
             )
-            logger.debug("串口连接已建立: %s @ %d (流控: %s, %d%s%s)",
-                        target.host, target.baud_rate, self.config.flow_control,
-                        self.config.data_bits, self.config.parity, self.config.stop_bits)
+            logger.debug(
+                "串口连接已建立: %s @ %d (流控: %s, %d%s%s)",
+                target.host,
+                target.baud_rate,
+                self.config.flow_control,
+                self.config.data_bits,
+                self.config.parity,
+                self.config.stop_bits,
+            )
         except serial.SerialException as e:
             logger.warning("Serial connect failed: %s", e)
             raise ConnectionError("串口连接失败: 端口不可用、被占用或参数错误") from e
-    
+
     def _send_tcp(
         self,
         data: bytes,
@@ -348,7 +348,7 @@ class DNCTransfer:
         report_total = total_bytes if total_bytes is not None else data_len
 
         while total_sent < data_len:
-            chunk = data[total_sent:total_sent + self.config.chunk_size]
+            chunk = data[total_sent : total_sent + self.config.chunk_size]
             sent = self._socket.send(chunk)
             if sent == 0:
                 raise ConnectionError("TCP 连接中断")
@@ -368,7 +368,7 @@ class DNCTransfer:
                 time.sleep(self.config.tcp_send_delay)
 
         return total_sent
-    
+
     def _send_serial(
         self,
         data: bytes,
@@ -395,7 +395,7 @@ class DNCTransfer:
         report_total = total_bytes if total_bytes is not None else data_len
 
         while total_sent < data_len:
-            chunk = data[total_sent:total_sent + self.config.chunk_size]
+            chunk = data[total_sent : total_sent + self.config.chunk_size]
             sent = self._serial.write(chunk)
             total_sent += sent
             logger.debug("已发送 %d/%d 字节", total_sent, data_len)
@@ -413,7 +413,7 @@ class DNCTransfer:
                 time.sleep(self.config.serial_send_delay)
 
         return total_sent
-    
+
     def _disconnect(self) -> None:
         """断开所有连接"""
         if self._socket:
@@ -424,7 +424,7 @@ class DNCTransfer:
                 logger.warning("关闭 TCP 连接时出错: %s", e)
             finally:
                 self._socket = None
-        
+
         if self._serial:
             try:
                 self._serial.close()
@@ -433,24 +433,24 @@ class DNCTransfer:
                 logger.warning("关闭串口连接时出错: %s", e)
             finally:
                 self._serial = None
-        
+
         self._status = DNCStatus.IDLE
-    
+
     def _prepare_gcode(self, gcode: str, controller_type: ControllerType) -> str:
         """根据控制器类型准备 G-code
-        
+
         添加控制器特定的头部和尾部标记。
-        
+
         Args:
             gcode: 原始 G-code 内容
             controller_type: 控制器类型
-            
+
         Returns:
             str: 处理后的 G-code
         """
         # 清理输入
         gcode = gcode.strip()
-        
+
         if controller_type == ControllerType.FANUC:
             # Fanuc 使用 % 开始和结束
             if not gcode.startswith("%"):
@@ -460,7 +460,7 @@ class DNCTransfer:
             # 确保以换行符结束
             if not gcode.endswith("\n"):
                 gcode += "\n"
-                
+
         elif controller_type == ControllerType.SIEMENS:
             # Siemens 使用 % 开始和结束
             if not gcode.startswith("%"):
@@ -469,7 +469,7 @@ class DNCTransfer:
                 gcode = gcode + "%"
             if not gcode.endswith("\n"):
                 gcode += "\n"
-                
+
         elif controller_type == ControllerType.HEIDENHAIN:
             # Heidenhain 使用 BEGIN PGM 和 END PGM
             if not gcode.startswith("BEGIN PGM"):
@@ -478,7 +478,7 @@ class DNCTransfer:
                 if not gcode.endswith("\n"):
                     gcode += "\n"
                 gcode += "END PGM\n"
-        
+
         return gcode
 
 

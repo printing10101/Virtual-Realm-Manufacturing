@@ -64,9 +64,7 @@ class JsonRepository(Generic[T]):
             with open(self._data_path, "r", encoding="utf-8") as f:
                 raw = json.load(f)
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"数据文件损坏（JSON 格式错误）: {self._data_path}: {e}"
-            ) from e
+            raise ValueError(f"数据文件损坏（JSON 格式错误）: {self._data_path}: {e}") from e
         except FileNotFoundError:
             logger.warning("数据文件不存在，初始化为空: %s", self._data_path)
             raw = []
@@ -81,9 +79,7 @@ class JsonRepository(Generic[T]):
     def get(self, key: str) -> T:
         if key not in self._entries:
             available = ", ".join(sorted(self._entries.keys()))
-            raise KeyError(
-                f"条目 '{key}' 不在数据库中。可用: {available}"
-            )
+            raise KeyError(f"条目 '{key}' 不在数据库中。可用: {available}")
         return self._entries[key]
 
     def list_all(self) -> list[T]:

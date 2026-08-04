@@ -32,14 +32,16 @@ _GENERATE_SECRET_CMD = 'python -c "import secrets; print(secrets.token_urlsafe(3
 # ============================================================
 
 # 已知占位符精确匹配集合（比较时大小写不敏感）
-_PLACEHOLDER_BLACKLIST = frozenset({
-    "change_me_in_production_jwt_secret",
-    "your_secret_here",
-    "replace_me",
-    "changeme",
-    "your-secret-key",
-    "default-secret",
-})
+_PLACEHOLDER_BLACKLIST = frozenset(
+    {
+        "change_me_in_production_jwt_secret",
+        "your_secret_here",
+        "replace_me",
+        "changeme",
+        "your-secret-key",
+        "default-secret",
+    }
+)
 
 # 占位符前缀/模式正则（大小写不敏感，从密钥头部匹配）
 _PLACEHOLDER_PATTERNS = (
@@ -81,12 +83,7 @@ def _is_production_env() -> bool:
     """
     if os.environ.get("TESTING", "false").lower() == "true":
         return False
-    env = (
-        os.environ.get("LINGJING_ENV")
-        or os.environ.get("APP_ENV")
-        or os.environ.get("ENVIRONMENT")
-        or "production"
-    )
+    env = os.environ.get("LINGJING_ENV") or os.environ.get("APP_ENV") or os.environ.get("ENVIRONMENT") or "production"
     return env.lower() == "production"
 
 
@@ -202,7 +199,7 @@ def _check_secret_randomness(secret: str) -> None:
     # 简单重复模式检测（检查前 16 个字符是否为短模式重复）
     for pattern_len in range(1, 9):
         pattern = secret[:pattern_len]
-        if len(secret) >= pattern_len * 4 and secret[:pattern_len * 4] == pattern * 4:
+        if len(secret) >= pattern_len * 4 and secret[: pattern_len * 4] == pattern * 4:
             raise ValueError(
                 f"JWT 密钥安全性不足：检测到简单重复模式。\n"
                 f"请使用以下命令生成符合安全标准的密钥：\n"
@@ -219,9 +216,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 # 项目根目录（python/app/auth/security.py 向上 4 级为项目根）。
 # 环境变量 LNN_BANNED_TOKENS_FILE 仍可覆盖，但默认值不再依赖 CWD。
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-BANNED_TOKENS_FILE = os.environ.get(
-    "LNN_BANNED_TOKENS_FILE"
-) or str(_PROJECT_ROOT / ".lnn_banned_tokens.json")
+BANNED_TOKENS_FILE = os.environ.get("LNN_BANNED_TOKENS_FILE") or str(_PROJECT_ROOT / ".lnn_banned_tokens.json")
 
 
 def _reset_secret_for_testing(secret: Optional[str] = None) -> str:
@@ -234,10 +229,7 @@ def _reset_secret_for_testing(secret: Optional[str] = None) -> str:
     """
     # 安全修复 [B41]：通过环境变量门控，禁止在非测试环境运行时替换密钥
     if os.environ.get("TESTING", "false").lower() != "true":
-        raise RuntimeError(
-            "_reset_secret_for_testing() 仅在 TESTING=true 环境下可用，"
-            "生产环境禁止运行时替换 JWT 密钥"
-        )
+        raise RuntimeError("_reset_secret_for_testing() 仅在 TESTING=true 环境下可用，生产环境禁止运行时替换 JWT 密钥")
     global SECRET_KEY
     if secret is None:
         # 安全修复：避免使用可预测的弱密钥 "a"*64。

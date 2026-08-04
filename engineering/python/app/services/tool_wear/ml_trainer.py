@@ -47,9 +47,7 @@ class WearMLTrainer:
             self._bosch_feature_loader = loader
             return loader
         except ImportError:
-            self._logger.error(
-                "bosch_cnc_loader 模块不存在。Bosch CNC 数据处理功能不可用。"
-            )
+            self._logger.error("bosch_cnc_loader 模块不存在。Bosch CNC 数据处理功能不可用。")
             return None
 
     def train_with_bosch_data(
@@ -119,9 +117,7 @@ class WearMLTrainer:
                 "feature_importance": [],
             }
 
-        X, y, _metadata_list = loader.get_feature_dataset(
-            machines=machines, processes=processes
-        )
+        X, y, _metadata_list = loader.get_feature_dataset(machines=machines, processes=processes)
 
         unique, counts = np.unique(y, return_counts=True)
         self._logger.info(
@@ -141,9 +137,7 @@ class WearMLTrainer:
                 "feature_importance": [],
             }
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=42, stratify=y
-        )
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42, stratify=y)
 
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
@@ -151,9 +145,7 @@ class WearMLTrainer:
         self._bosch_scaler = scaler
 
         if model_type == "random_forest":
-            model = RandomForestClassifier(
-                n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
-            )
+            model = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42, n_jobs=-1)
         elif model_type == "xgboost":
             try:
                 from xgboost import XGBClassifier
@@ -167,12 +159,8 @@ class WearMLTrainer:
                     eval_metric="logloss",
                 )
             except ImportError:
-                self._logger.warning(
-                    "XGBoost not installed, falling back to RandomForest"
-                )
-                model = RandomForestClassifier(
-                    n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
-                )
+                self._logger.warning("XGBoost not installed, falling back to RandomForest")
+                model = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42, n_jobs=-1)
                 model_type = "random_forest"
         elif model_type == "svm":
             model = SVC(kernel="rbf", probability=True, random_state=42)
@@ -196,17 +184,13 @@ class WearMLTrainer:
         cm = confusion_matrix(y_test, y_pred).tolist()
 
         feature_importance: list[dict] = []
-        if model_type in ("random_forest", "xgboost") and hasattr(
-            model, "feature_importances_"
-        ):
+        if model_type in ("random_forest", "xgboost") and hasattr(model, "feature_importances_"):
             feature_keys = sorted(loader.extract_features(np.zeros((100, 3))).keys())
             importances = model.feature_importances_.tolist()
             feature_importance = sorted(
                 [
                     {
-                        "feature": feature_keys[i]
-                        if i < len(feature_keys)
-                        else f"f{i}",
+                        "feature": feature_keys[i] if i < len(feature_keys) else f"f{i}",
                         "importance": round(imp, 6),
                     }
                     for i, imp in enumerate(importances)
@@ -269,17 +253,11 @@ class WearMLTrainer:
         explanation_parts: list[str] = []
         rms_values = {ax: features.get(f"time_{ax}_rms", 0) for ax in ["x", "y", "z"]}
         max_rms_axis = max(rms_values, key=rms_values.get)
-        explanation_parts.append(
-            f"RMS峰值出现在{max_rms_axis.upper()}轴 ({rms_values[max_rms_axis]:.4f}g)"
-        )
+        explanation_parts.append(f"RMS峰值出现在{max_rms_axis.upper()}轴 ({rms_values[max_rms_axis]:.4f}g)")
 
-        dom_freqs = {
-            ax: features.get(f"freq_{ax}_dominant_freq", 0) for ax in ["x", "y", "z"]
-        }
+        dom_freqs = {ax: features.get(f"freq_{ax}_dominant_freq", 0) for ax in ["x", "y", "z"]}
         max_freq_axis = max(dom_freqs, key=dom_freqs.get)
-        explanation_parts.append(
-            f"主频{dom_freqs[max_freq_axis]:.1f}Hz ({max_freq_axis.upper()}轴)"
-        )
+        explanation_parts.append(f"主频{dom_freqs[max_freq_axis]:.1f}Hz ({max_freq_axis.upper()}轴)")
 
         if label == "bad":
             explanation_parts.append("检测到异常振动模式，建议检查刀具状态")
@@ -305,9 +283,7 @@ class WearMLTrainer:
                 "sample_count": 0,
                 "warning": "bosch_cnc_loader 模块不可用",
             }
-        samples = loader.load_dataset(
-            machines=[machine], processes=[process], labels=["good"]
-        )
+        samples = loader.load_dataset(machines=[machine], processes=[process], labels=["good"])
 
         if not samples:
             return {
@@ -336,12 +312,8 @@ class WearMLTrainer:
             feats = loader.extract_features(sample["data"])
             for ax in ["x", "y", "z"]:
                 axis_data[f"{ax}_rms"].append(feats.get(f"time_{ax}_rms", 0))
-                axis_dom_freqs[f"{ax}_dom_freq"].append(
-                    feats.get(f"freq_{ax}_dominant_freq", 0)
-                )
-                axis_energies[f"{ax}_energy_ratio"].append(
-                    feats.get(f"cross_{ax}_energy_ratio", 0)
-                )
+                axis_dom_freqs[f"{ax}_dom_freq"].append(feats.get(f"freq_{ax}_dominant_freq", 0))
+                axis_energies[f"{ax}_energy_ratio"].append(feats.get(f"cross_{ax}_energy_ratio", 0))
 
         rms_ranges = {}
         for key, values in axis_data.items():
@@ -456,13 +428,9 @@ class WearMLTrainer:
                     results["datasets"][ds.value] = {"error": "No tool_wear column"}
                     continue
 
-                feature_cols = [
-                    c for c in signal_cols if c in df.columns and c != "timestamp"
-                ]
+                feature_cols = [c for c in signal_cols if c in df.columns and c != "timestamp"]
                 if not feature_cols:
-                    results["datasets"][ds.value] = {
-                        "error": "No valid feature columns"
-                    }
+                    results["datasets"][ds.value] = {"error": "No valid feature columns"}
                     continue
 
                 df_clean = df.dropna(subset=feature_cols + ["tool_wear"])
@@ -470,23 +438,17 @@ class WearMLTrainer:
                 y = df_clean["tool_wear"].values.astype(np.float64)
 
                 if len(X) < 10:
-                    results["datasets"][ds.value] = {
-                        "error": f"Insufficient samples: {len(X)}"
-                    }
+                    results["datasets"][ds.value] = {"error": f"Insufficient samples: {len(X)}"}
                     continue
 
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X, y, test_size=test_size, random_state=42
-                )
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
                 scaler = StandardScaler()
                 X_train_scaled = scaler.fit_transform(X_train)
                 X_test_scaled = scaler.transform(X_test)
 
                 if model_type == "random_forest":
-                    model = RandomForestRegressor(
-                        n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
-                    )
+                    model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42, n_jobs=-1)
                 elif model_type == "gradient_boosting":
                     model = GradientBoostingRegressor(
                         n_estimators=100,
@@ -520,9 +482,7 @@ class WearMLTrainer:
                     feature_importance = sorted(
                         [
                             {
-                                "feature": feature_cols[i]
-                                if i < len(feature_cols)
-                                else f"f{i}",
+                                "feature": feature_cols[i] if i < len(feature_cols) else f"f{i}",
                                 "importance": round(imp, 6),
                             }
                             for i, imp in enumerate(importances)

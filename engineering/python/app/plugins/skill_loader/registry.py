@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
-from .models import Skill, SkillLevel, SkillMetadata
+from .models import Skill, SkillLevel
 
 logger = logging.getLogger(__name__)
 
@@ -40,20 +40,12 @@ class SkillRegistry:
     def get_by_level(self, level: SkillLevel) -> List[Skill]:
         """获取指定级别的所有活跃技能。"""
         with self._lock:
-            return [
-                s
-                for s in self._skills.values()
-                if s.metadata.level == level and s.is_active
-            ]
+            return [s for s in self._skills.values() if s.metadata.level == level and s.is_active]
 
     def get_by_task(self, task_type: str) -> List[Skill]:
         """获取适用于指定任务类型的所有活跃技能。"""
         with self._lock:
-            return [
-                s
-                for s in self._skills.values()
-                if s.is_active and s.metadata.applicable_to(task_type)
-            ]
+            return [s for s in self._skills.values() if s.is_active and s.metadata.applicable_to(task_type)]
 
     def list_all(self) -> List[Skill]:
         """列出所有已注册的技能。"""
@@ -94,9 +86,7 @@ class SkillRegistry:
     def clear_level(self, level: SkillLevel) -> int:
         """清空指定级别的所有技能，返回移除数量。"""
         with self._lock:
-            to_remove = [
-                sid for sid, s in self._skills.items() if s.metadata.level == level
-            ]
+            to_remove = [sid for sid, s in self._skills.items() if s.metadata.level == level]
             for sid in to_remove:
                 del self._skills[sid]
                 if sid in self._skill_order:
@@ -110,9 +100,6 @@ class SkillRegistry:
             return {
                 "total": len(skills),
                 "active": sum(1 for s in skills if s.is_active),
-                "by_level": {
-                    level.value: sum(1 for s in skills if s.metadata.level == level)
-                    for level in SkillLevel
-                },
+                "by_level": {level.value: sum(1 for s in skills if s.metadata.level == level) for level in SkillLevel},
                 "loaded": sum(1 for s in skills if s.is_loaded),
             }

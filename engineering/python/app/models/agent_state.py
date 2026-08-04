@@ -245,14 +245,10 @@ class AgentState:
             current_task_id=data.get("current_task_id"),
             session_context=SessionContext.from_dict(data.get("session_context", {})),
             memory=[MemoryEntry.from_dict(m) for m in data.get("memory", [])],
-            checkpoint=Checkpoint.from_dict(data["checkpoint"])
-            if data.get("checkpoint")
-            else None,
+            checkpoint=Checkpoint.from_dict(data["checkpoint"]) if data.get("checkpoint") else None,
             last_heartbeat=data.get("last_heartbeat", time.time()),
             status=AgentStatus(data.get("status", "idle")),
-            checkpoints_history=[
-                Checkpoint.from_dict(c) for c in data.get("checkpoints_history", [])
-            ],
+            checkpoints_history=[Checkpoint.from_dict(c) for c in data.get("checkpoints_history", [])],
             state_version=StateVersion.from_dict(data.get("state_version", {})),
             created_at=data.get("created_at", time.time()),
             updated_at=data.get("updated_at", time.time()),
@@ -333,9 +329,7 @@ def register_migration(from_version: str, to_version: str):
     return decorator
 
 
-def migrate_state(
-    data: Dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION
-) -> Dict[str, Any]:
+def migrate_state(data: Dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION) -> Dict[str, Any]:
     """Apply registered migrations to bring state data to target version"""
     current = data.get("state_version", {}).get("schema_version", "1.0.0")
     while current != target_version:

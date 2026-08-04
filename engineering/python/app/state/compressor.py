@@ -14,26 +14,13 @@ References Paperclip's Persistent Agent State design:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-import os
-import time
 import zlib
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
 
 # shared imports moved to state/__init__.py
-from app.state.exceptions import StatePersistenceError, StateConflictError, StateNotFoundError
 from app.models.agent_state import (
-    AgentState,
-    AgentStatus,
-    Checkpoint,
-    MemoryEntry,
     SessionContext,
-    StateVersion,
-    CURRENT_SCHEMA_VERSION,
-    migrate_state,
 )
 
 HEARTBEAT_INTERVAL_SECONDS = 15 * 60
@@ -66,9 +53,7 @@ class StateCompressor:
         return SessionContext.from_dict(json.loads(raw.decode("utf-8")))
 
     @staticmethod
-    def compact_conversation_history(
-        context: SessionContext, max_entries: int = 200
-    ) -> SessionContext:
+    def compact_conversation_history(context: SessionContext, max_entries: int = 200) -> SessionContext:
         if len(context.conversation_history) <= max_entries:
             return context
         context.conversation_history = context.conversation_history[-max_entries:]

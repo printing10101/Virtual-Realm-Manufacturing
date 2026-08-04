@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 348-507 迁移而来。
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -147,9 +148,7 @@ class _HashingMixin:
         from app.database.models.dataset import ExperimentSnapshot
 
         async with await self._get_session() as session:
-            stmt = select(ExperimentSnapshot.git_sha).where(
-                ExperimentSnapshot.snapshot_id == snapshot_id
-            )
+            stmt = select(ExperimentSnapshot.git_sha).where(ExperimentSnapshot.snapshot_id == snapshot_id)
             result = await session.execute(stmt)
             row = result.first()
             return (row[0] if row else "") or ""

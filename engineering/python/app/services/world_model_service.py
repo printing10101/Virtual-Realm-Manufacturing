@@ -21,6 +21,7 @@
 - 预测失败 → PredictionError
 - 状态字典字段缺失 / 值越界 → InvalidStateError
 """
+
 from __future__ import annotations
 
 import logging
@@ -62,9 +63,7 @@ logger = logging.getLogger(__name__)
 _STATE_FIELD_ORDER: list[str] = StateField.all()
 """状态字段顺序（与 WorldModelNet 输入维度对齐）."""
 
-_STATE_FIELD_INDEX: dict[str, int] = {
-    name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)
-}
+_STATE_FIELD_INDEX: dict[str, int] = {name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)}
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +137,7 @@ class WorldModelService(BaseSingletonService):
                 count_stmt = select(WorldModelVersionORM)
                 if active_only:
                     stmt = stmt.where(WorldModelVersionORM.is_active.is_(True))
-                    count_stmt = count_stmt.where(
-                        WorldModelVersionORM.is_active.is_(True)
-                    )
+                    count_stmt = count_stmt.where(WorldModelVersionORM.is_active.is_(True))
                 stmt = stmt.order_by(desc(WorldModelVersionORM.created_at))
                 stmt = stmt.limit(limit).offset(offset)
                 result = await session.execute(stmt)
@@ -149,11 +146,7 @@ class WorldModelService(BaseSingletonService):
                 # 避免 active_only=True 时 total=len(orms) 被分页截断导致前端分页错误
                 from sqlalchemy import func
 
-                total = (
-                    await session.execute(
-                        select(func.count()).select_from(count_stmt)
-                    )
-                ).scalar_one()
+                total = (await session.execute(select(func.count()).select_from(count_stmt))).scalar_one()
         finally:
             await session.close()
 
@@ -179,18 +172,14 @@ class WorldModelService(BaseSingletonService):
         session = await self._get_session()
         try:
             async with session.begin():
-                stmt = select(WorldModelVersionORM).where(
-                    WorldModelVersionORM.version == version
-                )
+                stmt = select(WorldModelVersionORM).where(WorldModelVersionORM.version == version)
                 result = await session.execute(stmt)
                 orm = result.scalars().first()
         finally:
             await session.close()
 
         if orm is None:
-            raise ModelNotFoundError(
-                f"世界模型版本 '{version}' 不存在"
-            )
+            raise ModelNotFoundError(f"世界模型版本 '{version}' 不存在")
         return self._orm_to_dataclass(orm)
 
     async def register_version(
@@ -219,19 +208,14 @@ class WorldModelService(BaseSingletonService):
             新注册的版本记录.
         """
         if not MIN_HORIZON <= prediction_horizon <= MAX_HORIZON:
-            raise WorldModelError(
-                f"prediction_horizon 必须在 [{MIN_HORIZON}, {MAX_HORIZON}]: "
-                f"{prediction_horizon}"
-            )
+            raise WorldModelError(f"prediction_horizon 必须在 [{MIN_HORIZON}, {MAX_HORIZON}]: {prediction_horizon}")
 
         session = await self._get_session()
         try:
             async with session.begin():
                 # 若 set_active，先清除其他激活版本
                 if set_active:
-                    active_stmt = select(WorldModelVersionORM).where(
-                        WorldModelVersionORM.is_active.is_(True)
-                    )
+                    active_stmt = select(WorldModelVersionORM).where(WorldModelVersionORM.is_active.is_(True))
                     active_result = await session.execute(active_stmt)
                     for active_orm in active_result.scalars().all():
                         active_orm.is_active = False
@@ -277,19 +261,13 @@ class WorldModelService(BaseSingletonService):
         session = await self._get_session()
         try:
             async with session.begin():
-                stmt = select(WorldModelVersionORM).where(
-                    WorldModelVersionORM.version == version
-                )
+                stmt = select(WorldModelVersionORM).where(WorldModelVersionORM.version == version)
                 result = await session.execute(stmt)
                 target = result.scalars().first()
                 if target is None:
-                    raise ModelNotFoundError(
-                        f"世界模型版本 '{version}' 不存在"
-                    )
+                    raise ModelNotFoundError(f"世界模型版本 '{version}' 不存在")
                 # 清除其他激活版本
-                active_stmt = select(WorldModelVersionORM).where(
-                    WorldModelVersionORM.is_active.is_(True)
-                )
+                active_stmt = select(WorldModelVersionORM).where(WorldModelVersionORM.is_active.is_(True))
                 active_result = await session.execute(active_stmt)
                 for active_orm in active_result.scalars().all():
                     active_orm.is_active = False
@@ -351,9 +329,7 @@ class WorldModelService(BaseSingletonService):
                 )
             else:
                 # 原始模式：current_state 字段拼接路径（向后兼容）
-                current_state_arr = self._state_dict_to_array(
-                    request.current_state, field_name="current_state"
-                )
+                current_state_arr = self._state_dict_to_array(request.current_state, field_name="current_state")
                 prediction = predictor.predict(
                     current_state=current_state_arr,
                     candidate_action=action_arr,
@@ -384,9 +360,7 @@ class WorldModelService(BaseSingletonService):
         except RuntimeError as exc:
             raise PredictionError(f"预测失败: {exc}") from exc
         except Exception as exc:
-            raise PredictionError(
-                f"预测过程中发生未预期错误: {exc}"
-            ) from exc
+            raise PredictionError(f"预测过程中发生未预期错误: {exc}") from exc
 
     # ── 内部辅助方法 ──────────────────────────────────────────────────
 
@@ -402,9 +376,7 @@ class WorldModelService(BaseSingletonService):
             is_active=orm.is_active,
         )
 
-    def _state_dict_to_array(
-        self, state_dict: dict[str, float], *, field_name: str
-    ) -> np.ndarray:
+    def _state_dict_to_array(self, state_dict: dict[str, float], *, field_name: str) -> np.ndarray:
         """状态字典 → ndarray [state_dim].
 
         按-StateField.all() 顺序提取值，缺失字段报错.
@@ -414,17 +386,12 @@ class WorldModelService(BaseSingletonService):
         values = []
         for field in _STATE_FIELD_ORDER:
             if field not in state_dict:
-                raise InvalidStateError(
-                    f"{field_name} 缺少字段 '{field}'"
-                    f"（必需字段: {_STATE_FIELD_ORDER}）"
-                )
+                raise InvalidStateError(f"{field_name} 缺少字段 '{field}'（必需字段: {_STATE_FIELD_ORDER}）")
             value = state_dict[field]
             try:
                 values.append(float(value))
             except (TypeError, ValueError) as exc:
-                raise InvalidStateError(
-                    f"{field_name}['{field}'] 不是合法数值: {value}"
-                ) from exc
+                raise InvalidStateError(f"{field_name}['{field}'] 不是合法数值: {value}") from exc
         return np.asarray(values, dtype=np.float32)
 
     def _action_dict_to_array(
@@ -447,17 +414,12 @@ class WorldModelService(BaseSingletonService):
         values = []
         for field in action_order:
             if field not in action_dict:
-                raise InvalidStateError(
-                    f"{field_name} 缺少字段 '{field}'"
-                    f"（必需字段: {action_order}）"
-                )
+                raise InvalidStateError(f"{field_name} 缺少字段 '{field}'（必需字段: {action_order}）")
             value = action_dict[field]
             try:
                 values.append(float(value))
             except (TypeError, ValueError) as exc:
-                raise InvalidStateError(
-                    f"{field_name}['{field}'] 不是合法数值: {value}"
-                ) from exc
+                raise InvalidStateError(f"{field_name}['{field}'] 不是合法数值: {value}") from exc
         single_step = np.asarray(values, dtype=np.float32)
         # 扩展为 [horizon, action_dim]
         return np.tile(single_step, (horizon, 1))
@@ -484,13 +446,9 @@ class WorldModelService(BaseSingletonService):
             # 权重路径解析：从 model_uri 推导（v1 使用随机初始化，仅接口验证）
             weights_path = self._resolve_weights_path(model_uri)
             try:
-                predictor.load_model(
-                    model_uri=model_uri, weights_path=weights_path
-                )
+                predictor.load_model(model_uri=model_uri, weights_path=weights_path)
             except (RuntimeError, OSError, KeyError) as exc:
-                raise ModelNotFoundError(
-                    f"加载世界模型失败: model_uri={model_uri} error={exc}"
-                ) from exc
+                raise ModelNotFoundError(f"加载世界模型失败: model_uri={model_uri} error={exc}") from exc
 
             # LRU 淘汰
             if len(self._predictor_cache) >= self._PREDICTOR_CACHE_LIMIT:
@@ -550,8 +508,7 @@ class WorldModelService(BaseSingletonService):
         )
         if config.use_fusion:
             logger.info(
-                "世界模型融合模式已启用（ADR-020 思路 1）: "
-                "feature_dim=%d d_model=%d fused_dim=%d",
+                "世界模型融合模式已启用（ADR-020 思路 1）: feature_dim=%d d_model=%d fused_dim=%d",
                 config.feature_dim,
                 config.d_model,
                 config.fused_dim,
@@ -608,9 +565,7 @@ class WorldModelService(BaseSingletonService):
             step_confidence = 0.8
 
         # 字段索引
-        chatter_idx = _STATE_FIELD_INDEX.get(
-            StateField.CHATTER_PROBABILITY, state_dim - 1
-        )
+        chatter_idx = _STATE_FIELD_INDEX.get(StateField.CHATTER_PROBABILITY, state_dim - 1)
         wear_idx = _STATE_FIELD_INDEX.get(StateField.TOOL_WEAR, 0)
         vib_idx = _STATE_FIELD_INDEX.get(StateField.VIBRATION_RMS, 0)
 
@@ -649,9 +604,7 @@ class WorldModelService(BaseSingletonService):
 
         # 轨迹汇总指标
         chatter_values = [s.chatter_probability for s in steps]
-        mean_chatter = (
-            sum(chatter_values) / len(chatter_values) if chatter_values else 0.0
-        )
+        mean_chatter = sum(chatter_values) / len(chatter_values) if chatter_values else 0.0
         max_chatter = max(chatter_values) if chatter_values else 0.0
         cumulative_wear = sum(s.tool_wear_increment for s in steps)
         final_roughness = steps[-1].surface_roughness if steps else 0.0
@@ -669,12 +622,8 @@ class WorldModelService(BaseSingletonService):
         model_info = WorldModelInfo(
             world_model_version=world_model_version,
             training_data_size=int(model_info_dict.get("training_data_size", 0)),
-            prediction_horizon=int(
-                model_info_dict.get("prediction_horizon", prediction.horizon)
-            ),
-            uncertainty_estimate=float(
-                model_info_dict.get("uncertainty_estimate", 0.2)
-            ),
+            prediction_horizon=int(model_info_dict.get("prediction_horizon", prediction.horizon)),
+            uncertainty_estimate=float(model_info_dict.get("uncertainty_estimate", 0.2)),
         )
 
         return WorldModelPredictResponse(

@@ -8,12 +8,11 @@
 - 圆弧段（通过 bulge 凸度信息还原）
 - 闭合多段线
 """
+
 from __future__ import annotations
 
 import logging
-import math
-from dataclasses import dataclass, field
-from typing import Iterable
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,7 @@ class OutlineInfo:
         layer: 图层名
         source_handle: 源实体句柄
     """
+
     vertices: list[tuple[float, float]]
     is_closed: bool = False
     is_hole: bool = False
@@ -140,9 +140,7 @@ class PolylineOutlineProcessor:
         for i in range(n):
             xi, yi = polygon[i]
             xj, yj = polygon[j]
-            if ((yi > y) != (yj > y)) and (
-                x < (xj - xi) * (y - yi) / ((yj - yi) + 1e-12) + xi
-            ):
+            if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / ((yj - yi) + 1e-12) + xi):
                 inside = not inside
             j = i
         return inside

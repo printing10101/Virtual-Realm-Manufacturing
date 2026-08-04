@@ -76,9 +76,7 @@ class CuttingForcePINN(nn.Module):
         )
 
         # 残差块序列
-        self.res_blocks = nn.Sequential(
-            *[ResidualBlock(hidden_dim) for _ in range(num_blocks)]
-        )
+        self.res_blocks = nn.Sequential(*[ResidualBlock(hidden_dim) for _ in range(num_blocks)])
 
         # 输出头
         self.output_head = nn.Sequential(

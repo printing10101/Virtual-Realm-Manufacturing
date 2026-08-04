@@ -10,6 +10,7 @@
 - 写操作通过 SQLAlchemy 事务保证原子性，显式 commit()
 - 查询失败统一映射为 ``ExplanationLookupError`` / ``ProjectionError``
 """
+
 from __future__ import annotations
 
 import json
@@ -21,7 +22,6 @@ from sqlalchemy import desc, func, select
 from app.contracts.explainability import (
     ExplanationLookupError,
     ExplanationRecord,
-    ExplanationRequest,
     ExplanationType,
     ExplanationValidationError,
     ProjectionError,
@@ -103,16 +103,12 @@ class ExplanationRecordRepo:
             expires_at=record_orm.expires_at,
         )
 
-    async def find_record_orm(
-        self, explanation_id: str
-    ) -> ExplanationRecordORM:
+    async def find_record_orm(self, explanation_id: str) -> ExplanationRecordORM:
         """查询解释记录 ORM（不存在抛 ExplanationLookupError）."""
         session = await self._session_factory()
         try:
             async with session.begin():
-                stmt = select(ExplanationRecordORM).where(
-                    ExplanationRecordORM.id == explanation_id
-                )
+                stmt = select(ExplanationRecordORM).where(ExplanationRecordORM.id == explanation_id)
                 result = await session.execute(stmt)
                 record_orm = result.scalar_one_or_none()
             if record_orm is None:
@@ -137,13 +133,9 @@ class ExplanationRecordRepo:
             limit / offset / explanation_type 不合法。
         """
         if limit < 1 or limit > 500:
-            raise ExplanationValidationError(
-                f"limit 必须在 [1, 500]，当前: {limit}"
-            )
+            raise ExplanationValidationError(f"limit 必须在 [1, 500]，当前: {limit}")
         if offset < 0:
-            raise ExplanationValidationError(
-                f"offset 必须 >= 0，当前: {offset}"
-            )
+            raise ExplanationValidationError(f"offset 必须 >= 0，当前: {offset}")
 
         session = await self._session_factory()
         try:
@@ -152,36 +144,27 @@ class ExplanationRecordRepo:
                 conditions = []
                 if explanation_type:
                     if not ExplanationType.is_valid(explanation_type):
-                        raise ExplanationValidationError(
-                            f"explanation_type 不合法: {explanation_type}"
-                        )
-                    conditions.append(
-                        ExplanationRecordORM.explanation_type == explanation_type
-                    )
+                        raise ExplanationValidationError(f"explanation_type 不合法: {explanation_type}")
+                    conditions.append(ExplanationRecordORM.explanation_type == explanation_type)
                 if model_uri:
-                    conditions.append(
-                        ExplanationRecordORM.model_uri == model_uri
-                    )
+                    conditions.append(ExplanationRecordORM.model_uri == model_uri)
 
                 # 总数查询
-                count_stmt = select(func.count()).select_from(
-                    ExplanationRecordORM
-                )
+                count_stmt = select(func.count()).select_from(ExplanationRecordORM)
                 for cond in conditions:
                     count_stmt = count_stmt.where(cond)
                 total = (await session.execute(count_stmt)).scalar_one()
 
                 # 分页查询
-                list_stmt = select(ExplanationRecordORM).order_by(
-                    desc(ExplanationRecordORM.created_at)
-                ).offset(offset).limit(limit)
+                list_stmt = (
+                    select(ExplanationRecordORM)
+                    .order_by(desc(ExplanationRecordORM.created_at))
+                    .offset(offset)
+                    .limit(limit)
+                )
                 for cond in conditions:
                     list_stmt = list_stmt.where(cond)
-                records = (
-                    (await session.execute(list_stmt))
-                    .scalars()
-                    .all()
-                )
+                records = (await session.execute(list_stmt)).scalars().all()
             records_list = [
                 ExplanationRecord(
                     id=r.id,
@@ -191,9 +174,7 @@ class ExplanationRecordRepo:
                     input_signature=r.input_signature,
                     payload_path=r.payload_path,
                     payload_size_bytes=r.payload_size_bytes,
-                    metadata_json=json.loads(r.metadata_json)
-                    if r.metadata_json
-                    else {},
+                    metadata_json=json.loads(r.metadata_json) if r.metadata_json else {},
                     created_by=r.created_by,
                     created_at=r.created_at,
                     expires_at=r.expires_at,

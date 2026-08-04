@@ -9,6 +9,7 @@
     3. 查找：通过 task_type 字符串（必须等于 handler.name() 返回值）
     4. 卸载：插件卸载时调用 unregister_plugin() 清理其注册的所有任务类型
 """
+
 from __future__ import annotations
 
 import logging
@@ -92,9 +93,7 @@ class TaskRegistry(ITaskRegistry):
         with self._lock:
             entry = self._entries.get(task_type)
         if entry is None:
-            raise KeyError(
-                f"任务类型 '{task_type}' 未注册。已注册类型: {list(self._entries.keys())}"
-            )
+            raise KeyError(f"任务类型 '{task_type}' 未注册。已注册类型: {list(self._entries.keys())}")
         return entry.handler
 
     def list(self) -> list[dict]:
@@ -119,11 +118,7 @@ class TaskRegistry(ITaskRegistry):
         """
         removed = 0
         with self._lock:
-            to_remove = [
-                task_type
-                for task_type, entry in self._entries.items()
-                if entry.plugin_id == plugin_id
-            ]
+            to_remove = [task_type for task_type, entry in self._entries.items() if entry.plugin_id == plugin_id]
             for task_type in to_remove:
                 self._entries.pop(task_type, None)
                 removed += 1

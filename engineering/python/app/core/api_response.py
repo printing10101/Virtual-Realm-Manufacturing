@@ -13,7 +13,7 @@ import functools
 import logging
 from typing import Any, Callable, Coroutine, ParamSpec, TypeVar
 
-from app.core.response import ErrorCode, code_to_numeric, error, success
+from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)

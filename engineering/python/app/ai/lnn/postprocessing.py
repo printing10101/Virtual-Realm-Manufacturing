@@ -59,11 +59,7 @@ class ResultPostprocessor:
             InferenceResult 标准化推理结果
         """
         confidences = self._calculate_confidence(predictions)
-        uncertainty = (
-            self._calculate_uncertainty(predictions)
-            if self.include_uncertainty
-            else None
-        )
+        uncertainty = self._calculate_uncertainty(predictions) if self.include_uncertainty else None
 
         # 构建证据列表
         evidence = self._build_evidence(predictions, confidences)
@@ -74,17 +70,13 @@ class ResultPostprocessor:
             result_metadata.update(
                 {
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "input_shape": list(input_data.shape)
-                    if hasattr(input_data, "shape")
-                    else None,
+                    "input_shape": list(input_data.shape) if hasattr(input_data, "shape") else None,
                     "prediction_shape": list(predictions.shape),
                 }
             )
 
         return InferenceResult(
-            prediction=predictions.tolist()
-            if hasattr(predictions, "tolist")
-            else predictions,
+            prediction=predictions.tolist() if hasattr(predictions, "tolist") else predictions,
             confidence=float(np.mean(confidences)),
             engine_used=engine,
             model_used=model_name,
@@ -162,9 +154,7 @@ class ResultPostprocessor:
             "confidence_variance": float(np.var(np.max(softmax_preds, axis=1))),
         }
 
-    def _build_evidence(
-        self, predictions: np.ndarray, confidences: np.ndarray
-    ) -> List[Dict[str, Any]]:
+    def _build_evidence(self, predictions: np.ndarray, confidences: np.ndarray) -> List[Dict[str, Any]]:
         """
         构建支持证据列表
 
@@ -178,10 +168,7 @@ class ResultPostprocessor:
         evidence = []
         # [N-H6] 长度校验：zip 会静默截断不等长输入，导致证据条目数与样本数不一致
         if len(predictions) != len(confidences):
-            raise ValueError(
-                f"predictions 与 confidences 长度不一致: "
-                f"{len(predictions)} vs {len(confidences)}"
-            )
+            raise ValueError(f"predictions 与 confidences 长度不一致: {len(predictions)} vs {len(confidences)}")
         for i, (pred, conf) in enumerate(zip(predictions, confidences)):
             if hasattr(pred, "__iter__") and len(pred) > 1:
                 top_class = int(np.argmax(pred))
@@ -199,9 +186,7 @@ class ResultPostprocessor:
                 evidence.append(
                     {
                         "sample_index": i,
-                        "prediction": float(pred)
-                        if hasattr(pred, "__iter__")
-                        else pred,
+                        "prediction": float(pred) if hasattr(pred, "__iter__") else pred,
                         "confidence": float(conf),
                     }
                 )

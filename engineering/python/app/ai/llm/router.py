@@ -27,7 +27,6 @@ from app.ai.llm.provider_base import (
     ProviderCapability,
     ProviderConfig,
     ProviderStatus,
-    ProviderType,
 )
 from app.ai.llm.provider_registry import ProviderRegistry, get_registry
 
@@ -37,6 +36,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 路由策略
 # ---------------------------------------------------------------------------
+
 
 class RoutingStrategy:
     """路由策略标识。"""
@@ -84,9 +84,7 @@ class RoutingResult:
             "success": self.success,
             "selected_id": self.selected_id,
             "selected_name": self.config.name if self.config else None,
-            "selected_type": (
-                self.config.provider_type.value if self.config else None
-            ),
+            "selected_type": (self.config.provider_type.value if self.config else None),
             "reason": self.reason,
             "candidates": [
                 {
@@ -104,6 +102,7 @@ class RoutingResult:
 # ---------------------------------------------------------------------------
 # 延迟缓存（轻量级，进程内）
 # ---------------------------------------------------------------------------
+
 
 class LatencyCache:
     """Provider 延迟缓存。
@@ -146,6 +145,7 @@ class LatencyCache:
 # ProviderRouter
 # ---------------------------------------------------------------------------
 
+
 class ProviderRouter:
     """LLM Provider 智能路由器。
 
@@ -184,9 +184,7 @@ class ProviderRouter:
         """
         # 1. 显式指定
         if request.provider_id:
-            provider, config = await self._try_get(
-                request.provider_id, request.required_capabilities
-            )
+            provider, config = await self._try_get(request.provider_id, request.required_capabilities)
             if provider is not None:
                 return RoutingResult(
                     provider=provider,
@@ -228,9 +226,7 @@ class ProviderRouter:
 
         # 4. 尝试候选列表
         for cfg in candidates:
-            provider, _ = await self._try_get(
-                cfg.provider_id, request.required_capabilities
-            )
+            provider, _ = await self._try_get(cfg.provider_id, request.required_capabilities)
             if provider is not None:
                 return RoutingResult(
                     provider=provider,
@@ -260,10 +256,7 @@ class ProviderRouter:
 
         # 能力过滤
         if request.required_capabilities:
-            all_providers = [
-                p for p in all_providers
-                if self._has_capabilities(p, request.required_capabilities)
-            ]
+            all_providers = [p for p in all_providers if self._has_capabilities(p, request.required_capabilities)]
 
         if not all_providers:
             return []
@@ -304,9 +297,7 @@ class ProviderRouter:
         active_cfg = self._registry.get_active_provider_config()
         if active_cfg and not request.skip_active:
             active_id = active_cfg.provider_id
-            sorted_list = [
-                p for p in sorted_list if p.provider_id == active_id
-            ] + [
+            sorted_list = [p for p in sorted_list if p.provider_id == active_id] + [
                 p for p in sorted_list if p.provider_id != active_id
             ]
 
@@ -361,7 +352,8 @@ class ProviderRouter:
         except Exception as e:
             logger.debug(
                 "Provider %s 健康检查异常，仍尝试使用: %s",
-                provider_id, e,
+                provider_id,
+                e,
             )
 
         return provider, config
@@ -409,8 +401,7 @@ class ProviderRouter:
 
         if not result.success or result.provider is None:
             raise ProviderUnavailableError(
-                f"无可用 LLM Provider。原因: {result.reason}. "
-                f"候选数: {len(result.candidates)}"
+                f"无可用 LLM Provider。原因: {result.reason}. 候选数: {len(result.candidates)}"
             )
 
         start = time.time()
@@ -424,9 +415,7 @@ class ProviderRouter:
             latency_ms = (time.time() - start) * 1000
             self._latency_cache.record(result.selected_id or "", latency_ms)
             response["_provider_id"] = result.selected_id
-            response["_provider_name"] = (
-                result.config.name if result.config else None
-            )
+            response["_provider_name"] = result.config.name if result.config else None
             response["_latency_ms"] = latency_ms
             return response
         except ProviderError:
@@ -434,13 +423,13 @@ class ProviderRouter:
         except Exception as e:
             logger.error(
                 "Provider %s 调用失败: %s",
-                result.selected_id, e, exc_info=True,
+                result.selected_id,
+                e,
+                exc_info=True,
             )
             # 失效缓存，下次重新创建实例
             self._registry.clear_instance_cache()
-            raise ProviderUnavailableError(
-                f"Provider {result.selected_id} 调用失败: {e}"
-            ) from e
+            raise ProviderUnavailableError(f"Provider {result.selected_id} 调用失败: {e}") from e
 
     # ------------------------------------------------------------------
     # 状态查询

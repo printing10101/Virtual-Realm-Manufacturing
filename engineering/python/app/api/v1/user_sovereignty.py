@@ -71,9 +71,7 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
             message="输入数据必须为数值类型",
         )
 
-    expected_dim = (
-        len(model_info.input_features) if model_info.input_features else None
-    )
+    expected_dim = len(model_info.input_features) if model_info.input_features else None
     if expected_dim:
         input_len = len(request.input_data)
         if input_len != expected_dim and input_len % expected_dim != 0:
@@ -120,9 +118,7 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
         )
     except RuntimeError as rte:
         # 模型推理运行时错误
-        safe = safe_error_message(
-            rte, context=f"user_sovereignty.predict_inference[{request.model_name}]"
-        )
+        safe = safe_error_message(rte, context=f"user_sovereignty.predict_inference[{request.model_name}]")
         logger.error(
             "User sovereignty inference runtime error | model=%s | error_id=%s | exc=%s",
             request.model_name,
@@ -137,9 +133,7 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
         )
     except (RuntimeError, ValueError, TypeError, AttributeError) as specific_err:
         # 捕获模型推理相关的常见异常
-        safe = safe_error_message(
-            specific_err, context=f"user_sovereignty.predict_inference[{request.model_name}]"
-        )
+        safe = safe_error_message(specific_err, context=f"user_sovereignty.predict_inference[{request.model_name}]")
         logger.error(
             "User sovereignty inference specific error | model=%s | error_id=%s | exc=%s",
             request.model_name,
@@ -154,9 +148,7 @@ async def predict_with_sovereignty(request: LNNPredictRequest):
         )
     except Exception as model_err:
         # 兜底：捕获未预期的异常
-        safe = safe_error_message(
-            model_err, context=f"user_sovereignty.predict_inference[{request.model_name}]"
-        )
+        safe = safe_error_message(model_err, context=f"user_sovereignty.predict_inference[{request.model_name}]")
         logger.error(
             "User sovereignty inference unexpected error | model=%s | error_id=%s | exc=%s",
             request.model_name,
@@ -234,17 +226,11 @@ def generate_prediction_reasoning(
     ]
 
     if confidence >= 0.8:
-        reasoning_parts.append(
-            f"置信度较高 ({confidence:.2f})，表明模型对当前输入数据的预测结果有较高的把握。"
-        )
+        reasoning_parts.append(f"置信度较高 ({confidence:.2f})，表明模型对当前输入数据的预测结果有较高的把握。")
     elif confidence >= 0.5:
-        reasoning_parts.append(
-            f"置信度中等 ({confidence:.2f})，建议结合实际情况综合判断预测结果。"
-        )
+        reasoning_parts.append(f"置信度中等 ({confidence:.2f})，建议结合实际情况综合判断预测结果。")
     else:
-        reasoning_parts.append(
-            f"置信度较低 ({confidence:.2f})，建议参考备选方案或调整输入数据后重新预测。"
-        )
+        reasoning_parts.append(f"置信度较低 ({confidence:.2f})，建议参考备选方案或调整输入数据后重新预测。")
 
     reasoning_parts.append(f"推理耗时 {inference_time:.2f}ms。")
 

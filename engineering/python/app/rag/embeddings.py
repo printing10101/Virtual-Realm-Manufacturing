@@ -71,7 +71,8 @@ def _resolve_model_config() -> tuple[str, int]:
         except ValueError:
             logger.warning(
                 "Invalid EMBEDDING_DIM value '%s', using default %d",
-                dim_str, default_dim,
+                dim_str,
+                default_dim,
             )
     return model_name, default_dim
 
@@ -119,8 +120,7 @@ class EmbeddingService:
             # 设为 "cpu" 时强制使用 CPU，避免与 Ollama 等 GPU 进程内存竞争导致 segfault
             # （案例：qwen3:14b 占用 ~9GB 显存后，bge-small-zh 在 cuda:0 加载时 segfault）
             device = os.getenv("EMBEDDING_DEVICE", "").strip() or None
-            logger.info("Embedding device: %s (EMBEDDING_DEVICE=%r)",
-                        device or "auto", os.getenv("EMBEDDING_DEVICE"))
+            logger.info("Embedding device: %s (EMBEDDING_DEVICE=%r)", device or "auto", os.getenv("EMBEDDING_DEVICE"))
 
             try:
                 # 优先从 HuggingFace 镜像站下载（通过 HF_ENDPOINT 环境变量控制）
@@ -131,8 +131,7 @@ class EmbeddingService:
             except Exception as download_err:
                 # 下载失败时尝试从本地缓存加载
                 logger.warning(
-                    "Failed to download model from remote (%s), "
-                    "attempting to load from local cache...",
+                    "Failed to download model from remote (%s), attempting to load from local cache...",
                     download_err,
                 )
                 try:
@@ -141,9 +140,7 @@ class EmbeddingService:
                     }
                     if device:
                         cache_kwargs["device"] = device
-                    self._model = SentenceTransformer(
-                        self._model_name, **cache_kwargs
-                    )
+                    self._model = SentenceTransformer(self._model_name, **cache_kwargs)
                 except Exception as cache_err:
                     logger.error(
                         "Failed to load embedding model from local cache: %s",
@@ -159,9 +156,7 @@ class EmbeddingService:
             actual_dim = self._model.get_sentence_embedding_dimension()
             if actual_dim:
                 self._vector_dim = actual_dim
-            logger.info(
-                "Embedding model loaded: %s, dim=%d", self._model_name, self._vector_dim
-            )
+            logger.info("Embedding model loaded: %s, dim=%d", self._model_name, self._vector_dim)
 
     def _cache_key(self, text: str) -> str:
         # 安全修复：使用 SHA256 替代 MD5，避免碰撞导致的缓存投毒
@@ -235,12 +230,7 @@ class EmbeddingService:
             for start in range(0, len(uncached_texts), chunk_size):
                 end = start + chunk_size
                 chunk_texts = uncached_texts[start:end]
-                vectors = (
-                    self._model.encode(
-                        chunk_texts, normalize_embeddings=True, show_progress_bar=False
-                    )
-                    .tolist()
-                )
+                vectors = self._model.encode(chunk_texts, normalize_embeddings=True, show_progress_bar=False).tolist()
                 for offset, vector in enumerate(vectors):
                     idx = uncached_indices[start + offset]
                     key = uncached_keys[start + offset]

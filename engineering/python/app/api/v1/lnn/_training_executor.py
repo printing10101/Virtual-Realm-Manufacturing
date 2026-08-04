@@ -18,6 +18,7 @@ import numpy as np
 try:
     import torch
     from torch.utils.data import DataLoader, TensorDataset
+
     _HAS_TORCH = True
 except ImportError:
     torch = None
@@ -40,6 +41,7 @@ detect_device = None
 get_optimal_batch_size = None
 get_optimal_num_workers = None
 
+
 def _lazy_init_training_stack() -> bool:
     """延迟初始化训练栈（首次调用时执行，避免模块加载期 ImportError）。"""
     global _HAS_TRAINING_STACK, LNNConfig, LNNTrainer
@@ -59,6 +61,7 @@ def _lazy_init_training_stack() -> bool:
             get_device_optimal_batch_size,
             get_device_optimal_num_workers,
         )
+
         LNNConfig = get_lnn_config_factory()
         LNNTrainer = get_trainer_factory()
         mlflow_start_run = get_mlflow_start_run()
@@ -68,12 +71,11 @@ def _lazy_init_training_stack() -> bool:
         detect_device = get_device_detect()
         get_optimal_batch_size = get_device_optimal_batch_size()
         get_optimal_num_workers = get_device_optimal_num_workers()
-        _HAS_TRAINING_STACK = all(
-            x is not None for x in (LNNConfig, LNNTrainer, detect_device)
-        )
+        _HAS_TRAINING_STACK = all(x is not None for x in (LNNConfig, LNNTrainer, detect_device))
     except Exception:
         _HAS_TRAINING_STACK = False
     return _HAS_TRAINING_STACK
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +86,7 @@ async def _load_training_data(data_path: str):
     使用 ``asyncio.to_thread`` 将同步阻塞的 ``np.loadtxt`` 移至工作线程,
     避免大数据集加载期间冻结事件循环。文件不存在时抛出 FileNotFoundError。
     """
+
     def _load_csv_sync() -> np.ndarray:
         try:
             return np.loadtxt(data_path, delimiter=",", skiprows=1, dtype=float)
@@ -136,9 +139,7 @@ def _prepare_datasets(X, y, hyperparameters: dict, device_preference: str):
     y_tensor = torch.FloatTensor(y)
     dataset = TensorDataset(X_tensor, y_tensor)
     train_size = int(0.8 * len(dataset))
-    train_dataset, val_dataset = torch.utils.data.random_split(
-        dataset, [train_size, len(dataset) - train_size]
-    )
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, len(dataset) - train_size])
 
     device, _ = detect_device(device_preference)
     batch_size = hyperparameters.get("batch_size", 32)
@@ -146,9 +147,7 @@ def _prepare_datasets(X, y, hyperparameters: dict, device_preference: str):
         batch_size = get_optimal_batch_size(device, batch_size)
 
     num_workers = get_optimal_num_workers()
-    train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
-    )
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers)
 
     val_size = len(dataset) - train_size
@@ -225,26 +224,26 @@ async def _execute_training_loop(
     # 注意：此处的自定义训练循环不调用 trainer.fit()，因此 trainer.track_experiment
     # 不会触发，必须在此单独集成追踪。
     run_name = f"{model_name}_{int(time.time())}"
-    with mlflow_start_run(
-        run_name=run_name, experiment_name="lnn_api_training"
-    ):
-        mlflow_log_params({
-            "model_name": model_name,
-            "model_type": entry.info.model_type,
-            "input_dim": input_dim,
-            "hidden_size": hidden_size,
-            "learning_rate": hyperparameters.get("learning_rate", 0.001),
-            "optimizer": hyperparameters.get("optimizer", "adam"),
-            "batch_size": hyperparameters.get("batch_size", 32),
-            "epochs": epochs,
-            "use_amp": use_amp,
-            "device": str(device),
-            "num_workers": num_workers,
-            "train_size": train_size,
-            "val_size": val_size,
-            "loss_type": "mse",
-            "patience": 5,
-        })
+    with mlflow_start_run(run_name=run_name, experiment_name="lnn_api_training"):
+        mlflow_log_params(
+            {
+                "model_name": model_name,
+                "model_type": entry.info.model_type,
+                "input_dim": input_dim,
+                "hidden_size": hidden_size,
+                "learning_rate": hyperparameters.get("learning_rate", 0.001),
+                "optimizer": hyperparameters.get("optimizer", "adam"),
+                "batch_size": hyperparameters.get("batch_size", 32),
+                "epochs": epochs,
+                "use_amp": use_amp,
+                "device": str(device),
+                "num_workers": num_workers,
+                "train_size": train_size,
+                "val_size": val_size,
+                "loss_type": "mse",
+                "patience": 5,
+            }
+        )
 
         start_time = time.perf_counter()
         history = {"train_loss": [], "val_loss": []}
@@ -269,12 +268,15 @@ async def _execute_training_loop(
                 patience_counter += 1
 
             # 每 epoch 记录训练/验证指标，供审稿人验证训练曲线
-            mlflow_log_metrics({
-                "train_loss": train_loss,
-                "val_loss": val_loss,
-                "train_accuracy": train_acc,
-                "val_accuracy": val_acc,
-            }, step=epoch)
+            mlflow_log_metrics(
+                {
+                    "train_loss": train_loss,
+                    "val_loss": val_loss,
+                    "train_accuracy": train_acc,
+                    "val_accuracy": val_acc,
+                },
+                step=epoch,
+            )
 
             progress = 15.0 + (epoch / epochs) * 80.0
             await progress_updater(
@@ -324,12 +326,8 @@ async def _execute_training_loop(
                 else:
                     # 目标方差为零时 R² 无法定义
                     r2_score = None
-                    logger.warning(
-                        "R² 不可计算：验证集目标方差为零（ss_tot≈0），"
-                        "请检查数据是否为常数标签。"
-                    )
-        except (RuntimeError, ValueError, TypeError, KeyError,
-                OSError, AttributeError) as r2_err:
+                    logger.warning("R² 不可计算：验证集目标方差为零（ss_tot≈0），请检查数据是否为常数标签。")
+        except (RuntimeError, ValueError, TypeError, KeyError, OSError, AttributeError) as r2_err:
             # Q1 修复：原 `except Exception` 过宽，会吞掉 asyncio.CancelledError /
             # KeyboardInterrupt。收窄为可预期的数值/张量/设备异常。
             # RuntimeError 覆盖 PyTorch/CUDA 错误；ValueError/TypeError 覆盖

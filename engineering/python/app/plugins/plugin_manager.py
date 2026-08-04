@@ -19,15 +19,9 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from app.plugins.plugin_metadata import PluginDependency, PluginMetadata
+from app.plugins.plugin_metadata import PluginMetadata
 from app.plugins.plugin_types import (
-    CAPABILITY_DATA_SOURCE,
-    CAPABILITY_FILE_ACCESS,
-    CAPABILITY_GPU_ACCESS,
-    CAPABILITY_MACHINE_CONTROL,
-    CAPABILITY_NETWORK_ACCESS,
     PluginStatus,
-    PluginType,
     VALID_CAPABILITIES,
 )
 
@@ -302,7 +296,8 @@ class PluginLoader:
             # 任何异常类型都应被收口并转换为 ERROR 状态后抛出
             metadata.status = PluginStatus.ERROR
             logger.error(
-                f"Failed to load plugin {metadata.id}: {e}", exc_info=True,
+                f"Failed to load plugin {metadata.id}: {e}",
+                exc_info=True,
             )
             raise
         finally:
@@ -315,11 +310,7 @@ class PluginLoader:
         if plugin_class is None:
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
-                if (
-                    isinstance(attr, type)
-                    and hasattr(attr, "initialize")
-                    and hasattr(attr, "shutdown")
-                ):
+                if isinstance(attr, type) and hasattr(attr, "initialize") and hasattr(attr, "shutdown"):
                     plugin_class = attr
                     break
 
@@ -352,7 +343,8 @@ class PluginLoader:
             except (RuntimeError, OSError) as e:
                 # 旧实例关闭失败不应阻塞插件重载流程
                 logger.warning(
-                    f"Error shutting down old instance: {e}", exc_info=True,
+                    f"Error shutting down old instance: {e}",
+                    exc_info=True,
                 )
 
         return self.load_plugin(metadata)
@@ -380,9 +372,7 @@ class PluginLifecycleManager:
             raise KeyError(f"Plugin '{plugin_id}' not found")
 
         if metadata.status not in (PluginStatus.REGISTERED, PluginStatus.DISABLED):
-            raise ValueError(
-                f"Plugin '{plugin_id}' cannot be initialized (status: {metadata.status})"
-            )
+            raise ValueError(f"Plugin '{plugin_id}' cannot be initialized (status: {metadata.status})")
 
         instance = self._registry.get_plugin_instance(plugin_id)
 
@@ -409,9 +399,7 @@ class PluginLifecycleManager:
             PluginStatus.INITIALIZED,
             PluginStatus.DISABLED,
         ):
-            raise ValueError(
-                f"Plugin '{plugin_id}' cannot be enabled (status: {metadata.status})"
-            )
+            raise ValueError(f"Plugin '{plugin_id}' cannot be enabled (status: {metadata.status})")
 
         if metadata.status in (PluginStatus.REGISTERED, PluginStatus.DISABLED):
             self.initialize_plugin(plugin_id)
@@ -454,7 +442,8 @@ class PluginLifecycleManager:
             except (RuntimeError, OSError) as e:
                 # 卸载时插件关闭失败不应阻塞文件清理
                 logger.warning(
-                    f"Error during plugin shutdown: {e}", exc_info=True,
+                    f"Error during plugin shutdown: {e}",
+                    exc_info=True,
                 )
 
         plugin_dir = Path(metadata.plugin_path)
@@ -465,9 +454,7 @@ class PluginLifecycleManager:
         self._registry.unregister(plugin_id)
         logger.info("Plugin uninstalled: %s", plugin_id)
 
-    def discover_and_register_all(
-        self, plugin_dirs: List[str], user_dirs: Optional[List[str]] = None
-    ) -> int:
+    def discover_and_register_all(self, plugin_dirs: List[str], user_dirs: Optional[List[str]] = None) -> int:
         discovery = PluginDiscovery(plugin_dirs=plugin_dirs, user_dirs=user_dirs)
         plugins = discovery.discover()
 
@@ -489,7 +476,8 @@ class PluginLifecycleManager:
             except (RuntimeError, ValueError, ImportError, OSError) as e:
                 # 批量初始化时单个插件失败不应阻塞其他插件
                 logger.error(
-                    f"Failed to initialize plugin {metadata.id}: {e}", exc_info=True,
+                    f"Failed to initialize plugin {metadata.id}: {e}",
+                    exc_info=True,
                 )
 
         return count
@@ -503,7 +491,8 @@ class PluginLifecycleManager:
             except (RuntimeError, ValueError, OSError) as e:
                 # 批量启用时单个插件失败不应阻塞其他插件
                 logger.error(
-                    f"Failed to enable plugin {metadata.id}: {e}", exc_info=True,
+                    f"Failed to enable plugin {metadata.id}: {e}",
+                    exc_info=True,
                 )
 
         return count
@@ -516,7 +505,8 @@ class PluginLifecycleManager:
                 except (RuntimeError, OSError) as e:
                     # 关闭过程中单个插件失败不应阻塞整体清理
                     logger.error(
-                        f"Error disabling plugin {metadata.id}: {e}", exc_info=True,
+                        f"Error disabling plugin {metadata.id}: {e}",
+                        exc_info=True,
                     )
 
         for metadata in self._registry.list_plugins():
@@ -527,7 +517,8 @@ class PluginLifecycleManager:
             except (RuntimeError, OSError) as e:
                 # 关闭过程中单个插件失败不应阻塞整体清理
                 logger.error(
-                    f"Error shutting down plugin {metadata.id}: {e}", exc_info=True,
+                    f"Error shutting down plugin {metadata.id}: {e}",
+                    exc_info=True,
                 )
 
     def get_plugin_info(self, plugin_id: str) -> Dict[str, Any]:
@@ -571,9 +562,7 @@ class DependencyResolver:
             if self._registry.has_plugin(dep.name):
                 self._dfs(dep.name, visited, order)
             elif dep.required:
-                raise ValueError(
-                    f"Required dependency '{dep.name}' not found for plugin '{plugin_id}'"
-                )
+                raise ValueError(f"Required dependency '{dep.name}' not found for plugin '{plugin_id}'")
 
         order.append(plugin_id)
 
@@ -609,9 +598,7 @@ class DependencyResolver:
         if depth < 3:
             for dep in metadata.dependencies:
                 if self._registry.has_plugin(dep.name):
-                    tree["dependencies"].append(
-                        self.get_dependency_tree(dep.name, depth + 1)
-                    )
+                    tree["dependencies"].append(self.get_dependency_tree(dep.name, depth + 1))
                 else:
                     tree["dependencies"].append(
                         {
@@ -668,9 +655,7 @@ class _PluginSystemHolder:
             return self._plugin_manager
         with self._lock:
             if self._plugin_manager is None:
-                raise RuntimeError(
-                    "Plugin system not initialized. Call init_plugin_system() first."
-                )
+                raise RuntimeError("Plugin system not initialized. Call init_plugin_system() first.")
             return self._plugin_manager
 
     def get_dependency_resolver(self) -> DependencyResolver:

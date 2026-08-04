@@ -23,25 +23,61 @@ logger = logging.getLogger(__name__)
 # 这些词在通用 jieba 词典中可能被错误切分（如 "TC4" 可能被切成 "T" "C" "4"）
 DOMAIN_LEXICON: tuple[str, ...] = (
     # 钛合金牌号
-    "TC4", "Ti-6Al-4V", "TA1", "TA2", "TB6",
+    "TC4",
+    "Ti-6Al-4V",
+    "TA1",
+    "TA2",
+    "TB6",
     # 不锈钢牌号
-    "304不锈钢", "316不锈钢", "17-4PH", "2205双相", "904L",
-    "HRC52", "HRC45", "HRC60",
+    "304不锈钢",
+    "316不锈钢",
+    "17-4PH",
+    "2205双相",
+    "904L",
+    "HRC52",
+    "HRC45",
+    "HRC60",
     # 铝合金牌号
-    "6061", "6061-T6", "7075", "2024",
+    "6061",
+    "6061-T6",
+    "7075",
+    "2024",
     # 刀具材料
-    "CBN", "PCD", "硬质合金", "陶瓷刀具", "涂层刀具",
+    "CBN",
+    "PCD",
+    "硬质合金",
+    "陶瓷刀具",
+    "涂层刀具",
     # 工艺术语
-    "切削速度", "进给量", "切削深度", "背吃刀量",
-    "主轴转速", "表面粗糙度", "刀具磨损", "后刀面磨损",
-    "颤振", "振动", "声发射", "频域", "频谱",
+    "切削速度",
+    "进给量",
+    "切削深度",
+    "背吃刀量",
+    "主轴转速",
+    "表面粗糙度",
+    "刀具磨损",
+    "后刀面磨损",
+    "颤振",
+    "振动",
+    "声发射",
+    "频域",
+    "频谱",
     # 数据集名称
-    "PHM2010", "Uniwear", "Bosch",
+    "PHM2010",
+    "Uniwear",
+    "Bosch",
     # 加工方式
-    "高速铣削", "五轴铣削", "深孔钻孔", "无心磨削", "内圆磨削",
-    "电火花线切割", "成形电火花",
+    "高速铣削",
+    "五轴铣削",
+    "深孔钻孔",
+    "无心磨削",
+    "内圆磨削",
+    "电火花线切割",
+    "成形电火花",
     # 测量信号
-    "RMS", "FFT", "AE信号",
+    "RMS",
+    "FFT",
+    "AE信号",
 )
 
 # 单例状态
@@ -86,14 +122,11 @@ def _ensure_jieba() -> bool:
         except ImportError:
             _jieba_available = False
             logger.warning(
-                "jieba not installed, falling back to character-level tokenization. "
-                "Install with: pip install jieba"
+                "jieba not installed, falling back to character-level tokenization. Install with: pip install jieba"
             )
         except (RuntimeError, OSError) as e:
             _jieba_available = False
-            logger.warning(
-                "jieba initialization failed (%s), using character-level fallback", e
-            )
+            logger.warning("jieba initialization failed (%s), using character-level fallback", e)
 
     return _jieba_available
 
@@ -117,11 +150,7 @@ def tokenize(text: str) -> list[str]:
             import jieba
 
             # cut 返回生成器；lazily 使用 jieba.cut 精确模式
-            tokens = [
-                tok.strip().lower()
-                for tok in jieba.cut(text, cut_all=False)
-                if tok and tok.strip()
-            ]
+            tokens = [tok.strip().lower() for tok in jieba.cut(text, cut_all=False) if tok and tok.strip()]
             return tokens
         except (RuntimeError, OSError, ValueError) as e:
             logger.debug("jieba cut failed, using fallback: %s", e)
@@ -134,8 +163,8 @@ def _char_level_tokenize(text: str) -> list[str]:
     """字符级分词（jieba 不可用时的 fallback）。"""
     tokens: list[str] = []
     for word in text.lower().split():
-        if any('\u4e00' <= ch <= '\u9fff' for ch in word):
-            tokens.extend(ch for ch in word if '\u4e00' <= ch <= '\u9fff')
+        if any("\u4e00" <= ch <= "\u9fff" for ch in word):
+            tokens.extend(ch for ch in word if "\u4e00" <= ch <= "\u9fff")
         else:
             tokens.append(word)
     return tokens

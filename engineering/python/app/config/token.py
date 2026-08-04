@@ -13,6 +13,7 @@ from app.config._utils import _ROOT_DIR, _bool_env, _env, _float_env, logger
 @dataclass
 class MESConfig:
     """MES/ERP 系统集成配置。"""
+
     base_url: str = field(default_factory=lambda: _env("MES_BASE_URL", ""))
     api_key: str = field(default_factory=lambda: _env("MES_API_KEY", ""))
     timeout: float = field(default_factory=lambda: _float_env("MES_TIMEOUT", 30.0))
@@ -41,7 +42,7 @@ class TokenConfig:
                 if token:
                     logger.info("Loaded token from %s", token_file)
                     return token
-            except (OSError, IOError, PermissionError) as e:
+            except (OSError, IOError, PermissionError):
                 logger.warning("Failed to read token file", exc_info=True)
 
         new_token = str(uuid.uuid4())
@@ -49,7 +50,7 @@ class TokenConfig:
             token_file.parent.mkdir(parents=True, exist_ok=True)
             token_file.write_text(new_token)
             logger.info("Generated and saved new token to %s", token_file)
-        except (OSError, IOError, PermissionError) as e:
+        except (OSError, IOError, PermissionError):
             logger.warning(
                 "Could not persist token. Token is ephemeral for this session.",
                 exc_info=True,
@@ -97,6 +98,6 @@ class TokenConfig:
             token_file.parent.mkdir(parents=True, exist_ok=True)
             token_file.write_text(new_token)
             logger.info("Token rotated and saved to %s", token_file)
-        except (OSError, IOError, PermissionError) as e:
+        except (OSError, IOError, PermissionError):
             logger.warning("Could not persist rotated token", exc_info=True)
         return new_token

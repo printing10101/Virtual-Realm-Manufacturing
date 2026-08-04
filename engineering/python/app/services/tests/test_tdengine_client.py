@@ -93,9 +93,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture(scope="module")
 def tdengine_url() -> str:
     """测试用 TDengine URL（可通过环境变量覆盖）。"""
-    return os.environ.get(
-        "TDENGINE_URL", "taos://root:@localhost:6030"
-    )
+    return os.environ.get("TDENGINE_URL", "taos://root:@localhost:6030")
 
 
 @pytest.fixture(scope="module")
@@ -236,9 +234,7 @@ class TestInsertAndQuery:
         return None
 
     @pytest.mark.asyncio
-    async def test_insert_1000_rows_and_query(
-        self, test_table: str, test_database: str
-    ) -> None:
+    async def test_insert_1000_rows_and_query(self, test_table: str, test_database: str) -> None:
         """主验收用例：插入 1000 条数据并按时间范围查询验证。"""
         now = datetime(2026, 1, 1, 0, 0, 0)
         rows: List[List[Any]] = []
@@ -252,9 +248,7 @@ class TestInsertAndQuery:
                 ]
             )
 
-        affected = await tdengine_client.insert_rows(
-            table_name=test_table, rows=rows, database=test_database
-        )
+        affected = await tdengine_client.insert_rows(table_name=test_table, rows=rows, database=test_database)
         # TDengine 成功执行 INSERT 后返回受影响的行数（应 >= 实际行数）
         assert affected >= 1000, f"expected >=1000 affected rows, got {affected}"
 
@@ -281,27 +275,16 @@ class TestInsertAndQuery:
         assert abs(float(last[1]) - 99.9) < 1e-9
 
     @pytest.mark.asyncio
-    async def test_insert_empty_returns_zero(
-        self, test_table: str, test_database: str
-    ) -> None:
-        affected = await tdengine_client.insert_rows(
-            table_name=test_table, rows=[], database=test_database
-        )
+    async def test_insert_empty_returns_zero(self, test_table: str, test_database: str) -> None:
+        affected = await tdengine_client.insert_rows(table_name=test_table, rows=[], database=test_database)
         assert affected == 0
 
     @pytest.mark.asyncio
-    async def test_time_range_filter(
-        self, test_table: str, test_database: str
-    ) -> None:
+    async def test_time_range_filter(self, test_table: str, test_database: str) -> None:
         """验证时间范围查询的过滤效果。"""
         base = datetime(2026, 2, 1, 0, 0, 0)
-        rows = [
-            [base.strftime("%Y-%m-%d %H:%M:%S.") + f"{i:03d}000", float(i), 0]
-            for i in range(100)
-        ]
-        await tdengine_client.insert_rows(
-            table_name=test_table, rows=rows, database=test_database
-        )
+        rows = [[base.strftime("%Y-%m-%d %H:%M:%S.") + f"{i:03d}000", float(i), 0] for i in range(100)]
+        await tdengine_client.insert_rows(table_name=test_table, rows=rows, database=test_database)
 
         # 只查询前 10 条的范围
         start = base - timedelta(milliseconds=1)
@@ -317,9 +300,7 @@ class TestInsertAndQuery:
         assert len(result) == 2, f"expected 2 rows, got {len(result)}"
 
     @pytest.mark.asyncio
-    async def test_query_no_match(
-        self, test_table: str, test_database: str
-    ) -> None:
+    async def test_query_no_match(self, test_table: str, test_database: str) -> None:
         """查询不存在的远期时间范围应返回空列表。"""
         result = await tdengine_client.query_time_range(
             table_name=test_table,
@@ -346,10 +327,7 @@ class TestValueFormatting:
 
     def test_format_string_escapes_quotes(self) -> None:
         assert tdengine_client._format_value("hello") == "'hello'"
-        assert (
-            tdengine_client._format_value("it's")
-            == "'it''s'"
-        )
+        assert tdengine_client._format_value("it's") == "'it''s'"
 
     def test_format_datetime(self) -> None:
         dt = datetime(2026, 5, 1, 12, 0, 0, 123456)
@@ -407,7 +385,7 @@ class TestIdentifierValidation:
             "'; DROP TABLE--",
             "sensor; DROP TABLE users--",
             "table_name'",
-            "name\" OR 1=1",
+            'name" OR 1=1',
             "a;b",
             "a--b",
             "col/*comment*/",
@@ -526,10 +504,10 @@ class TestTimestampLiteralValidation:
         这里仅测试格式层面的拒绝。
         """
         for ts in (
-            "'2024-1-1 00:00:00'",     # 月份/日 单位数（正则要求 2 位）
-            "'24-01-01 00:00:00'",     # 年份仅 2 位（正则要求 4 位）
-            "'2024/01/01 00:00:00'",   # 斜杠分隔符（正则要求连字符）
-            "'2024-01-01 25:00:00'",   # 小时 25 同样匹配 \d{2}，但格式合法——此条用于对照
+            "'2024-1-1 00:00:00'",  # 月份/日 单位数（正则要求 2 位）
+            "'24-01-01 00:00:00'",  # 年份仅 2 位（正则要求 4 位）
+            "'2024/01/01 00:00:00'",  # 斜杠分隔符（正则要求连字符）
+            "'2024-01-01 25:00:00'",  # 小时 25 同样匹配 \d{2}，但格式合法——此条用于对照
         ):
             if ts == "'2024-01-01 25:00:00'":
                 # 对照组：格式合法（语义由 TDengine 校验）
@@ -541,9 +519,9 @@ class TestTimestampLiteralValidation:
     def test_invalid_unmatched_quotes(self) -> None:
         """非法：引号不匹配。"""
         for ts in (
-            "'2024-01-01 00:00:00",   # 缺右引号
-            "2024-01-01 00:00:00'",   # 缺左引号
-            "''2024-01-01''",         # 双引号
+            "'2024-01-01 00:00:00",  # 缺右引号
+            "2024-01-01 00:00:00'",  # 缺左引号
+            "''2024-01-01''",  # 双引号
         ):
             with pytest.raises(ValueError, match="Invalid timestamp literal"):
                 tdengine_client._validate_timestamp_literal(ts)

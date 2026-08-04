@@ -583,11 +583,17 @@ class TestExplanationRequest:
         assert isinstance(sig, str)
         assert len(sig) == 16
 
-    def test_input_signature_unserializable_input_rejected(self):
-        """不可 JSON 序列化的 input_data 抛 ValueError."""
+    def test_input_signature_unserializable_input_fallback_str(self):
+        """不可 JSON 序列化的 input_data 走 default=str 宽容路径（不抛错）.
+
+        生产实现使用 ``json.dumps(..., default=str)``：不可序列化对象
+        （如 ``object()``）会被转为 repr 字符串参与签名，保证签名计算
+        永不因输入类型失败（签名仅用于去重，宽容处理不破坏正确性）。
+        """
         req = self._make(input_data={"object": object()})  # object() 不可序列化
-        with pytest.raises(ValueError, match="输入签名计算失败"):
-            req.input_signature()
+        sig = req.input_signature()
+        assert isinstance(sig, str)
+        assert len(sig) == 16
 
     def test_input_signature_options_order_independent(self):
         """options 字段顺序不影响签名（sort_keys=True）."""

@@ -17,6 +17,7 @@
 - Ollama 模块为条件注册：依赖可选库 ollama 且 config.hardware.skip_ollama=False
 - _OLLAMA_AVAILABLE 标志位由 router_registry 定义并传递
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI
@@ -52,6 +53,7 @@ def register(app: FastAPI, *, ollama_available: bool = False) -> None:
     # === Ollama（条件注册） ===
     if ollama_available:
         from app.ai import ollama_routes
+
         app.include_router(ollama_routes.router)
 
     # === LLM Provider 网关 ===

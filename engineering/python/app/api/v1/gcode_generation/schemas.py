@@ -37,8 +37,7 @@ class TaskCreateRequest(BaseModel):
     source_chatter_prediction_task_id: str = Field(
         default="",
         description=(
-            "阶段 5 chatter_prediction 任务 ID（用于追溯 ChatterReport 路径）。"
-            "为空时必须显式提供 chatter_report_path。"
+            "阶段 5 chatter_prediction 任务 ID（用于追溯 ChatterReport 路径）。为空时必须显式提供 chatter_report_path。"
         ),
     )
     source_parametric_geometry_task_id: str = Field(
@@ -59,8 +58,7 @@ class TaskCreateRequest(BaseModel):
     operation_plan_path: str = Field(
         default="",
         description=(
-            "阶段 3 输出的 OperationPlan JSON 路径。"
-            "为空时自动从 source_parametric_geometry_task_id 任务中读取。"
+            "阶段 3 输出的 OperationPlan JSON 路径。为空时自动从 source_parametric_geometry_task_id 任务中读取。"
         ),
     )
     controller_type: str = Field(

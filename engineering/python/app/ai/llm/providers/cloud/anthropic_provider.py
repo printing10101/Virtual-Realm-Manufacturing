@@ -64,9 +64,7 @@ class AnthropicProvider(LLMProvider):
                 "max_tokens": 1,
                 "messages": [{"role": "user", "content": "ping"}],
             }
-            response = await self._http_post(
-                f"{self.config.base_url}/messages", payload, headers
-            )
+            response = await self._http_post(f"{self.config.base_url}/messages", payload, headers)
             return response.status_code == 200
         except Exception as e:
             logger.debug("Anthropic detect failed: %s", e)
@@ -84,9 +82,7 @@ class AnthropicProvider(LLMProvider):
                 "max_tokens": 1,
                 "messages": [{"role": "user", "content": "ping"}],
             }
-            response = await self._http_post(
-                f"{self.config.base_url}/messages", payload, headers
-            )
+            response = await self._http_post(f"{self.config.base_url}/messages", payload, headers)
             if response.status_code == 200:
                 self._update_status(ProviderStatus.ONLINE)
             else:
@@ -117,15 +113,11 @@ class AnthropicProvider(LLMProvider):
         }
         headers = self._build_auth_headers()
         start = time.time()
-        response = await self._http_post(
-            f"{self.config.base_url}/messages", payload, headers
-        )
+        response = await self._http_post(f"{self.config.base_url}/messages", payload, headers)
         self._measure_latency(start)
         if response.status_code != 200:
             self._update_status(ProviderStatus.OFFLINE)
-            raise ProviderError(
-                f"API error: {response.status_code} - {response.text}"
-            )
+            raise ProviderError(f"API error: {response.status_code} - {response.text}")
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         # 响应解析：content[0].text

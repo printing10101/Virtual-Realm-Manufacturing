@@ -26,10 +26,10 @@
 5. **并发控制**：runner 内置 ``asyncio.Semaphore``，默认 ``max_concurrent=4``，
    避免单个工作流耗尽系统资源。可配置于 ``WorkflowSpec.metadata["max_concurrent"]``。
 """
+
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 import uuid
@@ -111,13 +111,8 @@ def _spec_to_dict(spec: WorkflowSpec) -> dict[str, Any]:
             }
             for n in spec.nodes
         ],
-        "edges": [
-            {"upstream": e.upstream, "downstream": e.downstream}
-            for e in spec.edges
-        ],
-        "inputs": {
-            k: _serialize(v) for k, v in spec.inputs.items()
-        },
+        "edges": [{"upstream": e.upstream, "downstream": e.downstream} for e in spec.edges],
+        "inputs": {k: _serialize(v) for k, v in spec.inputs.items()},
         "outputs": dict(spec.outputs),
         "metadata": dict(spec.metadata),
     }
@@ -228,6 +223,17 @@ class WorkflowRunner(IWorkflowRunner):
                     f"got name={existing.get('name')} version={existing.get('version')}"
                 )
             workflow_run_id = resume_from
+            # 重置运行状态为 running（否则 _wait_for_terminal 会立即命中
+            # 上次运行遗留的 failed/completed 终态，导致续跑任务未被等待）
+            await self._store.update_run_status(
+                workflow_run_id,
+                "running",
+                error=None,
+                started_at=datetime.now(timezone.utc),
+            )
+            # 上次运行遗留的 skipped 节点重置为 pending（允许重跑；
+            # 否则 _execute_node 的竞态防护会拦截历史 skipped，导致 D/E 永不执行）
+            await self._store.reset_skipped_nodes(workflow_run_id)
             logger.info("工作流断点续跑: %s", workflow_run_id)
         else:
             spec_dict = _spec_to_dict(spec)
@@ -251,11 +257,11 @@ class WorkflowRunner(IWorkflowRunner):
             ]
             await self._store.init_node_states(workflow_run_id, node_infos)
             await self._store.update_run_status(
-                workflow_run_id, "running",
+                workflow_run_id,
+                "running",
                 started_at=datetime.now(timezone.utc),
             )
-            logger.info("工作流已创建: %s (name=%s version=%s)",
-                        workflow_run_id, spec.name, spec.version)
+            logger.info("工作流已创建: %s (name=%s version=%s)", workflow_run_id, spec.name, spec.version)
 
         # 3. 注册取消信号
         async with self._lock:
@@ -288,27 +294,35 @@ class WorkflowRunner(IWorkflowRunner):
         for node in nodes:
             if node.get("status") == "pending":
                 await self._store.update_node_state(
-                    workflow_run_id, node["node_id"],
+                    workflow_run_id,
+                    node["node_id"],
                     status="skipped",
                     completed_at=datetime.now(timezone.utc),
                 )
-                await self._emit(workflow_run_id, WorkflowEvent(
-                    workflow_run_id=workflow_run_id,
-                    event_type="node_skipped",
-                    node_id=node["node_id"],
-                    payload={"reason": "workflow_cancelled"},
-                    timestamp=time.time(),
-                ))
+                await self._emit(
+                    workflow_run_id,
+                    WorkflowEvent(
+                        workflow_run_id=workflow_run_id,
+                        event_type="node_skipped",
+                        node_id=node["node_id"],
+                        payload={"reason": "workflow_cancelled"},
+                        timestamp=time.time(),
+                    ),
+                )
 
         await self._store.update_run_status(
-            workflow_run_id, "cancelled",
+            workflow_run_id,
+            "cancelled",
             completed_at=datetime.now(timezone.utc),
         )
-        await self._emit(workflow_run_id, WorkflowEvent(
-            workflow_run_id=workflow_run_id,
-            event_type="workflow_cancelled",
-            timestamp=time.time(),
-        ))
+        await self._emit(
+            workflow_run_id,
+            WorkflowEvent(
+                workflow_run_id=workflow_run_id,
+                event_type="workflow_cancelled",
+                timestamp=time.time(),
+            ),
+        )
         logger.info("工作流已取消: %s", workflow_run_id)
         return True
 
@@ -329,9 +343,7 @@ class WorkflowRunner(IWorkflowRunner):
         try:
             while True:
                 try:
-                    event = await asyncio.wait_for(
-                        queue.get(), timeout=SUBSCRIBER_HEARTBEAT_TIMEOUT_SEC
-                    )
+                    event = await asyncio.wait_for(queue.get(), timeout=SUBSCRIBER_HEARTBEAT_TIMEOUT_SEC)
                 except asyncio.TimeoutError:
                     # 心跳：发布一个 None 事件让 SSE 保持连接
                     # 这里简单 continue；上层 SSE 路由可独立实现心跳
@@ -377,9 +389,7 @@ class WorkflowRunner(IWorkflowRunner):
             cancel_evt = asyncio.Event()
             self._cancel_events[workflow_run_id] = cancel_evt
 
-        max_concurrent = int(
-            spec.metadata.get("max_concurrent", DEFAULT_MAX_CONCURRENT_NODES)
-        )
+        max_concurrent = int(spec.metadata.get("max_concurrent", DEFAULT_MAX_CONCURRENT_NODES))
         semaphore = asyncio.Semaphore(max_concurrent)
 
         # 构建 DAG
@@ -389,9 +399,7 @@ class WorkflowRunner(IWorkflowRunner):
         completed_nodes = await self._load_completed_nodes(workflow_run_id)
 
         # 工作流级 inputs 注入到所有节点（作为 fallback）
-        workflow_inputs_serialized = {
-            k: _serialize(v) for k, v in workflow_inputs.items()
-        }
+        workflow_inputs_serialized = {k: _serialize(v) for k, v in workflow_inputs.items()}
 
         try:
             await self._schedule_nodes(
@@ -407,59 +415,76 @@ class WorkflowRunner(IWorkflowRunner):
             # 检查最终状态
             final_nodes = await self._store.get_node_states(workflow_run_id)
             has_failed = any(n.get("status") == "failed" for n in final_nodes)
-            has_cancelled = any(n.get("status") == "skipped" and n.get("error") for n in final_nodes)
+            # 取消：cancel_evt 已设置，或存在无 error 的 skipped（取消信号标记）
+            has_cancelled = any(n.get("status") == "skipped" and not n.get("error") for n in final_nodes)
+            # 失败传播：skipped 且带 error（_propagate_skip 写入"上游节点 X 失败"）
+            has_propagated_failure = any(n.get("status") == "skipped" and n.get("error") for n in final_nodes)
 
             if cancel_evt.is_set() or has_cancelled:
                 await self._store.update_run_status(
-                    workflow_run_id, "cancelled",
+                    workflow_run_id,
+                    "cancelled",
                     completed_at=datetime.now(timezone.utc),
                 )
-                await self._emit(workflow_run_id, WorkflowEvent(
-                    workflow_run_id=workflow_run_id,
-                    event_type="workflow_cancelled",
-                    timestamp=time.time(),
-                ))
-            elif has_failed:
+                await self._emit(
+                    workflow_run_id,
+                    WorkflowEvent(
+                        workflow_run_id=workflow_run_id,
+                        event_type="workflow_cancelled",
+                        timestamp=time.time(),
+                    ),
+                )
+            elif has_failed or has_propagated_failure:
                 await self._store.update_run_status(
-                    workflow_run_id, "failed",
+                    workflow_run_id,
+                    "failed",
                     error="一个或多个节点失败",
                     completed_at=datetime.now(timezone.utc),
                 )
-                await self._emit(workflow_run_id, WorkflowEvent(
-                    workflow_run_id=workflow_run_id,
-                    event_type="workflow_failed",
-                    payload={"reason": "node_failed"},
-                    timestamp=time.time(),
-                ))
+                await self._emit(
+                    workflow_run_id,
+                    WorkflowEvent(
+                        workflow_run_id=workflow_run_id,
+                        event_type="workflow_failed",
+                        payload={"reason": "node_failed"},
+                        timestamp=time.time(),
+                    ),
+                )
             else:
                 # 解析工作流 outputs
-                final_outputs = await self._resolve_workflow_outputs(
-                    workflow_run_id, spec
-                )
+                final_outputs = await self._resolve_workflow_outputs(workflow_run_id, spec)
                 await self._store.update_run_status(
-                    workflow_run_id, "completed",
+                    workflow_run_id,
+                    "completed",
                     outputs=final_outputs,
                     completed_at=datetime.now(timezone.utc),
                 )
-                await self._emit(workflow_run_id, WorkflowEvent(
-                    workflow_run_id=workflow_run_id,
-                    event_type="workflow_completed",
-                    payload={"outputs": final_outputs},
-                    timestamp=time.time(),
-                ))
+                await self._emit(
+                    workflow_run_id,
+                    WorkflowEvent(
+                        workflow_run_id=workflow_run_id,
+                        event_type="workflow_completed",
+                        payload={"outputs": final_outputs},
+                        timestamp=time.time(),
+                    ),
+                )
         except Exception as e:
             logger.error("工作流 %s 执行异常: %s", workflow_run_id, e, exc_info=True)
             await self._store.update_run_status(
-                workflow_run_id, "failed",
+                workflow_run_id,
+                "failed",
                 error=str(e)[:2048],
                 completed_at=datetime.now(timezone.utc),
             )
-            await self._emit(workflow_run_id, WorkflowEvent(
-                workflow_run_id=workflow_run_id,
-                event_type="workflow_failed",
-                payload={"reason": "exception", "error": str(e)},
-                timestamp=time.time(),
-            ))
+            await self._emit(
+                workflow_run_id,
+                WorkflowEvent(
+                    workflow_run_id=workflow_run_id,
+                    event_type="workflow_failed",
+                    payload={"reason": "exception", "error": str(e)},
+                    timestamp=time.time(),
+                ),
+            )
         finally:
             # 通知所有订阅者工作流已终结
             await self._notify_termination(workflow_run_id)
@@ -517,30 +542,31 @@ class WorkflowRunner(IWorkflowRunner):
                 # 取消信号：剩余节点全部标记 skipped
                 for nid in list(working_graph.nodes()):
                     await self._store.update_node_state(
-                        workflow_run_id, nid,
+                        workflow_run_id,
+                        nid,
                         status="skipped",
                         completed_at=datetime.now(timezone.utc),
                     )
-                    await self._emit(workflow_run_id, WorkflowEvent(
-                        workflow_run_id=workflow_run_id,
-                        event_type="node_skipped",
-                        node_id=nid,
-                        payload={"reason": "workflow_cancelled"},
-                        timestamp=time.time(),
-                    ))
+                    await self._emit(
+                        workflow_run_id,
+                        WorkflowEvent(
+                            workflow_run_id=workflow_run_id,
+                            event_type="node_skipped",
+                            node_id=nid,
+                            payload={"reason": "workflow_cancelled"},
+                            timestamp=time.time(),
+                        ),
+                    )
                 return
 
             # 找出所有入度=0 的节点
             ready_nodes = [
-                nid for nid in working_graph.nodes()
-                if working_graph.in_degree(nid) == 0
-                and nid not in pending_futures
+                nid for nid in working_graph.nodes() if working_graph.in_degree(nid) == 0 and nid not in pending_futures
             ]
 
             if not ready_nodes and not pending_futures:
                 # 没有就绪节点也没有正在执行的节点：可能存在死锁（环）
-                logger.error("工作流 %s 调度死锁：剩余节点 %s",
-                             workflow_run_id, list(working_graph.nodes()))
+                logger.error("工作流 %s 调度死锁：剩余节点 %s", workflow_run_id, list(working_graph.nodes()))
                 break
 
             # 启动就绪节点（并行）
@@ -586,12 +612,8 @@ class WorkflowRunner(IWorkflowRunner):
                     failed_ids.append(nid)
                 pending_futures.pop(nid, None)
 
-            # 从图中移除完成/失败的节点
-            for nid in completed_ids + failed_ids:
-                if nid in working_graph:
-                    working_graph.remove_node(nid)
-
-            # 失败节点：递归标记下游为 skipped
+            # 失败节点：递归标记下游为 skipped（必须在移除失败节点之前执行，
+            # 否则 nx.descendants 找不到失败节点，下游永远不会被标记）
             for failed_nid in failed_ids:
                 await self._propagate_skip(
                     workflow_run_id=workflow_run_id,
@@ -599,6 +621,11 @@ class WorkflowRunner(IWorkflowRunner):
                     failed_node=failed_nid,
                     cancel_evt=cancel_evt,
                 )
+
+            # 从图中移除完成/失败的节点
+            for nid in completed_ids + failed_ids:
+                if nid in working_graph:
+                    working_graph.remove_node(nid)
 
     async def _propagate_skip(
         self,
@@ -621,21 +648,27 @@ class WorkflowRunner(IWorkflowRunner):
                 # 已被取消信号标记，避免重复 emit
                 continue
             current_state = await self._store.get_node_state(workflow_run_id, desc_nid)
-            if current_state and current_state.get("status") not in {"pending", }:
+            if current_state and current_state.get("status") not in {
+                "pending",
+            }:
                 continue
             await self._store.update_node_state(
-                workflow_run_id, desc_nid,
+                workflow_run_id,
+                desc_nid,
                 status="skipped",
                 error=f"上游节点 {failed_node} 失败",
                 completed_at=datetime.now(timezone.utc),
             )
-            await self._emit(workflow_run_id, WorkflowEvent(
-                workflow_run_id=workflow_run_id,
-                event_type="node_skipped",
-                node_id=desc_nid,
-                payload={"reason": "upstream_failed", "upstream": failed_node},
-                timestamp=time.time(),
-            ))
+            await self._emit(
+                workflow_run_id,
+                WorkflowEvent(
+                    workflow_run_id=workflow_run_id,
+                    event_type="node_skipped",
+                    node_id=desc_nid,
+                    payload={"reason": "upstream_failed", "upstream": failed_node},
+                    timestamp=time.time(),
+                ),
+            )
             if desc_nid in graph:
                 graph.remove_node(desc_nid)
 
@@ -658,6 +691,11 @@ class WorkflowRunner(IWorkflowRunner):
             if cancel_evt.is_set():
                 return TaskStatus.SKIPPED
 
+            # 失败传播竞态防护：上游失败传播已标记本节点 skipped 时不再执行
+            current_state = await self._store.get_node_state(workflow_run_id, node_id)
+            if current_state and current_state.get("status") == "skipped":
+                return TaskStatus.SKIPPED
+
             # 1. 解析 inputs（artifact 引用）
             completed_outputs = await self._store.get_completed_node_outputs(workflow_run_id)
             resolved_inputs: dict[str, Artifact] = {}
@@ -674,7 +712,9 @@ class WorkflowRunner(IWorkflowRunner):
                 if art is None:
                     logger.warning(
                         "节点 %s 的输入 %s=%s 无法解析，将传 None",
-                        node_id, input_name, ref,
+                        node_id,
+                        input_name,
+                        ref,
                     )
                     continue
                 resolved_inputs[input_name] = art
@@ -682,19 +722,23 @@ class WorkflowRunner(IWorkflowRunner):
             # 2. 更新节点状态为 running
             job_id = f"wf-{uuid.uuid4().hex[:12]}"
             await self._store.update_node_state(
-                workflow_run_id, node_id,
+                workflow_run_id,
+                node_id,
                 status="running",
                 job_id=job_id,
                 inputs={k: _serialize(v) for k, v in resolved_inputs.items()},
                 started_at=datetime.now(timezone.utc),
             )
-            await self._emit(workflow_run_id, WorkflowEvent(
-                workflow_run_id=workflow_run_id,
-                event_type="node_started",
-                node_id=node_id,
-                payload={"job_id": job_id},
-                timestamp=time.time(),
-            ))
+            await self._emit(
+                workflow_run_id,
+                WorkflowEvent(
+                    workflow_run_id=workflow_run_id,
+                    event_type="node_started",
+                    node_id=node_id,
+                    payload={"job_id": job_id},
+                    timestamp=time.time(),
+                ),
+            )
 
             # 3. 获取 TaskHandler
             try:
@@ -702,18 +746,22 @@ class WorkflowRunner(IWorkflowRunner):
             except KeyError:
                 error_msg = f"task_type 未注册: {node_spec.task_type}"
                 await self._store.update_node_state(
-                    workflow_run_id, node_id,
+                    workflow_run_id,
+                    node_id,
                     status="failed",
                     error=error_msg,
                     completed_at=datetime.now(timezone.utc),
                 )
-                await self._emit(workflow_run_id, WorkflowEvent(
-                    workflow_run_id=workflow_run_id,
-                    event_type="node_failed",
-                    node_id=node_id,
-                    payload={"error": error_msg},
-                    timestamp=time.time(),
-                ))
+                await self._emit(
+                    workflow_run_id,
+                    WorkflowEvent(
+                        workflow_run_id=workflow_run_id,
+                        event_type="node_failed",
+                        node_id=node_id,
+                        payload={"error": error_msg},
+                        timestamp=time.time(),
+                    ),
+                )
                 return TaskStatus.FAILED
 
             # 4. 构造 TaskContext 并执行
@@ -739,7 +787,8 @@ class WorkflowRunner(IWorkflowRunner):
                 )
             except asyncio.CancelledError:
                 await self._store.update_node_state(
-                    workflow_run_id, node_id,
+                    workflow_run_id,
+                    node_id,
                     status="cancelled",
                     completed_at=datetime.now(timezone.utc),
                 )
@@ -752,17 +801,21 @@ class WorkflowRunner(IWorkflowRunner):
                 )
 
             # 5. 持久化结果
-            outputs_serialized = {
-                k: _serialize(v) for k, v in result.outputs.items()
-            }
-            metrics_serialized = {
-                k: float(v) for k, v in result.metrics.items()
-                if isinstance(v, (int, float))
-            }
+            # 失败传播竞态防护：执行期间上游失败可能已把本节点标记 skipped，
+            # 此时不覆盖 skipped 状态（避免 failed/completed 覆盖传播结果）。
+            current_state = await self._store.get_node_state(workflow_run_id, node_id)
+            if current_state and current_state.get("status") == "skipped":
+                logger.debug("节点 %s 持久化前发现已 skipped，放弃覆盖", node_id)
+                return TaskStatus.SKIPPED
+
+            outputs_serialized = {k: _serialize(v) for k, v in result.outputs.items()}
+            metrics_serialized = {k: float(v) for k, v in result.metrics.items() if isinstance(v, (int, float))}
+            logger.debug("节点 %s 结果: status=%s outputs=%s", node_id, result.status, list(outputs_serialized))
 
             if cancel_evt.is_set():
                 await self._store.update_node_state(
-                    workflow_run_id, node_id,
+                    workflow_run_id,
+                    node_id,
                     status="cancelled",
                     completed_at=datetime.now(timezone.utc),
                 )
@@ -770,47 +823,53 @@ class WorkflowRunner(IWorkflowRunner):
 
             if result.status == TaskStatus.COMPLETED:
                 await self._store.update_node_state(
-                    workflow_run_id, node_id,
+                    workflow_run_id,
+                    node_id,
                     status="completed",
                     outputs=outputs_serialized,
                     metrics=metrics_serialized,
                     completed_at=datetime.now(timezone.utc),
                 )
-                await self._emit(workflow_run_id, WorkflowEvent(
-                    workflow_run_id=workflow_run_id,
-                    event_type="node_completed",
-                    node_id=node_id,
-                    payload={
-                        "outputs": outputs_serialized,
-                        "metrics": metrics_serialized,
-                    },
-                    timestamp=time.time(),
-                ))
+                await self._emit(
+                    workflow_run_id,
+                    WorkflowEvent(
+                        workflow_run_id=workflow_run_id,
+                        event_type="node_completed",
+                        node_id=node_id,
+                        payload={
+                            "outputs": outputs_serialized,
+                            "metrics": metrics_serialized,
+                        },
+                        timestamp=time.time(),
+                    ),
+                )
                 return TaskStatus.COMPLETED
             else:
                 await self._store.update_node_state(
-                    workflow_run_id, node_id,
+                    workflow_run_id,
+                    node_id,
                     status="failed",
                     error=result.error or "节点执行失败",
                     outputs=outputs_serialized,
                     metrics=metrics_serialized,
                     completed_at=datetime.now(timezone.utc),
                 )
-                await self._emit(workflow_run_id, WorkflowEvent(
-                    workflow_run_id=workflow_run_id,
-                    event_type="node_failed",
-                    node_id=node_id,
-                    payload={
-                        "error": result.error,
-                        "error_code": result.error_code,
-                    },
-                    timestamp=time.time(),
-                ))
+                await self._emit(
+                    workflow_run_id,
+                    WorkflowEvent(
+                        workflow_run_id=workflow_run_id,
+                        event_type="node_failed",
+                        node_id=node_id,
+                        payload={
+                            "error": result.error,
+                            "error_code": result.error_code,
+                        },
+                        timestamp=time.time(),
+                    ),
+                )
                 return TaskStatus.FAILED
 
-    async def _resolve_workflow_outputs(
-        self, workflow_run_id: str, spec: WorkflowSpec
-    ) -> dict[str, Any]:
+    async def _resolve_workflow_outputs(self, workflow_run_id: str, spec: WorkflowSpec) -> dict[str, Any]:
         """解析工作流级 outputs（${node_id.output_name} 引用）。"""
         completed_outputs = await self._store.get_completed_node_outputs(workflow_run_id)
         result: dict[str, Any] = {}
@@ -842,9 +901,7 @@ class WorkflowRunner(IWorkflowRunner):
                         q.put_nowait(event)
                     except asyncio.QueueEmpty:
                         pass
-                    logger.warning(
-                        "订阅者队列满，丢弃旧事件: workflow_run_id=%s", workflow_run_id
-                    )
+                    logger.warning("订阅者队列满，丢弃旧事件: workflow_run_id=%s", workflow_run_id)
                 except Exception as e:
                     logger.debug("订阅者队列异常: %s", e)
                     dead_queues.append(q)

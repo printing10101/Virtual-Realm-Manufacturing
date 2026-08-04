@@ -7,19 +7,15 @@ from __future__ import annotations
 
 import json
 import logging
-import traceback
 
 import numpy as np
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from app.contracts.rl_agent import (
     ActionEvaluation,
     OptimizationTarget,
     PolicyError,
-    PolicyNotFoundError,
     PolicyVersion,
-    RecommendedAction,
-    SafetyConstraintsSpec,
     TrainingMetricsSnapshot,
     TrainingStatusInfo,
 )
@@ -36,14 +32,10 @@ logger = logging.getLogger(__name__)
 # 状态/动作字段索引（与 StateField.all() / ActionField.all() 顺序对齐）
 _STATE_FIELD_ORDER: list[str] = StateField.all()
 _ACTION_FIELD_ORDER: list[str] = ActionField.all()
-_STATE_FIELD_INDEX: dict[str, int] = {
-    name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)
-}
+_STATE_FIELD_INDEX: dict[str, int] = {name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)}
 
 
-def _orm_to_dataclass(
-    orm: RLAgentPolicyVersionORM
-) -> PolicyVersion:
+def _orm_to_dataclass(orm: RLAgentPolicyVersionORM) -> PolicyVersion:
     """ORM → 契约层 dataclass."""
     return PolicyVersion(
         version=orm.version,
@@ -57,9 +49,8 @@ def _orm_to_dataclass(
         is_active=orm.is_active,
     )
 
-def _training_run_to_status_info(
-    orm: RLAgentTrainingRunORM
-) -> TrainingStatusInfo:
+
+def _training_run_to_status_info(orm: RLAgentTrainingRunORM) -> TrainingStatusInfo:
     """训练运行 ORM → TrainingStatusInfo."""
     metrics: Optional[TrainingMetricsSnapshot] = None
     if orm.metrics_json:
@@ -98,9 +89,8 @@ def _training_run_to_status_info(
         error_message=orm.error_message,
     )
 
-def _state_dict_to_array(
-    state_dict: dict[str, float], *, field_name: str
-) -> np.ndarray:
+
+def _state_dict_to_array(state_dict: dict[str, float], *, field_name: str) -> np.ndarray:
     """状态字典 → ndarray [state_dim].
 
     按 ``StateField.all()`` 顺序提取值，缺失字段报错.
@@ -110,22 +100,16 @@ def _state_dict_to_array(
     values = []
     for field in _STATE_FIELD_ORDER:
         if field not in state_dict:
-            raise ValueError(
-                f"{field_name} 缺少字段 '{field}'"
-                f"（必需字段: {_STATE_FIELD_ORDER}）"
-            )
+            raise ValueError(f"{field_name} 缺少字段 '{field}'（必需字段: {_STATE_FIELD_ORDER}）")
         value = state_dict[field]
         try:
             values.append(float(value))
         except (TypeError, ValueError) as exc:
-            raise ValueError(
-                f"{field_name}['{field}'] 不是合法数值: {value}"
-            ) from exc
+            raise ValueError(f"{field_name}['{field}'] 不是合法数值: {value}") from exc
     return np.asarray(values, dtype=np.float32)
 
-def _action_dict_to_array(
-    action_dict: dict[str, float], *, field_name: str
-) -> np.ndarray:
+
+def _action_dict_to_array(action_dict: dict[str, float], *, field_name: str) -> np.ndarray:
     """动作字典 → ndarray [action_dim].
 
     按 ``ActionField.all()`` 顺序提取值，缺失字段报错.
@@ -135,22 +119,16 @@ def _action_dict_to_array(
     values = []
     for field in _ACTION_FIELD_ORDER:
         if field not in action_dict:
-            raise ValueError(
-                f"{field_name} 缺少字段 '{field}'"
-                f"（必需字段: {_ACTION_FIELD_ORDER}）"
-            )
+            raise ValueError(f"{field_name} 缺少字段 '{field}'（必需字段: {_ACTION_FIELD_ORDER}）")
         value = action_dict[field]
         try:
             values.append(float(value))
         except (TypeError, ValueError) as exc:
-            raise ValueError(
-                f"{field_name}['{field}'] 不是合法数值: {value}"
-            ) from exc
+            raise ValueError(f"{field_name}['{field}'] 不是合法数值: {value}") from exc
     return np.asarray(values, dtype=np.float32)
 
-def _action_array_to_dict(
-    action_arr: np.ndarray
-) -> dict[str, float]:
+
+def _action_array_to_dict(action_arr: np.ndarray) -> dict[str, float]:
     """动作 ndarray → 字典（按 ActionField 顺序还原字段名）."""
     arr = np.asarray(action_arr, dtype=np.float32).reshape(-1)
     result: dict[str, float] = {}
@@ -159,14 +137,14 @@ def _action_array_to_dict(
             result[field_name] = float(arr[idx])
     return result
 
-def _extract_state_field(
-    state_arr: np.ndarray, field_name: str, *, default: float = 0.0
-) -> float:
+
+def _extract_state_field(state_arr: np.ndarray, field_name: str, *, default: float = 0.0) -> float:
     """从状态数组提取指定字段值."""
     idx = _STATE_FIELD_INDEX.get(field_name)
     if idx is None or idx >= len(state_arr):
         return default
     return float(state_arr[idx])
+
 
 def _load_weights(net: Any, model_uri: str, *, kind: str) -> None:
     """从 ModelRegistry 加载权重到网络.
@@ -181,9 +159,7 @@ def _load_weights(net: Any, model_uri: str, *, kind: str) -> None:
         # （BaseModelRegistry.get() 是 @abstractmethod，需要 self 实例）
         registry = LNNModelRegistry()
         entry = registry.get(model_uri)
-        storage_uri = getattr(entry, "storage_uri", None) or (
-            entry.info.model_path if entry and entry.info else None
-        )
+        storage_uri = getattr(entry, "storage_uri", None) or (entry.info.model_path if entry and entry.info else None)
         if storage_uri:
             logger.debug(
                 "权重加载占位: kind=%s uri=%s storage=%s",
@@ -198,6 +174,7 @@ def _load_weights(net: Any, model_uri: str, *, kind: str) -> None:
             kind,
             exc,
         )
+
 
 def _extract_action(policy_out: Any) -> np.ndarray:
     """从策略输出提取动作向量.
@@ -218,12 +195,14 @@ def _extract_action(policy_out: Any) -> np.ndarray:
         action_arr = action_arr.reshape(-1)
     return action_arr
 
+
 def _extract_value(value_out: Any) -> float:
     """从值网络输出提取标量价值."""
     if hasattr(value_out, "detach"):  # torch.Tensor
         value_out = value_out.detach().cpu().numpy()
     value_arr = np.asarray(value_out, dtype=np.float32)
     return float(value_arr.reshape(-1)[0])
+
 
 def _rank_candidates(
     candidates: list[ActionEvaluation],
@@ -237,18 +216,14 @@ def _rank_candidates(
         - BALANCE: 按 q_value 降序
     """
     if optimization_target == OptimizationTarget.MINIMIZE_CHATTER:
-        return sorted(
-            candidates, key=lambda e: e.predicted_chatter_prob
-        )
+        return sorted(candidates, key=lambda e: e.predicted_chatter_prob)
     if optimization_target == OptimizationTarget.MAXIMIZE_MATERIAL_REMOVAL:
-        return sorted(
-            candidates, key=lambda e: e.expected_return, reverse=True
-        )
+        return sorted(candidates, key=lambda e: e.expected_return, reverse=True)
     # BALANCE
     return sorted(candidates, key=lambda e: e.q_value, reverse=True)
 
+
 def _build_reasoning(
-    
     *,
     action_dict: dict[str, float],
     optimization_target: str,
@@ -268,9 +243,7 @@ def _build_reasoning(
     }.get(optimization_target, optimization_target)
 
     # 动作摘要
-    action_summary = ", ".join(
-        f"{k}={v:+.3f}" for k, v in action_dict.items()
-    )
+    action_summary = ", ".join(f"{k}={v:+.3f}" for k, v in action_dict.items())
 
     return (
         f"推荐动作来源：{source_label}。"

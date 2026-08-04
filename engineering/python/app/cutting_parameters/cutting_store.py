@@ -30,7 +30,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -325,8 +324,7 @@ class TaskStore:
             # 项目记忆硬约束：SUCCEEDED 状态禁止删除（避免误删阶段 5 已引用的 ChatterParams）
             if task.status == CuttingParametersTaskStatus.SUCCEEDED.value:
                 raise ReviewError(
-                    f"任务 {task_id} 处于 SUCCEEDED 状态，禁止删除"
-                    f"（阶段 5 颤振预测可能已引用其 ChatterParams）"
+                    f"任务 {task_id} 处于 SUCCEEDED 状态，禁止删除（阶段 5 颤振预测可能已引用其 ChatterParams）"
                 )
             del self._tasks[task_id]
             # 删除持久化文件

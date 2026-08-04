@@ -145,9 +145,7 @@ class DempsterShaferFusion:
         # Always compute the weighted average prediction first; it is the
         # canonical fused value for the numerical case and the fallback for
         # the high-conflict case.
-        weighted_prediction, prediction_kind = self._weighted_prediction(
-            eligible, weights, total_weight
-        )
+        weighted_prediction, prediction_kind = self._weighted_prediction(eligible, weights, total_weight)
 
         contributing_engines: List[Dict[str, Any]] = []
         for r, w in zip(eligible, weights):
@@ -162,9 +160,7 @@ class DempsterShaferFusion:
 
         # Compute Dempster's combination over the {agree, disagree} frame.
         fused_mass, conflict = self._combine_masses(eligible)
-        self._fusion_stats["high_conflict_count"] += (
-            1 if conflict >= self._conflict_threshold else 0
-        )
+        self._fusion_stats["high_conflict_count"] += 1 if conflict >= self._conflict_threshold else 0
 
         reasoning_path: List[str] = []
         explainability: str
@@ -266,8 +262,7 @@ class DempsterShaferFusion:
             if length == 0:
                 return None, "empty"
             fused = [
-                sum(p[i] * w for p, w in zip(numeric_predictions, numeric_weights))
-                / total_weight
+                sum(p[i] * w for p, w in zip(numeric_predictions, numeric_weights)) / total_weight
                 for i in range(length)
             ]
             return (fused[0] if len(fused) == 1 else fused), "numeric"
@@ -284,8 +279,7 @@ class DempsterShaferFusion:
                 best = max(categorical, key=lambda kv: kv[1])
                 return best[0], "categorical"
             fused = [
-                sum(p[i] * w for p, w in zip(numeric_predictions, numeric_weights))
-                / total_weight
+                sum(p[i] * w for p, w in zip(numeric_predictions, numeric_weights)) / total_weight
                 for i in range(length)
             ]
             return (fused[0] if len(fused) == 1 else fused), "mixed"

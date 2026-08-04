@@ -33,14 +33,11 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import threading
-import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 from app.core.safe_errors import safe_error_message
@@ -108,12 +105,14 @@ class GCodeReviewStatus(str, Enum):
 SAFETY_MARGIN_RATIO: float = 0.8
 
 # HRC52 待校准材料集合（与阶段 5 PENDING_CALIBRATION_MATERIALS 对齐）
-PENDING_CALIBRATION_MATERIALS: frozenset[str] = frozenset({
-    "steel_hrc52",
-    "hrc52",
-    "hrc_52",
-    "hardened_steel_hrc52",
-})
+PENDING_CALIBRATION_MATERIALS: frozenset[str] = frozenset(
+    {
+        "steel_hrc52",
+        "hrc52",
+        "hrc_52",
+        "hardened_steel_hrc52",
+    }
+)
 
 
 # =============================================================================
@@ -345,18 +344,14 @@ class TaskStore:
         """添加任务到存储。"""
         with self._tasks_lock:
             if task.task_id in self._tasks:
-                raise GCodeGenerationError(
-                    f"任务 ID 已存在: {task.task_id}"
-                )
+                raise GCodeGenerationError(f"任务 ID 已存在: {task.task_id}")
             self._tasks[task.task_id] = task
 
     def get_task(self, task_id: str) -> GCodeGenerationTask:
         """获取任务。"""
         with self._tasks_lock:
             if task_id not in self._tasks:
-                raise GCodeGenerationError(
-                    safe_error_message(f"任务不存在: {task_id}")
-                )
+                raise GCodeGenerationError(safe_error_message(f"任务不存在: {task_id}"))
             return self._tasks[task_id]
 
     def list_tasks(
@@ -376,9 +371,7 @@ class TaskStore:
         """更新任务。"""
         with self._tasks_lock:
             if task.task_id not in self._tasks:
-                raise GCodeGenerationError(
-                    safe_error_message(f"任务不存在: {task.task_id}")
-                )
+                raise GCodeGenerationError(safe_error_message(f"任务不存在: {task.task_id}"))
             self._tasks[task.task_id] = task
 
     def delete_task(
@@ -393,16 +386,11 @@ class TaskStore:
         """
         with self._tasks_lock:
             if task_id not in self._tasks:
-                raise GCodeGenerationError(
-                    safe_error_message(f"任务不存在: {task_id}")
-                )
+                raise GCodeGenerationError(safe_error_message(f"任务不存在: {task_id}"))
             task = self._tasks[task_id]
             if task.status == GCodeGenerationTaskStatus.SUCCEEDED.value:
                 if not allow_delete_succeeded:
-                    raise ReviewError(
-                        f"任务 {task_id} 已 SUCCEEDED，禁止删除"
-                        "（阶段 7 CAM 校验可能已引用 G 代码产物）"
-                    )
+                    raise ReviewError(f"任务 {task_id} 已 SUCCEEDED，禁止删除（阶段 7 CAM 校验可能已引用 G 代码产物）")
             del self._tasks[task_id]
 
     def clear(self) -> None:

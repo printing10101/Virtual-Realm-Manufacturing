@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.audit.audit_log import AuditLog, AIModule, UserDecision, OperationStatus, AuditLogEntry
 
 
@@ -97,11 +99,14 @@ class TestAuditLog:
         stats = audit.get_statistics()
         assert isinstance(stats, dict)
 
-    def test_clear_logs_returns_count(self):
+    def test_clear_logs_blocked_by_compliance(self):
+        """clear_logs() 被合规保护禁止（FDA 21 CFR Part 11 / SOC 2）。
+
+        审计日志不可任意清空——必须走 clear_logs_with_authorization()。
+        """
         audit = AuditLog()
-        count = audit.clear_logs()
-        assert isinstance(count, int)
-        assert count >= 0
+        with pytest.raises(RuntimeError, match="compliance"):
+            audit.clear_logs()
 
     def test_search_logs_returns_list(self):
         audit = AuditLog()

@@ -290,12 +290,23 @@ async def import_document(
         # （扩展名 + magic bytes + 分块流式读取 + 大小限制）
         # 替代原 ``await file.read()`` 全量入内存 + 事后校验的模式
         _ALLOWED_RAG_EXTENSIONS = {
-            ".txt", ".pdf", ".docx", ".doc", ".md",
-            ".json", ".csv", ".html", ".xml", ".rtf",
+            ".txt",
+            ".pdf",
+            ".docx",
+            ".doc",
+            ".md",
+            ".json",
+            ".csv",
+            ".html",
+            ".xml",
+            ".rtf",
         }
         _ALLOWED_RAG_MIMES = {
-            "text/plain", "text/csv", "application/json",
-            "application/pdf", "application/zip",  # docx 为 zip 容器
+            "text/plain",
+            "text/csv",
+            "application/json",
+            "application/pdf",
+            "application/zip",  # docx 为 zip 容器
             "application/octet-stream",  # doc/html/xml/rtf 无固定签名
         }
         content = await validate_upload(
@@ -305,9 +316,7 @@ async def import_document(
             allowed_mimes=_ALLOWED_RAG_MIMES,
         )
 
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=os.path.splitext(file.filename or "doc.txt")[1]
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename or "doc.txt")[1]) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
 
@@ -409,9 +418,7 @@ async def get_enhancement_status():
         return engine.get_enhancement_status()
     except (RuntimeError, OSError, ValueError, AttributeError) as e:
         logger.exception("Failed to get enhancement status")
-        _raise_internal(
-            e, context="rag.v2.enhancement_status", fallback="获取增强状态失败"
-        )
+        _raise_internal(e, context="rag.v2.enhancement_status", fallback="获取增强状态失败")
 
 
 @router.get("/v2/cache/stats", dependencies=[Depends(get_current_user)])
@@ -480,7 +487,8 @@ async def retrieve_from_signal_fusion(
     except (RuntimeError, OSError, ValueError, TypeError) as e:
         logger.exception("Signal fusion retrieval failed")
         _raise_internal(
-            e, context="rag.v2.signal_fusion.retrieve",
+            e,
+            context="rag.v2.signal_fusion.retrieve",
             fallback="信号融合检索失败",
         )
 
@@ -507,9 +515,7 @@ def run_evaluation(
     """
     try:
         evaluator = _get_evaluator(use_rag_engine=use_rag_engine)
-        report = evaluator.evaluate_all(
-            top_k=top_k, category=category, difficulty=difficulty
-        )
+        report = evaluator.evaluate_all(top_k=top_k, category=category, difficulty=difficulty)
         return report.to_dict()
     except (RuntimeError, OSError, ValueError) as e:
         logger.exception("Evaluation failed")
@@ -539,9 +545,7 @@ def run_ablation_study(
     """
     try:
         evaluator = _get_evaluator(use_rag_engine=True)
-        results = evaluator.run_ablation_study(
-            top_k=top_k, category=category, difficulty=difficulty
-        )
+        results = evaluator.run_ablation_study(top_k=top_k, category=category, difficulty=difficulty)
         return {
             "total_configs": len(results),
             "results": [r.to_dict() for r in results],
@@ -556,9 +560,7 @@ def generate_comparison_report(
     top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
     category: str | None = Query(None, description="仅评估指定类别"),
     difficulty: str | None = Query(None, description="仅评估指定难度"),
-    run_ablation: bool = Query(
-        True, description="是否运行 ablation study（更全面但更耗时）"
-    ),
+    run_ablation: bool = Query(True, description="是否运行 ablation study（更全面但更耗时）"),
 ):
     """生成 baseline vs enhanced A/B 对比报告。
 
@@ -584,9 +586,7 @@ def generate_comparison_report(
         return comparison.to_dict()
     except (RuntimeError, OSError, ValueError) as e:
         logger.exception("Comparison report generation failed")
-        _raise_internal(
-            e, context="rag.v2.comparison", fallback="对比报告生成失败"
-        )
+        _raise_internal(e, context="rag.v2.comparison", fallback="对比报告生成失败")
 
 
 # ===========================================================================
@@ -643,7 +643,9 @@ async def recommend_process(request: dict[str, Any]):
 
         index = _get_process_index()
         recommendations = index.recommend_process(
-            feature=feature, material=material, top_k=top_k,
+            feature=feature,
+            material=material,
+            top_k=top_k,
         )
         return {
             "feature": feature.lower(),
@@ -680,7 +682,9 @@ async def find_similar_quadruples(request: dict[str, Any]):
 
         index = _get_process_index()
         results = index.find_similar(
-            feature=feature, material=material, top_k=top_k,
+            feature=feature,
+            material=material,
+            top_k=top_k,
         )
         return {
             "feature": feature.lower(),
@@ -771,9 +775,7 @@ async def get_processes_for_feature(feature: str):
         }
     except (RuntimeError, OSError) as e:
         logger.exception("Failed to get processes for feature")
-        _raise_internal(
-            e, context="rag.process.processes", fallback="获取工艺方法列表失败"
-        )
+        _raise_internal(e, context="rag.process.processes", fallback="获取工艺方法列表失败")
 
 
 @router.get("/process/stats", dependencies=[Depends(get_current_user)])
@@ -867,6 +869,7 @@ async def get_related_documents(request: dict[str, Any]):
     except (ValueError, TypeError, RuntimeError) as e:
         logger.exception("Failed to get related documents")
         _raise_internal(
-            e, context="rag.process.related_documents",
+            e,
+            context="rag.process.related_documents",
             fallback="关联文档查询失败",
         )

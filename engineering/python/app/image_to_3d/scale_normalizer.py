@@ -45,6 +45,7 @@ class ScaleNormalizationError(RuntimeError):
 @dataclass
 class ScaleNormalizationResult:
     """尺度归一化结果。"""
+
     success: bool
     scale_factor: float
     calibrated: bool  # True=已用标定块归一化；False=无量纲输出
@@ -56,6 +57,7 @@ def _try_import_trimesh() -> Any:
     """条件导入 trimesh，失败则返回 None。"""
     try:
         import trimesh
+
         return trimesh
     except ImportError:
         return None
@@ -90,26 +92,19 @@ def normalize_scale(
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_bytes(mesh_path.read_bytes())
         except OSError as e:
-            raise ScaleNormalizationError(
-                f"trimesh 未安装且文件拷贝失败: {e}"
-            ) from e
+            raise ScaleNormalizationError(f"trimesh 未安装且文件拷贝失败: {e}") from e
         return ScaleNormalizationResult(
             success=True,
             scale_factor=1.0,
             calibrated=False,
             mesh_path=output_path,
-            message=(
-                "trimesh 未安装，mesh 已原样拷贝但未做尺度归一化。"
-                "此输出无量纲，不允许进入工艺仿真链路。"
-            ),
+            message=("trimesh 未安装，mesh 已原样拷贝但未做尺度归一化。此输出无量纲，不允许进入工艺仿真链路。"),
         )
 
     try:
         mesh = trimesh.load(str(mesh_path), force="mesh")
     except Exception as e:
-        raise ScaleNormalizationError(
-            f"加载 mesh 失败 path={mesh_path}: {e}"
-        ) from e
+        raise ScaleNormalizationError(f"加载 mesh 失败 path={mesh_path}: {e}") from e
 
     if calibration_anchor_distance is None or calibration_anchor_distance <= 0:
         # 无标定块距离：无量纲输出
@@ -117,9 +112,7 @@ def normalize_scale(
             output_path.parent.mkdir(parents=True, exist_ok=True)
             mesh.export(str(output_path))
         except Exception as e:
-            raise ScaleNormalizationError(
-                f"导出无量纲 mesh 失败: {e}"
-            ) from e
+            raise ScaleNormalizationError(f"导出无量纲 mesh 失败: {e}") from e
         return ScaleNormalizationResult(
             success=True,
             scale_factor=1.0,
@@ -134,9 +127,7 @@ def normalize_scale(
 
     # 有标定块距离：计算缩放因子
     if cfg.calibration_block_mm <= 0:
-        raise ScaleNormalizationError(
-            f"标定块尺寸配置无效 calibration_block_mm={cfg.calibration_block_mm}"
-        )
+        raise ScaleNormalizationError(f"标定块尺寸配置无效 calibration_block_mm={cfg.calibration_block_mm}")
 
     scale_factor = cfg.calibration_block_mm / calibration_anchor_distance
     if scale_factor <= 0 or scale_factor > 1000.0:
@@ -154,9 +145,7 @@ def normalize_scale(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         mesh.export(str(output_path))
     except Exception as e:
-        raise ScaleNormalizationError(
-            f"应用缩放或导出失败: {e}"
-        ) from e
+        raise ScaleNormalizationError(f"应用缩放或导出失败: {e}") from e
 
     logger.info(
         "尺度归一化完成 scale=%.6f anchor=%.4f block_mm=%.2f output=%s",

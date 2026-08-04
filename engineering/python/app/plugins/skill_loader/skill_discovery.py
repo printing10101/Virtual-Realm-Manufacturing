@@ -140,9 +140,7 @@ class SkillDiscoveryMixin:
             if not self.registry.get(skill.metadata.skill_id):
                 self.registry.register(skill)
 
-    def _load_skills_from_directory(
-        self, directory: str, level: SkillLevel
-    ) -> List[Skill]:
+    def _load_skills_from_directory(self, directory: str, level: SkillLevel) -> List[Skill]:
         skills: List[Skill] = []
         if not os.path.exists(directory):
             return skills
@@ -157,9 +155,7 @@ class SkillDiscoveryMixin:
 
         return skills
 
-    def _load_skill_from_file(
-        self, file_path: str, level: SkillLevel
-    ) -> Optional[Skill]:
+    def _load_skill_from_file(self, file_path: str, level: SkillLevel) -> Optional[Skill]:
         parsed = MarkdownSkillParser.parse(file_path)
         if parsed is None:
             return None
@@ -211,7 +207,9 @@ class SkillDiscoveryMixin:
                         skill.is_loaded = True
                 except (OSError, RuntimeError, ValueError, TypeError, NameError) as e:
                     logger.warning(
-                        "Failed to load code block from %s: %s", file_path, e,
+                        "Failed to load code block from %s: %s",
+                        file_path,
+                        e,
                         exc_info=True,
                     )
 

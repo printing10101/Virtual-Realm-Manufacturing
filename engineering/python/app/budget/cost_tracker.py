@@ -17,7 +17,7 @@ from pathlib import Path
 
 from app.utils.sqlite_retry import sqlite_retry
 from app.utils.utils import get_output_dir
-from app.utils.sqlite_pool import get_sqlite_manager, SQLiteConnectionManager
+from app.utils.sqlite_pool import get_sqlite_manager
 from app.budget.sql_safety import validate_cost_dimension_column
 
 logger = logging.getLogger(__name__)
@@ -277,9 +277,7 @@ class MultiDimensionCostTracker:
             "data_transfer_per_mb": 0.0001,
         }
         for key, val in defaults.items():
-            row = self._conn.execute(
-                "SELECT price_value FROM unit_price_config WHERE price_key = ?", (key,)
-            ).fetchone()
+            row = self._conn.execute("SELECT price_value FROM unit_price_config WHERE price_key = ?", (key,)).fetchone()
             if row:
                 setattr(self._unit_prices, key, row["price_value"])
             else:
@@ -434,18 +432,14 @@ class MultiDimensionCostTracker:
             metadata=metadata,
         )
 
-    def record_gpu_usage(
-        self, task_id: str, gpu_hours: float, agent_id: Optional[str] = None
-    ) -> CostEvent:
+    def record_gpu_usage(self, task_id: str, gpu_hours: float, agent_id: Optional[str] = None) -> CostEvent:
         return self.record_gpu_time(
             task_id=task_id,
             gpu_seconds=gpu_hours * 3600.0,
             agent_id=agent_id or "",
         )
 
-    def record_memory_usage(
-        self, task_id: str, memory_mb: float, agent_id: Optional[str] = None
-    ) -> CostEvent:
+    def record_memory_usage(self, task_id: str, memory_mb: float, agent_id: Optional[str] = None) -> CostEvent:
         return self.record_gpu_memory(
             task_id=task_id,
             gb_seconds=memory_mb / 1024.0,
@@ -749,9 +743,7 @@ class MultiDimensionCostTracker:
         ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_cost_trend(
-        self, days: int = 30, interval_hours: int = 24
-    ) -> List[Dict[str, Any]]:
+    def get_cost_trend(self, days: int = 30, interval_hours: int = 24) -> List[Dict[str, Any]]:
         """获取成本趋势数据"""
         cutoff = time.time() - (days * 86400)
 

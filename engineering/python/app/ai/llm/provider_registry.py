@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 # 数据库路径
 # ---------------------------------------------------------------------------
 
+
 def _get_db_path() -> Path:
     """获取 Provider 注册表数据库路径。
 
@@ -56,6 +57,7 @@ def _get_db_path() -> Path:
 # ---------------------------------------------------------------------------
 # API Key 加密
 # ---------------------------------------------------------------------------
+
 
 class APIKeyCipher:
     """API Key 对称加密器（Fernet）。
@@ -81,13 +83,11 @@ class APIKeyCipher:
         self._key_source: str = "unknown"
         try:
             from cryptography.fernet import Fernet
+
             self._Fernet = Fernet
         except ImportError:
             self._Fernet = None  # type: ignore
-            msg = (
-                "cryptography 未安装，API Key 加密不可用。"
-                "建议安装：pip install cryptography"
-            )
+            msg = "cryptography 未安装，API Key 加密不可用。建议安装：pip install cryptography"
             if strict:
                 raise RuntimeError(msg)
             logger.warning(msg)
@@ -109,9 +109,11 @@ class APIKeyCipher:
         # 优先级 2: 项目令牌派生
         try:
             from app.config import config
+
             token = config.token.token
             import base64
             import hashlib
+
             digest = hashlib.sha256(token.encode("utf-8")).digest()
             key = base64.urlsafe_b64encode(digest)
             self._key_source = "token"
@@ -146,19 +148,14 @@ class APIKeyCipher:
             return ""
         if self._Fernet is None:
             if self._strict:
-                raise RuntimeError(
-                    "API Key 加密不可用（cryptography 未安装），"
-                    "strict 模式下拒绝明文存储。"
-                )
+                raise RuntimeError("API Key 加密不可用（cryptography 未安装），strict 模式下拒绝明文存储。")
             return plaintext  # 降级明文（仅 non-strict）
         try:
             if self._fernet is None:
                 key = self._resolve_key()
                 if key is None:
                     if self._strict:
-                        raise RuntimeError(
-                            "API Key 加密密钥不可用，strict 模式下拒绝明文存储。"
-                        )
+                        raise RuntimeError("API Key 加密密钥不可用，strict 模式下拒绝明文存储。")
                     return plaintext
                 self._fernet = self._Fernet(key)
             return self._fernet.encrypt(plaintext.encode("utf-8")).decode("utf-8")
@@ -180,18 +177,14 @@ class APIKeyCipher:
             return ""
         if self._Fernet is None:
             if self._strict:
-                raise RuntimeError(
-                    "API Key 解密不可用（cryptography 未安装）。"
-                )
+                raise RuntimeError("API Key 解密不可用（cryptography 未安装）。")
             return ciphertext  # 明文模式
         try:
             if self._fernet is None:
                 key = self._resolve_key()
                 if key is None:
                     if self._strict:
-                        raise RuntimeError(
-                            "API Key 解密密钥不可用，strict 模式下拒绝返回密文。"
-                        )
+                        raise RuntimeError("API Key 解密密钥不可用，strict 模式下拒绝返回密文。")
                     return ciphertext
                 self._fernet = self._Fernet(key)
             return self._fernet.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
@@ -223,12 +216,20 @@ def _load_all_provider_classes() -> None:
 
     try:
         from app.ai.llm.providers import (
-            OllamaProvider, LMStudioProvider, LlamaCppProvider,
-            VllmProvider, TGIProvider, KoboldCppProvider,
+            OllamaProvider,
+            LMStudioProvider,
+            LlamaCppProvider,
+            VllmProvider,
+            TGIProvider,
+            KoboldCppProvider,
         )
         from app.ai.llm.providers.cloud import (
-            OpenAIProvider, AnthropicProvider, DeepSeekProvider,
-            QwenProvider, GeminiProvider, OpenAICompatibleProvider,
+            OpenAIProvider,
+            AnthropicProvider,
+            DeepSeekProvider,
+            QwenProvider,
+            GeminiProvider,
+            OpenAICompatibleProvider,
         )
 
         _register_provider_class(ProviderType.OLLAMA, OllamaProvider)
@@ -336,8 +337,10 @@ def _default_provider_templates() -> list[ProviderConfig]:
             enabled=False,
             priority=7,
             capabilities=[
-                ProviderCapability.CHAT, ProviderCapability.STREAMING,
-                ProviderCapability.FUNCTION_CALLING, ProviderCapability.VISION,
+                ProviderCapability.CHAT,
+                ProviderCapability.STREAMING,
+                ProviderCapability.FUNCTION_CALLING,
+                ProviderCapability.VISION,
             ],
         ),
         ProviderConfig(
@@ -349,7 +352,8 @@ def _default_provider_templates() -> list[ProviderConfig]:
             enabled=False,
             priority=7,
             capabilities=[
-                ProviderCapability.CHAT, ProviderCapability.STREAMING,
+                ProviderCapability.CHAT,
+                ProviderCapability.STREAMING,
                 ProviderCapability.VISION,
             ],
         ),
@@ -475,9 +479,7 @@ class ProviderRegistry:
                 conn.commit()
 
                 # 种子数据：首次初始化时插入默认模板
-                count = conn.execute(
-                    "SELECT COUNT(*) FROM llm_providers"
-                ).fetchone()[0]
+                count = conn.execute("SELECT COUNT(*) FROM llm_providers").fetchone()[0]
                 if count == 0:
                     self._seed_defaults(conn)
 
@@ -485,9 +487,7 @@ class ProviderRegistry:
                 conn.close()
 
             self._initialized = True
-            logger.info(
-                "ProviderRegistry 初始化完成，数据库: %s", self._db_path
-            )
+            logger.info("ProviderRegistry 初始化完成，数据库: %s", self._db_path)
 
     def _seed_defaults(self, conn: sqlite3.Connection) -> None:
         """插入默认 Provider 模板。"""
@@ -496,32 +496,33 @@ class ProviderRegistry:
             self._insert_config(conn, tpl)
         logger.info("已插入 %d 个默认 Provider 模板", len(templates))
 
-    def _insert_config(
-        self, conn: sqlite3.Connection, config: ProviderConfig
-    ) -> None:
+    def _insert_config(self, conn: sqlite3.Connection, config: ProviderConfig) -> None:
         """插入一条 Provider 配置。"""
-        conn.execute("""
+        conn.execute(
+            """
             INSERT OR REPLACE INTO llm_providers
             (provider_id, name, provider_type, base_url, api_key_encrypted,
              default_model, timeout, max_retries, retry_delay, enabled,
              is_active, priority, capabilities, extra, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """, (
-            config.provider_id,
-            config.name,
-            config.provider_type.value,
-            config.base_url,
-            self._cipher.encrypt(config.api_key),
-            config.default_model,
-            config.timeout,
-            config.max_retries,
-            config.retry_delay,
-            int(config.enabled),
-            int(config.is_active),
-            config.priority,
-            json.dumps([c.value for c in config.capabilities]),
-            json.dumps(config.extra, ensure_ascii=False),
-        ))
+        """,
+            (
+                config.provider_id,
+                config.name,
+                config.provider_type.value,
+                config.base_url,
+                self._cipher.encrypt(config.api_key),
+                config.default_model,
+                config.timeout,
+                config.max_retries,
+                config.retry_delay,
+                int(config.enabled),
+                int(config.is_active),
+                config.priority,
+                json.dumps([c.value for c in config.capabilities]),
+                json.dumps(config.extra, ensure_ascii=False),
+            ),
+        )
 
     # ------------------------------------------------------------------
     # 行 -> ProviderConfig 转换
@@ -574,13 +575,10 @@ class ProviderRegistry:
         conn = self._get_conn()
         try:
             if include_disabled:
-                rows = conn.execute(
-                    "SELECT * FROM llm_providers ORDER BY priority DESC, name"
-                ).fetchall()
+                rows = conn.execute("SELECT * FROM llm_providers ORDER BY priority DESC, name").fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT * FROM llm_providers WHERE enabled = 1 "
-                    "ORDER BY priority DESC, name"
+                    "SELECT * FROM llm_providers WHERE enabled = 1 ORDER BY priority DESC, name"
                 ).fetchall()
             return [self._row_to_config(r) for r in rows]
         finally:
@@ -604,9 +602,7 @@ class ProviderRegistry:
         self._init_db()
         conn = self._get_conn()
         try:
-            row = conn.execute(
-                "SELECT * FROM llm_providers WHERE is_active = 1 LIMIT 1"
-            ).fetchone()
+            row = conn.execute("SELECT * FROM llm_providers WHERE is_active = 1 LIMIT 1").fetchone()
             return self._row_to_config(row) if row else None
         finally:
             conn.close()
@@ -673,17 +669,14 @@ class ProviderRegistry:
                 if row is None:
                     return False
                 if not bool(row["enabled"]):
-                    logger.warning(
-                        "无法激活未启用的 Provider: %s", provider_id
-                    )
+                    logger.warning("无法激活未启用的 Provider: %s", provider_id)
                     return False
 
                 # 互斥：先清除所有 is_active
                 conn.execute("UPDATE llm_providers SET is_active = 0")
                 # 设置目标
                 conn.execute(
-                    "UPDATE llm_providers SET is_active = 1, "
-                    "updated_at = CURRENT_TIMESTAMP WHERE provider_id = ?",
+                    "UPDATE llm_providers SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE provider_id = ?",
                     (provider_id,),
                 )
                 conn.commit()
@@ -705,8 +698,7 @@ class ProviderRegistry:
             try:
                 if enabled:
                     conn.execute(
-                        "UPDATE llm_providers SET enabled = 1, "
-                        "updated_at = CURRENT_TIMESTAMP WHERE provider_id = ?",
+                        "UPDATE llm_providers SET enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE provider_id = ?",
                         (provider_id,),
                     )
                 else:
@@ -725,9 +717,7 @@ class ProviderRegistry:
     # 实例获取
     # ------------------------------------------------------------------
 
-    def get_provider_instance(
-        self, provider_id: str
-    ) -> LLMProvider | None:
+    def get_provider_instance(self, provider_id: str) -> LLMProvider | None:
         """获取 Provider 实例（带缓存）。
 
         配置变更后缓存自动失效。
@@ -748,7 +738,9 @@ class ProviderRegistry:
             except Exception as e:
                 logger.error(
                     "创建 Provider 实例失败 (%s): %s",
-                    provider_id, e, exc_info=True,
+                    provider_id,
+                    e,
+                    exc_info=True,
                 )
                 return None
 
@@ -771,9 +763,7 @@ class ProviderRegistry:
     # 批量导入（用于自动探测结果）
     # ------------------------------------------------------------------
 
-    def import_from_detection(
-        self, configs: list[ProviderConfig]
-    ) -> int:
+    def import_from_detection(self, configs: list[ProviderConfig]) -> int:
         """从自动探测结果导入 Provider 配置。
 
         仅导入 provider_id 不存在的配置，已存在的保留用户配置。
@@ -795,8 +785,7 @@ class ProviderRegistry:
                 for cfg in configs:
                     # 检查是否已存在
                     existing = conn.execute(
-                        "SELECT provider_id FROM llm_providers "
-                        "WHERE provider_id = ?",
+                        "SELECT provider_id FROM llm_providers WHERE provider_id = ?",
                         (cfg.provider_id,),
                     ).fetchone()
                     if existing:
@@ -812,8 +801,7 @@ class ProviderRegistry:
                 # 自动激活
                 if first_local_id is not None:
                     active = conn.execute(
-                        "SELECT provider_id FROM llm_providers "
-                        "WHERE is_active = 1 LIMIT 1"
+                        "SELECT provider_id FROM llm_providers WHERE is_active = 1 LIMIT 1"
                     ).fetchone()
                     if active is None:
                         conn.execute(
@@ -845,15 +833,9 @@ class ProviderRegistry:
         self._init_db()
         conn = self._get_conn()
         try:
-            total = conn.execute(
-                "SELECT COUNT(*) FROM llm_providers"
-            ).fetchone()[0]
-            enabled = conn.execute(
-                "SELECT COUNT(*) FROM llm_providers WHERE enabled = 1"
-            ).fetchone()[0]
-            active = conn.execute(
-                "SELECT COUNT(*) FROM llm_providers WHERE is_active = 1"
-            ).fetchone()[0]
+            total = conn.execute("SELECT COUNT(*) FROM llm_providers").fetchone()[0]
+            enabled = conn.execute("SELECT COUNT(*) FROM llm_providers WHERE enabled = 1").fetchone()[0]
+            active = conn.execute("SELECT COUNT(*) FROM llm_providers WHERE is_active = 1").fetchone()[0]
             local_count = conn.execute(
                 "SELECT COUNT(*) FROM llm_providers WHERE provider_type IN "
                 "('ollama','lmstudio','llamacpp','vllm','tgi','koboldcpp')"
@@ -861,8 +843,7 @@ class ProviderRegistry:
             cloud_count = total - local_count
 
             active_row = conn.execute(
-                "SELECT provider_id, name, provider_type FROM llm_providers "
-                "WHERE is_active = 1 LIMIT 1"
+                "SELECT provider_id, name, provider_type FROM llm_providers WHERE is_active = 1 LIMIT 1"
             ).fetchone()
 
             return {

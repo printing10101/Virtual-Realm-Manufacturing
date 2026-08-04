@@ -36,7 +36,6 @@ _PYTHON_DIR = Path(__file__).resolve().parents[3]
 if str(_PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(_PYTHON_DIR))
 
-from app.integrations.mtconnect.adapter import MTConnectAdapter
 from app.integrations.mtconnect.parser import Sample
 from app.models.machining_record import MachiningRecordCreate
 from app.pipelines import (
@@ -201,9 +200,7 @@ class TestConvertSampleToRecord:
         assert record.timestamp == ts
 
     def test_process_params_includes_extras(self, context: CollectorContext) -> None:
-        sample = _make_sample(
-            extras={"controller_mode": "AUTO", "program": "O1234"}
-        )
+        sample = _make_sample(extras={"controller_mode": "AUTO", "program": "O1234"})
         record = convert_sample_to_record(sample, context)
         assert record.process_params["extras"] == {
             "controller_mode": "AUTO",
@@ -265,9 +262,7 @@ class TestAggregateSamples:
 
     def test_unknown_strategy_raises(self, context: CollectorContext) -> None:
         with pytest.raises(ValueError):
-            aggregate_samples_to_record(
-                [_make_sample()], context, strategy="bogus"
-            )
+            aggregate_samples_to_record([_make_sample()], context, strategy="bogus")
 
     def test_window_duration(self, context: CollectorContext) -> None:
         start = datetime(2026, 6, 11, 10, 0, 0, tzinfo=timezone.utc)
@@ -333,11 +328,13 @@ class TestSampleBatchAggregator:
 
     def test_flush_records_returns_aggregated(self, context: CollectorContext) -> None:
         agg = SampleBatchAggregator(flush_interval=5.0, batch_size=10)
-        agg.extend([
-            _make_sample(spindle_speed=1000.0, feedrate=100.0),
-            _make_sample(spindle_speed=2000.0, feedrate=200.0),
-            _make_sample(spindle_speed=3000.0, feedrate=300.0),
-        ])
+        agg.extend(
+            [
+                _make_sample(spindle_speed=1000.0, feedrate=100.0),
+                _make_sample(spindle_speed=2000.0, feedrate=200.0),
+                _make_sample(spindle_speed=3000.0, feedrate=300.0),
+            ]
+        )
         records = agg.flush_records(context)
         assert len(records) == 1
         assert records[0].spindle_speed == 2000.0
@@ -355,9 +352,7 @@ class TestSampleBatchAggregator:
         assert agg._last_flush_at is not None
 
     def test_max_samples_cap(self) -> None:
-        agg = SampleBatchAggregator(
-            flush_interval=5.0, batch_size=1000, max_samples_per_record=3
-        )
+        agg = SampleBatchAggregator(flush_interval=5.0, batch_size=1000, max_samples_per_record=3)
         for _ in range(10):
             agg.add(_make_sample())
         assert len(agg) == 3  # 超出容量后从队头丢弃

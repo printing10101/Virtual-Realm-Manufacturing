@@ -3,7 +3,6 @@
 提供刀具的 CRUD 操作、磨损跟踪、寿命预测集成和种子数据初始化。
 """
 
-
 import logging
 from typing import Optional
 
@@ -27,11 +26,13 @@ router = APIRouter(
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
+
 class ToolCreate(BaseModel):
     code: str = Field(..., min_length=1, max_length=32, description="刀具编码 (T01, T02, ...)")
     name: str = Field(..., min_length=1, max_length=128, description="刀具名称")
     type: str = Field(
-        ..., max_length=32,
+        ...,
+        max_length=32,
         description="刀具类型: end_mill/ball_mill/drill/reamer/tap/insert/grooving/threading",
     )
     diameter: float = Field(..., gt=0, description="刀具直径 (mm)")
@@ -67,6 +68,7 @@ class ToolUpdate(BaseModel):
 
 class ToolWearUpdate(BaseModel):
     """刀具磨损更新请求。"""
+
     additional_usage_time: float = Field(0.0, ge=0, description="新增使用时间 (分钟)")
     additional_wear: float = Field(0.0, ge=0, description="新增磨损量 (mm)")
     sharpened: bool = Field(False, description="是否进行了刃磨")
@@ -75,6 +77,7 @@ class ToolWearUpdate(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/")
 async def list_tools(
@@ -137,9 +140,7 @@ async def create_tool(body: ToolCreate):
 async def update_tool(tool_id: str, body: ToolUpdate):
     """更新刀具信息。"""
     try:
-        data = await tools_service.update_tool(
-            tool_id, body.model_dump(exclude_unset=True)
-        )
+        data = await tools_service.update_tool(tool_id, body.model_dump(exclude_unset=True))
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
 
@@ -201,6 +202,7 @@ async def tool_life_prediction(tool_id: str):
 # ---------------------------------------------------------------------------
 # Seed data
 # ---------------------------------------------------------------------------
+
 
 @router.post("/seed", dependencies=[Depends(require_role("admin"))])
 async def seed_tools():

@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
 from app.api.v1.parametric_geometry.schemas import (
-    FeatureRefResponse,
     FinalizeResponse,
     ReviewRequest,
     ReviewResponse,
@@ -27,7 +26,6 @@ from app.core.safe_errors import safe_error_message
 from app.contracts._shared import TaskListResponse
 
 from app.parametric_geometry import (
-    FeaturesLoadError,
     ParametricGeometryError,
     ParametricGeometryPipeline,
     ParametricGeometryTaskStatus,
@@ -49,6 +47,7 @@ def _spawn(coro):
     _background_tasks.add(t)
     t.add_done_callback(_background_tasks.discard)
     return t
+
 
 router = APIRouter(
     prefix="/api/v1/parametric_geometry",
@@ -118,8 +117,7 @@ def _resolve_upstream_calibrated(
         from app.feature_extraction import get_feature_store
     except ImportError:
         logger.warning(
-            "feature_extraction 模块未启用，无法追溯上游任务 calibrated 状态 "
-            "source_fe_task_id=%s，按未标定处理",
+            "feature_extraction 模块未启用，无法追溯上游任务 calibrated 状态 source_fe_task_id=%s，按未标定处理",
             source_feature_extraction_task_id,
         )
         return False, "external_upload"
@@ -135,13 +133,10 @@ def _resolve_upstream_calibrated(
             return False, "external_upload"
 
         # 2. 通过阶段 2 任务的 source_reconstruction_task_id 查询阶段 1 任务
-        source_reconstruction_task_id = getattr(
-            fe_task, "source_reconstruction_task_id", ""
-        )
+        source_reconstruction_task_id = getattr(fe_task, "source_reconstruction_task_id", "")
         if not source_reconstruction_task_id:
             logger.warning(
-                "上游 feature_extraction 任务 %s 未关联 image_to_3d 任务，"
-                "按未标定处理",
+                "上游 feature_extraction 任务 %s 未关联 image_to_3d 任务，按未标定处理",
                 source_feature_extraction_task_id,
             )
             return False, source_feature_extraction_task_id
@@ -176,9 +171,7 @@ def _resolve_upstream_calibrated(
         return bool(upstream.calibrated), source_feature_extraction_task_id
 
     except Exception as e:
-        safe = safe_error_message(
-            e, context="parametric_geometry.resolve_upstream_calibrated"
-        )
+        safe = safe_error_message(e, context="parametric_geometry.resolve_upstream_calibrated")
         logger.warning(
             "查询上游任务异常 source_fe_task_id=%s error_id=%s，按未标定处理",
             source_feature_extraction_task_id,
@@ -281,10 +274,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
     if body.precision_tier not in valid_tiers:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"非法 precision_tier: {body.precision_tier}，"
-                f"应为 {sorted(valid_tiers)}"
-            ),
+            message=(f"非法 precision_tier: {body.precision_tier}，应为 {sorted(valid_tiers)}"),
         )
 
     # 校验 input_features_path 存在性
@@ -292,18 +282,13 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
     if not features_path.is_absolute():
         # 相对路径按 output/parametric_geometry/ 的父目录解析，
         # 避免任意路径读取（与 feature_extraction 风格一致）
-        features_path = (
-            Path(config.parametric_geometry.output_dir).parent / features_path
-        )
+        features_path = Path(config.parametric_geometry.output_dir).parent / features_path
 
     if not features_path.exists():
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=f"confirmed_features.json 不存在: {features_path}",
-            suggestion=(
-                "请确认路径正确，或先调用 "
-                "GET /api/v1/feature_extraction/tasks/{fe_task_id}/export 导出。"
-            ),
+            suggestion=("请确认路径正确，或先调用 GET /api/v1/feature_extraction/tasks/{fe_task_id}/export 导出。"),
         )
 
     if features_path.suffix.lower() != ".json":
@@ -317,16 +302,13 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
         mesh_calibrated = bool(body.mesh_calibrated)
         feature_source = body.source_feature_extraction_task_id or "external_upload"
     else:
-        mesh_calibrated, feature_source = _resolve_upstream_calibrated(
-            body.source_feature_extraction_task_id
-        )
+        mesh_calibrated, feature_source = _resolve_upstream_calibrated(body.source_feature_extraction_task_id)
 
     # 应用 default_mesh_calibrated 兜底（保守默认 False）
     if not mesh_calibrated and config.parametric_geometry.default_mesh_calibrated:
         mesh_calibrated = True
         logger.info(
-            "mesh_calibrated 未明确确认，按 default_mesh_calibrated=True 兜底 "
-            "task_source=%s",
+            "mesh_calibrated 未明确确认，按 default_mesh_calibrated=True 兜底 task_source=%s",
             feature_source,
         )
 
@@ -339,9 +321,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
             mesh_calibrated=mesh_calibrated,
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="parametric_geometry.create_task"
-        )
+        safe = safe_error_message(e, context="parametric_geometry.create_task")
         logger.error(
             "创建参数化几何任务失败 | error_id=%s | exc=%s",
             safe.get("error_id"),
@@ -368,10 +348,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
                 precision_tier=task.precision_tier,
             ),
         },
-        message=(
-            f"任务已创建 task_id={task.task_id}，"
-            f"请调用 POST /tasks/{task.task_id}/run 触发执行"
-        ),
+        message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
 
@@ -406,10 +383,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
     ):
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态不允许执行当前操作 status={task.status}。"
-                "仅 PENDING / FAILED 状态可触发执行。"
-            ),
+            message=(f"任务状态不允许执行当前操作 status={task.status}。仅 PENDING / FAILED 状态可触发执行。"),
         )
 
     # 重试场景：清空错误信息
@@ -448,22 +422,10 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
         )
 
     # 统计审核进度
-    pending_count = sum(
-        1 for f in task.input_features
-        if f.review_status == StepReviewStatus.PENDING.value
-    )
-    confirmed_count = sum(
-        1 for f in task.input_features
-        if f.review_status == StepReviewStatus.CONFIRMED.value
-    )
-    rejected_count = sum(
-        1 for f in task.input_features
-        if f.review_status == StepReviewStatus.REJECTED.value
-    )
-    edited_count = sum(
-        1 for f in task.input_features
-        if f.review_status == StepReviewStatus.EDITED.value
-    )
+    pending_count = sum(1 for f in task.input_features if f.review_status == StepReviewStatus.PENDING.value)
+    confirmed_count = sum(1 for f in task.input_features if f.review_status == StepReviewStatus.CONFIRMED.value)
+    rejected_count = sum(1 for f in task.input_features if f.review_status == StepReviewStatus.REJECTED.value)
+    edited_count = sum(1 for f in task.input_features if f.review_status == StepReviewStatus.EDITED.value)
 
     return success(
         data={
@@ -557,10 +519,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
     if task.status not in allowed_states:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务状态 {task.status} 不允许获取结果，"
-                f"仅 {sorted(allowed_states)} 状态可获取。"
-            ),
+            message=(f"任务状态 {task.status} 不允许获取结果，仅 {sorted(allowed_states)} 状态可获取。"),
             suggestion="请等待状态变为 step_generated 后再调用此端点",
         )
 
@@ -641,8 +600,7 @@ async def review_step_feature(
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=(
-                f"任务状态 {task.status} 不允许审核，"
-                f"仅 {ParametricGeometryTaskStatus.STEP_GENERATED.value} 状态可审核"
+                f"任务状态 {task.status} 不允许审核，仅 {ParametricGeometryTaskStatus.STEP_GENERATED.value} 状态可审核"
             ),
             suggestion="请等待流水线执行完成（状态变为 step_generated）后再审核",
         )
@@ -683,9 +641,7 @@ async def review_step_feature(
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="parametric_geometry.review_step_feature"
-        )
+        safe = safe_error_message(e, context="parametric_geometry.review_step_feature")
         logger.error(
             "审核特征失败 task_id=%s feature_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -707,10 +663,7 @@ async def review_step_feature(
             message="审核后任务丢失，请检查任务存储",
         )
 
-    all_reviewed = all(
-        f.review_status != StepReviewStatus.PENDING.value
-        for f in task_after.input_features
-    )
+    all_reviewed = all(f.review_status != StepReviewStatus.PENDING.value for f in task_after.input_features)
 
     return success(
         data={
@@ -726,8 +679,7 @@ async def review_step_feature(
         message=(
             f"特征 {feature_id} 已审核（action={body.action}）。"
             + (
-                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/finalize "
-                "生成最终 STEP。"
+                " 全部特征已审核完毕，可调用 POST /tasks/{task_id}/finalize 生成最终 STEP。"
                 if all_reviewed
                 else " 仍有特征待审核。"
             )
@@ -767,8 +719,7 @@ async def finalize_step(task_id: str) -> dict[str, Any]:
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=(
-                f"任务状态 {task.status} 不允许最终化，"
-                f"仅 {ParametricGeometryTaskStatus.REVIEWED.value} 状态可最终化"
+                f"任务状态 {task.status} 不允许最终化，仅 {ParametricGeometryTaskStatus.REVIEWED.value} 状态可最终化"
             ),
             suggestion="请先完成所有特征的审核（状态变为 reviewed）后再最终化",
         )
@@ -782,9 +733,7 @@ async def finalize_step(task_id: str) -> dict[str, Any]:
             message=str(e),
         )
     except Exception as e:
-        safe = safe_error_message(
-            e, context="parametric_geometry.finalize_step"
-        )
+        safe = safe_error_message(e, context="parametric_geometry.finalize_step")
         logger.error(
             "最终化 STEP 失败 task_id=%s | error_id=%s | exc=%s",
             task_id,
@@ -805,9 +754,7 @@ async def finalize_step(task_id: str) -> dict[str, Any]:
             message="最终化后任务丢失，请检查任务存储",
         )
 
-    download_url = (
-        f"/api/v1/parametric_geometry/tasks/{task_id}/step/download"
-    )
+    download_url = f"/api/v1/parametric_geometry/tasks/{task_id}/step/download"
 
     return success(
         data={
@@ -894,10 +841,7 @@ async def download_step_file(task_id: str, final: bool = True) -> FileResponse:
         if task.status not in allowed_states:
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    f"任务状态 {task.status} 不允许下载初版 STEP，"
-                    f"仅 {sorted(allowed_states)} 状态可下载。"
-                ),
+                detail=(f"任务状态 {task.status} 不允许下载初版 STEP，仅 {sorted(allowed_states)} 状态可下载。"),
             )
 
         if not task.step_output_path:
@@ -946,10 +890,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     if task.status == ParametricGeometryTaskStatus.SUCCEEDED.value:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=(
-                f"任务 {task_id} 已 SUCCEEDED，禁止删除。"
-                "最终 STEP 可能已被下游 CAM 模块引用。"
-            ),
+            message=(f"任务 {task_id} 已 SUCCEEDED，禁止删除。最终 STEP 可能已被下游 CAM 模块引用。"),
             suggestion="如确需删除，请先手动清理下游引用，再删除任务",
         )
 
@@ -970,9 +911,7 @@ async def delete_task(task_id: str) -> dict[str, Any]:
                 message=str(e),
             )
         except Exception as e:
-            safe = safe_error_message(
-                e, context="parametric_geometry.delete_task.cancel"
-            )
+            safe = safe_error_message(e, context="parametric_geometry.delete_task.cancel")
             logger.error(
                 "取消任务失败 task_id=%s | error_id=%s | exc=%s",
                 task_id,

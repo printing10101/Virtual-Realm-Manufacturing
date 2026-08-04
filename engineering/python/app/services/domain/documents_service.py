@@ -89,10 +89,7 @@ async def list_categories() -> dict:
 
         # 确保所有分类都有返回，即使数量为0
         cat_map = {row.category: row.count for row in rows}
-        categories = [
-            {"name": cat, "count": cat_map.get(cat, 0)}
-            for cat in VALID_CATEGORIES
-        ]
+        categories = [{"name": cat, "count": cat_map.get(cat, 0)} for cat in VALID_CATEGORIES]
 
     return {"categories": categories}
 

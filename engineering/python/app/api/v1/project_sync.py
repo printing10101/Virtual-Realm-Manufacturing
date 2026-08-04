@@ -26,6 +26,7 @@
     /projects 是 GET 集合端点，必须定义在 /projects/{project_id} 之前；
     /clone 是 POST 独立端点，与 /projects 区分，定义顺序无强约束，但放在末尾更清晰。
 """
+
 from __future__ import annotations
 
 import logging
@@ -60,8 +61,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/project-sync", tags=["Project Sync"])
 
 
-
-
 # ---------------------------------------------------------------------------
 # Pydantic 请求模型
 # ---------------------------------------------------------------------------
@@ -79,9 +78,7 @@ class CreateProjectRequest(BaseModel):
         description="远端仓库 URL（空表示纯本地仓库）",
     )
     branch: str = Field(default="main", max_length=128, description="初始分支名")
-    initial_commit: bool = Field(
-        default=True, description="是否在创建时生成首个 commit"
-    )
+    initial_commit: bool = Field(default=True, description="是否在创建时生成首个 commit")
 
 
 class CloneProjectRequest(BaseModel):
@@ -103,9 +100,7 @@ class CommitRequest(BaseModel):
 class AddResourceRequest(BaseModel):
     """添加资源引用请求体."""
 
-    resource_type: str = Field(
-        ..., description=f"资源类型（{RESOURCE_TYPES.all()}）"
-    )
+    resource_type: str = Field(..., description=f"资源类型（{RESOURCE_TYPES.all()}）")
     resource_uri: str = Field(
         ...,
         max_length=512,
@@ -115,9 +110,7 @@ class AddResourceRequest(BaseModel):
         default=SYNC_STRATEGIES.HASH_REFERENCED,
         description=f"同步策略（{SYNC_STRATEGIES.all()}）",
     )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict, description="附加元数据"
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="附加元数据")
 
 
 # ---------------------------------------------------------------------------
@@ -242,9 +235,7 @@ async def list_projects(
 async def get_project(
     project_id: str,
     include_refs: bool = Query(True, description="是否包含资源引用列表"),
-    include_records: bool = Query(
-        False, description="是否包含同步记录列表（默认不包含，避免大查询）"
-    ),
+    include_records: bool = Query(False, description="是否包含同步记录列表（默认不包含，避免大查询）"),
 ):
     """获取项目详情（含当前状态 + 可选资源引用 / 同步记录）."""
     service = get_project_sync_service()
@@ -266,9 +257,7 @@ async def get_project(
 )
 async def delete_project(
     project_id: str,
-    purge_repo: bool = Query(
-        False, description="是否物理删除仓库目录（默认仅删除 DB 记录，保留仓库文件）"
-    ),
+    purge_repo: bool = Query(False, description="是否物理删除仓库目录（默认仅删除 DB 记录，保留仓库文件）"),
 ):
     """删除项目.
 
@@ -441,9 +430,7 @@ async def list_resource_refs(
 
     service = get_project_sync_service()
     try:
-        result = await service.list_resource_refs(
-            project_id, resource_type=resource_type
-        )
+        result = await service.list_resource_refs(project_id, resource_type=resource_type)
     except Exception as e:
         return _handle_service_exception(e, action="列出资源引用")
 
@@ -467,9 +454,7 @@ async def remove_resource_ref(
 
     service = get_project_sync_service()
     try:
-        result = await service.remove_resource_ref(
-            project_id, resource_uri=resource_uri
-        )
+        result = await service.remove_resource_ref(project_id, resource_uri=resource_uri)
     except Exception as e:
         return _handle_service_exception(e, action="删除资源引用")
 
@@ -479,9 +464,7 @@ async def remove_resource_ref(
 @router.get("/projects/{project_id}/records")
 async def list_sync_records(
     project_id: str,
-    direction: Optional[str] = Query(
-        None, description="按同步方向过滤（init/commit/push/pull/clone）"
-    ),
+    direction: Optional[str] = Query(None, description="按同步方向过滤（init/commit/push/pull/clone）"),
     limit: int = Query(50, ge=1, le=200, description="每页数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):

@@ -27,38 +27,18 @@ class SharpConfig:
     会强制 ``enable_memory_augment=False``，由 SharpService 在构建 pipeline 时处理。
     """
 
-    max_react_steps: int = field(
-        default_factory=lambda: _int_env("LNN_SHARP_MAX_REACT_STEPS", 8)
-    )
-    confidence_threshold: float = field(
-        default_factory=lambda: _float_env("LNN_SHARP_CONFIDENCE_THRESHOLD", 0.85)
-    )
+    max_react_steps: int = field(default_factory=lambda: _int_env("LNN_SHARP_MAX_REACT_STEPS", 8))
+    confidence_threshold: float = field(default_factory=lambda: _float_env("LNN_SHARP_CONFIDENCE_THRESHOLD", 0.85))
     evidence_convergence_window: int = field(
-        default_factory=lambda: _int_env(
-            "LNN_SHARP_EVIDENCE_CONVERGENCE_WINDOW", 2
-        )
+        default_factory=lambda: _int_env("LNN_SHARP_EVIDENCE_CONVERGENCE_WINDOW", 2)
     )
-    memory_top_k: int = field(
-        default_factory=lambda: _int_env("LNN_SHARP_MEMORY_TOP_K", 3)
-    )
-    tool_evidence_top_k: int = field(
-        default_factory=lambda: _int_env("LNN_SHARP_TOOL_EVIDENCE_TOP_K", 5)
-    )
-    enable_schema_planner: bool = field(
-        default_factory=lambda: _bool_env("LNN_SHARP_ENABLE_SCHEMA_PLANNER", True)
-    )
-    enable_memory_augment: bool = field(
-        default_factory=lambda: _bool_env("LNN_SHARP_ENABLE_MEMORY_AUGMENT", True)
-    )
-    enable_hybrid_toolset: bool = field(
-        default_factory=lambda: _bool_env("LNN_SHARP_ENABLE_HYBRID_TOOLSET", True)
-    )
-    enable_react_loop: bool = field(
-        default_factory=lambda: _bool_env("LNN_SHARP_ENABLE_REACT_LOOP", True)
-    )
-    ablation_mode: str = field(
-        default_factory=lambda: _env("LNN_SHARP_ABLATION_MODE", "")
-    )
+    memory_top_k: int = field(default_factory=lambda: _int_env("LNN_SHARP_MEMORY_TOP_K", 3))
+    tool_evidence_top_k: int = field(default_factory=lambda: _int_env("LNN_SHARP_TOOL_EVIDENCE_TOP_K", 5))
+    enable_schema_planner: bool = field(default_factory=lambda: _bool_env("LNN_SHARP_ENABLE_SCHEMA_PLANNER", True))
+    enable_memory_augment: bool = field(default_factory=lambda: _bool_env("LNN_SHARP_ENABLE_MEMORY_AUGMENT", True))
+    enable_hybrid_toolset: bool = field(default_factory=lambda: _bool_env("LNN_SHARP_ENABLE_HYBRID_TOOLSET", True))
+    enable_react_loop: bool = field(default_factory=lambda: _bool_env("LNN_SHARP_ENABLE_REACT_LOOP", True))
+    ablation_mode: str = field(default_factory=lambda: _env("LNN_SHARP_ABLATION_MODE", ""))
 
     @property
     def resolved_ablation_mode(self) -> str | None:

@@ -7,7 +7,6 @@ goal chain resolution, and progress computation.
 
 import logging
 import time
-import sqlite3
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -30,10 +29,7 @@ class GoalChainStore:
     """Persistent goal chain storage with SQLite backend"""
 
     # 允许的列名白名单，防止 SQL 注入
-    _ALLOWED_COLUMNS = {
-        "name", "description", "level", "parent_id", "status", 
-        "created_at", "completed_at", "version"
-    }
+    _ALLOWED_COLUMNS = {"name", "description", "level", "parent_id", "status", "created_at", "completed_at", "version"}
 
     def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
@@ -41,7 +37,6 @@ class GoalChainStore:
         self._db_path = db_path
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         # 使用统一的连接池管理器（传入 db_path，避免不同测试共享连接池导致死锁）
-        from app.utils.sqlite_pool import get_sqlite_manager
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("goal_chain", db_path=self._db_path)
         self._conn = self._pool.get_connection()
@@ -135,9 +130,7 @@ class GoalChainStore:
         return goal
 
     def get_goal(self, goal_id: str) -> Optional[Goal]:
-        row = self._conn.execute(
-            "SELECT * FROM goals WHERE id = ?", (goal_id,)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
         if row is None:
             return None
         return self._row_to_goal(row)
@@ -178,17 +171,13 @@ class GoalChainStore:
                 )
 
             goal.version += 1
-            self._conn.execute(
-                "UPDATE goals SET version = ? WHERE id = ?", (goal.version, goal_id)
-            )
+            self._conn.execute("UPDATE goals SET version = ? WHERE id = ?", (goal.version, goal_id))
             self._conn.commit()
         return goal
 
     def delete_goal(self, goal_id: str) -> bool:
         with self._write_lock:
-            row = self._conn.execute(
-                "SELECT id FROM goals WHERE id = ?", (goal_id,)
-            ).fetchone()
+            row = self._conn.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
             if row is None:
                 return False
             self._conn.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
@@ -232,17 +221,13 @@ class GoalChainStore:
                 (level.value,),
             ).fetchall()
         else:
-            rows = self._conn.execute(
-                "SELECT * FROM goals ORDER BY level, created_at"
-            ).fetchall()
+            rows = self._conn.execute("SELECT * FROM goals ORDER BY level, created_at").fetchall()
         return [self._row_to_goal(r) for r in rows]
 
     def get_goal_tree(self) -> List[Dict[str, Any]]:
         all_goals = self.get_all_goals()
         {g.id: g for g in all_goals}
-        root_goals = [
-            g for g in all_goals if g.parent_id is None or g.level == GoalLevel.MISSION
-        ]
+        root_goals = [g for g in all_goals if g.parent_id is None or g.level == GoalLevel.MISSION]
 
         def _build_tree(goal: Goal) -> Dict[str, Any]:
             children = [g for g in all_goals if g.parent_id == goal.id]
@@ -254,9 +239,7 @@ class GoalChainStore:
 
         return [_build_tree(g) for g in root_goals]
 
-    def compute_progress(
-        self, goal_id: str, task_status_map: Optional[Dict[str, str]] = None
-    ) -> GoalProgress:
+    def compute_progress(self, goal_id: str, task_status_map: Optional[Dict[str, str]] = None) -> GoalProgress:
         goal = self.get_goal(goal_id)
         if goal is None:
             return GoalProgress()
@@ -275,11 +258,7 @@ class GoalChainStore:
             completed += sub.completed_tasks
             in_progress += sub.in_progress_tasks
 
-        direct_tasks = {
-            tid: st
-            for tid, st in task_status_map.items()
-            if self._task_belongs_to_goal(tid, goal_id)
-        }
+        direct_tasks = {tid: st for tid, st in task_status_map.items() if self._task_belongs_to_goal(tid, goal_id)}
         for tid, st in direct_tasks.items():
             if st == "completed":
                 completed += 1

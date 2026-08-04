@@ -12,6 +12,7 @@
 4. **轨迹截断**：``horizon > max_trajectory_length`` 时报错，防止显存爆炸
 5. **线程安全**：推理路径只读模型参数，无状态修改；模型加载用锁保护
 """
+
 from __future__ import annotations
 
 import logging
@@ -131,9 +132,7 @@ class TrajectoryPredictor:
                     # 安全：显式 weights_only=True 避免反序列化任意对象（RCE 风险）
                     # 兼容回退：老版本权重文件可能含非标准对象，UnpicklingError 时降级默认加载
                     try:
-                        state_dict = torch.load(
-                            weights_path, map_location="cpu", weights_only=True
-                        )
+                        state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
                     except (TypeError, ValueError):
                         # 老版本 PyTorch 不支持 weights_only 参数或权重含自定义类
                         state_dict = torch.load(weights_path, map_location="cpu")
@@ -145,14 +144,9 @@ class TrajectoryPredictor:
                         weights_path,
                     )
                 except (RuntimeError, OSError, KeyError) as exc:
-                    logger.warning(
-                        "权重加载失败，使用随机初始化: %s", exc
-                    )
+                    logger.warning("权重加载失败，使用随机初始化: %s", exc)
             elif not weights_path:
-                logger.warning(
-                    "未提供权重路径，使用随机初始化权重。"
-                    "预测结果无实际意义，仅用于接口验证。"
-                )
+                logger.warning("未提供权重路径，使用随机初始化权重。预测结果无实际意义，仅用于接口验证。")
 
             if HAS_TORCH and hasattr(self._model, "to") and hasattr(self._device, "type"):
                 self._model.to(self._device)
@@ -199,15 +193,11 @@ class TrajectoryPredictor:
             输入形状不匹配或 horizon 越界。
         """
         if self._model is None:
-            raise RuntimeError(
-                "模型未加载，请先调用 load_model()。"
-            )
+            raise RuntimeError("模型未加载，请先调用 load_model()。")
 
         self.config.validate()
         if horizon <= 0 or horizon > self.config.max_trajectory_length:
-            raise ValueError(
-                f"horizon 必须在 [1, {self.config.max_trajectory_length}], 当前: {horizon}"
-            )
+            raise ValueError(f"horizon 必须在 [1, {self.config.max_trajectory_length}], 当前: {horizon}")
         if candidate_action is None:
             raise ValueError("candidate_action 不能为 None")
 
@@ -217,15 +207,13 @@ class TrajectoryPredictor:
         # 是 UnifiedState/dict（非 np.ndarray）。这样 use_fusion=True 默认
         # 开启后，legacy 调用（current_state=np.ndarray）仍走原始路径。
         has_unified_input = unified_state is not None or (
-            current_state is not None
-            and not isinstance(current_state, np.ndarray)
+            current_state is not None and not isinstance(current_state, np.ndarray)
         )
 
         # 校验：传入 unified_state 但 config.use_fusion=False
         if has_unified_input and not self.config.use_fusion:
             raise ValueError(
-                "传入 unified_state 但 config.use_fusion=False，"
-                "请在 WorldModelConfig 中设置 use_fusion=True。"
+                "传入 unified_state 但 config.use_fusion=False，请在 WorldModelConfig 中设置 use_fusion=True。"
             )
 
         # ADR-020 P3 降级兜底：融合输入但 torch 不可用 → 降级到原始 NumPy 路径。
@@ -239,9 +227,7 @@ class TrajectoryPredictor:
                 "预测结果无实际意义，请安装 torch 以启用融合模式。"
             )
             has_unified_input = False
-            current_state = np.zeros(
-                (1, self.config.state_dim), dtype=np.float32
-            )
+            current_state = np.zeros((1, self.config.state_dim), dtype=np.float32)
 
         if has_unified_input:
             us_source = unified_state if unified_state is not None else current_state
@@ -252,9 +238,7 @@ class TrajectoryPredictor:
         if current_state is None:
             raise ValueError("原始模式需要 current_state (np.ndarray)")
         if not isinstance(current_state, np.ndarray):
-            raise ValueError(
-                f"原始模式 current_state 必须为 np.ndarray，实际: {type(current_state)}"
-            )
+            raise ValueError(f"原始模式 current_state 必须为 np.ndarray，实际: {type(current_state)}")
 
         states_arr = self._standardize_states(current_state)
         actions_arr = self._standardize_actions(candidate_action, horizon, states_arr.shape[0])
@@ -267,17 +251,13 @@ class TrajectoryPredictor:
     # 融合路径辅助方法
     # ------------------------------------------------------------------
 
-    def _coerce_unified_state(
-        self, source: Union[UnifiedState, dict]
-    ) -> UnifiedState:
+    def _coerce_unified_state(self, source: Union[UnifiedState, dict]) -> UnifiedState:
         """把 UnifiedState 对象或 dict 统一为 UnifiedState 实例."""
         if isinstance(source, UnifiedState):
             return source
         if isinstance(source, dict):
             return UnifiedState.from_dict(source)
-        raise ValueError(
-            f"unified_state 必须为 UnifiedState 或 dict，实际: {type(source)}"
-        )
+        raise ValueError(f"unified_state 必须为 UnifiedState 或 dict，实际: {type(source)}")
 
     def _predict_fused(
         self,
@@ -291,19 +271,13 @@ class TrajectoryPredictor:
         再走 WorldModelNet.forward(unified_states=...) 融合路径。
         """
         if not HAS_TORCH:
-            raise RuntimeError(
-                "融合模式需要 torch 支持，当前环境未安装 torch。"
-            )
+            raise RuntimeError("融合模式需要 torch 支持，当前环境未安装 torch。")
         assert torch is not None
         assert self._model is not None
 
         # 1. 张量化 UnifiedState → [1, 1, input_dim]
-        geo_input = np.asarray(
-            unified_state.geometry.to_tensor_input(), dtype=np.float32
-        ).reshape(1, 1, -1)
-        dyn_input = np.asarray(
-            unified_state.dynamics.to_tensor_input(), dtype=np.float32
-        ).reshape(1, 1, -1)
+        geo_input = np.asarray(unified_state.geometry.to_tensor_input(), dtype=np.float32).reshape(1, 1, -1)
+        dyn_input = np.asarray(unified_state.dynamics.to_tensor_input(), dtype=np.float32).reshape(1, 1, -1)
 
         # 维度校验
         expected_geo = 3 + self.config.feature_dim + 1 + 1
@@ -313,9 +287,7 @@ class TrajectoryPredictor:
                 f"实际 {geo_input.shape[-1]}（feature_dim={self.config.feature_dim}）"
             )
         if dyn_input.shape[-1] != 6:
-            raise ValueError(
-                f"dynamics 输入维度不匹配: 期望 6, 实际 {dyn_input.shape[-1]}"
-            )
+            raise ValueError(f"dynamics 输入维度不匹配: 期望 6, 实际 {dyn_input.shape[-1]}")
 
         # 2. 标准化动作：[1, T + horizon, action_dim]（T=1）
         actions_arr = self._standardize_actions(candidate_action, horizon, batch_size=1)
@@ -365,13 +337,9 @@ class TrajectoryPredictor:
             # [T, state_dim] → [1, T, state_dim]
             arr = arr.reshape(1, arr.shape[0], arr.shape[1])
         elif arr.ndim != 3:
-            raise ValueError(
-                f"current_state 维度必须为 1/2/3，当前: {arr.ndim}"
-            )
+            raise ValueError(f"current_state 维度必须为 1/2/3，当前: {arr.ndim}")
         if arr.shape[-1] != self.config.state_dim:
-            raise ValueError(
-                f"state_dim 不匹配: 期望 {self.config.state_dim}, 实际 {arr.shape[-1]}"
-            )
+            raise ValueError(f"state_dim 不匹配: 期望 {self.config.state_dim}, 实际 {arr.shape[-1]}")
         return arr
 
     def _standardize_actions(
@@ -389,17 +357,11 @@ class TrajectoryPredictor:
             # [action_dim] → [horizon, action_dim]（单步动作广播到 horizon 步）
             arr = np.tile(arr.reshape(1, -1), (horizon, 1))
         if arr.ndim != 2:
-            raise ValueError(
-                f"candidate_action 维度必须为 1/2，当前: {arr.ndim}"
-            )
+            raise ValueError(f"candidate_action 维度必须为 1/2，当前: {arr.ndim}")
         if arr.shape[0] != horizon:
-            raise ValueError(
-                f"candidate_action 时间维度 ({arr.shape[0]}) 必须等于 horizon ({horizon})"
-            )
+            raise ValueError(f"candidate_action 时间维度 ({arr.shape[0]}) 必须等于 horizon ({horizon})")
         if arr.shape[1] != self.config.action_dim:
-            raise ValueError(
-                f"action_dim 不匹配: 期望 {self.config.action_dim}, 实际 {arr.shape[1]}"
-            )
+            raise ValueError(f"action_dim 不匹配: 期望 {self.config.action_dim}, 实际 {arr.shape[1]}")
         # 历史动作用零填充（长度 T=1）
         history_actions = np.zeros((batch_size, 1, self.config.action_dim), dtype=np.float32)
         future_actions = np.tile(arr.reshape(1, horizon, -1), (batch_size, 1, 1))

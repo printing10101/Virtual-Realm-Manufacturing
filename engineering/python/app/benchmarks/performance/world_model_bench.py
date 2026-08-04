@@ -18,6 +18,7 @@
 - 不依赖 torch：允许 NumPy 回退模式（CPU-only 生产环境）
 - 模型权重使用随机初始化（基准测试关注推理框架开销，不关注模型精度）
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -121,9 +122,7 @@ class WorldModelPerfBenchmark:
         result: dict[str, float] = {}
 
         for horizon in [5, 10, 20, 50]:
-            candidate_action = np.random.randn(
-                horizon, self._action_dim
-            ).astype(np.float32)
+            candidate_action = np.random.randn(horizon, self._action_dim).astype(np.float32)
 
             # warmup
             self._predictor.predict(
@@ -156,10 +155,7 @@ class WorldModelPerfBenchmark:
         result: dict[str, float] = {}
 
         for batch_size in [10, 50, 100]:
-            actions = [
-                np.random.randn(10, self._action_dim).astype(np.float32)
-                for _ in range(batch_size)
-            ]
+            actions = [np.random.randn(10, self._action_dim).astype(np.float32) for _ in range(batch_size)]
 
             t0 = time.perf_counter()
             for action in actions:
@@ -171,9 +167,7 @@ class WorldModelPerfBenchmark:
             elapsed_ms = (time.perf_counter() - t0) * 1000
 
             result[f"wm_batch_{batch_size}_ms"] = round(elapsed_ms, 3)
-            result[f"wm_batch_{batch_size}_throughput_sps"] = round(
-                batch_size / (elapsed_ms / 1000), 1
-            )
+            result[f"wm_batch_{batch_size}_throughput_sps"] = round(batch_size / (elapsed_ms / 1000), 1)
 
         self._results.update(result)
         return result
@@ -187,24 +181,19 @@ class WorldModelPerfBenchmark:
 
         对比纯推理路径，量化框架开销。
         """
+
         async def _run_once() -> TaskResult:
             state_artifact = Artifact(
                 name="current_state",
                 type="metrics",
                 uri="metrics://bench/state",
-                metadata={
-                    "data": np.random.randn(self._state_dim).astype(np.float32).tolist()
-                },
+                metadata={"data": np.random.randn(self._state_dim).astype(np.float32).tolist()},
             )
             action_artifact = Artifact(
                 name="candidate_action",
                 type="metrics",
                 uri="metrics://bench/action",
-                metadata={
-                    "data": np.random.randn(10, self._action_dim)
-                    .astype(np.float32)
-                    .tolist()
-                },
+                metadata={"data": np.random.randn(10, self._action_dim).astype(np.float32).tolist()},
             )
             ctx = TaskContext(
                 job_id=f"bench-{time.time_ns()}",
@@ -253,9 +242,7 @@ class WorldModelPerfBenchmark:
             name="candidate_action",
             type="metrics",
             uri="metrics://bench/action",
-            metadata={
-                "data": np.random.randn(10, self._action_dim).astype(np.float32).tolist()
-            },
+            metadata={"data": np.random.randn(10, self._action_dim).astype(np.float32).tolist()},
         )
 
         async def _run_with_uri(uri: str) -> TaskResult:
@@ -293,9 +280,7 @@ class WorldModelPerfBenchmark:
             "wm_cache_cold_ms_mean": cold_stats["mean"],
             "wm_cache_hot_ms_p50": hot_stats["p50"],
             "wm_cache_hot_ms_mean": hot_stats["mean"],
-            "wm_cache_speedup": round(
-                cold_stats["mean"] / max(hot_stats["mean"], 0.001), 2
-            ),
+            "wm_cache_speedup": round(cold_stats["mean"] / max(hot_stats["mean"], 0.001), 2),
         }
         self._results.update(result)
         return result
@@ -310,6 +295,7 @@ class WorldModelPerfBenchmark:
     def save_results(self, output_path: str) -> str:
         try:
             import torch as _torch
+
             torch_version = _torch.__version__
             has_torch = True
         except ImportError:

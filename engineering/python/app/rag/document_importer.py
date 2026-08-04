@@ -31,18 +31,18 @@ CHUNK_OVERLAP = 60
 
 # 材料牌号：TC4, TC6, TC11, Ti-6Al-4V, HRC52, HRC45, 45钢, 6061, 304 等
 _MATERIAL_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\bTC[0-9]{1,2}\b"),                 # TC4, TC11
+    re.compile(r"\bTC[0-9]{1,2}\b"),  # TC4, TC11
     re.compile(r"\bTi-?\dAl-?\dV?\b", re.IGNORECASE),  # Ti-6Al-4V / Ti6Al4V
-    re.compile(r"\bHRC\s*\d{1,3}\b"),                # HRC52, HRC 45
-    re.compile(r"\b\d{2,4}[钢]\b"),                  # 45钢, 304钢
+    re.compile(r"\bHRC\s*\d{1,3}\b"),  # HRC52, HRC 45
+    re.compile(r"\b\d{2,4}[钢]\b"),  # 45钢, 304钢
     re.compile(r"\b(?:6061|7075|2024|AISI\s*\d{3,4})\b", re.IGNORECASE),  # 铝合金/不锈钢牌号
     re.compile(r"\b(?:钛合金|不锈钢|铝合金|硬质合金|高温合金)\b"),
 ]
 
 # 实验编号：W1-W9, c1/c4/c6
 _EXPERIMENT_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\bW[1-9]\b"),              # W1-W9
-    re.compile(r"\bc[1-9]\b"),              # c1-c9
+    re.compile(r"\bW[1-9]\b"),  # W1-W9
+    re.compile(r"\bc[1-9]\b"),  # c1-c9
 ]
 
 # 信号类型：振动/切削力/声发射/主轴功率
@@ -82,13 +82,7 @@ def extract_entities(text: str) -> list[str]:
         return []
 
     found: set[str] = set()
-    all_patterns = (
-        _MATERIAL_PATTERNS
-        + _EXPERIMENT_PATTERNS
-        + _SIGNAL_PATTERNS
-        + _DATASET_PATTERNS
-        + _PROCESS_PATTERNS
-    )
+    all_patterns = _MATERIAL_PATTERNS + _EXPERIMENT_PATTERNS + _SIGNAL_PATTERNS + _DATASET_PATTERNS + _PROCESS_PATTERNS
     for pattern in all_patterns:
         for match in pattern.finditer(text):
             entity = match.group(0).strip().lower()
@@ -116,9 +110,7 @@ def _parse_docx(file_path: Path) -> str:
         from docx import Document
 
         doc = Document(str(file_path))
-        return "\n".join(
-            p.text for p in doc.paragraphs if p.text.strip()
-        )
+        return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
     except ImportError:
         logger.warning("python-docx not installed, using raw text fallback")
         return file_path.read_text(encoding="utf-8", errors="replace")
@@ -138,10 +130,7 @@ def _parse_json(file_path: Path) -> list[dict[str, str]]:
     with open(file_path, encoding="utf-8") as f:
         data = json.load(f)
     if isinstance(data, list):
-        return [
-            {"document": json.dumps(item, ensure_ascii=False), "metadata": {}}
-            for item in data
-        ]
+        return [{"document": json.dumps(item, ensure_ascii=False), "metadata": {}} for item in data]
     return [{"document": json.dumps(data, ensure_ascii=False), "metadata": {}}]
 
 
@@ -296,7 +285,10 @@ class DocumentImportService:
                 # 整批写入失败：降级为逐条写入，定位具体失败 chunk
                 logger.warning(
                     "Batch write failed for %s chunks %d-%d, retrying one-by-one: %s",
-                    file_path_obj.name, batch_start, batch_end - 1, e,
+                    file_path_obj.name,
+                    batch_start,
+                    batch_end - 1,
+                    e,
                 )
                 for idx_in_batch, orig_i in enumerate(batch_indices):
                     try:
@@ -311,7 +303,10 @@ class DocumentImportService:
                     except (OSError, RuntimeError, ValueError, KeyError) as single_err:
                         logger.warning(
                             "Failed to store chunk %d of %s: %s",
-                            orig_i, file_path_obj.name, single_err, exc_info=True,
+                            orig_i,
+                            file_path_obj.name,
+                            single_err,
+                            exc_info=True,
                         )
                         failed_chunks += 1
         import_ms = (time.time() - import_start) * 1000

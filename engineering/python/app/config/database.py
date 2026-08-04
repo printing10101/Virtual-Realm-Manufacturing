@@ -9,12 +9,8 @@ from app.config._utils import PYTHON_DIR, _env, _path
 
 @dataclass
 class DatabaseConfig:
-    cad_db_path: str = field(
-        default_factory=lambda: _path("CAD_DB_PATH", "cad_tasks.db")
-    )
-    model_library_path: str = field(
-        default_factory=lambda: _path("MODEL_LIBRARY_PATH", "model_library.db")
-    )
+    cad_db_path: str = field(default_factory=lambda: _path("CAD_DB_PATH", "cad_tasks.db"))
+    model_library_path: str = field(default_factory=lambda: _path("MODEL_LIBRARY_PATH", "model_library.db"))
     db_url: str = field(
         default_factory=lambda: _env(
             "DATABASE_URL",

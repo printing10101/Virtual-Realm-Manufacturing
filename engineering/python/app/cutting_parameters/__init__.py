@@ -35,6 +35,7 @@ from app.cutting_parameters.material_resolver import (
     get_material_resolver,
     reset_material_resolver,
 )
+
 # 任务存储 + 状态机 + 审核枚举
 from app.cutting_parameters.cutting_store import (
     CuttingParametersError,
@@ -49,12 +50,14 @@ from app.cutting_parameters.cutting_store import (
     generate_task_id,
     get_task_store,
 )
+
 # 精度告知
 from app.cutting_parameters.cutting_disclaimer import (
     CuttingDisclaimer,
     INDUSTRIAL_HARD_GATES,
     build_cutting_disclaimer,
 )
+
 # 推荐引擎
 from app.cutting_parameters.recommender import (
     CuttingParamRecommender,
@@ -64,6 +67,7 @@ from app.cutting_parameters.recommender import (
     FEATURE_TYPE_RADIAL_DEPTH_RATIO,
     to_chatter_params_dict,
 )
+
 # 流水线编排器
 from app.cutting_parameters.pipeline import (
     CuttingParametersPipeline,

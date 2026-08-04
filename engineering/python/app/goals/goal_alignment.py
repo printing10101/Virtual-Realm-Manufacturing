@@ -43,20 +43,15 @@ class GoalAlignmentChecker:
     def validate_task_goal_chain(self, task: EnhancedTask) -> bool:
         if not task.goal_chain:
             raise GoalAlignmentError(
-                f"Task '{task.id}' has no goal chain. "
-                "All tasks must be associated with at least one parent goal."
+                f"Task '{task.id}' has no goal chain. All tasks must be associated with at least one parent goal."
             )
 
         for ref in task.goal_chain:
             goal = self._store.get_goal(ref.id)
             if goal is None:
-                raise GoalAlignmentError(
-                    f"Goal '{ref.id}' in task '{task.id}' chain does not exist."
-                )
+                raise GoalAlignmentError(f"Goal '{ref.id}' in task '{task.id}' chain does not exist.")
             if goal.status == GoalStatus.CANCELLED:
-                raise GoalAlignmentError(
-                    f"Goal '{ref.name}' ({ref.id}) in task '{task.id}' chain is cancelled."
-                )
+                raise GoalAlignmentError(f"Goal '{ref.name}' ({ref.id}) in task '{task.id}' chain is cancelled.")
 
         return True
 
@@ -94,9 +89,7 @@ class GoalAlignmentChecker:
             "issues": issues,
         }
 
-        logger.info(
-            f"Goal alignment scan completed: {len(issues)} issues found in {len(self._task_map)} tasks"
-        )
+        logger.info(f"Goal alignment scan completed: {len(issues)} issues found in {len(self._task_map)} tasks")
         return result
 
     def should_scan(self) -> bool:
@@ -184,9 +177,7 @@ class GoalAlignmentChecker:
             "total_tasks": total_tasks,
             "aligned_tasks": aligned_tasks,
             "unaligned_tasks": unaligned_tasks,
-            "alignment_rate": round(
-                (aligned_tasks / total_tasks * 100) if total_tasks > 0 else 0.0, 1
-            ),
+            "alignment_rate": round((aligned_tasks / total_tasks * 100) if total_tasks > 0 else 0.0, 1),
             "issues": alignment_issues,
         }
 

@@ -206,13 +206,9 @@ class LNNModelSizeResponse(BaseModel):
     original_size_bytes: int = Field(..., description="原始模型大小")
     quantized_size_bytes: int | None = Field(default=None, description="量化模型大小")
     original_size_human: str = Field(..., description="原始模型大小（人类可读）")
-    quantized_size_human: str | None = Field(
-        default=None, description="量化模型大小（人类可读）"
-    )
+    quantized_size_human: str | None = Field(default=None, description="量化模型大小（人类可读）")
     size_reduction_bytes: int | None = Field(default=None, description="减少的大小")
-    size_reduction_percent: float | None = Field(
-        default=None, description="减少的百分比"
-    )
+    size_reduction_percent: float | None = Field(default=None, description="减少的百分比")
 
 
 class AlternativePlan(BaseModel):
@@ -234,26 +230,20 @@ class LNNPredictResponseExtended(BaseModel):
     reasoning: str | None = Field(default=None, description="AI推理过程")
     inference_time: float = Field(..., description="推理耗时，单位毫秒")
     model_info: LNNModelInfo = Field(..., description="模型信息")
-    alternatives: list[AlternativePlan] | None = Field(
-        default=None, description="备选方案列表"
-    )
+    alternatives: list[AlternativePlan] | None = Field(default=None, description="备选方案列表")
 
 
 class LNNTrainDryRunRequest(BaseModel):
     model_name: str = Field(..., description="训练模型的名称", min_length=1)
     data_path: str = Field(..., description="训练数据集的存储路径", min_length=1)
     hyperparameters: LNNHyperparameters = Field(..., description="训练超参数集合")
-    device: str = Field(
-        default="auto", description="训练设备", pattern="^(auto|gpu|cuda|cpu)$"
-    )
+    device: str = Field(default="auto", description="训练设备", pattern="^(auto|gpu|cuda|cpu)$")
 
 
 class TrainingPlanSummary(BaseModel):
     estimated_duration_minutes: float = Field(..., description="预估训练时长（分钟）")
     estimated_memory_mb: float = Field(..., description="预估内存占用（MB）")
-    estimated_gpu_memory_mb: float | None = Field(
-        default=None, description="预估GPU显存占用（MB）"
-    )
+    estimated_gpu_memory_mb: float | None = Field(default=None, description="预估GPU显存占用（MB）")
     dataset_samples: int = Field(..., description="数据集样本数")
     # [P0-17] 限制训练集/验证集划分比例的键值数量与值类型
     train_val_split: Dict[str, Union[float, int]] = Field(
@@ -383,9 +373,7 @@ class AgentTrainRequest(BaseModel):
     )
     data_path: str = Field(..., description="训练数据路径", min_length=1)
     hyperparameters: LNNHyperparameters = Field(..., description="超参数")
-    device: str = Field(
-        default="auto", description="设备", pattern="^(auto|gpu|cuda|cpu)$"
-    )
+    device: str = Field(default="auto", description="设备", pattern="^(auto|gpu|cuda|cpu)$")
 
 
 class AgentExecuteRequest(BaseModel):
@@ -417,6 +405,7 @@ class AgentExecuteRequest(BaseModel):
 
 class AgentPipelineRequest(BaseModel):
     """Agent 管线执行请求"""
+
     # P2-批次2 修复：pipeline_type 限制为 orchestrator 实际支持的枚举值，
     # 防止未知值导致 _get_pipeline_steps 返回空 steps 列表造成"空成功"误导。
     # 实际支持值参见 app.agent.orchestrator.AgentOrchestrator._get_pipeline_steps。
@@ -462,41 +451,21 @@ class LNNStreamingConfig(BaseModel):
     所有字段可选，缺省时使用 ``StreamingConfig`` 默认值。
     """
 
-    keyframe_interval: int = Field(
-        default=1, description="关键帧间隔（每 N 帧一个关键帧）", ge=1
-    )
+    keyframe_interval: int = Field(default=1, description="关键帧间隔（每 N 帧一个关键帧）", ge=1)
     keyframe_mode: str = Field(
         default="hybrid",
         description="关键帧判定策略：interval / energy / hybrid",
         pattern="^(interval|energy|hybrid)$",
     )
-    energy_threshold: float = Field(
-        default=1.5, description="能量关键帧触发阈值（相对能量增益）", gt=0
-    )
-    max_cache_pages: int = Field(
-        default=320, description="长期隐状态缓存最大页数（LRU 淘汰）", ge=1
-    )
-    anchor_enabled: bool = Field(
-        default=True, description="是否启用锚点漂移修正"
-    )
-    anchor_update_rate: float = Field(
-        default=0.01, description="锚点 EMA 更新速率", gt=0, lt=1
-    )
-    anchor_correction_strength: float = Field(
-        default=0.1, description="锚点漂移修正强度 [0, 1]", ge=0, le=1
-    )
-    trajectory_memory_size: int = Field(
-        default=64, description="轨迹记忆窗口大小", ge=1
-    )
-    trajectory_correction_strength: float = Field(
-        default=0.1, description="轨迹一致性约束强度 [0, 1]", ge=0, le=1
-    )
-    window_size: int | None = Field(
-        default=None, description="窗口化推理窗口大小（None 表示不启用）"
-    )
-    overlap_keyframes: int = Field(
-        default=2, description="窗口间重叠关键帧数，用于隐状态传递", ge=0
-    )
+    energy_threshold: float = Field(default=1.5, description="能量关键帧触发阈值（相对能量增益）", gt=0)
+    max_cache_pages: int = Field(default=320, description="长期隐状态缓存最大页数（LRU 淘汰）", ge=1)
+    anchor_enabled: bool = Field(default=True, description="是否启用锚点漂移修正")
+    anchor_update_rate: float = Field(default=0.01, description="锚点 EMA 更新速率", gt=0, lt=1)
+    anchor_correction_strength: float = Field(default=0.1, description="锚点漂移修正强度 [0, 1]", ge=0, le=1)
+    trajectory_memory_size: int = Field(default=64, description="轨迹记忆窗口大小", ge=1)
+    trajectory_correction_strength: float = Field(default=0.1, description="轨迹一致性约束强度 [0, 1]", ge=0, le=1)
+    window_size: int | None = Field(default=None, description="窗口化推理窗口大小（None 表示不启用）")
+    overlap_keyframes: int = Field(default=2, description="窗口间重叠关键帧数，用于隐状态传递", ge=0)
 
 
 class LNNStreamPredictRequest(BaseModel):

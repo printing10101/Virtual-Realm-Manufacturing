@@ -51,6 +51,7 @@ class HoleFeatureInfo:
         associated_dim_handle: 关联尺寸标注句柄
         dimension_text: 尺寸标注文本
     """
+
     hole_id: str
     center_x: float
     center_y: float
@@ -93,6 +94,7 @@ class PlaneFeatureInfo:
         surface: 所在加工面
         layer: 原始图层
     """
+
     plane_id: str
     center_x: float
     center_y: float
@@ -127,6 +129,7 @@ class FeatureExtractionResult:
         warnings: 提取过程中的警告
         errors: 提取过程中的错误
     """
+
     holes: list[HoleFeatureInfo] = field(default_factory=list)
     planes: list[PlaneFeatureInfo] = field(default_factory=list)
     overall_length: float = 0.0
@@ -199,12 +202,12 @@ class FeatureExtractor:
             DxfFeatureError: 输入数据无效
         """
         if parse_result is None:
-            raise DxfFeatureError("DXF解析结果为空，无法提取特征。"
-                                  "请先调用DxfParser.parse()获取解析结果。")
+            raise DxfFeatureError("DXF解析结果为空，无法提取特征。请先调用DxfParser.parse()获取解析结果。")
 
         # 兼容字符串/路径输入：自动 parse
         if isinstance(parse_result, (str, Path)):
             from app.dxf.dxf_parser import DxfParser
+
             parse_result = DxfParser().parse(parse_result)
 
         result = FeatureExtractionResult()
@@ -265,7 +268,7 @@ class FeatureExtractor:
         dim_texts = [d.text for d in parse_result.dimensions if d.text]
         numbers = []
         for text in dim_texts:
-            found = re.findall(r'[\d.]+', text)
+            found = re.findall(r"[\d.]+", text)
             numbers.extend(float(n) for n in found)
 
         if numbers and len(numbers) >= 2:
@@ -284,7 +287,7 @@ class FeatureExtractor:
             if dim.dim_type in ("LINEAR_ROTATED", "ALIGNED"):
                 if "厚" in dim.text or "深" in dim.text or "H" in dim.text.upper():
                     try:
-                        nums = re.findall(r'[\d.]+', dim.text)
+                        nums = re.findall(r"[\d.]+", dim.text)
                         if nums:
                             result.overall_height = float(nums[0])
                             result.height_inferred = False
@@ -341,7 +344,7 @@ class FeatureExtractor:
                     if abs(matched_dim.measurement - diameter) / diameter < 0.5:
                         diameter = matched_dim.measurement
 
-                depth_nums = re.findall(r'[\d.]+', dim_text)
+                depth_nums = re.findall(r"[\d.]+", dim_text)
                 if len(depth_nums) >= 2:
                     try:
                         potential_depth = float(depth_nums[-1])
@@ -391,20 +394,12 @@ class FeatureExtractor:
         else:
             holes_with_dim = sum(1 for h in result.holes if h.associated_dim_handle)
             if holes_with_dim < len(result.holes):
-                result.warnings.append(
-                    f"{len(result.holes) - holes_with_dim}个孔缺少尺寸标注，"
-                    f"使用几何测量值作为孔径"
-                )
+                result.warnings.append(f"{len(result.holes) - holes_with_dim}个孔缺少尺寸标注，使用几何测量值作为孔径")
             inferred_depth_count = sum(1 for h in result.holes if h.depth_inferred)
             if inferred_depth_count > 0:
-                result.warnings.append(
-                    f"{inferred_depth_count}个孔的深度为推断值，"
-                    f"建议在DXF中添加深度标注"
-                )
+                result.warnings.append(f"{inferred_depth_count}个孔的深度为推断值，建议在DXF中添加深度标注")
 
-    def _build_dimension_proximity_map(
-        self, parse_result: DxfParseResult
-    ) -> dict[str, DxfDimension]:
+    def _build_dimension_proximity_map(self, parse_result: DxfParseResult) -> dict[str, DxfDimension]:
         """建立圆实体与尺寸标注的空间关联映射。
 
         对每个圆，在其邻域范围内搜索最近的尺寸标注，
@@ -420,9 +415,7 @@ class FeatureExtractor:
         assignments: dict[str, DxfDimension] = {}
         used_dims: set[str] = set()
 
-        sorted_circles = sorted(
-            parse_result.circles, key=lambda c: c.radius, reverse=True
-        )
+        sorted_circles = sorted(parse_result.circles, key=lambda c: c.radius, reverse=True)
 
         for circle in sorted_circles:
             cx, cy = circle.center[0], circle.center[1]
@@ -625,20 +618,20 @@ def is_counterbore_text(text: str) -> bool:
 
 def extract_tolerance_from_text(text: str) -> str:
     """从标注文本中提取公差等级指示。"""
-    match = re.search(r'IT(\d{1,2})', text, re.IGNORECASE)
+    match = re.search(r"IT(\d{1,2})", text, re.IGNORECASE)
     if match:
         grade = int(match.group(1))
         if 1 <= grade <= 18:
             return f"IT{grade}"
 
-    match = re.search(r'H(\d{1,2})', text)
+    match = re.search(r"H(\d{1,2})", text)
     if match:
         grade = int(match.group(1))
         if 5 <= grade <= 14:
             return f"IT{grade}"
 
     if "±" in text:
-        tol_match = re.search(r'±\s*([\d.]+)', text)
+        tol_match = re.search(r"±\s*([\d.]+)", text)
         if tol_match:
             try:
                 tol_val = float(tol_match.group(1))

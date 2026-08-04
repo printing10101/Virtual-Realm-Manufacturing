@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 934-1200 迁移而来。
 """
+
 from __future__ import annotations
 
 import logging
@@ -63,12 +64,8 @@ class _ResourceRefMixin:
             ResourceRefAlreadyExistsError: 资源 URI 已存在
             ValueError: 参数非法
         """
-        strategy = self._validate_resource_ref_inputs(
-            resource_type, resource_uri, sync_strategy
-        )
-        content_hash = await self._maybe_compute_ref_hash(
-            resource_type, resource_uri, compute_hash
-        )
+        strategy = self._validate_resource_ref_inputs(resource_type, resource_uri, sync_strategy)
+        content_hash = await self._maybe_compute_ref_hash(resource_type, resource_uri, compute_hash)
         ref_dict = await self._persist_resource_ref(
             project_id,
             resource_type,
@@ -100,9 +97,7 @@ class _ResourceRefMixin:
         # 校验 URI scheme 与 resource_type 一致
         scheme, _ = parse_resource_uri(resource_uri)
         if scheme != resource_type:
-            raise ValueError(
-                f"URI scheme ({scheme}) 与 resource_type ({resource_type}) 不匹配"
-            )
+            raise ValueError(f"URI scheme ({scheme}) 与 resource_type ({resource_type}) 不匹配")
         strategy = sync_strategy or DEFAULT_SYNC_STRATEGY[resource_type]
         if not SYNC_STRATEGIES.is_valid(strategy):
             raise ValueError(f"sync_strategy 不支持: {strategy}")
@@ -139,9 +134,7 @@ class _ResourceRefMixin:
         """
         async with await self._get_session() as session:
             # 校验项目存在
-            p_stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(p_stmt)).scalar_one_or_none()
             if project_orm is None:
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")
@@ -151,12 +144,8 @@ class _ResourceRefMixin:
                 ProjectResourceRef.project_id == project_id,
                 ProjectResourceRef.resource_uri == resource_uri,
             )
-            if (
-                await session.execute(dup_stmt)
-            ).scalar_one_or_none() is not None:
-                raise ResourceRefAlreadyExistsError(
-                    f"资源 URI 已存在: {resource_uri}"
-                )
+            if (await session.execute(dup_stmt)).scalar_one_or_none() is not None:
+                raise ResourceRefAlreadyExistsError(f"资源 URI 已存在: {resource_uri}")
 
             ref_orm = ProjectResourceRef(
                 project_id=project_id,
@@ -171,9 +160,7 @@ class _ResourceRefMixin:
                 await session.commit()
             except IntegrityError as e:
                 await session.rollback()
-                raise ResourceRefAlreadyExistsError(
-                    f"资源 URI 已存在: {resource_uri}"
-                ) from e
+                raise ResourceRefAlreadyExistsError(f"资源 URI 已存在: {resource_uri}") from e
 
             # 项目状态置 dirty（资源引用变化未 commit）
             project_orm.status = SYNC_STATUS.DIRTY
@@ -181,9 +168,7 @@ class _ResourceRefMixin:
 
         return ref_orm.to_dict()
 
-    async def remove_resource_ref(
-        self, project_id: str, resource_uri: str
-    ) -> dict[str, Any]:
+    async def remove_resource_ref(self, project_id: str, resource_uri: str) -> dict[str, Any]:
         """删除资源引用.
 
         Raises:
@@ -191,9 +176,7 @@ class _ResourceRefMixin:
             ResourceRefNotFoundError: 资源引用不存在
         """
         async with await self._get_session() as session:
-            p_stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(p_stmt)).scalar_one_or_none()
             if project_orm is None:
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")
@@ -204,9 +187,7 @@ class _ResourceRefMixin:
             )
             ref_orm = (await session.execute(ref_stmt)).scalar_one_or_none()
             if ref_orm is None:
-                raise ResourceRefNotFoundError(
-                    f"资源引用不存在: {resource_uri}"
-                )
+                raise ResourceRefNotFoundError(f"资源引用不存在: {resource_uri}")
 
             await session.delete(ref_orm)
             project_orm.status = SYNC_STATUS.DIRTY
@@ -223,9 +204,7 @@ class _ResourceRefMixin:
             "deleted": True,
         }
 
-    async def update_resource_hash(
-        self, project_id: str, resource_uri: str
-    ) -> dict[str, Any]:
+    async def update_resource_hash(self, project_id: str, resource_uri: str) -> dict[str, Any]:
         """重新计算并更新资源引用的 content_hash.
 
         Raises:
@@ -240,21 +219,13 @@ class _ResourceRefMixin:
             ref_orm = (await session.execute(ref_stmt)).scalar_one_or_none()
             if ref_orm is None:
                 # 区分项目不存在 vs 资源不存在
-                p_stmt = select(ProjectRepo).where(
-                    ProjectRepo.project_id == project_id
-                )
-                if (
-                    await session.execute(p_stmt)
-                ).scalar_one_or_none() is None:
+                p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
+                if (await session.execute(p_stmt)).scalar_one_or_none() is None:
                     raise ProjectNotFoundError(f"项目不存在: {project_id}")
-                raise ResourceRefNotFoundError(
-                    f"资源引用不存在: {resource_uri}"
-                )
+                raise ResourceRefNotFoundError(f"资源引用不存在: {resource_uri}")
 
             old_hash = ref_orm.content_hash or ""
-            new_hash = await self._compute_content_hash(
-                ref_orm.resource_type, ref_orm.resource_uri
-            )
+            new_hash = await self._compute_content_hash(ref_orm.resource_type, ref_orm.resource_uri)
             ref_orm.content_hash = new_hash or None
             await session.commit()
 
@@ -278,22 +249,13 @@ class _ResourceRefMixin:
 
         async with await self._get_session() as session:
             # 校验项目存在
-            p_stmt = select(ProjectRepo.project_id).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo.project_id).where(ProjectRepo.project_id == project_id)
             if (await session.execute(p_stmt)).first() is None:
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")
 
-            stmt = select(ProjectResourceRef).where(
-                ProjectResourceRef.project_id == project_id
-            )
+            stmt = select(ProjectResourceRef).where(ProjectResourceRef.project_id == project_id)
             if resource_type:
-                stmt = stmt.where(
-                    ProjectResourceRef.resource_type == resource_type
-                )
+                stmt = stmt.where(ProjectResourceRef.resource_type == resource_type)
             stmt = stmt.order_by(ProjectResourceRef.created_at)
-            refs = [
-                row.to_dict()
-                for row in (await session.execute(stmt)).scalars().all()
-            ]
+            refs = [row.to_dict() for row in (await session.execute(stmt)).scalars().all()]
             return {"project_id": project_id, "resource_refs": refs}

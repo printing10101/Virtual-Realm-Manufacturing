@@ -182,9 +182,7 @@ class SensorConfig:
         errors = []
         valid_positions = {"spindle", "tool_holder", "worktable", "bed", "column", "coolant_line", "enclosure"}
         if self.installation_position not in valid_positions:
-            errors.append(
-                f"installation_position must be one of {valid_positions}, got '{self.installation_position}'"
-            )
+            errors.append(f"installation_position must be one of {valid_positions}, got '{self.installation_position}'")
         if self.sampling_frequency_hz <= 0 or self.sampling_frequency_hz > 100000:
             errors.append(f"sampling_frequency_hz must be in (0, 100000], got {self.sampling_frequency_hz}")
         if self.measurement_range[0] >= self.measurement_range[1]:
@@ -300,15 +298,29 @@ class RealTimeState:
         return asdict(self)
 
     def to_numpy(self) -> np.ndarray:
-        return np.array([
-            self.spindle_speed_rpm, self.spindle_load_pct, self.feed_rate_mm_min,
-            self.vibration_x, self.vibration_y, self.vibration_z,
-            self.spindle_temp_c, self.tool_temp_c, self.coolant_temp_c,
-            self.cutting_force_x_n, self.cutting_force_y_n, self.cutting_force_z_n,
-            self.tool_wear_mm, self.acoustic_emission_rms,
-            self.position_x_mm, self.position_y_mm, self.position_z_mm,
-            self.duty_cycle_pct,
-        ], dtype=np.float32)
+        return np.array(
+            [
+                self.spindle_speed_rpm,
+                self.spindle_load_pct,
+                self.feed_rate_mm_min,
+                self.vibration_x,
+                self.vibration_y,
+                self.vibration_z,
+                self.spindle_temp_c,
+                self.tool_temp_c,
+                self.coolant_temp_c,
+                self.cutting_force_x_n,
+                self.cutting_force_y_n,
+                self.cutting_force_z_n,
+                self.tool_wear_mm,
+                self.acoustic_emission_rms,
+                self.position_x_mm,
+                self.position_y_mm,
+                self.position_z_mm,
+                self.duty_cycle_pct,
+            ],
+            dtype=np.float32,
+        )
 
 
 @dataclass
@@ -400,23 +412,25 @@ class CognitiveToPerceptionRequest:
         return errors
 
     def to_json(self) -> str:
-        return json.dumps({
-            "request_id": self.request_id,
-            "process_intent": self.process_intent,
-            "quality_requirements": {
-                "dimensional_tolerances": [
-                    asdict(t) for t in self.quality_requirements.dimensional_tolerances
-                ],
-                "surface_roughness": asdict(self.quality_requirements.surface_roughness)
-                if self.quality_requirements.surface_roughness else None,
-                "geometric_tolerances_mm": self.quality_requirements.geometric_tolerances_mm,
-                "max_burr_height_mm": self.quality_requirements.max_burr_height_mm,
-                "target_quality_level": self.quality_requirements.target_quality_level.value,
+        return json.dumps(
+            {
+                "request_id": self.request_id,
+                "process_intent": self.process_intent,
+                "quality_requirements": {
+                    "dimensional_tolerances": [asdict(t) for t in self.quality_requirements.dimensional_tolerances],
+                    "surface_roughness": asdict(self.quality_requirements.surface_roughness)
+                    if self.quality_requirements.surface_roughness
+                    else None,
+                    "geometric_tolerances_mm": self.quality_requirements.geometric_tolerances_mm,
+                    "max_burr_height_mm": self.quality_requirements.max_burr_height_mm,
+                    "target_quality_level": self.quality_requirements.target_quality_level.value,
+                },
+                "material_spec": self.material_spec,
+                "max_tokens": self.max_tokens,
+                "timestamp": self.timestamp,
             },
-            "material_spec": self.material_spec,
-            "max_tokens": self.max_tokens,
-            "timestamp": self.timestamp,
-        }, ensure_ascii=False)
+            ensure_ascii=False,
+        )
 
     @classmethod
     def from_json(cls, data: str) -> "CognitiveToPerceptionRequest":
@@ -470,9 +484,7 @@ class CognitiveToPerceptionResponse:
     def from_json(cls, data: str) -> "CognitiveToPerceptionResponse":
         d = json.loads(data)
         d["sensor_configs"] = [SensorConfig(**s) for s in d.get("sensor_configs", [])]
-        d["feature_algorithm"] = FeatureExtractionAlgorithm(
-            d.get("feature_algorithm", "resnet50")
-        )
+        d["feature_algorithm"] = FeatureExtractionAlgorithm(d.get("feature_algorithm", "resnet50"))
         return cls(**d)
 
 
@@ -486,9 +498,9 @@ class PerceptionToExecutionRequest:
 
     request_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     geometry: GeometryInput = field(default_factory=GeometryInput)
-    cutting_parameters: CuttingParameters = field(default_factory=lambda: CuttingParameters(
-        feed_rate_mm_min=500.0, depth_of_cut_mm=2.0, spindle_speed_rpm=8000.0
-    ))
+    cutting_parameters: CuttingParameters = field(
+        default_factory=lambda: CuttingParameters(feed_rate_mm_min=500.0, depth_of_cut_mm=2.0, spindle_speed_rpm=8000.0)
+    )
     material_spec: Dict[str, Any] = field(default_factory=dict)
     tool_spec: Dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
@@ -502,9 +514,7 @@ class PerceptionToExecutionRequest:
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         if self.geometry.point_cloud is not None:
-            d["geometry"]["point_cloud"]["points"] = (
-                self.geometry.point_cloud.points.tolist()
-            )
+            d["geometry"]["point_cloud"]["points"] = self.geometry.point_cloud.points.tolist()
         return d
 
 
@@ -621,12 +631,14 @@ class MachiningProcessFlow:
             material_spec=material_spec,
         )
         errors = req.validate()
-        self.steps.append({
-            "step": "cognitive_to_perception",
-            "request_id": req.request_id,
-            "timestamp": req.timestamp,
-            "valid": len(errors) == 0,
-        })
+        self.steps.append(
+            {
+                "step": "cognitive_to_perception",
+                "request_id": req.request_id,
+                "timestamp": req.timestamp,
+                "valid": len(errors) == 0,
+            }
+        )
         if errors:
             self.errors.extend(errors)
         return req, errors
@@ -645,12 +657,14 @@ class MachiningProcessFlow:
             tool_spec=tool_spec or {},
         )
         errors = req.validate()
-        self.steps.append({
-            "step": "perception_to_execution",
-            "request_id": req.request_id,
-            "timestamp": req.timestamp,
-            "valid": len(errors) == 0,
-        })
+        self.steps.append(
+            {
+                "step": "perception_to_execution",
+                "request_id": req.request_id,
+                "timestamp": req.timestamp,
+                "valid": len(errors) == 0,
+            }
+        )
         if errors:
             self.errors.extend(errors)
         return req, errors
@@ -665,12 +679,14 @@ class MachiningProcessFlow:
             anomaly_events=anomaly_events or [],
         )
         errors = req.validate()
-        self.steps.append({
-            "step": "execution_to_cognitive",
-            "stream_id": req.stream_id,
-            "timestamp": req.timestamp,
-            "valid": len(errors) == 0,
-        })
+        self.steps.append(
+            {
+                "step": "execution_to_cognitive",
+                "stream_id": req.stream_id,
+                "timestamp": req.timestamp,
+                "valid": len(errors) == 0,
+            }
+        )
         if errors:
             self.errors.extend(errors)
         return req, errors

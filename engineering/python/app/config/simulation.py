@@ -9,29 +9,15 @@ from app.config._utils import _bool_env, _env, _float_env, _int_env
 
 @dataclass
 class SimulationConfig:
-    voxel_size: float = field(
-        default_factory=lambda: _float_env("LNN_SIM_VOXEL_SIZE", 1.0)
-    )
+    voxel_size: float = field(default_factory=lambda: _float_env("LNN_SIM_VOXEL_SIZE", 1.0))
     voxel_size_min: float = 0.1
     voxel_size_max: float = 10.0
-    max_store_size: int = field(
-        default_factory=lambda: _int_env("LNN_SIM_MAX_STORE", 500)
-    )
-    max_store_age_seconds: int = field(
-        default_factory=lambda: _int_env("LNN_SIM_STORE_AGE", 86400)
-    )
-    collision_margin_mm: float = field(
-        default_factory=lambda: _float_env("LNN_SIM_COLLISION_MARGIN", 0.5)
-    )
-    batch_processing_size: int = field(
-        default_factory=lambda: _int_env("LNN_SIM_BATCH_SIZE", 2000)
-    )
-    default_safe_z_height_mm: float = field(
-        default_factory=lambda: _float_env("LNN_SIM_SAFE_Z", 10.0)
-    )
-    idle_timeout_seconds: int = field(
-        default_factory=lambda: _int_env("LNN_IDLE_TIMEOUT", 1800)
-    )
+    max_store_size: int = field(default_factory=lambda: _int_env("LNN_SIM_MAX_STORE", 500))
+    max_store_age_seconds: int = field(default_factory=lambda: _int_env("LNN_SIM_STORE_AGE", 86400))
+    collision_margin_mm: float = field(default_factory=lambda: _float_env("LNN_SIM_COLLISION_MARGIN", 0.5))
+    batch_processing_size: int = field(default_factory=lambda: _int_env("LNN_SIM_BATCH_SIZE", 2000))
+    default_safe_z_height_mm: float = field(default_factory=lambda: _float_env("LNN_SIM_SAFE_Z", 10.0))
+    idle_timeout_seconds: int = field(default_factory=lambda: _int_env("LNN_IDLE_TIMEOUT", 1800))
 
 
 # =============================================================================
@@ -63,18 +49,10 @@ class HardwareTierConfig:
     后端通过环境变量在启动时固化（运行时不可变，需重启生效）。
     """
 
-    tier: str = field(
-        default_factory=lambda: _env("LNN_HARDWARE_TIER", "standard")
-    )
-    lightweight_mode: bool = field(
-        default_factory=lambda: _bool_env("LNN_LIGHTWEIGHT_MODE", False)
-    )
-    skip_ollama: bool = field(
-        default_factory=lambda: _bool_env("LNN_SKIP_OLLAMA", False)
-    )
-    max_concurrent_ai: int = field(
-        default_factory=lambda: _int_env("LNN_MAX_CONCURRENT_AI", 2)
-    )
+    tier: str = field(default_factory=lambda: _env("LNN_HARDWARE_TIER", "standard"))
+    lightweight_mode: bool = field(default_factory=lambda: _bool_env("LNN_LIGHTWEIGHT_MODE", False))
+    skip_ollama: bool = field(default_factory=lambda: _bool_env("LNN_SKIP_OLLAMA", False))
+    max_concurrent_ai: int = field(default_factory=lambda: _int_env("LNN_MAX_CONCURRENT_AI", 2))
 
     def __post_init__(self) -> None:
         """校验档位值合法性，非法值回退到 standard 并记录警告。"""

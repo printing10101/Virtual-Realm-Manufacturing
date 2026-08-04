@@ -104,8 +104,7 @@ class WriterMixin:
                 self._rotate_if_needed(log_file)
 
                 logger.info(
-                    "Audit log entry created: module=%s, decision=%s, status=%s, "
-                    "chain_seq=%d",
+                    "Audit log entry created: module=%s, decision=%s, status=%s, chain_seq=%d",
                     ai_module.value,
                     user_decision.value,
                     operation_status.value,
@@ -115,10 +114,7 @@ class WriterMixin:
             except (OSError, IOError, PermissionError) as e:
                 # 不再静默吞异常，抛出 RuntimeError 让调用方感知
                 logger.error("Failed to write audit log: %s", e, exc_info=True)
-                raise RuntimeError(
-                    f"Failed to write audit log entry "
-                    f"(chain_seq={entry.chain_seq}): {e}"
-                ) from e
+                raise RuntimeError(f"Failed to write audit log entry (chain_seq={entry.chain_seq}): {e}") from e
 
         return entry
 
@@ -196,12 +192,7 @@ class WriterMixin:
                     entry.chain_seq,
                 )
             except (OSError, IOError, PermissionError) as e:
-                logger.error(
-                    "Failed to write security audit log: %s", e, exc_info=True
-                )
-                raise RuntimeError(
-                    f"Failed to write security audit log "
-                    f"(chain_seq={entry.chain_seq}): {e}"
-                ) from e
+                logger.error("Failed to write security audit log: %s", e, exc_info=True)
+                raise RuntimeError(f"Failed to write security audit log (chain_seq={entry.chain_seq}): {e}") from e
 
         return entry

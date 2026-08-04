@@ -8,11 +8,14 @@
        本层只处理 dict 与 ORM 模型的转换
     3. update_node_state 使用 upsert 语义，支持断点续跑时更新已有记录
 """
+
 from __future__ import annotations
 
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,10 +32,25 @@ logger = logging.getLogger(__name__)
 
 
 class DAGStore:
-    """工作流运行状态持久化存储."""
+    """工作流运行状态持久化存储.
+
+    并发安全说明：SQLite + StaticPool 共享单连接，多个 AsyncSession 并发
+    checkout 同一连接会导致事务交错、UPDATE 静默丢失（节点状态随机停留在
+    running）——所有 session 操作必须经 ``_locked_session`` 串行化。
+    """
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+
+    @asynccontextmanager
+    async def _locked_session(self) -> AsyncIterator[AsyncSession]:
+        """获取互斥保护的数据库 session（串行化写操作，防共享连接事务交错）."""
+        async with self._lock:
+            async with await self._get_session() as session:
+                yield session
 
     async def _get_session(self) -> AsyncSession:
-        """获取异步数据库 session."""
+        """获取异步数据库 session（仅内部使用，外部一律走 _locked_session）."""
         sessionmaker = get_sessionmaker()
         if sessionmaker is None:
             raise RuntimeError("数据库未配置，无法获取 session")
@@ -51,7 +69,7 @@ class DAGStore:
     ) -> str:
         """创建工作流运行记录，返回 workflow_run_id."""
         run_id = _new_run_id()
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             run = WorkflowRun(
                 id=run_id,
                 name=name,
@@ -69,7 +87,7 @@ class DAGStore:
 
     async def get_run(self, workflow_run_id: str) -> Optional[dict[str, Any]]:
         """获取工作流运行记录（含节点状态）."""
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
             result = await session.execute(stmt)
             run = result.scalar_one_or_none()
@@ -101,19 +119,15 @@ class DAGStore:
         if completed_at is not None:
             values["completed_at"] = completed_at
 
-        async with await self._get_session() as session:
-            stmt = (
-                update(WorkflowRun)
-                .where(WorkflowRun.id == workflow_run_id)
-                .values(**values)
-            )
+        async with self._locked_session() as session:
+            stmt = update(WorkflowRun).where(WorkflowRun.id == workflow_run_id).values(**values)
             result = await session.execute(stmt)
             await session.commit()
             return result.rowcount > 0
 
     async def delete_run(self, workflow_run_id: str) -> bool:
         """删除工作流运行记录（级联删除节点）."""
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             stmt = delete(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
             result = await session.execute(stmt)
             await session.commit()
@@ -128,7 +142,7 @@ class DAGStore:
         offset: int = 0,
     ) -> list[dict[str, Any]]:
         """列出工作流运行记录."""
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             stmt = select(WorkflowRun).order_by(WorkflowRun.created_at.desc())
             if status:
                 stmt = stmt.where(WorkflowRun.status == status)
@@ -154,7 +168,7 @@ class DAGStore:
             workflow_run_id: 工作流运行 ID.
             nodes: 节点信息列表，每个元素需包含 node_id, task_type, params.
         """
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             for node_info in nodes:
                 node = WorkflowRunNode(
                     id=_new_node_id(),
@@ -168,11 +182,9 @@ class DAGStore:
                 session.add(node)
             await session.commit()
 
-    async def get_node_states(
-        self, workflow_run_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_node_states(self, workflow_run_id: str) -> list[dict[str, Any]]:
         """获取工作流所有节点状态."""
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             stmt = (
                 select(WorkflowRunNode)
                 .where(WorkflowRunNode.workflow_run_id == workflow_run_id)
@@ -182,11 +194,9 @@ class DAGStore:
             nodes = result.scalars().all()
             return [n.to_dict() for n in nodes]
 
-    async def get_node_state(
-        self, workflow_run_id: str, node_id: str
-    ) -> Optional[dict[str, Any]]:
+    async def get_node_state(self, workflow_run_id: str, node_id: str) -> Optional[dict[str, Any]]:
         """获取单个节点状态."""
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             stmt = select(WorkflowRunNode).where(
                 WorkflowRunNode.workflow_run_id == workflow_run_id,
                 WorkflowRunNode.node_id == node_id,
@@ -194,6 +204,24 @@ class DAGStore:
             result = await session.execute(stmt)
             node = result.scalar_one_or_none()
             return node.to_dict() if node else None
+
+    async def reset_skipped_nodes(self, workflow_run_id: str) -> int:
+        """断点续跑：把上次运行遗留的 skipped 节点重置为 pending（允许重跑）.
+
+        failed / completed 节点保持原状（failed 由调度器重跑，completed 跳过）。
+        """
+        async with self._locked_session() as session:
+            stmt = (
+                update(WorkflowRunNode)
+                .where(
+                    WorkflowRunNode.workflow_run_id == workflow_run_id,
+                    WorkflowRunNode.status == "skipped",
+                )
+                .values(status="pending", error=None)
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.rowcount or 0
 
     async def update_node_state(
         self,
@@ -239,7 +267,7 @@ class DAGStore:
 
         values["updated_at"] = datetime.now(timezone.utc)
 
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             stmt = (
                 update(WorkflowRunNode)
                 .where(
@@ -252,24 +280,20 @@ class DAGStore:
             await session.commit()
             return result.rowcount > 0
 
-    async def get_completed_node_outputs(
-        self, workflow_run_id: str
-    ) -> dict[str, dict[str, Any]]:
+    async def get_completed_node_outputs(self, workflow_run_id: str) -> dict[str, dict[str, Any]]:
         """获取所有已完成节点的输出，用于 artifact 引用解析.
 
         Returns:
             {node_id: {output_name: artifact_dict, ...}, ...}
         """
-        async with await self._get_session() as session:
+        async with self._locked_session() as session:
             stmt = select(WorkflowRunNode).where(
                 WorkflowRunNode.workflow_run_id == workflow_run_id,
                 WorkflowRunNode.status == "completed",
             )
             result = await session.execute(stmt)
             nodes = result.scalars().all()
-            return {
-                n.node_id: (n.outputs or {}) for n in nodes
-            }
+            return {n.node_id: (n.outputs or {}) for n in nodes}
 
 
 # 单例

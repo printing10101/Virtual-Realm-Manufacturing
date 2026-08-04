@@ -2,6 +2,7 @@
 
 从原 ``project_sync_service.py`` 行 1201-1504 迁移而来。
 """
+
 from __future__ import annotations
 
 import logging
@@ -13,7 +14,6 @@ from sqlalchemy import select
 from app.contracts.project_sync import SYNC_DIRECTIONS, SYNC_STATUS
 from app.database.models.project_sync import ProjectRepo, ProjectResourceRef
 from app.services.project_sync_service._exceptions import (
-    GitOperationError,
     ProjectNotFoundError,
 )
 
@@ -48,9 +48,7 @@ class _CommitMixin:
             GitUnavailableError: git 不可用
         """
         async with await self._get_session() as session:
-            stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(stmt)).scalar_one_or_none()
             if project_orm is None:
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")
@@ -58,18 +56,14 @@ class _CommitMixin:
             name = project_orm.name
 
         if not os.path.isdir(repo_path):
-            raise ProjectNotFoundError(
-                f"项目仓库目录不存在: {repo_path}"
-            )
+            raise ProjectNotFoundError(f"项目仓库目录不存在: {repo_path}")
 
         git_status = self._query_git_status(repo_path)
         derived = self._derive_status(git_status)
 
         # 更新 DB 中的 current_commit + status
         async with await self._get_session() as session:
-            stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(stmt)).scalar_one()
             project_orm.current_commit = git_status["head_sha"] or None
             project_orm.status = derived
@@ -122,9 +116,7 @@ class _CommitMixin:
             artifacts = await self._prepare_commit_artifacts(project_id)
             partial_state = {"artifacts": artifacts}
             try:
-                commit_sha = await self._perform_db_commit(
-                    project_id, message, artifacts
-                )
+                commit_sha = await self._perform_db_commit(project_id, message, artifacts)
             except Exception:
                 await self._rollback_commit(project_id, partial_state)
                 raise
@@ -149,9 +141,7 @@ class _CommitMixin:
             raise ValueError("commit message 不能为空")
         self._require_git()
 
-    async def _prepare_commit_artifacts(
-        self, project_id: str
-    ) -> dict[str, Any]:
+    async def _prepare_commit_artifacts(self, project_id: str) -> dict[str, Any]:
         """准备 commit 所需的 artifacts.
 
         包含 4 个步骤：
@@ -170,9 +160,7 @@ class _CommitMixin:
         """
         # Step 1: 加载 project + refs（read-only session）
         async with await self._get_session() as session:
-            stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(stmt)).scalar_one_or_none()
             if project_orm is None:
                 raise ProjectNotFoundError(f"项目不存在: {project_id}")
@@ -183,23 +171,17 @@ class _CommitMixin:
                 .where(ProjectResourceRef.project_id == project_id)
                 .order_by(ProjectResourceRef.created_at)
             )
-            ref_orms = list(
-                (await session.execute(refs_stmt)).scalars().all()
-            )
+            ref_orms = list((await session.execute(refs_stmt)).scalars().all())
 
         # Step 2: 校验仓库目录
         if not os.path.isdir(repo_path):
-            raise ProjectNotFoundError(
-                f"项目仓库目录不存在: {repo_path}"
-            )
+            raise ProjectNotFoundError(f"项目仓库目录不存在: {repo_path}")
 
         # Step 3: 重新计算 hash + 检测变更 + 更新 DB（每 ref 独立 commit）
         changed_refs: list[dict[str, Any]] = []
         for ref_orm in ref_orms:
             old_hash = ref_orm.content_hash or ""
-            new_hash = await self._compute_content_hash(
-                ref_orm.resource_type, ref_orm.resource_uri
-            )
+            new_hash = await self._compute_content_hash(ref_orm.resource_type, ref_orm.resource_uri)
             if new_hash != old_hash:
                 changed_refs.append(
                     {
@@ -210,30 +192,22 @@ class _CommitMixin:
                 )
                 # 更新 DB 中的 hash（独立 session + commit）
                 async with await self._get_session() as session:
-                    r_stmt = select(ProjectResourceRef).where(
-                        ProjectResourceRef.id == ref_orm.id
-                    )
+                    r_stmt = select(ProjectResourceRef).where(ProjectResourceRef.id == ref_orm.id)
                     r_orm = (await session.execute(r_stmt)).scalar_one()
                     r_orm.content_hash = new_hash or None
                     await session.commit()
 
         # Step 4: 重新加载 project + refs，构造 manifest
         async with await self._get_session() as session:
-            p_stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(p_stmt)).scalar_one()
             refs_stmt = (
                 select(ProjectResourceRef)
                 .where(ProjectResourceRef.project_id == project_id)
                 .order_by(ProjectResourceRef.created_at)
             )
-            ref_orms = list(
-                (await session.execute(refs_stmt)).scalars().all()
-            )
-            manifest_dict = self._build_manifest_dict(
-                project_orm, ref_orms
-            )
+            ref_orms = list((await session.execute(refs_stmt)).scalars().all())
+            manifest_dict = self._build_manifest_dict(project_orm, ref_orms)
 
         return {
             "repo_path": repo_path,
@@ -274,22 +248,16 @@ class _CommitMixin:
         self._run_git(["add", self._MANIFEST_FILENAME], cwd=repo_path)
 
         # 检查是否有变更待提交
-        status_res = self._run_git(
-            ["status", "--porcelain"], cwd=repo_path
-        )
+        status_res = self._run_git(["status", "--porcelain"], cwd=repo_path)
         commit_sha = ""
         if status_res.stdout.strip():
-            self._run_git(
-                ["commit", "-m", message], cwd=repo_path
-            )
+            self._run_git(["commit", "-m", message], cwd=repo_path)
             head_res = self._run_git(["rev-parse", "HEAD"], cwd=repo_path)
             commit_sha = head_res.stdout.strip()
 
         # 更新 DB + 写入 SyncRecord（独立 session + commit）
         async with await self._get_session() as session:
-            p_stmt = select(ProjectRepo).where(
-                ProjectRepo.project_id == project_id
-            )
+            p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(p_stmt)).scalar_one()
             if commit_sha:
                 project_orm.current_commit = commit_sha
@@ -310,9 +278,7 @@ class _CommitMixin:
 
         return commit_sha
 
-    def _notify_commit_success(
-        self, project_id: str, result: dict[str, Any]
-    ) -> None:
+    def _notify_commit_success(self, project_id: str, result: dict[str, Any]) -> None:
         """提交成功后的通知（日志记录，在 lock 释放后执行）.
 
         与原实现一致：logger.info 在 ``with lock`` 块外执行，确保锁不阻塞
@@ -327,9 +293,7 @@ class _CommitMixin:
             changed_count,
         )
 
-    async def _rollback_commit(
-        self, project_id: str, partial_state: dict[str, Any]
-    ) -> None:
+    async def _rollback_commit(self, project_id: str, partial_state: dict[str, Any]) -> None:
         """commit_project 异常时的回滚占位.
 
         原实现未引入显式回滚逻辑（DB 操作各自独立 commit；git 异常通过
