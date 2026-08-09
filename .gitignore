@@ -427,3 +427,16 @@ output/_git_backup_*/
 # 安装测试与临时诊断产物
 output/_nsis_install_test/
 output/mem-check.txt
+
+# output/ 运行时产物目录（防膨胀：测试生成的 NC/STL/报告等）
+/output/chatter_prediction/
+/output/chatter_prediction_tasks/
+/output/gcode_generation/
+/output/simulation/
+/output/cam_validation/
+/output/dxf_import/
+/output/image_to_3d/
+/output/projects/
+/output/rules/
+/output/step_import/
+/output/data/
