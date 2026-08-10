@@ -573,20 +573,35 @@ class PluginLifecycleManagerAdapter:
 
             try:
                 loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # 在运行中的事件循环里不能 sync 调用 async，回退到 legacy shutdown
+            except RuntimeError:
+                # Python 3.11+: 当前线程无事件循环时 get_event_loop() 抛
+                # RuntimeError（旧版本会隐式创建）。此时直接新建 loop
+                # 同步执行异步 on_unload，避免卸载时静默丢失清理钩子。
+                # 注意：不能 return——下方 legacy uninstall_plugin 仍需执行。
+                try:
+                    asyncio.run(adapter.on_unload())
+                except OSError as e:
                     logger.warning(
-                        "Cannot await async on_unload in running loop for '%s', falling back to legacy shutdown only",
-                        plugin_id,
+                        "Async on_unload failed during uninstall: %s",
+                        e,
+                        exc_info=True,
                     )
-                else:
-                    loop.run_until_complete(adapter.on_unload())
-            except (RuntimeError, OSError) as e:
-                logger.warning(
-                    "Async on_unload failed during uninstall: %s",
-                    e,
-                    exc_info=True,
-                )
+            else:
+                try:
+                    if loop.is_running():
+                        # 在运行中的事件循环里不能 sync 调用 async，回退到 legacy shutdown
+                        logger.warning(
+                            "Cannot await async on_unload in running loop for '%s', falling back to legacy shutdown only",
+                            plugin_id,
+                        )
+                    else:
+                        loop.run_until_complete(adapter.on_unload())
+                except (RuntimeError, OSError) as e:
+                    logger.warning(
+                        "Async on_unload failed during uninstall: %s",
+                        e,
+                        exc_info=True,
+                    )
 
         self._mgr.uninstall_plugin(plugin_id)
 
