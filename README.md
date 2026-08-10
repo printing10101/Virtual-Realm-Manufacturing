@@ -13,7 +13,7 @@ AI 驱动的制造智能桌面应用：**图纸 → 3D 模型 → 工艺规划 �
 
 ### 方式一：桌面端（Windows 推荐）
 
-1. 前往 [GitHub Releases](https://github.com/printing10101/Virtual-Realm-Manufacturing/releases) 下载最新安装包（`灵境制造-setup-<版本>.exe` / `msi`）。
+1. 前往 [GitHub Releases](https://github.com/printing10101/Virtual-Realm-Manufacturing/releases) 下载最新安装包（`lingjing_<版本>_x64-setup.exe`）。
 2. 双击安装，启动即用 —— 安装包已内置 Python 后端，无需预装任何环境。
 
 > 中国大陆下载加速镜像见 [国内部署指南](docs/国内部署指南.md)。
