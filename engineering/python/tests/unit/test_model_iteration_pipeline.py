@@ -92,13 +92,17 @@ def loaded_plugin(plugin_instance, fresh_registry: ExtensionRegistry):
         logger=logging.getLogger("test.p43"),
         data_dir=str(_PLUGIN_DIR / "_test_data"),
     )
-    asyncio.get_event_loop().run_until_complete(plugin_instance.on_load(ctx))
+    asyncio.run(plugin_instance.on_load(ctx))
     return plugin_instance
 
 
 def _run(coro):
-    """同步运行异步协程（测试用）."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    """同步运行异步协程（测试用）.
+
+    Python 3.11+ 移除了 get_event_loop() 在主线程无 loop 时的隐式创建，
+    统一用 asyncio.run（每次新建并关闭 loop，对独立测试安全）。
+    """
+    return asyncio.run(coro)
 
 
 # ---------------------------------------------------------------------------

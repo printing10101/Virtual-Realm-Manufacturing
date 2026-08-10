@@ -14,11 +14,26 @@
 from __future__ import annotations
 
 import importlib
+import os
 import subprocess
 import sys
 import textwrap
+from pathlib import Path
 
 import pytest
+
+
+def _child_env() -> dict[str, str]:
+    """构造子进程环境：注入工程 python 根目录到 PYTHONPATH。
+
+    根 conftest.py 只对 pytest 进程注入 sys.path，subprocess 子进程
+    不继承该注入，导致 `import app` 失败（ModuleNotFoundError）。
+    必须显式通过 PYTHONPATH 传递给子进程。
+    """
+    env = os.environ.copy()
+    python_root = str(Path(__file__).resolve().parents[2])  # .../tests/simulation -> engineering/python
+    env["PYTHONPATH"] = python_root + os.pathsep + env.get("PYTHONPATH", "")
+    return env
 
 
 # =============================================================================
@@ -127,6 +142,7 @@ class TestCommandLineImport:
             capture_output=True,
             text=True,
             timeout=30,
+            env=_child_env(),
         )
         assert result.returncode == 0, (
             f"子进程返回非零: {result.stderr}"
@@ -156,6 +172,7 @@ class TestCommandLineImport:
             capture_output=True,
             text=True,
             timeout=30,
+            env=_child_env(),
         )
         assert result.returncode == 0, (
             f"子进程返回非零: {result.stderr}"
@@ -184,6 +201,7 @@ class TestCommandLineImport:
             capture_output=True,
             text=True,
             timeout=30,
+            env=_child_env(),
         )
         assert result.returncode == 0, (
             f"子进程返回非零: {result.stderr}"
@@ -221,6 +239,7 @@ class TestCommandLineImport:
             capture_output=True,
             text=True,
             timeout=30,
+            env=_child_env(),
         )
         assert result.returncode == 0, (
             f"导入路径异常: stdout={result.stdout!r} stderr={result.stderr!r}"
