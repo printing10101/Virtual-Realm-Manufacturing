@@ -13,7 +13,7 @@
       - default-src 'self' data: blob:       : 默认仅允许同源 + data/blob URI，收紧兜底策略
                                                 （移除冗余的 https://*.aliyuncs.com https://*.taosdata.com
                                                  通配符——前端无直接外部资源加载，且通配符过宽存在 C2 风险）
-      - script-src 'self' 'nonce-__CSP_NONCE__'   : 移除 'unsafe-inline'，使用构建期随机 nonce 替代
+      - script-src 'self' 'nonce-__CSP_NONCE__' 'unsafe-eval'   : 移除 'unsafe-inline'，使用构建期随机 nonce 替代
                                                 （Vite 插件自动为内联脚本注入 nonce，无需手动维护）
       - connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 ws://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://127.0.0.1:8765-8785
                                              : 保留 ipc: 和 http://ipc.localhost（Tauri 2 IPC 通信硬约束）；
@@ -24,7 +24,7 @@
       - style-src 'self' 'unsafe-inline'     : CSS 内联通过 nonce 注入（Element Plus 主题覆盖等），
                                                 保留 'unsafe-inline' 作为兜底（部分浏览器 nonce 兼容性不佳）
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'nonce-__CSP_NONCE__'; connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 ws://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://127.0.0.1:8765-8785; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'nonce-__CSP_NONCE__' 'unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 ws://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://127.0.0.1:8765-8785; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';" />
     <!-- DNS 预解析（Tauri 桌面环境下 localhost 走回环，无实际 DNS 解析，保留以兼容 Web 模式） -->
     <link rel="dns-prefetch" href="//localhost" />
     <!-- 预连接后端源（仅 Web 模式生效，Tauri 模式下走 IPC 不影响） -->
@@ -48,6 +48,10 @@
 
         // 立即注入占位符（防止白屏）
         function injectPlaceholder() {
+          // 竞态修复：module main.ts（defer）会在 DOMContentLoaded 之前执行并完成 Vue 挂载，
+          // 若此时 __VUE_MOUNTED__ 已为 true，再注入占位符会覆盖 Vue 渲染的内容，导致
+          // 界面永远停留在"启动中…"。Vue 已挂载时必须跳过注入。
+          if (window.__VUE_MOUNTED__) return;
           var app = document.getElementById('app');
           if (!app) return;
           if (app.dataset.diag) return;

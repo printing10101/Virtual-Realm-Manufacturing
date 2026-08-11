@@ -28,7 +28,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://localhost:8765-8785 ws://127.0.0.1:8765-8785; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';",
+      "csp": "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost http://localhost:8765-8785 http://127.0.0.1:8765-8785 ws://localhost:8765-8785 ws://127.0.0.1:8765-8785; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline';",
       "assetProtocol": {
         "enable": true,
         "scope": ["$RESOURCE/**", "$APPDATA/com.lingjing.manufacturing/logs/**", "$APPDATA/com.lingjing.manufacturing/data/**"]
