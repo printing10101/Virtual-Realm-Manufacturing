@@ -100,6 +100,20 @@ pub fn get_app_version<R: Runtime>(app: AppHandle<R>) -> String {
     app.package_info().version.to_string()
 }
 
+/// 打开外部 URL（仅允许 http/https，防协议注入）
+///
+/// 「关于」页「前往下载」按钮使用：跳转 GitHub Releases 页面手动下载安装包
+/// （自动更新过渡方案，见 docs/operations/工业级交付路线图.md 2.2）。
+#[tauri::command]
+pub fn open_external_url<R: Runtime>(app: AppHandle<R>, url: String) -> Result<(), String> {
+    let lower = url.to_lowercase();
+    if !(lower.starts_with("https://") || lower.starts_with("http://")) {
+        return Err("Only http/https URLs are allowed".to_string());
+    }
+    use tauri_plugin_shell::ShellExt;
+    app.shell().open(&url, None).map_err(|e| e.to_string())
+}
+
 /// 版本一致性状态（与前端 VersionStatus 接口对齐）
 ///
 /// 用于前端展示 Rust/Python/前端三端版本一致性，

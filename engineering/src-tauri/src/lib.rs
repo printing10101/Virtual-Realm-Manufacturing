@@ -15,9 +15,9 @@ use tauri::{Manager, RunEvent, WebviewWindowBuilder, WindowEvent};
 
 use crate::commands::{
     auto_fix_health, close_splashscreen, export_logs_cmd, get_app_version, get_backend_port,
-    get_backend_state, get_diagnostics_text, get_version_info, ping_backend, restart_backend,
-    retry_launch_step, run_health_check, run_single_health_check, start_backend, stop_backend,
-    AppState,
+    get_backend_state, get_diagnostics_text, get_version_info, open_external_url, ping_backend,
+    restart_backend, retry_launch_step, run_health_check, run_single_health_check, start_backend,
+    stop_backend, AppState,
 };
 use crate::sidecar::SidecarManager;
 
@@ -217,6 +217,8 @@ pub fn run() {
             get_diagnostics_text,
             export_logs_cmd,
             retry_launch_step,
+            // 外部链接打开（关于页「前往下载」，自动更新过渡方案）
+            open_external_url,
         ])
         .setup(move |app| {
             let app_handle = app.handle().clone();
@@ -327,22 +329,32 @@ pub fn run() {
                                         var title = document.title;
                                         var href = location.href;
                                         var msg = 'title=' + title + ' mounted=' + mounted + ' diagInstalled=' + diagInstalled + ' appLen=' + appLen + ' scripts=' + scripts + ' readyState=' + readyState + ' url=' + href + ' appHtml=' + appHtml;
+                                        var fullHtml = appEl ? appEl.innerHTML : '';
+                                        var bodyText = document.body ? document.body.innerText.substring(0, 300) : '';
+                                        var errMsgs = window.__ERR_MSGS__ || [];
+                                        var fatalLog = 'FULLHTML=[' + fullHtml + '] BODYTEXT=[' + bodyText + '] ERRS=' + JSON.stringify(errMsgs);
+                                        try { fetch('http://127.0.0.1:8765/api/health/ping?__full__=' + encodeURIComponent(fatalLog)).catch(function(){}); } catch(e2) {}
                                         var diagDiv = document.createElement('div');
                                         diagDiv.id = '__RUST_DIAG__';
                                         diagDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#1e1e1e;color:#0f0;font-family:Consolas,monospace;font-size:12px;padding:8px;z-index:999999;white-space:pre-wrap;max-height:300px;overflow:auto;';
-                                        diagDiv.textContent = '[RUST DIAG 2s] ' + msg;
+                                        diagDiv.textContent = '[RUST DIAG 2s] ' + msg + '
+
+[FULL] ' + (appEl ? appEl.innerHTML : 'NO_APP');
                                         if (document.body) document.body.appendChild(diagDiv);
+                                        // P0-修复：fetch 必须挂 .catch()，否则端口漂移（8765 被占用）时
+                                        // promise rejection 是异步的，外层 try/catch 捕获不到，
+                                        // 会触发 main.ts 全局 unhandledrejection 监听，渲染致命错误页覆盖整个 UI。
                                         try {
-                                            fetch('http://127.0.0.1:8765/api/health/ping?__diag__=' + encodeURIComponent(msg));
+                                            fetch('http://127.0.0.1:8765/api/health/ping?__diag__=' + encodeURIComponent(msg)).catch(function(){});
                                         } catch(e) {
                                             if (diagDiv) diagDiv.textContent += '\n[FETCH_FAIL] ' + e.message;
                                             try {
-                                                fetch('http://127.0.0.1:8765/api/health/ping?__diag__=FETCH_FAIL=' + encodeURIComponent(e.message));
+                                                fetch('http://127.0.0.1:8765/api/health/ping?__diag__=FETCH_FAIL=' + encodeURIComponent(e.message)).catch(function(){});
                                             } catch(e2) {}
                                         }
                                     } catch(e) {
                                         try {
-                                            fetch('http://127.0.0.1:8765/api/health/ping?__diag__=EVAL_ERROR=' + encodeURIComponent(e.message));
+                                            fetch('http://127.0.0.1:8765/api/health/ping?__diag__=EVAL_ERROR=' + encodeURIComponent(e.message)).catch(function(){});
                                         } catch(e2) {}
                                     }
                                 })();
