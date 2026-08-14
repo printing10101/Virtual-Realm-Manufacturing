@@ -9,7 +9,7 @@ import json
 import logging
 import traceback
 import os
-from dataclasses import field
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -39,6 +39,7 @@ class TaskCategory(str, Enum):
     ANALYSIS = "analysis"
 
 
+@dataclass
 class ExecutionResult:
     """执行结果"""
 
@@ -68,6 +69,7 @@ class ExecutionResult:
         }
 
 
+@dataclass
 class ExecutionSession:
     """执行会话"""
 
