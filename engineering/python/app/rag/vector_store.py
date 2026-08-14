@@ -68,8 +68,8 @@ def _build_hnsw_metadata() -> dict[str, Any]:
     return {
         "hnsw:space": DEFAULT_HNSW_SPACE,  # 距离度量：cosine / l2 / ip
         "hnsw:M": DEFAULT_HNSW_M,  # 每层最大连接数
-        "hnsw:ef_construction": DEFAULT_HNSW_EF_CONSTRUCTION,  # 构建时搜索宽度
-        "hnsw:ef_search": DEFAULT_HNSW_EF_SEARCH,  # 查询时搜索宽度
+        "hnsw:construction_ef": DEFAULT_HNSW_EF_CONSTRUCTION,  # 构建时搜索宽度（chromadb 1.0 改名自 ef_construction）
+        "hnsw:search_ef": DEFAULT_HNSW_EF_SEARCH,  # 查询时搜索宽度（chromadb 1.0 改名自 ef_search）
         "hnsw:num_threads": DEFAULT_HNSW_NUM_THREADS,  # 构建并行线程数
     }
 

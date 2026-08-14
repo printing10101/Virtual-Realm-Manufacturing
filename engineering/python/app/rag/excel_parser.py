@@ -105,6 +105,12 @@ def parse_excel(file_path: str | Path) -> dict[str, Any]:
         error_msg = "Excel解析失败: 文件格式错误或损坏，请检查文件"
         logger.exception(error_msg)
         result["error"] = error_msg
+    except Exception:
+        # openpyxl 的 InvalidFileException 等未覆盖异常也统一转为 error 结果，
+        # 保证 parse_excel 的 API 契约（永不抛异常，始终返回状态字典）。
+        error_msg = "Excel解析失败: 文件格式错误或损坏，请检查文件"
+        logger.exception(error_msg)
+        result["error"] = error_msg
 
     return result
 
