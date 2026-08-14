@@ -126,6 +126,20 @@ class PhysicsValidator:
         """
         warnings: list[str] = []
 
+        # 非正参数防御：无法计算时直接返回不可行结果，
+        # 避免 0^(-0.1) 抛 ZeroDivisionError / 负数小数幂抛 ValueError
+        if feed_mm_rev <= 0 or depth_of_cut_mm <= 0 or cutting_speed_m_min <= 0 or tool_diameter_mm <= 0:
+            warnings.append("切削参数必须为正数，无法计算切削力")
+            return CuttingForceResult(
+                force_tangential_n=0.0,
+                force_feed_n=0.0,
+                force_radial_n=0.0,
+                torque_nm=0.0,
+                power_kw=0.0,
+                within_limits=False,
+                warnings=warnings,
+            )
+
         # Get specific cutting force for material
         material_lower = material.lower()
         kc = self.SPECIFIC_CUTTING_FORCE.get(material_lower, self.SPECIFIC_CUTTING_FORCE["default"])
