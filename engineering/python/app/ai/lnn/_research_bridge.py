@@ -27,6 +27,28 @@ _cache: dict[str, Any] = {}
 _import_attempted: dict[str, bool] = {}
 
 
+def _inject_research_syspath() -> None:
+    """定位仓库根的 research/ 目录并注入 sys.path（幂等）。
+
+    阶段2 解耦后工程侧位于 engineering/python/，运行时 sys.path 不含仓库根，
+    而科研侧代码以 ``research.training.xxx`` 绝对导入。此处沿文件路径向上
+    查找含 research/ 的仓库根，避免硬编码路径；找不到时保持原状（降级）。
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+
+    if "research" in _sys.modules:
+        return
+    p = _Path(__file__).resolve().parent
+    for _ in range(6):
+        p = p.parent
+        if (p / "research").is_dir():
+            _root = str(p)
+            if _root not in _sys.path:
+                _sys.path.insert(0, _root)
+            return
+
+
 def _lazy_import(module_path: str, attr_name: str) -> Optional[Any]:
     """延迟导入 research 模块的单个属性。
 
@@ -42,6 +64,12 @@ def _lazy_import(module_path: str, attr_name: str) -> Optional[Any]:
     _import_attempted[cache_key] = True
     try:
         import importlib as _importlib
+
+        # 阶段2 解耦：工程侧运行时（cwd=engineering/python）的 sys.path 不含仓库根，
+        # 直接 importlib.import_module("research.xxx") 永远失败。动态定位 research/
+        # 目录并注入 sys.path（仅当 module_path 以 research. 开头）。
+        if module_path.startswith("research."):
+            _inject_research_syspath()
 
         mod = _importlib.import_module(module_path)
         obj = getattr(mod, attr_name)
@@ -62,6 +90,19 @@ def _lazy_import(module_path: str, attr_name: str) -> Optional[Any]:
             "research bridge: %s not found in %s (%s)",
             attr_name,
             module_path,
+            e,
+        )
+        _cache[cache_key] = None
+        return None
+    except Exception as e:  # noqa: BLE001
+        # 兜底：任何异常（OSError/WinError 6714、torch 初始化 RuntimeError 等）
+        # 都应降级为不可用，而非让桥接层把异常抛给调用方（可选功能）。
+        logger.warning(
+            "research bridge: unexpected error importing %s from %s (%s: %s). "
+            "Training functionality will be unavailable.",
+            attr_name,
+            module_path,
+            type(e).__name__,
             e,
         )
         _cache[cache_key] = None
