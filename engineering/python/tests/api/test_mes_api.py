@@ -1,4 +1,4 @@
-"""MES/ERP 系统集成 API 端到端测试。
+"""MES/ERP 系统集成 API 测试。
 
 测试覆盖：
 - 工单同步
@@ -7,16 +7,32 @@
 - 质量数据上报
 - 健康检查
 - 配置验证
+
+设计说明（2026-08-14 收编修复）：
+- 原文件位于仓库根 tests/，未进入 CI 收集（孤儿测试），且未适配
+  强制鉴权（LNN_PERMISSION_ENFORCED）导致全部 401。
+- 迁入 engineering/python/tests/api/（pytest.ini testpaths 覆盖），
+  由 engineering/python/tests/conftest.py 预置 LNN_PERMISSION_ENFORCED=false
+  测试环境，鉴权自动放行。
+- 业务类用例通过 app.dependency_overrides[get_mes_client] 注入 mock 客户端，
+  不依赖真实 MES 服务（hermetic）；仅「未启用/未配置」用例走真实依赖
+  验证 503 降级路径（5xx 消息按安全设计脱敏为通用文案）。
+- Mock 使用 unittest.mock + monkeypatch（不依赖 pytest-mock，CI 未安装）。
+- 修复原文件 bug：mocker 未声明为 fixture 参数（NameError）、
+  datetime.now() 未带时区（P2-7 约定）、底部 import 上提到模块顶层。
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from datetime import datetime
 from httpx import AsyncClient, ASGITransport
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.integrations.mes.api import get_mes_client
 from app.integrations.mes.client import MESClient
 
 
@@ -40,11 +56,33 @@ async def async_client():
 
 
 @pytest.fixture
-def mock_mes_client(mocker):
+def mock_mes_client():
     """创建 mock MES 客户端"""
-    mock = mocker.MagicMock(spec=MESClient)
-    mock.health_check = mocker.AsyncMock(return_value=True)
+    mock = MagicMock(spec=MESClient)
+    mock.health_check = AsyncMock(return_value=True)
     return mock
+
+
+def _override(mock_mes_client):
+    """注入 mock 客户端并返回清理函数。"""
+    app.dependency_overrides[get_mes_client] = lambda: mock_mes_client
+
+    def _cleanup():
+        app.dependency_overrides.pop(get_mes_client, None)
+
+    return _cleanup
+
+
+def _sync_result(message: str, data_id: str):
+    """构造带 UTC 时间戳的 SyncResult（P2-7 时区约定）。"""
+    from app.integrations.mes.client import SyncResult
+
+    return SyncResult(
+        success=True,
+        message=message,
+        data_id=data_id,
+        timestamp=datetime.now(timezone.utc),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -57,19 +95,10 @@ class TestWorkOrderSync:
 
     def test_sync_work_order_success(self, client, mock_mes_client):
         """测试工单同步成功"""
-        from app.integrations.mes.client import SyncResult
-        
-        mock_mes_client.sync_work_order = mocker.AsyncMock(
-            return_value=SyncResult(
-                success=True,
-                message="工单同步成功",
-                data_id="WO-001",
-                timestamp=datetime.now()
-            )
+        mock_mes_client.sync_work_order = AsyncMock(
+            return_value=_sync_result("工单同步成功", "WO-001")
         )
-        
-        app.dependency_overrides[get_mes_client] = lambda: mock_mes_client
-        
+        cleanup = _override(mock_mes_client)
         try:
             response = client.post(
                 "/api/v1/mes/sync-work-order",
@@ -87,30 +116,38 @@ class TestWorkOrderSync:
             assert data["success"] is True
             assert data["message"] == "工单同步成功"
         finally:
-            app.dependency_overrides.clear()
+            cleanup()
 
-    def test_sync_work_order_missing_fields(self, client):
-        """测试工单同步缺少必填字段"""
-        response = client.post(
-            "/api/v1/mes/sync-work-order",
-            json={
-                "work_order_no": "WO-2024-001",
-                # 缺少 product_code 和 quantity
-            },
-        )
-        assert response.status_code == 422
+    def test_sync_work_order_missing_fields(self, client, mock_mes_client):
+        """测试工单同步缺少必填字段（Pydantic 422）"""
+        cleanup = _override(mock_mes_client)
+        try:
+            response = client.post(
+                "/api/v1/mes/sync-work-order",
+                json={
+                    "work_order_no": "WO-2024-001",
+                    # 缺少 product_code 和 quantity
+                },
+            )
+            assert response.status_code == 422
+        finally:
+            cleanup()
 
-    def test_sync_work_order_invalid_quantity(self, client):
-        """测试工单同步数量无效"""
-        response = client.post(
-            "/api/v1/mes/sync-work-order",
-            json={
-                "work_order_no": "WO-2024-001",
-                "product_code": "PROD-001",
-                "quantity": -10,  # 负数
-            },
-        )
-        assert response.status_code == 422
+    def test_sync_work_order_invalid_quantity(self, client, mock_mes_client):
+        """测试工单同步数量无效（gt=0 约束 → 422）"""
+        cleanup = _override(mock_mes_client)
+        try:
+            response = client.post(
+                "/api/v1/mes/sync-work-order",
+                json={
+                    "work_order_no": "WO-2024-001",
+                    "product_code": "PROD-001",
+                    "quantity": -10,  # 负数
+                },
+            )
+            assert response.status_code == 422
+        finally:
+            cleanup()
 
 
 # ---------------------------------------------------------------------------
@@ -123,19 +160,10 @@ class TestProductionReport:
 
     def test_report_production_success(self, client, mock_mes_client):
         """测试生产数据上报成功"""
-        from app.integrations.mes.client import SyncResult
-        
-        mock_mes_client.report_production = mocker.AsyncMock(
-            return_value=SyncResult(
-                success=True,
-                message="生产数据上报成功",
-                data_id="PROD-001",
-                timestamp=datetime.now()
-            )
+        mock_mes_client.report_production = AsyncMock(
+            return_value=_sync_result("生产数据上报成功", "PROD-001")
         )
-        
-        app.dependency_overrides[get_mes_client] = lambda: mock_mes_client
-        
+        cleanup = _override(mock_mes_client)
         try:
             response = client.post(
                 "/api/v1/mes/report-production",
@@ -149,20 +177,29 @@ class TestProductionReport:
             data = response.json()
             assert data["success"] is True
         finally:
-            app.dependency_overrides.clear()
+            cleanup()
 
-    def test_report_production_qualified_exceeds_total(self, client):
-        """测试合格数量超过总数量"""
-        response = client.post(
-            "/api/v1/mes/report-production",
-            json={
-                "batch_no": "BATCH-2024-001",
-                "quantity": 100,
-                "qualified": 150,  # 超过总数量
-            },
+    def test_report_production_client_rejects(self, client, mock_mes_client):
+        """测试合格数量超过总数：由 MES 客户端校验拒绝 → 路由映射为 400"""
+        # 数量合法性校验在 MES 客户端侧（真实服务），这里 mock 客户端
+        # 对「合格数 > 总数」抛 ValueError，验证路由正确映射为 400。
+        mock_mes_client.report_production = AsyncMock(
+            side_effect=ValueError("qualified exceeds quantity")
         )
-        # 应该通过（业务逻辑验证在 MES 客户端）
-        assert response.status_code in [200, 400, 422]
+        cleanup = _override(mock_mes_client)
+        try:
+            response = client.post(
+                "/api/v1/mes/report-production",
+                json={
+                    "batch_no": "BATCH-2024-001",
+                    "quantity": 100,
+                    "qualified": 150,  # 超过总数量
+                },
+            )
+            assert response.status_code == 400
+            assert response.json()["message"] == "请求参数无效"
+        finally:
+            cleanup()
 
 
 # ---------------------------------------------------------------------------
@@ -176,8 +213,8 @@ class TestMaterialQuery:
     def test_query_material_success(self, client, mock_mes_client):
         """测试物料查询成功"""
         from app.integrations.mes.client import MaterialInfo
-        
-        mock_mes_client.query_material = mocker.AsyncMock(
+
+        mock_mes_client.query_material = AsyncMock(
             return_value=MaterialInfo(
                 material_code="MAT-001",
                 name="铝合金 6061-T6",
@@ -186,12 +223,10 @@ class TestMaterialQuery:
                 stock_quantity=500.0,
                 warehouse_location="A-01-01",
                 batch_no="BATCH-MAT-001",
-                expiry_date=datetime(2025, 12, 31)
+                expiry_date=datetime(2025, 12, 31, tzinfo=timezone.utc),
             )
         )
-        
-        app.dependency_overrides[get_mes_client] = lambda: mock_mes_client
-        
+        cleanup = _override(mock_mes_client)
         try:
             response = client.get("/api/v1/mes/material/MAT-001")
             assert response.status_code == 200
@@ -199,19 +234,17 @@ class TestMaterialQuery:
             assert data["material_code"] == "MAT-001"
             assert data["name"] == "铝合金 6061-T6"
         finally:
-            app.dependency_overrides.clear()
+            cleanup()
 
     def test_query_material_not_found(self, client, mock_mes_client):
-        """测试物料未找到"""
-        mock_mes_client.query_material = mocker.AsyncMock(return_value=None)
-        
-        app.dependency_overrides[get_mes_client] = lambda: mock_mes_client
-        
+        """测试物料未找到 → 404"""
+        mock_mes_client.query_material = AsyncMock(return_value=None)
+        cleanup = _override(mock_mes_client)
         try:
             response = client.get("/api/v1/mes/material/MAT-NOT-EXIST")
             assert response.status_code == 404
         finally:
-            app.dependency_overrides.clear()
+            cleanup()
 
 
 # ---------------------------------------------------------------------------
@@ -224,19 +257,10 @@ class TestQualityReport:
 
     def test_report_quality_success(self, client, mock_mes_client):
         """测试质量数据上报成功"""
-        from app.integrations.mes.client import SyncResult
-        
-        mock_mes_client.report_quality = mocker.AsyncMock(
-            return_value=SyncResult(
-                success=True,
-                message="质量数据上报成功",
-                data_id="QUAL-001",
-                timestamp=datetime.now()
-            )
+        mock_mes_client.report_quality = AsyncMock(
+            return_value=_sync_result("质量数据上报成功", "QUAL-001")
         )
-        
-        app.dependency_overrides[get_mes_client] = lambda: mock_mes_client
-        
+        cleanup = _override(mock_mes_client)
         try:
             response = client.post(
                 "/api/v1/mes/report-quality",
@@ -256,7 +280,7 @@ class TestQualityReport:
             data = response.json()
             assert data["success"] is True
         finally:
-            app.dependency_overrides.clear()
+            cleanup()
 
 
 # ---------------------------------------------------------------------------
@@ -269,8 +293,7 @@ class TestHealthCheck:
 
     def test_health_check_healthy(self, client, mock_mes_client):
         """测试健康检查 - 系统正常"""
-        app.dependency_overrides[get_mes_client] = lambda: mock_mes_client
-        
+        cleanup = _override(mock_mes_client)
         try:
             response = client.get("/api/v1/mes/health")
             assert response.status_code == 200
@@ -278,14 +301,12 @@ class TestHealthCheck:
             assert data["status"] == "healthy"
             assert data["mes_connected"] is True
         finally:
-            app.dependency_overrides.clear()
+            cleanup()
 
     def test_health_check_unhealthy(self, client, mock_mes_client):
         """测试健康检查 - 系统异常"""
-        mock_mes_client.health_check = mocker.AsyncMock(return_value=False)
-        
-        app.dependency_overrides[get_mes_client] = lambda: mock_mes_client
-        
+        mock_mes_client.health_check = AsyncMock(return_value=False)
+        cleanup = _override(mock_mes_client)
         try:
             response = client.get("/api/v1/mes/health")
             assert response.status_code == 200
@@ -293,7 +314,7 @@ class TestHealthCheck:
             assert data["status"] == "unhealthy"
             assert data["mes_connected"] is False
         finally:
-            app.dependency_overrides.clear()
+            cleanup()
 
 
 # ---------------------------------------------------------------------------
@@ -305,32 +326,28 @@ class TestConfiguration:
     """配置验证测试"""
 
     def test_mes_not_enabled(self, client):
-        """测试 MES 未启用"""
-        # 确保依赖覆盖已清理
+        """测试 MES 未启用 → 503（5xx 消息按安全设计脱敏）"""
+        # 确保依赖覆盖已清理（走真实 get_mes_client 依赖）
         app.dependency_overrides.clear()
-        
-        response = client.get("/api/v1/mes/health")
-        # 应该返回 503（服务不可用）
-        assert response.status_code == 503
-        assert "not enabled" in response.json()["detail"].lower()
 
-    def test_mes_not_configured(self, client, mocker):
-        """测试 MES 配置不完整"""
+        response = client.get("/api/v1/mes/health")
+        assert response.status_code == 503
+        # 5xx 异常消息统一脱敏（exception_handlers 安全设计，
+        # 真实 detail 仅记日志，避免向客户端泄露内部配置信息）。
+        assert response.json()["message"] == "系统内部错误，请联系管理员"
+
+    def test_mes_not_configured(self, client, monkeypatch):
+        """测试 MES 配置不完整 → 503（5xx 消息按安全设计脱敏）"""
         from app.config import config
-        
+
+        app.dependency_overrides.clear()
+
         # Mock 配置
-        mocker.patch.object(config.mes, 'enabled', True)
-        mocker.patch.object(config.mes, 'base_url', '')
-        mocker.patch.object(config.mes, 'api_key', '')
-        
+        monkeypatch.setattr(config.mes, "enabled", True)
+        monkeypatch.setattr(config.mes, "base_url", "")
+        monkeypatch.setattr(config.mes, "api_key", "")
+
         response = client.get("/api/v1/mes/health")
         assert response.status_code == 503
-        assert "not configured" in response.json()["detail"].lower()
-
-
-# ---------------------------------------------------------------------------
-# 导入辅助函数
-# ---------------------------------------------------------------------------
-
-
-from app.integrations.mes.api import get_mes_client
+        # 同上：5xx 消息统一脱敏，真实 detail（not configured）仅记日志
+        assert response.json()["message"] == "系统内部错误，请联系管理员"
