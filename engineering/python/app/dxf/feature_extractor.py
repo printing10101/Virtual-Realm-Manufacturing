@@ -521,7 +521,9 @@ class FeatureExtractor:
                 continue
 
             dot = abs(d2[0] * dir1[0] + d2[1] * dir1[1]) / len2
-            if dot > math.cos(math.radians(90 - RECTANGLE_ANGLE_TOLERANCE)):
+            # 相邻边应接近正交（dot≈0）；原条件 dot > cos(90-tol) 误判平行，
+            # 导致标准垂直矩形永远无法识别（平面特征提取失效）
+            if dot < math.cos(math.radians(RECTANGLE_ANGLE_TOLERANCE)):
                 candidates.append((j, conn_dist))
 
         if not candidates:
@@ -595,15 +597,18 @@ class FeatureExtractor:
             return None
 
         close_dist = math.hypot(l4_end[0] - p1[0], l4_end[1] - p1[1])
-        if close_dist > RECTANGLE_LENGTH_TOLERANCE:
+        if close_dist >= RECTANGLE_LENGTH_TOLERANCE:
             return None
 
         used_lines.update([start_idx, best_j, best_k, best_m])
 
         length = max(len1, len2)
         width_val = min(len1, len2)
-        cx = (p1[0] + l2_end[0] + l3_end[0] + l4_end[0]) / 4.0
-        cy = (p1[1] + l2_end[1] + l3_end[1] + l4_end[1]) / 4.0
+        # 中心 = 对角点中点（p1 与 l3_start 为矩形对角）；原实现取
+        # (p1+l2_end+l3_end+l4_end)/4 是端点均值，标准矩形下会算出
+        # 偏心中心（如 100x80 矩形给出 cx=25 而非 50）
+        cx = (p1[0] + l3_start[0]) / 2.0
+        cy = (p1[1] + l3_start[1]) / 2.00
 
         return (length, width_val, cx, cy, l1.layer)
 

@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from app.core.safe_errors import safe_error_message
+from app.dxf.exceptions import DxfError
 from app.dxf.dxf_parser import DxfParser, DxfParseResult
 from app.dxf.feature_extractor import (
     FeatureExtractor,
@@ -201,7 +202,7 @@ class DxfProcessPipeline:
                 errors=parse_result.errors,
                 warnings=parse_result.warnings,
             )
-        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError) as e:
+        except (ValueError, TypeError, KeyError, AttributeError, OSError, RuntimeError, DxfError) as e:
             # DXF解析涉及文件I/O和数据解析
             err_msg, error_id = _record_stage_error(
                 e,
