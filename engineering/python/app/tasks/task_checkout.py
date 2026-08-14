@@ -2,41 +2,68 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
-import sqlite3
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, List, Optional
 
 from app.tasks.execution_lock import (
     ExecutionLockStore,
-    LockConflictError,
-    LockNotFoundError,
     get_execution_lock_store,
 )
+# 模型/常量经本模块再导出（dependencies / api 导入方依赖），__all__ 声明避免 ruff F401
 from app.tasks._checkout_models import (
-    CheckoutStatus,
-    CheckoutFailureReason,
-    TaskStatus,
-    AgentMode,
-    CheckoutPriority,
-    CheckoutRequest,
-    CheckoutResult,
-    CheckoutQueueEntry,
+    BUDGET_RETRY_DELAY_MINUTES,
+    CONFLICT_RETRY_DELAY_MINUTES,
+    GPU_RETRY_DELAY_MINUTES,
+    MAX_RETRY_COUNT,
     TaskRecord,
 )
+
+from app.tasks._checkout_models import (
+    AgentMode,
+    CheckoutFailureReason,
+    CheckoutPriority,
+    CheckoutQueueEntry,
+    CheckoutRequest,
+    CheckoutResult,
+    CheckoutStatus,
+    TaskStatus,
+)
+
+# 模型/常量经本模块再导出（api/v1/task_checkout.py、dependencies 等导入方依赖），
+# __all__ 声明避免 ruff F401 误删。
+__all__ = [
+    "TaskCheckoutManager",
+    "get_checkout_manager",
+    "init_checkout_manager",
+    "MAX_RETRY_COUNT",
+    "BUDGET_RETRY_DELAY_MINUTES",
+    "GPU_RETRY_DELAY_MINUTES",
+    "CONFLICT_RETRY_DELAY_MINUTES",
+    "AgentMode",
+    "CheckoutFailureReason",
+    "CheckoutPriority",
+    "CheckoutQueueEntry",
+    "CheckoutRequest",
+    "CheckoutResult",
+    "CheckoutStatus",
+    "TaskRecord",
+    "TaskStatus",
+]
 
 from app.utils.utils import get_output_dir
 from app.utils.sqlite_pool import get_sqlite_manager
 
+from app.tasks._task_checkout_locks_mixin import _TaskCheckoutLocksMixin
+from app.tasks._task_checkout_ops_mixin import _TaskCheckoutOpsMixin
+from app.tasks._task_checkout_queue_mixin import _TaskCheckoutQueueMixin
+
 logger = logging.getLogger(__name__)
 
-MAX_RETRY_COUNT = 5
-BUDGET_RETRY_DELAY_MINUTES = 0
-GPU_RETRY_DELAY_MINUTES = 5
-CONFLICT_RETRY_DELAY_MINUTES = 1
 
 
-class TaskCheckoutManager:
+
+
+
+class TaskCheckoutManager(_TaskCheckoutLocksMixin, _TaskCheckoutQueueMixin, _TaskCheckoutOpsMixin):
     def __init__(self, lock_store: ExecutionLockStore, db_path: Optional[str] = None):
         self._lock_store = lock_store
         if db_path is None:
@@ -58,89 +85,9 @@ class TaskCheckoutManager:
     def set_gpu_checker(self, checker: Callable[[float], bool]):
         self._gpu_checker = checker
 
-    def _get_conn(self) -> sqlite3.Connection:
-        """获取数据库连接（从连接池）"""
-        return self._conn
 
-    def _ensure_tables(self):
-        conn = self._get_conn()
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS checkout_tasks (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL DEFAULT '',
-                description TEXT NOT NULL DEFAULT '',
-                task_type TEXT NOT NULL DEFAULT 'execution',
-                status TEXT NOT NULL DEFAULT 'pending',
-                assigned_to TEXT,
-                parent_goal_id TEXT,
-                project_id TEXT,
-                required_gpu_memory REAL NOT NULL DEFAULT 0.0,
-                blockers TEXT NOT NULL DEFAULT '[]',
-                priority INTEGER NOT NULL DEFAULT 3,
-                checked_out_at TEXT,
-                checkout_expires_at TEXT,
-                created_at TEXT NOT NULL,
-                completed_at TEXT
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS checkout_failure_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                task_id TEXT NOT NULL,
-                agent_id TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                message TEXT,
-                timestamp TEXT NOT NULL
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS checkout_queue (
-                task_id TEXT NOT NULL,
-                agent_id TEXT NOT NULL,
-                priority INTEGER NOT NULL DEFAULT 3,
-                retry_count INTEGER NOT NULL DEFAULT 0,
-                last_failure TEXT,
-                next_retry_at REAL,
-                created_at REAL NOT NULL,
-                PRIMARY KEY (task_id, agent_id)
-            )
-        """)
-        conn.commit()
 
-    def register_task(self, task: TaskRecord):
-        conn = self._get_conn()
-        conn.execute(
-            """INSERT OR REPLACE INTO checkout_tasks
-               (id, title, description, task_type, status, assigned_to, parent_goal_id,
-                project_id, required_gpu_memory, blockers, priority,
-                checked_out_at, checkout_expires_at, created_at, completed_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                task.id,
-                task.title,
-                task.description,
-                task.task_type,
-                task.status,
-                task.assigned_to,
-                task.parent_goal_id,
-                task.project_id,
-                task.required_gpu_memory,
-                self._serialize_blockers(task.blockers),
-                task.priority,
-                task.checked_out_at,
-                task.checkout_expires_at,
-                task.created_at,
-                task.completed_at,
-            ),
-        )
-        conn.commit()
 
-    def get_task(self, task_id: str) -> Optional[TaskRecord]:
-        conn = self._get_conn()
-        row = conn.execute("SELECT * FROM checkout_tasks WHERE id = ?", (task_id,)).fetchone()
-        if row is None:
-            return None
-        return self._row_to_task(row)
 
     def _row_to_task(self, row) -> TaskRecord:
         import json
@@ -175,666 +122,24 @@ class TaskCheckoutManager:
 
         return json.dumps(blockers, ensure_ascii=False)
 
-    def checkout_task(self, request: CheckoutRequest) -> CheckoutResult:
-        with self._checkout_lock:
-            return self._perform_checkout(request)
 
-    def _perform_checkout(self, request: CheckoutRequest) -> CheckoutResult:
-        task = self.get_task(request.task_id)
-        if task is None:
-            return self._checkout_fail(
-                request,
-                CheckoutFailureReason.ALREADY_CHECKED_OUT,
-                f"Task '{request.task_id}' not found",
-                retry=False,
-            )
 
-        if task.status == TaskStatus.COMPLETED.value:
-            return self._checkout_fail(
-                request,
-                CheckoutFailureReason.TASK_COMPLETED,
-                f"Task '{request.task_id}' is already completed",
-                retry=False,
-            )
 
-        if task.status == TaskStatus.FAILED.value:
-            return self._checkout_fail(
-                request,
-                CheckoutFailureReason.TASK_FAILED,
-                f"Task '{request.task_id}' has failed",
-                retry=False,
-            )
 
-        if task.status == TaskStatus.CANCELLED.value:
-            return self._checkout_fail(
-                request,
-                CheckoutFailureReason.ALREADY_CHECKED_OUT,
-                f"Task '{request.task_id}' is cancelled",
-                retry=False,
-            )
 
-        if task.status == TaskStatus.IN_PROGRESS.value and task.assigned_to != request.agent_id:
-            return self._checkout_fail(
-                request,
-                CheckoutFailureReason.ASSIGNED_TO_OTHER,
-                f"Task is assigned to {task.assigned_to}",
-                retry=False,
-            )
 
-        if task.assigned_to and task.assigned_to != request.agent_id:
-            return self._checkout_fail(
-                request,
-                CheckoutFailureReason.ASSIGNED_TO_OTHER,
-                f"Task assigned to {task.assigned_to}",
-                retry=True,
-                retry_delay=CONFLICT_RETRY_DELAY_MINUTES,
-            )
 
-        if task.blockers:
-            unresolved = self._get_unresolved_blockers(task.blockers)
-            if unresolved:
-                return self._checkout_fail(
-                    request,
-                    CheckoutFailureReason.BLOCKERS_UNRESOLVED,
-                    f"Unresolved blockers: {unresolved}",
-                    retry=True,
-                    retry_delay=CONFLICT_RETRY_DELAY_MINUTES,
-                )
 
-        if request.agent_mode == AgentMode.SINGLE:
-            active_lock = self._lock_store.get_active_lock_by_agent(request.agent_id)
-            if active_lock and active_lock.task_id != request.task_id:
-                return self._checkout_fail(
-                    request,
-                    CheckoutFailureReason.AGENT_BUSY,
-                    f"Agent '{request.agent_id}' is holding lock on task '{active_lock.task_id}'",
-                    retry=False,
-                )
 
-        if self._budget_checker:
-            project_id = task.project_id
-            if not self._budget_checker(request.agent_id, project_id):
-                self._record_failure(
-                    request.task_id,
-                    request.agent_id,
-                    CheckoutFailureReason.BUDGET_EXCEEDED,
-                    "Budget exceeded for agent/project",
-                )
-                return self._checkout_fail(
-                    request,
-                    CheckoutFailureReason.BUDGET_EXCEEDED,
-                    "Budget exceeded",
-                    retry=False,
-                )
 
-        if request.required_gpu_memory > 0 and self._gpu_checker:
-            if not self._gpu_checker(request.required_gpu_memory):
-                self._record_failure(
-                    request.task_id,
-                    request.agent_id,
-                    CheckoutFailureReason.GPU_UNAVAILABLE,
-                    f"GPU memory {request.required_gpu_memory}GB unavailable",
-                )
-                return self._checkout_fail(
-                    request,
-                    CheckoutFailureReason.GPU_UNAVAILABLE,
-                    f"GPU resources unavailable (need {request.required_gpu_memory}GB)",
-                    retry=True,
-                    retry_delay=GPU_RETRY_DELAY_MINUTES,
-                )
 
-        try:
-            lock = self._lock_store.create_lock(
-                task_id=request.task_id,
-                agent_id=request.agent_id,
-                timeout_hours=request.timeout_hours,
-            )
-        except LockConflictError as e:
-            return self._checkout_fail(
-                request,
-                CheckoutFailureReason.LOCK_EXISTS,
-                str(e),
-                retry=True,
-                retry_delay=CONFLICT_RETRY_DELAY_MINUTES,
-            )
 
-        now_iso = datetime.now(timezone.utc).isoformat()
-        expires_iso = (datetime.now(timezone.utc) + timedelta(hours=request.timeout_hours)).isoformat()
 
-        conn = self._get_conn()
-        conn.execute(
-            """UPDATE checkout_tasks
-               SET status = ?, assigned_to = ?, checked_out_at = ?, checkout_expires_at = ?
-               WHERE id = ?""",
-            (
-                TaskStatus.IN_PROGRESS.value,
-                request.agent_id,
-                now_iso,
-                expires_iso,
-                request.task_id,
-            ),
-        )
-        conn.commit()
 
-        logger.info(
-            "Task checked out: task=%s agent=%s expires=%s",
-            request.task_id,
-            request.agent_id,
-            expires_iso,
-        )
-        return CheckoutResult(
-            status=CheckoutStatus.SUCCESS,
-            task_id=request.task_id,
-            agent_id=request.agent_id,
-            message="Task checked out successfully",
-            lock=lock,
-            checked_out_at=now_iso,
-            expires_at=expires_iso,
-        )
 
-    def complete_task(self, task_id: str, agent_id: str) -> CheckoutResult:
-        task = self.get_task(task_id)
-        if task is None:
-            return CheckoutResult(
-                status=CheckoutStatus.FAILED,
-                task_id=task_id,
-                agent_id=agent_id,
-                message=f"Task '{task_id}' not found",
-                failure_reason=CheckoutFailureReason.ALREADY_CHECKED_OUT,
-            )
 
-        if task.status != TaskStatus.IN_PROGRESS.value:
-            return CheckoutResult(
-                status=CheckoutStatus.FAILED,
-                task_id=task_id,
-                agent_id=agent_id,
-                message=f"Task is not in progress (current: {task.status})",
-                failure_reason=CheckoutFailureReason.ALREADY_CHECKED_OUT,
-            )
 
-        if task.assigned_to != agent_id:
-            return CheckoutResult(
-                status=CheckoutStatus.FAILED,
-                task_id=task_id,
-                agent_id=agent_id,
-                message=f"Task is assigned to {task.assigned_to}, not {agent_id}",
-                failure_reason=CheckoutFailureReason.ASSIGNED_TO_OTHER,
-            )
 
-        try:
-            self._lock_store.release_lock(task_id, agent_id, "task completed")
-        except (LockNotFoundError, LockConflictError) as lock_err:
-            # 任务完成时锁可能已过期/被回收，不影响主流程
-            logger.debug(
-                "Lock release on task complete skipped for %s: %s",
-                task_id,
-                lock_err,
-                exc_info=True,
-            )
-
-        now_iso = datetime.now(timezone.utc).isoformat()
-        conn = self._get_conn()
-        conn.execute(
-            "UPDATE checkout_tasks SET status = ?, completed_at = ? WHERE id = ?",
-            (TaskStatus.COMPLETED.value, now_iso, task_id),
-        )
-        conn.commit()
-
-        logger.info("Task completed: task=%s agent=%s", task_id, agent_id)
-        return CheckoutResult(
-            status=CheckoutStatus.SUCCESS,
-            task_id=task_id,
-            agent_id=agent_id,
-            message="Task completed successfully",
-        )
-
-    def fail_task(self, task_id: str, agent_id: str, reason: str = "") -> CheckoutResult:
-        task = self.get_task(task_id)
-        if task is None:
-            return CheckoutResult(
-                status=CheckoutStatus.FAILED,
-                task_id=task_id,
-                agent_id=agent_id,
-                message=f"Task '{task_id}' not found",
-                failure_reason=CheckoutFailureReason.ALREADY_CHECKED_OUT,
-            )
-
-        try:
-            self._lock_store.release_lock(task_id, agent_id, f"task failed: {reason}")
-        except (LockNotFoundError, LockConflictError) as lock_err:
-            # 任务失败时锁可能已被其他流程释放，记录以便排查
-            logger.debug(
-                "Lock release on task failed skipped for %s: %s",
-                task_id,
-                lock_err,
-                exc_info=True,
-            )
-
-        # [C3] 修复死代码：原 datetime.now(timezone.utc).isoformat() 返回值未使用，
-        # 且 fail_task 未记录 completed_at。现在在 UPDATE 中写入完成时间。
-        failed_at = datetime.now(timezone.utc).isoformat()
-        conn = self._get_conn()
-        conn.execute(
-            "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, completed_at = ? WHERE id = ?",
-            (TaskStatus.FAILED.value, failed_at, task_id),
-        )
-        conn.commit()
-
-        self._record_failure(task_id, agent_id, CheckoutFailureReason.TASK_FAILED, reason)
-
-        logger.warning("Task failed: task=%s agent=%s reason=%s", task_id, agent_id, reason)
-        return CheckoutResult(
-            status=CheckoutStatus.SUCCESS,
-            task_id=task_id,
-            agent_id=agent_id,
-            message=f"Task marked as failed: {reason}",
-        )
-
-    def abandon_task(self, task_id: str, agent_id: str) -> CheckoutResult:
-        task = self.get_task(task_id)
-        if task is None:
-            return CheckoutResult(
-                status=CheckoutStatus.FAILED,
-                task_id=task_id,
-                agent_id=agent_id,
-                message=f"Task '{task_id}' not found",
-                failure_reason=CheckoutFailureReason.ALREADY_CHECKED_OUT,
-            )
-
-        try:
-            self._lock_store.release_lock(task_id, agent_id, "task abandoned")
-        except (LockNotFoundError, LockConflictError) as lock_err:
-            # 任务放弃时锁可能已被自动回收，记录以便排查
-            logger.debug(
-                "Lock release on task abandoned skipped for %s: %s",
-                task_id,
-                lock_err,
-                exc_info=True,
-            )
-
-        conn = self._get_conn()
-        conn.execute(
-            "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, "
-            "checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
-            (TaskStatus.PENDING.value, task_id),
-        )
-        conn.commit()
-
-        logger.info("Task abandoned: task=%s agent=%s", task_id, agent_id)
-        return CheckoutResult(
-            status=CheckoutStatus.SUCCESS,
-            task_id=task_id,
-            agent_id=agent_id,
-            message="Task abandoned, returned to pending",
-        )
-
-    def get_task_board(self) -> Dict[str, List[dict]]:
-        conn = self._get_conn()
-        rows = conn.execute("SELECT * FROM checkout_tasks ORDER BY priority ASC, created_at ASC").fetchall()
-
-        board: Dict[str, List[dict]] = {
-            "pending": [],
-            "in_progress": [],
-            "completed": [],
-            "failed": [],
-            "cancelled": [],
-        }
-
-        for row in rows:
-            task = self._row_to_task(row)
-            task_dict = task.to_dict()
-
-            active_lock = self._lock_store.get_lock(task.id)
-            if active_lock and active_lock.status.value == "active":
-                task_dict["lock_info"] = active_lock.to_dict()
-            else:
-                task_dict["lock_info"] = None
-
-            status = task.status
-            if status in board:
-                board[status].append(task_dict)
-            else:
-                board["pending"].append(task_dict)
-
-        return board
-
-    def get_task_checkout_history(self, task_id: str) -> Dict[str, Any]:
-        task = self.get_task(task_id)
-        if task is None:
-            return {"task": None, "lock_history": [], "failure_history": []}
-
-        lock_history = self._lock_store.get_lock_history(task_id)
-
-        conn = self._get_conn()
-        failure_rows = conn.execute(
-            "SELECT * FROM checkout_failure_history WHERE task_id = ? ORDER BY timestamp DESC",
-            (task_id,),
-        ).fetchall()
-
-        failure_history = [
-            {
-                "task_id": row["task_id"],
-                "agent_id": row["agent_id"],
-                "reason": row["reason"],
-                "message": row["message"],
-                "timestamp": row["timestamp"],
-            }
-            for row in failure_rows
-        ]
-
-        return {
-            "task": task.to_dict(),
-            "lock_history": lock_history,
-            "failure_history": failure_history,
-        }
-
-    def get_agent_status(self, agent_id: str) -> Dict[str, Any]:
-        active_lock = self._lock_store.get_active_lock_by_agent(agent_id)
-        pending_count = self._count_tasks_by_agent(agent_id, TaskStatus.PENDING.value)
-        in_progress_count = self._count_tasks_by_agent(agent_id, TaskStatus.IN_PROGRESS.value)
-        completed_count = self._count_tasks_by_agent(agent_id, TaskStatus.COMPLETED.value)
-
-        return {
-            "agent_id": agent_id,
-            "active_lock": active_lock.to_dict() if active_lock else None,
-            "has_active_task": active_lock is not None,
-            "pending_tasks": pending_count,
-            "in_progress_tasks": in_progress_count,
-            "completed_tasks": completed_count,
-        }
-
-    def _count_tasks_by_agent(self, agent_id: str, status: str) -> int:
-        conn = self._get_conn()
-        row = conn.execute(
-            "SELECT COUNT(*) as cnt FROM checkout_tasks WHERE assigned_to = ? AND status = ?",
-            (agent_id, status),
-        ).fetchone()
-        return row["cnt"] if row else 0
-
-    def get_all_locks(self) -> List[dict]:
-        return [lock.to_dict() for lock in self._lock_store.list_all_locks()]
-
-    def force_release_lock(self, task_id: str, admin_id: str = "admin") -> CheckoutResult:
-        try:
-            lock = self._lock_store.force_release(task_id, admin_id)
-
-            conn = self._get_conn()
-            conn.execute(
-                "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, "
-                "checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
-                (TaskStatus.PENDING.value, task_id),
-            )
-            conn.commit()
-
-            self._record_failure(
-                task_id,
-                lock.agent_id,
-                "force_released",
-                f"Lock force-released by {admin_id}",
-            )
-
-            logger.warning(
-                "Lock force-released and task reset: task=%s agent=%s by=%s",
-                task_id,
-                lock.agent_id,
-                admin_id,
-            )
-            return CheckoutResult(
-                status=CheckoutStatus.SUCCESS,
-                task_id=task_id,
-                agent_id=lock.agent_id,
-                message=f"Lock force-released by {admin_id}, task returned to pending",
-            )
-        except LockNotFoundError as e:
-            logger.warning("Lock not found for force-release: task_id=%s err=%s", task_id, e)
-            return CheckoutResult(
-                status=CheckoutStatus.FAILED,
-                task_id=task_id,
-                agent_id="",
-                message="锁不存在或已过期，无法强制释放",
-                failure_reason=CheckoutFailureReason.LOCK_EXISTS,
-            )
-
-    def cleanup_expired_locks(self) -> List[dict]:
-        expired = self._lock_store.cleanup_expired_locks()
-
-        for lock in expired:
-            task = self.get_task(lock.task_id)
-            if task and task.status == TaskStatus.IN_PROGRESS.value:
-                conn = self._get_conn()
-                conn.execute(
-                    "UPDATE checkout_tasks SET status = ?, assigned_to = NULL, "
-                    "checked_out_at = NULL, checkout_expires_at = NULL WHERE id = ?",
-                    (TaskStatus.PENDING.value, lock.task_id),
-                )
-                conn.commit()
-                self._record_failure(
-                    lock.task_id,
-                    lock.agent_id,
-                    "lock_expired",
-                    "Task returned to pending due to lock timeout",
-                )
-                logger.warning(
-                    "Task returned to pending due to expired lock: task=%s agent=%s",
-                    lock.task_id,
-                    lock.agent_id,
-                )
-
-        return [e.to_dict() for e in expired]
-
-    def enqueue_checkout(self, request: CheckoutRequest) -> CheckoutQueueEntry:
-        with self._queue_lock:
-            conn = self._get_conn()
-            now = time.time()
-            conn.execute(
-                """INSERT OR REPLACE INTO checkout_queue
-                   (task_id, agent_id, priority, retry_count, last_failure, next_retry_at, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    request.task_id,
-                    request.agent_id,
-                    request.priority.value,
-                    0,
-                    None,
-                    now,
-                    now,
-                ),
-            )
-            conn.commit()
-
-        logger.debug(
-            "Checkout enqueued: task=%s agent=%s priority=%s",
-            request.task_id,
-            request.agent_id,
-            request.priority.name,
-        )
-        return CheckoutQueueEntry(
-            task_id=request.task_id,
-            agent_id=request.agent_id,
-            priority=request.priority,
-            created_at=now,
-        )
-
-    def process_queue(self, max_batch: int = 10) -> List[CheckoutResult]:
-        with self._queue_lock:
-            conn = self._get_conn()
-            now = time.time()
-            rows = conn.execute(
-                """SELECT * FROM checkout_queue
-                   WHERE next_retry_at IS NULL OR next_retry_at <= ?
-                   ORDER BY priority ASC, created_at ASC
-                   LIMIT ?""",
-                (now, max_batch),
-            ).fetchall()
-
-            results: List[CheckoutResult] = []
-            for row in rows:
-                # [C4] 枚举构造防御：数据库可能存在老版本/手动修改的非法值，
-                # 直接构造会抛 ValueError 中断整个队列处理，降级为默认值并记录
-                try:
-                    priority = CheckoutPriority(row["priority"])
-                except (ValueError, KeyError):
-                    priority = CheckoutPriority.NORMAL
-                    logger.warning(
-                        "Invalid priority %r in queue row task=%s, using NORMAL",
-                        row.get("priority"),
-                        row.get("task_id"),
-                    )
-                try:
-                    last_failure = CheckoutFailureReason(row["last_failure"]) if row["last_failure"] else None
-                except (ValueError, KeyError):
-                    last_failure = None
-                    logger.warning(
-                        "Invalid last_failure %r in queue row task=%s, set to None",
-                        row.get("last_failure"),
-                        row.get("task_id"),
-                    )
-                entry = CheckoutQueueEntry(
-                    task_id=row["task_id"],
-                    agent_id=row["agent_id"],
-                    priority=priority,
-                    created_at=row["created_at"],
-                    retry_count=row["retry_count"],
-                    last_failure=last_failure,
-                    next_retry_at=row["next_retry_at"],
-                )
-
-                task = self.get_task(entry.task_id)
-                required_gpu = task.required_gpu_memory if task else 0.0
-
-                request = CheckoutRequest(
-                    task_id=entry.task_id,
-                    agent_id=entry.agent_id,
-                    priority=entry.priority,
-                    required_gpu_memory=required_gpu,
-                )
-
-                result = self.checkout_task(request)
-
-                if result.status == CheckoutStatus.SUCCESS:
-                    conn.execute(
-                        "DELETE FROM checkout_queue WHERE task_id = ? AND agent_id = ?",
-                        (entry.task_id, entry.agent_id),
-                    )
-                else:
-                    new_retry_count = entry.retry_count + 1
-                    if new_retry_count >= MAX_RETRY_COUNT:
-                        conn.execute(
-                            "DELETE FROM checkout_queue WHERE task_id = ? AND agent_id = ?",
-                            (entry.task_id, entry.agent_id),
-                        )
-                        self.fail_task(
-                            entry.task_id,
-                            entry.agent_id,
-                            f"Max retries ({MAX_RETRY_COUNT}) exceeded: {result.failure_reason}",
-                        )
-                    else:
-                        next_retry = now + result.retry_delay_minutes * 60
-                        conn.execute(
-                            """UPDATE checkout_queue
-                               SET retry_count = ?, last_failure = ?, next_retry_at = ?
-                               WHERE task_id = ? AND agent_id = ?""",
-                            (
-                                new_retry_count,
-                                result.failure_reason.value if result.failure_reason else None,
-                                next_retry,
-                                entry.task_id,
-                                entry.agent_id,
-                            ),
-                        )
-
-                results.append(result)
-
-            conn.commit()
-            return results
-
-    def get_queue_status(self) -> List[dict]:
-        conn = self._get_conn()
-        rows = conn.execute("SELECT * FROM checkout_queue ORDER BY priority ASC, created_at ASC").fetchall()
-        return [
-            {
-                "task_id": row["task_id"],
-                "agent_id": row["agent_id"],
-                "priority": row["priority"],
-                "retry_count": row["retry_count"],
-                "last_failure": row["last_failure"],
-                "next_retry_at": datetime.fromtimestamp(row["next_retry_at"]).isoformat()
-                if row["next_retry_at"]
-                else None,
-                "created_at": datetime.fromtimestamp(row["created_at"]).isoformat(),
-            }
-            for row in rows
-        ]
-
-    def _get_unresolved_blockers(self, blockers: List[str]) -> List[str]:
-        unresolved = []
-        for blocker_id in blockers:
-            blocker_task = self.get_task(blocker_id)
-            if blocker_task is None or blocker_task.status != TaskStatus.COMPLETED.value:
-                unresolved.append(blocker_id)
-        return unresolved
-
-    def _record_failure(self, task_id: str, agent_id: str, reason, message: str = ""):
-        reason_str = reason.value if isinstance(reason, CheckoutFailureReason) else reason
-        conn = self._get_conn()
-        conn.execute(
-            """INSERT INTO checkout_failure_history (task_id, agent_id, reason, message, timestamp)
-               VALUES (?, ?, ?, ?, ?)""",
-            (task_id, agent_id, reason_str, message, datetime.now(timezone.utc).isoformat()),
-        )
-        conn.commit()
-
-    def _checkout_fail(
-        self,
-        request: CheckoutRequest,
-        reason: CheckoutFailureReason,
-        message: str,
-        retry: bool = False,
-        retry_delay: int = 0,
-    ) -> CheckoutResult:
-        self._record_failure(request.task_id, request.agent_id, reason, message)
-
-        logger.warning(
-            "Checkout failed: task=%s agent=%s reason=%s message=%s retry=%s",
-            request.task_id,
-            request.agent_id,
-            reason.value,
-            message,
-            retry,
-        )
-
-        return CheckoutResult(
-            status=CheckoutStatus.FAILED,
-            task_id=request.task_id,
-            agent_id=request.agent_id,
-            message=message,
-            failure_reason=reason,
-            retry_recommended=retry,
-            retry_delay_minutes=retry_delay,
-        )
-
-    def close(self):
-        # 修复：原实现直接调用 self._conn.close() 关闭连接，
-        # 但连接是从 SQLiteConnectionPool 借出的——直接 close 会导致：
-        #   1. 连接池 _active_count / _created_count 不会减少（计数器永久漂移）
-        #   2. _borrowed 字典残留借出记录，check_leaked_connections 误报泄漏
-        #   3. 后续 close_all() 再次 close 同一连接（虽 sqlite3 允许重复 close，
-        #      但日志会刷错误且掩盖真实问题）
-        # 现通过 return_connection 将连接归还到连接池，由连接池统一决定
-        # 是否放回池中复用或关闭（连接池满时由 return_connection 内部 close）。
-        if self._conn is not None:
-            try:
-                self._pool.return_connection(self._conn)
-            except (OSError, RuntimeError, ValueError) as e:
-                logger.warning("Failed to return SQLite connection to pool: %s", e)
-                try:
-                    self._conn.close()
-                except (OSError, RuntimeError) as close_err:
-                    logger.debug(
-                        "Fallback close after return failure also failed: %s",
-                        close_err,
-                    )
-            self._conn = None
 
 
 class _CheckoutManagerHolder:
