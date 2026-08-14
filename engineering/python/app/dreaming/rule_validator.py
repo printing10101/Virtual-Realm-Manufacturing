@@ -466,13 +466,32 @@ class RuleValidator:
                 return False
             if context.get("allow_delete_succeeded") is True:
                 return False
-            if context.get("status") == "SUCCEEDED" and "delete" in rule.action.lower():
+            if context.get("status") == "SUCCEEDED" and self._action_contains_delete(rule.action):
                 return False
             # 模拟成功
             return True
         except Exception as e:
             logger.debug("模拟应用异常 [%s]：%s", rule.rule_id, e)
             return False
+
+    @staticmethod
+    def _action_contains_delete(action: Any) -> bool:
+        """判断规则动作是否包含删除语义（兼容 dict 与 str 两种表示）。
+
+        RuleDraft.action 类型为 Dict（如 {"action": "delete_task", ...}），
+        但历史数据 / 字符串形式（如 "delete_task"）也需兼容。
+        """
+        if isinstance(action, str):
+            return "delete" in action.lower()
+        if isinstance(action, dict):
+            # 检查 action 名与所有字符串值
+            for key, value in action.items():
+                if "delete" in str(key).lower():
+                    return True
+                if isinstance(value, str) and "delete" in value.lower():
+                    return True
+            return False
+        return "delete" in str(action).lower()
 
 
 def validate_rule(rule: RuleDraft) -> ValidationResult:

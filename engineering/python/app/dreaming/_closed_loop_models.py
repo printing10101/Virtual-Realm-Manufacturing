@@ -105,3 +105,15 @@ def record_rule_outcome(
         confidence=confidence,
         source=source,
     )
+
+# 闭环默认参数（从 closed_loop 移入，mixin 与门面共用）
+DEFAULT_ROUTER_CONFIDENCE_THRESHOLD = 0.7
+DEFAULT_FUSION_MIN_CONFIDENCE = 0.3
+DEFAULT_FUSION_CONFLICT_THRESHOLD = 0.8
+DEFAULT_RULE_WINDOW_SIZE = 64  # 每条规则维护的滚动样本窗口
+DEFAULT_PROMOTE_CONFIDENCE = 0.75  # 融合置信度 ≥ 该值 → 建议晋级
+DEFAULT_DEMOTE_CONFIDENCE = 0.45  # 融合置信度 ≤ 该值 → 建议降级
+DEFAULT_MAX_CONFLICT_FOR_PROMOTE = 0.25  # 冲突高于此值不晋级
+DEFAULT_MIN_SAMPLES_FOR_DECISION = 5  # 样本数不足则 keep，避免噪声决策
+DEFAULT_HRC52_CONFIDENCE_PENALTY = 0.5  # HRC52 pending_calibration 乘子
+CLOSED_LOOP_STATE_DIR = "python/outputs/dreaming/closed_loop"
