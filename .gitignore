@@ -141,22 +141,6 @@ test_logs/
 # 用户可按需从 https://github.com/arthuroiang/awesome-design-md 克隆到 skills/ 目录
 skills/awesome-design-md-main/
 
-# Trae IDE 自动生成的会话计划文件（每次会话不同，不应入库）
-.trae/plans/
-
-# Trae IDE 内置技能子目录（IDE 自动同步生成，业务代码不消费；
-# SkillLoader 仅扫描 global/、projects/、agents/ 三个业务子目录）
-# 注：如这些文件已被 git 跟踪，需手动执行 `git rm --cached -r` 让 .gitignore 生效
-.trae/skills/frontend-design-master/
-.trae/skills/frontend-unified/
-.trae/skills/notion-workflow/
-.trae/skills/obsidian-workflow/
-.trae/skills/plan-workflow/
-.trae/skills/tdd-unified/
-.trae/skills/video-analysis-workflow/
-
-# Trae IDE 技能市场运行时数据（publish/download 产生的 .skz 包和 listings.json）
-.trae/skills/.marketplace/
 
 # ============================================================
 # 环境和配置（敏感信息，禁止提交）
@@ -347,6 +331,7 @@ data/outputs/e2e_v2/**/*.stl
 data/outputs/e2e_v2/**/*.brep
 data/outputs/e2e_v2/**/*.step
 data/outputs/test_shadow/**/*.stl
+data/outputs/test_shadow/
 
 # === P2 整改补充规则（2026-07-29）===
 # 根目录临时诊断脚本
@@ -371,9 +356,6 @@ data/bridge/usage_logs/*.jsonl
 data/budget/*.jsonl
 data/traces/*.jsonl
 
-# === 提交卫生（2026-08-03 P0-1）===
-# 内部工作记忆/日志（含安全细节，不对外发布）
-/.workbuddy/
 # 临时与运行残留
 /.disk_test
 /scan_out.txt
@@ -422,7 +404,6 @@ output/_git_backup_*/
 
 # 本地凭据/账号数据与个人工作记忆（不入库）
 .lnn_users.json
-.hermes-memory.md
 
 # 安装测试与临时诊断产物
 output/_nsis_install_test/
@@ -440,3 +421,51 @@ output/mem-check.txt
 /output/rules/
 /output/step_import/
 /output/data/
+
+# ============================================================
+# 2026-08-16 全量同步前清理：调试探针/缓存/第三方二进制
+# ============================================================
+# PowerShell 重定向残留
+/$null
+# docx 解压临时目录
+/.tmp_lam_extract*/
+# 根目录调试探针（_mirror/_official/_pip/_pytest/_torch/_test 等）
+/_*.txt
+/_*.patch
+# engineering/ 根下的临时调试脚本（已覆盖 python/ 子目录变体）
+/engineering/_tmp_*
+# app/ 下的写探针调试文件
+/engineering/python/app/_write_probe*.py
+# output/ 探针目录与文件
+/output/_probe_dir/
+/output/_write_probe*
+# research 探针脚本
+/research/experiments/real_validation/_probe*.ps1
+# mypy 缓存（任意层级）
+**/.mypy_cache/
+# coverage 变体（coverage.json / coverage-unit*.json）
+/engineering/python/coverage*.json
+# FEA 验证：第三方 CalculiX 发行版/二进制/运行输出不入库（仅保留 .py/.md/.inp 源码与算例定义）
+/scripts/fea_verify/*.zip
+/scripts/fea_verify/*.conda
+/scripts/fea_verify/*.tar.bz2
+/scripts/fea_verify/CalculiX/
+/scripts/fea_verify/calculix_2.23_4win/
+/scripts/fea_verify/ccx_htm/
+/scripts/fea_verify/ccx_win/
+/scripts/fea_verify/ccx_lnx/
+/scripts/fea_verify/ccx_lnx222/
+/scripts/fea_verify/ccx_conda/
+/scripts/fea_verify/ccx_conda222/
+/scripts/fea_verify/*.exe
+/scripts/fea_verify/*.dll
+/scripts/fea_verify/*.out
+/scripts/fea_verify/*.dat
+/scripts/fea_verify/*.frd
+/scripts/fea_verify/*.sta
+/scripts/fea_verify/*.cvg
+/scripts/fea_verify/*.12d
+/scripts/fea_verify/*.nam
+/scripts/fea_verify/*.txt
+/scripts/fea_verify/__pycache__/
+/scripts/fea_verify/ccx_2.23_htm.tar.bz2
