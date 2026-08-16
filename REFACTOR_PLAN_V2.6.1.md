@@ -231,7 +231,7 @@ python -m pytest engineering\python\tests\ -o addopts="" --tb=no -q
 - [x] py_compile 全量通过
 - [x] 关键模块 import 测试通过
 - [x] P0-1 安全审计功能手工验证通过（4 项测试全部 PASS）
-- [~] 回归测试：TRAE 沙箱环境 asyncio WinError 10038 阻塞 pytest 启动（环境限制，与本次修复无关）
+- [~] 回归测试：本地环境 asyncio WinError 10038 阻塞 pytest 启动（环境限制，与本次修复无关）
 
 ## 8. 备注
 

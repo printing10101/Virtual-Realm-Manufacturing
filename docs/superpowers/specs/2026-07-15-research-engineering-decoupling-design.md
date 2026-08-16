@@ -140,7 +140,7 @@
 ├── mcp_server/                # MCP 服务器（保持原样）
 ├── rust/                      # Rust 计算扩展（保持原样）
 ├── .github/                   # CI/CD（保持原样）
-├── .trae/                     # TRAE Skills（保持原样）
+├── .lingjing/                 # 技能/工具数据目录
 ├── README.md
 ├── LICENSE
 ├── SECURITY.md

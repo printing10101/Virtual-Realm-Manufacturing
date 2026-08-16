@@ -34,7 +34,7 @@ LINGJING_CN=1 curl -fsSL https://raw.githubusercontent.com/printing10101/Virtual
 
 ```bash
 source ~/.bashrc        # 刷新 PATH
-lingjing doctor         # 自检安装状态（对标 hermes doctor）
+lingjing doctor         # 自检安装状态
 lingjing start          # 启动服务 → http://localhost:8765
 ```
 
