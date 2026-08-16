@@ -425,6 +425,15 @@ output/mem-check.txt
 # ============================================================
 # 2026-08-16 全量同步前清理：调试探针/缓存/第三方二进制
 # ============================================================
+# AI 协作记忆/私密数据（不入库，已从历史清除）
+/.dsh-memory.md
+/.dsh-memory/
+/.workbuddy/
+/.hermes-memory.md
+/.trae/
+/.lnn_banned_tokens.json
+# 损坏的前端构建产物
+/engineering/dist_broken_*/
 # PowerShell 重定向残留
 /$null
 # docx 解压临时目录
