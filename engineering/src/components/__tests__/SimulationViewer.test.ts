@@ -4,6 +4,7 @@ import { mount, VueWrapper } from '@vue/test-utils'
 import * as THREE from 'three'
 import SimulationViewer from '@/components/simulation/SimulationViewer.vue'
 import type { SimulationVisualizationData, ForceData, TemperatureData, VibrationData } from '@/api/simulation'
+import { getSimulationResult, clearSimulationCache, getCacheStats } from '@/api/simulation'
 import type { CollisionInfo, ToolpathSegmentData } from '@/types'
 
 // jsdom 无 WebGL context：mock THREE.WebGLRenderer（组件 initScene 直接构造），
@@ -552,26 +553,22 @@ describe('useSimulationVisualization', () => {
 })
 
 describe('simulation API', () => {
-  it('应该导出所有必要的函数和类型', async () => {
-    const mod = await import('@/api/simulation')
-    
-    expect(mod.getSimulationResult).toBeDefined()
-    expect(mod.clearSimulationCache).toBeDefined()
-    expect(mod.getCacheStats).toBeDefined()
-  }, 10000)
-
-  it('应该能够清除缓存', async () => {
-    const mod = await import('@/api/simulation')
-    
-    expect(() => mod.clearSimulationCache()).not.toThrow()
-    expect(() => mod.clearSimulationCache('test-task')).not.toThrow()
+  // 静态导入替代动态 import：动态 import 在 vitest 并发下偶发超过 10s 超时
+  // （环境性 flaky），模块本身是纯函数库，静态导入无副作用且更快
+  it('应该导出所有必要的函数和类型', () => {
+    expect(getSimulationResult).toBeDefined()
+    expect(clearSimulationCache).toBeDefined()
+    expect(getCacheStats).toBeDefined()
   })
 
-  it('应该能够获取缓存统计', async () => {
-    const mod = await import('@/api/simulation')
-    
-    const stats = mod.getCacheStats()
-    
+  it('应该能够清除缓存', () => {
+    expect(() => clearSimulationCache()).not.toThrow()
+    expect(() => clearSimulationCache('test-task')).not.toThrow()
+  })
+
+  it('应该能够获取缓存统计', () => {
+    const stats = getCacheStats()
+
     expect(stats).toBeDefined()
     expect(stats.size).toBeDefined()
     expect(stats.maxAge).toBeDefined()

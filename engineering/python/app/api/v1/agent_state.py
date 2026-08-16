@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from app.api.v1.auth import get_current_user
-from app.auth.permissions import require_permission
+from app.auth.permissions import check_user_has_permission
 from app.core.response import success as api_response
 from app.core.response_models import ErrorResponse, SuccessResponse
 from app.state.state_persistence import StatePersistenceManager, StateRecoveryManager
@@ -183,6 +183,19 @@ def get_recovery() -> StateRecoveryManager:
     return recovery
 
 
+
+async def _require_perm(_user: dict, permission: str) -> None:
+    """函数体内同步权限校验（替代误用的 FastAPI 依赖工厂调用）。"""
+    import os as _os
+    if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
+        return
+    username = (_user or {}).get("username", "")
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not await check_user_has_permission(username, permission):
+        raise HTTPException(status_code=403, detail=f"Insufficient permission: {permission}")
+
+
 def set_persistence_manager(manager: StatePersistenceManager):
     """Initialize the agent state managers (typically called at app startup)."""
     _holder.set_persistence(manager)
@@ -201,7 +214,7 @@ async def list_agents(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:read")
+    await _require_perm(_user, "agents:read")
     agents = await persistence.list_all_agent_states()
     if status:
         agents = [a for a in agents if a.get("status") == status]
@@ -222,7 +235,7 @@ async def get_agent_state(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:read")
+    await _require_perm(_user, "agents:read")
     state = await persistence.load_state(agent_id)
     if not state:
         logger.info("Agent not found: %s", agent_id)
@@ -244,7 +257,7 @@ async def save_agent_state(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     # 仅取客户端实际提供且非 None 的字段，防止覆盖未传入字段的默认值
     update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
     state = await persistence.load_state(agent_id)
@@ -272,7 +285,7 @@ async def delete_agent_state(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:admin")
+    await _require_perm(_user, "agents:admin")
     await persistence.delete_state(agent_id)
     return api_response(message=f"Agent '{agent_id}' state deleted")
 
@@ -290,7 +303,7 @@ async def start_heartbeat(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     await persistence.start_heartbeat(agent_id)
     return api_response(message=f"Heartbeat started for agent '{agent_id}'")
 
@@ -308,7 +321,7 @@ async def stop_heartbeat(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     await persistence.stop_heartbeat(agent_id)
     return api_response(message=f"Heartbeat stopped for agent '{agent_id}'")
 
@@ -327,7 +340,7 @@ async def save_checkpoint(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     # Pydantic schema 已校验字段类型与枚举值，model_dump 提取白名单字段
     data = payload.model_dump(exclude_unset=True)
     checkpoint = Checkpoint(
@@ -360,7 +373,7 @@ async def list_checkpoints(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:read")
+    await _require_perm(_user, "agents:read")
     state = await persistence.load_state(agent_id)
     if not state:
         logger.info("Agent not found: %s", agent_id)
@@ -385,7 +398,7 @@ async def rollback_checkpoint(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     checkpoint_id = payload.checkpoint_id
     state = await persistence.load_state(agent_id)
     if not state:
@@ -412,7 +425,7 @@ async def cleanup_checkpoints(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:admin")
+    await _require_perm(_user, "agents:admin")
     removed = await persistence.cleanup_checkpoints(agent_id)
     return api_response(message=f"Cleaned up {removed} checkpoint files")
 
@@ -431,7 +444,7 @@ async def update_context(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     updates = payload.updates
     state = await persistence.update_context_increment(agent_id, updates)
     return api_response(data=state.to_dict(), message="Context updated")
@@ -451,7 +464,7 @@ async def add_memory(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     state = await persistence.load_state(agent_id)
     if not state:
         state = AgentState(agent_id=agent_id)
@@ -481,7 +494,7 @@ async def prune_memory(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     state = await persistence.prune_memory(agent_id)
     return api_response(data=state.to_dict(), message="Memory pruned")
 
@@ -501,7 +514,7 @@ async def resume_agent(
     recovery: StateRecoveryManager = Depends(get_recovery),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     result = await recovery.resume_agent(agent_id)
     return api_response(data=result)
 
@@ -525,7 +538,7 @@ async def deploy_agent(
     部署记录写入 Agent 元数据（deployed / deployed_at / deploy_version），
     状态持久化到后端存储。
     """
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     state = await persistence.load_state(agent_id)
     if state is None:
         logger.info("Agent not found: %s", agent_id)
@@ -562,7 +575,7 @@ async def clone_agent(
     recovery: StateRecoveryManager = Depends(get_recovery),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     target_id = payload.target_agent_id
     clone = await recovery.clone_agent_state(agent_id, target_id)
     if not clone:
@@ -585,7 +598,7 @@ async def create_snapshot(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:write")
+    await _require_perm(_user, "agents:write")
     key = await persistence.snapshot_for_rollback(agent_id)
     if not key:
         logger.info("Agent not found: %s", agent_id)
@@ -607,7 +620,7 @@ async def rollback_state(
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:admin")
+    await _require_perm(_user, "agents:admin")
     state = await persistence.rollback_to_version(agent_id)
     if not state:
         raise HTTPException(status_code=404, detail="No rollback snapshot available")
@@ -628,6 +641,6 @@ async def get_state_history(
     recovery: StateRecoveryManager = Depends(get_recovery),
     _user: dict = Depends(get_current_user),
 ):
-    require_permission(_user, "agents:read")
+    await _require_perm(_user, "agents:read")
     history = await recovery.get_recovery_history(agent_id)
     return api_response(data=history)

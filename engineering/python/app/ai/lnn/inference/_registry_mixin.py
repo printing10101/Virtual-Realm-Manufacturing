@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from app.ai.lnn.inference.predictor import LNNPredictor
@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 class _RegistryMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+
     @classmethod
     def from_registry(
         cls,

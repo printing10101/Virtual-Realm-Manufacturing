@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Union
+from typing import Any, Union, cast
 
 import numpy as np
 
@@ -260,7 +260,7 @@ class WorldModelPlugin:
                     )
 
             if unified_state is not None:
-                current_state: Union[np.ndarray, UnifiedState] = unified_state
+                current_state: Union[np.ndarray, UnifiedState] | None = unified_state
                 input_mode = "fusion_assembled" if assembly_diagnostics else "fusion"
             else:
                 current_state = self._load_artifact_data(current_state_artifact)
@@ -284,8 +284,9 @@ class WorldModelPlugin:
             degraded_to_legacy = False
             if input_mode in ("fusion", "fusion_assembled"):
                 try:
+                    # 融合分支保证 current_state 是 UnifiedState（unified_state 非 None 分支）
                     prediction = predictor.predict(
-                        unified_state=current_state,
+                        unified_state=cast(UnifiedState, current_state),
                         candidate_action=candidate_action,
                         horizon=horizon,
                     )
@@ -363,9 +364,7 @@ class WorldModelPlugin:
                 metrics={
                     "prediction_time_ms": prediction_time_ms,
                     "trajectory_length": float(horizon),
-                    "input_mode": input_mode,
-                    "assembly_diagnostics": assembly_diagnostics,
-                    "degraded_to_legacy": degraded_to_legacy,
+                    "degraded_to_legacy": float(degraded_to_legacy),
                 },
             )
 

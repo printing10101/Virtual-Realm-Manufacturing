@@ -8,7 +8,7 @@
 import time
 import asyncio
 import logging
-from typing import Callable
+from typing import Any, Callable, Optional
 
 import numpy as np
 
@@ -31,15 +31,15 @@ from app.ai.lnn.inference.registry import get_torch_model_class
 # P0#3 解耦: 通过 research_bridge 延迟导入，替代直接 import research/。
 # 桥接模块在 torch 缺失时返回 None，训练 API 将降级返回 503。
 _HAS_TRAINING_STACK = False
-LNNConfig = None
-LNNTrainer = None
-mlflow_start_run = None
-mlflow_log_params = None
-mlflow_log_metrics = None
-mlflow_log_model = None
-detect_device = None
-get_optimal_batch_size = None
-get_optimal_num_workers = None
+LNNConfig: Any = None
+LNNTrainer: Any = None
+mlflow_start_run: Optional[Callable[..., Any]] = None
+mlflow_log_params: Optional[Callable[..., Any]] = None
+mlflow_log_metrics: Optional[Callable[..., Any]] = None
+mlflow_log_model: Optional[Callable[..., Any]] = None
+detect_device: Optional[Callable[..., Any]] = None
+get_optimal_batch_size: Optional[Callable[..., Any]] = None
+get_optimal_num_workers: Optional[Callable[..., Any]] = None
 
 
 def _lazy_init_training_stack() -> bool:
@@ -135,6 +135,8 @@ def _prepare_datasets(X, y, hyperparameters: dict, device_preference: str):
     返回 ``(train_loader, val_loader, train_size, val_size, device, num_workers)``。
     训练/验证集按 80/20 划分;CUDA 设备下批量大小会被自动优化。
     """
+    assert _HAS_TRAINING_STACK and detect_device is not None, "训练栈未初始化（torch 缺失）"
+    assert get_optimal_batch_size is not None and get_optimal_num_workers is not None
     X_tensor = torch.FloatTensor(X)
     y_tensor = torch.FloatTensor(y)
     dataset = TensorDataset(X_tensor, y_tensor)
@@ -164,8 +166,8 @@ def _build_trainer(model_name: str, input_dim: int, hyperparameters: dict, devic
 
     lnn_registry = registry_service.model_registry
     entry = lnn_registry.registry.get(model_name)
-    if not entry:
-        raise ValueError(f"Model '{model_name}' not found")
+    if not entry or entry.info is None:
+        raise ValueError(f"Model '{model_name}' not found or missing info")
 
     model_class = get_torch_model_class(entry.info.model_type)
     if not model_class:
@@ -219,6 +221,8 @@ async def _execute_training_loop(
     验证集 R² 计算与最终模型权重落盘。返回与原 ``run_training_task_v2``
     相同结构的结果字典。
     """
+    assert mlflow_start_run is not None and mlflow_log_params is not None, "训练栈未初始化（mlflow 缺失）"
+    assert mlflow_log_metrics is not None and mlflow_log_model is not None
     # 学术诚信：集成 MLflow 实验追踪，记录超参数和每个 epoch 的指标。
     # mlflow 为软依赖，未安装时 start_run 降级为 no-op 上下文，不影响训练流程。
     # 注意：此处的自定义训练循环不调用 trainer.fit()，因此 trainer.track_experiment
@@ -246,7 +250,7 @@ async def _execute_training_loop(
         )
 
         start_time = time.perf_counter()
-        history = {"train_loss": [], "val_loss": []}
+        history: dict[str, list[float]] = {"train_loss": [], "val_loss": []}
         best_val_loss = float("inf")
         patience = 5
         patience_counter = 0

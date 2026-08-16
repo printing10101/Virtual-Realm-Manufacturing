@@ -11,5 +11,6 @@ def register(app: FastAPI) -> None:
     app.include_router(health.simple_health_router)
     app.include_router(status.router)
     app.include_router(system.router)
+    app.include_router(system.version_router)
     app.include_router(logs.router)
     app.include_router(admin.router)

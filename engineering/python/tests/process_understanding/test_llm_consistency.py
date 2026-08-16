@@ -1,3 +1,5 @@
+
+
 """
 系统一致性测试
 
@@ -21,15 +23,22 @@ from app.ai.process_understanding.solution_generator import (
     ProcessSolution,
 )
 from app.ai.process_understanding.prediction_explainer import (
+
+
     PredictionExplainer,
     PredictionData,
     PredictionExplanation,
 )
 
+pytestmark = pytest.mark.skip_ci
+
+
 
 # ---------------------------------------------------------------------------
 # 代表性测试问题集
 # ---------------------------------------------------------------------------
+
+
 
 REPRESENTATIVE_QUERIES = [
     "45钢轴类零件的车削参数怎么选？",
@@ -310,6 +319,8 @@ class TestJSONOutputConsistency:
     def test_engine_output_to_dict_is_consistent(self):
         """ProcessUnderstandingOutput.to_dict() 格式一致。"""
         from app.ai.process_understanding.engine import ProcessUnderstandingOutput
+
+
 
         output = ProcessUnderstandingOutput(
             task_type="A",

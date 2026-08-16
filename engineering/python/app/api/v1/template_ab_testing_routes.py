@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
 from app.templates.template_ab_testing import get_ab_testing
-from app.core.response import success, error
+from app.core.response import success, error, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ def get_experiment(experiment_id: str):
     framework = get_ab_testing()
     result = framework.get_experiment_results(experiment_id)
     if result is None:
-        return error(code="EXPERIMENT_NOT_FOUND", message="Experiment not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Experiment not found")
     return success(data=result)
 
 
@@ -101,7 +101,7 @@ def evaluate_experiment(experiment_id: str):
     framework = get_ab_testing()
     result = framework.evaluate(experiment_id)
     if result is None:
-        return error(code="EXPERIMENT_NOT_FOUND", message="Experiment not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Experiment not found")
     return success(data=result)
 
 
@@ -111,5 +111,5 @@ def conclude_experiment(experiment_id: str):
     framework = get_ab_testing()
     exp = framework.auto_conclude(experiment_id)
     if exp is None:
-        return error(code="EXPERIMENT_NOT_FOUND", message="Experiment not found or not running")
+        return error(code=ErrorCode.NOT_FOUND, message="Experiment not found or not running")
     return success(data=exp.to_dict())

@@ -89,6 +89,7 @@
       @cancel="submitDialogVisible = false"
       @validate="handleValidate"
       @template-select="handleTemplateSelect"
+      @update:form="submitForm = $event"
     />
   </div>
 </template>

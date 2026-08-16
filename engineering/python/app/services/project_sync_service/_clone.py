@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -39,6 +39,17 @@ class _CloneMixin:
         - ``self.get_project()``（来自 _ProjectCrudMixin）
         - 类属性 ``_GIT_TIMEOUT_LONG``
     """
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _get_session: Callable[..., Any]
+    _get_project_lock: Callable[..., Any]
+    _require_git: Callable[..., Any]
+    _run_git: Callable[..., Any]
+    _get_repo_path: Callable[..., Any]
+    _record_sync: Callable[..., Any]
+    _GIT_TIMEOUT_LONG: float
+    _read_manifest_yaml: Callable[..., Any]
+    get_project: Callable[..., Any]
 
     async def clone_project(
         self,
@@ -156,7 +167,7 @@ class _CloneMixin:
                 await session.rollback()
                 raise ProjectAlreadyExistsError(f"项目创建失败: {name}") from e
             await session.refresh(project_orm)
-            project_id = project_orm.project_id
+            project_id = str(project_orm.project_id)
             repo_path = self._get_repo_path(project_id)
             project_orm.repo_path = repo_path
             await session.commit()

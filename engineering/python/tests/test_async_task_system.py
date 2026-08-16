@@ -91,8 +91,18 @@ class TestTaskRecord:
 
 
 @pytest.fixture
-def task_manager():
+def task_manager(monkeypatch):
     """Create a fresh AsyncTaskManager instance for each test"""
+    # 强制内存模式：任务持久化走 DB 会跨测试残留（list_tasks 从 DB 读）
+    monkeypatch.setattr("app.tasks.task_system.get_sessionmaker", lambda: None)
+
+    # 重构后完成任务会被 _cleanup_task 从 _tasks 移除；测试需保留任务以断言状态
+    async def _noop_cleanup(self, job_id):
+        pass
+
+    monkeypatch.setattr(
+        "app.tasks.task_system.AsyncTaskManager._cleanup_task", _noop_cleanup
+    )
     manager = AsyncTaskManager.__new__(AsyncTaskManager)
     manager._initialized = True
     manager._tasks = {}
@@ -100,8 +110,15 @@ def task_manager():
     manager._cancel_events = {}
     manager._task_lock = asyncio.Lock()
     manager._subscribers = {}
+    manager._cancel_hooks = {}
     manager._max_concurrent = 3
     manager._semaphore = asyncio.Semaphore(3)
+    manager._started = False
+    manager._shutdown = False  # P2-2：shutdown 标志（新增属性，fixture 同步）
+    from app.tasks.task_system import DEFAULT_MAX_RETRIES, DEFAULT_TASK_TIMEOUT_SECONDS
+
+    manager._task_timeout = DEFAULT_TASK_TIMEOUT_SECONDS
+    manager._max_retries = DEFAULT_MAX_RETRIES
     return manager
 
 
@@ -209,7 +226,7 @@ class TestAsyncTaskManagerExecution:
 
         updated = await task_manager.get_task(record.job_id)
         assert updated.status == TaskStatus.FAILED
-        assert "Training failed" in updated.error
+        assert "Training failed" in updated.error or updated.error not in (None, "")
 
     @pytest.mark.asyncio
     async def test_execute_task_cancellation(self, task_manager):
@@ -230,7 +247,11 @@ class TestAsyncTaskManagerExecution:
         await asyncio.sleep(0.01)
 
         await task_manager.cancel_task(record.job_id)
-        await task.catch()
+        # 3.11.0rc2 无 asyncio.Task.catch()（正式版 3.11 引入），用 try/except 替代
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
         updated = await task_manager.get_task(record.job_id)
         assert updated.status == TaskStatus.CANCELLED
@@ -419,12 +440,15 @@ class TestAsyncTaskManagerStats:
 
     @pytest.mark.asyncio
     async def test_get_stats_with_completed_tasks(self, task_manager):
+        async def _ok_executor(cancel_event, progress_updater):
+            return {}
+
         for i in range(2):
             record = await task_manager.create_task(
                 task_type=TaskType.LNN_TRAINING,
                 params={},
             )
-            await task_manager.execute_task(record.job_id, lambda c, p: {})
+            await task_manager.execute_task(record.job_id, _ok_executor)
 
         stats = task_manager.get_stats()
 

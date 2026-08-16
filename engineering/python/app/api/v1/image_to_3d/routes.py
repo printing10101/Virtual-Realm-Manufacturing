@@ -16,7 +16,6 @@ from app.auth.permissions import require_permission
 from app.config import config
 from app.core.response import success, error, ErrorCode
 from app.core.safe_errors import safe_error_message
-from app.contracts._shared import TaskListResponse
 from app.utils.utils import get_upload_dir, sanitize_filename
 from app.utils.upload_security import validate_upload
 
@@ -161,7 +160,6 @@ async def get_precision_info() -> dict[str, Any]:
 
 @router.post(
     "/tasks",
-    response_model=TaskCreateResponse,
     summary="上传多张照片创建重建任务",
 )
 async def create_task(
@@ -336,7 +334,6 @@ async def run_task(task_id: str) -> dict[str, Any]:
 
 @router.get(
     "/tasks/{task_id}",
-    response_model=TaskStatusResponse,
     summary="查询任务状态",
 )
 async def get_task_status(task_id: str) -> dict[str, Any]:
@@ -372,7 +369,6 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
 
 @router.get(
     "/tasks",
-    response_model=TaskListResponse,
     summary="列出最近任务",
 )
 async def list_tasks(limit: int = 20) -> dict[str, Any]:

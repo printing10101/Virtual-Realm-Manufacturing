@@ -31,6 +31,7 @@
             :train-plan-confirmed="trainPlanConfirmed"
             @dry-run="handleDryRun"
             @train="handleTrain"
+            @update:train-form="Object.assign(trainForm, $event)"
           />
           <WorkspaceTrainMonitor
             :dry-run-result="dryRunResult"

@@ -5,7 +5,6 @@
 """
 
 import subprocess
-import json
 from pathlib import Path
 from dataclasses import dataclass, field
 from datetime import datetime

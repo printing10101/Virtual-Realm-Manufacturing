@@ -306,10 +306,10 @@ class FusionWorldModelTrainer:
             get_mlflow_log_metrics,
         )
 
-        set_global_seed = get_set_global_seed()
-        mlflow_start_run = get_mlflow_start_run()
-        mlflow_log_params = get_mlflow_log_params()
-        mlflow_log_metrics = get_mlflow_log_metrics()
+        set_global_seed: Any = get_set_global_seed()
+        mlflow_start_run: Any = get_mlflow_start_run()
+        mlflow_log_params: Any = get_mlflow_log_params()
+        mlflow_log_metrics: Any = get_mlflow_log_metrics()
         if set_global_seed is None:
             import random
             import numpy as np
@@ -317,6 +317,24 @@ class FusionWorldModelTrainer:
             def set_global_seed(seed: int = 42) -> None:
                 random.seed(seed)
                 np.random.seed(seed)
+
+        # P0#3 解耦兜底：research 包不可用（无 torch/工程侧）时 mlflow 系列为 None，
+        # 必须提供 no-op fallback，否则训练流程在工程侧崩溃（NoneType not callable）。
+        if mlflow_start_run is None:
+            from contextlib import nullcontext as _nullcontext
+
+            def mlflow_start_run(*args: Any, **kwargs: Any) -> Any:
+                return _nullcontext()
+
+        if mlflow_log_params is None:
+
+            def mlflow_log_params(*args: Any, **kwargs: Any) -> None:
+                return None
+
+        if mlflow_log_metrics is None:
+
+            def mlflow_log_metrics(*args: Any, **kwargs: Any) -> None:
+                return None
 
         # 学术诚信：训练开始前设置随机种子
         set_global_seed(self.seed)

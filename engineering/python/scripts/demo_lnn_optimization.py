@@ -272,10 +272,10 @@ def write_reports(results: list[ScenarioResult], output_dir: str) -> None:
     md_path = os.path.join(output_dir, "lnn_optimization_report.md")
     with open(md_path, "w", encoding="utf-8") as f:
         f.write("# XM-100 LNN 切削参数优化对比报告\n\n")
-        f.write(f"- **机床**: XM-100 (Xmaker, Fanuc 0i 兼容)\n")
-        f.write(f"- **工件**: 45 steel\n")
-        f.write(f"- **刀具**: φ10 立铣刀\n")
-        f.write(f"- **工序**: 方肩铣削\n")
+        f.write("- **机床**: XM-100 (Xmaker, Fanuc 0i 兼容)\n")
+        f.write("- **工件**: 45 steel\n")
+        f.write("- **刀具**: φ10 立铣刀\n")
+        f.write("- **工序**: 方肩铣削\n")
         f.write(f"- **生成时间**: {report_data['timestamp']}\n\n")
         f.write("## 方案对比\n\n")
         f.write(

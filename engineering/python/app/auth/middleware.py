@@ -411,7 +411,7 @@ class UnifiedAuthMiddleware:
             if token.startswith("eyJ"):
                 # JWT token path
                 if self.jwt_auth_enabled:
-                    jwt_result = await self._check_jwt_auth(method, path, auth_header, token)
+                    jwt_result = await self._check_jwt_auth(method, path, auth_header, token, scope)
                     if jwt_result is not None:
                         await jwt_result(send)
                         return
@@ -436,7 +436,7 @@ class UnifiedAuthMiddleware:
                     else:
                         # LNN auth failed, try JWT as fallback
                         if self.jwt_auth_enabled:
-                            jwt_result = await self._check_jwt_auth(method, path, auth_header, token)
+                            jwt_result = await self._check_jwt_auth(method, path, auth_header, token, scope)
                             if jwt_result is None:
                                 # JWT auth passed
                                 pass
@@ -450,7 +450,7 @@ class UnifiedAuthMiddleware:
                             return
                 elif self.jwt_auth_enabled:
                     # Only JWT enabled, try it for flat tokens too
-                    jwt_result = await self._check_jwt_auth(method, path, auth_header, token)
+                    jwt_result = await self._check_jwt_auth(method, path, auth_header, token, scope)
                     if jwt_result is not None:
                         await jwt_result(send)
                         return
@@ -584,7 +584,7 @@ class UnifiedAuthMiddleware:
 
         return None
 
-    async def _check_jwt_auth(self, method: str, path: str, auth_header: str, token: str):
+    async def _check_jwt_auth(self, method: str, path: str, auth_header: str, token: str, scope: dict):
         """Check JWT authentication.
 
         Returns None if auth passes or is disabled, or a callable that sends
@@ -652,8 +652,10 @@ class UnifiedAuthMiddleware:
                 return None
 
         # JWT auth passed - store user info
-        # Note: In pure ASGI we use scope["state"] instead of request.state
-        # This is set via the receive wrapper pattern
+        # 修复（V2.7.0 重构回归）：原注释声称的 receive wrapper pattern 并未实现，
+        # request.state.username 无人写入导致 require_permission 保护的端点永远 401。
+        # 此处显式将 JWT payload 的用户名写入 scope state（starlette Request.state 读取该处）。
+        scope.setdefault("state", {})["username"] = payload.get("sub", "") or ""
         return None
 
     async def _check_agent_auth(

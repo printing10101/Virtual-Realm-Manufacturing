@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import select
 
@@ -21,6 +21,19 @@ logger = logging.getLogger(__name__)
 
 
 class _CommitMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _get_session: Callable[..., Any]
+    _get_project_lock: Callable[..., Any]
+    _require_git: Callable[..., Any]
+    _run_git: Callable[..., Any]
+    _build_manifest_dict: Callable[..., Any]
+    _write_manifest_yaml: Callable[..., Any]
+    _record_sync: Callable[..., Any]
+    _MANIFEST_FILENAME: str
+    _compute_content_hash: Callable[..., Any]
+    _derive_status: Callable[..., Any]
+    _query_git_status: Callable[..., Any]
     """提交 Mixin：get_project_status + commit_project.
 
     依赖：

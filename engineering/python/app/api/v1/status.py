@@ -52,12 +52,12 @@ def get_status() -> dict[str, Any]:
         )
 
         out["components"]["feature_flags"] = {
-            "shadow_mode_master": is_shadow_mode(),
+            "shadow_mode_master": any(is_shadow_mode(name) for name in ROLLOUT_CONFIG),
             "rollout": {
                 name.value: {
-                    "status": cfg["status"].value if hasattr(cfg["status"], "value") else str(cfg["status"]),
-                    "whitelist": cfg.get("whitelist", []),
-                    "rollout_pct": cfg.get("rollout_pct", 0.0),
+                    "status": cfg.status.value,
+                    "whitelist": list(cfg.user_whitelist),
+                    "rollout_pct": cfg.rollout_percent,
                 }
                 for name, cfg in ROLLOUT_CONFIG.items()
             },

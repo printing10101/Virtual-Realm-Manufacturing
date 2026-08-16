@@ -814,3 +814,56 @@ async def fem_solve(
         safe = safe_error_message(e, context="simulation.fem_solve", fallback="FEM 求解失败，请检查参数")
         logger.error("[simulation.fem_solve] error_id=%s: %s", safe["error_id"], e, exc_info=True)
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"])
+
+# =============================================================================
+# 仿真工厂闭环（Phase 3b 升级：① SUPCON Factory Agent 思路 API 化）
+# =============================================================================
+
+
+@router.post("/factory/closed-loop")
+async def factory_closed_loop(
+    n_parts: int = Query(5, ge=1, le=100, description="目标产量（件）"),
+    max_ticks: int = Query(800, ge=10, le=10000, description="最大仿真 tick 数"),
+    seed: int = Query(42, description="随机种子（确定性可复现）"),
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """运行仿真工厂闭环生产（感知→决策→执行→反馈），返回 NLDF 风格 KPI 评分。
+
+    依赖 mcp_server 沙盒；不可用时返回 503。
+    """
+    try:
+        from app.simulation.factory_bridge import run_factory_closed_loop
+
+        report = await asyncio.to_thread(run_factory_closed_loop, n_parts, max_ticks, seed)
+    except Exception as e:
+        safe = safe_error_message(e, context="simulation.factory_closed_loop", fallback="仿真工厂闭环运行失败")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"])
+
+    if report is None:
+        return error(
+            code=ErrorCode.SERVICE_UNAVAILABLE,
+            message="仿真工厂沙盒不可用（mcp_server 未安装/未在 sys.path）",
+        )
+    if "error" in report:
+        return error(code=ErrorCode.INTERNAL_ERROR, message=report["error"])
+    return success(data=report, message="仿真工厂闭环生产完成")
+
+
+@router.get("/factory/demo-status")
+async def factory_demo_status(
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """返回仿真演示设备清单（Phase 2 demo registry）。"""
+    try:
+        from app.simulation.factory_bridge import get_factory_demo_status
+
+        devices = await asyncio.to_thread(get_factory_demo_status)
+    except Exception as e:
+        safe = safe_error_message(e, context="simulation.factory_demo_status", fallback="获取仿真设备状态失败")
+        return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"])
+    if devices is None:
+        return error(
+            code=ErrorCode.SERVICE_UNAVAILABLE,
+            message="仿真工厂沙盒不可用（mcp_server 未安装/未在 sys.path）",
+        )
+    return success(data=devices, message="仿真设备清单")

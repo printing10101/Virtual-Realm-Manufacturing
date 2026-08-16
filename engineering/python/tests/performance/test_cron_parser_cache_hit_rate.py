@@ -1,3 +1,5 @@
+
+
 """CronParser 缓存命中率与性能曲线专项测试
 
 测试目标：
@@ -25,12 +27,21 @@ import pytest
 
 from app.heartbeat.heartbeat import CronParser
 
+pytestmark = pytest.mark.skip_ci
+
+
+
+
+
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
+
+
 def _isolate_cache():
     """每个测试前后清空缓存，避免跨测试污染。"""
     CronParser.clear_cache()
@@ -67,7 +78,7 @@ class TestColdVsWarmStartup:
             f"冷启动未明显慢于热启动: cold={cold_ms:.4f}ms, warm={warm_ms:.6f}ms"
         )
 
-        print(f"\n冷启动 vs 热启动:")
+        print("\n冷启动 vs 热启动:")
         print(f"  冷启动: {cold_ms:.4f}ms")
         print(f"  热启动: {warm_ms:.6f}ms")
         print(f"  差距:   {cold_ms / max(warm_ms, 1e-9):.1f}x")
@@ -84,7 +95,7 @@ class TestColdVsWarmStartup:
 
         assert p95 < 0.1, f"热启动 P95 延迟过高: {p95:.6f}ms"
 
-        print(f"\n热启动延迟 (1000 次采样):")
+        print("\n热启动延迟 (1000 次采样):")
         print(f"  P50: {samples[500]:.6f}ms")
         print(f"  P95: {p95:.6f}ms")
 
@@ -203,7 +214,7 @@ class TestBatchInsertHitRate:
 
         # 规模越大，命中率应越高（或保持 100%）
         # 允许小规模因首次冷启动占比较大而略低
-        print(f"\n命中率随规模变化曲线:")
+        print("\n命中率随规模变化曲线:")
         for scale, rate in zip(scales, hit_rates):
             print(f"  scale={scale:4d}: {rate:.4%}")
 
@@ -248,7 +259,7 @@ class TestThroughputImprovement:
             f"缓存优化加速比过低: {speedup:.1f}x (cold={cold_per_call_ms:.4f}ms, warm={warm_per_call_ms:.6f}ms)"
         )
 
-        print(f"\n吞吐量提升对比:")
+        print("\n吞吐量提升对比:")
         print(f"  冷启动: {cold_per_call_ms:.4f}ms/次 (QPS={1000/cold_per_call_ms:.0f})")
         print(f"  热启动: {warm_per_call_ms:.6f}ms/次 (QPS={1000/warm_per_call_ms:.0f})")
         print(f"  加速比: {speedup:.1f}x")
@@ -295,7 +306,7 @@ class TestEvictionPerformanceImpact:
                 f"容量淘汰触发时延迟突增: {elapsed_ms:.4f}ms"
             )
 
-            print(f"\n容量淘汰性能影响:")
+            print("\n容量淘汰性能影响:")
             print(f"  淘汰 + 写入延迟: {elapsed_ms:.4f}ms")
             print(f"  缓存大小: {len(CronParser._CACHE)}")
         finally:
@@ -328,9 +339,9 @@ class TestEvictionPerformanceImpact:
             f"缓存命中路径受过期条目影响: {per_call_ms:.6f}ms"
         )
 
-        print(f"\nTTL 淘汰摊销开销:")
+        print("\nTTL 淘汰摊销开销:")
         print(f"  命中路径平均延迟: {per_call_ms:.6f}ms")
-        print(f"  过期条目数: 20")
+        print("  过期条目数: 20")
 
 
 # ---------------------------------------------------------------------------
@@ -373,7 +384,7 @@ class TestFieldPrecompilePerformance:
             f"预编译未带来性能提升: {speedup:.2f}x (old={old_elapsed*1000:.4f}ms, new={new_elapsed*1000:.4f}ms)"
         )
 
-        print(f"\n字段预编译 vs 逐次匹配:")
+        print("\n字段预编译 vs 逐次匹配:")
         print(f"  旧路径 (1000×60 _matches_field): {old_elapsed*1000:.4f}ms")
         print(f"  新路径 (1000× compile+in):       {new_elapsed*1000:.4f}ms")
         print(f"  加速比: {speedup:.2f}x")

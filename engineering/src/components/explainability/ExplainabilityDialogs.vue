@@ -92,7 +92,7 @@ const con = reactive({ model_uri: 'model://LTC-ChatterPredictor/1.0.0', sample_c
 defineExpose({ open(type: ExplanationType) { (visible as Record<string, boolean>)[type] = true } })
 
 async function generate(name: string, request: object, key: string): Promise<void> {
-  const result = await (store as unknown as Record<string, Function>)[key](request)
+  const result = await (store as unknown as Record<string, (req: object) => Promise<unknown> | unknown>)[key](request)
   if (!result) { ElMessage.error(store.error || t('explainability.generateFailed')); return }
   ElMessage.success(t('explainability.generateSuccess'));
   (visible as Record<string, boolean>)[name] = false

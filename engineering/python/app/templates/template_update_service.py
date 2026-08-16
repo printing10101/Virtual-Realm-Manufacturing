@@ -61,13 +61,14 @@ class TemplateUpdateService:
         # 使用统一的连接池管理器（传入 db_path 避免跨测试共享连接池死锁）
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("template_updates", db_path=self.db_path)
-        self._db: Optional[sqlite3.Connection] = None
+        self._db: sqlite3.Connection
         self._notifications: Dict[str, UpdateNotification] = {}
 
     def initialize(self) -> None:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
         self._db = self._pool.get_connection()
+        assert self._db is not None, "template_update_service 连接池返回空连接"
         self._db.execute("""
             CREATE TABLE IF NOT EXISTS update_notifications (
                 notification_id TEXT PRIMARY KEY,
@@ -238,7 +239,7 @@ class TemplateUpdateService:
         """关闭数据库连接，归还连接到连接池"""
         if self._db:
             self._pool.return_connection(self._db)
-            self._db = None
+            self._db = None  # type: ignore[assignment]
             logger.info("TemplateUpdateService closed")
 
 

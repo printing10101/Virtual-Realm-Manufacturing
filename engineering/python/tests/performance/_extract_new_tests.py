@@ -4,7 +4,6 @@
 """
 import json
 import re
-import sys
 from pathlib import Path
 
 PERF_DIR = Path(__file__).parent
@@ -86,7 +85,7 @@ for class_name in sorted(by_class.keys()):
         # 输出第一行作为notes参考
         notes = (t["output_lines"][0] if t["output_lines"] else "").replace('"', "'")
         print(f'    "notes": "{notes}"')
-        print(f'  }},')
+        print('  },')
     print()
 
 # 同时输出需要更新基线值的回归测试
@@ -105,5 +104,5 @@ for class_name, test_name in regression_tests:
                 print(f'    "unit": "{result["unit"]}",')
                 print(f'    "metric": "{result["metric"]}",')
                 print(f'    "value": {result["value"]},')
-                print(f'  }},')
+                print('  },')
             break

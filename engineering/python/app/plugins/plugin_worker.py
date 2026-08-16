@@ -158,7 +158,7 @@ class PluginWorkerManager:
         return new_info
 
     def health_check(self, plugin_id: Optional[str] = None) -> Dict[str, Any]:
-        results = {}
+        results: dict[str, Any] = {}
 
         plugin_ids = [plugin_id] if plugin_id else list(self._workers.keys())
 
@@ -214,7 +214,12 @@ class PluginWorkerManager:
         }
 
     def list_workers(self) -> List[Dict[str, Any]]:
-        return [self.get_worker_info(pid) for pid in self._workers if self.get_worker_info(pid)]
+        result = []
+        for pid in self._workers:
+            info = self.get_worker_info(pid)
+            if info is not None:
+                result.append(info)
+        return result
 
     def stop_all_workers(self, timeout: float = 10.0) -> None:
         for plugin_id in list(self._workers.keys()):

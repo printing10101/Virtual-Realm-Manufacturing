@@ -109,7 +109,9 @@ class HNCPostProcessor(FanucPostProcessor):
         z: float,
         depth: float,
         dwell: float = 0.0,
+        pecking: bool = True,
     ) -> str:
+        # pecking 参数与基类签名对齐：True 用啄钻循环，False 用普通循环
         """HNC 啄钻：与 Fanuc G73/G83 一致。"""
         cycle_code = "G73" if dwell > 0 else "G83"
         cfg = self.get_cycle_config("drilling", cycle_code)

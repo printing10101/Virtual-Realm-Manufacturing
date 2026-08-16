@@ -44,7 +44,7 @@ Lineage 结构（与后端 LineageModel 对齐）::
 
 from __future__ import annotations
 
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Iterator, Optional
 
 from lomo.client import LomoClient, StreamingJSONL
 

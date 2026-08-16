@@ -65,6 +65,11 @@ async def get_model_info(model_name: str):
         )
 
     model_info = entry.info
+    if model_info is None:
+        return error(
+            code=ErrorCode.NOT_FOUND,
+            message=f"Model '{model_name}' info not available",
+        )
 
     validation_result = model_registry.validate_model(model_name)
 
@@ -107,6 +112,11 @@ async def validate_model(model_name: str):
             )
 
         model_info = entry.info
+        if model_info is None:
+            return error(
+                code=ErrorCode.NOT_FOUND,
+                message=f"Model '{model_name}' info not available",
+            )
         info_data = {
             "model_name": model_name,
             "valid": True,
@@ -140,6 +150,11 @@ async def get_model_size(model_name: str):
                 message=f"Model '{model_name}' not found",
             )
 
+        if entry.info is None:
+            return error(
+                code=ErrorCode.NOT_FOUND,
+                message=f"Model '{model_name}' info not available",
+            )
         original_path = entry.info.model_path
         original_size = os.path.getsize(original_path) if os.path.exists(original_path) else 0
 
@@ -148,7 +163,7 @@ async def get_model_size(model_name: str):
         quantized_size = None
         quantized_path = None
 
-        if quantized_entry:
+        if quantized_entry and quantized_entry.info is not None:
             quantized_path = quantized_entry.info.model_path
             if os.path.exists(quantized_path):
                 quantized_size = os.path.getsize(quantized_path)

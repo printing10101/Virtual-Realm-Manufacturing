@@ -21,6 +21,15 @@ from app.core.request_id import set_request_id
 ISO8601_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
 
 
+class _TestISOFormatter(logging.Formatter):
+    """测试用 ISO 8601 格式化器（毫秒 + Z 后缀；logging datefmt 不支持 %f）。"""
+
+    def formatTime(self, record, datefmt=None):
+        return datetime.fromtimestamp(record.created).strftime(
+            "%Y-%m-%dT%H:%M:%S"
+        ) + f".{int(record.msecs):03d}Z"
+
+
 class TestConfigureLogging:
     """测试日志配置函数"""
 
@@ -104,19 +113,15 @@ class TestLogFormat:
         handler = logging.StreamHandler(stream)
         handler.setLevel(logging.DEBUG)
         handler.addFilter(RequestIdFilter())
-        handler.setFormatter(
-            logging.Formatter(
-                fmt=LOG_FORMAT,
-                datefmt="%Y-%m-%dT%H:%M:%S",
-            )
-        )
+        handler.setFormatter(_TestISOFormatter(fmt=LOG_FORMAT))
         return stream, handler
 
     def _parse_log_line(self, line):
-        m = re.match(r"^(\S+) \[(\S+)\s*\] \[(\S+)\] \[(\S+)\] (.*)$", line.strip())
+        # LOG_FORMAT: [%(asctime)s] [%(levelname)s] [%(name)s] [%(request_id)s] msg
+        m = re.match(r"^\[([^\]]+)\] \[(\S+)\s*\] \[(\S+)\] \[(\S+)\] (.*)$", line.strip())
         if m is None:
             return "", "", "", "", ""
-        return m.group(1), m.group(2), m.group(3), m.group(4), m.group(5)
+        return m.group(1), m.group(2), m.group(4), m.group(3), m.group(5)
 
     def test_log_format_structure(self, capture_stream):
         stream, handler = capture_stream

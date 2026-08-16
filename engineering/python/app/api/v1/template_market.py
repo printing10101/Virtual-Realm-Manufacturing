@@ -12,7 +12,7 @@ from app.auth.permissions import require_permission
 
 from app.templates.template_branching import get_branch_manager
 from app.templates.template_ab_testing import get_ab_testing
-from app.core.response import success, error
+from app.core.response import success, error, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def get_template_metrics(branch_id: str):
     branch_mgr = get_branch_manager()
     branch = branch_mgr.get_branch(branch_id)
     if branch is None:
-        return error(code="BRANCH_NOT_FOUND", message="Branch not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Branch not found")
 
     ab_framework = get_ab_testing()
     exps = [
@@ -111,7 +111,7 @@ def publish_template(req: PublishRequest):
     branch_mgr = get_branch_manager()
     branch = branch_mgr.get_branch(req.branch_id)
     if branch is None:
-        return error(code="BRANCH_NOT_FOUND", message="Branch not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Branch not found")
 
     template_entry = {
         "branch_id": req.branch_id,
@@ -152,7 +152,7 @@ def get_subscriptions(project_id: str):
 
 
 @router.post("/export/{branch_id}")
-def export_template(branch_id: str, req: ExportRequest = None):
+def export_template(branch_id: str, req: ExportRequest | None = None):
     """Export a template with optional evolution history."""
     if req is None:
         req = ExportRequest(branch_id=branch_id)
@@ -160,7 +160,7 @@ def export_template(branch_id: str, req: ExportRequest = None):
     branch_mgr = get_branch_manager()
     branch = branch_mgr.get_branch(branch_id)
     if branch is None:
-        return error(code="BRANCH_NOT_FOUND", message="Branch not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Branch not found")
 
     export_data = {
         "branch_id": branch_id,
@@ -217,7 +217,7 @@ def sync_changes(branch_id: str):
     branch_mgr = get_branch_manager()
     branch = branch_mgr.get_branch(branch_id)
     if branch is None:
-        return error(code="BRANCH_NOT_FOUND", message="Branch not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Branch not found")
 
     return success(
         data={

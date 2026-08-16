@@ -6,7 +6,7 @@ import asyncio
 import json
 import time
 from datetime import datetime, timezone
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Any
 
 
 from app.core.safe_errors import safe_error_message
@@ -23,6 +23,17 @@ logger = logging.getLogger(__name__)
 
 
 class _TaskExecutionMixin:
+    # ---- 宿主契约：由主类 AsyncTaskManager / 兄弟 mixin 提供 ----
+    _tasks: dict[str, Any]
+    _cancel_events: dict[str, asyncio.Event]
+    _max_concurrent: int
+    _max_retries: int
+    _task_timeout: float
+    _get_semaphore: Callable[..., Any]
+    _get_task_lock: Callable[..., Any]
+    _persist_task_to_db: Callable[..., Any]
+    _broadcast_event: Callable[..., Any]
+    _cleanup_task: Callable[..., Any]
     async def execute_task(self, job_id: str, executor: Callable):
         async with self._get_semaphore():
             async with self._get_task_lock():

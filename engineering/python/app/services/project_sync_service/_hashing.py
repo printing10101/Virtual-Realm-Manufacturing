@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import select
 
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 class _HashingMixin:
+    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    _get_session: Callable[..., Any]
     """内容哈希 Mixin：资源 sha256 计算.
 
     依赖：

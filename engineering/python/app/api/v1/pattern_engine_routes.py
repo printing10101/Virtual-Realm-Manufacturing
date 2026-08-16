@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from app.auth.permissions import require_permission
 
 from app.patterns.pattern_engine import get_pattern_engine
-from app.core.response import success, error
+from app.core.response import success, error, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ def get_pattern(pattern_id: str):
     patterns = engine.get_patterns()
     pattern = next((p for p in patterns if p.pattern_id == pattern_id), None)
     if pattern is None:
-        return error(code="PATTERN_NOT_FOUND", message="Pattern not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Pattern not found")
     return success(data=pattern.to_dict())
 
 
@@ -91,5 +91,5 @@ def get_pattern_suggestions(pattern_id: str):
     engine = get_pattern_engine()
     suggestion = engine.generate_suggestions(pattern_id)
     if suggestion is None:
-        return error(code="PATTERN_NOT_FOUND", message="Pattern not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Pattern not found")
     return success(data=suggestion)

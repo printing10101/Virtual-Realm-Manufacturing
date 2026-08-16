@@ -68,11 +68,11 @@ class ParameterAdvisor:
         if speed_reduction > 0:
             suggestions.append(
                 AdjustmentSuggestionItem(
-                    param_type="cutting_speed",
+                    parameter="cutting_speed",
                     current_value=cutting_speed,
                     suggested_value=new_speed,
-                    adjustment_delta=round(-speed_reduction * 100, 1),
-                    expected_effect=f"预计延长刀具寿命{round(estimated_life_extension, 1)}%",
+                    change_percent=round(-speed_reduction * 100, 1),
+                    reason=f"预计延长刀具寿命{round(estimated_life_extension, 1)}%",
                 )
             )
 
@@ -80,49 +80,55 @@ class ParameterAdvisor:
             feed_effect = round(feed_reduction * 80, 1)
             suggestions.append(
                 AdjustmentSuggestionItem(
-                    param_type="feed_rate",
+                    parameter="feed_rate",
                     current_value=feed_rate,
                     suggested_value=new_feed,
-                    adjustment_delta=round(-feed_reduction * 100, 1),
-                    expected_effect=f"减少切削力，降低磨损率约{feed_effect}%",
+                    change_percent=round(-feed_reduction * 100, 1),
+                    reason=f"减少切削力，降低磨损率约{feed_effect}%",
                 )
             )
 
         if depth_reduction > 0:
             suggestions.append(
                 AdjustmentSuggestionItem(
-                    param_type="depth_of_cut",
+                    parameter="depth_of_cut",
                     current_value=depth_of_cut,
                     suggested_value=new_depth,
-                    adjustment_delta=round(-depth_reduction * 100, 1),
-                    expected_effect="减少切削负荷，改善散热条件",
+                    change_percent=round(-depth_reduction * 100, 1),
+                    reason="减少切削负荷，改善散热条件",
                 )
             )
 
         suggestions.append(
             AdjustmentSuggestionItem(
-                param_type="coolant_flow",
+                parameter="coolant_flow",
                 current_value=coolant_flow,
                 suggested_value=new_coolant,
-                adjustment_delta=round(coolant_increase * 100, 1),
-                expected_effect="增强冷却效果，降低切削温度，减缓月牙洼磨损",
+                change_percent=round(coolant_increase * 100, 1),
+                reason="增强冷却效果，降低切削温度，减缓月牙洼磨损",
             )
         )
 
         if urgency == UrgencyLevel.CRITICAL:
             suggestions.append(
                 AdjustmentSuggestionItem(
-                    param_type="tool_inspection",
+                    parameter="tool_inspection",
                     current_value=0,
                     suggested_value=0,
-                    adjustment_delta=0,
-                    expected_effect="立即安排刀具检查，准备更换刀具",
+                    change_percent=0,
+                    reason="立即安排刀具检查，准备更换刀具",
                 )
             )
 
         return AdjustmentSuggestion(
-            current_wear=round(current_wear, 4),
-            remaining_life=round(remaining_life, 2),
-            urgency=urgency,
             suggestions=suggestions,
+            summary=(
+                f"当前磨损 {round(current_wear, 4)} mm，剩余寿命 "
+                f"{round(remaining_life, 2)} min，建议等级 {str(urgency)}"
+            ),
+            expected_improvement=(
+                f"预计延长刀具寿命 {round(estimated_life_extension, 1)}%"
+                if estimated_life_extension > 0
+                else "保持当前参数，监测磨损趋势"
+            ),
         )

@@ -11,9 +11,12 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TextIO
 
-from app.auth.permissions import PermissionLevel
+from app.auth.permissions import (
+    AGENT_ENDPOINT_PERMISSIONS,
+    PermissionLevel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,7 @@ class AgentAuditEntry:
     permission_class: str
     status_code: int
     latency_ms: float
+    details: Optional[dict] = None
     # P0-16 修复：哈希链字段，保证审计日志防篡改
     # chain_seq：链序号，从 0 单调递增
     # prev_hash：上一条 entry_hash（首条为 "GENESIS"）
@@ -65,7 +69,7 @@ class AgentAuditLog:
     #      实测单次 log 延迟从 3.064ms 降至 ~0.5ms。
     _CHAIN_STATE_SAVE_INTERVAL = 32
 
-    def __init__(self, log_path: str | None = None):
+    def __init__(self, log_path: str | os.PathLike[str] | None = None):
         if log_path is None:
             # 使用项目根目录下的 logs/audit 目录
             from app.utils.utils import get_project_root
@@ -77,7 +81,7 @@ class AgentAuditLog:
         # 时内部再次 acquire 而不死锁
         self._lock = threading.RLock()
         # 缓存文件句柄（追加模式），避免每次 log 都 open/close
-        self._stream = None
+        self._stream: TextIO | None = None
         # P0-16：哈希链状态
         self._chain_state_file = self._log_path.parent / "agent_audit_chain_state.json"
         self._last_hash: str = "GENESIS"
@@ -367,6 +371,7 @@ class AgentAuditLog:
         permission_class: str,
         status_code: int,
         latency_ms: float,
+        details: Optional[dict] = None,
     ):
         entry = AgentAuditEntry(
             timestamp_ms=int(time.time() * 1000),
@@ -375,6 +380,7 @@ class AgentAuditLog:
             permission_class=permission_class,
             status_code=status_code,
             latency_ms=round(latency_ms, 2),
+            details=details,
         )
         try:
             with self._lock:
@@ -609,20 +615,6 @@ def get_agent_audit_log() -> AgentAuditLog:
     return _global_agent_audit_log
 
 
-# Permission class mapping for Agent API endpoints
-AGENT_ENDPOINT_PERMISSIONS: dict[str, PermissionLevel] = {
-    "GET /api/agent/v1/health": PermissionLevel.R,
-    "GET /api/agent/v1/models": PermissionLevel.R,
-    "GET /api/agent/v1/models/{name}/info": PermissionLevel.R,
-    "POST /api/agent/v1/predict": PermissionLevel.R,
-    "POST /api/agent/v1/train": PermissionLevel.B,
-    "GET /api/agent/v1/train/{job_id}": PermissionLevel.R,
-    "GET /api/agent/v1/train/{job_id}/stream": PermissionLevel.R,
-    "POST /api/agent/v1/execute": PermissionLevel.T,
-    "GET /api/agent/v1/audit-log": PermissionLevel.C,
-}
-
-WRITE_SCOPES = {"W", "B", "T"}
 
 
 async def get_permission_class(method: str, path: str) -> PermissionLevel:

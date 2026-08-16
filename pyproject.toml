@@ -68,6 +68,15 @@ ignore = [
 "engineering/python/app/tasks/execution.py" = ["E402"]
 "engineering/python/app/plugins/world_model/training/fusion_trainer.py" = ["E402"]
 "engineering/python/app/chatter_prediction/chatter_store.py" = ["E402"]
+# E402 追加登记（2026-08-17）：scripts/demo_* 与工具脚本的 sys.path 引导模式
+#   （脚本先 insert 仓库根/engineering/python 再导入 app 包，运行时语义正确）
+"engineering/python/scripts/demo_kg_experience.py" = ["E402"]
+"engineering/python/scripts/demo_kinematics_rtcp.py" = ["E402"]
+"engineering/python/scripts/demo_lnn_optimization.py" = ["E402"]
+"engineering/python/scripts/demo_pinn_force_prediction.py" = ["E402"]
+"engineering/python/scripts/generate_comparison_report.py" = ["E402"]
+"engineering/python/scripts/generate_xm100_demo_gcode.py" = ["E402"]
+"engineering/python/tools/test_generator/__main__.py" = ["E402"]
 "engineering/python/app/integrations/mtconnect/tests/test_adapter.py" = ["E402"]
 "engineering/python/app/pipelines/tests/test_collector.py" = ["E402"]
 "engineering/python/app/simulation/chatter/tests/test_predictor.py" = ["E402"]

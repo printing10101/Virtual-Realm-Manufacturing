@@ -19,7 +19,7 @@ import logging
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any, Callable
 
 from .models import (
     PRIORITY_MAP,
@@ -41,6 +41,12 @@ class SkillDiscoveryMixin:
     依赖宿主类组合的 :class:`PathSafetyMixin`、:class:`SkillCompilerMixin`，
     以及 ``self.skills_base`` / ``self.registry`` 属性。
     """
+
+    # ---- 宿主契约：由兄弟 mixin 提供（PathSafetyMixin/SkillCompilerMixin） ----
+    _compute_content_hash: Callable[..., str]
+    _compile_code: Callable[..., Any]
+    _resolve_safe_subpath: Callable[..., str]
+
 
     # 类型提示：声明 mixin 依赖的方法/属性（由其他 mixin 或宿主类提供）
     skills_base: str

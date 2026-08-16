@@ -23,7 +23,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -61,7 +61,7 @@ def _raise_internal(
     context: str,
     fallback: str,
     status_code: int = 500,
-) -> None:
+) -> NoReturn:
     """统一的 HTTPException 5xx 包装：避免将内部异常细节泄露给客户端。"""
     safe = safe_error_message(exc, context=context, fallback=fallback)
     headers = {"X-Error-ID": safe.get("error_id", "")}
@@ -165,6 +165,7 @@ async def verify_batch(request: BatchVerifyRequest) -> BatchVerifyResponse:
                     reasoning=d["reasoning"],
                     steps_taken=d["steps_taken"],
                     elapsed_ms=d["elapsed_ms"],
+                    error=None,
                 )
             )
 

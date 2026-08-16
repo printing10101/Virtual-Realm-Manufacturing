@@ -10,3 +10,6 @@
 - data_collector / data_anonymizer : 采集并匿名化生产数据
 - feature_flags : 研究特性开关
 """
+
+# 包级 re-export：status.py 等消费方从包根导入（延迟导入避免循环）
+from .data_collector import UsageDataCollector

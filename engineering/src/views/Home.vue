@@ -263,8 +263,10 @@ const kpiCards = computed<KpiCard[]>(() => {
   const pd = productionData.value
 
   // 今日产量
+  // 防御：pd 非空但 total_output 字段可能缺失（后端响应字段裁剪/旧版本），
+  // 直接 .toLocaleString() 会抛 TypeError 导致整页 computed 崩溃（flaky 根因之一）
   const hasRealStats = stats && stats.total_tasks > 0
-  const productionCount = pd
+  const productionCount = pd?.total_output != null
     ? pd.total_output.toLocaleString() + t('home.unitPiece')
     : hasRealStats
       ? stats.completed_tasks.toLocaleString() + t('home.unitPiece')
@@ -277,7 +279,7 @@ const kpiCards = computed<KpiCard[]>(() => {
     : '--'
 
   // 良品率
-  const passRateValue = pd
+  const passRateValue = pd?.pass_rate != null
     ? (pd.pass_rate * 100).toFixed(1) + '%'
     : productionLoading.value
       ? t('home.loadingText')

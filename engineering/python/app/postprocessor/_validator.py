@@ -37,7 +37,7 @@ class ConfigValidator:
         self,
         path: str,
         value: Any,
-        expected_type: type,
+        expected_type: type | tuple[type, ...],
         allow_none: bool = False,
     ) -> bool:
         if allow_none and value is None:
@@ -45,7 +45,8 @@ class ConfigValidator:
         if not isinstance(value, expected_type):
             self._add_error(
                 path,
-                f"类型错误: 期望 {expected_type.__name__}, 实际 {type(value).__name__}",
+                f"类型错误: 期望 {getattr(expected_type, '__name__', str(expected_type))}, "
+                f"实际 {type(value).__name__}",
             )
             return False
         return True

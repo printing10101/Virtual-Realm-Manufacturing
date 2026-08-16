@@ -251,7 +251,7 @@ def load_manifest_from_yaml(path: str | Path) -> PluginManifest:
 
     # 延迟导入 yaml，避免未安装时影响模块加载
     try:
-        import yaml
+        import yaml  # type: ignore[import-untyped]
     except ImportError as e:
         raise ImportError("PyYAML is required to load plugin.yaml manifests. Install it via: pip install pyyaml") from e
 

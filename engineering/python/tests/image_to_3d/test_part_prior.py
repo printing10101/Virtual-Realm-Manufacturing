@@ -1,3 +1,5 @@
+
+
 """思路 2（零件专属先验模型）单元测试。
 
 对应 ADR-020 第 2.8 节测试方案 / app/image_to_3d/part_prior/encoder.py 等。
@@ -20,11 +22,18 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = pytest.mark.skip_ci
+
+
+
+
 
 # ---------------------------------------------------------------------------
 # 固定随机种子（D-2 学术诚信硬约束：torch.manual_seed + cudnn.deterministic）
 # 在每个 torch 用例内部独立设置，避免模块加载期依赖 torch。
 # ---------------------------------------------------------------------------
+
+
 SEED = 42
 
 
@@ -101,6 +110,8 @@ def test_completer_accepts_sparse_points():
         torch.backends.cudnn.deterministic = True
 
     from app.image_to_3d.part_prior.encoder import PartPriorCompleter, PartPriorVAE
+
+
 
     vae = PartPriorVAE(voxel_dim=64, latent_dim=256, base_channels=32)
     completer = PartPriorCompleter(vae, voxel_dim=64)

@@ -24,7 +24,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import sys
 import time
@@ -258,7 +257,7 @@ def run_rtcp_demo(kin: XM100Kinematics) -> list[RTCPStep]:
     # 模拟 A 轴从 0° 旋转到 60°（10° 步进）
     print(f"\n初始位置：X={init_x}, Y={init_y}, Z={init_z}")
     print(f"刀触点（工件坐标系）：{tool_contact_point}")
-    print(f"\n--- A 轴旋转扫描（C=0° 固定）---")
+    print("\n--- A 轴旋转扫描（C=0° 固定）---")
     print(f"{'步':>3} {'A°':>7} {'C°':>7} "
           f"{'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} "
           f"{'新X':>8} {'新Y':>8} {'新Z':>8}")
@@ -287,7 +286,7 @@ def run_rtcp_demo(kin: XM100Kinematics) -> list[RTCPStep]:
               f"{new_x:>8.3f} {new_y:>8.3f} {new_z:>8.3f}")
 
     # C 轴旋转扫描
-    print(f"\n--- C 轴旋转扫描（A=30° 固定，从 A=0/C=0 起始）---")
+    print("\n--- C 轴旋转扫描（A=30° 固定，从 A=0/C=0 起始）---")
     print(f"{'步':>3} {'A°':>7} {'C°':>7} "
           f"{'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} "
           f"{'新X':>8} {'新Y':>8} {'新Z':>8}")
@@ -315,7 +314,7 @@ def run_rtcp_demo(kin: XM100Kinematics) -> list[RTCPStep]:
               f"{new_x:>8.3f} {new_y:>8.3f} {new_z:>8.3f}")
 
     # 复合旋转扫描
-    print(f"\n--- 复合旋转扫描（A 和 C 同时变化）---")
+    print("\n--- 复合旋转扫描（A 和 C 同时变化）---")
     print(f"{'步':>3} {'A°':>7} {'C°':>7} "
           f"{'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} "
           f"{'新X':>8} {'新Y':>8} {'新Z':>8}")
@@ -645,7 +644,7 @@ def main() -> int:
     print("=" * 70)
     print("XM-100 五轴运动学与 RTCP 补偿算法展示")
     print("=" * 70)
-    print(f"机床行程：X/Y/Z = 0-100mm, A = -30~110°, C = 0~360°")
+    print("机床行程：X/Y/Z = 0-100mm, A = -30~110°, C = 0~360°")
     print(f"主轴最高：{XM100_LIMITS.max_spindle_rpm:.0f} RPM")
     print(f"最大进给：{XM100_LIMITS.max_feed_mm_min:.0f} mm/min")
 
@@ -682,7 +681,7 @@ def main() -> int:
 
     # 总结
     s = report.summary
-    print(f"\n总结：")
+    print("\n总结：")
     print(f"  正解案例：{s['forward_cases']} 个")
     print(f"  逆解案例：{s['inverse_cases']} 个 "
           f"(可行 {s['inverse_feasible']} / 不可行 {s['inverse_infeasible']})")

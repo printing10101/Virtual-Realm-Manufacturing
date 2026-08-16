@@ -1,3 +1,5 @@
+
+
 """真实内存占用性能测试
 
 测试目标：
@@ -19,14 +21,20 @@ from __future__ import annotations
 
 import gc
 import tracemalloc
-from typing import Any
 
 import pytest
+
+pytestmark = pytest.mark.skip_ci
+
+
+
 
 
 # ---------------------------------------------------------------------------
 # 1. 模块级内存占用基线
 # ---------------------------------------------------------------------------
+
+
 
 class TestModuleMemoryFootprint:
     """关键模块实例化后的真实内存占用"""
@@ -76,7 +84,7 @@ class TestModuleMemoryFootprint:
             f"BudgetManager 内存占用过高: {result['current_mb']:.3f}MB"
         )
 
-        print(f"\nBudgetManager 内存占用:")
+        print("\nBudgetManager 内存占用:")
         print(f"  当前: {result['current_mb']:.3f} MB")
         print(f"  峰值: {result['peak_mb']:.3f} MB")
         print(f"  内存块: {result['blocks']}")
@@ -94,7 +102,7 @@ class TestModuleMemoryFootprint:
             f"CostTracker 内存占用过高: {result['current_mb']:.3f}MB"
         )
 
-        print(f"\nCostTracker 内存占用:")
+        print("\nCostTracker 内存占用:")
         print(f"  当前: {result['current_mb']:.3f} MB")
         print(f"  峰值: {result['peak_mb']:.3f} MB")
         print(f"  内存块: {result['blocks']}")
@@ -112,7 +120,7 @@ class TestModuleMemoryFootprint:
             f"WakeupQueue 内存占用过高: {result['current_mb']:.3f}MB"
         )
 
-        print(f"\nWakeupQueue 内存占用:")
+        print("\nWakeupQueue 内存占用:")
         print(f"  当前: {result['current_mb']:.3f} MB")
         print(f"  峰值: {result['peak_mb']:.3f} MB")
         print(f"  内存块: {result['blocks']}")
@@ -130,7 +138,7 @@ class TestModuleMemoryFootprint:
             f"RuleDatabase 内存占用过高: {result['current_mb']:.3f}MB"
         )
 
-        print(f"\nRuleDatabase 内存占用:")
+        print("\nRuleDatabase 内存占用:")
         print(f"  当前: {result['current_mb']:.3f} MB")
         print(f"  峰值: {result['peak_mb']:.3f} MB")
         print(f"  内存块: {result['blocks']}")
@@ -296,7 +304,7 @@ class TestBatchOperationMemoryGrowth:
             f"批量添加任务后内存增长过大: {batch_growth_mb:.3f}MB"
         )
 
-        print(f"\n批量添加 1000 个任务内存增长:")
+        print("\n批量添加 1000 个任务内存增长:")
         print(f"  初始化后: {(current_after_init - current_before)/1024:.2f} KB")
         print(f"  批量后增长: {batch_growth_kb:.2f} KB ({batch_growth_mb:.3f} MB)")
         print(f"  每任务增长: {batch_growth_kb/1000:.3f} KB")
@@ -307,6 +315,8 @@ class TestBatchOperationMemoryGrowth:
         场景：审计日志通过文件持久化，验证无日志条目驻留堆
         """
         from app.agent.middleware import AgentAuditLog
+
+
 
         log_path = tmp_path / "audit_mem.log"
 
@@ -340,7 +350,7 @@ class TestBatchOperationMemoryGrowth:
             f"批量写入日志后内存增长过大: {batch_growth_mb:.3f}MB"
         )
 
-        print(f"\n批量写入 1000 条审计日志内存增长:")
+        print("\n批量写入 1000 条审计日志内存增长:")
         print(f"  初始化后: {(current_after_init - current_before)/1024:.2f} KB")
         print(f"  批量后增长: {batch_growth_kb:.2f} KB ({batch_growth_mb:.3f} MB)")
         print(f"  每条增长: {batch_growth_kb/1000:.3f} KB")

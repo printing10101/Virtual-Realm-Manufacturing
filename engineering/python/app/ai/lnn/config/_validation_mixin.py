@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 
 try:
     import torch
@@ -13,6 +13,15 @@ except ImportError:
 
 
 class _ValidationMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    REQUIRED_LNN_KEYS: Any
+    REQUIRED_MODEL_KEYS: Any
+    REQUIRED_THRESHOLD_KEYS: Any
+    VALID_ENVIRONMENTS: Any
+    VALID_MODEL_TYPES: Any
+    _raw_config: Any
+
+
     def validate(self, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         验证配置结构和参数合法性

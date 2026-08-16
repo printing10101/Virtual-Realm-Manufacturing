@@ -123,7 +123,7 @@ class LogSanitizer:
         r"(ghp_[a-zA-Z0-9]{8})[a-zA-Z0-9]+",
         r"(xox[bapsr]-[a-zA-Z0-9]{8})[a-zA-Z0-9]+",
         r"(Bearer\s+)[a-zA-Z0-9_.-]+",
-        r"(Authorization:\s*)[a-zA-Z0-9_.-]+",
+        r"(Authorization:\s*)(?!Bearer\s)[a-zA-Z0-9_.-]+",
         r'(token["\s:=]+)([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})',
     ]
 
@@ -159,7 +159,7 @@ class LogSanitizer:
             self._path_compiled_patterns.append(re.compile(pattern))
 
         try:
-            self._current_user = getpass.getuser()
+            self._current_user: str | None = getpass.getuser()
         except (OSError, RuntimeError) as e:
             # getuser() 失败时记录警告但不阻塞初始化
             logger.warning("Failed to get current user for log sanitization: %s", e)
@@ -210,7 +210,9 @@ class LogSanitizer:
 
     def _is_process_param_key(self, key: str) -> bool:
         key_lower = key.lower()
-        return key_lower in [k.lower() for k in self.PROCESS_PARAM_KEYS]
+        # 分隔符归一化：连字符/点与下划线等价（cutting-speed / feed.rate 均识别）
+        key_normalized = key_lower.replace("-", "_").replace(".", "_")
+        return key_normalized in [k.lower() for k in self.PROCESS_PARAM_KEYS]
 
     def _is_file_content_key(self, key: str) -> bool:
         key_lower = key.lower()
@@ -272,7 +274,7 @@ class LogSanitizer:
         else:
             return "[文件内容已脱敏]"
 
-    def _sanitize_user_input(self, value: Any) -> str:
+    def _sanitize_user_input(self, value: Any) -> str | None:
         if value is None:
             return None
         if isinstance(value, str):
@@ -282,7 +284,8 @@ class LogSanitizer:
             # 同时过滤其他危险控制字符（\t 保留，制表符在日志中通常无害）
             sanitized = "".join(ch if ch == "\t" or (ord(ch) >= 0x20) else f"\\x{ord(ch):02x}" for ch in sanitized)
             if len(sanitized) > self.USER_INPUT_MAX_LENGTH:
-                return sanitized[: self.USER_INPUT_MAX_LENGTH] + "..."
+                # 截断后总长（含省略号）不超过上限
+                return sanitized[: self.USER_INPUT_MAX_LENGTH - 3] + "..."
             return sanitized
         return str(value)
 

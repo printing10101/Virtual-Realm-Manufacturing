@@ -227,7 +227,7 @@ def _load_gcode_to_nx(
         G 代码加载失败或后处理器应用失败。
     """
     NXOpen = nx_modules["NXOpen"]
-    CAM = nx_modules["CAM"]
+    CAM = nx_modules["CAM"]  # noqa: F841 - 参考实现框架占位（后续实现使用）
 
     # 1. 校验 G 代码文件存在
     gcode_path = Path(gcode_file_path)
@@ -252,7 +252,7 @@ def _load_gcode_to_nx(
     )
 
     # 4. 创建 CAM Setup
-    cam_setup_collection = base_part.CAMSetups
+    cam_setup_collection = base_part.CAMSetups  # noqa: F841 - 参考实现框架占位（后续实现使用）
     # 选择后处理器
     post_name = _CONTROLLER_TO_POSTPROCESSOR.get(
         controller_type, controller_type
@@ -295,7 +295,7 @@ def _run_simulation_and_detect_collisions(
     tuple[list[dict], list[str]]
         (碰撞事件列表, 诊断消息列表)
     """
-    GeometricAnalysis = nx_modules["GeometricAnalysis"]
+    GeometricAnalysis = nx_modules["GeometricAnalysis"]  # noqa: F841 - 参考实现框架占位（后续实现使用）
 
     collisions: list[dict[str, Any]] = []
     messages: list[str] = []

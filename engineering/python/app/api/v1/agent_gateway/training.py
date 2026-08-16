@@ -85,7 +85,14 @@ async def _run_agent_training(
             detect_device = get_device_detect()
             get_optimal_batch_size = get_device_optimal_batch_size()
             get_optimal_num_workers = get_device_optimal_num_workers()
-            if any(x is None for x in (LNNConfig, LNNTrainer)):
+            if (
+                LNNConfig is None
+                or TorchCFCModel is None
+                or LNNTrainer is None
+                or detect_device is None
+                or get_optimal_batch_size is None
+                or get_optimal_num_workers is None
+            ):
                 raise ImportError("Research package not available for training")
 
             data = await asyncio.to_thread(np.loadtxt, data_path, delimiter=",")

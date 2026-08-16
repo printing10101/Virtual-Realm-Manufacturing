@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
@@ -25,6 +25,19 @@ logger = logging.getLogger(__name__)
 
 
 class _ProjectCrudMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _get_session: Callable[..., Any]
+    _get_project_lock: Callable[..., Any]
+    _project_locks: dict[str, Any]
+    _project_locks_guard: Any
+    _require_git: Callable[..., Any]
+    _run_git: Callable[..., Any]
+    _get_repo_path: Callable[..., Any]
+    _build_manifest_dict: Callable[..., Any]
+    _write_manifest_yaml: Callable[..., Any]
+    _record_sync: Callable[..., Any]
+    _MANIFEST_FILENAME: str
     """项目 CRUD Mixin：create/get/list/delete project.
 
     依赖：
@@ -139,7 +152,7 @@ class _ProjectCrudMixin:
 
             # 刷新以获取 project_id（default 已触发）
             await session.refresh(project_orm)
-            project_id = project_orm.project_id
+            project_id = str(project_orm.project_id)
             repo_path = self._get_repo_path(project_id)
             project_orm.repo_path = repo_path
             await session.commit()

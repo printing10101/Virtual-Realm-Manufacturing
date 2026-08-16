@@ -267,7 +267,7 @@ def load_template_from_yaml(path: str | Path) -> WorkflowTemplateManifest:
         raise FileNotFoundError(f"Template file not found: {path}")
 
     try:
-        import yaml
+        import yaml  # type: ignore[import-untyped]
     except ImportError as e:
         raise ImportError("PyYAML is required to load template.yaml files. Install it via: pip install pyyaml") from e
 

@@ -148,6 +148,7 @@ class AgentOrchestrator:
         self._step_registry["process_understanding"] = self._step_process_understanding
         self._step_registry["parameter_recommend"] = self._step_parameter_recommend
         self._step_registry["gcode_generate"] = self._step_gcode_generate
+        self._step_registry["validate_safety"] = self._step_validate_safety
 
     def register_step(self, name: str, handler: Callable) -> None:
         """Register a custom pipeline step handler."""
@@ -232,6 +233,7 @@ class AgentOrchestrator:
                 ("process_understanding", {"input_key": "dxf_parse", "optional": False}),
                 ("parameter_recommend", {"input_key": "process_understanding", "optional": False}),
                 ("gcode_generate", {"input_key": "parameter_recommend", "optional": False}),
+                ("validate_safety", {"input_key": "gcode_generate", "optional": False}),
             ]
         elif pipeline_type == "process_plan":
             return [
@@ -470,6 +472,47 @@ class AgentOrchestrator:
         except ImportError as e:
             logger.error("G-code generator not available: %s", e)
             raise RuntimeError(f"G-code生成器不可用，请确保已安装依赖: {e}") from e
+
+    async def _step_validate_safety(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
+        """安全校验步骤：对生成的 G 代码做多层安全门禁（L5 语法合规 + L6 结构完整性）。
+
+        借鉴 NumCraft SafetyValidator：error 级问题使步骤失败，触发编排回退；
+        warning 级问题随结果返回，交由工程师审核。
+        """
+        try:
+            from app.gcode_generation.safety_validator import SafetyValidator
+        except ImportError as e:
+            logger.error("SafetyValidator module not available: %s", e)
+            raise RuntimeError(f"安全校验模块不可用，请确保已安装依赖: {e}") from e
+
+        gcode = ""
+        controller_type = "fanuc_0i"
+        if isinstance(input_data, dict):
+            gcode = input_data.get("gcode", "") or ""
+            controller_type = input_data.get("controller_type", "fanuc_0i") or "fanuc_0i"
+        elif isinstance(input_data, str):
+            gcode = input_data
+        if not gcode:
+            raise ValueError("validate_safety: gcode 为空，无法执行安全校验")
+
+        validator = SafetyValidator(controller_type=controller_type)
+        report = validator.validate_gcode_text(gcode, controller_type=controller_type)
+        if not report.is_valid:
+            first = report.errors[0]
+            raise ValueError(
+                f"安全校验未通过（错误码 {report.error_codes}）：{first.message}"
+            )
+        logger.info(
+            "validate_safety 通过 controller=%s warnings=%d",
+            controller_type,
+            len(report.warnings),
+        )
+        return {
+            "status": "success",
+            "safety_valid": True,
+            "warning_count": len(report.warnings),
+            "warnings": [w.message for w in report.warnings],
+        }
 
     def _extract_final_output(self, context: dict[str, Any], steps: list[StepResult]) -> dict[str, Any]:
         """Extract the final output from pipeline context.

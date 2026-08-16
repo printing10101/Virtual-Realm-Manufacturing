@@ -176,8 +176,12 @@ class BenchmarkDataset:
 
     def __init__(self, root_dir: str | None = None) -> None:
         if root_dir is None:
-            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-            root_dir = os.path.join(project_root, "tests", "benchmark", "geometric")
+            # V2.7.0 解耦后代码位于 engineering/python/，固定 dirname 层级会算错根目录；
+            # 改为向上查找包含 tests/benchmark 的目录（兼容解耦前后布局）。
+            project_root = Path(os.path.abspath(__file__))
+            while project_root != project_root.parent and not (project_root / "tests" / "benchmark").exists():
+                project_root = project_root.parent
+            root_dir = os.path.join(str(project_root), "tests", "benchmark", "geometric")
         self.root_dir = Path(root_dir)
         self._cache: dict[str, PartMetadata] = {}
 

@@ -82,6 +82,7 @@ def build_feature_disclaimer(
     industrial_hard_gates = [
         "mesh → 参数化 CAD 自动转换工业上未解决：本模块输出「算法建议特征」",
         "工程师必须审核每个特征（confirmed / rejected / edited）后才允许进入阶段 3",
+        "mesh 尺度归一化依赖标定块：未标定（calibrated=False）时输出无量纲值，不可用于工艺仿真",
         "良品率要求：0 缺陷容忍",
         "配合面公差：0.01mm（手机摄影测量物理上不可达）",
         "CNC 操作资质：需持证操作员",

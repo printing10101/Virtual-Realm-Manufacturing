@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import select
 
@@ -23,6 +23,16 @@ logger = logging.getLogger(__name__)
 
 
 class _RemoteMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _get_session: Callable[..., Any]
+    _get_project_lock: Callable[..., Any]
+    _require_git: Callable[..., Any]
+    _run_git: Callable[..., Any]
+    _record_sync: Callable[..., Any]
+    _GIT_TIMEOUT_LONG: float
+    _derive_status: Callable[..., Any]
+    _query_git_status: Callable[..., Any]
     """远程操作 Mixin：push + pull.
 
     依赖：

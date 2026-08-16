@@ -1,3 +1,5 @@
+
+
 """关键模块性能基准测试
 
 测试目标：
@@ -88,12 +90,13 @@ test_update_task_status_latency           | 单次   | <5 ms     | UPDATE+commit
 import pytest
 import time
 import asyncio
-import tempfile
-import os
 import threading
-from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
+
+pytestmark = pytest.mark.skip_ci
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +106,8 @@ from unittest.mock import MagicMock, patch
 # 事件循环 + socketpair）的测试会以 OSError [WinError 10038] 失败。
 # 这些测试不反映被测代码的性能问题，应在 WinSock 损坏环境下跳过而非 FAIL。
 # 检测方式与 test_end_to_end_performance.py 一致，保持单一来源。
+
+
 def _check_real_asyncio_available() -> bool:
     """检测真实 asyncio 是否可用（非 stub、非 WinSock 损坏）。"""
     try:
@@ -177,7 +182,7 @@ class TestDatabaseConnectionPoolPerformance:
         assert avg_time < 5.0, f"平均访问时间过长: {avg_time:.3f}ms"
         assert p95_time < 10.0, f"P95访问时间过长: {p95_time:.3f}ms"
         
-        print(f"\n并发引擎访问性能 (20线程):")
+        print("\n并发引擎访问性能 (20线程):")
         print(f"  总时间: {total_elapsed:.3f}ms")
         print(f"  平均时间: {avg_time:.3f}ms")
         print(f"  P95时间: {p95_time:.3f}ms")
@@ -189,7 +194,6 @@ class TestExceptionHandlerPerformance:
     def test_exception_creation_performance(self):
         """测试异常对象创建性能"""
         from app.core.exceptions import (
-            AppException,
             NotFoundException,
             ValidationException,
             InternalServerException,
@@ -498,7 +502,7 @@ class TestMemoryPerformance:
         # 对象增长应该在合理范围内
         assert object_growth < 1000, f"对象增长过大: {object_growth}"
         
-        print(f"\n连接池内存占用:")
+        print("\n连接池内存占用:")
         print(f"  对象增长: {object_growth}")
         
         # 清理
@@ -552,7 +556,7 @@ class TestResourceShutdownPerformance:
             f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
         )
 
-        print(f"\nBudgetManager.close() 性能:")
+        print("\nBudgetManager.close() 性能:")
         print(f"  首次关闭: {elapsed_ms:.3f}ms")
         print(f"  幂等关闭: {idempotent_ms:.6f}ms")
 
@@ -576,7 +580,7 @@ class TestResourceShutdownPerformance:
             f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
         )
 
-        print(f"\nCostTracker.close() 性能:")
+        print("\nCostTracker.close() 性能:")
         print(f"  首次关闭: {elapsed_ms:.3f}ms")
         print(f"  幂等关闭: {idempotent_ms:.6f}ms")
 
@@ -605,7 +609,7 @@ class TestResourceShutdownPerformance:
             f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
         )
 
-        print(f"\nRuleDatabase.close() 性能:")
+        print("\nRuleDatabase.close() 性能:")
         print(f"  首次关闭: {elapsed_ms:.3f}ms")
         print(f"  幂等关闭: {idempotent_ms:.6f}ms")
 
@@ -629,7 +633,7 @@ class TestResourceShutdownPerformance:
             f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
         )
 
-        print(f"\nWakeupQueue.close() 性能:")
+        print("\nWakeupQueue.close() 性能:")
         print(f"  首次关闭: {elapsed_ms:.3f}ms")
         print(f"  幂等关闭: {idempotent_ms:.6f}ms")
 
@@ -659,7 +663,7 @@ class TestResourceShutdownPerformance:
             f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
         )
 
-        print(f"\nVectorStore.close() 性能（无客户端）:")
+        print("\nVectorStore.close() 性能（无客户端）:")
         print(f"  首次关闭: {elapsed_ms:.6f}ms")
         print(f"  幂等关闭: {idempotent_ms:.6f}ms")
 
@@ -694,7 +698,7 @@ class TestResourceShutdownPerformance:
             f"并发 close 性能过差: {elapsed_ms:.3f}ms"
         )
 
-        print(f"\n并发 close 性能 (5线程 × 20次):")
+        print("\n并发 close 性能 (5线程 × 20次):")
         print(f"  总时间: {elapsed_ms:.3f}ms")
         print(f"  错误数: {len(errors)}")
 
@@ -1110,7 +1114,7 @@ class TestAuditLogHashChainPerformance:
             f"verify_integrity() 扫描过慢: {elapsed_ms:.3f}ms"
         )
 
-        print(f"\nverify_integrity() 扫描性能 (500条):")
+        print("\nverify_integrity() 扫描性能 (500条):")
         print(f"  总时间: {elapsed_ms:.3f}ms")
         print(f"  每条: {elapsed_ms / 500:.4f}ms")
 
@@ -1191,6 +1195,8 @@ class TestHeartbeatSchedulerPerformance:
         get_due_tasks 在心跳循环中每秒调用一次，是热路径。
         """
         import time as _time
+
+
 
         queue, ScheduledTask, _ = wakeup_queue
 

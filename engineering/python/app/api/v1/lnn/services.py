@@ -181,8 +181,7 @@ def _generate_alternatives(
             )
         )
     else:
-        alt_1_value = [v * 0.95 for v in primary_value]
-        alt_2_value = [v * 1.05 for v in primary_value]
+        # 序列输出：各输出值整体偏移 ±5%（alt_*_value 仅供启发式说明，不参与构造）
 
         alternatives.append(
             AlternativePlan(
@@ -419,6 +418,9 @@ async def _broadcast_training_events(task_id: str):
     from app.api.v1.lnn.dependencies import task_manager
 
     # H16 修复：跨文件读取 _training_queues 加锁，避免并发写入导致字典状态不一致
+    cancel_evt: asyncio.Event | None = None
+    progress_q: asyncio.Queue | None = None
+    q = None
     _queues_lock = getattr(task_manager, "_training_queues_lock", None)
     if _queues_lock is not None:
         with _queues_lock:
@@ -426,19 +428,15 @@ async def _broadcast_training_events(task_id: str):
             q = _TRAINING_QUEUES.get(task_id)
             if q:
                 # 拿到引用后在锁外操作 queue（Queue 本身线程安全）
-                cancel_evt: asyncio.Event = q["cancel"]
-                progress_q: asyncio.Queue = q["progress"]
-            else:
-                q = None
-                cancel_evt = None
-                progress_q = None
+                cancel_evt = q["cancel"]
+                progress_q = q["progress"]
     else:
         _TRAINING_QUEUES = getattr(task_manager, "_training_queues", {})
         q = _TRAINING_QUEUES.get(task_id)
         if not q:
             return
-        cancel_evt: asyncio.Event = q["cancel"]
-        progress_q: asyncio.Queue = q["progress"]
+        cancel_evt = q["cancel"]
+        progress_q = q["progress"]
 
     if not q or cancel_evt is None or progress_q is None:
         return
@@ -552,6 +550,8 @@ async def _run_quantization_task_v2(
 
     calibration_data = None
     if quantization_type == "static":
+        if calibration_data_path is None:
+            raise ValueError("静态量化必须提供校准数据路径（calibration_data_path）")
         calibration_data = await _load_calibration_data_async(calibration_data_path)
         await progress_updater(30.0, "加载校准数据...")
 

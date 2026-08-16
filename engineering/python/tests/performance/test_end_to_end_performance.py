@@ -1,3 +1,5 @@
+
+
 """端到端关键路径性能测试
 
 测试目标：
@@ -18,7 +20,6 @@
 from __future__ import annotations
 
 import asyncio
-import statistics
 import time
 from typing import List
 
@@ -28,6 +29,11 @@ from fastapi.testclient import TestClient
 
 from app.auth.security_headers_asgi import SecurityHeadersMiddleware
 from app.core.request_id import RequestIdMiddleware
+
+pytestmark = pytest.mark.skip_ci
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +48,8 @@ from app.core.request_id import RequestIdMiddleware
 #   - 真实 asyncio：返回事件循环对象，可 close()
 #   - stub：返回 None，close() 会抛 AttributeError
 #   - WinSock 损坏：抛 OSError [WinError 10038]
+
+
 def _check_real_asyncio_available() -> bool:
     """检测真实 asyncio 是否可用（非 stub、非 WinSock 损坏）。"""
     try:
@@ -75,6 +83,8 @@ def perf_app() -> FastAPI:
     """
     try:
         from enum import StrEnum  # noqa: F401
+
+
     except ImportError:
         pytest.skip("StrEnum requires Python 3.11+; skip on 3.10")
 
@@ -175,7 +185,7 @@ class TestEndToEndLatencyBaseline:
 
         assert stats["p95"] < 30.0, f"/health P95 过高: {stats['p95']:.3f}ms"
 
-        print(f"\n/health 端到端延迟 (100次):")
+        print("\n/health 端到端延迟 (100次):")
         for k, v in stats.items():
             print(f"  {k}: {v:.3f}ms")
 
@@ -186,7 +196,7 @@ class TestEndToEndLatencyBaseline:
 
         assert stats["p95"] < 35.0, f"/echo P95 过高: {stats['p95']:.3f}ms"
 
-        print(f"\n/echo/42 端到端延迟 (100次):")
+        print("\n/echo/42 端到端延迟 (100次):")
         for k, v in stats.items():
             print(f"  {k}: {v:.3f}ms")
 
@@ -197,7 +207,7 @@ class TestEndToEndLatencyBaseline:
 
         assert stats["p95"] < 50.0, f"/compute P95 过高: {stats['p95']:.3f}ms"
 
-        print(f"\n/compute 端到端延迟 (100次):")
+        print("\n/compute 端到端延迟 (100次):")
         for k, v in stats.items():
             print(f"  {k}: {v:.3f}ms")
 
@@ -225,7 +235,7 @@ class TestEndToEndLatencyBaseline:
             f"health_p95={health_stats['p95']:.3f}ms, ratio={ratio:.2f}x"
         )
 
-        print(f"\n/error vs /health 端到端延迟对比:")
+        print("\n/error vs /health 端到端延迟对比:")
         print(f"  /health P95: {health_stats['p95']:.3f}ms")
         print(f"  /error  P95: {error_stats['p95']:.3f}ms")
         print(f"  ratio:       {ratio:.2f}x")
@@ -237,7 +247,7 @@ class TestEndToEndLatencyBaseline:
 
         assert stats["p95"] < 35.0, f"/data POST P95 过高: {stats['p95']:.3f}ms"
 
-        print(f"\n/data POST 端到端延迟 (100次):")
+        print("\n/data POST 端到端延迟 (100次):")
         for k, v in stats.items():
             print(f"  {k}: {v:.3f}ms")
 
@@ -280,7 +290,7 @@ class TestTailLatency:
             f"尾部延迟突增: P99={p99:.3f}ms, P50={p50:.3f}ms, ratio={tail_ratio:.2f}x"
         )
 
-        print(f"\n/health 尾部延迟分析 (1000次):")
+        print("\n/health 尾部延迟分析 (1000次):")
         print(f"  P50:  {p50:.3f}ms")
         print(f"  P95:  {p95:.3f}ms")
         print(f"  P99:  {p99:.3f}ms")

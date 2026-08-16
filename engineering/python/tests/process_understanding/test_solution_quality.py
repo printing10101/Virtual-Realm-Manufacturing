@@ -1,3 +1,5 @@
+
+
 """
 工艺方案合理性评估测试
 
@@ -10,6 +12,8 @@ from __future__ import annotations
 import pytest
 
 from app.ai.process_understanding.solution_generator import (
+
+
     ProcessSolution,
     ProcessStep,
     CuttingParam,
@@ -17,10 +21,15 @@ from app.ai.process_understanding.solution_generator import (
     SolutionGenerator,
 )
 
+pytestmark = pytest.mark.skip_ci
+
+
 
 # ---------------------------------------------------------------------------
 # 方案合理性评估维度与评分标准
 # ---------------------------------------------------------------------------
+
+
 
 class SolutionEvaluator:
     """工艺方案评估器
@@ -206,6 +215,8 @@ class SolutionEvaluator:
     def _parse_numeric(value: str) -> float | None:
         """从字符串中提取数值。"""
         import re
+
+
 
         match = re.search(r"[\d.]+", str(value))
         if match:

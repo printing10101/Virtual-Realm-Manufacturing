@@ -769,10 +769,13 @@ class CollisionDetector:
             # Get tool vector for this segment
             tool_vector = tool_vectors[i] if tool_vectors and i < len(tool_vectors) else self._tool_vector
 
-            # Update tool vector from segment if it has rotation data
-            if hasattr(seg, "a_angle") and hasattr(seg, "c_angle"):
-                tool_vector.a_angle = seg.a_angle
-                tool_vector.c_angle = seg.c_angle
+            # Update tool vector from segment if it has explicit rotation data.
+            # 角度为 None 表示未指定（如 3 轴段），保留默认工具向量，避免 NaN/TypeError。
+            seg_a = getattr(seg, "a_angle", None)
+            seg_c = getattr(seg, "c_angle", None)
+            if seg_a is not None and seg_c is not None:
+                tool_vector.a_angle = seg_a
+                tool_vector.c_angle = seg_c
                 tool_vector.calculate_from_angles()
 
             # Standard checks

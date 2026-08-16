@@ -6,12 +6,12 @@
     :close-on-click-modal="false"
   >
     <el-form
-      :model="form"
+      :model="localForm"
       label-width="100px"
     >
       <el-form-item :label="formTemplateLabel">
         <el-select
-          v-model="form.templateName"
+          v-model="localForm.templateName"
           :placeholder="formTemplatePlaceholder"
           clearable
           style="width: 100%"
@@ -27,7 +27,7 @@
       </el-form-item>
       <el-form-item :label="formSpecLabel">
         <el-input
-          v-model="form.specYaml"
+          v-model="localForm.specYaml"
           type="textarea"
           :rows="14"
           :placeholder="formSpecPlaceholder"
@@ -36,7 +36,7 @@
       </el-form-item>
       <el-form-item :label="formOwnerLabel">
         <el-input
-          v-model="form.ownerId"
+          v-model="localForm.ownerId"
           :placeholder="formOwnerPlaceholder"
           clearable
         />
@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, toRaw } from 'vue'
 import type { WorkflowSpec } from '@/contracts/task'
 
 const props = defineProps<{
@@ -93,12 +93,38 @@ const emit = defineEmits<{
   cancel: []
   validate: []
   'template-select': [name: string]
+  'update:form': [form: { templateName: string; specYaml: string; ownerId: string }]
 }>()
 
 const dialogVisible = computed({
   get: () => props.visible,
   set: (val: boolean) => emit('update:visible', val),
 })
+
+// 本地副本：表单编辑不直接变异 prop（修复 vue/no-mutating-props）
+// 双向同步：父组件外部变更（模板选择、重置）→ 覆盖本地副本；本地编辑 → emit 回写
+// toRaw：props 是 reactive proxy，直接 spread 会携带 proxy 引用，统一用 toRaw 取原始值
+const localForm = ref({ ...toRaw(props.form) })
+
+watch(
+  () => props.form,
+  (val) => {
+    if (JSON.stringify(toRaw(val)) !== JSON.stringify(localForm.value)) {
+      localForm.value = { ...toRaw(val) }
+    }
+  },
+  { deep: true },
+)
+
+watch(
+  localForm,
+  (val) => {
+    if (JSON.stringify(toRaw(val)) !== JSON.stringify(toRaw(props.form))) {
+      emit('update:form', { ...toRaw(val) })
+    }
+  },
+  { deep: true },
+)
 
 function handleTemplateSelect(name: string) {
   emit('template-select', name)

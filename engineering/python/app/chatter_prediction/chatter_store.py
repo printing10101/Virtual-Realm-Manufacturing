@@ -48,6 +48,8 @@ logger = logging.getLogger(__name__)
 # 类型契约（V2.7: 自 shared/lnn/types.py 迁移至本地的 _types.py）
 from app.chatter_prediction._types import (
     ChatterPredictionTaskStatus,
+    ChatterReviewStatus,  # noqa: F401 - re-export（pipeline/__init__ 依赖旧导入路径）
+    PredictionMethod,     # noqa: F401 - re-export（__init__ 依赖旧导入路径）
     FeatureChatterResult,  # re-export：同上（predictor_adapter 依赖旧导入路径）
 )
 

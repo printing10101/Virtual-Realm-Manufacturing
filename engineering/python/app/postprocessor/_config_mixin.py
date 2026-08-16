@@ -9,6 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class _ConfigMixin:
+    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    config: Dict[str, Any]
+    limiter: Any
+
     def _validate_and_complete_config(self) -> None:
         """验证配置完整性并为缺失字段填充默认值。
 
@@ -83,7 +87,7 @@ class _ConfigMixin:
         self._ensure_keys_with_defaults(self.config["tool_offset"], tool_offset_defaults, "tool_offset")
 
         # 验证并补全 fixed_cycles 节
-        fixed_cycles_defaults = {
+        fixed_cycles_defaults: Dict[str, Dict[str, Any]] = {
             "drilling": {},
             "tapping": {},
             "boring": {},

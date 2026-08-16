@@ -161,6 +161,12 @@ def main() -> int:
             )
 
         def __getattr__(attr):
+            # 白名单化：只拦截业务属性，放行 dunder（__file__/__name__/__path__ 等）。
+            # 背景：torch import 时 inspect.getframeinfo 会遍历 sys.modules 读取模块的
+            # __file__，若 dunder 也返回函数对象，会触发
+            # "'function' object has no attribute 'endswith'" 崩溃（sidecar 启动失败 P1-4）。
+            if attr.startswith("__") and attr.endswith("__"):
+                raise AttributeError(attr)
             return _unavailable
 
         mod.__getattr__ = __getattr__

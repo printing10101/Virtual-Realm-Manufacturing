@@ -16,6 +16,7 @@ import sys
 import threading
 
 import time as _time
+from typing import TextIO
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -249,7 +250,7 @@ class _DailySizeRotatingHandler(logging.Handler):
 
         self._current_date = ""
         self._current_file: str | None = None
-        self._stream = None
+        self._stream: TextIO | None = None
         self._lock = threading.Lock()
         self._last_size_check = 0.0
         self._size_check_interval = 10.0
@@ -356,6 +357,11 @@ class _DailySizeRotatingHandler(logging.Handler):
                     self._last_size_check = _time.time()
 
                 msg = self.format(record) + "\n"
+                if self._stream is None:
+                    # 流未打开（打开失败时 _open_stream 置 None 并 raise）时降级，
+                    # 避免 None.write 崩溃导致日志系统自身不可用。
+                    self.handleError(record)
+                    return
                 self._stream.write(msg)
                 self._stream.flush()
         except (OSError, ValueError, RuntimeError) as e:
@@ -399,7 +405,7 @@ def configure_logging(
 
     # 根据配置选择格式化器
     if json_format:
-        formatter = JSONFormatter(include_context=True)
+        formatter: logging.Formatter = JSONFormatter(include_context=True)
     else:
         formatter = _MillisecondFormatter(fmt=LOG_FORMAT, datefmt=DATE_FORMAT)
 

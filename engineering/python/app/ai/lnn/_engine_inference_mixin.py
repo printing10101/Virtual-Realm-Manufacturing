@@ -18,12 +18,13 @@ from app.ai.lnn.core import (
 logger = logging.getLogger(__name__)
 
 # streaming 能力探测（与 engine.py 模块级保持一致）
+StreamingPredictor: Any
 try:
-    from app.ai.lnn.inference.streaming import StreamingPredictor
+    from app.ai.lnn.inference.streaming import StreamingPredictor as StreamingPredictor
 
     _HAS_STREAMING = True
 except ImportError:  # pragma: no cover
-    StreamingPredictor = None  # type: ignore[assignment]
+    StreamingPredictor = None
     _HAS_STREAMING = False
 
 DEFAULT_PRIOR_CONFIDENCE = 0.6
@@ -31,6 +32,15 @@ DEFAULT_PRIOR_CONFIDENCE = 0.6
 
 
 class _EngineInferenceMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _custom_models: Any
+    _engine_stats: Any
+    _fusion: Any
+    _lnn_predictors: Any
+    _router: Any
+    _streaming_predictors: Any
+
     def infer(
         self,
         task_description: str,
@@ -329,7 +339,6 @@ class _EngineInferenceMixin:
             ],
             uncertainty={
                 "epistemic": max(0.0, 1.0 - confidence),
-                "source": "streaming_predictor",
                 "anchor_drift": model_info.get("anchor_drift", 0.0),
                 "trajectory_deviation": model_info.get("trajectory_deviation", 0.0),
             },

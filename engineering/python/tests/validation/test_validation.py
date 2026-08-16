@@ -291,6 +291,14 @@ class TestMetricsResult:
         assert d["tolerance_compliance"] == 96.7
 
 
+# ground_truth 基准数据（.step/.stp/.obj）尚未入库：数据存在时正常验证，
+# 缺失时跳过相关用例（不伪造结果）。
+_GT_DIR = Path(__file__).resolve().parents[4] / "tests" / "benchmark" / "geometric" / "stepped_shaft" / "ground_truth"
+needs_ground_truth = pytest.mark.skipif(
+    not _GT_DIR.exists(), reason="ground_truth 基准数据未入库（.step/.stp/.obj 缺失）"
+)
+
+
 class TestBenchmarkDataset:
     """基准数据集管理测试。"""
 
@@ -352,11 +360,13 @@ class TestBenchmarkDataset:
         pngs = ds.get_png_views("stepped_shaft")
         assert isinstance(pngs, list)
 
+    @needs_ground_truth
     def test_get_step_path_none(self):
         ds = BenchmarkDataset()
         step = ds.get_step_path("stepped_shaft")
         assert step is None
 
+    @needs_ground_truth
     def test_get_obj_path_none(self):
         ds = BenchmarkDataset()
         obj = ds.get_obj_path("stepped_shaft")
@@ -392,6 +402,7 @@ class TestBenchmarkDataset:
         views = ds.get_input_views_dir("flange")
         assert views.exists()
 
+    @needs_ground_truth
     def test_get_ground_truth_dir(self):
         ds = BenchmarkDataset()
         gt = ds.get_ground_truth_dir("stepped_shaft")

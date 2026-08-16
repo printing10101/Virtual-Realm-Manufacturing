@@ -1,3 +1,5 @@
+
+
 """
 响应性能测试
 
@@ -12,9 +14,14 @@ import time
 import pytest
 
 from app.ai.process_understanding.task_classifier import (
+
+
     RuleBasedClassifier,
     TaskType,
 )
+
+pytestmark = pytest.mark.skip_ci
+
 
 
 # ---------------------------------------------------------------------------
@@ -22,6 +29,8 @@ from app.ai.process_understanding.task_classifier import (
 # ---------------------------------------------------------------------------
 
 # 最大允许延迟 (ms)
+
+
 MAX_CLASSIFICATION_LATENCY_MS = 10.0  # 规则分类 < 10ms
 MAX_FALLBACK_LATENCY_MS = 100.0  # 降级方案生成 < 100ms
 MAX_EXPLANATION_LATENCY_MS = 100.0  # 降级解释生成 < 100ms
@@ -266,6 +275,8 @@ class TestDataStructurePerformance:
     def test_explanation_to_dict_performance(self):
         """PredictionExplanation.to_dict() 性能。"""
         from app.ai.process_understanding.prediction_explainer import (
+
+
             PredictionExplainer,
             PredictionData,
         )

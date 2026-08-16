@@ -11,8 +11,6 @@
 
 import logging
 
-import torch  # /device/info、/device/status、/device/clear-cache 端点需要
-
 from fastapi import APIRouter, Depends
 
 from app.core.response import ErrorCode, error, success
@@ -123,12 +121,16 @@ async def list_training_tasks():
 @api_response
 async def get_device_info():
     """返回系统中可用的计算设备信息"""
+    # 首次访问时懒初始化设备管理桥接（模块加载时不调用，避免启动期依赖科研侧）
+    _lazy_init_device_manager()
     # 设备管理模块未启用时直接返回错误，避免调用 None 抛 TypeError
     if not _HAS_DEVICE_MANAGER or get_available_devices is None or detect_device is None:
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
             message="device_manager 模块未启用，设备信息不可用",
         )
+
+    import torch  # noqa: PLC0415 - 延迟导入（无 torch 环境降级）
 
     devices = get_available_devices()
 
@@ -159,6 +161,7 @@ async def get_device_info():
 @api_response
 async def get_device_status_endpoint():
     """返回当前设备利用率和温度等信息"""
+    _lazy_init_device_manager()
     if not _HAS_DEVICE_MANAGER or detect_device is None or get_device_status is None:
         return error(
             code=ErrorCode.SERVICE_UNAVAILABLE,
@@ -176,16 +179,23 @@ async def get_device_status_endpoint():
     }
 
     if device.type == "cuda":
-        gpu_index = device.index if device.index is not None else 0
-        response_data["gpu_status"] = {
-            "total_memory_mb": round(
-                torch.cuda.get_device_properties(gpu_index).total_memory / (1024**2),
-                2,
-            ),
-            "allocated_memory_mb": round(torch.cuda.memory_allocated(gpu_index) / (1024**2), 2),
-            "reserved_memory_mb": round(torch.cuda.memory_reserved(gpu_index) / (1024**2), 2),
-            "max_memory_mb": round(torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2),
-        }
+        import torch  # noqa: PLC0415 - 延迟导入（无 torch 环境降级）
+        try:
+            gpu_index = device.index if device.index is not None else 0
+            response_data["gpu_status"] = {
+                "total_memory_mb": round(
+                    torch.cuda.get_device_properties(gpu_index).total_memory / (1024**2),
+                    2,
+                ),
+                "allocated_memory_mb": round(torch.cuda.memory_allocated(gpu_index) / (1024**2), 2),
+                "reserved_memory_mb": round(torch.cuda.memory_reserved(gpu_index) / (1024**2), 2),
+                "max_memory_mb": round(torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2),
+            }
+        except Exception as e:  # noqa: BLE001
+            # GPU 状态探测失败（驱动/上下文/线程环境问题）不阻断整个端点，
+            # 降级为仅返回基础设备信息，并显式标注错误供排查。
+            logger.warning("GPU status probe failed, degraded response: %s", e)
+            response_data["gpu_status_error"] = str(e)
 
     return success(data=response_data, message="Device status retrieved successfully")
 
@@ -200,6 +210,7 @@ async def clear_device_cache():
             message="device_manager 模块未启用，无法清理 GPU 缓存",
         )
 
+    import torch  # noqa: PLC0415 - 延迟导入（无 torch 环境降级）
     if not torch.cuda.is_available():
         return error(
             code=ErrorCode.INVALID_REQUEST,

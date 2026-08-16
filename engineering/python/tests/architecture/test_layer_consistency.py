@@ -34,9 +34,10 @@ def _collect_imports(root: Path, pattern: str) -> list[tuple[Path, str]]:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    results.append((py_file, alias.name))
+                    if pattern in alias.name:
+                        results.append((py_file, alias.name))
             elif isinstance(node, ast.ImportFrom):
-                if node.module:
+                if node.module and pattern in node.module:
                     results.append((py_file, node.module))
     return results
 

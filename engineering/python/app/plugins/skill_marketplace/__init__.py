@@ -27,7 +27,7 @@ class _StubMarketplace:
     def download(self, skill_id: str, level: str, target_sub_id: str | None = None) -> dict[str, Any]:
         return {"skill_id": skill_id, "status": "stub_downloaded"}
 
-    def rate_skill(self, skill_id: str, rating: int, comment: str = "") -> dict[str, Any]:
+    def rate_skill(self, skill_id: str, rating: float, agent_id: str = "") -> dict[str, Any]:
         return {"skill_id": skill_id, "rating": rating, "status": "stub_rated"}
 
     def unpublish(self, skill_id: str) -> bool:

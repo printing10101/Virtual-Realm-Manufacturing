@@ -531,7 +531,9 @@ class GeometricValidator:
     ) -> list[TopologyEdge]:
         edges: list[TopologyEdge] = []
         for t in topo_checks:
-            edge = t.get("edge", ("", ""))
+            # 修复：原 t.get("edge", ("", "")) 的默认值是个空 tuple，会导致 feature_a/feature_b
+            # 格式（无 "edge" 键）永远命中 isinstance 分支、被误解析为 ("", "")。改为无默认值。
+            edge = t.get("edge")
             if isinstance(edge, (list, tuple)) and len(edge) >= 2:
                 a, b = edge[0], edge[1]
             else:

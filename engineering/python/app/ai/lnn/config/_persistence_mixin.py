@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
 import yaml
 
@@ -14,6 +14,16 @@ logger = logging.getLogger(__name__)
 
 
 class _PersistenceMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _apply_environment_adaptations: Callable[..., Any]
+    _build_config_object: Callable[..., Any]
+    _validate_config: Callable[..., Any]
+    _is_dirty: Any
+    _last_modified: Any
+    _raw_config: Any
+    config_path: Any
+
+
     def load(self, config_path: Optional[str] = None) -> None:
         """
         从YAML文件加载配置

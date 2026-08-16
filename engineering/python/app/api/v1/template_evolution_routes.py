@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
 from app.templates.template_evolution import get_evolution_engine
-from app.core.response import success, error
+from app.core.response import success, error, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ def apply_suggestion(req: ApplySuggestionRequest):
     engine = get_evolution_engine()
     result = engine.apply_suggestion(req.suggestion_id, req.branch_id)
     if result is None:
-        return error(code="SUGGESTION_NOT_FOUND", message="Suggestion not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Suggestion not found")
     return success(data=result.to_dict())
 
 

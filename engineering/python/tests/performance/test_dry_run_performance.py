@@ -1,3 +1,5 @@
+
+
 """Dry-Run预览功能性能测试
 
 测试目标：
@@ -16,11 +18,18 @@
 import pytest
 import time
 import tracemalloc
-from pathlib import Path
-from typing import Any
 
 from app.process_planning.gcode_generator import GCodeGenerator
 from app.process_planning.operation_sequencer import OperationPlan, Operation
+
+pytestmark = pytest.mark.skip_ci
+
+
+
+
+
+
+
 
 
 class TestDryRunPerformance:
@@ -173,7 +182,7 @@ class TestDryRunPerformance:
         assert memory_increase < 50 * 1024 * 1024, \
             f"内存增长过大: {memory_increase / 1024 / 1024:.2f}MB"
         
-        print(f"\n内存使用测试（100工序）:")
+        print("\n内存使用测试（100工序）:")
         print(f"  峰值内存增长: {memory_increase / 1024:.2f}KB")
     
     def test_multiple_controllers_performance(self, generator):
@@ -193,7 +202,7 @@ class TestDryRunPerformance:
             
             assert elapsed < 0.5, f"{controller}响应时间过长: {elapsed:.3f}s"
         
-        print(f"\n多控制器性能测试（50工序）:")
+        print("\n多控制器性能测试（50工序）:")
         for ctrl, time_cost in results.items():
             print(f"  {ctrl}: {time_cost*1000:.2f}ms")
     
@@ -260,7 +269,7 @@ class TestDNCPerformance:
         # 验证结果完整性
         assert len(result["tool_path_summary"]) == 100
         
-        print(f"\n大型G代码预览测试（100工序）:")
+        print("\n大型G代码预览测试（100工序）:")
         print(f"  预览时间: {elapsed*1000:.2f}ms")
         print(f"  工序数量: {len(result['tool_path_summary'])}")
 

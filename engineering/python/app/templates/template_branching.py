@@ -86,7 +86,7 @@ class TemplateBranchManager:
         # 使用统一的连接池管理器（传入 db_path 避免跨测试共享连接池死锁）
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("template_branches", db_path=self.db_path)
-        self._db: Optional[sqlite3.Connection] = None
+        self._db: sqlite3.Connection
 
     def initialize(self) -> None:
         """Create SQLite table and ensure directories exist."""
@@ -94,6 +94,7 @@ class TemplateBranchManager:
         os.makedirs(self.json_dir, exist_ok=True)
 
         self._db = self._pool.get_connection()
+        assert self._db is not None, "template_branching 连接池返回空连接"
         self._db.execute("""
             CREATE TABLE IF NOT EXISTS template_branches (
                 branch_id TEXT PRIMARY KEY,
@@ -323,7 +324,7 @@ class TemplateBranchManager:
         """关闭数据库连接，归还连接到连接池"""
         if self._db:
             self._pool.return_connection(self._db)
-            self._db = None
+            self._db = None  # type: ignore[assignment]
             logger.info("TemplateBranchManager closed")
 
 

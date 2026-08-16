@@ -115,7 +115,11 @@ class PermissionChecker:
         required_level = self.ENDPOINT_PERMISSIONS.get(key)
 
         if required_level is None:
-            required_level = self.DEFAULT_PERMISSIONS.get(method, PermissionLevel.R)
+            required_level = self.DEFAULT_PERMISSIONS.get(method, None)
+
+        if required_level is None:
+            # 未知方法/路径：默认拒绝（安全收紧，大小写敏感）
+            return False
 
         token_level_value = PERMISSION_HIERARCHY.get(token_level, 0)
         required_level_value = PERMISSION_HIERARCHY.get(required_level, 0)
@@ -146,6 +150,7 @@ permission_checker = PermissionChecker()
 class RBACPermissionCache:
     _instance: Optional[RBACPermissionCache] = None
     _instance_lock = threading.Lock()
+    _cache_lock: threading.Lock = threading.Lock()
     _cache: Dict[str, tuple[Set[str], float]] = {}
     _ttl: float = 60.0
 
@@ -252,6 +257,10 @@ def require_permission(permission: str):
     """
 
     async def checker(request: Request):
+        # 权限强制检查关闭时放行（与 UnifiedAuthMiddleware 语义一致）：
+        import os as _os
+        if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
+            return
         if not hasattr(request.state, "username") or not request.state.username:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
@@ -272,6 +281,10 @@ def require_any_permission(*permissions: str):
     """
 
     async def checker(request: Request):
+        # 权限强制检查关闭时放行（与 UnifiedAuthMiddleware 语义一致）：
+        import os as _os
+        if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
+            return
         if not hasattr(request.state, "username") or not request.state.username:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
@@ -292,6 +305,10 @@ def require_all_permissions(*permissions: str):
     """
 
     async def checker(request: Request):
+        # 权限强制检查关闭时放行（与 UnifiedAuthMiddleware 语义一致）：
+        import os as _os
+        if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
+            return
         if not hasattr(request.state, "username") or not request.state.username:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
@@ -351,6 +368,10 @@ def require_role(*roles: str):
     """
 
     async def role_checker(request: Request):
+        # 权限强制检查关闭时放行（与 UnifiedAuthMiddleware 语义一致）：
+        import os as _os
+        if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
+            return
         if not hasattr(request.state, "username") or not request.state.username:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
@@ -493,14 +514,14 @@ class PaperOnlyGuard:
         #    即使是模拟操作也必须留痕，满足 FDA 21 CFR Part 11 合规要求
         try:
             from app.audit.audit_log import (
-                Audit,
+                AuditLog,
                 AIModule,
                 UserDecision,
                 OperationStatus,
             )
             from app.utils.utils import get_output_dir
 
-            audit = Audit(log_dir=str(get_output_dir("logs") / "audit"))
+            audit = AuditLog(log_dir=str(get_output_dir("logs") / "audit"))
             audit.log_decision(
                 ai_module=AIModule.PROCESS_OPTIMIZE,
                 ai_recommendation=sanitized,
@@ -658,6 +679,10 @@ def _check_scope(token_scopes: list[str], required: PermissionLevel) -> bool:
     if required.value in token_scopes:
         return True
     hierarchy = PERMISSION_HIERARCHY
-    token_max = max((hierarchy.get(s, 0) for s in token_scopes), default=0)
-    required_value = hierarchy.get(required.value, 0)
+    # token_scopes 为字符串（如 "R"/"W"），转枚举后查询层级（str Enum 可哈希匹配）
+    token_max = max(
+        (hierarchy.get(PermissionLevel(s), 0) for s in token_scopes if s in PermissionLevel._value2member_map_),
+        default=0,
+    )
+    required_value = hierarchy.get(required, 0)
     return token_max >= required_value

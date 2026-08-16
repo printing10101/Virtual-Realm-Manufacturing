@@ -6,7 +6,7 @@ import json
 import logging
 from collections import deque
 from datetime import datetime, timezone
-from typing import Any, Deque, Dict, List
+from typing import Any, Deque, Dict, List, Callable
 
 from app.dreaming._closed_loop_models import (
     ClosedLoopDecision,
@@ -17,9 +17,23 @@ logger = logging.getLogger(__name__)
 
 
 class _ClosedLoopPersistenceMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _decision_history: Any
+    _demote_confidence: Any
+    _fusion: Any
+    _lock: Any
+    _max_conflict_for_promote: Any
+    _min_samples_for_decision: Any
+    _promote_confidence: Any
+    _router: Any
+    _state_dir: Any
+    _window_size: Any
+    _windows: Any
+
     def save_state(self) -> None:
         """将当前窗口与决策历史持久化到磁盘。"""
-        state = {
+        state: dict[str, Any] = {
             "saved_at": datetime.now(timezone.utc).isoformat(),
             "windows": {},
             "decision_history": {},

@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 
+from app.ai.lnn.core import ModelType
 from app.ai.lnn.inference.registry import (
     get_torch_model_class,
     get_quantized_model_name,
@@ -20,7 +21,7 @@ from app.ai.lnn.inference.registry import (
 
 # P0#3 解耦: 通过 research_bridge 延迟导入。
 _HAS_LNN_CONFIG = False
-LNNConfig = None
+LNNConfig: Any = None
 
 
 def _lazy_init_config() -> bool:
@@ -50,8 +51,8 @@ def _load_model_for_quantization(model_name: str) -> tuple[Any, Any, str]:
     from app.api.v1.lnn.dependencies import model_registry
 
     entry = model_registry.registry.get(model_name)
-    if not entry:
-        raise ValueError(f"Model '{model_name}' not found")
+    if not entry or entry.info is None:
+        raise ValueError(f"Model '{model_name}' not found or missing info")
 
     model_class = get_torch_model_class(entry.info.model_type)
     if not model_class:
@@ -119,9 +120,10 @@ def _run_quantizer(model, model_name: str, quantization_type: str, calibration_d
 
     Quantizer = get_quantizer_factory()
     QuantizationConfig = get_quantization_config()
-    QuantizationType = get_quantization_type_enum()
+    QuantizationType: Any = get_quantization_type_enum()
     if any(x is None for x in (Quantizer, QuantizationConfig, QuantizationType)):
         raise ImportError("Quantization module is not available. Ensure the research package is installed with torch.")
+    assert Quantizer is not None and QuantizationConfig is not None and QuantizationType is not None
 
     quant_type = QuantizationType.DYNAMIC if quantization_type == "dynamic" else QuantizationType.STATIC
     quant_config = QuantizationConfig(quantization_type=quant_type)
@@ -155,7 +157,7 @@ def _register_quantized_model(
     quantized_model_name = get_quantized_model_name(model_name)
     pytorch_registry.register_quantized_model(
         model_name=quantized_model_name,
-        model_type=entry.config.model_type if entry.config else None,
+        model_type=ModelType(entry.config.model_type) if entry.config and entry.config.model_type else ModelType.CFC,
         model_path=quantized_model_path,
         metadata={
             "quantization_type": quantization_type,

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
 from app.ai.lnn.config._schemas import DatasetCacheConfig, ModelConfig
 
@@ -11,6 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 class _ModelsMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _build_config_object: Callable[..., Any]
+    _config: Any
+    _is_dirty: Any
+    _raw_config: Any
+
+
     def get_model_config(self, model_name: str) -> Optional[ModelConfig]:
         """
         获取指定模型的配置

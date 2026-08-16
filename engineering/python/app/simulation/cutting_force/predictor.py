@@ -80,7 +80,7 @@ def predict_cutting_force(
     tool: str = "endmill_d10",
     params: Optional[Dict] = None,
     use_pinn: bool = True,
-) -> Dict[str, float]:
+) -> Dict[str, Any]:
     """预测切削力。
 
     Args:

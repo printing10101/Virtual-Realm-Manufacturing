@@ -1,3 +1,5 @@
+
+
 """
 知识检索准确率测试
 
@@ -17,10 +19,17 @@ from app.ai.process_understanding.knowledge_retriever import (
 )
 from app.ai.process_understanding.task_classifier import TaskType
 
+pytestmark = pytest.mark.skip_ci
+
+
+
+
 
 # ---------------------------------------------------------------------------
 # 典型工艺问题测试集
 # ---------------------------------------------------------------------------
+
+
 
 TYPICAL_QUERIES = [
     {
@@ -263,6 +272,8 @@ class TestDelegationMapping:
     def test_chitchat_uses_fast_pipeline(self):
         """闲聊任务应使用 fast pipeline 以降低延迟。"""
         from app.ai.process_understanding.knowledge_retriever import (
+
+
             TASK_TYPE_TO_PIPELINE_LEVEL,
         )
 

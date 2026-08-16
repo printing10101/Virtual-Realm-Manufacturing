@@ -405,7 +405,7 @@ class TestEngineerReview:
         temp_store.create(task)
         return task
 
-    def test_review_confirmed(self, pipeline, task_with_features):
+    def test_review_confirmed(self, pipeline, task_with_features, temp_store):
         """T16: confirmed 动作正确写入 review_status，不动 params。"""
         reviewed = pipeline.review_feature(
             task_id=task_with_features.task_id,
@@ -417,9 +417,11 @@ class TestEngineerReview:
 
         assert reviewed.review_status == "confirmed"
         assert reviewed.engineer_notes == "平面识别正确"
-        assert reviewed.reviewed_by == "" or reviewed.reviewed_by != "engineer_zhang" or True
         # reviewed_by 写入 task 级别，不是 feature 级别
         # （设计上 task 有 reviewed_by 字段，所有 feature 共享）
+        task = temp_store.get(task_with_features.task_id)
+        assert task is not None
+        assert task.reviewed_by == "engineer_zhang"
 
     def test_review_rejected(self, pipeline, task_with_features):
         """T17: rejected 动作正确写入 review_status（误识别丢弃）。"""

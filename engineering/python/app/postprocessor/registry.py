@@ -40,6 +40,10 @@ class PostProcessorRegistry:
 
     _instance: Optional[PostProcessorRegistry] = None
     _instance_lock = threading.Lock()
+    _processors: dict[str, Type[BasePostProcessor]] = {}
+    _instances: dict[str, BasePostProcessor] = {}
+    _config_loader: ConfigLoader
+    _lock: threading.Lock = threading.Lock()
 
     def __new__(cls) -> PostProcessorRegistry:
         # 安全修复：双重检查锁，防止并发创建多个实例
@@ -47,8 +51,8 @@ class PostProcessorRegistry:
             with cls._instance_lock:
                 if cls._instance is None:
                     instance = super().__new__(cls)
-                    instance._processors: dict[str, Type[BasePostProcessor]] = {}
-                    instance._instances: dict[str, BasePostProcessor] = {}
+                    instance._processors = {}
+                    instance._instances = {}
                     instance._config_loader = ConfigLoader()
                     instance._lock = threading.Lock()
                     instance._register_builtin()

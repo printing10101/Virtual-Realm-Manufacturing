@@ -1,18 +1,15 @@
 """生成解析法与神经网络预测结果对比验证报告。"""
 
 import sys
-import os
 from pathlib import Path
 
 # 添加 python 目录到路径
 python_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(python_dir))
 
-from app.simulation.chatter.predictor import predict_stability
 from app.simulation.chatter.stability import (
     compute_stability_limit,
     ChatterParams,
-    MachineParams,
     ToolParams,
 )
 
@@ -72,7 +69,7 @@ def generate_comparison_report():
               f"刀具={case['tool']}, 材料={case['workpiece']}")
         
         # 解析法预测
-        from app.simulation.chatter.stability import get_machine_params, DEFAULT_TOOL_PARAMS, ToolParams, ChatterParams, compute_stability_limit
+        from app.simulation.chatter.stability import get_machine_params, DEFAULT_TOOL_PARAMS
         
         machine_params = get_machine_params(case['machine'])
         if case['tool'] in DEFAULT_TOOL_PARAMS:
@@ -129,13 +126,13 @@ def generate_comparison_report():
         # 稳定性一致性
         stability_match = analytical_result['stable'] == neural_result['stable']
         
-        print(f"  解析法结果:")
+        print("  解析法结果:")
         print(f"    - 稳定性: {'稳定' if analytical_result['stable'] else '不稳定'}")
         print(f"    - 极限切深: {analytical_depth:.3f} mm")
-        print(f"  神经网络结果:")
+        print("  神经网络结果:")
         print(f"    - 稳定性: {'稳定' if neural_result['stable'] else '不稳定'}")
         print(f"    - 极限切深: {neural_depth:.3f} mm")
-        print(f"  对比分析:")
+        print("  对比分析:")
         print(f"    - 切深相对误差: {relative_error:.2f}%")
         print(f"    - 稳定性判断: {'一致' if stability_match else '不一致'}")
         print(f"    - 验证结果: {'通过' if relative_error <= 5.0 and stability_match else '失败'}")
@@ -170,7 +167,7 @@ def generate_comparison_report():
     print(f"失败用例数: {failed_cases}")
     print(f"通过率: {passed_cases / total_cases * 100:.1f}%")
     print()
-    print(f"切深预测误差统计:")
+    print("切深预测误差统计:")
     print(f"  - 平均误差: {avg_error:.2f}%")
     print(f"  - 最大误差: {max_error:.2f}%")
     print(f"  - 最小误差: {min_error:.2f}%")

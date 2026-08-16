@@ -186,49 +186,33 @@ class TestPrecisionDisclaimer:
         )
 
     def test_three_precision_tiers(self):
-        """T08: 三档精度规格全部存在。"""
-        specs = self.config.image_to_3d.precision_specs
+        """T08: 三档精度规格声明齐全 + 当前档 specs 完整。
 
-        assert "coarse" in specs, "缺 coarse 档位"
-        assert "standard" in specs, "缺 standard 档位"
-        assert "high" in specs, "缺 high 档位"
+        V2.7.0 起 precision_specs 返回当前档位（precision_tier）平铺参数，
+        三档清单由端点 available_tiers 声明；此处验证当前档位合法且 specs 完整。
+        """
+        cfg = self.config.image_to_3d
+        specs = cfg.precision_specs
 
-        for tier_name in ["coarse", "standard", "high"]:
-            tier = specs[tier_name]
-            assert "expected_accuracy_mm" in tier, (
-                f"{tier_name} 缺 expected_accuracy_mm"
-            )
-            assert "suitable_for" in tier, f"{tier_name} 缺 suitable_for"
-            assert "not_suitable_for" in tier, f"{tier_name} 缺 not_suitable_for"
+        assert cfg.precision_tier in ("coarse", "standard", "high")
+        assert "expected_accuracy_mm" in specs
+        assert "suitable_for" in specs
+        assert "not_suitable_for" in specs
 
     def test_precision_tier_accuracy_ordering(self):
-        """T09: 三档精度准确度递进（coarse > standard > high 误差）。"""
+        """T09: 当前档精度量级合理（误差 mm 级，非微米/米级异常）。"""
         specs = self.config.image_to_3d.precision_specs
 
-        # high 档位 expected_accuracy_mm 的下界应该 ≤ standard 的下界
-        # （high 档位精度更高，误差更小）
-        high_lower = float(specs["high"]["expected_accuracy_mm"].split("-")[0])
-        standard_lower = float(specs["standard"]["expected_accuracy_mm"].split("-")[0])
-        coarse_lower = float(specs["coarse"]["expected_accuracy_mm"].split("-")[0])
-
-        assert high_lower <= standard_lower, (
-            f"high 档位下界 {high_lower} 应 ≤ standard 下界 {standard_lower}"
-        )
-        assert standard_lower <= coarse_lower, (
-            f"standard 档位下界 {standard_lower} 应 ≤ coarse 下界 {coarse_lower}"
-        )
+        lo, hi = (float(x) for x in specs["expected_accuracy_mm"].split("-"))
+        assert 0.0 < lo <= hi <= 5.0
 
     def test_not_suitable_for_mentions_tolerance(self):
-        """T10: 三档精度均明确告知「不适用于配合面公差」。"""
+        """T10: 当前档位明确告知不适用于配合面公差。"""
         specs = self.config.image_to_3d.precision_specs
 
-        for tier_name in ["coarse", "standard", "high"]:
-            not_suitable = specs[tier_name]["not_suitable_for"]
-            # 必须明确告知不适用于配合面 / 精密公差
-            text = " ".join(not_suitable) if isinstance(not_suitable, list) else not_suitable
-            assert "配合面" in text or "0.01" in text or "H7" in text, (
-                f"{tier_name} 档位未明确告知不适用于配合面公差: {not_suitable}"
-            )
+        not_suitable = specs["not_suitable_for"]
+        text = " ".join(not_suitable) if isinstance(not_suitable, list) else str(not_suitable)
+        assert "配合面" in text or "0.01" in text or "H7" in text
 
 
 # =============================================================================
@@ -563,8 +547,12 @@ class TestConditionalImport:
         assert "_IMAGE_TO_3D_AVAILABLE" in content, (
             "main.py 中未发现 _IMAGE_TO_3D_AVAILABLE 条件导入标志"
         )
-        assert "from app.api.v1.image_to_3d import routes as image_to_3d_routes" in content, (
-            "main.py 中未发现 image_to_3d 路由导入语句"
+        # 重构后（V2.7.0）路由经 router_registry 集中注册：
+        # adr_pipeline.py 通过 conditional_include 条件挂载 image_to_3d 路由
+        adr_path = Path(__file__).resolve().parent.parent / "app" / "api" / "routers" / "adr_pipeline.py"
+        adr_content = adr_path.read_text(encoding="utf-8")
+        assert "image_to_3d" in adr_content, (
+            "router_registry 中未发现 image_to_3d 路由注册（adr_pipeline.py）"
         )
 
     def test_requirements_contains_trimesh(self):

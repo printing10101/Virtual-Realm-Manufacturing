@@ -112,7 +112,9 @@ class FanucPostProcessor(BasePostProcessor):
         z: float,
         depth: float,
         dwell: float = 0.0,
+        pecking: bool = True,
     ) -> str:
+        # pecking 参数与基类签名对齐：True 用啄钻循环，False 用普通循环
         # When a dwell is requested, use the high-speed peck drill
         # cycle G73 (small retract for chip breaking).  Without a
         # dwell the deep-hole peck cycle G83 (full retract) is used.

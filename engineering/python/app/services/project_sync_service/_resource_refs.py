@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 
 class _ResourceRefMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _get_session: Callable[..., Any]
+    _compute_content_hash: Callable[..., Any]
     """资源引用 Mixin：add/remove/update/list resource refs.
 
     依赖：

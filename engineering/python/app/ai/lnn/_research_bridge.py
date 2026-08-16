@@ -233,6 +233,19 @@ def get_multimodal_jepa_chamfer() -> Optional[Callable]:
     )
 
 
+def get_torch_mamba_lnn_factory() -> Optional[type]:
+    """获取 TorchMambaLNN 类型（Phase 3a：④ SSM 预测 backbone）。
+
+    生产容器无 research/ 时返回 None（解耦契约，与其它 research 桥一致）。
+    """
+    return _lazy_import("research.models.torch_mamba_lnn", "TorchMambaLNN")
+
+
+def get_synthetic_chatter_generator() -> Optional[Callable]:
+    """获取合成颤振数据生成器（Phase 3a：数据管线原型）。"""
+    return _lazy_import("research.datasets.synthetic_chatter", "generate_chatter_dataset")
+
+
 def is_research_available() -> bool:
     """检查 research 包是否可用（torch 已安装 + research 路径可访问）。"""
     return get_torch() is not None and get_lnn_config_factory() is not None

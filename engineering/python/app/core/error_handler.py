@@ -460,7 +460,7 @@ def log_error(
         "exception_message": str(exc),
     }
     if code is not None:
-        log_data["error_code"] = code
+        log_data["error_code"] = str(code)
     if context:
         log_data["context"] = context
     if extra:

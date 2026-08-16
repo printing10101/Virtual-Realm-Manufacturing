@@ -65,6 +65,9 @@ class AsyncTaskManager(_TaskExecutionMixin, _TaskPersistenceMixin, _TaskRecovery
 
     _instance = None
     _lock = Lock()
+    # ---- 宿主契约 / 动态属性（由 LNN 训练子路由挂载，mypy 需要显式声明） ----
+    _training_queues: dict = {}
+    _training_queues_lock: Any = None
 
     def __new__(cls):
         if cls._instance is None:

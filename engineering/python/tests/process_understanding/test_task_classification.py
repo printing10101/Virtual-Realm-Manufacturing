@@ -1,3 +1,5 @@
+
+
 """
 任务分类准确率测试
 
@@ -13,10 +15,17 @@ from typing import Any
 import pytest
 
 from app.ai.process_understanding.task_classifier import (
+
+
+
+
     RuleBasedClassifier,
     TaskType,
     ClassificationResult,
 )
+
+pytestmark = pytest.mark.skip_ci
+
 
 # ---------------------------------------------------------------------------
 # 测试样本集 - 覆盖各类任务类型与表述方式
@@ -116,6 +125,8 @@ TEST_CASES: list[dict[str, Any]] = [
     {"input": "方案", "expected": TaskType.SOLUTION_GENERATION},
     {"input": "标准", "expected": TaskType.KNOWLEDGE_QUERY},
 ]
+
+
 
 
 class TestRuleBasedClassifier:

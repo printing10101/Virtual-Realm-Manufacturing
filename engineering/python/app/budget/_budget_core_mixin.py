@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Optional
+from typing import Any, Callable, Optional
 from app.budget.models import EnforcementAction, EnforcementResult
 from app.models.budget import (
     BudgetCheckResult,
@@ -20,6 +20,20 @@ logger = logging.getLogger(__name__)
 
 
 class _BudgetCoreMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _agent_suspender: Callable[..., Any]
+    _cancel_pending_tasks: Callable[..., Any]
+    _create_alert: Callable[..., Any]
+    _log_enforcement: Callable[..., Any]
+    _policy_key: Callable[..., Any]
+    get_policy: Callable[..., Any]
+    set_policy: Callable[..., Any]
+    _conn: Any
+    _cost_tracker_ref: Any
+    _policies: Any
+    _task_canceller: Any
+
     def adjust_budget(
         self,
         level: BudgetLevel,
@@ -235,7 +249,7 @@ class _BudgetCoreMixin:
                 result.actions_taken.append(EnforcementAction.SUSPEND_AGENT)
                 result.suspended_agents.append(scope_id)
 
-                if self._agent_suspender:
+                if self._agent_suspender is not None:
                     self._agent_suspender(
                         scope_id,
                         f"Budget exceeded: {resource_type.value} ({check.usage_ratio:.1%})",

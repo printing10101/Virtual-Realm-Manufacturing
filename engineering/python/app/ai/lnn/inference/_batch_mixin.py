@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, List
+from typing import Any, List, Callable
 
 import numpy as np
 
@@ -34,6 +34,21 @@ except ImportError:
 
 
 class _BatchMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _compute_confidence: Callable[..., Any]
+    _get_memory_usage_mb: Callable[..., Any]
+    _maybe_inverse_transform: Callable[..., Any]
+    _postprocess: Callable[..., Any]
+    _preprocess: Callable[..., Any]
+    _to_tensor: Callable[..., Any]
+    _update_stats: Callable[..., Any]
+    model: Callable[..., Any]
+    predict: Callable[..., Any]
+    device: Any
+    model_name: Any
+    use_amp: Any
+
+
     def predict_batch(
         self,
         batch_data: List[Any],

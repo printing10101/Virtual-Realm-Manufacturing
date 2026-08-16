@@ -1,4 +1,4 @@
-"""IDatasetStore 的 SQLite + 文件系统实现.
+﻿"""IDatasetStore 的 SQLite + 文件系统实现.
 
 对应 ADR-005 阶段 2 / core-contracts-design.md 第 4 章。
 
@@ -80,6 +80,19 @@ def _storage_uri_for_hash(content_hash: str) -> str:
     """生成 file:// URI."""
     path = _storage_path_for_hash(content_hash)
     return f"file:///{path.as_posix()}"
+
+
+
+def _parse_file_uri(uri: str) -> Path:
+    """解析 file:// URI 为本地路径。
+
+    Windows 兼容：``file:///C:/x/y`` 的 URI path 段为 ``/C:/x/y``，
+    直接 ``Path`` 会解析为 ；需去掉前导斜杠保留盘符。
+    """
+    p = uri[len("file://"):]
+    if len(p) >= 3 and p[0] == "/" and p[2] == ":":
+        p = p[1:]
+    return Path(p)
 
 
 def _write_records(content_hash: str, records: list[dict[str, Any]]) -> tuple[Path, int]:
@@ -346,7 +359,7 @@ class DatasetStore(IDatasetStore):
         # storage_uri 形如 file:///abs/path/to/hash.jsonl
         if not ver.storage_uri.startswith("file://"):
             raise ValueError(f"不支持的 storage_uri scheme（仅支持 file://）: {ver.storage_uri}")
-        path = Path(ver.storage_uri[len("file://") :])
+        path = _parse_file_uri(ver.storage_uri)
         if not path.exists():
             raise FileNotFoundError(f"数据集内容文件不存在（可能已被归档清理）: {path}")
 

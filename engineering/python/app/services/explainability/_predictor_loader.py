@@ -84,7 +84,7 @@ class PredictorLoader:
             _ = self.parse_model_uri(model_uri)  # 仅验证 URI 格式（加载路径见 TODO）
             try:
                 # TODO(LNN-加载): 探测导入确认依赖可用；加载路径缺失 LNNPredictor 构造
-                # （缓存未命中时返回 None，见 .hermes-memory.md 待办）
+                # （缓存未命中时返回 None，待办事项中记录）
                 from app.ai.lnn.inference.predictor import LNNPredictor  # noqa: F401
             except ImportError as exc:
                 raise ProjectionError(f"无法加载模型: {model_uri}（{exc}）") from exc

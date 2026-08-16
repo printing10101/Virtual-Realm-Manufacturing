@@ -191,10 +191,10 @@ class TestSecurityConfigOtherFields:
     """SecurityConfig 中除 permission_enforced 之外字段的覆盖测试。"""
 
     def test_cors_origins_default_wildcard(self, monkeypatch):
-        """CORS_ORIGINS 未设置时默认 ["*"]。"""
+        """CORS_ORIGINS 未设置时默认空（V2.7.0 安全收紧：桌面壳无浏览器 CORS 需求）。"""
         monkeypatch.delenv("CORS_ORIGINS", raising=False)
         cfg = SecurityConfig()
-        assert cfg.cors_origins == ["*"]
+        assert cfg.cors_origins == []
 
     def test_cors_origins_custom_comma_separated(self, monkeypatch):
         """CORS_ORIGINS 多值按逗号拆分。"""
@@ -495,5 +495,5 @@ class TestOtherConfigsSmoke:
         assert isinstance(cfg.process_planning, ProcessPlanningConfig)
         assert isinstance(cfg.environment, EnvironmentConfig)
         assert cfg.app_name == "灵境制造"
-        assert cfg.app_version == "2.5.0"
+        assert cfg.app_version == "2.7.0"
         assert cfg.offline_mode is False

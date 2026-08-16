@@ -6,10 +6,11 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 import logging
 
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from app.contracts.rl_agent import (
     ActionEvaluation,
@@ -38,15 +39,15 @@ _STATE_FIELD_INDEX: dict[str, int] = {name: idx for idx, name in enumerate(_STAT
 def _orm_to_dataclass(orm: RLAgentPolicyVersionORM) -> PolicyVersion:
     """ORM → 契约层 dataclass."""
     return PolicyVersion(
-        version=orm.version,
-        model_uri=orm.model_uri,
-        algorithm=orm.algorithm,
-        description=orm.description or "",
-        created_at=orm.created_at or utcnow(),
-        training_episodes=orm.training_episodes,
-        training_steps=orm.training_steps,
-        mean_reward=orm.mean_reward,
-        is_active=orm.is_active,
+        version=str(orm.version),
+        model_uri=str(orm.model_uri),
+        algorithm=str(orm.algorithm),
+        description=str(orm.description or ""),
+        created_at=cast(datetime, orm.created_at) if orm.created_at else utcnow(),
+        training_episodes=int(orm.training_episodes),
+        training_steps=int(orm.training_steps),
+        mean_reward=float(orm.mean_reward),
+        is_active=bool(orm.is_active),
     )
 
 
@@ -55,7 +56,7 @@ def _training_run_to_status_info(orm: RLAgentTrainingRunORM) -> TrainingStatusIn
     metrics: Optional[TrainingMetricsSnapshot] = None
     if orm.metrics_json:
         try:
-            metrics_dict = json.loads(orm.metrics_json)
+            metrics_dict = json.loads(str(orm.metrics_json))
             metrics = TrainingMetricsSnapshot(
                 step=metrics_dict.get("step", orm.current_step),
                 episode=metrics_dict.get("episode", orm.current_episode),
@@ -79,14 +80,14 @@ def _training_run_to_status_info(orm: RLAgentTrainingRunORM) -> TrainingStatusIn
 
     max_steps = orm.total_steps_target or 100000
     return TrainingStatusInfo(
-        status=orm.status,
-        current_step=orm.current_step,
-        max_steps=max_steps,
-        current_episode=orm.current_episode,
+        status=str(orm.status),
+        current_step=int(orm.current_step),
+        max_steps=int(max_steps),
+        current_episode=int(orm.current_episode),
         metrics=metrics,
-        started_at=orm.started_at,
-        finished_at=orm.finished_at,
-        error_message=orm.error_message,
+        started_at=cast(datetime, orm.started_at) if orm.started_at else None,
+        finished_at=cast(datetime, orm.finished_at) if orm.finished_at else None,
+        error_message=str(orm.error_message) if orm.error_message else None,
     )
 
 

@@ -71,6 +71,9 @@ from app.gcode_generation.generator_adapter import (
     GeneratorAdapterError,
     load_operation_plan,
 )
+from app.gcode_generation.safety_validator import (
+    SafetyValidator,
+)
 
 if TYPE_CHECKING:
     from app.config import GCodeGenerationConfig
@@ -154,17 +157,20 @@ class GCodeGenerationPipeline:
         self,
         cfg: "GCodeGenerationConfig | None" = None,
         adapter: GeneratorAdapter | None = None,
+        safety_validator: SafetyValidator | None = None,
     ) -> None:
         """初始化流水线。
 
         Args:
             cfg: GCodeGenerationConfig 实例（可为 None，使用默认 output_dir="outputs/gcode"）
             adapter: GeneratorAdapter 实例（默认用 GeneratorAdapter()，便于测试注入）
+            safety_validator: SafetyValidator 实例（默认新建；error 级问题阻断导出）
         """
         self._cfg = cfg
         self._store = get_task_store()
         self._adapter = adapter if adapter is not None else GeneratorAdapter()
         self._loader = ChatterReportLoader()
+        self._safety_validator = safety_validator if safety_validator is not None else SafetyValidator()
 
     # -------------------------------------------------------------------------
     # 创建任务
@@ -319,6 +325,31 @@ class GCodeGenerationPipeline:
                     len(task.errors),
                 )
                 return self._build_result(task, error_message=task.error_message)
+
+            # 4.5 统一多层安全门禁（SafetyValidator，借鉴 NumCraft）：
+            # error 级 → 阻断导出（强制回上游调整）；warning 级 → 随任务上报
+            safety_report = self._safety_validator.validate_all(
+                chatter_results=report.feature_results,
+                gcode_text=base_result.program_text,
+                safe_z=task.safe_z,
+                stock_top_z=task.stock_top_z,
+                controller_type=task.controller_type,
+            )
+            if not safety_report.is_valid:
+                task.feature_gcode_results = feature_gcode_results
+                task.gcode_text = base_result.program_text
+                task.warnings = list(base_result.warnings) + [w.message for w in safety_report.warnings]
+                task.errors = [f"{i.code}: {i.message}" for i in safety_report.errors]
+                task.status = GCodeGenerationTaskStatus.FAILED.value
+                task.error_message = (
+                    f"G 代码安全校验未通过（错误码 {safety_report.error_codes}）："
+                    f"{safety_report.errors[0].message}。请回阶段 5 调整参数后重新生成。"
+                )
+                self._store.update_task(task)
+                logger.warning("任务 %s 安全校验未通过 codes=%s", task_id, safety_report.error_codes)
+                return self._build_result(task, error_message=task.error_message)
+            for _sw in safety_report.warnings:
+                task.warnings.append(_sw.message)
 
             # 5. is_valid == True → GENERATED
             task.feature_gcode_results = feature_gcode_results

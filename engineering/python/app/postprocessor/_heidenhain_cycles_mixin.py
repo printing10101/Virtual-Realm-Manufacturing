@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, Callable, Any, Dict
 
 logger = logging.getLogger(__name__)
 
 
 class _HeidenhainCyclesMixin:
+    # ---- 宿主契约：由兄弟 mixin / 基类提供（mypy 需要显式声明） ----
+    _block_counter: int
+    _last_program_number: int
+    _next_block: Callable[[], int]
+    _fmt: Callable[[float], str]
+    _date_string: Callable[[], str]
+    rapid_feed: float
+    safe_z_height: float
+    get_feed_rate: Callable[..., float]
+    get_spindle_rpm: Callable[..., float]
+    get_subprogram_config: Callable[..., Any]
+    get_cycle_config: Callable[..., Dict[str, Any]]
+
     def format_cycle_drill(
         self,
         x: float,
@@ -16,7 +29,10 @@ class _HeidenhainCyclesMixin:
         z: float,
         depth: float,
         dwell: float = 0.0,
+        pecking: bool = True,
     ) -> str:
+        # pecking 参数与基类签名对齐：Heidenhain 用 Q202（PLUNGING DEPTH）表达啄钻，
+        # 循环选择由 dwell 决定（CYCL DEF 200 普通钻孔 / 203 万能钻孔），pecking 不参与分支。
         cfg = self.get_cycle_config("drilling", "G83" if dwell > 0 else "G81")
         r_plane = self.safe_z_height
         peck_depth = cfg.get("peck_depth", 5.0)
@@ -47,7 +63,6 @@ class _HeidenhainCyclesMixin:
                 f"{self._next_block()}  CYCL CALL",
             ]
         return "\n".join(lines)
-
     def format_cycle_tapping(
         self,
         x: float,

@@ -372,7 +372,7 @@ def write_reports(
     md_path = os.path.join(output_dir, "kg_experience_report.md")
     with open(md_path, "w", encoding="utf-8") as f:
         f.write("# XM-100 知识图谱加工经验导入报告\n\n")
-        f.write(f"- **机床**: XM-100 (Xmaker, Fanuc 0i 兼容)\n")
+        f.write("- **机床**: XM-100 (Xmaker, Fanuc 0i 兼容)\n")
         f.write(f"- **生成时间**: {report['timestamp']}\n\n")
 
         f.write("## 1. 导入的加工记录\n\n")

@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import asyncio
-import hmac
 import json
 import logging
 import os
@@ -401,3 +400,28 @@ def register_tools(server) -> None:
         except Exception as exc:
             logger.exception("lnn_wait_for_training failed for %s", job_id)
             return [{"type": "text", "text": _format_error(str(exc))}]
+
+    # ---------------------------------------------------------------------
+    # 设备元数据 → MCP 工具自动生成（Phase 2：A2M 思路）
+    # 按 DeviceDescriptor 的 capabilities 自动注册 {device_id}_{op} 工具，
+    # 后端为仿真设备（SimulatedDevice），参数越界 fail-closed。
+    # 注册失败不影响既有 6 个 LNN 工具。
+    # ---------------------------------------------------------------------
+    try:
+        from mcp_server.device_registry import build_demo_registry
+        from mcp_server.device_tools import register_device_tools
+
+        for descriptor in build_demo_registry():
+            register_device_tools(server, descriptor)
+    except Exception as exc:  # noqa: BLE001 - 设备工具注册失败不阻断 LNN 工具
+        logger.warning("设备工具注册失败（不影响 LNN 工具）: %s", exc)
+
+    # ---------------------------------------------------------------------
+    # 仿真工厂工具（升级①：语言驱动仿真工厂，SUPCON 思路）
+    # ---------------------------------------------------------------------
+    try:
+        from mcp_server.factory_tools import register_factory_tools
+
+        register_factory_tools(server)
+    except Exception as exc:  # noqa: BLE001 - 工厂工具注册失败不影响既有工具
+        logger.warning("仿真工厂工具注册失败（不影响 LNN/设备工具）: %s", exc)

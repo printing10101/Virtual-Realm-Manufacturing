@@ -129,6 +129,11 @@ class AdaptiveMillingParams:
         if self.mc is None:
             self.mc = coeffs["mc"]
 
+        # 材料库兜底后仍缺失（如自定义材料未在库中且无 Kienzle 系数）时显式报错，
+        # 避免下游 `0.1 < None` 的 TypeError 与隐式错误传播。
+        if self.kc1_1 is None or self.mc is None:
+            raise ValueError(f"材料 '{self.material}' 缺少 Kienzle 系数（kc1_1/mc），无法计算切削力")
+
         # 修复 P1: mc=1 时 `1.0 / (1.0 - mc)` 触发 ZeroDivisionError；
         # mc>1 时指数为负导致数学异常。Kienzle 切削力指数物理合理范围为 0.1 < mc < 0.5，
         # 违反时抛 ValueError，避免下游反向校核 fz 时崩溃。
@@ -253,6 +258,8 @@ class AdaptiveMillingSolver:
             SegmentSolution 优化解
         """
         p = self._params
+        if p.kc1_1 is None or p.mc is None:
+            raise ValueError(f"材料 '{p.material}' 缺少 Kienzle 系数，无法计算切削力")
         target_force = force_override_n if force_override_n else p.target_force_n
 
         # ── Step 1: 选择基准 fz（先用 max_fz 起步，后续按需回退） ──
@@ -441,6 +448,8 @@ class AdaptiveMillingSolver:
     def _compute_force(self, ap: float, fz: float) -> float:
         """正向计算切削力。"""
         p = self._params
+        if p.kc1_1 is None or p.mc is None:
+            raise ValueError(f"材料 '{p.material}' 缺少 Kienzle 系数，无法计算切削力")
         h = fz
         # 立铣侧铣：b = ap, h = fz
         return compute_cutting_force_fz(p.kc1_1, p.mc, ap, h)
@@ -499,7 +508,7 @@ class AdaptiveMillingSolver:
     ) -> str:
         """生成人类可读的求解摘要。"""
         p = self._params
-        dominant = max(constraint_counts, key=constraint_counts.get) if constraint_counts else "unknown"
+        dominant = max(constraint_counts, key=lambda k: constraint_counts[k]) if constraint_counts else "unknown"
         dominant_count = constraint_counts.get(dominant, 0)
         dominant_pct = (dominant_count / num_segments * 100) if num_segments > 0 else 0
 

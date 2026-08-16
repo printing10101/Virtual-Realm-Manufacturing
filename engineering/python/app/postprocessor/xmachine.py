@@ -343,7 +343,9 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
         z: float,
         depth: float,
         dwell: float = 0.0,
+        pecking: bool = True,
     ) -> str:
+        # pecking 参数与基类签名对齐：True 用啄钻循环，False 用普通循环
         # XM-100 桌面级：使用 G81 简单钻孔，小切深啄钻
         cycle_code = "G83" if depth > 5.0 else "G81"
         cfg = self.get_cycle_config("drilling", cycle_code)

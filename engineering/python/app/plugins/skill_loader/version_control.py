@@ -14,10 +14,11 @@
 from __future__ import annotations
 
 import logging
+
 import os
 import shutil
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
 from .models import (
     PRIORITY_MAP,
@@ -33,6 +34,10 @@ logger = logging.getLogger(__name__)
 
 
 class VersionControlMixin:
+    # ---- 宿主契约：由兄弟 mixin 提供（PathSafetyMixin/SkillDiscoveryMixin） ----
+    _sanitize_path_segment: Callable[..., str]
+    _resolve_safe_subpath: Callable[..., str]
+    _load_skill_from_file: Callable[..., Any]
     """版本控制 Mixin。
 
     依赖宿主类组合的 :class:`PathSafetyMixin`、:class:`SkillDiscoveryMixin`，

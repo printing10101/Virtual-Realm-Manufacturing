@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable, Any, Dict
 
 logger = logging.getLogger(__name__)
 
 
 class _HeidenhainCoreMixin:
+    # ---- 宿主契约：由兄弟 mixin / 基类提供（mypy 需要显式声明） ----
+    _block_counter: int
+    _last_program_number: int
+    _next_block: Callable[[], int]
+    _fmt: Callable[[float], str]
+    _date_string: Callable[[], str]
+    rapid_feed: float
+    safe_z_height: float
+    get_feed_rate: Callable[..., float]
+    get_spindle_rpm: Callable[..., float]
+    get_subprogram_config: Callable[..., Any]
+    get_cycle_config: Callable[..., Dict[str, Any]]
+
     def format_header(self, program_number: int = 1) -> str:
         self._block_counter = 0
         self._last_program_number = program_number  # 记录供 format_footer 使用
@@ -27,7 +40,6 @@ class _HeidenhainCoreMixin:
             "",
         ]
         return "\n".join(lines)
-
     def format_tool_change(
         self,
         tool_id: int,
@@ -161,9 +173,9 @@ class _HeidenhainCoreMixin:
             测头循环 NC 代码字符串
         """
         if feed_rate is None:
-            feed_rate = self._fmt(self.get_feed_rate(self.rapid_feed * 0.1))
+            feed_rate_str = self._fmt(self.get_feed_rate(self.rapid_feed * 0.1))
         else:
-            feed_rate = self._fmt(feed_rate)
+            feed_rate_str = self._fmt(feed_rate)
 
         lines = [
             f"{self._next_block()}  CYCL DEF 19 PROBE",
@@ -172,7 +184,7 @@ class _HeidenhainCoreMixin:
             f"{self._next_block()}     Q264={self._fmt(x_pos)}  ;FIRST AXIS COORDINATE",
             f"{self._next_block()}     Q265={self._fmt(y_pos)}  ;SECOND AXIS COORDINATE",
             f"{self._next_block()}     Q272={probe_number}  ;PROBE NUMBER",
-            f"{self._next_block()}     Q273={feed_rate}  ;FEED RATE",
+            f"{self._next_block()}     Q273={feed_rate_str}  ;FEED RATE",
             f"{self._next_block()}  CYCL CALL",
         ]
         return "\n".join(lines)

@@ -38,7 +38,7 @@ from typing import Any, AsyncIterator, Optional
 
 import httpx
 
-from lomo.client import DEFAULT_BASE_URL, DEFAULT_TIMEOUT, _BaseClient
+from lomo.client import DEFAULT_TIMEOUT, _BaseClient
 from lomo.exceptions import (
     LomoAPIError,
     LomoConnectionError,

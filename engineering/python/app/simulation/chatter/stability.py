@@ -28,7 +28,7 @@ import json
 import os
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ DEFAULT_MACHINE_PARAMS: Dict[str, Dict[str, float]] = {
 }
 
 # 默认刀具参数
-DEFAULT_TOOL_PARAMS: Dict[str, Dict[str, float]] = {
+DEFAULT_TOOL_PARAMS: Dict[str, Dict[str, Any]] = {
     "endmill_d10": {
         "diameter": 10.0,  # 刀具直径 (mm)
         "num_flutes": 4,  # 齿数
@@ -299,7 +299,7 @@ def compute_stability_lobe(
     speed_range: Tuple[float, float] = (1000, 10000),
     num_points: int = 100,
     num_lobes: int = 5,
-) -> Dict[str, List[float]]:
+) -> Dict[str, Any]:
     """计算稳定性叶图。
 
     生成主轴转速与极限切削深度的关系曲线（稳定性叶图）。

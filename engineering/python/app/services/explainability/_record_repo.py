@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable, Coroutine, Optional
+from datetime import datetime
+from typing import Any, Callable, Coroutine, Optional, cast
 
 from sqlalchemy import desc, func, select
 
@@ -90,17 +91,17 @@ class ExplanationRecordRepo:
             await session.close()
 
         return ExplanationRecord(
-            id=record_orm.id,
-            explanation_type=record_orm.explanation_type,
-            model_uri=record_orm.model_uri,
-            source_snapshot_id=record_orm.source_snapshot_id,
-            input_signature=record_orm.input_signature,
-            payload_path=record_orm.payload_path,
-            payload_size_bytes=record_orm.payload_size_bytes,
+            id=str(record_orm.id),
+            explanation_type=str(record_orm.explanation_type),
+            model_uri=str(record_orm.model_uri),
+            source_snapshot_id=str(record_orm.source_snapshot_id) if record_orm.source_snapshot_id else None,
+            input_signature=str(record_orm.input_signature),
+            payload_path=str(record_orm.payload_path),
+            payload_size_bytes=int(record_orm.payload_size_bytes),
             metadata_json=metadata,
-            created_by=record_orm.created_by,
-            created_at=record_orm.created_at,
-            expires_at=record_orm.expires_at,
+            created_by=str(record_orm.created_by) if record_orm.created_by else None,
+            created_at=cast(datetime, record_orm.created_at),  # ORM nullable=False
+            expires_at=cast(datetime, record_orm.expires_at) if record_orm.expires_at else None,
         )
 
     async def find_record_orm(self, explanation_id: str) -> ExplanationRecordORM:

@@ -29,11 +29,17 @@ audit_log = AuditLog()
 # 真正的并发控制由 AsyncTaskManager._semaphore 统一管理。
 _active_training_tasks: set[str] = set()
 
+# 并发训练任务上限（与 AsyncTaskManager 默认 max_concurrent=3 保持一致；
+# P0-2.3 子路由拆分时引用此常量的 routes_system.py 保留，此处补回定义）
+MAX_CONCURRENT_TRAINING_TASKS = 3
+
 task_manager = AsyncTaskManager()
 
 
 # === 以下状态从 routes.py 迁移（P0-2.3 子路由拆分） ===
 import os
+from typing import Any
+
 import threading
 from pathlib import Path
 from datetime import timedelta
@@ -56,5 +62,5 @@ _TRAINING_QUEUES_LOCK = threading.Lock()
 _TRAINING_QUEUE_TTL = timedelta(hours=1)
 
 # 流式推理引擎单例
-_hybrid_engine = None
+_hybrid_engine: Any = None
 _hybrid_engine_lock = threading.Lock()

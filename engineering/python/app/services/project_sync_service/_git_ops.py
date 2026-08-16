@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from app.contracts.project_sync import SYNC_STATUS
 from app.services.project_sync_service._exceptions import (
@@ -21,6 +21,13 @@ logger = logging.getLogger(__name__)
 
 
 class _GitOpsMixin:
+    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    _project_locks: dict[str, Any]
+    _project_locks_guard: Any
+    _git_available: Optional[bool]
+    _git_available_lock: Any
+    _repos_root: str
+    _GIT_TIMEOUT: float
     """Git 操作 Mixin：封装 git 命令执行与状态查询.
 
     依赖：

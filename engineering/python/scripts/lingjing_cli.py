@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""灵境制造 CLI — 服务生命周期管理（对标 hermes doctor/start/stop/update/uninstall）
+"""灵境制造 CLI — 服务生命周期管理（doctor/start/stop/update/uninstall）
 
 用法:
     lingjing doctor      全面自检（Python/依赖/配置/端口/健康）
@@ -14,8 +14,6 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
-import json
 import os
 import re
 import signal

@@ -10,36 +10,43 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Request
+from fastapi.security import HTTPBearer
 from starlette import status
 from starlette.exceptions import HTTPException
 
 from app.auth.security import decode_token_strict, get_token_ban_list
 from app.models.user import get_user_store
 
-# 安全方案：HTTP Bearer Token 认证（单例）
-security_scheme = HTTPBearer()
+# 安全方案：HTTP Bearer Token 认证（单例，供 security_scheme 兼容导出）
+security_scheme = HTTPBearer(auto_error=False)
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-) -> dict[str, Any]:
+def _permission_enforced() -> bool:
+    """权限强制检查开关（与 config.security.permission_enforced 同源，实时读取）。"""
+    import os
+
+    val = os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower()
+    return val not in ("0", "false", "no", "off")
+
+
+def get_current_user(request: Request) -> dict[str, Any]:
     """FastAPI 依赖：从 Authorization Header 解析当前用户。
 
-    验证流程：
-    1. 提取 Bearer token
-    2. 检查 token 是否在撤销列表中
-    3. 解码并验证 JWT
-    4. 从 UserStore 查找用户
-
-    Returns:
-        ``{"username": ..., "role": ...}`` 字典。
-
-    Raises:
-        HTTPException(401): Token 无效、过期、被撤销或用户不存在/已禁用。
+    权限强制检查关闭（LNN_PERMISSION_ENFORCED=false，测试/降级环境）时
+    直接放行匿名用户，与 UnifiedAuthMiddleware / require_permission 语义一致；
+    否则按完整 JWT 流程验证。
     """
-    token = credentials.credentials
+    if not _permission_enforced():
+        return {"username": "_anonymous_", "role": "T"}
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid Authorization header",
+        )
+    token = auth_header[len("Bearer ") :]
     ban_list = get_token_ban_list()
     if ban_list.is_banned(token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token已被撤销")

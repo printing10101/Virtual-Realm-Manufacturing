@@ -366,6 +366,8 @@ if HAS_TORCH:
             if self.config.use_fusion:
                 prev_state = self.state_head(h)  # [batch, state_dim]
             else:
+                if states is None:
+                    raise RuntimeError("非融合模式需要传入 states 历史状态")
                 prev_state = states[:, -1, :]  # [batch, state_dim]
 
             for t in range(T, T + horizon):

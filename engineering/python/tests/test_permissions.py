@@ -118,7 +118,7 @@ class TestRateLimitState:
 
         state.record()
         assert state.is_allowed(config) is False
-        assert len(state.requests) == 1
+        assert len(state.requests) == 2  # 两次同秒记录均在窗口内，不重复清理
 
 
 class TestRateLimitConfig:
@@ -152,7 +152,7 @@ class TestPermissionChecker:
         )
         assert (
             checker.has_permission(PermissionLevel.R, "/api/v1/wear/predict", "POST")
-            is False
+            is True  # POST predict 是推理端点（只读语义），R 可调
         )
 
     def test_write_endpoints_require_w_permission(self):

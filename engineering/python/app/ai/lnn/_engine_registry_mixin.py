@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from __future__ import annotations
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,12 @@ DEFAULT_PRIOR_CONFIDENCE = 0.6
 
 
 class _EngineRegistryMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _custom_models: Any
+    _lnn_predictors: Any
+    _streaming_predictors: Any
+
+
     def register_custom_model(
         self,
         model_name: str,

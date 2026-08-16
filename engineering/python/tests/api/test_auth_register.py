@@ -12,6 +12,17 @@ from __future__ import annotations
 from typing import Any, Generator
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """每测试前清空限流器：IP 限流状态跨测试累积会导致 429 断言提前触发。"""
+    from app.auth.permissions import permission_checker
+
+    permission_checker._rate_limiter.clear()
+    yield
+    permission_checker._rate_limiter.clear()
+from app.config import config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -104,7 +115,9 @@ class TestRegisterEnvCodeMissing:
 
     def test_returns_403_when_env_var_not_set(self, client, monkeypatch):
         """未配置 LNN_REGISTRATION_CODE 时直接拒绝，返回 403。"""
-        monkeypatch.delenv("LNN_REGISTRATION_CODE", raising=False)
+        # 注册功能开关读的是启动时加载的 config 单例（B39 设计），
+        # 直接置空 config.security.registration_code 模拟功能关闭
+        monkeypatch.setattr(config.security, "registration_code", "")
         response = client.post(
             "/api/v1/auth/register",
             json={"username": "alice", "password": "Passw0rd!", "invite_code": "ANY"},
@@ -116,7 +129,7 @@ class TestRegisterEnvCodeMissing:
 
     def test_returns_403_when_env_var_is_empty(self, client, monkeypatch):
         """LNN_REGISTRATION_CODE 设置为空字符串视为已关闭。"""
-        monkeypatch.setenv("LNN_REGISTRATION_CODE", "")
+        monkeypatch.setattr(config.security, "registration_code", "")
         response = client.post(
             "/api/v1/auth/register",
             json={"username": "alice", "password": "Passw0rd!", "invite_code": "ANY"},
@@ -258,7 +271,9 @@ class TestResponseFormat:
 
     def test_403_response_uses_code_and_message(self, client, monkeypatch):
         """403 响应必须包含 code 和 message 字段。"""
-        monkeypatch.delenv("LNN_REGISTRATION_CODE", raising=False)
+        # 注册功能开关读的是启动时加载的 config 单例（B39 设计），
+        # 直接置空 config.security.registration_code 模拟功能关闭
+        monkeypatch.setattr(config.security, "registration_code", "")
         response = client.post(
             "/api/v1/auth/register",
             json={"username": "alice", "password": "Passw0rd!"},

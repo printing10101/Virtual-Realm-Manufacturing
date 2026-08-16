@@ -24,13 +24,13 @@ def cmd_analyze(args):
     total_funcs = sum(len(m.functions) for m in modules)
     total_classes = sum(len(m.classes) for m in modules)
     
-    print(f"\n分析结果:")
+    print("\n分析结果:")
     print(f"  模块数: {len(modules)}")
     print(f"  函数数: {total_funcs}")
     print(f"  类数: {total_classes}")
     
     if args.verbose:
-        print(f"\n详细列表:")
+        print("\n详细列表:")
         for mod in modules:
             print(f"\n  {mod.name}:")
             if mod.functions:
@@ -55,7 +55,7 @@ def cmd_run(args):
     runner = TestRunner(args.test_dir)
     report = runner.run(verbose=args.verbose)
     
-    print(f"\n测试报告:")
+    print("\n测试报告:")
     print(f"  总计: {report.total}")
     print(f"  通过: {report.passed}")
     print(f"  失败: {report.failed}")

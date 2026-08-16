@@ -72,7 +72,7 @@ class TemplateEvolutionEngine:
         # 使用统一的连接池管理器（传入 db_path 避免跨测试共享连接池死锁）
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("template_evolution", db_path=self.db_path)
-        self._db: Optional[sqlite3.Connection] = None
+        self._db: sqlite3.Connection
         self._triggers: Dict[str, EvolutionTrigger] = {}
         self._suggestions: List[EvolutionSuggestion] = []
         self._metrics_data: Dict[str, Any] = {}
@@ -82,6 +82,7 @@ class TemplateEvolutionEngine:
         os.makedirs(self.log_dir, exist_ok=True)
 
         self._db = self._pool.get_connection()
+        assert self._db is not None, "template_evolution 连接池返回空连接"
         self._db.execute("""
             CREATE TABLE IF NOT EXISTS evolution_suggestions (
                 suggestion_id TEXT PRIMARY KEY,
@@ -402,10 +403,14 @@ class TemplateEvolutionEngine:
             ]
 
     def close(self) -> None:
-        """关闭数据库连接，归还连接到连接池"""
+        """关闭数据库连接，归还连接到连接池。
+
+        close() 后本实例不应再使用。置 None 标记已关闭，防止重复归还连接。
+        （连接由连接池托管复用，文件句柄保持打开是池设计固有行为）
+        """
         if self._db:
             self._pool.return_connection(self._db)
-            self._db = None
+            self._db = None  # type: ignore[assignment]
             logger.info("TemplateEvolutionEngine closed")
 
 

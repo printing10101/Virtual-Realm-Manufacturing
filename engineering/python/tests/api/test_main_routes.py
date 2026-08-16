@@ -11,18 +11,19 @@ class TestHealthEndpoints:
     def test_health_check_returns_healthy(self, client):
         response = client.get("/health")
         assert response.status_code == 200
-        data = response.json()
+        body = response.json()
+        # V2.7.0 统一响应包装：{code, message, data}
+        assert body["code"] == 0
+        data = body["data"]
         assert data["status"] == "healthy"
-        assert "timestamp" in data
-        assert "version" in data
-        assert "uptime" in data
+        assert "total_requests" in data
 
     def test_api_health_check_returns_ok(self, client):
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
-        assert data["version"] == "2.5.0"
+        assert data["version"]  # 版本号非空（随 VERSION 文件动态）
 
     def test_ping_returns_true(self, client):
         response = client.get("/api/health/ping")
@@ -58,6 +59,13 @@ class TestVersionEndpoint:
 
 class TestMetricsEndpoint:
     """Tests for GET /api/metrics."""
+
+    @pytest.fixture(autouse=True)
+    def _allow_metrics(self, monkeypatch):
+        """测试客户端 IP 为 'testserver'（非合法 IP），绕过 metrics IP 白名单。"""
+        import app.middleware.metrics_middleware as mm
+
+        monkeypatch.setattr(mm, "is_metrics_allowed", lambda ip: True)
 
     def test_metrics_returns_text(self, client):
         response = client.get("/api/metrics")

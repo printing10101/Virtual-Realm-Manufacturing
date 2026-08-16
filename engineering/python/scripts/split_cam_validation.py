@@ -33,7 +33,7 @@ print(f"Created {schemas_file.name}: {len(schemas_body.split(chr(10)))} lines")
 # Write new routes.py (imports + routes without schemas)
 new_routes = imports + '\nfrom app.api.v1.cam_validation.schemas import (\n'
 # Collect all class names from schemas
-schema_classes = [l.strip() for l in schemas_body.split("\n") if l.startswith("class ")]
+schema_classes = [line.strip() for line in schemas_body.split("\n") if line.startswith("class ")]
 for cls in schema_classes:
     class_name = cls.split("(")[0].replace("class ", "").strip()
     new_routes += f"    {class_name},\n"

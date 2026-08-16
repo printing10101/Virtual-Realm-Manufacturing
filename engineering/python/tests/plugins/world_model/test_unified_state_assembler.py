@@ -494,7 +494,8 @@ class TestPluginExecuteAutoAssemble:
     这里只验证到 input_mode 标记层面.
     """
 
-    def test_execute_fusion_assembled_mode_flag(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_execute_fusion_assembled_mode_flag(self, monkeypatch):
         """execute 在自动组装成功时标记 input_mode='fusion_assembled'."""
         pytest.importorskip("torch")  # 无 torch 则跳过完整 execute
 
@@ -539,7 +540,7 @@ class TestPluginExecuteAutoAssemble:
         )
 
         # 执行（torch 已 importorskip 确认可用）
-        result = plugin.execute(ctx)
+        result = await plugin.execute(ctx)
         # 即便预测因权重缺失失败，input_mode 也应记录组装诊断
         # 这里验证 execute 不因组装环节抛异常（组装是纯 Python）
         assert isinstance(result, TaskResult)

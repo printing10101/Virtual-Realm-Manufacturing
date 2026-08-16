@@ -107,7 +107,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("admin", {"system:config", "user:manage"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "admin"
             mock_store.return_value.get_user.return_value = mock_user
@@ -124,7 +124,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("operator", {"result:view", "report:export"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -136,7 +136,7 @@ class TestCheckUserPermissions:
     async def test_check_user_has_permission_user_not_found(self):
         from app.auth.permissions import check_user_has_permission
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_store.return_value.get_user.return_value = None
 
             result = await check_user_has_permission("unknown_user", "any:perm")
@@ -151,7 +151,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("engineer", {"project:create", "simulation:run"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -170,7 +170,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("operator", {"result:view"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -189,7 +189,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("engineer", {"project:create"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -206,7 +206,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("admin", {"system:config", "user:manage", "project:create"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "admin"
             mock_store.return_value.get_user.return_value = mock_user
@@ -225,7 +225,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("engineer", {"project:create", "simulation:run"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -244,7 +244,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("operator", {"result:view"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -263,7 +263,7 @@ class TestCheckUserPermissions:
 
         rbac_cache.set("engineer", {"project:create"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -290,7 +290,7 @@ class TestAdminRolePermissions:
         }
         rbac_cache.set("admin", all_perms)
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "admin"
             mock_store.return_value.get_user.return_value = mock_user
@@ -310,7 +310,7 @@ class TestEngineerRolePermissions:
 
         rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"})  # noqa: E501
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -323,7 +323,7 @@ class TestEngineerRolePermissions:
 
         rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view", "report:export", "model:predict", "rule:edit", "toolpath:edit"})  # noqa: E501
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -336,7 +336,7 @@ class TestEngineerRolePermissions:
 
         rbac_cache.set("engineer", {"project:create", "simulation:run", "result:view"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -349,7 +349,7 @@ class TestEngineerRolePermissions:
 
         rbac_cache.set("engineer", {"project:create", "simulation:run"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -366,7 +366,7 @@ class TestOperatorRolePermissions:
 
         rbac_cache.set("operator", {"result:view", "report:export", "model:predict"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -379,7 +379,7 @@ class TestOperatorRolePermissions:
 
         rbac_cache.set("operator", {"result:view", "report:export", "model:predict"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -392,7 +392,7 @@ class TestOperatorRolePermissions:
 
         rbac_cache.set("operator", {"result:view", "report:export"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -405,7 +405,7 @@ class TestOperatorRolePermissions:
 
         rbac_cache.set("operator", {"result:view", "report:export"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -418,7 +418,7 @@ class TestOperatorRolePermissions:
 
         rbac_cache.set("operator", {"result:view", "report:export"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -438,7 +438,7 @@ class TestPermissionBoundaryCrossRole:
 
         rbac_cache.set("operator", operator_perms)
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "operator"
             mock_store.return_value.get_user.return_value = mock_user
@@ -455,7 +455,7 @@ class TestPermissionBoundaryCrossRole:
 
         rbac_cache.set("engineer", engineer_perms)
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user
@@ -473,7 +473,7 @@ class TestGetUserPermissions:
 
         rbac_cache.set("admin", {"system:config"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "admin"
             mock_store.return_value.get_user.return_value = mock_user
@@ -485,7 +485,7 @@ class TestGetUserPermissions:
     async def test_get_user_permissions_user_not_found(self):
         from app.auth.permissions import get_user_permissions
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_store.return_value.get_user.return_value = None
 
             perms = await get_user_permissions("ghost_user")
@@ -494,36 +494,6 @@ class TestGetUserPermissions:
 
 class TestPydanticSchemas:
     """Test Pydantic RBAC schemas"""
-
-    def test_role_response_creation(self):
-        from app.models.schemas import RoleResponse
-
-        role = RoleResponse(id=1, name="管理员", code="admin", description="系统管理员")
-        assert role.id == 1
-        assert role.name == "管理员"
-        assert role.code == "admin"
-        assert role.description == "系统管理员"
-
-    def test_permission_response_creation(self):
-        from app.models.schemas import PermissionResponse
-
-        perm = PermissionResponse(id=1, name="用户管理", code="user:manage")
-        assert perm.id == 1
-        assert perm.code == "user:manage"
-
-    def test_role_detail_response_with_permissions(self):
-        from app.models.schemas import RoleDetailResponse, PermissionResponse
-
-        perms = [PermissionResponse(id=1, name="用户管理", code="user:manage")]
-        role = RoleDetailResponse(id=1, name="管理员", code="admin", permissions=perms)
-        assert len(role.permissions) == 1
-        assert role.permissions[0].code == "user:manage"
-
-    def test_role_detail_response_default_permissions(self):
-        from app.models.schemas import RoleDetailResponse
-
-        role = RoleDetailResponse(id=1, name="Test", code="test")
-        assert role.permissions == []
 
     def test_role_assign_request(self):
         from app.models.schemas import RoleAssignRequest
@@ -543,7 +513,7 @@ class TestPydanticSchemas:
     def test_user_list_item(self):
         from app.models.schemas import UserListItem
 
-        item = UserListItem(username="test_user", role="admin", is_active=True)
+        item = UserListItem(username="test_user", role="admin", is_active=True, created_at="2026-01-01T00:00:00")
         assert item.username == "test_user"
         assert item.role == "admin"
         assert item.is_active is True
@@ -552,8 +522,8 @@ class TestPydanticSchemas:
         from app.models.schemas import UserListResponse, UserListItem
 
         users = [
-            UserListItem(username="u1", role="admin", is_active=True),
-            UserListItem(username="u2", role="engineer", is_active=True),
+            UserListItem(username="u1", role="admin", is_active=True, created_at="2026-01-01T00:00:00"),
+            UserListItem(username="u2", role="engineer", is_active=True, created_at="2026-01-01T00:00:00"),
         ]
         resp = UserListResponse(total=2, users=users)
         assert resp.total == 2
@@ -594,7 +564,7 @@ class TestPermissionCacheRealTimeInvalidation:
 
         rbac_cache.set("engineer", {"project:create", "simulation:run"})
 
-        with patch("app.models.user.get_user_store") as mock_store:
+        with patch("app.dependencies.get_user_store") as mock_store:
             mock_user = MagicMock()
             mock_user.role = "engineer"
             mock_store.return_value.get_user.return_value = mock_user

@@ -9,7 +9,7 @@ import asyncio
 import os
 import sys
 import logging
-from urllib.parse import urlparse, quote
+from urllib.parse import urlparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 

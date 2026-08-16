@@ -36,9 +36,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import platform
-import re
 import subprocess
 import sys
 from datetime import datetime
@@ -52,8 +50,6 @@ if str(Path(__file__).parent) not in sys.path:
 from compare_baseline import (  # noqa: E402
     REGRESSION_THRESHOLD_PCT as CMP_REGRESSION_THRESHOLD_PCT,
     compare_metrics,
-    extract_metric_from_output,
-    is_lower_is_better,
     parse_pytest_output,
 )
 
@@ -355,8 +351,8 @@ def generate_markdown_report(
             )
         lines.append("")
         lines.append(
-            f"> 建议使用 `git diff` 检查最近提交，定位性能回归根因。"
-            f" 阈值参考 `BASELINE.json` 中的 `threshold_multipliers`。"
+            "> 建议使用 `git diff` 检查最近提交，定位性能回归根因。"
+            " 阈值参考 `BASELINE.json` 中的 `threshold_multipliers`。"
         )
         lines.append("")
 
@@ -389,7 +385,7 @@ def generate_markdown_report(
             )
         lines.append("")
         lines.append(
-            f"> 建议更新 `BASELINE.json` 以反映新的性能水平。"
+            "> 建议更新 `BASELINE.json` 以反映新的性能水平。"
         )
         lines.append("")
 
@@ -620,9 +616,9 @@ def generate_markdown_report(
     # ----- 元信息 -----
     lines.append("## 元信息")
     lines.append("")
-    lines.append(f"- **报告生成器**: `tests/performance/generate_report.py`")
-    lines.append(f"- **基线文件**: `tests/performance/baseline/BASELINE.json`")
-    lines.append(f"- **最新结果**: `tests/performance/baseline/LATEST.json`")
+    lines.append("- **报告生成器**: `tests/performance/generate_report.py`")
+    lines.append("- **基线文件**: `tests/performance/baseline/BASELINE.json`")
+    lines.append("- **最新结果**: `tests/performance/baseline/LATEST.json`")
     lines.append(f"- **基线更新策略**: {meta.get('update_policy', 'n/a')}")
     lines.append("")
 
@@ -757,7 +753,7 @@ def main():
     # 控制台摘要
     summary = latest["summary"]
     print(f"\n{'=' * 60}")
-    print(f"性能测试摘要:")
+    print("性能测试摘要:")
     print(f"  通过: {summary['passed']}, 失败: {summary['failed']}, "
           f"跳过: {summary['skipped']}, xfail: {summary['xfail']}, "
           f"错误: {summary['error']}")

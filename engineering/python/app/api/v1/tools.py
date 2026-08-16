@@ -126,10 +126,8 @@ async def create_tool(body: ToolCreate):
     except RuntimeError:
         return error(code=ErrorCode.SERVICE_UNAVAILABLE, message="数据库未配置")
     except ValueError as exc:
-        # 注意：ErrorCode.VALIDATION_ERROR 为预存不一致（response.py 未定义），
-        # 按"API 行为完全不变"约束保持原样。
         return error(
-            ErrorCode.VALIDATION_ERROR,
+            ErrorCode.INVALID_REQUEST,
             message=str(exc),
         )
 

@@ -154,8 +154,11 @@ def get_material_params(material_type: str) -> MaterialParams:
 
 
 def get_tool_params(tool_type: str) -> dict:
-    """根据刀具类型字符串模糊匹配 TOOL_PARAMS，未命中返回 default。"""
+    """根据刀具类型字符串匹配 TOOL_PARAMS，未命中返回 default。"""
     tool_key = tool_type.lower().replace(" ", "_").replace("-", "_")
+    # 精确匹配优先：避免 "carbide" 截胡 "coated_carbide" 等子串包含项
+    if tool_key in TOOL_PARAMS:
+        return TOOL_PARAMS[tool_key]
     for key in TOOL_PARAMS:
         if key in tool_key or tool_key in key:
             return TOOL_PARAMS[key]

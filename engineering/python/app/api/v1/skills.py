@@ -121,7 +121,7 @@ async def list_skills(
                     "tags": s.metadata.tags,
                     "parameters": s.metadata.parameters,
                     "ratings": s.metadata.ratings,
-                    "active": s.active,
+                    "active": s.is_active,
                     "source_path": s.metadata.source_path,
                 }
             )
@@ -246,7 +246,7 @@ async def get_skill(skill_id: str):
                 "tags": skill.metadata.tags,
                 "parameters": skill.metadata.parameters,
                 "ratings": skill.metadata.ratings,
-                "active": skill.active,
+                "active": skill.is_active,
                 "source_path": skill.metadata.source_path,
                 "body": skill.body[:5000] if skill.body else "",
                 "code_blocks": [(lang, code[:500]) for lang, code in skill.code_blocks[:5]],

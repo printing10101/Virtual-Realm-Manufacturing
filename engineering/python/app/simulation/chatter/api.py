@@ -337,7 +337,7 @@ async def predict_chatter_stability(req: PredictRequest):
 
         # 若指定了实际切深，判定稳定性
         if req.axial_depth is not None:
-            limit_depth = float(result.get("limit_depth", 5.0))
+            limit_depth = float(result.get("limit_depth") or 5.0)
             stable = req.axial_depth < limit_depth
             result["actual_depth"] = req.axial_depth
             result["stable"] = stable
@@ -382,7 +382,7 @@ def _compute_unstable_ranges(
         if not speeds:
             continue
         in_unstable = False
-        range_start = None
+        range_start: float | None = None
         for s, d in zip(speeds, depths):
             if d < assumed_depth and not in_unstable:
                 in_unstable = True
@@ -392,7 +392,7 @@ def _compute_unstable_ranges(
                 unstable_ranges.append(
                     {
                         "lobe": idx,
-                        "speed_start": round(range_start, 1),
+                        "speed_start": round(range_start or 0.0, 1),
                         "speed_end": round(s, 1),
                     }
                 )
@@ -400,7 +400,7 @@ def _compute_unstable_ranges(
             unstable_ranges.append(
                 {
                     "lobe": idx,
-                    "speed_start": round(range_start, 1),
+                    "speed_start": round(range_start or 0.0, 1),
                     "speed_end": round(speeds[-1], 1),
                 }
             )

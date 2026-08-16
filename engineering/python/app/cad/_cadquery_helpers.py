@@ -121,12 +121,11 @@ def _build_solid(
 
 
 def _wrap_script(script: str, output_path: str, output_format: str) -> str:
-    export_method = {
-        "stl": "exportStl",
-        "obj": "exportObj",
-        "gltf": "exportGltf",
-        "step": "exportStep",
-    }.get(output_format, "exportStl")
+    # 版本无关导出：cq.exporters.export(w, fname) 按文件扩展名推断格式，
+    # cadquery 2.5.2（requirements pin）无 camelCase exportStep/exportStl，
+    # 2.7/2.8 亦支持该通用 API（ExportTypes 可用时显式指定，否则推断）。
+    et_map = {"stl": "STL", "obj": "OBJ", "gltf": "GLTF", "step": "STEP"}
+    et = et_map.get((output_format or "").lower(), "STL")
 
     # 注意：不要在此处注入 `import cadquery as cq`。
     # safe_globals 已预注入 cq/cadquery，且 _CadQueryScriptValidator
@@ -135,7 +134,11 @@ def _wrap_script(script: str, output_path: str, output_format: str) -> str:
     return f"""
 {script}
 
-cq.exporters.{export_method}(result, {json.dumps(output_path)})
+_export_type = getattr(cq.exporters, 'ExportTypes', None)
+if _export_type is not None and hasattr(_export_type, '{et}'):
+    cq.exporters.export(result, {json.dumps(output_path)}, exportType=_export_type.{et})
+else:
+    cq.exporters.export(result, {json.dumps(output_path)})
 """
 
 
@@ -302,24 +305,15 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
         if isinstance(exc, MemoryError):
             error_msg = f"Script execution exceeded memory limit {memory_limit_mb}MB (task {task_id}): {exc}"
             logger.error(error_msg, exc_info=True)
-            from app.cad.cadquery_gen import CadQueryScriptError
-
-        raise CadQueryScriptError(error_msg) from exc
-        if isinstance(exc, KeyboardInterrupt):
+        elif isinstance(exc, KeyboardInterrupt):
             error_msg = f"Script execution interrupted (task {task_id}): {exc}"
             logger.error(error_msg, exc_info=True)
-            from app.cad.cadquery_gen import CadQueryScriptError
-
-        raise CadQueryScriptError(error_msg) from exc
-        if isinstance(exc, (ValueError, KeyError, TypeError, OSError, RuntimeError, SyntaxError, NameError)):
+        elif isinstance(exc, (ValueError, KeyError, TypeError, OSError, RuntimeError, SyntaxError, NameError)):
             error_msg = f"Script execution failed (task {task_id}): {exc}"
             logger.error(error_msg, exc_info=True)
-            from app.cad.cadquery_gen import CadQueryScriptError
-
-        raise CadQueryScriptError(error_msg) from exc
-        # 其他未预期异常
-        error_msg = f"Script execution failed with unexpected exception (task {task_id}): {exc}"
-        logger.error(error_msg, exc_info=True)
+        else:
+            error_msg = f"Script execution failed with unexpected exception (task {task_id}): {exc}"
+            logger.error(error_msg, exc_info=True)
         from app.cad.cadquery_gen import CadQueryScriptError
 
         raise CadQueryScriptError(error_msg) from exc

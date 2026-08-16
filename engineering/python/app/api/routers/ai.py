@@ -32,6 +32,10 @@ from app.api.v1 import (
     signal_fusion_kb as signal_fusion_kb_routes,
     wear_prediction,
 )
+# V2.7.0 子路由拆分后，LNN 主路由聚合器（health/models/predict/train/tasks 等
+# 60+ 端点）位于 app.api.v1.lnn.routes；lnn_uncertain.py 是独立的不确定性端点。
+# 修复：二者都注册，避免聚合器路由从未挂载（重构遗漏）。
+from app.api.v1.lnn.routes import router as lnn_routes_router
 from app.ai.process_understanding import routes as process_understanding_routes
 from app.rag import routes as rag_routes
 
@@ -44,7 +48,8 @@ def register(app: FastAPI, *, ollama_available: bool = False) -> None:
         ollama_available: Ollama 模块是否可用（由 router_registry 传入）
     """
     # === LNN 不确定性 / 磨损预测 ===
-    app.include_router(lnn_uncertain.router)
+    app.include_router(lnn_routes_router)  # LNN 主聚合器（60+ 端点）
+    app.include_router(lnn_uncertain.router)  # 独立不确定性端点
     app.include_router(wear_prediction.router)
 
     # === RAG ===

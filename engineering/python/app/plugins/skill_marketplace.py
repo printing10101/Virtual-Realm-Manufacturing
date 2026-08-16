@@ -16,7 +16,7 @@ from app.plugins.skill_loader import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MARKET_DIR = ".trae/skills/.marketplace"
+DEFAULT_MARKET_DIR = ".lingjing/skills/.marketplace"
 
 
 @dataclass

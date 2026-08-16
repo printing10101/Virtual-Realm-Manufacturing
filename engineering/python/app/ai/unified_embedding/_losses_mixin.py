@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 
 
 class _LossesMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _compute_alignment_score: Callable[..., Any]
+    _compute_uniformity: Callable[..., Any]
+    _compatibility_scores: Any
+    _loss_history: Any
+    _temperature: Any
+    config: Any
+
+
     def compute_similarity_matrix(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a_norm = a / (np.linalg.norm(a, axis=1, keepdims=True) + 1e-10)
         b_norm = b / (np.linalg.norm(b, axis=1, keepdims=True) + 1e-10)

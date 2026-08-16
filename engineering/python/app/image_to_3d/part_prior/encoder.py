@@ -56,8 +56,10 @@ class PartPriorVAE(nn.Module):
         self.base_channels = base_channels
         self.encoder = self._build_encoder(voxel_dim, latent_dim, base_channels)
         self.decoder = self._build_decoder(voxel_dim, latent_dim, base_channels)
-        self.fc_mu = nn.Linear(latent_dim * 8, latent_dim)
-        self.fc_logvar = nn.Linear(latent_dim * 8, latent_dim)
+        # 展平维度：4³（4 层 stride=2 下采样）× (base_channels*8)
+        flat_dim = (voxel_dim // 16) ** 3 * (base_channels * 8)
+        self.fc_mu = nn.Linear(flat_dim, latent_dim)
+        self.fc_logvar = nn.Linear(flat_dim, latent_dim)
 
     def _build_encoder(
         self,

@@ -4,12 +4,24 @@ from __future__ import annotations
 
 import logging
 import numpy as np
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, Callable
 
 logger = logging.getLogger(__name__)
 
 
 class _AlignMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    compute_preservation_loss: Callable[..., Any]
+    compute_similarity_matrix: Callable[..., Any]
+    compute_total_loss: Callable[..., Any]
+    _compatibility_scores: Any
+    _iteration: Any
+    _loss_history: Any
+    _space: Any
+    _temperature: Any
+    config: Any
+
     def align(
         self,
         source_modality: str,

@@ -169,6 +169,28 @@ if not os.environ.get("LNN_JWT_SECRET"):
     import secrets as _secrets
     os.environ["LNN_JWT_SECRET"] = _secrets.token_hex(32)
 
+# ---------------------------------------------------------------------------
+# 认证开关默认关闭（app import 前固化）
+# ---------------------------------------------------------------------------
+# 背景：本 conftest 的 ``# [2026-08-13 审计修复] lazy stub 会空化 app.api.v1/__init__.py 的聚合 re-export
+# （lnn_uncertain 等符号丢失），导致测试环境路由注册不完整（630 → 559）：
+#   from app.api.v1 import lnn_uncertain → ImportError → 域注册器降级吞错 → lnn 路由 404。
+# 原目的（避免 app.api.v1 导入链触发 torch 初始化）已无必要：本 conftest 顶部已
+# 真实导入 torch（S7 策略），且 pytest-cov 冲突有专项处理。保留函数定义便于回退。
+# _install_lazy_app_api_v1()`` 会立即 resolve ``app.api.v1.auth``，
+# 其模块链会提前创建 ``app.config.config`` 实例；而 config 的 SecurityConfig 在
+# 创建时读取认证环境变量并固化。若此时未设置开关，认证默认启用（LNN/JWT/AGENT
+# 均为 True），后续测试即使通过 fixture 修改环境变量也无法改变已固化的中间件配置，
+# 导致所有 API 测试 401。此处用 setdefault 在 app 首次 import 前预置测试环境
+# 默认值（用户/CI 显式设置的值优先）。fixture ``_env_setup`` 仍用 setenv 强制
+# 覆盖，双保险。
+os.environ.setdefault("LNN_AUTH_ENABLED", "false")
+os.environ.setdefault("AGENT_AUTH_ENABLED", "false")
+os.environ.setdefault("LNN_JWT_AUTH_ENABLED", "false")
+os.environ.setdefault("LNN_PERMISSION_ENFORCED", "false")
+os.environ.setdefault("ENVIRONMENT", "testing")
+os.environ.setdefault("LNN_REGISTRATION_CODE", "SECRET-1234")
+
 
 # ---------------------------------------------------------------------------
 # Torch 加载策略：真实 torch 优先，无 torch 时显式标记并跳过
@@ -378,6 +400,7 @@ def _env_setup(monkeypatch, tmp_path):
     """
     monkeypatch.setenv("LNN_AUTH_ENABLED", "false")
     monkeypatch.setenv("AGENT_AUTH_ENABLED", "false")
+    monkeypatch.setenv("LNN_JWT_AUTH_ENABLED", "false")
     monkeypatch.setenv("LNN_PERMISSION_ENFORCED", "false")
     monkeypatch.setenv("LNN_GSTACK_DIR", ".lingjing/.gstack_test")
     monkeypatch.setenv("ENVIRONMENT", "testing")

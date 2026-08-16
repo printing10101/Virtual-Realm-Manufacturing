@@ -402,8 +402,8 @@ class DynamicAdjustmentOrchestrator:
                 new_lines.append(line)
                 continue
 
-            is_motion = seg.g_code in ("G01", "G02", "G03")
-            is_rapid = seg.g_code == "G00"
+            is_motion = seg.type in ("linear", "arc")
+            is_rapid = seg.type == "rapid"
 
             if apply_to_motion_only and is_rapid:
                 new_lines.append(line)

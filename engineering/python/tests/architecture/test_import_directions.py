@@ -66,8 +66,12 @@ def test_auth_shim_uses_lazy_import(rel_path: str) -> None:
     text = fp.read_text(encoding="utf-8")
     # 应有 __getattr__ 函数（延迟导入模式）
     has_lazy = "def __getattr__" in text
-    # 不应有顶层 from app.agent 导入（违反单向依赖）
-    has_top_level = "from app.agent" in text
+    # 不应有顶层 from app.agent 导入（违反单向依赖）；
+    # 仅统计行首（无缩进）的导入语句——函数内懒导入不算
+    has_top_level = any(
+        line.startswith("from app.agent")
+        for line in text.splitlines()
+    )
     assert has_lazy, f"{rel_path} 缺少 __getattr__ 延迟导入"
     assert not has_top_level, f"{rel_path} 仍有顶层 from app.agent 导入"
 

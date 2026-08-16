@@ -10,7 +10,7 @@ routes_quantization 子路由模块复用（用于给 asyncio.create_task 添加
 import asyncio
 import logging
 import uuid
-from typing import Optional
+from typing import Optional, Any, Callable
 
 import numpy as np
 
@@ -35,7 +35,7 @@ from app.api.v1.sse import sse_manager
 
 # P0#3 解耦: 通过 research_bridge 延迟导入。
 _HAS_DEVICE_MANAGER = False
-detect_device = None
+detect_device: Optional[Callable[..., Any]] = None
 
 
 def _lazy_init_device_manager() -> bool:
@@ -236,6 +236,12 @@ def _build_training_config(request: LNNTrainDryRunRequest, data):
     train_size = int(_DRY_RUN_TRAIN_RATIO * dataset_samples)
     val_size = dataset_samples - train_size
 
+    if detect_device is None and not _lazy_init_device_manager():
+        return None, error(
+            code=ErrorCode.SERVICE_UNAVAILABLE,
+            message="设备检测服务不可用（research 训练栈未安装）",
+        )
+    assert detect_device is not None
     device, device_info = detect_device(request.device)
 
     estimated_memory_mb = (data.nbytes / (1024 * 1024)) * _DRY_RUN_MEM_MULTIPLIER
@@ -298,7 +304,6 @@ def _execute_dry_run(config: dict) -> LNNTrainDryRunResponse:
         train_val_split={
             "train": config["train_size"],
             "validation": config["val_size"],
-            "ratio": "80/20",
         },
         potential_risks=config["potential_risks"],
         recommendations=config["recommendations"],

@@ -379,10 +379,11 @@ def _estimate_plane_area(inlier_vertices: np.ndarray) -> float:
     centroid = inlier_vertices.mean(axis=0)
     centered = inlier_vertices - centroid
     try:
-        u, _, _ = np.linalg.svd(centered, full_matrices=False)
-        # 取前两个主成分作为 2D 坐标
-        coords_2d = centered @ u[:, :2]
-    except np.linalg.LinAlgError:
+        # 右奇异向量（vh 的行）是主成分方向，投影到最佳 2D 平面。
+        # 修复：原用 u[:, :2]（左奇异向量），语义错误且对 M>3 会维度不匹配抛 ValueError。
+        _, _, vh = np.linalg.svd(centered, full_matrices=False)
+        coords_2d = centered @ vh.T[:, :2]
+    except (np.linalg.LinAlgError, ValueError):
         return 0.0
 
     # 计算 2D 凸包面积

@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, Depends
 from datetime import datetime, timezone
 
+from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
 
 from app.core.response import ErrorCode, error, success
@@ -464,18 +465,30 @@ async def get_audit_log_statistics():
     )
 
 
-@router.delete("/audit-log/clear")
+@router.delete("/audit-log/clear", dependencies=[Depends(require_permission("user:write"))])
 @handle_sovereignty_errors(
     context="user_sovereignty.clear_audit_logs",
     log_tag="Failed to clear audit logs",
     catch_permission_error=True,
 )
-async def clear_audit_logs():
-    count = audit_log.clear_logs()
+async def clear_audit_logs(
+    current_user: dict = Depends(get_current_user),
+):
+    # clear_logs() 因合规（FDA 21 CFR Part 11 / SOC 2）默认禁止，必须走
+    # 带授权信息的 clear_logs_with_authorization（清空前归档 + 记录操作审计）。
+    result = audit_log.clear_logs_with_authorization(
+        authorizer_id=current_user.get("username", "_anonymous_"),
+        authorizer_role=current_user.get("role", "T"),
+        reason="API 清空审计日志",
+    )
 
     return success(
-        data={"cleared_entries": count},
-        message=f"Audit log cleared: {count} entries removed",
+        data={
+            "cleared_entries": result.get("cleared_count", 0),
+            "backup_path": result.get("backup_path"),
+            "authorizer": result.get("authorizer"),
+        },
+        message="Audit log cleared successfully",
     )
 
 

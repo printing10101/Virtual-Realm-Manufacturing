@@ -117,7 +117,15 @@ class WearMLTrainer:
                 "feature_importance": [],
             }
 
-        X, y, _metadata_list = loader.get_feature_dataset(machines=machines, processes=processes)
+        records = loader.load_dataset(split="train")
+        feature_names = ["tool_wear", "cutting_force", "vibration"]
+        X = np.array(
+            [[float(r.get(name, 0.0)) for name in feature_names] for r in records],
+            dtype=float,
+        )
+        # 磨损量 > 0.15mm 视为需要关注的正样本（label=1）
+        y = np.array([1 if r.get("tool_wear", 0.0) > 0.15 else 0 for r in records])
+        _metadata_list = records
 
         unique, counts = np.unique(y, return_counts=True)
         self._logger.info(
@@ -185,7 +193,7 @@ class WearMLTrainer:
 
         feature_importance: list[dict] = []
         if model_type in ("random_forest", "xgboost") and hasattr(model, "feature_importances_"):
-            feature_keys = sorted(loader.extract_features(np.zeros((100, 3))).keys())
+            feature_keys = sorted(feature_names)
             importances = model.feature_importances_.tolist()
             feature_importance = sorted(
                 [

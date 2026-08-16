@@ -11,7 +11,6 @@
 
 from __future__ import annotations
 
-import os
 import threading
 from unittest.mock import MagicMock, patch
 
@@ -27,27 +26,43 @@ from app.database.connection import (
     close_db,
 )
 
+# 环境变量操纵统一使用 pytest monkeypatch（setenv/delenv 只操作单个 key），
+# 避免 unittest.mock.patch.dict(os.environ) 的整份 copy/restore 行为——
+# 当宿主环境存在超长环境变量（>32767 字符，如某些 CI/IDE 注入的配置）时，
+# patch.dict 退出时 os.environ.update() 会抛 ValueError 并清空整个环境，
+# 连锁导致后续测试的 Path.home() 抛 "Could not determine home directory"。
+_DB_ENV_KEYS = (
+    "DB_URL",
+    "DB_POOL_SIZE",
+    "DB_MAX_OVERFLOW",
+    "DB_POOL_TIMEOUT",
+    "DB_POOL_RECYCLE",
+    "DB_ECHO",
+)
+
 
 class TestDatabaseConfig:
     """Test database configuration parsing."""
 
-    def test_default_config_from_env(self):
+    def test_default_config_from_env(self, monkeypatch):
         """Test config reads from environment variables."""
-        with patch.dict(os.environ, {
+        values = {
             "DB_URL": "postgresql://user:pass@localhost/db",
             "DB_POOL_SIZE": "20",
             "DB_MAX_OVERFLOW": "15",
             "DB_POOL_TIMEOUT": "60",
             "DB_POOL_RECYCLE": "1800",
             "DB_ECHO": "true",
-        }):
-            config = DatabaseConfig()
-            assert config.url == "postgresql://user:pass@localhost/db"
-            assert config.pool_size == 20
-            assert config.max_overflow == 15
-            assert config.pool_timeout == 60
-            assert config.pool_recycle == 1800
-            assert config.echo is True
+        }
+        for key, value in values.items():
+            monkeypatch.setenv(key, value)
+        config = DatabaseConfig()
+        assert config.url == "postgresql://user:pass@localhost/db"
+        assert config.pool_size == 20
+        assert config.max_overflow == 15
+        assert config.pool_timeout == 60
+        assert config.pool_recycle == 1800
+        assert config.echo is True
 
     def test_async_url_conversion_postgresql(self):
         """Test PostgreSQL URL is converted to asyncpg driver."""
@@ -79,33 +94,34 @@ class TestDatabaseConfig:
         config.url = ""
         assert config.enabled is False
 
-    def test_default_values(self):
+    def test_default_values(self, monkeypatch):
         """Test default configuration values."""
-        with patch.dict(os.environ, {}, clear=True):
-            config = DatabaseConfig()
-            assert config.pool_size == 15
-            assert config.max_overflow == 10
-            assert config.pool_timeout == 30
-            assert config.pool_recycle == 3600
-            assert config.echo is False
+        for key in _DB_ENV_KEYS:
+            monkeypatch.delenv(key, raising=False)
+        config = DatabaseConfig()
+        assert config.pool_size == 15
+        assert config.max_overflow == 10
+        assert config.pool_timeout == 30
+        assert config.pool_recycle == 3600
+        assert config.echo is False
 
 
 class TestDatabaseSingletons:
     """Test thread-safe singleton holder."""
 
-    def test_get_engine_creates_once(self):
+    def test_get_engine_creates_once(self, monkeypatch):
         """Test engine is created only once."""
         singletons = _DatabaseSingletons()
-        
-        with patch.dict(os.environ, {"DB_URL": "sqlite:///./test.db"}), \
-             patch('app.database.connection.create_async_engine') as mock_create:
-            
+
+        monkeypatch.setenv("DB_URL", "sqlite:///./test.db")
+        with patch('app.database.connection.create_async_engine') as mock_create:
+
             mock_engine = MagicMock()
             mock_create.return_value = mock_engine
-            
+
             engine1 = singletons.get_engine()
             engine2 = singletons.get_engine()
-            
+
             # Should only create once
             assert mock_create.call_count == 1
             assert engine1 is engine2
@@ -121,22 +137,21 @@ class TestDatabaseSingletons:
             engine = singletons.get_engine()
             assert engine is None
 
-    def test_get_sessionmaker_creates_once(self):
+    def test_get_sessionmaker_creates_once(self, monkeypatch):
         """Test sessionmaker is created only once."""
         singletons = _DatabaseSingletons()
-        
-        with patch.dict(os.environ, {"DB_URL": "sqlite:///./test.db"}), \
-             patch('app.database.connection.create_async_engine') as mock_create, \
-             patch('app.database.connection.async_sessionmaker') as mock_sessionmaker:
-            
+
+        monkeypatch.setenv("DB_URL", "sqlite:///./test.db")
+        with patch('app.database.connection.create_async_engine') as mock_create,              patch('app.database.connection.async_sessionmaker') as mock_sessionmaker:
+
             mock_engine = MagicMock()
             mock_create.return_value = mock_engine
             mock_sm = MagicMock()
             mock_sessionmaker.return_value = mock_sm
-            
+
             sm1 = singletons.get_sessionmaker()
             sm2 = singletons.get_sessionmaker()
-            
+
             assert mock_sessionmaker.call_count == 1
             assert sm1 is sm2
 
@@ -149,49 +164,52 @@ class TestDatabaseSingletons:
             sm = singletons.get_sessionmaker()
             assert sm is None
 
-    def test_thread_safety_concurrent_engine_creation(self):
+    def test_thread_safety_concurrent_engine_creation(self, monkeypatch):
         """Test that concurrent engine creation is thread-safe."""
         singletons = _DatabaseSingletons()
         results = []
         errors = []
-        
+
+        # DB_URL 在启动线程前统一设置，避免线程内 patch.dict(os.environ) 的
+        # 整份 copy/restore 竞态与超长环境变量问题。
+        monkeypatch.setenv("DB_URL", "sqlite:///./test.db")
+
         def create_engine():
             try:
-                with patch.dict(os.environ, {"DB_URL": "sqlite:///./test.db"}), \
-                     patch('app.database.connection.create_async_engine') as mock_create:
+                with patch('app.database.connection.create_async_engine') as mock_create:
                     mock_engine = MagicMock()
                     mock_create.return_value = mock_engine
                     engine = singletons.get_engine()
                     results.append(engine)
             except Exception as e:
                 errors.append(e)
-        
+
         # Create multiple threads
         threads = [threading.Thread(target=create_engine) for _ in range(10)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
-        
+
         # No errors should occur
         assert len(errors) == 0
         # All threads should get the same engine instance
         assert len(set(id(r) for r in results)) == 1
 
-    def test_close_disposes_engine(self):
+    def test_close_disposes_engine(self, monkeypatch):
         """Test close method disposes engine and resets singletons."""
         singletons = _DatabaseSingletons()
-        
-        with patch.dict(os.environ, {"DB_URL": "sqlite:///./test.db"}), \
-             patch('app.database.connection.create_async_engine') as mock_create:
-            
+
+        monkeypatch.setenv("DB_URL", "sqlite:///./test.db")
+        with patch('app.database.connection.create_async_engine') as mock_create:
+
             mock_engine = MagicMock()
             mock_create.return_value = mock_engine
-            
+
             # Create engine
             engine = singletons.get_engine()
             assert engine is not None
-            
+
             # Close should dispose
             import asyncio
             loop = asyncio.new_event_loop()
@@ -200,42 +218,41 @@ class TestDatabaseSingletons:
                 loop.run_until_complete(singletons.close())
             finally:
                 loop.close()
-            
+
             mock_engine.dispose.assert_called_once()
-            
+
             # After close, engine should be None
             assert singletons._engine is None
             assert singletons._sessionmaker is None
 
-    def test_sqlite_uses_different_pool_config(self):
+    def test_sqlite_uses_different_pool_config(self, monkeypatch):
         """Test SQLite uses different pool configuration than PostgreSQL."""
         singletons = _DatabaseSingletons()
-        
-        with patch.dict(os.environ, {"DB_URL": "sqlite:///./test.db"}), \
-             patch('app.database.connection.create_async_engine') as mock_create:
-            
+
+        monkeypatch.setenv("DB_URL", "sqlite:///./test.db")
+        with patch('app.database.connection.create_async_engine') as mock_create:
+
             mock_create.return_value = MagicMock()
             singletons.get_engine()
-            
+
             # Check that pool_size/max_overflow are not passed for SQLite
             call_kwargs = mock_create.call_args[1]
             assert 'pool_size' not in call_kwargs
             assert 'max_overflow' not in call_kwargs
             assert call_kwargs.get('pool_pre_ping') is False
 
-    def test_postgresql_uses_pool_config(self):
+    def test_postgresql_uses_pool_config(self, monkeypatch):
         """Test PostgreSQL uses pool configuration parameters."""
         singletons = _DatabaseSingletons()
-        
-        with patch.dict(os.environ, {
-            "DB_URL": "postgresql://localhost/db",
-            "DB_POOL_SIZE": "20",
-            "DB_MAX_OVERFLOW": "10",
-        }), patch('app.database.connection.create_async_engine') as mock_create:
-            
+
+        monkeypatch.setenv("DB_URL", "postgresql://localhost/db")
+        monkeypatch.setenv("DB_POOL_SIZE", "20")
+        monkeypatch.setenv("DB_MAX_OVERFLOW", "10")
+        with patch('app.database.connection.create_async_engine') as mock_create:
+
             mock_create.return_value = MagicMock()
             singletons.get_engine()
-            
+
             call_kwargs = mock_create.call_args[1]
             assert call_kwargs['pool_size'] == 20
             assert call_kwargs['max_overflow'] == 10
@@ -276,7 +293,7 @@ class TestPublicHelpers:
         mock_sm = MagicMock()
         mock_session = MagicMock()
         mock_sm.return_value = mock_session
-        
+
         with patch('app.database.connection.get_sessionmaker', return_value=mock_sm):
             import asyncio
             loop = asyncio.new_event_loop()
@@ -320,7 +337,7 @@ class TestDatabaseHealthCheck:
         mock_conn.execute = AsyncMock()
 
         mock_engine.connect.return_value = mock_conn
-        
+
         with patch('app.database.connection.get_engine', return_value=mock_engine):
             import asyncio
             loop = asyncio.new_event_loop()
@@ -337,7 +354,7 @@ class TestDatabaseHealthCheck:
         """Test health check returns unhealthy status on connection error."""
         mock_engine = MagicMock()
         mock_engine.connect.side_effect = Exception("Connection failed")
-        
+
         with patch('app.database.connection.get_engine', return_value=mock_engine):
             import asyncio
             loop = asyncio.new_event_loop()

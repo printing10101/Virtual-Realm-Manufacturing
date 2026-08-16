@@ -1026,7 +1026,7 @@ class TestEdgeCases:
 class TestInjectSkillsIntegration:
     def test_global_singleton(self, tmp_path):
         skills_dir = str(tmp_path / "skills_integ")
-        os.environ["TRAE_SKILLS_PATH"] = skills_dir
+        os.environ["LNN_SKILLS_PATH"] = skills_dir
 
         loader = init_skill_loader(skills_dir)
         assert loader is not None

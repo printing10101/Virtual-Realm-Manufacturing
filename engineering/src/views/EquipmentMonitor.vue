@@ -48,6 +48,7 @@
       :form="settingsForm"
       :submitting="settingsSubmitting"
       @save="submitSettings"
+      @update:form="settingsForm = $event"
     />
 
     <!-- 设备详情弹窗 -->

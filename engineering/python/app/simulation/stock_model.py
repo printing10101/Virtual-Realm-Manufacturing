@@ -140,6 +140,9 @@ class StockModel:
         length: float = 200,
         width: float = 150,
         height: float = 50,
+        x_offset: float = 0.0,
+        y_offset: float = 0.0,
+        z_offset: float = 0.0,
     ) -> None:
         """Initialize a rectangular stock model.
 
@@ -147,12 +150,16 @@ class StockModel:
             length: Stock length along X axis in mm.
             width: Stock width along Y axis in mm.
             height: Stock height along Z axis in mm.
+            x_offset: X 方向偏移（平移毛坯中心，默认 0）。
+            y_offset: Y 方向偏移（平移毛坯中心，默认 0）。
+            z_offset: Z 方向偏移（平移毛坯底面，默认 0）。
         """
         self.length = length
         self.width = width
         self.height = height
-        self.origin_x = 0.0
-        self.origin_y = 0.0
+        self.origin_x = x_offset
+        self.origin_y = y_offset
+        self.origin_z = z_offset
 
     def set_dimensions(
         self,
@@ -184,8 +191,8 @@ class StockModel:
             x_max=self.origin_x + hl,
             y_min=self.origin_y - hw,
             y_max=self.origin_y + hw,
-            z_min=0.0,
-            z_max=self.height,
+            z_min=self.origin_z,
+            z_max=self.origin_z + self.height,
         )
 
     def contains_point(self, x: float, y: float, z: float) -> bool:
@@ -214,6 +221,7 @@ class StockModel:
             "height": self.height,
             "origin_x": self.origin_x,
             "origin_y": self.origin_y,
+            "origin_z": self.origin_z,
             "bbox": self.get_bbox().to_dict(),
         }
 
@@ -248,7 +256,7 @@ class CylindricalStock(StockModel):
         self.diameter = diameter
         super().__init__(length=diameter, width=diameter, height=height)
 
-    def set_dimensions(
+    def set_dimensions(  # type: ignore[override]
         self,
         diameter: float,
         height: float,

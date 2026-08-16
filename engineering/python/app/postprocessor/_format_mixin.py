@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable
 
 logger = logging.getLogger(__name__)
 
 
 class _FormatMixin:
+    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    decimal_places: int
+    get_feed_rate: Callable[..., float]
+
     def _fmt(self, value: float) -> str:
         """将数值格式化为指定小数位数的字符串。"""
         return f"{value:.{self.decimal_places}f}"

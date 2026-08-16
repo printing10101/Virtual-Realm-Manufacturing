@@ -73,7 +73,7 @@ export default defineConfig({
         },
       },
     },
-    // 注意：在 WorkBuddy 构建环境中，emptyOutDir: true 会触发安全删除守卫
+    // 注意：在某些构建环境中，emptyOutDir: true 会触发安全删除守卫，因此保持 false
     // (genie-safe-delete 拦截 Vite 对 dist/assets 的批量 rmSync)，导致 beforeBuildCommand 失败。
     // 改为 false，构建前手动以沙箱放行方式清理 dist 即可保证产物干净。
     emptyOutDir: false,

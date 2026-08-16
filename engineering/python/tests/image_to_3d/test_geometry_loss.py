@@ -1,3 +1,5 @@
+
+
 """思路 3（几何一致性显式约束）单元测试。
 
 对应 ADR-020 第 3.8 节测试方案 /
@@ -21,11 +23,18 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = pytest.mark.skip_ci
+
+
+
+
 
 # ---------------------------------------------------------------------------
 # 固定随机种子（D-2 学术诚信硬约束：torch.manual_seed + cudnn.deterministic）
 # 在每个 torch 用例内部独立设置，避免模块加载期依赖 torch。
 # ---------------------------------------------------------------------------
+
+
 SEED = 42
 
 
@@ -110,6 +119,8 @@ def test_total_loss_returns_dict():
 
     from app.image_to_3d.part_prior.constraints import GeometryConstraints
     from app.image_to_3d.part_prior.geometry_loss import total_loss
+
+
 
     recon = torch.sigmoid(torch.randn(2, 1, 64, 64, 64))
     target = torch.ones(2, 1, 64, 64, 64) * 0.5

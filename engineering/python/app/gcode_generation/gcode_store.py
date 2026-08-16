@@ -40,8 +40,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from app.core.safe_errors import safe_error_message
-
 logger = logging.getLogger(__name__)
 
 
@@ -351,7 +349,7 @@ class TaskStore:
         """获取任务。"""
         with self._tasks_lock:
             if task_id not in self._tasks:
-                raise GCodeGenerationError(safe_error_message(f"任务不存在: {task_id}"))
+                raise GCodeGenerationError(f"任务不存在: {task_id}")
             return self._tasks[task_id]
 
     def list_tasks(
@@ -371,7 +369,7 @@ class TaskStore:
         """更新任务。"""
         with self._tasks_lock:
             if task.task_id not in self._tasks:
-                raise GCodeGenerationError(safe_error_message(f"任务不存在: {task.task_id}"))
+                raise GCodeGenerationError(f"任务不存在: {task.task_id}")
             self._tasks[task.task_id] = task
 
     def delete_task(
@@ -386,7 +384,7 @@ class TaskStore:
         """
         with self._tasks_lock:
             if task_id not in self._tasks:
-                raise GCodeGenerationError(safe_error_message(f"任务不存在: {task_id}"))
+                raise GCodeGenerationError(f"任务不存在: {task_id}")
             task = self._tasks[task_id]
             if task.status == GCodeGenerationTaskStatus.SUCCEEDED.value:
                 if not allow_delete_succeeded:

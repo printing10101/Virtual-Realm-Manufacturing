@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional, Callable
 
 import numpy as np
 
@@ -44,6 +44,21 @@ logger = logging.getLogger(__name__)
 
 
 class _MCDropoutMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _get_memory_usage_mb: Callable[..., Any]
+    _maybe_inverse_transform: Callable[..., Any]
+    _postprocess: Callable[..., Any]
+    _preprocess: Callable[..., Any]
+    _to_tensor: Callable[..., Any]
+    _update_stats: Callable[..., Any]
+    _write_trace: Callable[..., Any]
+    model: Callable[..., Any]
+    predict: Callable[..., Any]
+    _mc_lock: Any
+    device: Any
+    model_name: Any
+
+
     """``predict_mc_dropout`` 的 Mixin，提供 Monte Carlo Dropout 不确定性量化。
 
     本 Mixin 不定义 ``__init__``，所有实例状态由 ``LNNPredictor.__init__``

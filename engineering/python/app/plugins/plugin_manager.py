@@ -282,7 +282,7 @@ class PluginLoader:
                 raise ImportError(f"Cannot load spec for {entry_point}")
 
             module = importlib.util.module_from_spec(spec)
-            module.__plugin_metadata__ = metadata
+            setattr(module, "__plugin_metadata__", metadata)
 
             spec.loader.exec_module(module)
 
@@ -406,7 +406,7 @@ class PluginLifecycleManager:
 
         instance = self._registry.get_plugin_instance(plugin_id)
 
-        if hasattr(instance, "on_enable"):
+        if instance is not None and hasattr(instance, "on_enable"):
             instance.on_enable()
 
         self._registry.update_status(plugin_id, PluginStatus.ENABLED)
@@ -423,7 +423,7 @@ class PluginLifecycleManager:
 
         instance = self._registry.get_plugin_instance(plugin_id)
 
-        if hasattr(instance, "on_disable"):
+        if instance is not None and hasattr(instance, "on_disable"):
             instance.on_disable()
 
         self._registry.update_status(plugin_id, PluginStatus.DISABLED)
@@ -588,7 +588,7 @@ class DependencyResolver:
         if metadata is None:
             return {}
 
-        tree = {
+        tree: dict[str, Any] = {
             "id": plugin_id,
             "name": metadata.name,
             "version": metadata.version,

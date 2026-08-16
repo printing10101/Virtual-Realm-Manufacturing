@@ -22,8 +22,9 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 import os
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import numpy as np
 
@@ -413,7 +414,7 @@ class ExplainabilityService(BaseSingletonService):
         result = record_orm.to_dict()
         if include_payload:
             try:
-                result["payload"] = self._payload_store.load(record_orm.payload_path)
+                result["payload"] = self._payload_store.load(str(record_orm.payload_path))
             except ProjectionError as exc:
                 logger.warning(
                     "读取 payload 失败 explanation_id=%s: %s",
@@ -443,7 +444,7 @@ class ExplainabilityService(BaseSingletonService):
     async def delete_explanation(self, explanation_id: str) -> bool:
         """删除解释记录（同时删除 payload 文件）."""
         record_orm = await self._record_repo.find_record_orm(explanation_id)
-        payload_path = record_orm.payload_path
+        payload_path = str(record_orm.payload_path)
         await self._record_repo.delete_record(record_orm)
         # 删除 payload 文件
         self._payload_store.delete(payload_path)
@@ -474,11 +475,11 @@ class ExplainabilityService(BaseSingletonService):
             )
 
         # 加载 payload
-        base_payload = self._payload_store.load(base_orm.payload_path)
-        compared_payload = self._payload_store.load(compared_orm.payload_path)
+        base_payload = self._payload_store.load(str(base_orm.payload_path))
+        compared_payload = self._payload_store.load(str(compared_orm.payload_path))
 
         # 计算差异 payload
-        diff_payload = compute_diff(base_payload, compared_payload, base_orm.explanation_type)
+        diff_payload = compute_diff(base_payload, compared_payload, str(base_orm.explanation_type))
 
         # 持久化差异 payload
         comparison_id = _gen_comparison_id()
@@ -494,13 +495,13 @@ class ExplainabilityService(BaseSingletonService):
         )
 
         return ExplanationComparison(
-            id=comparison_orm.id,
-            base_explanation_id=comparison_orm.base_explanation_id,
-            compared_explanation_id=comparison_orm.compared_explanation_id,
-            comparison_type=comparison_orm.comparison_type,
-            diff_payload_path=comparison_orm.diff_payload_path,
-            created_by=comparison_orm.created_by,
-            created_at=comparison_orm.created_at,
+            id=str(comparison_orm.id),
+            base_explanation_id=str(comparison_orm.base_explanation_id),
+            compared_explanation_id=str(comparison_orm.compared_explanation_id),
+            comparison_type=str(comparison_orm.comparison_type),
+            diff_payload_path=str(comparison_orm.diff_payload_path),
+            created_by=str(comparison_orm.created_by) if comparison_orm.created_by else None,
+            created_at=cast(datetime, comparison_orm.created_at),  # ORM nullable=False
         )
 
 

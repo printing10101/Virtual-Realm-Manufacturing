@@ -47,7 +47,7 @@ async def list_quality_records(
     offset: int = Query(0, ge=0),
 ):
     """获取质量检验记录列表，支持按类型、结果、日期范围筛选。"""
-    # 日期解析保留在路由层：原实现在此处返回 ErrorCode.INVALID_PARAMETER，
+    # 日期解析保留在路由层：原实现在此处返回 ErrorCode.INVALID_REQUEST，
     # 该枚举值为预存不一致（response.py 未定义），按"API 行为完全不变"约束保持原样。
     dt_from: Optional[datetime] = None
     dt_to: Optional[datetime] = None
@@ -56,14 +56,14 @@ async def list_quality_records(
             dt_from = datetime.strptime(date_from, "%Y-%m-%d")
         except ValueError:
             return error(
-                code=ErrorCode.INVALID_PARAMETER, message=f"日期格式错误: date_from 应为 YYYY-MM-DD，收到 '{date_from}'"
+                code=ErrorCode.INVALID_REQUEST, message=f"日期格式错误: date_from 应为 YYYY-MM-DD，收到 '{date_from}'"
             )
     if date_to:
         try:
             dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
         except ValueError:
             return error(
-                code=ErrorCode.INVALID_PARAMETER, message=f"日期格式错误: date_to 应为 YYYY-MM-DD，收到 '{date_to}'"
+                code=ErrorCode.INVALID_REQUEST, message=f"日期格式错误: date_to 应为 YYYY-MM-DD，收到 '{date_to}'"
             )
 
     try:

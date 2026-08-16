@@ -70,7 +70,7 @@ class CreateDatasetRequest(BaseModel):
 
     name: str
     description: str = ""
-    schema: DatasetSchemaModel
+    dataset_schema: DatasetSchemaModel
     owner_id: str
 
 
@@ -202,7 +202,7 @@ async def list_datasets(
 async def create_dataset(req: CreateDatasetRequest):
     """创建数据集（初始 DRAFT，无版本）。"""
     try:
-        schema = _schema_from_model(req.schema)
+        schema = _schema_from_model(req.dataset_schema)
     except ValueError as e:
         return error(code=ErrorCode.INVALID_REQUEST, message=f"Schema 构造失败: {e}")
 

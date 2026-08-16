@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 
 from app.tasks._checkout_models import (
     CheckoutFailureReason, CheckoutResult, CheckoutStatus, TaskRecord, TaskStatus,
@@ -17,6 +17,16 @@ logger = logging.getLogger(__name__)
 
 
 class _TaskCheckoutOpsMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _get_conn: Callable[..., Any]
+    _record_failure: Callable[..., Any]
+    _row_to_task: Callable[..., Any]
+    _serialize_blockers: Callable[..., Any]
+    _conn: Any
+    _lock_store: Any
+    _pool: Any
+
     def register_task(self, task: TaskRecord):
         conn = self._get_conn()
         conn.execute(

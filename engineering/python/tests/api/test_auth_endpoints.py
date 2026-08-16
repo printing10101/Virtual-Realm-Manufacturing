@@ -18,6 +18,20 @@ from __future__ import annotations
 from typing import Any, Generator
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_tests_enforce_permissions(monkeypatch):
+    """auth 测试验证完整认证/权限流程（401/403 语义），必须开启权限强制。
+
+    conftest 的 ``_env_setup`` 默认关闭权限以简化非认证测试；本文件
+    覆盖回 ``true``（get_current_user/require_permission 均实时读取
+    LNN_PERMISSION_ENFORCED，monkeypatch 在 app 构建前生效）。
+    """
+    monkeypatch.setenv("LNN_PERMISSION_ENFORCED", "true")
+
+
+import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
@@ -483,4 +497,5 @@ class TestRegisterValueErrorFallback:
         assert response.status_code == 409
         body = response.json()
         assert body["code"] == 1009
-        assert "simulated" in body["message"] or "user store" in body["message"]
+        # 内部错误细节已脱敏（safe_error_message 兜底），仅断言消息非空
+        assert body["message"]

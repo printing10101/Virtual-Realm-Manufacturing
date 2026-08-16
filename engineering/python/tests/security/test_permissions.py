@@ -434,6 +434,11 @@ class TestCheckPermissionDecorator:
 
 
 class TestRequirePermissionDependency:
+    @pytest.fixture(autouse=True)
+    def _enforce_permissions(self, monkeypatch):
+        """require_permission 验证完整认证语义（401），需开启权限强制。"""
+        monkeypatch.setenv("LNN_PERMISSION_ENFORCED", "true")
+
     @pytest.mark.asyncio
     async def test_requires_authentication(self):
         from starlette.requests import Request

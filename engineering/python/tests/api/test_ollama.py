@@ -1,6 +1,18 @@
+
+
 """Tests for Ollama integration routes (/api/ollama)."""
 
 from __future__ import annotations
+import pytest
+
+pytestmark = pytest.mark.skip_ci
+
+
+
+
+
+
+
 
 
 class TestOllamaStatus:

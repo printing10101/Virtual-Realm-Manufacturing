@@ -930,7 +930,11 @@ class TestAssemblyBuilder:
         assert plan.base_shape.shape_id == "brep_plane_001"
 
     def test_non_plane_add_sorted_by_volume(self):
-        """T38: 非 plane add 形状按体积从大到小排序。"""
+        """T38: 非 plane add 形状按体积从大到小排序。
+
+        重构后（V2.7.0）：无 plane 时体积最大的非平面形状作为 base，
+        其余按体积降序进入 add_shapes。
+        """
         from app.parametric_geometry.assembly_builder import build_assembly_plan
 
         shapes = [
@@ -947,10 +951,11 @@ class TestAssemblyBuilder:
         ]
         plan = build_assembly_plan(shapes)
 
-        assert len(plan.add_shapes) == 2
-        # 大体积应该排在前
-        assert plan.add_shapes[0].shape_id == "brep_large"
-        assert plan.add_shapes[1].shape_id == "brep_small"
+        # 体积最大的作为 base，其余按体积降序进入 add_shapes
+        assert plan.base_shape is not None
+        assert plan.base_shape.shape_id == "brep_large"
+        assert len(plan.add_shapes) == 1
+        assert plan.add_shapes[0].shape_id == "brep_small"
 
     def test_subtract_shapes_stable_order(self):
         """T39: subtract 形状按 shape_id 稳定排序。"""
@@ -1004,7 +1009,11 @@ class TestAssemblyBuilder:
         )
 
     def test_no_plane_no_base(self):
-        """T41: 无 plane 时 base_shape 为 None。"""
+        """T41: 无 plane 时体积最大的非平面形状作为 base。
+
+        重构后（V2.7.0）：无 plane 时第一个非平面（体积最大）自动成为 base，
+        其余进入 add_shapes；无 subtract 时 subtract_shapes 为空。
+        """
         from app.parametric_geometry.assembly_builder import build_assembly_plan
 
         shapes = [
@@ -1015,8 +1024,9 @@ class TestAssemblyBuilder:
         ]
         plan = build_assembly_plan(shapes)
 
-        assert plan.base_shape is None
-        assert len(plan.add_shapes) == 1
+        assert plan.base_shape is not None
+        assert plan.base_shape.shape_id == "brep_cyl_001"
+        assert len(plan.add_shapes) == 0
         # has_solid 仍为 True（有 add 形状）
         assert plan.has_solid is True
 
@@ -1304,7 +1314,8 @@ class TestPipeline:
             result = asyncio.run(pipeline.run_pipeline(task.task_id))
 
         assert result.status == ParametricGeometryTaskStatus.FAILED.value
-        assert "无可用" in result.error_message or "引擎" in result.error_message
+        # 错误消息已脱敏（safe_error_message 兜底，不暴露内部引擎细节）
+        assert result.error_message is not None and result.error_message != ""
 
     def test_run_pipeline_wrong_status_raises(self):
         """T50: 非 PENDING/FAILED 状态调用 run_pipeline 抛异常。"""

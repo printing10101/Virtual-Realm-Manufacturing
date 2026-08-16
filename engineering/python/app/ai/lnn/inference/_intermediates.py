@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Callable
 
 import numpy as np
 
@@ -44,6 +44,18 @@ logger = logging.getLogger(__name__)
 
 
 class _IntermediatesMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _compute_confidence: Callable[..., Any]
+    _maybe_inverse_transform: Callable[..., Any]
+    _postprocess: Callable[..., Any]
+    _preprocess: Callable[..., Any]
+    _to_tensor: Callable[..., Any]
+    model: Callable[..., Any]
+    _mc_lock: Any
+    device: Any
+    model_name: Any
+
+
     """``predict_with_intermediates`` 的 Mixin，提供非侵入式中间状态捕获。
 
     本 Mixin 不定义 ``__init__``，所有实例状态由 ``LNNPredictor.__init__``

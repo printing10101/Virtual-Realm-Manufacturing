@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 from app.models.governance import (
     ApprovalDecision,
     ApprovalDelegation,
@@ -19,6 +19,15 @@ logger = logging.getLogger(__name__)
 
 
 class _ApprovalFlowMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _get_request: Callable[..., Any]
+    _log_audit: Callable[..., Any]
+    _save_request: Callable[..., Any]
+    _conn: Any
+    _consecutive_emergency_count: Any
+    _load_delegations: Any
+
     def create_approval_request(
         self,
         task_id: str,

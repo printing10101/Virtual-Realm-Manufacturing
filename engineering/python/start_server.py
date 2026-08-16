@@ -32,6 +32,12 @@ def main():
     from pathlib import Path
 
     _py_dir = os.path.dirname(os.path.abspath(__file__))
+    # Windows 长路径修复（2026-08-09）：Tauri resource_dir 会返回 \\?\ 前缀路径
+    # （\\?\C:\...），直接拼进 SQLite URL 会得到 sqlite+aiosqlite://///?/C:/...
+    # 导致 SQLAlchemy 报 unable to open database file（health degraded、
+    # 登录/数据功能不可用）。此处剥离 \\?\ 前缀，恢复普通绝对路径。
+    if _py_dir.startswith("\\\\?\\"):
+        _py_dir = _py_dir[4:]
     # 确保数据库目录存在（桌面首次启动无 data/，SQLite 打开前必须建目录）
     Path(_py_dir, "data").mkdir(parents=True, exist_ok=True)
     _env_file = Path(_py_dir).parent / ".env"
@@ -78,8 +84,8 @@ def main():
     else:
         print("[startup] LNN_JWT_SECRET 已从环境变量加载")
 
-    # 切换到 python 目录
-    python_dir = os.path.dirname(os.path.abspath(__file__))
+    # 切换到 python 目录（复用已剥离 \\?\ 前缀的 _py_dir）
+    python_dir = _py_dir
     os.chdir(python_dir)
     print(f"Working directory: {python_dir}")
 

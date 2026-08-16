@@ -231,6 +231,10 @@ class TrajectoryPredictor:
 
         if has_unified_input:
             us_source = unified_state if unified_state is not None else current_state
+            if us_source is None:
+                raise ValueError("融合模式需要 unified_state 或可用的 current_state")
+            if not isinstance(us_source, (UnifiedState, dict)):
+                raise ValueError(f"融合模式 unified_state 必须为 UnifiedState 或 dict，实际 {type(us_source)}")
             us = self._coerce_unified_state(us_source)
             return self._predict_fused(us, candidate_action, horizon)
 

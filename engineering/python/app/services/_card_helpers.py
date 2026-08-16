@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from app.contracts.resource_card import DatasetReadme, ModelArtifact
 from app.database.models.resource_card import (
@@ -36,33 +36,33 @@ def _json_loads(value: Optional[str], default: Any) -> Any:
 def _orm_to_model_artifact(orm: ModelArtifactORM) -> ModelArtifact:
     """ORM → dataclass."""
     return ModelArtifact(
-        model_id=orm.id,
-        model_uri=orm.model_uri,
-        name=orm.name,
-        model_type=orm.model_type,
-        version=orm.version,
-        framework=orm.framework,
-        storage_uri=orm.storage_uri,
+        model_id=str(orm.id),
+        model_uri=str(orm.model_uri),
+        name=str(orm.name),
+        model_type=str(orm.model_type),
+        version=str(orm.version),
+        framework=str(orm.framework),
+        storage_uri=str(orm.storage_uri),
         metrics=orm.metrics,
         metrics_history=orm.metrics_history,
-        readme_md=orm.readme_md,
+        readme_md=str(orm.readme_md),
         tags=orm.tags,
-        owner_id=orm.owner_id,
-        status=orm.status,
-        created_at=orm.created_at,
-        updated_at=orm.updated_at,
+        owner_id=str(orm.owner_id),
+        status=str(orm.status),
+        created_at=cast(datetime, orm.created_at) if orm.created_at else None,
+        updated_at=cast(datetime, orm.updated_at) if orm.updated_at else None,
     )
 
 
 def _orm_to_dataset_readme(orm: DatasetReadmeORM) -> DatasetReadme:
     """ORM → dataclass."""
     return DatasetReadme(
-        readme_id=orm.id,
-        dataset_id=orm.dataset_id,
-        readme_md=orm.readme_md,
-        updated_by=orm.updated_by,
-        version=orm.version,
-        updated_at=orm.updated_at,
+        readme_id=str(orm.id),
+        dataset_id=str(orm.dataset_id),
+        readme_md=str(orm.readme_md),
+        updated_by=str(orm.updated_by),
+        version=str(orm.version) if orm.version else None,
+        updated_at=cast(datetime, orm.updated_at) if orm.updated_at else None,
     )
 
 

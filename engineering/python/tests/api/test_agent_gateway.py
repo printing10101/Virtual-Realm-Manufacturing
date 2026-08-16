@@ -10,14 +10,17 @@ class TestAgentHealth:
         response = client.get("/api/agent/v1/health")
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "healthy"
-        assert "timestamp" in data
-        assert "models_registered" in data
+        # V2.7.0 统一 SuccessResponse 包装：业务数据在 data 字段
+        assert data["code"] == 0
+        payload = data["data"]
+        assert payload["status"] == "healthy"
+        assert "timestamp" in payload
+        assert "models_registered" in payload
 
     def test_health_models_registered_is_non_negative(self, client):
         response = client.get("/api/agent/v1/health")
         data = response.json()
-        assert data["models_registered"] >= 0
+        assert data["data"]["models_registered"] >= 0
 
 
 class TestAgentModels:

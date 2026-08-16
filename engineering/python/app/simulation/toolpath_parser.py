@@ -57,6 +57,9 @@ class ToolpathSegment:
     # 圆弧参数 (用于 G02/G03)
     arc_center: tuple[float, float, float] | None = None  # 圆心坐标 (I, J, K)
     arc_radius: float | None = None  # 圆弧半径 (R 格式)
+    # 五轴角度 (用于 5axis 碰撞检测)
+    a_angle: float | None = None  # A 轴角度（度）
+    c_angle: float | None = None  # C 轴角度（度）
     clockwise: bool = True  # True=G02 顺时针, False=G03 逆时针
 
     def to_dict(self) -> dict[str, Any]:
@@ -200,6 +203,11 @@ class ToolpathParser:
                     continue
 
             self._line_num += 1
+            # block_number 优先使用 N 代码编号（供按 N 号索引改写），
+            # 无 N 号时退化为物理行号
+            n_match = re.search(r"\bN(\d+)\b", stripped.upper())
+            if n_match:
+                self._line_num = int(n_match.group(1))
             words = self._parse_words(stripped)
             if not words:
                 continue
@@ -211,7 +219,7 @@ class ToolpathParser:
                 if upper.startswith("L ") or upper.startswith("L\t"):
                     # 判断是快速移动还是切削移动
                     if "FMAX" in upper:
-                        move_type = "rapid"
+                        move_type: str | None = "rapid"
                         self._motion = "G00"
                     else:
                         move_type = "linear"
@@ -229,14 +237,14 @@ class ToolpathParser:
                     new_point = (self._x, self._y, self._z)
                     if new_point != prev_point:
                         seg = ToolpathSegment(
-                            type=move_type,
+                            type=move_type or "rapid",
                             start_point=segment_start,
                             end_point=new_point,
                             feed_rate=self._feed if move_type == "linear" else None,
                             spindle_speed=self._spindle if self._spindle > 0 else None,
                             tool_id=self._tool,
                             block_number=self._line_num,
-                            g_code=move_type.upper(),
+                            g_code=(move_type or "").upper(),
                         )
                         segments.append(seg)
                         segment_start = new_point
@@ -256,6 +264,9 @@ class ToolpathParser:
                     tool_id=self._tool,
                     block_number=self._line_num,
                     g_code=move_type.upper(),
+                    arc_center=self._arc_center if move_type == "arc" else None,
+                    arc_radius=self._r if move_type == "arc" and self._r > 0 else None,
+                    clockwise=(self._motion == "G02") if move_type == "arc" else True,
                 )
                 segments.append(seg)
                 segment_start = new_point

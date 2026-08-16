@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
 from app.templates.template_update_service import get_update_service
-from app.core.response import success, error
+from app.core.response import success, error, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ def apply_update(notification_id: str):
     service = get_update_service()
     result = service.apply_update(notification_id)
     if result is None:
-        return error(code="NOTIFICATION_NOT_FOUND", message="Notification not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Notification not found")
     return success(data=result.to_dict())
 
 
@@ -70,7 +70,7 @@ def dismiss_notification(notification_id: str):
     service = get_update_service()
     result = service.dismiss_notification(notification_id)
     if not result:
-        return error(code="NOTIFICATION_NOT_FOUND", message="Notification not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Notification not found")
     return success(data={"dismissed": True})
 
 
@@ -80,5 +80,5 @@ def preview_update(notification_id: str):
     service = get_update_service()
     result = service.preview_update(notification_id)
     if result is None:
-        return error(code="NOTIFICATION_NOT_FOUND", message="Notification not found")
+        return error(code=ErrorCode.NOT_FOUND, message="Notification not found")
     return success(data=result)

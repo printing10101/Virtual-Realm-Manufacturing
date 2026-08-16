@@ -1,4 +1,4 @@
-"""数据集 / 版本 / 血缘 / 实验快照集成测试.
+﻿"""数据集 / 版本 / 血缘 / 实验快照集成测试.
 
 对应 ADR-005 阶段 2 验收标准（core-contracts-design.md 第 1260-1263 行）：
     - 同一 snapshot 在干净环境复现，关键指标差异 < 1%
@@ -807,7 +807,7 @@ class TestSnapshotStore:
                 captured["spec_version"] = spec.version
                 return "mock-workflow-run-id-001"
 
-        def _mock_get_runner():
+        async def _mock_get_runner():
             return _MockRunner()
 
         # 延迟导入，patch reproduce 内部调用

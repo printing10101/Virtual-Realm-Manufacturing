@@ -21,7 +21,7 @@ class PathsConfig:
             str(
                 # 包转换后 __file__ 路径多一级，需多一层 .parent
                 # paths.py 与 __init__.py 同级，因此 parent 层数与原 __init__.py 一致
-                Path(__file__).resolve().parent.parent.parent.parent / ".trae" / "skills"
+                Path(__file__).resolve().parent.parent.parent.parent / ".lingjing" / "skills"
             ),
         )
     )

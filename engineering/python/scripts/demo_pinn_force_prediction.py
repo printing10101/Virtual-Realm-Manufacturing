@@ -207,9 +207,9 @@ def write_reports(
     md_path = os.path.join(output_dir, "pinn_force_report.md")
     with open(md_path, "w", encoding="utf-8") as f:
         f.write("# XM-100 PINN 切削力预测展示报告\n\n")
-        f.write(f"- **机床**: XM-100 (Xmaker, Fanuc 0i 兼容)\n")
+        f.write("- **机床**: XM-100 (Xmaker, Fanuc 0i 兼容)\n")
         f.write(f"- **生成时间**: {report['timestamp']}\n")
-        f.write(f"- **PINN 训练域**: speed 500-10000 RPM, feed 100-5000 mm/min, depth 0.1-5.0 mm\n\n")
+        f.write("- **PINN 训练域**: speed 500-10000 RPM, feed 100-5000 mm/min, depth 0.1-5.0 mm\n\n")
 
         f.write("## 1. 多材料对比（XM-100 典型工况）\n\n")
         f.write("| 材料 | 转速(RPM) | 进给(mm/min) | 切深(mm) | Fx(N) | Fy(N) | Fz(N) | 合力(N) | 方法 |\n")

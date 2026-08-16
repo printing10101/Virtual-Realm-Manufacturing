@@ -443,22 +443,26 @@ async def execute_pipeline(request: AgentPipelineRequest):
     try:
         # 记录审计日志
         agent_audit_log.log(
-            agent_id=request.agent_id if hasattr(request, "agent_id") else "unknown",
-            action="pipeline.execute",
-            resource=f"pipeline:{request.pipeline_type}",
+            agent_id=request.agent_id or "unknown",
+            route=f"pipeline:{request.pipeline_type}",
             permission_class="B",
+            status_code=200,
+            latency_ms=0.0,
             details={
+                "action": "pipeline.execute",
                 "pipeline_type": request.pipeline_type,
-                "mode": request.mode.value if hasattr(request.mode, "value") else str(request.mode),
+                "mode": request.mode,
                 "input_keys": list(request.input_data.keys()),
             },
         )
 
         # 执行管线
+        from app.agent.orchestrator import OrchestratorMode
+
         result = await orchestrator.execute_pipeline(
             pipeline_type=request.pipeline_type,
             input_data=request.input_data,
-            mode=request.mode,
+            mode=OrchestratorMode(request.mode),
         )
 
         # 根据结果状态返回相应响应
@@ -470,7 +474,7 @@ async def execute_pipeline(request: AgentPipelineRequest):
                     "status": "completed",
                     "steps": [
                         {
-                            "name": step.name,
+                            "name": step.step_name,
                             "status": step.status.value,
                             "duration_ms": step.duration_ms,
                             "output_keys": list(step.output.keys()) if step.output else [],
@@ -491,7 +495,7 @@ async def execute_pipeline(request: AgentPipelineRequest):
                     "status": "completed_with_fallback",
                     "steps": [
                         {
-                            "name": step.name,
+                            "name": step.step_name,
                             "status": step.status.value,
                             "duration_ms": step.duration_ms,
                             "error": step.error,

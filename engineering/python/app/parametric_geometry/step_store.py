@@ -295,6 +295,9 @@ class TaskStore:
             for task_id, task_dict in data.items():
                 # 重建 ReviewedFeatureRef 列表
                 features = [ReviewedFeatureRef(**f) for f in task_dict.pop("input_features", [])]
+                # to_dict() 输出 feature_count（序列化专用派生字段），
+                # ParametricGeometryTask 无此字段，加载时必须剔除，否则持久化后 reload 必崩。
+                task_dict.pop("feature_count", None)
                 task = ParametricGeometryTask(**{**task_dict, "input_features": features})
                 self._tasks[task_id] = task
         except Exception as e:

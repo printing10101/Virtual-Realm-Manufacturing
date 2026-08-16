@@ -257,6 +257,8 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     """
     return await delete_task_service(task_id)
 from .service import (  # noqa: E402
+    _disclaimer_dict,  # noqa: F401 - 测试专用 re-export
+    _resolve_upstream_calibrated,  # noqa: F401 - 测试专用 re-export
     get_precision_info as get_precision_info_service,
     create_task_from_path as create_task_from_path_service,
     create_task_from_upload as create_task_from_upload_service,

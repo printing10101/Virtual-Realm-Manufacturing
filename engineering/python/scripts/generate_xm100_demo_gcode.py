@@ -28,7 +28,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
@@ -411,7 +410,7 @@ def main() -> int:
             for w in warnings:
                 print(f"       {w}")
         else:
-            print(f"       验证通过：符合 XM-100 约束")
+            print("       验证通过：符合 XM-100 约束")
 
     # 汇总
     print()

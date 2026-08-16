@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
 import numpy as np
 import psutil
@@ -24,6 +24,18 @@ logger = logging.getLogger(__name__)
 
 
 class _StatsMixin:
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    _max_recent_times: Any
+    _stats: Any
+    _stats_lock: Any
+    _trace_log_enabled: Any
+    _trace_log_path: Any
+    device: Any
+    engine_type: Any
+    model_name: Any
+    use_amp: Any
+
     def get_statistics(self) -> Dict[str, Any]:
         with self._stats_lock:
             stats = self._stats.copy()

@@ -90,7 +90,7 @@ class PatternEngine:
     ):
         self.db_path = db_path
         self._lock = threading.RLock()
-        self._db: Optional[sqlite3.Connection] = None
+        self._db: sqlite3.Connection
         self._executions: List[ExecutionRecord] = []
         self._patterns: List[Pattern] = []
         # 自动初始化数据库
@@ -103,6 +103,7 @@ class PatternEngine:
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("patterns", db_path=self.db_path)
         self._db = self._pool.get_connection()
+        assert self._db is not None, "pattern_engine 连接池返回空连接"
         self._db.execute("""
             CREATE TABLE IF NOT EXISTS pattern_executions (
                 task_id TEXT PRIMARY KEY,
@@ -198,7 +199,7 @@ class PatternEngine:
             self._db.commit()
             return record
 
-    def analyze_patterns(self, min_samples: int = None) -> List[Pattern]:
+    def analyze_patterns(self, min_samples: int | None = None) -> List[Pattern]:
         if min_samples is None:
             min_samples = self.MIN_SAMPLES
 
@@ -406,7 +407,7 @@ class PatternEngine:
         """关闭数据库连接，归还连接到连接池"""
         if hasattr(self, "_db") and self._db:
             self._pool.return_connection(self._db)
-            self._db = None
+            self._db = None  # type: ignore[assignment]
             logger.info("PatternEngine closed")
 
 

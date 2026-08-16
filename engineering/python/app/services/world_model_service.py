@@ -25,11 +25,13 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
+
 import os
 import threading
 import time
 from app.utils.time import utcnow
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import numpy as np
 from sqlalchemy import desc, select
@@ -146,7 +148,7 @@ class WorldModelService(BaseSingletonService):
                 # 避免 active_only=True 时 total=len(orms) 被分页截断导致前端分页错误
                 from sqlalchemy import func
 
-                total = (await session.execute(select(func.count()).select_from(count_stmt))).scalar_one()
+                total = (await session.execute(select(func.count()).select_from(count_stmt.subquery()))).scalar_one()
         finally:
             await session.close()
 
@@ -367,13 +369,13 @@ class WorldModelService(BaseSingletonService):
     def _orm_to_dataclass(self, orm: WorldModelVersionORM) -> WorldModelVersion:
         """ORM → 契约层 dataclass."""
         return WorldModelVersion(
-            version=orm.version,
-            model_uri=orm.model_uri,
-            description=orm.description or "",
-            created_at=orm.created_at or utcnow(),
-            training_data_size=orm.training_data_size,
-            prediction_horizon=orm.prediction_horizon,
-            is_active=orm.is_active,
+            version=str(orm.version),
+            model_uri=str(orm.model_uri),
+            description=str(orm.description or ""),
+            created_at=cast(datetime, orm.created_at) if orm.created_at else utcnow(),
+            training_data_size=int(orm.training_data_size),
+            prediction_horizon=int(orm.prediction_horizon),
+            is_active=bool(orm.is_active),
         )
 
     def _state_dict_to_array(self, state_dict: dict[str, float], *, field_name: str) -> np.ndarray:

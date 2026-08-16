@@ -18,6 +18,12 @@ except ImportError:
 import cadquery as cq
 
 from app.cad.advanced_features import AdvancedFeatureBuilder
+from app.cad._brep_validator import (
+    BrepValidationReport,
+    sanitize_dimensions,
+    validate_exported_model,
+    validate_workplane,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +288,17 @@ class CadQueryGenerator:
         if not output_path.exists():
             raise CadQueryExportError(f"Export failed: output file not created at {output_path}")
 
+        # B-rep 拓扑校验（导出后回读；STEP 全量 / STL 基本 / obj/gltf 跳过）
+        vreport = validate_exported_model(output_path, output_format)
+        if vreport is not None and vreport.errors:
+            raise CadQueryExportError(
+                f"CAD 模型导出成功但拓扑校验失败（错误码 {vreport.error_codes}）：{vreport.summary()}。"
+                "建议检查生成脚本的几何操作或参数。"
+            )
+        logger.debug(
+            "Exported model B-rep report: %s",
+            vreport.summary() if vreport is not None else "skipped (format not validated)",
+        )
         logger.info("Model exported: %s (%d bytes)", output_path, output_path.stat().st_size)
         return str(output_path)
 
@@ -293,6 +310,15 @@ class CadQueryGenerator:
 
         try:
             result = _build_solid(shape_type, dimensions, position)
+
+            # B-rep 拓扑校验：拦截破损/退化实体（建模后、导出前）
+            report = validate_workplane(result)
+            if report.errors:
+                raise CadQueryScriptError(
+                    f"CAD 模型拓扑校验失败（错误码 {report.error_codes}）：{report.summary()}。"
+                    "可能原因：几何参数退化或特征操作产生破损几何。请调整参数后重试。"
+                )
+
             output_dir = Path(tempfile.gettempdir()) / "cadquery_models"
             output_dir.mkdir(parents=True, exist_ok=True)
             _register_cadquery_temp_dir(output_dir)
@@ -338,6 +364,15 @@ class CadQueryGenerator:
             builder = AdvancedFeatureBuilder()
             base = builder.apply_features(base, features)
 
+        # B-rep 拓扑校验：捕获特征操作产生的破损几何
+        # （apply_features 内部会吞掉单特征异常，只有几何校验能兜住坏结果）
+        report = validate_workplane(base)
+        if report.errors:
+            raise CadQueryScriptError(
+                f"带特征的模型拓扑校验失败（错误码 {report.error_codes}）：{report.summary()}。"
+                "可调用 generate_3d_model_with_retry 自动剔除致错特征并重生成。"
+            )
+
         output_dir = Path(tempfile.gettempdir()) / "cadquery_models"
         output_dir.mkdir(parents=True, exist_ok=True)
         _register_cadquery_temp_dir(output_dir)
@@ -361,3 +396,80 @@ class CadQueryGenerator:
             "views": {"front": front, "top": top, "side": side},
         }
         return self.generate_3d_model(params)
+
+    def generate_3d_model_with_retry(
+        self,
+        params: dict[str, Any],
+        features: list[dict[str, Any]] | None = None,
+        output_format: str = "stl",
+        max_retries: int = 3,
+    ) -> tuple[str, BrepValidationReport, int]:
+        """带失败重生成的 3D 建模（借鉴 Pointer-CAD 的生成后校验 + 重生成闭环）。
+
+        流程：
+        1. 尝试生成并导出；
+        2. 导出后回读校验（STEP 全量 / STL 基本 / obj/gltf 跳过）；
+        3. 校验失败 → 逐个剔除致错特征后重试；无特征时夹取退化尺寸后重试；
+        4. 达到 max_retries 仍失败则抛出 CadQueryScriptError。
+
+        Returns:
+            (输出文件路径, 最终校验报告, 实际尝试次数)
+        """
+        logger.info(
+            "generate_3d_model_with_retry: features=%d max_retries=%d format=%s",
+            len(features or []),
+            max_retries,
+            output_format,
+        )
+        feats: list[dict[str, Any]] = list(features) if features else []
+        last_report: BrepValidationReport | None = None
+        sanitized_once = False
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                path = self.generate_with_features(params, feats, output_format)
+                last_report = validate_exported_model(path, output_format)
+                if last_report is not None and last_report.errors:
+                    raise CadQueryScriptError(
+                        f"导出模型校验失败（错误码 {last_report.error_codes}）：{last_report.summary()}"
+                    )
+                logger.info("重生成第 %d 次成功: %s", attempt, path)
+                return path, last_report, attempt
+            except CadQueryError as e:
+                # 恢复策略 1：剔除致错特征（校验失败通常由某个特征引起）
+                if feats:
+                    dropped = feats.pop()
+                    logger.warning(
+                        "第 %d 次生成校验失败（%s），剔除特征 %s 后重试",
+                        attempt,
+                        e,
+                        dropped,
+                    )
+                    continue
+                # 恢复策略 2：夹取退化尺寸
+                if not sanitized_once:
+                    sanitized = sanitize_dimensions(params)
+                    if sanitized != params:
+                        params = sanitized
+                        sanitized_once = True
+                        logger.warning("第 %d 次失败，夹取退化尺寸后重试: %s", attempt, params)
+                        continue
+                raise
+            except Exception as e:  # noqa: BLE001 - OCCT 异常类型繁杂（Standard_DomainError 等）
+                if feats:
+                    dropped = feats.pop()
+                    logger.warning("第 %d 次生成异常（%s），剔除特征 %s 后重试", attempt, e, dropped)
+                    continue
+                if not sanitized_once:
+                    sanitized = sanitize_dimensions(params)
+                    if sanitized != params:
+                        params = sanitized
+                        sanitized_once = True
+                        logger.warning("第 %d 次生成异常，夹取退化尺寸后重试: %s", attempt, params)
+                        continue
+                raise CadQueryScriptError(f"CAD 模型生成失败（第 {attempt} 次）: {e}") from e
+
+        raise CadQueryScriptError(
+            f"重生成 {max_retries} 次后仍校验失败，最后一次报告: "
+            f"{last_report.summary() if last_report is not None else '无报告'}"
+        )
