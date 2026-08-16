@@ -91,11 +91,13 @@ jobs:
             --cov-report=html:coverage-unit-html \
             --cov-report=term-missing \
             --junitxml=junit-unit.xml \
-            -m unit
+            # P0-1: 原 '-m unit' 漏掉 tests/unit/ 下 41 个未标记单元测试。
+            # 收集策略改为目录收集 + 仅排除 skip_ci，与 full suite 对齐。
+            -m "not skip_ci"
 
       - name: Check unit test coverage threshold (24%)
         working-directory: engineering/python
-        if: matrix.python-version == '3.10'
+        if: matrix.python-version == '3.11'
         run: |
           echo "======================================================"
           echo "  COVERAGE CHECK: Unit Tests (threshold >= 24%)"
@@ -210,7 +212,7 @@ jobs:
           retention-days: 30
 
       - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.10'
+        if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v4
         with:
           file: engineering/python/coverage-unit.xml
@@ -262,7 +264,7 @@ jobs:
             --cov-report=html:coverage-integration-html \
             --cov-report=term-missing \
             --junitxml=junit-integration.xml \
-            -m integration
+            -m "not skip_ci"
 
       - name: Check integration test coverage threshold (24%)
         run: |
@@ -429,7 +431,7 @@ jobs:
             --cov-report=json:coverage-regression.json \
             --cov-report=term-missing \
             --junitxml=junit-regression.xml \
-            -m regression
+            -m "not skip_ci"
 
       - name: Upload regression test results
         uses: actions/upload-artifact@v4
@@ -486,13 +488,13 @@ jobs:
       - name: Run full test suite
         working-directory: engineering/python
         run: |
-          # [E-P0-4] tests/integration/test_e2e_latency.py 包含真实 sidecar 进程级 E2E 测试
-          # 标记为 @pytest.mark.e2e + @pytest.mark.slow，验证 Rust ↔ Python 契约
-          # 每个 E2E 测试启动独立 uvicorn 子进程，总耗时约 30-60s
-          # [P0-2] 包含 tests/lnn/ —— lingbot-map 流式推理集成测试（test_streaming.py 56 用例）
-          # tests/lnn/ 下测试无 @pytest.mark.unit/integration/regression 标记，
-          # 仅 full test suite（-m "not skip_ci"）能覆盖，unit/integration/regression 三个 job 会跳过。
-          pytest tests/unit/ tests/integration/ tests/regression/ tests/lnn/ tests/test_*.py \
+          # P0-1 修复：原路径列表仅覆盖 unit/integration/regression/lnn/根目录 test_*.py，
+          # 遗漏 api/security/plugins/simulation/architecture/e2e/validation/image_to_3d/
+          # process_understanding/rules 等约 49 个测试文件（它们在 CI 上从未运行过）。
+          # 现改为收集整个 tests/ 树；helper 目录（fixtures/utils/generated/test_heartbeat_data）
+          # 不含 test_*.py，不会被收集。外部依赖测试（torch/LLM/Ollama/基准）已打 @pytest.mark.skip_ci，
+          # 由下方 -m "not skip_ci" 排除。--timeout=300 兜底防止偶发挂起。
+          pytest tests/ \
             -v \
             --cov=app \
             --cov-config=../../.coveragerc \

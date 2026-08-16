@@ -22,7 +22,7 @@ Tauri(Rust) + Vue3 + Python/FastAPI 全栈 monorepo。当前分支为科研/工�
 ## 测试命令（必须按此跑）
 
 ```bash
-unset PYTHONPATH                       # 坑1：Hermes 桌面 app 注入的 PYTHONPATH 含 hermes-agent，遮蔽 tests.utils 命名空间
+unset PYTHONPATH                       # 坑1：桌面宿主环境注入的 PYTHONPATH 可能遮蔽 tests.utils 命名空间
 python -m pytest                       # 坑2：用系统 Python 3.11；.venv 的 pydantic_core 已损坏
 python -m pytest -m unit               # 快速：只跑单元测试
 python -m pytest engineering/python/tests/unit/test_data_flywheel_plugin.py  # 单文件
@@ -34,13 +34,13 @@ pytest 配置见 `pytest.ini`：testpaths=engineering/python/tests，`--import-m
 
 ## 已知坑
 
-1. **PYTHONPATH 遮蔽**：Hermes 桌面 app 环境的 PYTHONPATH 含 hermes-agent 目录 → `ModuleNotFoundError('tests.utils')`。跑 pytest 前必须 `unset PYTHONPATH`。
+1. **PYTHONPATH 遮蔽**：桌面宿主环境注入的 PYTHONPATH 可能含额外目录 → `ModuleNotFoundError('tests.utils')`。跑 pytest 前必须 `unset PYTHONPATH`。
 2. **.venv 的 pydantic_core 损坏**：用系统 Python 3.11（anaconda/.venv 均不可靠），`python -m pytest` 而不是 `pytest`。
 3. research/ 与 engineering/ 物理解耦中：工程侧 pytest 已排除 research/、shared/、app（norecursedirs + collect_ignore 双重防护）；改测试收集逻辑时不要破坏此防护。
 4. 新模块自测若留在 `app/**/tests/`，必须用绝对导入（`from app.xxx import yyy`）。
-5. 错误消息格式约定：`[错误类型] 具体描述。建议操作：[具体步骤]`（Boil the Lake 原则 #4）。
+5. 错误消息格式约定：`[错误类型] 具体描述。建议操作：[具体步骤]`。
 
-## 开发约定（详见 .trae/PRINCIPLES.md "Boil the Lake"）
+## 开发约定
 
 - **完整实现**：功能必须完整交付，拒绝 90% 半成品；≤30 分钟 TODO 必须当场做掉。
 - **测试不延期**：新功能同步写测试，Bug 修复带复现测试，覆盖率 ≥80% 才可合并。

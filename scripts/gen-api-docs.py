@@ -95,8 +95,14 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
 
     def __init__(self):
         self.routes: list[RouteInfo] = []
-        self.router_prefix = ""
-        self.router_tags: list[str] = []
+        # 所有 APIRouter 定义：name -> {prefix, tags}
+        self._routers: dict[str, dict] = {}
+        # include_router 关系：(parent, child, include_prefix)
+        self._includes: list[tuple[str, str, str | None]] = []
+        # import 别名映射：alias -> (module, original_name)
+        self._imports: dict[str, tuple[str, str]] = {}
+        # 待生成的路由：(router_name, decorator, function_node)
+        self._pending: list[tuple[str, ast.AST, ast.AsyncFunctionDef | ast.FunctionDef]] = []
         self._current_tags: list[str] = []
 
     def _extract_string(self, node: ast.AST) -> str | None:
@@ -108,20 +114,88 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
         return None
 
     def visit_Assign(self, node: ast.Assign):
-        """识别 router = APIRouter(...) 定义"""
+        """识别任意 `NAME = APIRouter(...)` 定义（V2.7.0 后子路由不再重复声明 prefix，
+        统一由聚合 router 声明 + include_router 传播，因此必须支持多 router 与任意命名）"""
         for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == "router":
-                if isinstance(node.value, ast.Call):
+            if isinstance(target, ast.Name) and isinstance(node.value, ast.Call):
+                if self._is_apirouter_call(node.value):
+                    prefix = ""
+                    tags: list[str] = []
                     for kw in node.value.keywords:
                         if kw.arg == "prefix":
-                            self.router_prefix = self._extract_string(kw.value) or ""
+                            prefix = self._extract_string(kw.value) or ""
                         elif kw.arg == "tags":
                             if isinstance(kw.value, ast.List):
-                                self.router_tags = [
+                                tags = [
                                     self._extract_string(elt) or ""
                                     for elt in kw.value.elts
                                 ]
+                    self._routers[target.id] = {"prefix": prefix, "tags": tags}
         self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call):
+        """识别 `PARENT.include_router(CHILD, prefix=...)` 前缀传播关系"""
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "include_router":
+            parent = self._attr_root_name(node.func)
+            if parent and node.args:
+                child = self._attr_root_name(node.args[0])
+                if child:
+                    inc_prefix: str | None = None
+                    for kw in node.keywords:
+                        if kw.arg == "prefix":
+                            inc_prefix = self._extract_string(kw.value)
+                            break
+                    self._includes.append((parent, child, inc_prefix))
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        """收集 import 别名：`from X import Y as Z` / `from X import Y`"""
+        module = node.module or ""
+        if node.level:
+            module = ("." * node.level) + (module or "")
+        for alias in node.names:
+            self._imports[alias.asname or alias.name] = (module, alias.name)
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import):
+        """收集 import 别名：`import X as Z`"""
+        for alias in node.names:
+            self._imports[alias.asname or alias.name] = (alias.name, "")
+        self.generic_visit(node)
+
+    def resolve_symbol(self, name: str, module: str) -> tuple[str, str]:
+        """把符号名解析为全局键 (module, name)。优先查本文件 import 别名；
+        相对导入（. / ..）基于当前模块路径展开。"""
+        if name in self._imports:
+            target_mod, target_name = self._imports[name]
+            if target_mod.startswith("."):
+                # 相对导入：按当前模块的包层级展开
+                base_parts = module.split(".")
+                up = len(target_mod) - len(target_mod.lstrip("."))
+                pkg = base_parts[: len(base_parts) - up]
+                rel = target_mod.lstrip(".")
+                if rel:
+                    pkg = pkg + rel.split(".")
+                resolved_mod = ".".join(pkg) if pkg else module
+                return (resolved_mod, target_name)
+            return (target_mod, target_name)
+        return (module, name)
+
+    @staticmethod
+    def _attr_root_name(node: ast.AST) -> str | None:
+        """提取 `a.b.c` 链的根变量名（router 名）"""
+        while isinstance(node, ast.Attribute):
+            node = node.value
+        if isinstance(node, ast.Name):
+            return node.id
+        return None
+
+    @staticmethod
+    def _is_apirouter_call(node: ast.Call) -> bool:
+        """判断调用是否为 APIRouter(...) 构造"""
+        if isinstance(node.func, ast.Name):
+            return node.func.id == "APIRouter"
+        return False
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         """解析异步函数定义（FastAPI 端点）"""
@@ -134,16 +208,56 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def _process_function(self, node: ast.AsyncFunctionDef | ast.FunctionDef):
-        """处理函数节点，提取路由信息"""
+        """收集函数装饰器信息（实际路由生成在 resolve() 阶段，保证
+        include_router 前缀传播先于路由生成）"""
         for decorator in node.decorator_list:
-            route_info = self._extract_route_from_decorator(decorator, node)
+            if not isinstance(decorator, ast.Call):
+                continue
+            func = decorator.func
+            if not isinstance(func, ast.Attribute):
+                continue
+            if func.attr not in self.ROUTE_METHODS:
+                continue
+            router_name = self._attr_root_name(func)
+            if router_name is None:
+                continue
+            self._pending.append((router_name, decorator, node))
+
+    def resolve(self):
+        """传播 include_router 前缀，生成全部路由。"""
+        # 迭代传播直到稳定（父 → 子 → 孙 链）
+        guard = 0
+        changed = True
+        while changed and guard < 10:
+            changed = False
+            guard += 1
+            for parent, child, inc_prefix in self._includes:
+                if parent not in self._routers or child not in self._routers:
+                    continue
+                parent_prefix = self._routers[parent]["prefix"] or ""
+                child_prefix = self._routers[child]["prefix"] or ""
+                if inc_prefix is not None:
+                    # FastAPI: include_router(prefix=...) 覆盖子路由 prefix
+                    new_prefix = parent_prefix + inc_prefix
+                else:
+                    new_prefix = parent_prefix + child_prefix
+                if new_prefix != self._routers[child]["prefix"]:
+                    self._routers[child]["prefix"] = new_prefix
+                    changed = True
+
+        for router_name, decorator, node in self._pending:
+            route_info = self._extract_route_from_decorator(decorator, node, router_name)
             if route_info:
                 self.routes.append(route_info)
 
     def _extract_route_from_decorator(
-        self, decorator: ast.AST, node: ast.AsyncFunctionDef | ast.FunctionDef
+        self,
+        decorator: ast.AST,
+        node: ast.AsyncFunctionDef | ast.FunctionDef,
+        prefix: str = "",
+        tags: list[str] | None = None,
     ) -> RouteInfo | None:
-        """从装饰器中提取路由信息"""
+        """从装饰器中提取路由信息（前缀由全局传播阶段解析后传入）"""
         if not isinstance(decorator, ast.Call):
             return None
 
@@ -162,14 +276,14 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
         if decorator.args:
             route_path = self._extract_string(decorator.args[0]) or ""
 
-        full_path = f"{self.router_prefix}{route_path}"
+        full_path = f"{prefix or ''}{route_path}"
         http_method = method_name.upper()
 
         route_info = RouteInfo(
             method=http_method,
             path=full_path,
             file_path="",
-            tags=list(self.router_tags),
+            tags=list(tags or []),
         )
 
         for kw in decorator.keywords:
@@ -543,6 +657,7 @@ class APIDocumentGenerator:
     def generate_auto_content(self) -> str:
         """仅生成自动内容部分（用于填充模板占位区域）"""
         sections: list[str] = []
+        sections.append(self._generate_all_routes())
         sections.append(self._generate_lnn_endpoints())
         sections.append(self._generate_wear_endpoints())
         sections.append(self._generate_models_table())
@@ -650,6 +765,30 @@ Content-Type: application/json
 | `INTERNAL_ERROR` | `2001` | 服务器内部错误 | 检查服务器日志，联系技术支持 |
 | `SERVICE_UNAVAILABLE` | `2002` | 服务不可用 | 检查服务状态，稍后重试 |
 | `CAD_GENERATION_ERROR` | `7001` | CAD 生成失败 | 检查输入参数和模板配置 |"""
+
+    def _generate_all_routes(self) -> str:
+        """全量路由总览：按路径前缀分组的紧凑清单（覆盖所有已注册路由，
+        避免重构后新增域路由遗漏在 lnn/wear 两个专题 section 之外）"""
+        lines = ["## 全部 API 路由", "", "所有已注册路由的完整清单（按路径前缀分组）。", ""]
+
+        groups: dict[str, list[RouteInfo]] = {}
+        for route in self.routes:
+            parts = route.path.strip("/").split("/")
+            key = "/" + "/".join(parts[:2]) if len(parts) > 1 else "/" + parts[0]
+            groups.setdefault(key, []).append(route)
+
+        for key in sorted(groups):
+            routes = sorted(groups[key], key=lambda r: (r.path, r.method))
+            lines.append(f"### {key}")
+            lines.append("")
+            lines.append("| 方法 | 路径 | 说明 |")
+            lines.append("|------|------|------|")
+            for r in routes:
+                summary = (r.summary or "").replace("|", "\\|").replace("\n", " ").strip()
+                lines.append(f"| `{r.method}` | `{r.path}` | {summary} |")
+            lines.append("")
+
+        return "\n".join(lines)
 
     def _generate_lnn_endpoints(self) -> str:
         """生成 LNN 相关端点文档"""
@@ -820,14 +959,43 @@ Content-Type: application/json
 # ===================== 主程序 =====================
 
 
-def scan_api_files(api_dir: Path) -> tuple[list[RouteInfo], list[PydanticModelInfo]]:
-    """递归扫描 API 目录，提取路由和模型信息"""
-    all_routes: list[RouteInfo] = []
-    all_models: list[PydanticModelInfo] = []
+def _module_name(file_path: Path, app_root: Path) -> str:
+    """文件相对 engineering/python/ 的模块名：app.api.v1.lnn.routes_prediction"""
+    rel = file_path.relative_to(app_root.parent)
+    parts = list(rel.parts)
+    parts[-1] = parts[-1][:-3] if parts[-1].endswith(".py") else parts[-1]
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+    if not parts:
+        return ""
+    return ".".join(parts)
 
-    api_files = list(api_dir.rglob("*.py"))
 
-    for file_path in api_files:
+def scan_api_files_global(
+    dirs: list[Path],
+    app_root: Path,
+    extra_files: list[Path] | None = None,
+) -> tuple[list[RouteInfo], list[PydanticModelInfo]]:
+    """扫描多个目录 + 额外文件，收集 AST 状态后做跨文件 include_router 前缀传播。
+
+    V2.7.0 解耦重构后路由采用「域注册器 → 聚合 router → 子路由」的多层 include_router
+    架构（见 app/api/routers/*.py 与 app/api/v1/*/routes.py），子路由不再重复声明
+    prefix，统一由聚合 router 声明。单文件静态扫描无法还原完整路径，因此这里
+    收集所有文件的 router 定义 / include 关系 / import 别名，构建全局图后传播前缀。
+    """
+    all_files: list[Path] = []
+    for d in dirs:
+        if d.exists():
+            all_files.extend(d.rglob("*.py"))
+    if extra_files:
+        all_files.extend(f for f in extra_files if f.exists())
+
+    extractors: list[FastAPIRouteExtractor] = []
+    module_names: list[str] = []
+    models: list[PydanticModelInfo] = []
+    file_paths: list[Path] = []
+
+    for file_path in all_files:
         try:
             source = file_path.read_text(encoding="utf-8")
             tree = ast.parse(source, filename=str(file_path))
@@ -837,23 +1005,75 @@ def scan_api_files(api_dir: Path) -> tuple[list[RouteInfo], list[PydanticModelIn
 
         route_extractor = FastAPIRouteExtractor()
         route_extractor.visit(tree)
-
-        for route in route_extractor.routes:
-            route.file_path = str(file_path.relative_to(api_dir.parent.parent))
-            all_routes.append(route)
+        extractors.append(route_extractor)
+        module_names.append(_module_name(file_path, app_root))
+        file_paths.append(file_path)
 
         model_extractor = PydanticModelExtractor()
         model_extractor.visit(tree)
-
         for model in model_extractor.models:
-            model.file_path = str(file_path.relative_to(api_dir.parent.parent))
-            all_models.append(model)
+            model.file_path = str(file_path.relative_to(app_root.parent))
+            models.append(model)
 
+    # 全局合并：router 注册表 / include 边 / pending 路由
+    routers: dict[tuple[str, str], dict] = {}
+    includes: list[tuple[tuple[str, str], tuple[str, str], str | None]] = []
+    pending: list[tuple[tuple[str, str], ast.AST, ast.AsyncFunctionDef | ast.FunctionDef]] = []
+
+    for ex, mod in zip(extractors, module_names):
+        for name, cfg in ex._routers.items():
+            key = (mod, name)
+            own = cfg.get("prefix", "") or ""
+            if key not in routers:
+                routers[key] = {
+                    "own": own,
+                    "eff": own,
+                    "tags": list(cfg.get("tags", [])),
+                }
+            else:
+                # 同名冲突（各文件都有 router）：保留带 prefix 的定义
+                if own and not routers[key]["own"]:
+                    routers[key]["own"] = own
+                    routers[key]["eff"] = own
+        for parent, child, inc in ex._includes:
+            pkey = ex.resolve_symbol(parent, mod)
+            ckey = ex.resolve_symbol(child, mod)
+            includes.append((pkey, ckey, inc))
+        for rname, dec, node in ex._pending:
+            key = ex.resolve_symbol(rname, mod)
+            pending.append((key, dec, node))
+
+    # 跨文件传播 include 前缀（幂等：child 基准用自身声明 own，不叠加已继承前缀）
+    for _ in range(10):
+        changed = False
+        for pkey, ckey, inc in includes:
+            if pkey in routers and ckey in routers:
+                pp = routers[pkey]["eff"] or ""
+                base = routers[ckey]["own"] or ""
+                newp = (pp + inc) if inc is not None else (pp + base)
+                if newp != routers[ckey]["eff"]:
+                    routers[ckey]["eff"] = newp
+                    changed = True
+        if not changed:
+            break
+
+    # 生成路由（前缀已解析）
+    routes: list[RouteInfo] = []
+    for (mod, name), dec, node in pending:
+        cfg = routers.get((mod, name), {})
+        prefix = cfg.get("eff", "") or ""
+        tags = cfg.get("tags", [])
+        for ex in extractors:
+            ri = ex._extract_route_from_decorator(dec, node, prefix=prefix, tags=tags)
+            if ri:
+                routes.append(ri)
+                break
+
+    # 全局 schema 模型文件
     schema_files = [
-        api_dir.parent.parent / "models" / "schemas.py",
-        api_dir.parent.parent / "models" / "validation.py",
+        app_root.parent / "models" / "schemas.py",
+        app_root.parent / "models" / "validation.py",
     ]
-
     for schema_file in schema_files:
         if schema_file.exists():
             try:
@@ -862,12 +1082,17 @@ def scan_api_files(api_dir: Path) -> tuple[list[RouteInfo], list[PydanticModelIn
                 model_extractor = PydanticModelExtractor()
                 model_extractor.visit(tree)
                 for model in model_extractor.models:
-                    model.file_path = str(schema_file.relative_to(api_dir.parent.parent.parent))
-                    all_models.append(model)
+                    model.file_path = str(schema_file.relative_to(app_root.parent.parent))
+                    models.append(model)
             except SyntaxError as e:
                 print(f"[警告] 解析模型文件失败 {schema_file}: {e}", file=sys.stderr)
 
-    return all_routes, all_models
+    return routes, models
+
+
+def scan_api_files(api_dir: Path) -> tuple[list[RouteInfo], list[PydanticModelInfo]]:
+    """兼容包装：单目录扫描（保留旧签名，供外部调用）"""
+    return scan_api_files_global([api_dir], api_dir.parent.parent)
 
 
 def load_template(template_path: Path) -> str:
@@ -884,12 +1109,26 @@ def generate_document(
 ) -> str:
     """生成完整 API 文档"""
     # V2.7.0 解耦：工程侧代码位于 engineering/python/（原 python/）
-    api_dir = project_root / "engineering" / "python" / "app" / "api" / "v1"
-    
-    if not api_dir.exists():
-        raise FileNotFoundError(f"API 目录不存在: {api_dir}")
+    # 扫描范围与 scripts/check_api_docs_sync.py 保持一致（否则文档永远落后于门禁检查）：
+    # app/api/v1 + rag + ai + simulation + projects + step_import + rules + main.py
+    # 另加 app/api/routers/（域注册器，include_router 前缀传播的根节点）
+    app_root = project_root / "engineering" / "python" / "app"
+    api_dirs = [
+        app_root / "api" / "v1",
+        app_root / "api" / "routers",
+        app_root / "rag",
+        app_root / "ai",
+        app_root / "simulation",
+        app_root / "projects",
+        app_root / "step_import",
+        app_root / "rules",
+    ]
 
-    routes, models = scan_api_files(api_dir)
+    routes, models = scan_api_files_global(
+        api_dirs,
+        app_root,
+        extra_files=[app_root / "main.py"],
+    )
 
     if not routes:
         print("[警告] 未找到任何 API 路由定义", file=sys.stderr)

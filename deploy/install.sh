@@ -2,7 +2,7 @@
 # =============================================================================
 # 灵境制造 - 一键安装脚本（Linux / macOS / WSL2）
 # =============================================================================
-# 对标 Hermes Agent 的安装体验：一条命令、零前置依赖（仅 git）、无需 sudo。
+# 一条命令完成安装：零前置依赖（仅 git）、无需 sudo。
 #
 # 用法：
 #   官方源：
@@ -122,7 +122,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# [2/7] 安装 uv 与 Python 3.12（对标 Hermes：自动处理运行时，无需 sudo）
+# [2/7] 安装 uv 与 Python 3.12（自动处理运行时，无需 sudo）
 # -----------------------------------------------------------------------------
 step "[2/7] 准备 Python 运行时（uv + Python 3.12）..."
 export PATH="$HOME/.local/bin:$PATH"
@@ -313,7 +313,7 @@ echo " API 文档:    http://localhost:$LINGJING_PORT/docs"
 echo
 echo " 下一步："
 echo "   1. source ~/.bashrc      # 刷新 PATH"
-echo "   2. lingjing doctor       # 检查安装状态（对标 hermes doctor）"
+echo "   2. lingjing doctor       # 检查安装状态"
 echo "   3. lingjing start        # 启动服务"
 echo "   4. 浏览器访问 http://localhost:$LINGJING_PORT"
 echo

@@ -469,3 +469,4 @@ output/mem-check.txt
 /scripts/fea_verify/*.txt
 /scripts/fea_verify/__pycache__/
 /scripts/fea_verify/ccx_2.23_htm.tar.bz2
+data/traces/

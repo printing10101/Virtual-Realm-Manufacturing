@@ -195,15 +195,28 @@ def scan_api_routes(project_root: str) -> list[RouteInfo]:
     """Scan all Python files in the project for API routes."""
     all_routes = []
 
+    # V2.7 重构后代码从 python/app 迁移至 engineering/python/app，
+    # 动态探测两种布局（优先新结构，兼容旧结构/单测目录）。
+    candidates = [
+        os.path.join(project_root, "engineering", "python"),
+        os.path.join(project_root, "python"),
+    ]
+    app_root = next(
+        (c for c in candidates if os.path.isdir(os.path.join(c, "app"))),
+        None,
+    )
+    if app_root is None:
+        return []
+
     # Scan v1 API routes
     api_dirs = [
-        os.path.join(project_root, "python", "app", "api", "v1"),
-        os.path.join(project_root, "python", "app", "rag"),
-        os.path.join(project_root, "python", "app", "ai"),
-        os.path.join(project_root, "python", "app", "simulation"),
-        os.path.join(project_root, "python", "app", "projects"),
-        os.path.join(project_root, "python", "app", "step_import"),
-        os.path.join(project_root, "python", "app", "rules"),
+        os.path.join(app_root, "app", "api", "v1"),
+        os.path.join(app_root, "app", "rag"),
+        os.path.join(app_root, "app", "ai"),
+        os.path.join(app_root, "app", "simulation"),
+        os.path.join(app_root, "app", "projects"),
+        os.path.join(app_root, "app", "step_import"),
+        os.path.join(app_root, "app", "rules"),
     ]
 
     for api_dir in api_dirs:
@@ -217,7 +230,7 @@ def scan_api_routes(project_root: str) -> list[RouteInfo]:
             all_routes.extend(routes)
 
     # Scan main.py for app-level routes
-    main_file = os.path.join(project_root, "python", "app", "main.py")
+    main_file = os.path.join(app_root, "app", "main.py")
     if os.path.isfile(main_file):
         all_routes.extend(extract_main_routes(main_file))
 
@@ -293,6 +306,20 @@ def extract_routes_from_docs(docs_path: str) -> dict[str, list[dict[str, Any]]]:
         full_path = "/" + match.group("path").strip().split(" ")[0]
         documented_routes[full_path] = documented_routes.get(full_path, [])
         documented_routes[full_path].append({"method": method, "path": full_path})
+
+    # Pattern 5: 反引号表格格式 `| `GET` | `/path` | summary |`（gen-api-docs.py v2.7.0 全量路由总览）
+    route_pattern_5 = re.finditer(
+        r"^\|\s*`(?P<method>[A-Z]+)`\s*\|\s*`/(?P<path>[^`]+)`\s*\|",
+        content,
+        re.MULTILINE,
+    )
+    for match in route_pattern_5:
+        method = match.group("method")
+        if method.upper() not in {m.upper() for m in HTTP_METHODS}:
+            continue
+        path = "/" + match.group("path").strip()
+        documented_routes[path] = documented_routes.get(path, [])
+        documented_routes[path].append({"method": method.upper(), "path": path})
 
     return documented_routes
 
@@ -457,8 +484,8 @@ def main():
     )
     parser.add_argument(
         "--docs-path",
-        default="docs/API.md",
-        help="Path to the API documentation file (default: docs/API.md)",
+        default="docs/api-reference.md",
+        help="Path to the API documentation file (default: docs/api-reference.md)",
     )
     parser.add_argument(
         "--verbose",

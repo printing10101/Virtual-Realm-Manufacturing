@@ -15,8 +15,6 @@ exclude =
     shared,
     # 排除临时一次性验证脚本（以单下划线开头的工具脚本）
     _*.py,
-    # 排除 Agent Review 临时 diff 快照目录
-    C:/Users/Lenovo/AppData/Local/Temp/trae-cn/agent-review/*,
 per-file-ignores =
     # 阶段2 解耦改造：路径前缀从 python/ 改为 engineering/python/
     # quantization/quantizer.py 已迁移到 research/quantization/quantizer.py

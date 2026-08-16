@@ -18,16 +18,24 @@ on:
       - main
       - master
     paths:
-      - 'python/**'
-      - 'src/**'
+      # V2.7 重构后代码位于 engineering/ 下；原 python/**、src/** 路径已失效
+      # （导致 CodeQL 在 push/PR 上静默跳过，仅剩每周 cron 兜底）。2026-08 修复。
+      - 'engineering/python/**'
+      - 'engineering/src/**'
+      - 'mcp_server/**'
+      - 'shared/**'
+      - 'scripts/**'
       - '.github/workflows/sast.yml'
   pull_request:
     branches:
       - main
       - master
     paths:
-      - 'python/**'
-      - 'src/**'
+      - 'engineering/python/**'
+      - 'engineering/src/**'
+      - 'mcp_server/**'
+      - 'shared/**'
+      - 'scripts/**'
       - '.github/workflows/sast.yml'
   schedule:
     # 每周一 02:00 UTC 定期扫描（捕获 CodeQL 查询库更新和新增 CVE）
@@ -73,11 +81,9 @@ jobs:
           queries: security-extended
 
       - name: 自动构建（CodeQL）
+        # V2.7 修复：移除失效的 working-directory: python（该目录已不存在）。
+        # CodeQL autobuild 从仓库根自动发现 Python/TS 源（engineering/、mcp_server/、shared/）。
         uses: github/codeql-action/autobuild@v3
-        with:
-          # Python 代码位于 python/ 子目录，CodeQL autobuild 默认从根目录搜索
-          # 通过 working-directory 指定构建目录
-          working-directory: python
 
       - name: 执行 CodeQL 分析
         uses: github/codeql-action/analyze@v3

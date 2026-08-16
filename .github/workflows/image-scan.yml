@@ -20,7 +20,7 @@ on:
     paths:
       - 'Dockerfile'
       - 'engineering/python/requirements.txt'
-      - 'pnpm-lock.yaml'
+      - 'engineering/pnpm-lock.yaml'
       - '.github/workflows/image-scan.yml'
   pull_request:
     branches:
@@ -29,7 +29,7 @@ on:
     paths:
       - 'Dockerfile'
       - 'engineering/python/requirements.txt'
-      - 'pnpm-lock.yaml'
+      - 'engineering/pnpm-lock.yaml'
       - '.github/workflows/image-scan.yml'
   # post-merge.yml / release.yml 镜像构建完成后触发扫描
   workflow_run:

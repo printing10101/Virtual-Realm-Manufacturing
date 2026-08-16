@@ -7,9 +7,9 @@
 #   scripts/run_tests.sh -q engineering/python/tests/unit/test_data_flywheel_plugin.py
 #
 # 为什么必须用这个脚本而不是裸 pytest:
-#   1. Hermes 桌面 app 注入的 PYTHONPATH 含 hermes-agent 目录，
+#   1. 桌面宿主环境注入的 PYTHONPATH 可能含额外目录，
 #      会遮蔽 tests.utils 命名空间 → ModuleNotFoundError
-#   2. PATH 首位的 python 是 Hermes 自身 venv（无 pytest）；
+#   2. PATH 首位的 python 可能是桌面宿主 venv（无 pytest）；
 #      仓库 .venv 的 pydantic_core 已损坏 → 必须用系统 Python 3.11
 #
 # 科研侧测试（research/）是独立环境，不适用本脚本：
@@ -22,7 +22,7 @@ unset PYTHONPATH
 # 解释器探测（优先级从高到低）:
 #   1. PYTHON_BIN 环境变量显式指定
 #   2. py -3.11（Windows launcher → 系统 Python 3.11，已装 pytest 8.3.4）
-#   3. python（回退；注意 PATH 中的 python 可能是 Hermes venv，没有 pytest）
+#   3. python（回退；注意 PATH 中的 python 可能是桌面宿主 venv，没有 pytest）
 run_pytest() {
     if [ -n "${PYTHON_BIN:-}" ]; then
         exec "$PYTHON_BIN" -m pytest "$@"

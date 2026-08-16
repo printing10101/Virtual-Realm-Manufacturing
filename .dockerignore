@@ -18,9 +18,6 @@
 *.sublime-project
 *.sublime-workspace
 
-# --- Trae AI ---
-.trae
-
 # --- OS Files ---
 .DS_Store
 Thumbs.db
