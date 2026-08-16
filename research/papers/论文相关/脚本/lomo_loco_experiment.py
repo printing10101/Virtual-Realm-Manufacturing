@@ -90,7 +90,7 @@ sys.path.insert(0, str(RESEARCH_DIR))
 sys.path.insert(0, str(EXPERIMENTS_DIR))
 
 # 复用主实验模块
-from research.training.reproducibility import set_global_seed, get_worker_init_fn
+from training.reproducibility import set_global_seed, get_worker_init_fn
 from experiments.config import get_config, ExperimentConfig
 from experiments.data_generator import (
     TlustyAnalyticalModel,

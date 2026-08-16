@@ -20,15 +20,15 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from research.training.bosch_dataset import (  # noqa: E402
+from training.bosch_dataset import (  # noqa: E402
     BoschDatasetProcessor,
     BoschDataConfig,
     BoschDataGenerator,
 )
-from research.training.trainer import LNNTrainer  # noqa: E402
-from research.training.evaluator import LNNEvaluator  # noqa: E402
-from research.models.torch_cfc_model import CFCModel, LNNConfig as CFCConfig  # noqa: E402
-from research.models.torch_ltc_model import LTCModel, LNNConfig as LTCConfig  # noqa: E402
+from training.trainer import LNNTrainer  # noqa: E402
+from training.evaluator import LNNEvaluator  # noqa: E402
+from models.torch_cfc_model import CFCModel, LNNConfig as CFCConfig  # noqa: E402
+from models.torch_ltc_model import LTCModel, LNNConfig as LTCConfig  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

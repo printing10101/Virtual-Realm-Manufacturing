@@ -18,7 +18,7 @@ import logging
 import math
 from typing import List, Tuple
 
-from research.shared.contracts.feature_recognizer import (
+from shared.contracts.feature_recognizer import (
     FeatureType,
     RecognizedFeature,
 )
@@ -256,7 +256,7 @@ def detect_all_extended(parse_result) -> List[RecognizedFeature]:
         feats = []
     # 增量加入复杂几何（避免循环 import，运行时 import）
     try:
-        from research.multimodal_jepa.ijepa_3d.advanced_features import (
+        from multimodal_jepa.ijepa_3d.advanced_features import (
             detect_all_advanced,
         )
         feats.extend(detect_all_advanced(parse_result))

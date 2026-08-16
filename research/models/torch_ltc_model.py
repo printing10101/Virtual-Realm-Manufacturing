@@ -8,7 +8,7 @@ Key components:
     - LTCModel: Full multi-layer LTC model inheriting from BaseLNN.
 
 Example:
-    >>> from research.models.torch_base_lnn import LNNConfig
+    >>> from models.torch_base_lnn import LNNConfig
     >>> config = LNNConfig(input_size=64, hidden_size=128, output_size=10)
     >>> model = LTCModel(config)
     >>> x = torch.randn(32, 64)

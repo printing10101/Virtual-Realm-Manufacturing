@@ -5,7 +5,7 @@ INT8 quantization utilities for LNN models.
 Supports dynamic and static quantization with performance evaluation.
 """
 
-from research.quantization.quantizer import (
+from quantization.quantizer import (
     Quantizer,
     QuantizationConfig,
     QuantizationResult,

@@ -256,7 +256,7 @@ def analyze_tau_cross_condition(
 
 
 def plot_tau_distribution(tau_data: Dict, output_path: str) -> None:
-        """绘制 τ 分布直方图。
+    """绘制 τ 分布直方图。
 
     Args:
         tau_data: extract_tau_parameters 的输出

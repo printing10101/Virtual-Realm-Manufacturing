@@ -6,7 +6,27 @@
 import torch
 import numpy as np
 from typing import Dict, Tuple
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+
+
+def _mae_np(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """平均绝对误差（numpy 实现，避免 torch+sklearn 双 BLAS 段错误）"""
+    return float(np.mean(np.abs(np.asarray(y_true, dtype=float) - np.asarray(y_pred, dtype=float))))
+
+
+def _mse_np(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """均方误差（numpy 实现）"""
+    return float(np.mean((np.asarray(y_true, dtype=float) - np.asarray(y_pred, dtype=float)) ** 2))
+
+
+def _r2_np(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """R²（复刻 sklearn.metrics.r2_score 语义：常数目标时 numerator/denominator 均 0 → 1.0）"""
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    num = float(np.sum((yt - yp) ** 2))
+    den = float(np.sum((yt - np.mean(yt)) ** 2))
+    if den == 0.0:
+        return 1.0 if num == 0.0 else 0.0
+    return 1.0 - num / den
 
 
 class ChatterMetrics:
@@ -55,17 +75,17 @@ class ChatterMetrics:
     @staticmethod
     def mae(y_pred: np.ndarray, y_true: np.ndarray) -> float:
         """平均绝对误差"""
-        return float(mean_absolute_error(y_true, y_pred))
+        return _mae_np(y_true, y_pred)
     
     @staticmethod
     def rmse(y_pred: np.ndarray, y_true: np.ndarray) -> float:
         """均方根误差"""
-        return float(np.sqrt(mean_squared_error(y_true, y_pred)))
+        return float(np.sqrt(_mse_np(y_true, y_pred)))
     
     @staticmethod
     def r2_score(y_pred: np.ndarray, y_true: np.ndarray) -> float:
-        """决定系数 R²"""
-        return float(r2_score(y_true, y_pred))
+        """R² 决定系数"""
+        return _r2_np(y_true, y_pred)
     
     @staticmethod
     def mape(y_pred: np.ndarray, y_true: np.ndarray) -> float:

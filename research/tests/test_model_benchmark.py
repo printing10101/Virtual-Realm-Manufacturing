@@ -49,8 +49,8 @@ RANDOM_SEED = 42
 REPORT_DIR = PROJECT_ROOT.parent / "reports"
 REPORT_FILE = REPORT_DIR / "model_benchmark.md"
 
-# Uniwear数据集路径
-DATA_DIR = PROJECT_ROOT / "data" / "uniwear"
+# Uniwear数据集路径（数据实际位于 datasets/uniwear/uniwear/，exp50 同源）
+DATA_DIR = PROJECT_ROOT / "datasets" / "uniwear" / "uniwear"
 DATA_FILE = DATA_DIR / "uniwear.csv"
 
 # ---------------------------------------------------------------------------
@@ -174,7 +174,7 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
 
 def _init_cfc_model(input_dim: int, output_dim: int = 1):
     """初始化CFC模型。"""
-    from research.models.cfc_model import CFCModel
+    from models.cfc_model import CFCModel
 
     model = CFCModel(
         model_name="CFC",
@@ -189,7 +189,7 @@ def _init_cfc_model(input_dim: int, output_dim: int = 1):
 
 def _init_ltc_model(input_dim: int, output_dim: int = 1):
     """初始化LTC模型。"""
-    from research.models.ltc_model import LTCModel
+    from models.ltc_model import LTCModel
 
     model = LTCModel(
         model_name="LTC",
@@ -206,7 +206,7 @@ def _init_ltc_model(input_dim: int, output_dim: int = 1):
 
 def _init_hybrid_lnn_model(input_dim: int, output_dim: int = 1):
     """初始化HybridLNN模型。"""
-    from research.models.hybrid_lnn import HybridLNNModel
+    from models.hybrid_lnn import HybridLNNModel
 
     model = HybridLNNModel(
         model_name="HybridLNN",

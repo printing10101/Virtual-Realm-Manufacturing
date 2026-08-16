@@ -110,14 +110,14 @@ ENGINEERING_PYTHON_DIR = PROJECT_ROOT / "engineering" / "python"  # app 模块�
 # 关键：EXPERIMENTS_DIR 必须在 RESEARCH_DIR 之前，否则 trainer.py 内的
 # `from models import create_model` 会解析到 research/models/（包目录）
 # 而非 research/experiments/models.py（实际模块）
-sys.path.insert(0, str(PROJECT_ROOT))              # 让 `from research.xxx import` 工作
+sys.path.insert(0, str(PROJECT_ROOT))              # 让 `from xxx import` 工作
 sys.path.insert(0, str(ENGINEERING_PYTHON_DIR))    # 让 `from app.xxx import` 工作
 sys.path.insert(0, str(RESEARCH_DIR))              # 让 `from experiments.xxx import` 工作（experiments 是 research 下的包）
 sys.path.insert(0, str(EXPERIMENTS_DIR))           # 兼容 trainer.py 内 `from models import`（直接从 experiments/ 目录找）
 sys.path.insert(0, str(PYTHON_DIR))                # 兼容旧路径
 
 # 复用主实验模块
-from research.training.reproducibility import set_global_seed
+from training.reproducibility import set_global_seed
 from experiments.config import get_config, ExperimentConfig, ModelConfig
 from experiments.data_generator import (
     TlustyAnalyticalModel,

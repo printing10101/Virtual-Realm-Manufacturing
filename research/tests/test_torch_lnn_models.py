@@ -18,10 +18,10 @@ sys.path.insert(
     ),
 )
 
-from research.models.torch_base_lnn import BaseLNN, LNNConfig  # noqa: E402
-from research.models.torch_cfc_model import CFCModel as TorchCFCModel, CFCLayer  # noqa: E402
-from research.models.torch_ltc_model import LTCModel as TorchLTCModel, LTCCell  # noqa: E402
-from research.models.torch_hybrid_lnn import HybridLNN as TorchHybridLNN  # noqa: E402
+from models.torch_base_lnn import BaseLNN, LNNConfig  # noqa: E402
+from models.torch_cfc_model import CFCModel as TorchCFCModel, CFCLayer  # noqa: E402
+from models.torch_ltc_model import LTCModel as TorchLTCModel, LTCCell  # noqa: E402
+from models.torch_hybrid_lnn import HybridLNN as TorchHybridLNN  # noqa: E402
 
 
 class TestLNNConfig(unittest.TestCase):

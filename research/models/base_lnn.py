@@ -193,7 +193,7 @@ class BaseLNNModel(ABC):
         """
         # 设置全局随机种子确保可复现性
         # 延迟导入避免 models ↔ training 循环依赖
-        from research.training.reproducibility import set_global_seed
+        from training.reproducibility import set_global_seed
 
         set_global_seed(seed)
 
@@ -245,6 +245,10 @@ class BaseLNNModel(ABC):
                 train_loss = 0.0
                 for batch_X, batch_y in train_loader:
                     optimizer.zero_grad()
+                    # LTC/CFC 时序模型：hidden_state 跨 batch 持久化会把计算图串联
+                    # 导致二次 backward——每 batch 重置，图不跨 batch
+                    if hasattr(torch_model, "hidden_state"):
+                        torch_model.hidden_state = None
                     outputs = torch_model(batch_X)
                     if isinstance(outputs, tuple):
                         outputs = outputs[0]
@@ -264,7 +268,7 @@ class BaseLNNModel(ABC):
                     torch_model.eval()
                     val_loss = 0.0
                     # P2-AI-4: 使用 inference_mode 替代 no_grad，推理更高效（不记录 autograd 图）
-                    with torch.inference_mode():
+                    with torch.no_grad():
                         for batch_X, batch_y in val_loader:
                             outputs = torch_model(batch_X)
                             if isinstance(outputs, tuple):

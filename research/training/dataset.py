@@ -12,7 +12,7 @@ import json
 import os
 import h5py
 
-from research.training.dataset_cache import DatasetCache
+from .dataset_cache import DatasetCache
 from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)

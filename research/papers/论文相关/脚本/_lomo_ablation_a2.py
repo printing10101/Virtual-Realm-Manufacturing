@@ -48,7 +48,7 @@ sys.path.insert(0, str(EXPERIMENTS_DIR))
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 # 复用 LOMO 实验模块
-from research.training.reproducibility import set_global_seed
+from training.reproducibility import set_global_seed
 from experiments.config import get_config
 from lomo_loco_experiment import (
     LomoLocoDataset,

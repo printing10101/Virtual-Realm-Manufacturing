@@ -16,15 +16,15 @@ import logging
 import numpy as np
 from datetime import datetime
 
-from research.training.device_manager import (
+from .device_manager import (
     check_gpu_memory_safe,
     clear_gpu_memory,
 )
-from research.training.reproducibility import (
+from .reproducibility import (
     set_global_seed,
     get_worker_init_fn,
 )
-from research.training.experiment_tracker import (
+from .experiment_tracker import (
     start_run as mlflow_start_run,
     log_params as mlflow_log_params,
     log_metrics as mlflow_log_metrics,

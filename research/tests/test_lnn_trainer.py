@@ -30,11 +30,32 @@ torch = pytest.importorskip("torch")
 # =============================================================================
 
 
-class _FakeParam:
-    """模拟 torch.nn.parameter.Parameter。"""
+class _FakeParam(torch.nn.Parameter):
+    """模拟 torch.nn.parameter.Parameter。
+
+    必须继承真实的 ``torch.nn.Parameter``：torch≥2.6 的 ``torch.optim`` 在
+    构造时校验参数必须是 Tensor/Parameter（``TypeError: optimizer can only
+    optimize Tensors``），纯模拟对象会被拒绝。数据仍用 numpy 构造，经
+    ``torch.tensor`` 转为真实张量，保证 ``optimizer.step()``/``zero_grad()``
+    等路径可正常执行（grad 为 None 时优化器跳过该参数）。
+
+    注意必须在 ``__new__`` 层转换：``nn.Parameter.__new__`` 会对传入数据
+    执行 ``data.detach().requires_grad_(...)``，直接传 numpy 会抛
+    ``AttributeError``（numpy 无 ``detach``）。
+    """
+
+    def __new__(cls, data: np.ndarray) -> "_FakeParam":
+        # 用 torch.from_numpy 而非 torch.tensor：_build_torch_patch 会把
+        # torch.tensor 替换为 _fake_tensor（返回 _FakeTensor），而
+        # nn.Parameter.__new__ 需要真实 torch.Tensor 数据。
+        return super().__new__(
+            cls, torch.from_numpy(np.asarray(data, dtype=np.float32))
+        )
 
     def __init__(self, data: np.ndarray) -> None:
-        self.data = data
+        # 数据转换已在 __new__ 完成；nn.Parameter 无自定义 __init__，
+        # 显式覆盖以避免落入 object.__init__（不接受位置参数）。
+        pass
 
 
 class _FakeTensor:
@@ -203,6 +224,12 @@ class _FakeScheduler:
     def step(self, metric: Any = None) -> None:
         self.step_calls += 1
 
+    def state_dict(self) -> dict:
+        return {"step_calls": self.step_calls}
+
+    def load_state_dict(self, sd: dict) -> None:
+        self.step_calls = sd.get("step_calls", 0)
+
 
 class _FakeGradScaler:
     def __init__(self) -> None:
@@ -242,7 +269,7 @@ class _FakeModel:
         self.hidden_state: Any = None
         self.is_trained = False
         self.to_calls: list[Any] = []
-        self.state_dict_data = {"linear.weight": np.array([0.0])}
+        self.state_dict_data = {"linear.weight": torch.zeros(1)}
         self.parameters_calls = 0
         self.forward_calls = 0
         self._use_tuple_output = False
@@ -511,7 +538,7 @@ def _FakeLoad(path, map_location=None, weights_only=False):
         return {
             "epoch": 0,
             "best_val_loss": float("inf"),
-            "model_state_dict": {"linear.weight": np.array([0.0])},
+            "model_state_dict": {"linear.weight": torch.zeros(1)},
             "optimizer_state_dict": {"state": {}, "param_groups": [{"lr": 0.001}]},
             "training_history": {"train_loss": [], "val_loss": []},
             "scaler_state_dict": {},
@@ -568,11 +595,15 @@ def _FakeCheckpointSave(checkpoint: dict, path: str) -> None:
         f.write("\n".join(content_lines).encode("utf-8"))
 
 
-def _patch_torch(monkeypatch, target_module: str = "app.ai.lnn.training.trainer"):
+def _patch_torch(monkeypatch, target_module: str = "research.training.trainer"):
     """对 trainer 模块内 torch.* / nn.* 符号进行 monkeypatch 替换。
 
     trainer 的代码同时使用 ``torch.*``（例如 ``torch.device``、``torch.cuda``）
     与 ``import torch.nn as nn`` 这种别名式导入。两者需分别打桩。
+
+    注意：科研/工程解耦重构后 trainer 位于 ``research.training.trainer``
+    （旧默认值 ``app.ai.lnn.training.trainer`` 为解耦前的工程侧路径，
+    ``raising=False`` 会静默吞掉 setattr 失败，导致 loss/jit 桩从不生效）。
     """
     import sys
     torch_stub = sys.modules.get("torch")
@@ -624,8 +655,14 @@ def reset_class_state():
 
 
 @pytest.fixture
-def trainer_module(fake_torch):
-    from research.training import trainer as t_module
+def trainer_module(monkeypatch):
+    from training import trainer as t_module
+
+    # 解耦重构后 trainer 实际模块名为 training.trainer（无 research 前缀），
+    # 必须以实际模块名打桩；否则 monkeypatch 对不存在的
+    # "research.training.trainer" 静默失败（raising=False），
+    # 真实 MSELoss 会撞上 _FakeTensor 报 "expected Tensor ... got _FakeTensor"。
+    _patch_torch(monkeypatch, target_module=t_module.__name__)
     return t_module
 
 

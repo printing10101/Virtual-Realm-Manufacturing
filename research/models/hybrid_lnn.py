@@ -380,8 +380,8 @@ class HybridLNNModel(BaseLNNModel):
             if batch_labels.ndim == 1:
                 batch_labels = batch_labels.unsqueeze(1)
 
-            from research.models.torch_hybrid_lnn import HybridLNN
-            from research.models.torch_base_lnn import LNNConfig as TorchLNNConfig
+            from models.torch_hybrid_lnn import HybridLNN
+            from models.torch_base_lnn import LNNConfig as TorchLNNConfig
 
             config = TorchLNNConfig(
                 input_size=self.input_dim,
@@ -480,11 +480,39 @@ class HybridLNNModel(BaseLNNModel):
 
         return float(loss)
 
+    def to_torch(self, device: str = "cpu"):
+        """将NumPy模型转换为PyTorch模型以支持GPU训练（base_lnn.train 依赖）。
+
+        Args:
+            device: 目标设备 ('cpu' 或 'cuda')
+
+        Returns:
+            PyTorch HybridLNN实例（训练后由 _sync_from_torch 同步回 NumPy）
+        """
+        import torch  # noqa: F401
+        from models.torch_hybrid_lnn import HybridLNN
+        from models.torch_base_lnn import LNNConfig
+
+        config = LNNConfig(
+            input_size=self.input_dim,
+            hidden_size=self.lnn_hidden_dim,
+            output_size=self.output_dim,
+            num_layers=self.lnn_num_layers,
+            dropout=self.dropout_rate,
+        )
+        torch_model = HybridLNN(config)
+        torch_model = torch_model.to(device)
+        torch_model.model_name = self.model_name
+        torch_model.input_dim = self.input_dim
+        torch_model.output_dim = self.output_dim
+        torch_model.is_trained = self.is_trained
+        return torch_model
+
     def _sync_from_torch(self, torch_model) -> None:
         """从PyTorch模型同步权重回NumPy模型"""
         import torch as _torch
         # P2-AI-4: 使用 inference_mode 替代 no_grad，权重同步为纯读操作，无需 autograd 图
-        with _torch.inference_mode():
+        with _torch.no_grad():
             # 同步CNN权重
             cnn_layers = torch_model.cnn
             conv_idx = 0

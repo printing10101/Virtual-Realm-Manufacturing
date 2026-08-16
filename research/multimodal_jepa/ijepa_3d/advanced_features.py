@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 from typing import List, Tuple
 
-from research.shared.contracts.feature_recognizer import (
+from shared.contracts.feature_recognizer import (
     FeatureType,
     RecognizedFeature,
 )

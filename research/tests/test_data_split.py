@@ -13,7 +13,7 @@ import pytest
 import numpy as np
 import logging
 
-from research.training.dataset import LNNDataset
+from training.dataset import LNNDataset
 
 
 class TestLNNDatasetSplit:

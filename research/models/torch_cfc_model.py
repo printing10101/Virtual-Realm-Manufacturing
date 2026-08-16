@@ -9,7 +9,7 @@ Key components:
     - CFCModel: Full CFC model inheriting from BaseLNN.
 
 Example:
-    >>> from research.models.torch_base_lnn import LNNConfig
+    >>> from models.torch_base_lnn import LNNConfig
     >>> config = LNNConfig(input_size=128, hidden_size=256, output_size=10)
     >>> model = CFCModel(config)
     >>> x = torch.randn(32, 128)

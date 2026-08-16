@@ -51,7 +51,7 @@ class TestPredictionDistribution:
 
     def _train_and_predict(self, model_class, config_class, config_kwargs, epochs=100):
         """训练模型并返回预测结果"""
-        from research.training.trainer import LNNTrainer
+        from training.trainer import LNNTrainer
 
         config = config_class(**config_kwargs)
         model = model_class(config)
@@ -88,7 +88,7 @@ class TestPredictionDistribution:
 
     def test_cfc_prediction_correlation(self):
         """CFC模型预测-真实值相关性 > 0.85"""
-        from research.models.torch_cfc_model import CFCModel, LNNConfig
+        from models.torch_cfc_model import CFCModel, LNNConfig
 
         preds, y_true = self._train_and_predict(
             CFCModel,
@@ -102,7 +102,7 @@ class TestPredictionDistribution:
 
     def test_ltc_prediction_correlation(self):
         """LTC模型预测-真实值相关性 > 0.85"""
-        from research.models.torch_ltc_model import LTCModel, LNNConfig
+        from models.torch_ltc_model import LTCModel, LNNConfig
 
         preds, y_true = self._train_and_predict(
             LTCModel,
@@ -116,7 +116,7 @@ class TestPredictionDistribution:
 
     def test_hybrid_prediction_correlation(self):
         """HybridLNN模型预测-真实值相关性 > 0.85"""
-        from research.models.torch_hybrid_lnn import HybridLNN, LNNConfig
+        from models.torch_hybrid_lnn import HybridLNN, LNNConfig
 
         preds, y_true = self._train_and_predict(
             HybridLNN,

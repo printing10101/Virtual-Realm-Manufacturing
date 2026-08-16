@@ -54,7 +54,7 @@ def compute_metrics(y_true, y_pred):
 
 def train_and_evaluate(model_class, config_class, config_kwargs, X_train, y_train, X_test, y_test, epochs=200):
     """训练并评估模型"""
-    from research.training.trainer import LNNTrainer
+    from training.trainer import LNNTrainer
 
     config = config_class(**config_kwargs)
     model = model_class(config)
@@ -115,7 +115,7 @@ class TestLNNBenchmark:
 
     def test_cfc_benchmark(self):
         """CFC模型基准测试：R² > 0.4"""
-        from research.models.torch_cfc_model import CFCModel, LNNConfig
+        from models.torch_cfc_model import CFCModel, LNNConfig
 
         metrics = train_and_evaluate(
             CFCModel,
@@ -142,7 +142,7 @@ class TestLNNBenchmark:
 
     def test_ltc_benchmark(self):
         """LTC模型基准测试：验证训练收敛性（LTC模型设计用于时序数据）"""
-        from research.models.torch_ltc_model import LTCModel, LNNConfig
+        from models.torch_ltc_model import LTCModel, LNNConfig
 
         metrics = train_and_evaluate(
             LTCModel,
@@ -169,7 +169,7 @@ class TestLNNBenchmark:
 
     def test_hybrid_lnn_benchmark(self):
         """HybridLNN模型基准测试：R² > 0.3"""
-        from research.models.torch_hybrid_lnn import HybridLNN, LNNConfig
+        from models.torch_hybrid_lnn import HybridLNN, LNNConfig
 
         metrics = train_and_evaluate(
             HybridLNN,

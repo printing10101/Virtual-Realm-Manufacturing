@@ -14,25 +14,25 @@ from typing import Any
 
 # 兼容子进程调用路径
 try:
-    from research.shared.contracts.feature_recognizer import (
+    from shared.contracts.feature_recognizer import (
         RecognitionInput,
         RecognitionResult,
         RecognizedFeature,
         FeatureType,
     )
-    from research.multimodal_jepa.ijepa_3d import chamfer_heuristic
+    from multimodal_jepa.ijepa_3d import chamfer_heuristic
 except ImportError:
     # 当作为脚本直接运行时
     _here = os.path.dirname(os.path.abspath(__file__))
     _root = os.path.dirname(os.path.dirname(os.path.dirname(_here)))
     sys.path.insert(0, _root)
-    from research.shared.contracts.feature_recognizer import (
+    from shared.contracts.feature_recognizer import (
         RecognitionInput,
         RecognitionResult,
         RecognizedFeature,
         FeatureType,
     )
-    from research.multimodal_jepa.ijepa_3d import chamfer_heuristic
+    from multimodal_jepa.ijepa_3d import chamfer_heuristic
 
 
 def recognize(payload: dict) -> dict:

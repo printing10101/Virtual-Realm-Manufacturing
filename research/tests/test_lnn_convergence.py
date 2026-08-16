@@ -79,8 +79,8 @@ class TestLNNConvergence:
 
     def test_cfc_convergence(self):
         """CFC模型收敛性测试：R²应呈上升趋势"""
-        from research.models.torch_cfc_model import CFCModel, LNNConfig
-        from research.training.trainer import LNNTrainer
+        from models.torch_cfc_model import CFCModel, LNNConfig
+        from training.trainer import LNNTrainer
         from torch.utils.data import DataLoader, TensorDataset
 
         config = LNNConfig(
@@ -134,8 +134,8 @@ class TestLNNConvergence:
 
     def test_ltc_convergence(self):
         """LTC模型收敛性测试"""
-        from research.models.torch_ltc_model import LTCModel, LNNConfig
-        from research.training.trainer import LNNTrainer
+        from models.torch_ltc_model import LTCModel, LNNConfig
+        from training.trainer import LNNTrainer
         from torch.utils.data import DataLoader, TensorDataset
 
         config = LNNConfig(
@@ -178,8 +178,8 @@ class TestLNNConvergence:
 
     def test_hybrid_lnn_convergence(self):
         """HybridLNN模型收敛性测试"""
-        from research.models.torch_hybrid_lnn import HybridLNN, LNNConfig
-        from research.training.trainer import LNNTrainer
+        from models.torch_hybrid_lnn import HybridLNN, LNNConfig
+        from training.trainer import LNNTrainer
         from torch.utils.data import DataLoader, TensorDataset
 
         config = LNNConfig(

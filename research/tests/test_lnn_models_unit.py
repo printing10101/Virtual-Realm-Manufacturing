@@ -12,10 +12,10 @@ LNN模型组件单元测试套件
 
 import torch
 
-from research.models.torch_base_lnn import LNNConfig
-from research.models.torch_cfc_model import CFCModel
-from research.models.torch_ltc_model import LTCModel
-from research.models.torch_hybrid_lnn import HybridLNN
+from models.torch_base_lnn import LNNConfig
+from models.torch_cfc_model import CFCModel
+from models.torch_ltc_model import LTCModel
+from models.torch_hybrid_lnn import HybridLNN
 
 
 # ============================================================

@@ -45,7 +45,7 @@ def sample_labels_2d() -> np.ndarray:
 
 @pytest.fixture
 def dataset_module():
-    from research.training import dataset as ds_mod
+    from training import dataset as ds_mod
     return ds_mod
 
 
@@ -623,7 +623,7 @@ def _patch_h5py(monkeypatch, op_data: dict):
     monkeypatch.setitem(__import__("sys").modules, "h5py", fake_h5py)
     # 同时 patch 已被 dataset 模块引用过的 h5py（如果存在）
     try:
-        from research.training import dataset as ds_mod
+        from training import dataset as ds_mod
         monkeypatch.setattr(ds_mod, "h5py", fake_h5py, raising=False)
     except Exception:
         pass

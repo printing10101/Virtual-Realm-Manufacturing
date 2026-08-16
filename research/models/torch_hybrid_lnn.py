@@ -12,7 +12,7 @@ Key components:
     - HybridLNN: Full hybrid model inheriting from BaseLNN.
 
 Example:
-    >>> from research.models.torch_base_lnn import LNNConfig
+    >>> from models.torch_base_lnn import LNNConfig
     >>> config = LNNConfig(input_size=128, hidden_size=256, output_size=10)
     >>> model = HybridLNN(config)
     >>> x = torch.randn(32, 128)
@@ -50,7 +50,7 @@ class HybridLNN(BaseLNN):
         device: Computation device.
 
     Example:
-        >>> from research.models.torch_base_lnn import LNNConfig
+        >>> from models.torch_base_lnn import LNNConfig
         >>> config = LNNConfig(input_size=10, hidden_size=64, output_size=2)
         >>> model = HybridLNN(config)
         >>> x = torch.randn(32, 10)

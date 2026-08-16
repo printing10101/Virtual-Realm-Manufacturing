@@ -31,7 +31,7 @@ try:
 except ImportError:
     HAS_TORCH = False
 
-from research.quantization.quantizer import (  # noqa: E402
+from quantization.quantizer import (  # noqa: E402
     Quantizer,
     QuantizationConfig,
     QuantizationResult,
@@ -252,7 +252,7 @@ class TestQuantizationSaveLoad:
             save_path = os.path.join(tmpdir, "quantized_model.pt")
             quantizer.save_quantized_model(quantized, save_path)
 
-            from research.models.torch_base_lnn import LNNConfig
+            from models.torch_base_lnn import LNNConfig
 
             LNNConfig(input_size=10, hidden_size=20, output_size=5)
 

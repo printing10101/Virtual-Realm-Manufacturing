@@ -1246,9 +1246,20 @@ def get_dataset_class(dataset_name: str) -> type:
     Returns:
         数据集类
     """
-    if dataset_name not in DATASET_REGISTRY:
-        raise ValueError(f"Unknown dataset: {dataset_name}. Available: {list(DATASET_REGISTRY.keys())}")
-    return DATASET_REGISTRY[dataset_name]
+    if dataset_name in DATASET_REGISTRY:
+        return DATASET_REGISTRY[dataset_name]
+    if dataset_name == "MEASURED_SLD":
+        # 实测稳定性点数据集（real_validation 包，零设备真实数据验证通道）
+        # 依赖 experiments/ 在 sys.path（脚本运行约定，见 real_validation/README.md）
+        try:
+            from real_validation.measured_stability_dataset import MeasuredStabilityPointsDataset
+            return MeasuredStabilityPointsDataset
+        except ImportError as e:  # pragma: no cover
+            raise ValueError(
+                "MEASURED_SLD 需要 real_validation 包（cd research/experiments 后运行）。"
+                f"导入失败: {e}"
+            ) from e
+    raise ValueError(f"Unknown dataset: {dataset_name}. Available: {list(DATASET_REGISTRY.keys()) + ['MEASURED_SLD']}")
 
 
 def create_dataloaders(

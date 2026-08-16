@@ -48,7 +48,7 @@ def compute_r2(y_true, y_pred):
 
 def cv_fold_evaluate(model_class, config_class, config_kwargs, X_train, y_train, X_test, y_test, epochs=80):
     """单折训练和评估"""
-    from research.training.trainer import LNNTrainer
+    from training.trainer import LNNTrainer
 
     config = config_class(**config_kwargs)
     model = model_class(config)
@@ -108,7 +108,7 @@ class TestLNNCrossValidation:
 
     def test_cfc_cross_validation(self):
         """CFC 5折交叉验证：R² > 0.2"""
-        from research.models.torch_cfc_model import CFCModel, LNNConfig
+        from models.torch_cfc_model import CFCModel, LNNConfig
 
         r2_scores = []
         for fold_idx, (train_idx, test_idx) in enumerate(self.folds):
@@ -136,7 +136,7 @@ class TestLNNCrossValidation:
 
     def test_ltc_cross_validation(self):
         """LTC 5折交叉验证：R² > 0"""
-        from research.models.torch_ltc_model import LTCModel, LNNConfig
+        from models.torch_ltc_model import LTCModel, LNNConfig
 
         r2_scores = []
         for fold_idx, (train_idx, test_idx) in enumerate(self.folds):
@@ -163,7 +163,7 @@ class TestLNNCrossValidation:
 
     def test_hybrid_cross_validation(self):
         """HybridLNN 5折交叉验证：R² > 0"""
-        from research.models.torch_hybrid_lnn import HybridLNN, LNNConfig
+        from models.torch_hybrid_lnn import HybridLNN, LNNConfig
 
         r2_scores = []
         for fold_idx, (train_idx, test_idx) in enumerate(self.folds):

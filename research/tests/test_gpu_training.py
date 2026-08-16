@@ -28,7 +28,7 @@ sys.path.insert(
     ),
 )
 
-from research.training.device_manager import (  # noqa: E402
+from training.device_manager import (  # noqa: E402
     DeviceInfo,
     detect_device,
     get_available_devices,
@@ -38,10 +38,10 @@ from research.training.device_manager import (  # noqa: E402
     clear_gpu_memory,
     check_gpu_memory_safe,
 )
-from research.training.trainer import LNNTrainer  # noqa: E402
-from research.models.torch_base_lnn import LNNConfig  # noqa: E402
-from research.models.torch_cfc_model import CFCModel as TorchCFCModel  # noqa: E402
-from research.models.torch_ltc_model import LTCModel as TorchLTCModel  # noqa: E402
+from training.trainer import LNNTrainer  # noqa: E402
+from models.torch_base_lnn import LNNConfig  # noqa: E402
+from models.torch_cfc_model import CFCModel as TorchCFCModel  # noqa: E402
+from models.torch_ltc_model import LTCModel as TorchLTCModel  # noqa: E402
 
 
 class TestDeviceInfo(unittest.TestCase):
@@ -276,7 +276,7 @@ class TestLNNTrainerCPU(unittest.TestCase):
             use_amp=False,
         )
         dataloader = self._create_dataloader()
-        loss, acc = trainer.train_epoch(dataloader)
+        loss, acc, r2 = trainer.train_epoch(dataloader)
         self.assertIsInstance(loss, float)
         self.assertIsInstance(acc, float)
 
@@ -288,7 +288,7 @@ class TestLNNTrainerCPU(unittest.TestCase):
             use_amp=False,
         )
         dataloader = self._create_dataloader()
-        loss, acc = trainer.validate(dataloader)
+        loss, acc, r2 = trainer.validate(dataloader)
         self.assertIsInstance(loss, float)
 
     def test_fit_cpu(self):
@@ -347,7 +347,7 @@ class TestLNNTrainerCPU(unittest.TestCase):
             use_amp=False,
         )
         dataloader = self._create_dataloader()
-        loss, acc = trainer.train_epoch(dataloader)
+        loss, acc, r2 = trainer.train_epoch(dataloader)
         self.assertIsInstance(loss, float)
 
     def test_lr_scheduler_step(self):
@@ -448,7 +448,7 @@ class TestLNNTrainerGPU(unittest.TestCase):
             use_amp=True,
         )
         dataloader = self._create_dataloader()
-        loss, acc = trainer.train_epoch(dataloader)
+        loss, acc, r2 = trainer.train_epoch(dataloader)
         self.assertIsInstance(loss, float)
         self.assertFalse(torch.isnan(torch.tensor(loss)))
 
@@ -460,7 +460,7 @@ class TestLNNTrainerGPU(unittest.TestCase):
             use_amp=True,
         )
         dataloader = self._create_dataloader()
-        loss, acc = trainer.validate(dataloader)
+        loss, acc, r2 = trainer.validate(dataloader)
         self.assertIsInstance(loss, float)
 
     def test_fit_gpu(self):

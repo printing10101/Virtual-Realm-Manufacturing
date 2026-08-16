@@ -447,7 +447,7 @@ class LTCModel(BaseLNNModel):
         """从PyTorch模型同步权重回NumPy模型"""
         import torch as _torch
         # P2-AI-4: 使用 inference_mode 替代 no_grad，权重同步为纯读操作，无需 autograd 图
-        with _torch.inference_mode():
+        with _torch.no_grad():
             if len(self.weights) >= 1 and len(torch_model.ltc_cells) >= 1:
                 first_cell = torch_model.ltc_cells[0]
                 self.weights[0] = first_cell.W.data.cpu().numpy().T
@@ -501,8 +501,8 @@ class LTCModel(BaseLNNModel):
 
         try:
             import torch
-            from research.models.torch_ltc_model import LTCModel as TorchLTCModel
-            from research.models.torch_base_lnn import LNNConfig
+            from models.torch_ltc_model import LTCModel as TorchLTCModel
+            from models.torch_base_lnn import LNNConfig
 
             config = LNNConfig(
                 input_size=self.input_dim,
@@ -544,7 +544,7 @@ class LTCModel(BaseLNNModel):
         """
         import torch
 
-        with torch.inference_mode():
+        with torch.no_grad():
             if len(self.weights) >= 1 and len(torch_model.ltc_cells) >= 1:
                 first_cell = torch_model.ltc_cells[0]
                 first_cell.W.data = torch.tensor(

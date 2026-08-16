@@ -79,6 +79,9 @@ class ExperimentConfig:
         DatasetConfig("NIST", 240, 18, "多材料", "NIST"),
         DatasetConfig("ACADEMIC", 150, 5, "钛合金", "学术合作"),
         DatasetConfig("INDUSTRIAL_6061T6", 500, 30, "铝合金6061-T6", "自采工业数据"),
+        # 实测稳定性点数据集（零设备真实数据验证通道，见 real_validation/README.md）
+        # 样本数由 CSV 行数决定；stable/a_lim 为已发表实测结果
+        DatasetConfig("MEASURED_SLD", 100, 0, "多材料实测", "文献实测稳定性点/公开数据集"),
     ])
     
     # 模型配置

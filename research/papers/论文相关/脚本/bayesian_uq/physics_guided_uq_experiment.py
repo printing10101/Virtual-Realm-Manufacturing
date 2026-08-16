@@ -76,7 +76,7 @@ _lomo_script_dir = PROJECT_ROOT / "research" / "papers" / "论文相关" / "脚�
 if str(_lomo_script_dir) not in sys.path:
     sys.path.insert(0, str(_lomo_script_dir))
 
-from research.training.reproducibility import set_global_seed
+from training.reproducibility import set_global_seed
 from experiments.data_generator import TlustyAnalyticalModel, build_physics_features_7d
 from lomo_loco_experiment import MATERIALS_CONFIG, CONDITIONS_CONFIG, LomoLocoDataset
 from bayesian_dllnn_wrapper import load_bayesian_dllnn

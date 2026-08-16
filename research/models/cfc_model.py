@@ -332,7 +332,7 @@ class CFCModel(BaseLNNModel):
         """从PyTorch模型同步权重回NumPy模型"""
         import torch as _torch
         # P2-AI-4: 使用 inference_mode 替代 no_grad，权重同步为纯读操作，无需 autograd 图
-        with _torch.inference_mode():
+        with _torch.no_grad():
             # 同步CFC层权重
             backbone = torch_model.cfc_layer.backbone
             if len(self.weights) >= 1:
@@ -391,8 +391,8 @@ class CFCModel(BaseLNNModel):
 
         try:
             import torch
-            from research.models.torch_cfc_model import CFCModel as TorchCFCModel
-            from research.models.torch_base_lnn import LNNConfig
+            from models.torch_cfc_model import CFCModel as TorchCFCModel
+            from models.torch_base_lnn import LNNConfig
 
             config = LNNConfig(
                 input_size=self.input_dim,
@@ -434,7 +434,7 @@ class CFCModel(BaseLNNModel):
         """
         import torch
 
-        with torch.inference_mode():
+        with torch.no_grad():
             torch_model.cfc_layer.backbone[0].weight.data = torch.tensor(
                 self.weights[0].T, dtype=torch.float32
             )
@@ -451,9 +451,10 @@ class CFCModel(BaseLNNModel):
                 )
 
             if len(self.weights) >= 3:
-                torch_model.output_layer.weight.data = torch.tensor(
+                # output_layer 为 Sequential(Linear, ReLU, Dropout?, Linear)——末层是输出 Linear
+                torch_model.output_layer[-1].weight.data = torch.tensor(
                     self.weights[-1].T, dtype=torch.float32
                 )
-                torch_model.output_layer.bias.data = torch.tensor(
+                torch_model.output_layer[-1].bias.data = torch.tensor(
                     self.biases[-1], dtype=torch.float32
                 )

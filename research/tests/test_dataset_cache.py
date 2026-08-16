@@ -25,7 +25,7 @@ import numpy as np
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from research.training.dataset_cache import DatasetCache  # noqa: E402
+from training.dataset_cache import DatasetCache  # noqa: E402
 
 
 class TestDatasetCacheKeyGeneration(unittest.TestCase):
@@ -41,9 +41,9 @@ class TestDatasetCacheKeyGeneration(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_cache_key_format(self):
-        """测试缓存键格式为32位十六进制"""
+        """测试缓存键格式为64位十六进制（SHA256）"""
         cache_key, mtime, size = DatasetCache.generate_cache_key(self.test_file)
-        self.assertEqual(len(cache_key), 32)
+        self.assertEqual(len(cache_key), 64)
         self.assertTrue(all(c in "0123456789abcdef" for c in cache_key))
         self.assertIsInstance(mtime, float)
         self.assertIsInstance(size, int)
@@ -88,12 +88,12 @@ class TestDatasetCacheKeyGeneration(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             DatasetCache.generate_cache_key(nonexistent)
 
-    def test_cache_key_uses_md5(self):
-        """测试使用MD5算法生成缓存键"""
+    def test_cache_key_uses_sha256(self):
+        """测试使用SHA256算法生成缓存键（实现已从MD5升级为SHA256，安全加固）"""
         abs_path = os.path.abspath(self.test_file)
         stat = os.stat(abs_path)
         combined = f"{abs_path}:{stat.st_mtime}:{stat.st_size}"
-        expected_key = hashlib.md5(combined.encode("utf-8")).hexdigest()
+        expected_key = hashlib.sha256(combined.encode("utf-8")).hexdigest()
 
         actual_key, _, _ = DatasetCache.generate_cache_key(self.test_file)
         self.assertEqual(expected_key, actual_key)
@@ -128,7 +128,7 @@ class TestDatasetCacheBasicOperations(unittest.TestCase):
 
         cache_key = self.cache.put(self.test_file, data, labels)
         self.assertIsInstance(cache_key, str)
-        self.assertEqual(len(cache_key), 32)
+        self.assertEqual(len(cache_key), 64)
 
         result = self.cache.get(self.test_file)
         self.assertIsNotNone(result)

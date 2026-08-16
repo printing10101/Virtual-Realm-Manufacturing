@@ -28,7 +28,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 try:
-    from research.training.reproducibility import set_global_seed
+    from training.reproducibility import set_global_seed
 except ImportError:
     def set_global_seed(seed: int):
         torch.manual_seed(seed)
@@ -40,7 +40,7 @@ from config_v2 import Phase1Config
 
 # 尝试导入原始指标模块
 try:
-    from research.experiments.metrics import MetricsTracker, ChatterMetrics
+    from experiments.metrics import MetricsTracker, ChatterMetrics
     _HAS_METRICS = True
 except ImportError:
     _HAS_METRICS = False

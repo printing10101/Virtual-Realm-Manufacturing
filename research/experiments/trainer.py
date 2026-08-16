@@ -18,8 +18,8 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from research.training.reproducibility import set_global_seed, get_worker_init_fn
-from research.training.experiment_tracker import (
+from training.reproducibility import set_global_seed, get_worker_init_fn
+from training.experiment_tracker import (
     start_run, log_params, log_metric, log_metrics, log_model, is_enabled,
 )
 

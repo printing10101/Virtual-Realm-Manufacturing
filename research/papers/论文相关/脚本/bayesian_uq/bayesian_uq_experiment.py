@@ -77,7 +77,7 @@ if str(_lomo_script_dir) not in sys.path:
     sys.path.insert(0, str(_lomo_script_dir))
 
 # 复用主实验模块
-from research.training.reproducibility import set_global_seed
+from training.reproducibility import set_global_seed
 from experiments.data_generator import (
     TlustyAnalyticalModel,
     build_physics_features_7d,

@@ -33,6 +33,11 @@ class TestResidualAnalysis:
     @pytest.fixture(autouse=True)
     def setup(self):
         rng = np.random.RandomState(42)
+        if HAS_TORCH:
+            # 固定 torch 全局随机种子：模型初始化/DataLoader shuffle 依赖
+            # torch 随机状态，不固定会导致残差均值统计断言 flaky（全量跑时
+            # torch 状态被前面测试消耗，单跑/全跑结果不同）。
+            torch.manual_seed(42)
         n_samples = 3000
         n_features = 15
 
@@ -55,7 +60,7 @@ class TestResidualAnalysis:
 
     def _train_and_get_residuals(self, model_class, config_class, config_kwargs, epochs=100):
         """训练并获取残差"""
-        from research.training.trainer import LNNTrainer
+        from training.trainer import LNNTrainer
 
         config = config_class(**config_kwargs)
         model = model_class(config)
@@ -95,7 +100,7 @@ class TestResidualAnalysis:
 
     def test_cfc_residual_analysis(self):
         """CFC残差均值接近0"""
-        from research.models.torch_cfc_model import CFCModel, LNNConfig
+        from models.torch_cfc_model import CFCModel, LNNConfig
 
         residuals, preds = self._train_and_get_residuals(
             CFCModel,
@@ -113,7 +118,7 @@ class TestResidualAnalysis:
 
     def test_ltc_residual_analysis(self):
         """LTC残差均值接近0"""
-        from research.models.torch_ltc_model import LTCModel, LNNConfig
+        from models.torch_ltc_model import LTCModel, LNNConfig
 
         residuals, preds = self._train_and_get_residuals(
             LTCModel,
@@ -129,7 +134,7 @@ class TestResidualAnalysis:
 
     def test_hybrid_residual_analysis(self):
         """HybridLNN残差均值接近0"""
-        from research.models.torch_hybrid_lnn import HybridLNN, LNNConfig
+        from models.torch_hybrid_lnn import HybridLNN, LNNConfig
 
         residuals, preds = self._train_and_get_residuals(
             HybridLNN,
