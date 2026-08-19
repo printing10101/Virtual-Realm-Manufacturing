@@ -53,6 +53,17 @@
         >
           <WorkspaceModelsTab />
         </el-tab-pane>
+
+        <el-tab-pane
+          :label="$t('workspace.pluginsTab')"
+          name="plugins"
+        >
+          <!-- 扩展点面板宿主：渲染插件向 workspace.panel 注册的面板（如方言管理） -->
+          <WorkspacePanelHost
+            layout="tabs"
+            :empty-text="$t('workspace.pluginsEmpty')"
+          />
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -73,6 +84,7 @@ import WorkspacePredictTab from '@/components/workspace/WorkspacePredictTab.vue'
 import WorkspaceModelsTab from '@/components/workspace/WorkspaceModelsTab.vue'
 import WorkspaceTrainForm from '@/components/workspace/WorkspaceTrainForm.vue'
 import WorkspaceTrainMonitor from '@/components/workspace/WorkspaceTrainMonitor.vue'
+import WorkspacePanelHost from '@/components/WorkspacePanelHost.vue'
 import { useEventSource } from '@/composables/useEventSource'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 

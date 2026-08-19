@@ -260,40 +260,54 @@ function clear(): void {
 /**
  * 创建异步组件加载器。
  *
- * 当前阶段：本地插件组件，通过 Vite 动态 import 加载。
- * 远期：支持远程组件 URL（如 ESM 模块 URL）。
+ * 通过 Vite import.meta.glob 静态收集所有插件/视图/组件模块，
+ * 运行时按 component_url 查找——避免动态 import 变量路径（Vite
+ * 无法静态分析含 `/` 和缺扩展名的变量 import）。
  *
  * component_url 格式约定：
- *   - "plugin_id/ComponentName.vue" → 解析为 src/plugins/<plugin_id>/<ComponentName>.vue
- *   - 完整路径 "/views/XxxPanel.vue" → 解析为 src/views/XxxPanel.vue
+ *   - "plugin_id/ComponentName.vue" → src/plugins/<plugin_id>/ComponentName.vue
+ *   - 完整路径 "/views/XxxPanel.vue" → src/views/XxxPanel.vue
+ *   - 单段 "XxxPanel.vue" → src/components/XxxPanel.vue
  */
+
+// Vite 静态收集：所有可加载的前端组件模块（构建时展开，键为模块路径）
+const componentModules = import.meta.glob([
+  '@/plugins/**/*.vue',
+  '@/views/**/*.vue',
+  '@/components/**/*.vue',
+])
+
 function createComponentLoader(component_url: string): () => Promise<unknown> {
   return async () => {
     try {
-      // 本地组件：通过 Vite glob 动态加载
-      // plugin_id/Component.vue → @/plugins/plugin_id/Component.vue
-      if (component_url.includes('/')) {
-        const [pluginId, ...rest] = component_url.split('/')
-        const componentPath = rest.join('/')
-        // 优先尝试 plugins 目录
-        try {
-          const module = await import(`@/plugins/${pluginId}/${componentPath}`)
-          return module.default ?? module
-        } catch {
-          // 回退到 views 目录
-          try {
-            const module = await import(`@/views/${componentPath}`)
-            return module.default ?? module
-          } catch {
-            // 回退到 components 目录
-            const module = await import(`@/components/${componentPath}`)
-            return module.default ?? module
-          }
+      // 规整化路径：去掉前导 '/'，确保 .vue 扩展名
+      let normalized = component_url.replace(/^\/+/, '')
+      if (!normalized.endsWith('.vue')) {
+        normalized += '.vue'
+      }
+
+      // 候选相对路径（不含 /src/ 前缀），按 plugins → views → components 优先级
+      const candidates = [
+        `plugins/${normalized}`,
+        `views/${normalized.replace(/^views\//, '')}`,
+        `components/${normalized.replace(/^components\//, '')}`,
+      ]
+
+      for (const candidate of candidates) {
+        // import.meta.glob 键形如 "/src/plugins/dialect-manager/DialectManagerPanel.vue"
+        const matchedKey = Object.keys(componentModules).find((key) =>
+          key.endsWith(`/${candidate}`),
+        )
+        if (matchedKey) {
+          const module = await componentModules[matchedKey]()
+          return (module as { default?: unknown }).default ?? module
         }
       }
-      // 单段路径：尝试 components 目录
-      const module = await import(`@/components/${component_url}`)
-      return module.default ?? module
+      // 未匹配到任何模块
+      const importError = new Error(
+        `[useExtensionRegistry] 找不到组件 '${component_url}'（已扫描 plugins/views/components）`,
+      )
+      throw importError
     } catch (e: unknown) {
       console.error(
         `[useExtensionRegistry] loadComponent failed for '${component_url}':`,

@@ -211,6 +211,8 @@ export default {
     predictTab: "预测推理",
     trainTab: "模型训练",
     modelsTab: "模型列表",
+    pluginsTab: "插件面板",
+    pluginsEmpty: "暂无扩展面板，安装插件后将自动显示在此",
     modelName: "模型名称",
     modelNamePlaceholder: "输入模型名称",
     selectModel: "选择模型",

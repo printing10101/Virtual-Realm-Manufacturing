@@ -198,6 +198,8 @@ export default {
     predictTab: "Prediction & Inference",
     trainTab: "Model Training",
     modelsTab: "Model List",
+    pluginsTab: "Plugin Panels",
+    pluginsEmpty: "No extension panels. Install plugins to see them here.",
     modelName: "Model Name",
     modelNamePlaceholder: "Enter model name",
     selectModel: "Select Model",

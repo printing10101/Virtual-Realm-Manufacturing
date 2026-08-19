@@ -81,6 +81,15 @@ try {
 
   app.config.globalProperties.$setLocale = setLocaleWithEl
 
+  // 注册前端插件（dialect-manager → workspace.panel 扩展点）
+  // 失败不阻断启动：插件面板是可选的，核心功能不受影响
+  try {
+    const { registerDialectManagerPlugin } = await import('@/plugins/dialect-manager')
+    registerDialectManagerPlugin()
+  } catch (pluginErr) {
+    console.warn('[main] 前端插件注册失败（非致命）:', pluginErr)
+  }
+
   app.mount('#app')
   // 通知 index.html 中的诊断脚本：Vue 已挂载，避免误判为白屏
   ;(window as Window & { __markVueMounted__?: () => void }).__markVueMounted__?.()
