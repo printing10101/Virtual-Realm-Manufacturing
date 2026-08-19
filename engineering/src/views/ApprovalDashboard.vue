@@ -30,161 +30,40 @@
         :label="t('approvalDashboard.tabPending')"
         name="pending"
       >
-        <div
-          v-loading="loading"
-          class="tab-content"
-        >
-          <el-empty
-            v-if="!pending.length"
-            :description="t('approvalDashboard.emptyPending')"
-          />
-          <el-card
-            v-for="req in pending"
-            :key="req.request_id"
-            class="request-card"
-            shadow="hover"
-          >
-            <div class="request-header">
-              <div class="request-id">
-                {{ req.request_id }}
-              </div>
-              <div class="request-meta">
-                <el-tag
-                  :type="getPriorityTagType(req.priority)"
-                  size="small"
-                >
-                  {{ getPriorityLabel(req.priority) }}
-                </el-tag>
-                <el-tag
-                  :type="getRiskTagType(req.risk_score)"
-                  size="small"
-                >
-                  {{ t('approvalDashboard.riskLabel', { score: req.risk_score.toFixed(2) }) }}
-                </el-tag>
-              </div>
-            </div>
-            <div class="request-body">
-              <p><strong>{{ t('approvalDashboard.fieldTaskId') }}</strong> {{ req.task_id }}</p>
-              <p><strong>{{ t('approvalDashboard.fieldRequester') }}</strong> {{ req.requester }}</p>
-              <p><strong>{{ t('approvalDashboard.fieldRequestedAt') }}</strong> {{ formatSecondsTimestamp(req.requested_at) }}</p>
-              <p v-if="req.suggested_decision">
-                <strong>{{ t('approvalDashboard.fieldSuggestedDecision') }}</strong> {{ req.suggested_decision }}
-              </p>
-              <el-tag
-                v-if="req.emergency_override"
-                type="danger"
-                size="small"
-              >
-                {{ t('approvalDashboard.tagEmergencyOverride') }}
-              </el-tag>
-            </div>
-            <div class="request-actions">
-              <el-button
-                size="small"
-                @click="viewDetail(req)"
-              >
-                {{ t('approvalDashboard.btnDetail') }}
-              </el-button>
-              <el-button
-                size="small"
-                type="success"
-                @click="quickApprove(req, 'approved')"
-              >
-                {{ t('approvalDashboard.btnApprove') }}
-              </el-button>
-              <el-button
-                size="small"
-                type="danger"
-                @click="quickApprove(req, 'rejected')"
-              >
-                {{ t('approvalDashboard.btnReject') }}
-              </el-button>
-              <el-button
-                size="small"
-                type="warning"
-                @click="quickApprove(req, 'escalated')"
-              >
-                {{ t('approvalDashboard.btnEscalate') }}
-              </el-button>
-            </div>
-          </el-card>
-        </div>
+        <ApprovalRequestList
+          :items="pending"
+          mode="pending"
+          :loading="loading"
+          :empty-text="t('approvalDashboard.emptyPending')"
+          @view="viewDetail"
+          @approve="quickApprove"
+        />
       </el-tab-pane>
 
       <el-tab-pane
         :label="t('approvalDashboard.tabApproved')"
         name="approved"
       >
-        <div
-          v-loading="loading"
-          class="tab-content"
-        >
-          <el-empty
-            v-if="!approved.length"
-            :description="t('approvalDashboard.emptyApproved')"
-          />
-          <el-card
-            v-for="req in approved"
-            :key="req.request_id"
-            class="request-card"
-            shadow="hover"
-          >
-            <div class="request-header">
-              <div class="request-id">
-                {{ req.request_id }}
-              </div>
-              <el-tag
-                type="success"
-                size="small"
-              >
-                {{ t('approvalDashboard.statApproved') }}
-              </el-tag>
-            </div>
-            <div class="request-body">
-              <p><strong>{{ t('approvalDashboard.fieldTaskId') }}</strong> {{ req.task_id }}</p>
-              <p><strong>{{ t('approvalDashboard.fieldRequester') }}</strong> {{ req.requester }}</p>
-              <p><strong>{{ t('approvalDashboard.fieldCompletedAt') }}</strong> {{ formatSecondsTimestamp(req.completed_at) }}</p>
-            </div>
-          </el-card>
-        </div>
+        <ApprovalRequestList
+          :items="approved"
+          mode="approved"
+          :loading="loading"
+          :empty-text="t('approvalDashboard.emptyApproved')"
+          @view="viewDetail"
+        />
       </el-tab-pane>
 
       <el-tab-pane
         :label="t('approvalDashboard.tabRejected')"
         name="rejected"
       >
-        <div
-          v-loading="loading"
-          class="tab-content"
-        >
-          <el-empty
-            v-if="!rejected.length"
-            :description="t('approvalDashboard.emptyRejected')"
-          />
-          <el-card
-            v-for="req in rejected"
-            :key="req.request_id"
-            class="request-card"
-            shadow="hover"
-          >
-            <div class="request-header">
-              <div class="request-id">
-                {{ req.request_id }}
-              </div>
-              <el-tag
-                type="danger"
-                size="small"
-              >
-                {{ t('approvalDashboard.statRejected') }}
-              </el-tag>
-            </div>
-            <div class="request-body">
-              <p><strong>{{ t('approvalDashboard.fieldTaskId') }}</strong> {{ req.task_id }}</p>
-              <p><strong>{{ t('approvalDashboard.fieldRequester') }}</strong> {{ req.requester }}</p>
-              <p><strong>{{ t('approvalDashboard.fieldCompletedAt') }}</strong> {{ formatSecondsTimestamp(req.completed_at) }}</p>
-            </div>
-          </el-card>
-        </div>
+        <ApprovalRequestList
+          :items="rejected"
+          mode="rejected"
+          :loading="loading"
+          :empty-text="t('approvalDashboard.emptyRejected')"
+          @view="viewDetail"
+        />
       </el-tab-pane>
 
       <el-tab-pane
@@ -223,8 +102,6 @@ import { ElMessage } from 'element-plus'
 import { Refresh, Document } from '@element-plus/icons-vue'
 import http from '@/utils/http'
 import { triggerFileDownload } from '@/utils/download'
-import { formatSecondsTimestamp } from '@/utils/formatters'
-import { getPriorityTagType, getPriorityLabel } from '@/utils/statusHelpers'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 import { useI18n } from 'vue-i18n'
 
@@ -232,6 +109,7 @@ import ApprovalStatsCards from '@/components/approval/ApprovalStatsCards.vue'
 import ApprovalTable from '@/components/approval/ApprovalTable.vue'
 import ApprovalDetailDialog from '@/components/approval/ApprovalDetailDialog.vue'
 import ApprovalReportDialog from '@/components/approval/ApprovalReportDialog.vue'
+import ApprovalRequestList from '@/components/approval/ApprovalRequestList.vue'
 
 const { t } = useI18n()
 
@@ -406,13 +284,6 @@ async function exportAuditLog() {
   }
 }
 
-function getRiskTagType(score: number): 'primary' | 'success' | 'warning' | 'info' | 'danger' {
-  if (score >= 0.8) return 'danger'
-  if (score >= 0.6) return 'warning'
-  if (score >= 0.4) return 'info'
-  return 'success'
-}
-
 onMounted(() => {
   loadDashboard()
   loadHistory()
@@ -452,51 +323,5 @@ onMounted(() => {
 .tab-content {
   min-height: 200px;
   padding: 8px;
-}
-
-.request-card {
-  margin-bottom: 12px;
-  border-left: 4px solid var(--accent-primary);
-}
-
-.request-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.request-id {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.request-meta {
-  display: flex;
-  gap: 8px;
-}
-
-.request-body {
-  margin-bottom: 12px;
-}
-
-.request-body p {
-  margin: 4px 0;
-  font-size: 13px;
-}
-
-.request-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  border-top: 1px solid var(--border-light);
-  padding-top: 12px;
-}
-
-@media (max-width: 768px) {
-  .request-card {
-    margin-bottom: 8px;
-  }
 }
 </style>
