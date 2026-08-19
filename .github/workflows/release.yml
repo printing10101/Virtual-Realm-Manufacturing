@@ -1,4 +1,4 @@
-﻿name: 正式发版流水线
+name: 正式发版流水线
 
 on:
   push:
@@ -182,7 +182,8 @@ jobs:
 
       - name: Python 代码质量检查
         run: |
-          pip install ruff
+          # 固定 ruff 版本与 .pre-commit-config.yaml 对齐（v0.15.12），防止默认规则漂移
+          pip install ruff==0.15.12
           cd engineering/python && ruff check app/
 
       - name: 前端 Lint

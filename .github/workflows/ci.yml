@@ -997,7 +997,9 @@ jobs:
           version: 8
 
       - name: Install Python lint tools
-        run: pip install ruff mypy
+        # 固定 ruff 版本与 .pre-commit-config.yaml 对齐（v0.15.12），
+        # 防止 ruff 升级导致默认规则/format 行为漂移（见 pyproject.toml [tool.ruff.lint] 注释）
+        run: pip install ruff==0.15.12
 
       - name: Run Python lint
         working-directory: engineering/python

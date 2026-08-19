@@ -14,8 +14,20 @@
 [tool.ruff]
 # 与项目 .flake8 配置保持一致（仅保留 ruff 支持的规则）
 line-length = 120
+target-version = "py311"
 
 [tool.ruff.lint]
+# 显式 select（2026-08-18 修复门禁漂移）：
+#   此前未配置 select，依赖 ruff 默认规则集。ruff 0.16 起默认 select 变化，
+#   同一仓库在不同版本下检查结果差异巨大（0.16.3 全量默认 6587 处 vs 保守子集 0 处），
+#   CI 每次 `pip install ruff` 最新版跑 `ruff check app/` 存在隐式升级翻车风险。
+#   此处固定为当前已全绿的保守子集；后续按需逐步放开（UP/B/SIM 等现代化见优化报告）。
+select = [
+    "E4",   # pycodestyle 逻辑错误子集（与 flake8 默认对齐）
+    "E7",   # pycodestyle 语句子集
+    "E9",   # pycodestyle 运行时错误子集
+    "F",    # pyflakes（未使用导入/未定义名称等，核心质量门禁）
+]
 # ruff 不支持 flake8 的 E203/W503（已通过 line-length 覆盖）
 ignore = [
     "E501",  # 行长度（由 line-length 控制）

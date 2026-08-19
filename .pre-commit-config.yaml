@@ -5,17 +5,17 @@ repos:
       - id: ruff
         name: Ruff Check
         args: [--fix]
-        files: ^python/
+        files: ^engineering/python/
       - id: ruff-format
         name: Ruff Format
-        files: ^python/
+        files: ^engineering/python/
   - repo: https://github.com/PyCQA/flake8
     rev: 7.3.0
     hooks:
       - id: flake8
         name: Flake8 Check
         args: [--max-line-length=120]
-        files: ^python/
+        files: ^engineering/python/
         additional_dependencies: []
   - repo: local
     hooks:
@@ -33,11 +33,11 @@ repos:
         entry: python scripts/check_response_model.py --baseline .ci_baseline_response_model.json
         language: system
         pass_filenames: false
-        files: ^python/app/api/.*\.py$
+        files: ^engineering/python/app/api/.*\.py$
         stages: [pre-commit]
       - id: pytest
         name: Run Pytest
-        entry: python -m pytest python/tests/ --tb=short
+        entry: python -m pytest engineering/python/tests/ --tb=short
         language: system
         pass_filenames: false
         always_run: false

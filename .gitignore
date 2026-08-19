@@ -390,6 +390,11 @@ mypy_gg*.txt
 /engineering/python/.lnn_*
 /engineering/python/_probe_*.py
 
+# mypy 缓存异常膨胀目录（2026-08-18 清理：Temp/ 曾达 25.5GB、Temp2/ 221MB；
+# 由 MYPY_CACHE_DIR 指向该处生成，应统一改用 .mypy_cache）
+/engineering/python/Temp/
+/engineering/python/Temp2/
+
 # 测试运行动态产物（时间戳漂移，不入库）
 engineering/output/cutting_parameters_tasks/
 engineering/output/chatter_tasks/
