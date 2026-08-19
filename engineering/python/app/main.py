@@ -273,6 +273,27 @@ async def startup_event():
         )
     logger.info("[startup] AsyncTaskManager step done")
 
+    # --- Step 5: 插件系统接线（P4 完整接线第一步）---
+    # 2026-08-19 修复：init_plugin_system() 此前全仓库无调用点，导致
+    # get_plugin_manager() 抛 RuntimeError、插件 API 永远返回空。
+    # 无参初始化：plugin_dirs 为空 → 发现 0 个插件（不触发 torch 依赖插件），
+    # 但管理器被初始化，插件 API 返回空而非异常，前端插件页不再死数据。
+    # 后续接入业务插件时再配置 plugin_dirs（见 init_plugin_system 参数）。
+    # 失败仅告警不阻断启动（与现有容错策略一致）。
+    logger.info("[startup] Initializing plugin system ...")
+    try:
+        from app.plugins.plugin_manager import init_plugin_system as _init_plugin_system
+
+        _plugin_manager = _init_plugin_system()
+        logger.info("[startup] Plugin system initialized")
+    except Exception as plugin_err:
+        logger.error(
+            "[startup] 插件系统初始化失败，插件功能将不可用: %s",
+            plugin_err,
+            exc_info=True,
+        )
+    logger.info("[startup] Plugin system step done")
+
     ring_log.append(
         "system_event",
         level="INFO",
@@ -383,6 +404,15 @@ async def shutdown_event():
         # Q1 修复：收窄为可预期的关闭阶段异常。OSError 覆盖文件句柄/SQLite
         # 关闭错误；ImportError 覆盖 vector_store 模块缺失场景。
         logger.warning("VectorStore close failed during shutdown: %s", e)
+
+    # 5.5) 插件系统：卸载全部插件（若启动时已初始化）
+    try:
+        from app.plugins.plugin_manager import shutdown_plugin_system
+
+        shutdown_plugin_system()
+        logger.info("Plugin system shutdown completed")
+    except Exception as e:  # noqa: BLE001 - 插件关闭失败不阻断整体关闭
+        logger.warning("Plugin system shutdown failed: %s", e)
 
     # 6) 最底层：Logging
     shutdown_logging()

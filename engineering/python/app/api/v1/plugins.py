@@ -28,6 +28,9 @@ router = APIRouter(
 # 内置插件包目录（源码内嵌，作为本地市场的真实条目来源）
 _MARKET_BUILTIN_DIR = Path(__file__).resolve().parents[2] / "plugins"
 
+# 本地方言插件目录（P4：声明式方言插件以插件形态暴露到统一市场）
+_DIALECT_PLUGIN_DIR = Path(__file__).resolve().parents[5] / "postprocessor-plugins"
+
 
 def _friendly_name(raw: str) -> str:
     """将插件目录名转为可读名称（skill_loader -> Skill Loader）。"""
@@ -48,6 +51,54 @@ def _builtin_market_entry(dir_name: str) -> dict:
         "entry_point": "",
         "capabilities": [],
     }
+
+
+def _dialect_market_entry(dialect_id: str) -> dict:
+    """构造方言插件市场条目（真实 dialect.yaml 扫描结果）。
+
+    方言插件 id 使用 ``dialect:<id>`` 前缀，与统一插件市场 id 空间隔离，
+    避免与 app/plugins/ 下的业务插件冲突。plugin_type 标记为 postprocessor。
+    """
+    dialect_dir = _DIALECT_PLUGIN_DIR / dialect_id
+    declaration = None
+    try:
+        from app.postprocessor.dialect.declaration import DialectDeclaration
+
+        declaration = DialectDeclaration.from_yaml(dialect_dir / "dialect.yaml")
+    except Exception:  # noqa: BLE001 - 扫描降级：声明损坏时显示基础信息
+        logger.warning("[plugins.marketplace] 方言声明读取失败: %s", dialect_id, exc_info=True)
+
+    return {
+        "id": f"dialect:{dialect_id}",
+        "name": declaration.name if declaration else _friendly_name(dialect_id),
+        "version": declaration.version if declaration else "unknown",
+        "author": declaration.author if declaration else "Lingjing",
+        "description": (
+            declaration.description if declaration else f"声明式后处理器方言：{dialect_id}"
+        ),
+        "plugin_type": "postprocessor",
+        "category": "dialect",
+        "installed": False,
+        "status": None,
+        "entry_point": "dialect.yaml",
+        "capabilities": [],
+        "extends": declaration.extends if declaration else None,
+        "template_methods": sorted(declaration.templates.keys()) if declaration else [],
+    }
+
+
+def _scan_dialect_plugins() -> List[dict]:
+    """扫描本地方言插件目录，返回方言插件市场条目。"""
+    if not _DIALECT_PLUGIN_DIR.is_dir():
+        return []
+    entries: List[dict] = []
+    for child in sorted(_DIALECT_PLUGIN_DIR.iterdir()):
+        if not child.is_dir() or child.name.startswith("_"):
+            continue
+        if not (child / "dialect.yaml").exists():
+            continue
+        entries.append(_dialect_market_entry(child.name))
+    return entries
 
 
 @router.get("/marketplace")
@@ -91,6 +142,9 @@ def list_marketplace_plugins(
             if child.name in installed_map:
                 continue
             entries.append(_builtin_market_entry(child.name))
+
+    # 3. 本地方言插件目录扫描（P4：声明式方言插件暴露到统一市场）
+    entries.extend(_scan_dialect_plugins())
 
     # 过滤
     if query:
