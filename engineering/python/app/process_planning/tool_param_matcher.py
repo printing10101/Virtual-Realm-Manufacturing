@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 
 from app.data.process_data_manager import ProcessPlanningDataManager
 from app.process_planning._matching_mixin import _MatchingMixin
@@ -65,6 +66,31 @@ class ToolParamMatcher(_MatchingMixin, _ScoringMixin):
             ("攻螺纹", "钻孔"),
         ],
     }
+
+    def match(self, data: dict[str, Any]) -> dict[str, Any]:
+        """根据特征与材料推荐切削参数（与旧接口兼容的入口）。"""
+        material = str(data.get("material") or "unknown")
+        params: dict[str, Any] = {}
+        for feat in data.get("features") or []:
+            if not isinstance(feat, dict):
+                continue
+            try:
+                dia = float(feat.get("diameter") or 0)
+            except (TypeError, ValueError):
+                continue
+            if dia <= 0:
+                continue
+            try:
+                plan = self.plan_for_hole(
+                    material_id=material,
+                    material_category="steel",
+                    hole_diameter=dia,
+                    hole_type=str(feat.get("hole_type") or "through_hole"),
+                )
+                params[str(feat.get("id") or dia)] = plan.to_dict()
+            except (ValueError, KeyError, TypeError):
+                continue
+        return params
 
     def __init__(self, data_manager: ProcessPlanningDataManager | None = None) -> None:
         """初始化匹配器。

@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class _TaskStatsMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _max_concurrent: Any
+    _tasks: Any
+
+
     def get_stats(self) -> Dict[str, Any]:
         total = len(self._tasks)
         active = sum(1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING)

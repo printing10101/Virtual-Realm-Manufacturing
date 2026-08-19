@@ -11,6 +11,7 @@ MAX_SESSIONS_PER_DREAM = 100
 
 @dataclass
 class ProjectSession:
+
     """项目级 Session：一次实验/验证/审核的完整上下文。
 
     对应 Anthropic 的 Session 概念，但数据源不同。

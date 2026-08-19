@@ -56,7 +56,7 @@ class BatchInferenceEngine:
         self.initial_batch_size = initial_batch_size
         self.enable_dynamic_batching = enable_dynamic_batching
 
-        self._task_queue = PriorityQueue()
+        self._task_queue: PriorityQueue = PriorityQueue()
         self._executor = ThreadPoolExecutor(max_workers=max_concurrency)
         self._lock = threading.Lock()
 
@@ -68,7 +68,7 @@ class BatchInferenceEngine:
             "throughput_samples_per_sec": 0.0,
         }
 
-        self._time_window_stats = deque()
+        self._time_window_stats: deque = deque()
         self._current_batch_size = initial_batch_size
         self._task_counter = 0
 
@@ -199,7 +199,7 @@ class BatchInferenceEngine:
             - time_window: Time-windowed stats (if requested)
         """
         with self._lock:
-            stats = self._stats.copy()
+            stats: Dict[str, Any] = self._stats.copy()
             stats["queue_length"] = self._task_queue.qsize()
             stats["current_batch_size"] = self._current_batch_size
             stats["average_processing_time_ms"] = (

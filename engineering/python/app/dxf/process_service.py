@@ -132,8 +132,8 @@ class DxfProcessService:
                 if f.is_file():
                     result.output_files[f.name] = str(f)
 
-        result.success = result.parse.success and (
-            result.model3d is None or result.model3d.success or result.model3d.summary
+        result.success = bool(result.parse.success) and (
+            result.model3d is None or result.model3d.success or bool(result.model3d.summary)
         )
         result.total_latency_ms = (time.time() - t0) * 1000
         # 影子模式：研究轨 IJepa-3D chamfer 启发式识别（不阻塞产品流程）

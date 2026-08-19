@@ -320,7 +320,7 @@ class ProjectImport(Base):
     @property
     def total_count(self) -> int:
         """资源总数（imported + skipped + renamed + failed）."""
-        return self.imported_count + self.skipped_count + self.renamed_count + self.failed_count
+        return int(self.imported_count) + int(self.skipped_count) + int(self.renamed_count) + int(self.failed_count)
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典（用于 API 响应）."""

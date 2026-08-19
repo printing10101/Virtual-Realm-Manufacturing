@@ -124,7 +124,7 @@ def _parse_txt(file_path: Path) -> str:
     return file_path.read_text(encoding="utf-8", errors="replace")
 
 
-def _parse_json(file_path: Path) -> list[dict[str, str]]:
+def _parse_json(file_path: Path) -> list[dict[str, Any]]:
     import json
 
     with open(file_path, encoding="utf-8") as f:
@@ -186,7 +186,7 @@ class DocumentImportService:
             if suffix == ".json":
                 items = _parse_json(file_path_obj)
                 chunks = [item["document"] for item in items]
-                chunk_metas = [item["metadata"] for item in items]
+                chunk_metas: list[dict[str, Any]] = [item["metadata"] for item in items]
             else:
                 parser = PARSERS.get(suffix)
                 if parser is None:

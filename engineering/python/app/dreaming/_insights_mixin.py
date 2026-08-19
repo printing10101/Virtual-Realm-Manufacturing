@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Callable
 
 from app.dreaming._reflector_models import DeduplicationResult, InsightItem, UpdateResult
 from app.dreaming.session_extractor import ProjectSession
@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class _InsightsMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_llm_router: Callable[..., Any]
+
+
     def _prepare_session_summaries(self, sessions: List[ProjectSession]) -> str:
         """将 Session 列表准备为 LLM 输入文本。"""
         lines = []

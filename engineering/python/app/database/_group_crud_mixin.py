@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from typing import List, Optional
+from typing import List, Optional, Any, Callable
 
 from app.database._models import RuleGroup
 
@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class _GroupCrudMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_conn: Callable[..., Any]
+    _now: Callable[..., Any]
+
+
     def _row_to_group(self, row: sqlite3.Row) -> RuleGroup:
         return RuleGroup(
             id=row["id"],

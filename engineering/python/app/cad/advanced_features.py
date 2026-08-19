@@ -10,6 +10,7 @@ import logging
 from dataclasses import dataclass
 
 import cadquery as cq
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +186,7 @@ class AdvancedFeatureBuilder:
             return wp
 
         # 取当前 bbox
-        bb = wp.val().BoundingBox()
+        bb = cast(cq.Shape, wp.val()).BoundingBox()
         cur_len = bb.xmax - bb.xmin
         cur_wid = bb.ymax - bb.ymin
         cur_h = bb.zmax - bb.zmin
@@ -275,7 +276,7 @@ class AdvancedFeatureBuilder:
         axis = str(spec.get("axis", "x")).lower()
         surface_z = spec.get("surface_z")
 
-        bb = wp.val().BoundingBox()
+        bb = cast(cq.Shape, wp.val()).BoundingBox()
         top_z = bb.zmax if surface_z is None else float(surface_z)
 
         # 键槽的 cut box

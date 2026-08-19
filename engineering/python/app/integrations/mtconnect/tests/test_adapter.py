@@ -25,12 +25,12 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from requests import Session
-from requests.exceptions import ConnectionError as ReqConnectionError
+from requests import Session  # type: ignore[import-untyped]
+from requests.exceptions import ConnectionError as ReqConnectionError  # type: ignore[import-untyped]
 from requests.exceptions import HTTPError
 
 # Ensure the ``app`` package is importable when the tests are run from
@@ -533,7 +533,7 @@ class TestCLIFormatting:
             execution="ACTIVE",
             observed_at=datetime(2026, 6, 11, 10, 0, 0),
         )
-        line = cli.format_sample(s)
+        line = cli.format_sample(cast(Any, s))
         assert "speed=100.00" in line
         assert "load=20.00" in line
         assert "feed=5.00" in line
@@ -542,7 +542,7 @@ class TestCLIFormatting:
 
     def test_format_sample_dashes_for_missing(self) -> None:
         s = Sample()
-        line = cli.format_sample(s)
+        line = cli.format_sample(cast(Any, s))
         assert "speed=-" in line
         assert "exec=-" in line
 

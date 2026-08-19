@@ -9,6 +9,10 @@ from app.process_planning.operation_sequencer import OperationPlan
 
 
 class _PreviewMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    CONTROLLER_MAP: Any
+
+
     def _validate_syntax(
         self,
         program_text: str,

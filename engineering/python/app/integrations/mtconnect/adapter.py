@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from xml.etree import ElementTree as ET
 
-import requests
+import requests  # type: ignore[import-untyped]
 from requests import Session
 
 from app.integrations.mtconnect.parser import Sample, parse_sample_response

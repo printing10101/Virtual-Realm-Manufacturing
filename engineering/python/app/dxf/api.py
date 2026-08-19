@@ -123,7 +123,7 @@ def _dxf_error_response(
     logger_obj.error(log_fmt, exc, exc_info=True)
     safe = safe_error_message(exc, context=context)
     return error(
-        code=ErrorCode.INTERNAL,
+        code=ErrorCode.INTERNAL_ERROR,
         message=safe["message"],
         detail={"error_id": safe.get("error_id")} if safe.get("detail") else None,
     )
@@ -268,7 +268,7 @@ async def convert_to_stl(
 
             if not model_result.success:
                 return error(
-                    code=ErrorCode.INTERNAL,
+                    code=ErrorCode.INTERNAL_ERROR,
                     message=f"模型转换失败: {'; '.join(model_result.errors)}",
                 )
 
@@ -396,7 +396,7 @@ async def generate_xm100_gcode(
             parse_result = dxf_parser.parse(temp_path)
             feature_result = feature_extractor.extract(parse_result)
 
-            generator = GCodeGenerator(controller_type="xmachine_xm100")
+            generator = GCodeGenerator()
             from app.process_planning.process_planner import ProcessPlanner
 
             planner = ProcessPlanner()
@@ -408,12 +408,13 @@ async def generate_xm100_gcode(
 
             gcode_result = generator.generate(
                 operation_plan=plan_result.operation_plan,
-                material=material,
+                controller_type="xmachine_xm100",
+                material_name=str(material),
             )
 
-            if not gcode_result.success:
+            if gcode_result.errors:
                 return error(
-                    code=ErrorCode.INTERNAL,
+                    code=ErrorCode.INTERNAL_ERROR,
                     message=f"G 代码生成失败: {'; '.join(gcode_result.errors)}",
                 )
 
@@ -478,7 +479,7 @@ async def upload_to_xmaker(
 
         if not upload_result.success:
             return error(
-                code=ErrorCode.INTERNAL,
+                code=ErrorCode.INTERNAL_ERROR,
                 message=f"上传失败: {upload_result.error_message}",
             )
 

@@ -140,7 +140,7 @@ class MachiningRecordRepository:
                 logger.warning("Database error on create MachiningRecord: %s", exc)
                 raise
             session.refresh(orm_obj)
-        return orm_obj.record_id
+        return str(orm_obj.record_id)
 
     # -------------------------------------------------------------------- get
 

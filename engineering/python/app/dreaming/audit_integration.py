@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 class DreamingAuditRecorder:
+
     """将 Dreaming 反思决策写入审计日志哈希链。
 
     封装 audit_log.AuditLog.log_decision 调用，提供反思场景专用 API。

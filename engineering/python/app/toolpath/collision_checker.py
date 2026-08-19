@@ -279,7 +279,7 @@ class CollisionChecker:
         Returns:
             位置点列表 [(x,y,z), ...]
         """
-        points = []
+        points: list[tuple[float, float, float]] = []
 
         # 尝试不同的属性
         if hasattr(toolpath, "points"):

@@ -411,7 +411,7 @@ class UnifiedAuthMiddleware:
             if token.startswith("eyJ"):
                 # JWT token path
                 if self.jwt_auth_enabled:
-                    jwt_result = await self._check_jwt_auth(method, path, auth_header, token, scope)
+                    jwt_result = await self._check_jwt_auth(method, path, auth_header, token, dict(scope))
                     if jwt_result is not None:
                         await jwt_result(send)
                         return
@@ -436,7 +436,7 @@ class UnifiedAuthMiddleware:
                     else:
                         # LNN auth failed, try JWT as fallback
                         if self.jwt_auth_enabled:
-                            jwt_result = await self._check_jwt_auth(method, path, auth_header, token, scope)
+                            jwt_result = await self._check_jwt_auth(method, path, auth_header, token, dict(scope))
                             if jwt_result is None:
                                 # JWT auth passed
                                 pass
@@ -450,7 +450,7 @@ class UnifiedAuthMiddleware:
                             return
                 elif self.jwt_auth_enabled:
                     # Only JWT enabled, try it for flat tokens too
-                    jwt_result = await self._check_jwt_auth(method, path, auth_header, token, scope)
+                    jwt_result = await self._check_jwt_auth(method, path, auth_header, token, dict(scope))
                     if jwt_result is not None:
                         await jwt_result(send)
                         return

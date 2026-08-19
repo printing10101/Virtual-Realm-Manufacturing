@@ -135,10 +135,10 @@ def compute_feature_recall(
         return 1.0
 
     det_by_name: dict[str, dict[str, Any]] = {}
-    for det in detected_features:
-        name = str(det.get("name", ""))
+    for feat in detected_features:
+        name = str(feat.get("name", ""))
         if name:
-            det_by_name[name] = det
+            det_by_name[name] = feat
 
     ious = compute_feature_iou(detected_features, ground_truth_features)
     correct = 0

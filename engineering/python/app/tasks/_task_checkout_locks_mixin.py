@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import List, Any, Callable
 
 from app.tasks._checkout_models import (
     CONFLICT_RETRY_DELAY_MINUTES, GPU_RETRY_DELAY_MINUTES, AgentMode, CheckoutFailureReason, CheckoutRequest, CheckoutResult, CheckoutStatus, TaskStatus,
@@ -18,6 +18,16 @@ logger = logging.getLogger(__name__)
 
 
 class _TaskCheckoutLocksMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _budget_checker: Any
+    _get_unresolved_blockers: Callable[..., Any]
+    _gpu_checker: Any
+    get_task: Callable[..., Any]
+    _checkout_lock: Any
+    _conn: Any
+    _lock_store: Any
+
+
     def _get_conn(self) -> sqlite3.Connection:
         """获取数据库连接（从连接池）"""
         return self._conn
@@ -140,7 +150,7 @@ class _TaskCheckoutLocksMixin:
                     retry=False,
                 )
 
-        if self._budget_checker:
+        if self._budget_checker is not None:
             project_id = task.project_id
             if not self._budget_checker(request.agent_id, project_id):
                 self._record_failure(
@@ -156,7 +166,7 @@ class _TaskCheckoutLocksMixin:
                     retry=False,
                 )
 
-        if request.required_gpu_memory > 0 and self._gpu_checker:
+        if request.required_gpu_memory > 0 and self._gpu_checker is not None:
             if not self._gpu_checker(request.required_gpu_memory):
                 self._record_failure(
                     request.task_id,

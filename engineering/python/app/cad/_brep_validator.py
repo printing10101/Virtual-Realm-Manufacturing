@@ -24,7 +24,7 @@ import math
 import struct
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import cadquery as cq
 
@@ -130,7 +130,7 @@ def _to_shape(obj: Any) -> cq.Shape:
         vals = obj.vals()
         if not vals:
             raise ValueError("Workplane 为空，无法校验")
-        return vals[0]
+        return cast(cq.Shape, vals[0])
     # 兼容其它包含 .val() 的封装
     val = getattr(obj, "val", None)
     if callable(val):
@@ -481,7 +481,7 @@ def validate_exported_model(
                 BrepIssue(ERR_INVALID_SHAPE, "error", f"STEP 文件回读失败，文件可能损坏或不完整: {e}")
             )
             return report
-        return validate_brep(shape, **kwargs)
+        return validate_brep(_to_shape(shape), **kwargs)
 
     if fmt == "stl":
         return _validate_stl_file(path)

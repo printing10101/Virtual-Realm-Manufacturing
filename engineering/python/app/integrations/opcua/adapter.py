@@ -166,10 +166,10 @@ class OPCUAAdapter:
         self._last_flush = time.monotonic()
         self._ingested_count = 0
         self._error_count = 0
-        self._client = None
-        self._subscription = None
+        self._client: Any = None
+        self._subscription: Any = None
         self._connected = False
-        self._loop = None  # Persistent event loop for asyncua operations
+        self._loop: Any = None  # Persistent event loop for asyncua operations
 
     # ------------------------------------------------------------------
     # Public API
@@ -718,7 +718,7 @@ class SubHandler:
 
     def __init__(self, adapter: OPCUAAdapter):
         self.adapter = adapter
-        self._node_names = {}  # Cache: node_id_str -> browse_name
+        self._node_names: dict[str, str] = {}  # Cache: node_id_str -> browse_name
 
     def datachange_notification(self, node, val, data):
         """Called when a subscribed node's value changes."""

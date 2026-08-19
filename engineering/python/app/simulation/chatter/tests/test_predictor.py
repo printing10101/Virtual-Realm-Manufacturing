@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from typing import Any, cast
+
 import sys
 import time
 import logging
@@ -217,7 +219,7 @@ class TestPredictStability:
         assert isinstance(result["method"], str)
 
         # 极限切深应该为正数
-        assert result["limit_depth"] > 0
+        assert float(result["limit_depth"]) > 0
 
     def test_different_machines(self):
         """测试不同机床的预测。"""
@@ -230,7 +232,7 @@ class TestPredictStability:
                 tool="endmill_d10",
             )
 
-            assert result["limit_depth"] > 0
+            assert float(result["limit_depth"]) > 0  # type: ignore[arg-type]
             assert result["stable"] in [True, False]
 
     def test_different_tools(self):
@@ -244,7 +246,7 @@ class TestPredictStability:
                 tool=tool,
             )
 
-            assert result["limit_depth"] > 0
+            assert float(result["limit_depth"]) > 0  # type: ignore[arg-type]
 
     def test_different_speeds(self):
         """测试不同转速的预测。"""
@@ -257,7 +259,7 @@ class TestPredictStability:
                 tool="endmill_d10",
             )
 
-            assert result["limit_depth"] > 0
+            assert float(result["limit_depth"]) > 0  # type: ignore[arg-type]
 
     def test_analytical_method_fallback(self):
         """测试解析法回退。"""
@@ -271,7 +273,7 @@ class TestPredictStability:
 
             # 应该使用解析法
             assert result["method"] == "analytical"
-            assert result["limit_depth"] > 0
+            assert float(result["limit_depth"]) > 0  # type: ignore[arg-type]
 
     def test_result_structure(self):
         """测试结果结构完整性。"""
@@ -303,7 +305,7 @@ class TestPredictStabilityBatch:
         for result in results:
             assert "stable" in result
             assert "limit_depth" in result
-            assert result["limit_depth"] > 0
+            assert float(result["limit_depth"]) > 0
 
     def test_empty_batch(self):
         """测试空批量预测。"""
@@ -365,10 +367,10 @@ class TestConsistency:
         for params in test_cases:
             # 获取解析法结果
             with patch("os.path.exists", return_value=False):
-                analytical_result = predict_stability(**params)
+                analytical_result = predict_stability(**cast(dict[str, Any], params))
 
             # 获取神经网络结果（如果可用）
-            neural_result = predict_stability(**params)
+            neural_result = predict_stability(**cast(dict[str, Any], params))
 
             # 如果两种方法都可用，检查结果一致性
             if analytical_result["method"] == "analytical" and neural_result["method"] == "neural_network":
@@ -376,8 +378,8 @@ class TestConsistency:
                 neural_depth = neural_result["limit_depth"]
 
                 # 计算相对误差
-                if analytical_depth > 0:
-                    relative_error = abs(neural_depth - analytical_depth) / analytical_depth
+                if float(analytical_depth) > 0:  # type: ignore[arg-type]
+                    relative_error = abs(float(neural_depth) - float(analytical_depth)) / float(analytical_depth)  # type: ignore[arg-type]
 
                     # 误差应在 ±5% 内
                     assert relative_error < 0.05, f"参数 {params} 的误差 {relative_error:.2%} 超过 5% 限制"

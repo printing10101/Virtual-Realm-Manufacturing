@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.process_planning._schemas import GCodeResult
 
 
 class _HoleDrillingMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    CONTROLLER_MAP: Any
+    _registry: Any
+
+
     def generate_hole_drilling_only(
         self,
         hole_positions: list[dict[str, float]],

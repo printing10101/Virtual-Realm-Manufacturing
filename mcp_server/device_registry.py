@@ -168,6 +168,7 @@ class SimulatedDevice:
                     raise ValueError(f"{op.name}: 缺少必填参数 {pname}")
                 continue
             raw = params[pname]
+            val: Any
             try:
                 if ptype == "number":
                     val = float(raw)

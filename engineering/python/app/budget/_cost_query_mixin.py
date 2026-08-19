@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 class _CostQueryMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _conn: Any
+
+
     def get_task_costs(self, task_id: str) -> List[Dict[str, Any]]:
         """获取任务的所有成本记录"""
         rows = self._conn.execute(
@@ -58,7 +62,7 @@ class _CostQueryMixin:
         dim_column = validate_cost_dimension_column(dim_column)
 
         conditions = [f"{dim_column} = ?"]
-        params = [scope_id]
+        params: list[Any] = [scope_id]
 
         if start_time is not None:
             conditions.append("recorded_at >= ?")

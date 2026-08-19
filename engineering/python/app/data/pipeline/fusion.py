@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -149,8 +149,8 @@ class CrossModalAttentionFusion:
         self.n_heads = config.attention_heads
         self.dropout = config.dropout
         self.target_dim = config.target_dim
-        self._projections = None
-        self._output_proj = None
+        self._projections: Any = None
+        self._output_proj: Any = None
         self._initialized = False
 
         # P1 学术诚信修复：移除 np.random.seed(42) 全局污染（影响其他模块的随机性），

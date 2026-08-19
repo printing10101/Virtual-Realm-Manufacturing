@@ -32,6 +32,7 @@ class _SubprocessSkillExecutor:
 import sys
 import json
 import base64
+import binascii
 
 SAFE_BUILTINS = {
     "True": True, "False": False, "None": None,

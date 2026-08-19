@@ -199,7 +199,7 @@ class Tool(Base):
             磨损百分比 (0-100)
         """
         max_wear = 0.3  # mm
-        return min(100.0, (self.wear_amount / max_wear) * 100.0)
+        return min(100.0, (float(self.wear_amount or 0.0) / max_wear) * 100.0)
 
     @property
     def is_worn(self) -> bool:
@@ -208,7 +208,7 @@ class Tool(Base):
         Returns:
             True if 磨损量超过阈值或状态为worn
         """
-        return self.wear_percentage > 80.0 or self.status == "worn"
+        return float(self.wear_percentage or 0.0) > 80.0 or str(self.status) == "worn"
 
     @property
     def tool_life_remaining(self) -> float:
@@ -220,5 +220,5 @@ class Tool(Base):
             剩余寿命百分比 (0-100)
         """
         typical_tool_life = 240.0  # 分钟
-        remaining = max(0.0, typical_tool_life - self.usage_time)
+        remaining = max(0.0, typical_tool_life - float(self.usage_time or 0.0))
         return (remaining / typical_tool_life) * 100.0

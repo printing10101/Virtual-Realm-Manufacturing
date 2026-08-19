@@ -15,6 +15,8 @@ PINN 模型与基于 torch 的预测接口不可用。
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.simulation.cutting_force.kienzle import (
     KienzleParams,
     compute_cutting_force_fz,
@@ -37,6 +39,8 @@ from app.simulation.cutting_force.adaptive_milling import (
 )
 
 # pinn / predictor / trainer 依赖 torch，桌面 MVP 排除 torch 时软降级
+predict_cutting_force: Any
+predict_cutting_force_batch: Any
 try:
     from app.simulation.cutting_force.pinn import (
         CuttingForcePINN,
@@ -44,8 +48,8 @@ try:
         ResidualBlock,
     )
     from app.simulation.cutting_force.predictor import (
-        predict_cutting_force,
-        predict_cutting_force_batch,
+        predict_cutting_force as predict_cutting_force,
+        predict_cutting_force_batch as predict_cutting_force_batch,
     )
 
     _HAS_TORCH = True

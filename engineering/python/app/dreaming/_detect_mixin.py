@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Any, Callable
 
 from app.dreaming.apply_rules import RuleApplicator
 from app.dreaming.effectiveness_metrics import (
@@ -22,6 +22,18 @@ logger = logging.getLogger(__name__)
 
 
 class _DetectMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _is_in_cooldown: Callable[..., Any]
+    rollback_rule: Callable[..., Any]
+    _applicator: Any
+    _consecutive_anomalies: Any
+    _lock: Any
+    _metrics_collector: Any
+    _publisher: Any
+    consecutive_anomaly_threshold: Any
+    production_error_rate_threshold: Any
+
+
     def _get_publisher(self) -> ProgressivePublisher:
         if self._publisher is None:
             self._publisher = ProgressivePublisher()

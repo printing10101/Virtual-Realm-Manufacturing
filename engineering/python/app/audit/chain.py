@@ -32,7 +32,7 @@ import time
 import logging
 import hashlib
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 from dataclasses import dataclass, asdict
 from enum import Enum
 
@@ -73,7 +73,7 @@ class AuditLogEntry:
     user_decision: str
     final_execution: dict
     operation_status: str
-    input_parameters: dict = None
+    input_parameters: Optional[dict] = None
     user_id: Optional[str] = None
     username: Optional[str] = None
     confidence: Optional[float] = None
@@ -95,12 +95,12 @@ class AuditLogEntry:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AuditLogEntry":
         return cls(
-            timestamp_ms=data.get("timestamp_ms"),
-            ai_module=data.get("ai_module"),
-            ai_recommendation=data.get("ai_recommendation", {}),
-            user_decision=data.get("user_decision"),
-            final_execution=data.get("final_execution", {}),
-            operation_status=data.get("operation_status"),
+            timestamp_ms=int(data.get("timestamp_ms") or 0),
+            ai_module=str(data.get("ai_module") or ""),
+            ai_recommendation=data.get("ai_recommendation") or {},
+            user_decision=str(data.get("user_decision") or ""),
+            final_execution=data.get("final_execution") or {},
+            operation_status=str(data.get("operation_status") or ""),
             input_parameters=data.get("input_parameters", {}),
             user_id=data.get("user_id"),
             username=data.get("username"),
@@ -115,6 +115,16 @@ class AuditLogEntry:
 
 
 class ChainMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _chain_lock: Any
+    _chain_state_file: Any
+    _log_root: Any
+    _chain_seq: Any
+    _last_hash: Any
+    _archives: Any
+    _get_all_log_files: Callable[..., Any]
+
+
     """哈希链算法 mixin。
 
     提供 chain_state.json 的加载/持久化、条目哈希计算与整链完整性校验。

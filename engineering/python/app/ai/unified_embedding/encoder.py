@@ -317,7 +317,7 @@ class MultiModalEncoder:
         for emb, w in zip(embeddings, normalized_weights):
             if emb.ndim == 2:
                 emb = emb[0]
-            fused = fused + emb * w
+            fused = fused + (emb * w).astype(np.float32)
         return self._space.normalize(fused)
 
     def fuse_batch(
@@ -350,7 +350,7 @@ class MultiModalEncoder:
 
         fused = np.zeros((batch_size, TOTAL_DIMS), dtype=np.float32)
         for emb, w in zip(active, normalized_weights):
-            fused = fused + emb * w
+            fused = fused + (emb * w).astype(np.float32)
         return self._space.normalize(fused)
 
     def encode_manufacturing_scene(

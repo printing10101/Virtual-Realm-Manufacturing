@@ -36,6 +36,7 @@ class _WorkerState:
 
     plugin_id: str = ""
     plugin_path: str = ""
+    plugin_port: int = 0
     plugin_instance: Optional[Any] = None
     started_at: float = 0.0
     running: bool = True
@@ -90,7 +91,7 @@ def _start_health_server(port: int) -> socketserver.TCPServer:
         def log_message(self, format, *args):
             logger.debug(format, *args)
 
-    server = socketserver.TCPServer((bind_host, port), HealthHandler)
+    server = socketserver.ThreadingTCPServer((bind_host, port), HealthHandler)
     server.daemon_threads = True
     return server
 

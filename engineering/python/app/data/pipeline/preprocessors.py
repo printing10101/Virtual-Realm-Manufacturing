@@ -64,7 +64,7 @@ class ImagePreprocessor(BasePreprocessor):
         super().__init__(config)
         self._target_size = (config.image_size, config.image_size)
 
-    def preprocess(self, raw_input: ImageInput) -> ProcessedData:
+    def preprocess(self, raw_input: ImageInput) -> ProcessedData:  # type: ignore[override]
         t0 = time.perf_counter()
 
         img = raw_input.data
@@ -177,7 +177,7 @@ class TimeSeriesPreprocessor(BasePreprocessor):
             return np.apply_along_axis(lambda x: medfilt(x, kernel_size=5), 0, data)
         return data
 
-    def preprocess(self, raw_input: TimeSeriesInput) -> ProcessedData:
+    def preprocess(self, raw_input: TimeSeriesInput) -> ProcessedData:  # type: ignore[override]
         t0 = time.perf_counter()
 
         data = raw_input.data.astype(np.float32)
@@ -256,7 +256,7 @@ class TextPreprocessor(BasePreprocessor):
             text = text[: self.config.max_text_length]
         return text
 
-    def preprocess(self, raw_input: TextInput) -> ProcessedData:
+    def preprocess(self, raw_input: TextInput) -> ProcessedData:  # type: ignore[override]
         t0 = time.perf_counter()
 
         # 校验文本数据：None 不应被 str() 转换为 "None"，否则会错误产生特征
@@ -352,7 +352,7 @@ class ToolStatePreprocessor(BasePreprocessor):
 
         return features, anomaly_count
 
-    def preprocess(self, raw_input: ToolStateInput) -> ProcessedData:
+    def preprocess(self, raw_input: ToolStateInput) -> ProcessedData:  # type: ignore[override]
         t0 = time.perf_counter()
 
         if not self._min_max_params:
@@ -454,7 +454,7 @@ class GCodePreprocessor(BasePreprocessor):
 
     def _segment_by_operation(self, instructions: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
         segments = []
-        current_segment = []
+        current_segment: List[Dict[str, Any]] = []
         current_op = None
 
         for inst in instructions:
@@ -513,7 +513,7 @@ class GCodePreprocessor(BasePreprocessor):
                     encoded[i, vocab[prefix]] = val
         return encoded
 
-    def preprocess(self, raw_input: GCodeInput) -> ProcessedData:
+    def preprocess(self, raw_input: GCodeInput) -> ProcessedData:  # type: ignore[override]
         t0 = time.perf_counter()
 
         if raw_input.controller_type not in self.config.supported_controllers:

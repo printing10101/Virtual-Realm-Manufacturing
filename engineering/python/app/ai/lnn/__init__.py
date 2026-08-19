@@ -7,6 +7,6 @@ LNN (Liquid Neural Network) Module
 如需训练或加载 torch 模型，请在 research/ 环境中操作。
 """
 
-__all__ = []
+__all__: list[str] = []
 
 __version__ = "2.7.0"

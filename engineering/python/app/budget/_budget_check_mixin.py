@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class _BudgetCheckMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _conn: Any
+    _lock: Any
+    tracker: Any
+
+
     def check_budget(self, agent_id: str, resource_types: Optional[List[ResourceType]] = None) -> BudgetCheckResult:
         """
         执行预算检查

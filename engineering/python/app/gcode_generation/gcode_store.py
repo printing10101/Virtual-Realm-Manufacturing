@@ -319,6 +319,8 @@ class TaskStore:
 
     _instance: TaskStore | None = None
     _instance_lock = threading.Lock()
+    # 实例级初始化标志：__new__ 中先置 False，__init__ 幂等初始化（mypy: 需类级声明以确定类型）
+    _initialized: bool = False
 
     def __new__(cls) -> TaskStore:
         if cls._instance is None:

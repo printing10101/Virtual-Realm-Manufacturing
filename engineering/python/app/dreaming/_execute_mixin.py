@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 
 from app.dreaming.apply_rules import RollbackResult
 from app.dreaming.progressive_publisher import PublicationStage
@@ -14,6 +14,19 @@ logger = logging.getLogger(__name__)
 
 
 class _ExecuteMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_applicator: Callable[..., Any]
+    _get_audit_recorder: Callable[..., Any]
+    _get_publisher: Callable[..., Any]
+    _save_cooldowns: Callable[..., Any]
+    _save_history: Callable[..., Any]
+    _consecutive_anomalies: Any
+    _cooldowns: Any
+    _lock: Any
+    _rollback_history: Any
+    cooldown_hours: Any
+
+
     def rollback_rule(
         self,
         rule_id: str,

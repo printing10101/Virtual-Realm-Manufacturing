@@ -96,7 +96,7 @@ class EmbeddingService:
     ):
         self._model_name = model_name or _RESOLVED_MODEL
         self._vector_dim = vector_dim or _RESOLVED_DIM
-        self._model = None
+        self._model: Any = None
         self._lock = threading.Lock()
         self._cache: dict[str, list[float]] = {}
         self._cache_keys: list[str] = []
@@ -239,7 +239,7 @@ class EmbeddingService:
 
         return results
 
-    def get_cache_stats(self) -> dict[str, int | float]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """获取缓存命中统计（用于 /api/rag/stats 诊断端点）。"""
         total = self._cache_hits + self._cache_misses
         return {

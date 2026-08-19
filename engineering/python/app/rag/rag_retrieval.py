@@ -146,7 +146,7 @@ class RagRetrievalEngine:
         if not scored_intents:
             return QueryIntent.GENERAL
 
-        return max(scored_intents, key=scored_intents.get)
+        return max(scored_intents, key=lambda k: scored_intents[k])
 
     def retrieve(
         self,
@@ -561,7 +561,7 @@ class RagRetrievalEngine:
         if ENABLE_PARALLEL_RETRIEVAL and len(sources) > 1:
             all_results = self._parallel_source_query(search_query, sources, n_results)
         else:
-            all_results: list[dict] = []
+            all_results = []
             for source in sources:
                 try:
                     source_results = self._query_source(query=search_query, source=source, n_results=n_results)

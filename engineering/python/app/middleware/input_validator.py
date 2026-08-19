@@ -11,7 +11,7 @@ from typing import Any, Optional, Sequence
 # 调用方可通过环境变量 LNN_ALLOWED_ROOTS（逗号分隔）扩展；
 # 默认包含 LNN_DATA_DIR / LNN_OUTPUT_DIR / LNN_UPLOAD_DIR 对应的 data/output/uploads
 # 目录。环境变量在每次调用时动态读取，方便测试时按需调整。
-_DEFAULT_ROOT_NAMES: tuple[str, str] = ("LNN_DATA_DIR", "LNN_OUTPUT_DIR", "LNN_UPLOAD_DIR")
+_DEFAULT_ROOT_NAMES: tuple[str, str, str] = ("LNN_DATA_DIR", "LNN_OUTPUT_DIR", "LNN_UPLOAD_DIR")
 _DEFAULT_FALLBACK_DIRS: tuple[str, ...] = ("data", "output", "uploads")
 
 # P2-5-4 修复：提取校验阈值魔法数字为命名常量，便于统一管理与调整

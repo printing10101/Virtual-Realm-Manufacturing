@@ -13,7 +13,7 @@ from app.dreaming._publisher_models import (  # noqa: F401
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 from app.dreaming.rule_validator import ValidationResult
 from datetime import timezone
 
@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 
 
 class _PublisherPersistMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_audit_recorder: Callable[..., Any]
+    _lock: Any
+    _records: Any
+    state_dir: Any
+
+
     def _load_state(self) -> None:
         """启动时加载所有灰度发布记录。"""
         try:

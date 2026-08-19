@@ -5,7 +5,7 @@ Provides recommended cutting parameters for different material categories
 and machining operations based on tool diameter.
 """
 
-from typing import Dict
+from typing import Dict, List, Tuple, Union
 
 # Material categories with their machinability properties
 MATERIAL_CATEGORIES = {
@@ -38,7 +38,11 @@ MATERIAL_CATEGORIES = {
 # Base cutting parameters for each operation and material
 # Format: (spindle_speed_rpm, feed_rate_mm_per_min, depth_of_cut_mm)
 # These are baseline values for a 10mm diameter tool
-BASE_PARAMETERS = {
+# 显式类型注解：mypy 对深层嵌套字面量推导会退化为 float（见 mypy 修复批次）
+OperationParams = Dict[str, Tuple[float, float]]  # {"spindle_speed_range": (min, max)}
+MaterialOps = Dict[str, OperationParams]  # {"drilling": {...}}
+MaterialParams = Dict[str, MaterialOps]  # {"aluminum": {...}}
+BASE_PARAMETERS: MaterialParams = {
     "aluminum": {
         "drilling": {
             "spindle_speed_range": (2000, 4000),
@@ -144,7 +148,7 @@ BASE_PARAMETERS = {
 }
 
 # Safe defaults for unknown materials
-DEFAULT_PARAMETERS = {
+DEFAULT_PARAMETERS: MaterialOps = {
     "drilling": {
         "spindle_speed_range": (800, 1500),
         "feed_rate_range": (80, 200),
@@ -201,7 +205,7 @@ def get_cutting_params(
     tool_diameter: float,
     machine_type: str = "default",
     validate_machine_limits: bool = True,
-) -> Dict[str, float]:
+) -> Dict[str, Union[int, float, List[str]]]:
     """
     Get recommended cutting parameters for a given material, operation, and tool diameter.
 
@@ -232,8 +236,14 @@ def get_cutting_params(
     material = material.lower().strip()
 
     # Get material parameters or use defaults
-    params = BASE_PARAMETERS.get(material, DEFAULT_PARAMETERS[operation])
-    operation_params = params[operation]
+    # 修复（2026-08-18）：原 `BASE_PARAMETERS.get(material, DEFAULT_PARAMETERS[operation])`
+    # 的默认值层级错误——BASE_PARAMETERS[material] 是操作级字典，而 DEFAULT_PARAMETERS[operation]
+    # 是参数级字典，未知材料时 `params[operation]` 会 KeyError。现改为显式分支。
+    material_params = BASE_PARAMETERS.get(material)
+    if material_params is not None:
+        operation_params = material_params[operation]
+    else:
+        operation_params = DEFAULT_PARAMETERS[operation]
 
     # Get machine capabilities
     machine_caps = MACHINE_CAPABILITIES.get(machine_type, MACHINE_CAPABILITIES["default"])

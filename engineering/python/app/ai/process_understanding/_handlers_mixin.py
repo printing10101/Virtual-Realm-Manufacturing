@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any, Callable
 
 from app.ai.process_understanding._output import ProcessUnderstandingOutput, task_type_to_code
 from app.ai.process_understanding._prompts import ENTITY_EXTRACTION_PROMPT, FAULT_DIAGNOSIS_PROMPT, GENERAL_QA_PROMPT
@@ -208,6 +209,11 @@ class _HandlersMixin:
                 "top_knowledge": knowledge_text[:200] if knowledge_text else "",
             },
         )
+
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    solution_generator: Any
+    explainer: Any
+    _get_llm_client: Callable[..., Any]
 
     def _handle_chitchat(self, classification: ClassificationResult) -> ProcessUnderstandingOutput:
         """处理闲聊请求。"""

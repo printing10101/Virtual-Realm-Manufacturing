@@ -128,8 +128,8 @@ class DataPreprocessor:
             outliers_detected=outliers_detected,
             missing_values_filled=missing_values_filled,
             metadata={
-                "mean": self.mean_.tolist(),
-                "std": self.std_.tolist(),
+                "mean": self.mean_.tolist() if self.mean_ is not None else None,
+                "std": self.std_.tolist() if self.std_ is not None else None,
                 "original_shape": list(X.shape),
             },
         )
@@ -226,10 +226,16 @@ class DataPreprocessor:
         Returns:
             标准化后的数据
         """
+        mean = self.mean_
+        std = self.std_
+        min_ = self.min_
+        max_ = self.max_
+        if mean is None or std is None or min_ is None or max_ is None:
+            raise RuntimeError("预处理器尚未 fit，无法进行 transform")
         if self.normalization == NormalizationMethod.Z_SCORE:
-            return (X - self.mean_) / (self.std_ + 1e-10)
+            return (X - mean) / (std + 1e-10)
         elif self.normalization == NormalizationMethod.MIN_MAX:
-            return (X - self.min_) / ((self.max_ - self.min_) + 1e-10)
+            return (X - min_) / ((max_ - min_) + 1e-10)
         else:
             return X
 
@@ -249,10 +255,16 @@ class DataPreprocessor:
                 "Call preprocessor.fit(X_train) on training data first."
             )
 
+        mean = self.mean_
+        std = self.std_
+        min_ = self.min_
+        max_ = self.max_
+        if mean is None or std is None or min_ is None or max_ is None:
+            raise RuntimeError("预处理器尚未 fit，无法进行 inverse_transform")
         if self.normalization == NormalizationMethod.Z_SCORE:
-            return X * self.std_ + self.mean_
+            return X * std + mean
         elif self.normalization == NormalizationMethod.MIN_MAX:
-            return X * (self.max_ - self.min_) + self.min_
+            return X * (max_ - min_) + min_
         else:
             return X
 
@@ -316,7 +328,7 @@ class DataPreprocessor:
         """
         # 简单的词频统计
         words = text.lower().split()
-        word_freq = {}
+        word_freq: dict[str, int] = {}
         for word in words:
             word_freq[word] = word_freq.get(word, 0) + 1
 

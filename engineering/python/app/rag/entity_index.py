@@ -229,7 +229,7 @@ class EntityIndex:
                 return False
 
             try:
-                os.makedirs(self._persist_dir, exist_ok=True)
+                os.makedirs(str(self._persist_dir), exist_ok=True)
                 # 转换 set 为 list 以便 JSON 序列化
                 serializable = {
                     "index": {k: list(v) for k, v in self._index.items() if v},

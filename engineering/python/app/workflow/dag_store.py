@@ -293,7 +293,7 @@ class DAGStore:
             )
             result = await session.execute(stmt)
             nodes = result.scalars().all()
-            return {n.node_id: (n.outputs or {}) for n in nodes}
+            return {str(n.node_id): dict(n.outputs or {}) for n in nodes}
 
 
 # 单例

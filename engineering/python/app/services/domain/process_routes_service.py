@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from sqlalchemy import select, func, delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -562,14 +562,14 @@ async def seed_process_routes() -> dict:
         steps_count = 0
         try:
             for rs in routes_seed:
-                steps = rs.pop("steps")
+                steps = cast(list[dict[str, Any]], rs.pop("steps"))
                 steps_count += len(steps)
                 route = ProcessRoute(steps_count=len(steps), **rs)
                 session.add(route)
                 await session.flush()
 
                 for sd in steps:
-                    session.add(ProcessStep(route_id=route.id, **sd))
+                    session.add(ProcessStep(route_id=route.id, **dict(sd)))
 
             await session.commit()
             return {

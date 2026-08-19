@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Dict
+from typing import Dict, Any
 
 from app.budget._cost_models import (  # noqa: F401
     CostDimension,
@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 class _CostPriceMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _conn: Any
+    _unit_prices: Any
+
+
     def _load_unit_prices(self) -> None:
         """加载单价配置"""
         defaults = {

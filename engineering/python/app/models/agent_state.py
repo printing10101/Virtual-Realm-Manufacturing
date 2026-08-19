@@ -14,7 +14,7 @@ import time
 import uuid
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 
 class AgentStatus(str, Enum):
@@ -314,7 +314,7 @@ class AgentState:
 
 CURRENT_SCHEMA_VERSION = "1.0.0"
 
-STATE_MIGRATIONS: Dict[str, List[callable]] = {}
+STATE_MIGRATIONS: Dict[str, List[Callable[[Dict[str, Any]], Dict[str, Any]]]] = {}
 
 
 def register_migration(from_version: str, to_version: str):

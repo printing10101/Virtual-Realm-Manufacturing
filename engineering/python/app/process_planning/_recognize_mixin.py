@@ -8,6 +8,11 @@ from app.process_planning._hole_models import HoleFeature, HoleRecognitionResult
 
 
 class _RecognizeMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    COAXIAL_THRESHOLD: Any
+    STANDARD_DRILL_POINT_ANGLE: Any
+
+
     def recognize_from_part_description(
         self,
         part_description: dict[str, Any],

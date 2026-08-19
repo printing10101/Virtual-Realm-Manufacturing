@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 class _BudgetActionMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _task_canceller: Any
+    _agent_suspender: Any
+    _conn: Any
+    _cost_tracker_ref: Any
+
+
     def set_task_canceller(self, canceller: Callable[[str], None]) -> None:
         self._task_canceller = canceller
     def set_agent_suspender(self, suspender: Callable[[str, str], None]) -> None:
@@ -25,7 +32,7 @@ class _BudgetActionMixin:
         self._cost_tracker_ref = cost_tracker
     def _cancel_pending_tasks(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> List[str]:
         cancelled = []
-        if self._task_canceller:
+        if self._task_canceller is not None:
             try:
                 if level == BudgetLevel.AGENT:
                     self._task_canceller(scope_id)

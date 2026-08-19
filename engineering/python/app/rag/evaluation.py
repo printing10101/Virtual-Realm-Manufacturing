@@ -305,11 +305,11 @@ class RetrievalEvaluator:
 
         category_perf = {}
         for r in results:
-            query = self.dataset.get_query_by_id(r.query_id)
-            if query:
-                cat = query.category
+            query_row = self.dataset.get_query_by_id(r.query_id)
+            if query_row:
+                cat = query_row.category
                 if cat not in category_perf:
-                    category_perf[cat] = {"total": 0, "correct": 0}
+                    category_perf[cat] = {"total": 0, "correct": 0, "accuracy": 0.0}
                 category_perf[cat]["total"] += 1
                 if r.hits > 0:
                     category_perf[cat]["correct"] += 1
@@ -482,7 +482,7 @@ class RetrievalEvaluator:
             "ENABLE_PARALLEL_RETRIEVAL",
             "ENABLE_RESULT_CACHE",
         ]
-        original_env = {k: os.environ.get(k) for k in env_keys}
+        original_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_keys}
 
         ablation_results: list[AblationResult] = []
 
@@ -492,7 +492,7 @@ class RetrievalEvaluator:
 
                 # 应用环境变量覆盖
                 for key, value in env_overrides.items():
-                    os.environ[key] = value
+                    os.environ[key] = str(value)
 
                 # 重置 RAG engine 的增强模块懒加载状态
                 self._reset_rag_engine_enhancements()
@@ -542,11 +542,11 @@ class RetrievalEvaluator:
                 )
         finally:
             # 恢复原始环境变量
-            for key, value in original_env.items():
-                if value is None:
+            for key, val in original_env.items():
+                if val is None:
                     os.environ.pop(key, None)
                 else:
-                    os.environ[key] = value
+                    os.environ[key] = str(val)
             # 重置 RAG engine 以恢复原始配置
             self._reset_rag_engine_enhancements()
 

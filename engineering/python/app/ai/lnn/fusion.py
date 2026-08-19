@@ -215,7 +215,6 @@ class DempsterShaferFusion:
                 "conflict": float(conflict),
                 "ds_mass": float(fused_mass),
                 "eligible_count": float(len(eligible)),
-                "prediction_kind": prediction_kind,
             },
         )
 

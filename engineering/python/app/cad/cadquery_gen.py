@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 # 平台兼容：resource 模块仅在 Unix 可用，Windows 下跳过 RLIMIT 配置
+_resource: Any
 try:
     import resource as _resource
 except ImportError:
@@ -176,6 +177,8 @@ class CadQueryGenerator:
                 )
 
             # --- Header-based fallback (always attempted) -----------
+            width: float
+            height: float
             try:
                 width, height = _get_image_dimensions(view_file)
                 image_sizes[view_name] = (width, height)
@@ -197,7 +200,7 @@ class CadQueryGenerator:
             params = _merge_cv_results(cv_results, image_sizes)
         else:
             # Pure fallback: use header-based image sizes only.
-            length = 50.0
+            length: float = 50.0
             width = 30.0
             height = 20.0
             if "front" in image_sizes:
@@ -434,6 +437,8 @@ class CadQueryGenerator:
                         f"导出模型校验失败（错误码 {last_report.error_codes}）：{last_report.summary()}"
                     )
                 logger.info("重生成第 %d 次成功: %s", attempt, path)
+                if last_report is None:
+                    raise CadQueryScriptError("导出模型校验失败：未生成校验报告")
                 return path, last_report, attempt
             except CadQueryError as e:
                 # 恢复策略 1：剔除致错特征（校验失败通常由某个特征引起）

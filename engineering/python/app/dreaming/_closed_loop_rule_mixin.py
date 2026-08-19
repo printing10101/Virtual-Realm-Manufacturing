@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections import deque
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Any, Callable
 
 from app.dreaming._closed_loop_models import (
     ClosedLoopDecision,
@@ -16,6 +16,22 @@ logger = logging.getLogger(__name__)
 
 
 class _ClosedLoopRuleMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_collector: Callable[..., Any]
+    _get_fusion: Callable[..., Any]
+    _get_next_stage: Callable[..., Any]
+    _get_previous_stage: Callable[..., Any]
+    _demote_confidence: Any
+    _fusion_params: Any
+    _hrc52_confidence_penalty: Any
+    _lock: Any
+    _max_conflict_for_promote: Any
+    _min_samples_for_decision: Any
+    _promote_confidence: Any
+    _window_size: Any
+    _windows: Any
+
+
     def evaluate_rule(self, rule_id: str) -> ClosedLoopDecision:
         """评估指定规则，返回决策建议。
 

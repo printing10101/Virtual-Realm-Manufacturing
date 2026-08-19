@@ -58,15 +58,15 @@ class TaskRecord:
     @classmethod
     def from_db_model(cls, model: TrainingTask) -> "TaskRecord":
         return cls(
-            job_id=model.id,
-            task_type=TaskType(model.task_type) if model.task_type else TaskType.UNKNOWN,
-            status=TaskStatus(model.status) if model.status else TaskStatus.PENDING,
+            job_id=str(model.id),
+            task_type=TaskType(str(model.task_type)) if model.task_type else TaskType.UNKNOWN,
+            status=TaskStatus(str(model.status)) if model.status else TaskStatus.PENDING,
             progress=float(model.progress or 0),
-            result=model.result,
-            error=model.error,
-            params=model.params,
-            owner_id=model.owner_id,
-            idempotency_key=model.idempotency_key,
+            result=dict(model.result) if model.result else None,
+            error=str(model.error) if model.error else None,
+            params=dict(model.params) if model.params else None,
+            owner_id=str(model.owner_id) if model.owner_id else None,
+            idempotency_key=str(model.idempotency_key) if model.idempotency_key else None,
             created_at=model.created_at.timestamp() if model.created_at else time.time(),
             started_at=model.started_at.timestamp() if model.started_at else None,
             completed_at=model.completed_at.timestamp() if model.completed_at else None,

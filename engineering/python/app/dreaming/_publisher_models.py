@@ -56,6 +56,7 @@ class PublicationStage(str, Enum):
 
 @dataclass
 class PublicationRecord:
+
     """单条规则的灰度发布记录。
 
     记录规则在哪个灰度阶段、何时进入、效果指标快照。

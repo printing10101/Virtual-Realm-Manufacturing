@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.cutting_params_db import get_cutting_params
 from app.postprocessor.base import BasePostProcessor
 from app.process_planning.operation_sequencer import Operation
 
 
 class _FeatureCodeMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _config_limiter: Any
+    _five_axis_planner: Any
+
+
     def _generate_feature_code(
         self,
         op: Operation,

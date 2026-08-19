@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from app.ai.lnn.inference.predictor import LNNPredictor
@@ -40,7 +40,8 @@ class _RegistryMixin:
 
         if cached_model is not None:
             logger.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=load status=FROM_CACHE")
-            return cls(model=cached_model, model_name=model_name, **kwargs)
+            created = cls(model=cached_model, model_name=model_name, **kwargs)  # type: ignore[call-arg]
+            return cast("LNNPredictor", created)
 
         logger.info(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=load status=FROM_REGISTRY")
         load_start = time.perf_counter()
@@ -72,7 +73,8 @@ class _RegistryMixin:
                 f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={model_name} operation=cache status=FAILED error={e}"
             )
 
-        return cls(model=model, model_name=model_name, **kwargs)
+        created = cls(model=model, model_name=model_name, **kwargs)  # type: ignore[call-arg]
+        return cast("LNNPredictor", created)
 
     @staticmethod
     def _load_model_from_registry(registry: BaseModelRegistry, model_name: str) -> Any:
@@ -127,6 +129,8 @@ class _RegistryMixin:
     @staticmethod
     def _build_model_from_entry(entry: ModelEntry) -> Any:
         """Build a real model instance from a ModelEntry metadata."""
+        if entry.info is None:
+            raise ValueError(f"模型条目缺少元数据: {entry}")
         if entry.model is not None:
             logger.info(
                 f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] model={entry.info.name} "

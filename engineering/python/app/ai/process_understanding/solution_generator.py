@@ -296,7 +296,7 @@ class SolutionGenerator:
                 raise ValueError("JSON解析结果为空")
 
             # 解析工艺路线
-            process_route = []
+            process_route: list[ProcessStep] = []
             for step in data.get("process_route", []):
                 process_route.append(
                     ProcessStep(
@@ -308,7 +308,7 @@ class SolutionGenerator:
                 )
 
             # 解析切削参数
-            cutting_params = []
+            cutting_params: list[CuttingParam] = []
             for param in data.get("cutting_parameters", []):
                 cutting_params.append(
                     CuttingParam(

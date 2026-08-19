@@ -332,7 +332,7 @@ class ExecutionLockStore:
         """关闭数据库连接，归还连接到连接池"""
         if self._conn:
             self._pool.return_connection(self._conn)
-            self._conn = None
+            self._conn = None  # type: ignore[assignment]
             logger.info("ExecutionLockStore closed")
 
     def __del__(self):

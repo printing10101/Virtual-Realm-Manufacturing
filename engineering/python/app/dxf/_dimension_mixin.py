@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class _DimensionMixin:
+    # ---- 宿主契约：由主类提供 ----
+    DEFAULT_PLATE_THICKNESS: float
+    DEFAULT_DEPTH_RATIO: float
+    MIN_DEPTH: float
+    MAX_DEPTH: float
+
     def _extract_overall_dimensions(
         self,
         parse_result: DxfParseResult,
@@ -37,7 +43,7 @@ class _DimensionMixin:
         # 避免后续误改。如确实需要反转，请同步更新所有下游消费者。
 
         dim_texts = [d.text for d in parse_result.dimensions if d.text]
-        numbers = []
+        numbers: list[float] = []
         for text in dim_texts:
             found = re.findall(r"[\d.]+", text)
             numbers.extend(float(n) for n in found)

@@ -239,8 +239,8 @@ class WearMLTrainer:
             }
 
         if self._bosch_feature_loader is None:
-            loader = self._get_bosch_loader()
-            if loader is None:
+            self._bosch_feature_loader = self._get_bosch_loader()
+            if self._bosch_feature_loader is None:
                 return {
                     "prediction": "unknown",
                     "confidence": 0.0,
@@ -260,11 +260,11 @@ class WearMLTrainer:
 
         explanation_parts: list[str] = []
         rms_values = {ax: features.get(f"time_{ax}_rms", 0) for ax in ["x", "y", "z"]}
-        max_rms_axis = max(rms_values, key=rms_values.get)
+        max_rms_axis = max(rms_values, key=lambda k: rms_values[k])
         explanation_parts.append(f"RMS峰值出现在{max_rms_axis.upper()}轴 ({rms_values[max_rms_axis]:.4f}g)")
 
         dom_freqs = {ax: features.get(f"freq_{ax}_dominant_freq", 0) for ax in ["x", "y", "z"]}
-        max_freq_axis = max(dom_freqs, key=dom_freqs.get)
+        max_freq_axis = max(dom_freqs, key=lambda k: dom_freqs[k])
         explanation_parts.append(f"主频{dom_freqs[max_freq_axis]:.1f}Hz ({max_freq_axis.upper()}轴)")
 
         if label == "bad":

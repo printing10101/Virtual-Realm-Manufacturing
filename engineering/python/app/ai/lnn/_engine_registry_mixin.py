@@ -4,18 +4,19 @@ from __future__ import annotations
 
 from __future__ import annotations
 import logging
-from typing import Any, Optional, Callable
+from typing import Any, Optional
 
 
 logger = logging.getLogger(__name__)
 
 # streaming 能力探测（与 engine.py 模块级保持一致）
+StreamingPredictor: Any
 try:
-    from app.ai.lnn.inference.streaming import StreamingPredictor
+    from app.ai.lnn.inference.streaming import StreamingPredictor as StreamingPredictor
 
     _HAS_STREAMING = True
 except ImportError:  # pragma: no cover
-    StreamingPredictor = None  # type: ignore[assignment]
+    StreamingPredictor = None
     _HAS_STREAMING = False
 
 DEFAULT_PRIOR_CONFIDENCE = 0.6

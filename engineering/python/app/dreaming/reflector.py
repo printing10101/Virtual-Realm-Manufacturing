@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from typing import List, Optional
+from typing import Any, List, Optional
 
 # H12 修复：原代码在模块导入期临时篡改全局 sys.platform="linux" 以绕过
 # Windows asyncio Proactor 限制，但这是线程不安全的——其他线程在此时读取
@@ -68,7 +68,7 @@ class DreamReflector(_DedupMixin, _UpdateMixin, _InsightsMixin):
         self.store = memory_store
         self.repo_root = repo_root
         self.enable_llm = enable_llm
-        self._llm_router = None  # 延迟初始化，避免启动时强依赖
+        self._llm_router: Any = None  # 延迟初始化，避免启动时强依赖
 
     def _get_llm_router(self):
         """延迟获取 ProviderRouter 单例。"""

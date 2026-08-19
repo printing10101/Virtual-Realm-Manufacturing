@@ -58,6 +58,8 @@ INDUSTRIAL_HARD_GATES: list[str] = [
 
 @dataclass
 class CamDisclaimer:
+
+
     """CAM 校验精度告知。
 
     所有 API 响应必须携带此字段（通过 build_cam_disclaimer() 构造）。

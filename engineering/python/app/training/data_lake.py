@@ -68,7 +68,7 @@ class TrainingDataLake:
         Returns:
             record_id集合
         """
-        record_ids = set()
+        record_ids: set[str] = set()
         if not file_path.exists():
             return record_ids
 

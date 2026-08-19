@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 class _CostBudgetMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _conn: Any
+
+
     @sqlite_retry()
     def record_budget_event(self, event: BudgetEvent) -> None:
         """记录预算事件（超限/警告）"""

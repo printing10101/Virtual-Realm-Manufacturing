@@ -244,11 +244,11 @@ async def get_material(material_id: str) -> Optional[dict]:
 def _recalc_status(m: Material) -> None:
     """根据库存数量与安全库存重算物料状态（缺货/低库存/正常）。"""
     if m.quantity <= 0:
-        m.status = "缺货"
+        m.status = "缺货"  # type: ignore[assignment]
     elif m.quantity < m.safe_quantity:
-        m.status = "低库存"
+        m.status = "低库存"  # type: ignore[assignment]
     else:
-        m.status = "正常"
+        m.status = "正常"  # type: ignore[assignment]
 
 
 async def stock_in_material(material_id: str, quantity: int, remark: Optional[str] = None) -> Optional[dict]:

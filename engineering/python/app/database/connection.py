@@ -17,7 +17,7 @@ import logging
 import os
 import threading
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Any
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -109,7 +109,7 @@ class _DatabaseSingletons:
                 logger.warning("DB_URL not configured, database persistence disabled")
                 return None
             # Build engine kwargs (SQLite does not support pool_size/max_overflow)
-            engine_kwargs = {"echo": config.echo}
+            engine_kwargs: dict[str, Any] = {}
             if config.async_url.startswith("sqlite"):
                 # SQLite: use StaticPool or NullPool, no pool params
                 engine_kwargs["pool_pre_ping"] = False
@@ -281,7 +281,7 @@ async def get_db_sessionmaker() -> Optional[async_sessionmaker]:
     return _singletons.get_sessionmaker()
 
 
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncSession:  # type: ignore[misc]
     """FastAPI 依赖：yield 一个 :class:`AsyncSession`，请求结束自动关闭。
 
     用法::

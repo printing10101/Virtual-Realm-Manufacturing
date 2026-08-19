@@ -44,8 +44,11 @@ async def run_alembic_upgrade(logger: logging.Logger) -> None:
         # 2026-08-03 桌面实装验证修复：WindowsSelectorEventLoop（start_server.py 为
         # 绕 _overlapped 坑强制切换）不支持 asyncio subprocess → create_subprocess_exec
         # 抛 NotImplementedError 且不在 except 范围 → 破坏「不阻断启动」语义。
-        # 改同步 subprocess.run（startup 阶段阻塞可接受），任何事件循环均兼容。
-        result = subprocess.run(
+        # 用 asyncio.to_thread 在独立线程中跑同步 subprocess.run（2026-08-19 改进：
+        # 原实现直接阻塞事件循环，与 docstring 声称的"子线程执行"不符；to_thread
+        # 兼容所有事件循环且不阻塞其他启动钩子）。
+        result = await asyncio.to_thread(
+            subprocess.run,
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             cwd=python_dir,
             capture_output=True,

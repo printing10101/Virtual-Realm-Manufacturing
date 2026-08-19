@@ -19,7 +19,7 @@ import json
 import time
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 from app.audit.chain import AuditLogEntry
 from app.config.limits import MAX_AUDIT_EXPORT_LIMIT
@@ -33,6 +33,10 @@ logger = logging.getLogger("app.audit.audit_log")
 
 
 class ReaderMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _log_root: Any
+
+
     """审计日志查询与导出 mixin。
 
     依赖 ``AuditLog`` 实例的 ``_log_root`` 属性（由 ``AuditLog.__init__`` 初始化）。
@@ -62,7 +66,7 @@ class ReaderMixin:
         limit: int = 100,
         offset: int = 0,
     ) -> list[AuditLogEntry]:
-        logs = []
+        logs: list[AuditLogEntry] = []
 
         for log_file in reversed(self._get_all_log_files()):
             if len(logs) >= offset + limit:
@@ -176,7 +180,7 @@ class ReaderMixin:
     def get_statistics(self) -> dict:
         logs = self.get_logs(limit=MAX_AUDIT_EXPORT_LIMIT)
 
-        stats = {
+        stats: dict[str, Any] = {
             "total_entries": len(logs),
             "by_module": {},
             "by_decision": {},

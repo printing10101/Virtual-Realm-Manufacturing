@@ -31,16 +31,18 @@ from app.ai.lnn._engine_inference_mixin import _EngineInferenceMixin
 
 # 流式推理扩展（借鉴 lingbot-map GCT 架构思想）。采用惰性导入避免在
 # torch 不可用时拖垮整个引擎；流式能力作为可选增强存在。
+StreamingConfig: Any
+StreamingPredictor: Any
 try:
     from app.ai.lnn.inference.streaming import (
-        StreamingConfig,
-        StreamingPredictor,
+        StreamingConfig as StreamingConfig,
+        StreamingPredictor as StreamingPredictor,
     )
 
     _HAS_STREAMING = True
 except ImportError:  # pragma: no cover - 仅当 streaming 模块自身依赖缺失时触发
-    StreamingConfig = None  # type: ignore[assignment]
-    StreamingPredictor = None  # type: ignore[assignment]
+    StreamingConfig = None
+    StreamingPredictor = None
     _HAS_STREAMING = False
 
 logger = logging.getLogger(__name__)

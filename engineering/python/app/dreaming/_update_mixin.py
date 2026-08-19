@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Any, Callable
 
 from app.dreaming._reflector_models import InsightItem, UpdateResult
 from app.dreaming.session_extractor import ProjectSession
@@ -12,6 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 class _UpdateMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _llm_reflect: Callable[..., Any]
+    _prepare_session_summaries: Callable[..., Any]
+    _rule_based_insights: Callable[..., Any]
+    enable_llm: Any
+    store: Any
+
+
     def _update_stale_entries(self, sessions: List[ProjectSession]) -> UpdateResult:
         """用新 Session 数据修正过时的 memory 条目。
 

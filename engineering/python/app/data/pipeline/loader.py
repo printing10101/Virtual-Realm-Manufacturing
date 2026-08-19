@@ -98,11 +98,13 @@ class ParallelDataLoader:
                 for item in data_generator:
                     if self._stop_prefetch.is_set():
                         break
-                    self._prefetch_queue.put(item)
+                    if self._prefetch_queue is not None:
+                        self._prefetch_queue.put(item)
             except (ValueError, TypeError, KeyError, OSError, RuntimeError) as e:
                 logger.error("预取线程错误: %s", e)
             finally:
-                self._prefetch_queue.put(None)
+                if self._prefetch_queue is not None:
+                    self._prefetch_queue.put(None)
 
         self._prefetch_thread = threading.Thread(
             target=_prefetch_worker,

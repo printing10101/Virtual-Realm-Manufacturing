@@ -42,7 +42,7 @@ def _new_record_id() -> str:
     return f"mrec_{uuid.uuid4().hex}"
 
 
-class MachiningRecord(Base):
+class MachiningRecord(Base):  # type: ignore[misc, valid-type]
     """统一加工记录 ORM 模型。"""
 
     __tablename__ = "machining_records"

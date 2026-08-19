@@ -87,7 +87,7 @@ class WearCurvePredictor:
         wear_rate *= material.hardness_factor * 0.01
         return max(1e-5, min(0.02, wear_rate))
 
-    def _determine_phase(self, vb: float) -> WearPhase:
+    def _determine_phase(self, vb: float) -> str:
         if vb < 0.05:
             return WearPhase.INITIAL
         elif vb < 0.2:

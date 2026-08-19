@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
+
 import sqlite3
 
 from app.budget._budget_models import BudgetLimit
@@ -12,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class _BudgetConfigMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _conn: Any
+    _lock: Any
+
+
     def _load_default_budgets(self) -> None:
         """加载默认预算配置"""
         defaults = [

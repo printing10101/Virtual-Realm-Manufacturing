@@ -182,8 +182,8 @@ class TrainingRequest:
     device: str = "auto"
 
     def validate(self) -> ValidationResult:
-        errors = []
-        warnings = []
+        errors: list[str] = []
+        warnings: list[str] = []
         if not self.model_name:
             errors.append("模型名称不能为空")
         if not self.dataset_path:

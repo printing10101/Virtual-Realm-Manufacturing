@@ -206,7 +206,7 @@ class ProcessAxis(SemanticAxis):
         n_ops = min(len(operations), 8)
         for i, op in enumerate(operations[:n_ops]):
             pos = i * 4
-            process_type_encoded = self.encode_process_type(op.get("type", "turning"))
+            process_type_encoded = self.encode_process_type(str(op.get("type", "turning")))
             type_score = float(np.sum(process_type_encoded)) / 32.0
             position_weight = 1.0 - (i / n_ops) if n_ops > 0 else 0.0
             vector[pos : pos + 4] = type_score * position_weight

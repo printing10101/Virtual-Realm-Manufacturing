@@ -1,4 +1,6 @@
 import logging
+from typing import Any
+
 from enum import Enum
 from pathlib import Path
 
@@ -192,7 +194,7 @@ class UniwearDataLoader:
         return sorted(df["experiment_tag"].dropna().unique().tolist())
 
     def get_dataset_summary(self) -> dict:
-        summary = {
+        summary: dict[str, Any] = {
             "datasets": {},
             "total_experiments": 0,
             "total_samples": 0,

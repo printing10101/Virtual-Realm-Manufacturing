@@ -11,7 +11,7 @@ import logging
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Callable, ClassVar, Dict, List, Optional
+from typing import Callable, ClassVar, Dict, List, Optional, cast
 
 from app.models.budget import (
     BudgetAlert,
@@ -46,7 +46,7 @@ class BudgetEnforcer(_BudgetPolicyMixin, _BudgetCoreMixin, _BudgetAlertMixin, _B
         if db_path is not None:
             actual_path = db_path
         elif type(self)._db_path is not None:
-            actual_path = type(self)._db_path
+            actual_path = cast(str, type(self)._db_path)
         else:
             actual_path = str(get_output_dir("data") / "budget_enforcer.db")
 

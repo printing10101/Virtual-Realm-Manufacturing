@@ -122,11 +122,11 @@ def _template_dict_to_spec(template_dict: dict[str, Any]) -> WorkflowSpec:
 
     raw_edges = template_dict.get("edges") or []
     edges: list[WorkflowEdge] = []
-    for i, e in enumerate(raw_edges):
-        if not isinstance(e, dict):
+    for i, edge in enumerate(raw_edges):
+        if not isinstance(edge, dict):
             raise ValueError(f"edges[{i}] 必须是 dict")
-        upstream = e.get("upstream")
-        downstream = e.get("downstream")
+        upstream = edge.get("upstream")
+        downstream = edge.get("downstream")
         if not upstream or not downstream:
             raise ValueError(f"edges[{i}] 缺少 'upstream' 或 'downstream'")
         try:

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from app.cam_validation.cam_disclaimer import (
     CamDisclaimer,
@@ -44,6 +44,11 @@ if TYPE_CHECKING:
 
 
 class PreCheckMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _cfg: Any
+    _store: Any
+
+
     """CAM 校验流水线预检查阶段 mixin。
 
     封装任务创建 / 删除 / 查询 + disclaimer / result 构建辅助方法。

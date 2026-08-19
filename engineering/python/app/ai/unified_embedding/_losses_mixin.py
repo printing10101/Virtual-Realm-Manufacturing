@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Dict, Optional, Tuple, Any
+from typing import Any, Callable, Dict, Optional, Tuple
 
 
 class _LossesMixin:

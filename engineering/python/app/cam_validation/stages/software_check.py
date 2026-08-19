@@ -23,7 +23,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from app.cam_validation.cam_store import (
     CamReviewStatus,
@@ -44,6 +44,14 @@ from ._common import (
 
 
 class SoftwareCheckMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _build_result: Callable[..., Any]
+    _adapter: Any
+    _loader: Any
+    _store: Any
+    _validator: Any
+
+
     """CAM 软件校验阶段 mixin：双层校验的核心执行逻辑。
 
     封装 run_pipeline + _execute_validation + _build_feature_results。

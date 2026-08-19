@@ -60,14 +60,14 @@ class WorkOrderRequest(BaseModel):
         remarks: 备注信息（可选）
     """
 
-    work_order_no: str = Field(..., description="工单编号", example="WO-2024-001")
-    product_code: str = Field(..., description="产品编码", example="PROD-001")
-    quantity: int = Field(..., gt=0, description="计划数量", example=100)
-    priority: int = Field(5, ge=1, le=10, description="优先级 (1-10)", example=5)
-    planned_start: Optional[datetime] = Field(None, description="计划开始时间", example="2024-01-01T08:00:00")
-    planned_end: Optional[datetime] = Field(None, description="计划结束时间", example="2024-01-05T17:00:00")
-    customer_order_no: Optional[str] = Field(None, description="客户订单号", example="CUST-ORD-123")
-    remarks: Optional[str] = Field(None, description="备注信息", example="加急订单")
+    work_order_no: str = Field(..., description="工单编号", examples=["WO-2024-001"])
+    product_code: str = Field(..., description="产品编码", examples=["PROD-001"])
+    quantity: int = Field(..., gt=0, description="计划数量", examples=[100])
+    priority: int = Field(5, ge=1, le=10, description="优先级 (1-10)", examples=[5])
+    planned_start: Optional[datetime] = Field(None, description="计划开始时间", examples=["2024-01-01T08:00:00"])
+    planned_end: Optional[datetime] = Field(None, description="计划结束时间", examples=["2024-01-05T17:00:00"])
+    customer_order_no: Optional[str] = Field(None, description="客户订单号", examples=["CUST-ORD-123"])
+    remarks: Optional[str] = Field(None, description="备注信息", examples=["加急订单"])
 
 
 class ProductionReportRequest(BaseModel):
@@ -79,9 +79,9 @@ class ProductionReportRequest(BaseModel):
         qualified: 合格数量
     """
 
-    batch_no: str = Field(..., description="批次号", example="BATCH-2024-001")
-    quantity: int = Field(..., gt=0, description="生产总数量", example=100)
-    qualified: int = Field(..., ge=0, description="合格数量", example=95)
+    batch_no: str = Field(..., description="批次号", examples=["BATCH-2024-001"])
+    quantity: int = Field(..., gt=0, description="生产总数量", examples=[100])
+    qualified: int = Field(..., ge=0, description="合格数量", examples=[95])
 
 
 class QualityReportRequest(BaseModel):
@@ -101,17 +101,17 @@ class QualityReportRequest(BaseModel):
         remarks: 备注（可选）
     """
 
-    batch_no: str = Field(..., description="批次号", example="BATCH-2024-001")
-    product_code: str = Field(..., description="产品编码", example="PROD-001")
-    inspection_type: str = Field(..., description="检验类型", example="in_process")
-    result: str = Field(..., description="检验结果", example="pass")
-    inspector: str = Field(..., description="检验员", example="张三")
-    inspection_time: datetime = Field(..., description="检验时间", example="2024-01-01T10:00:00")
-    sample_size: int = Field(..., gt=0, description="抽样数量", example=10)
-    qualified_qty: int = Field(..., ge=0, description="合格数量", example=9)
-    defective_qty: int = Field(0, ge=0, description="不合格数量", example=1)
-    defect_code: Optional[str] = Field(None, description="缺陷代码", example="DEF-001")
-    remarks: Optional[str] = Field(None, description="备注", example="轻微划痕")
+    batch_no: str = Field(..., description="批次号", examples=["BATCH-2024-001"])
+    product_code: str = Field(..., description="产品编码", examples=["PROD-001"])
+    inspection_type: str = Field(..., description="检验类型", examples=["in_process"])
+    result: str = Field(..., description="检验结果", examples=["pass"])
+    inspector: str = Field(..., description="检验员", examples=["张三"])
+    inspection_time: datetime = Field(..., description="检验时间", examples=["2024-01-01T10:00:00"])
+    sample_size: int = Field(..., gt=0, description="抽样数量", examples=[10])
+    qualified_qty: int = Field(..., ge=0, description="合格数量", examples=[9])
+    defective_qty: int = Field(0, ge=0, description="不合格数量", examples=[1])
+    defect_code: Optional[str] = Field(None, description="缺陷代码", examples=["DEF-001"])
+    remarks: Optional[str] = Field(None, description="备注", examples=["轻微划痕"])
 
 
 class SyncResultResponse(BaseModel):

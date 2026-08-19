@@ -151,7 +151,7 @@ class LNNModelRegistry(BaseModelRegistry):
                 return False
 
             base_entry = self.registry.get(base_model_name)
-            if base_entry:
+            if base_entry and base_entry.info:
                 model_type = base_entry.info.model_type
                 input_features = base_entry.info.input_features
                 output_features = base_entry.info.output_features
@@ -198,6 +198,12 @@ class LNNModelRegistry(BaseModelRegistry):
                 return {
                     "valid": False,
                     "reason": f"Model '{model_name}' not found in registry",
+                    "details": {},
+                }
+            if entry.info is None:
+                return {
+                    "valid": False,
+                    "reason": f"Model '{model_name}' 缺少元数据信息",
                     "details": {},
                 }
 

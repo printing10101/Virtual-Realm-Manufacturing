@@ -73,7 +73,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         5. 创建G代码生成器
         """
         try:
-            self._data_manager = ProcessPlanningDataManager()
+            self._data_manager: Any = ProcessPlanningDataManager()
             self._data_valid = True
         except (DataLoadError, Exception):
             self._data_manager = None
@@ -273,7 +273,7 @@ class ProcessPlanningPipeline(_StagesMixin):
                 f"仿真评分: {simulation_result.get('score', 0):.1f}, "
                 f"推荐级别: {simulation_result.get('recommendation', 'unknown')}"
             ),
-            errors=[simulation_result.get("error_message")] if simulation_result.get("error_message") else [],
+            errors=[str(simulation_result.get("error_message"))] if simulation_result.get("error_message") else [],
         )
         stages.append(stage4_5)
         result.simulation = simulation_result

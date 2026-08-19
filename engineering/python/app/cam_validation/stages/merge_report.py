@@ -32,7 +32,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from app.cam_validation.cam_store import (
     CamReviewStatus,
@@ -53,6 +53,11 @@ from ._common import (
 
 
 class MergeReportMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _build_result: Callable[..., Any]
+    _store: Any
+
+
     """报告合并与导出阶段 mixin：工程师审核 + 确认 + 报告导出。
 
     封装 review_task + confirm_task + _export_cam_report +

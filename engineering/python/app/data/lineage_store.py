@@ -23,7 +23,7 @@ from collections import deque
 from datetime import datetime
 
 from app.utils.time import utcnow
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,15 +71,15 @@ def make_lineage_record(
 
 def _orm_to_contract(orm: LineageRecordORM) -> LineageRecord:
     return LineageRecord(
-        record_id=orm.id,
-        target=orm.target,
-        source_type=orm.source_type,
-        source_ref=orm.source_ref,
-        inputs=json.loads(orm.inputs_json) if orm.inputs_json else [],
-        outputs=json.loads(orm.outputs_json) if orm.outputs_json else [],
-        operation=orm.operation,
-        timestamp=orm.timestamp,
-        metadata=json.loads(orm.meta_json) if orm.meta_json else {},
+        record_id=str(orm.id),
+        target=str(orm.target),
+        source_type=str(orm.source_type),
+        source_ref=str(orm.source_ref),
+        inputs=json.loads(str(orm.inputs_json)) if orm.inputs_json else [],
+        outputs=json.loads(str(orm.outputs_json)) if orm.outputs_json else [],
+        operation=str(orm.operation),
+        timestamp=cast(datetime, orm.timestamp),  # ORM nullable=False
+        metadata=json.loads(str(orm.meta_json)) if orm.meta_json else {},
     )
 
 

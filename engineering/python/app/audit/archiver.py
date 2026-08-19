@@ -24,6 +24,8 @@ H18 修复：``clear_logs_with_authorization`` 不用 exists() 预检，直接 t
 """
 
 import os
+from typing import Any, Callable
+
 import json
 import time
 import tarfile
@@ -38,6 +40,20 @@ logger = logging.getLogger("app.audit.audit_log")
 
 
 class ArchiverMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _compute_entry_hash: Callable[..., Any]
+    _get_all_log_files: Callable[..., Any]
+    _get_current_log_file: Callable[..., Any]
+    _save_chain_state: Callable[..., Any]
+    _archives: Any
+    _chain_lock: Any
+    _chain_seq: Any
+    _chain_state_file: Any
+    _last_hash: Any
+    _log_root: Any
+    max_entries: Any
+
+
     """审计日志归档与轮转 mixin。
 
     依赖 ``AuditLog`` 实例的以下属性（由 ``AuditLog.__init__`` 初始化）：

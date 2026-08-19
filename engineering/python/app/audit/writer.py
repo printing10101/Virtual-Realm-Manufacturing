@@ -21,7 +21,7 @@ import time
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from app.audit.chain import (
     AuditLogEntry,
@@ -35,6 +35,16 @@ logger = logging.getLogger("app.audit.audit_log")
 
 
 class WriterMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _compute_entry_hash: Callable[..., Any]
+    _rotate_if_needed: Callable[..., Any]
+    _save_chain_state: Callable[..., Any]
+    _chain_lock: Any
+    _chain_seq: Any
+    _last_hash: Any
+    _log_root: Any
+
+
     """审计日志写入 mixin。
 
     依赖 ``AuditLog`` 实例的以下属性（由 ``AuditLog.__init__`` 初始化）：

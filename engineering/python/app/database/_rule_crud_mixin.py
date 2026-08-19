@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from typing import List, Optional
+from typing import List, Optional, Any, Callable
 
 from app.config.limits import DEFAULT_QUERY_LIMIT
 from app.database._models import ProcessRule, RuleCondition, RuleResult
@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class _RuleCrudMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_conn: Callable[..., Any]
+    _now: Callable[..., Any]
+
+
     def _row_to_rule(self, row: sqlite3.Row) -> ProcessRule:
         conditions = json.loads(row["conditions_json"])
         result = json.loads(row["result_json"])

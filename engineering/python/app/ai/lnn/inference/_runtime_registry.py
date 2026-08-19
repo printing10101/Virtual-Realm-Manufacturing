@@ -95,6 +95,7 @@ class ModelRegistry(BaseModelRegistry):
             )
 
         entry = self.registry[model_name]
+
         entry.last_accessed = time.time()
         entry.access_count += 1
 
@@ -115,9 +116,16 @@ class ModelRegistry(BaseModelRegistry):
     def load_model(self, model_name: str) -> None:
         self._load_model(model_name)
 
+    def _require_config(self, entry) -> "ModelConfig":
+        """返回非空 ModelConfig，配置缺失时抛 ValueError。"""
+        config = entry.config
+        if config is None:
+            raise ValueError(f"模型注册数据缺少配置: {entry}")
+        return config
+
     def _load_model(self, model_name: str) -> None:
         entry = self.registry[model_name]
-        config = entry.config
+        config = self._require_config(entry)
 
         model_class = self.MODEL_CLASS_MAP.get(config.model_type)
         if model_class is None:
@@ -158,13 +166,14 @@ class ModelRegistry(BaseModelRegistry):
     def list_models(self) -> List[Dict[str, Any]]:
         models = []
         for name, entry in self.registry.items():
+            config = self._require_config(entry)
             models.append(
                 {
                     "name": name,
-                    "type": entry.config.model_type.value,
+                    "type": config.model_type.value,
                     "is_loaded": entry.is_loaded,
                     "access_count": entry.access_count,
-                    "version": entry.config.version,
+                    "version": config.version,
                 }
             )
         return models
@@ -176,14 +185,15 @@ class ModelRegistry(BaseModelRegistry):
             )
 
         entry = self.registry[model_name]
+        config = self._require_config(entry)
         info = {
-            "name": entry.config.model_name,
-            "type": entry.config.model_type.value,
-            "path": entry.config.model_path,
+            "name": config.model_name,
+            "type": config.model_type.value,
+            "path": config.model_path,
             "is_loaded": entry.is_loaded,
-            "device": entry.config.device,
-            "version": entry.config.version,
-            "hyperparameters": entry.config.hyperparameters,
+            "device": config.device,
+            "version": config.version,
+            "hyperparameters": config.hyperparameters,
             "access_count": entry.access_count,
             "last_accessed": entry.last_accessed,
         }
@@ -217,21 +227,21 @@ class ModelRegistry(BaseModelRegistry):
         }
 
     def export_registry(self, path: str) -> None:
-        export_data = {
-            name: {
+        export_data = {}
+        for name, entry in self.registry.items():
+            config = self._require_config(entry)
+            export_data[name] = {
                 "config": {
-                    "model_type": entry.config.model_type.value,
-                    "model_name": entry.config.model_name,
-                    "model_path": entry.config.model_path,
-                    "device": entry.config.device,
-                    "version": entry.config.version,
-                    "hyperparameters": entry.config.hyperparameters,
+                    "model_type": config.model_type.value,
+                    "model_name": config.model_name,
+                    "model_path": config.model_path,
+                    "device": config.device,
+                    "version": config.version,
+                    "hyperparameters": config.hyperparameters,
                 },
                 "access_count": entry.access_count,
                 "metadata": entry.metadata,
             }
-            for name, entry in self.registry.items()
-        }
 
         with open(path, "w", encoding="utf-8") as f:
             json.dump(export_data, f, indent=2)

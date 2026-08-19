@@ -210,7 +210,7 @@ class CapabilityGatekeeper:
     def get_all_grants(self) -> Dict[str, List[Dict[str, Any]]]:
         # 安全修复：保护 _grants 字典的并发读，构建快照避免迭代时被修改
         with self._lock:
-            result = {}
+            result: Dict[str, List[Dict[str, Any]]] = {}
             for plugin_id, caps in self._grants.items():
                 result[plugin_id] = []
                 for cap_name, grant in caps.items():

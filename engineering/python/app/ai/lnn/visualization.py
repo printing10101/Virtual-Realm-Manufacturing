@@ -42,17 +42,18 @@ logger = logging.getLogger(__name__)
 
 # matplotlib 强制使用 Agg 后端，避免在无显示环境报错。
 # 必须在 pyplot 导入前完成。
+Figure: Any
 try:
     import matplotlib
 
     matplotlib.use("Agg", force=True)
     import matplotlib.pyplot as plt
-    from matplotlib.figure import Figure
+    from matplotlib.figure import Figure as Figure
 
     _HAS_MPL = True
 except ImportError:  # pragma: no cover - 仅当环境无 matplotlib 时触发
     plt = None  # type: ignore[assignment]
-    Figure = None  # type: ignore[assignment]
+    Figure = None
     _HAS_MPL = False
 
 

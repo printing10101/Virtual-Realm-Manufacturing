@@ -84,8 +84,8 @@ class VectorStore:
     ):
         self._persist_directory = persist_directory or DEFAULT_PERSIST_DIR
         self._collection_name = collection_name
-        self._client = None
-        self._collection = None
+        self._client: Any = None
+        self._collection: Any = None
         self._closed = False  # P3 幂等性标志位
 
     @property

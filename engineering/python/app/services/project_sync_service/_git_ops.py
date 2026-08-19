@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
-from typing import Any, Optional, Callable
+from typing import Any, Optional
 
 from app.contracts.project_sync import SYNC_STATUS
 from app.services.project_sync_service._exceptions import (

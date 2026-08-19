@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class _BudgetCoreMixin:
 
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
-    _agent_suspender: Callable[..., Any]
+    _agent_suspender: Any
     _cancel_pending_tasks: Callable[..., Any]
     _create_alert: Callable[..., Any]
     _log_enforcement: Callable[..., Any]

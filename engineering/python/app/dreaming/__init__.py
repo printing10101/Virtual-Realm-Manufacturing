@@ -202,11 +202,11 @@ def __getattr__(name: str):  # PEP 562 延迟导入
 
         return monitor_and_rollback
     if name == "run_closed_loop":
-        from app.dreaming.closed_loop import run_closed_loop
+        from app.dreaming._closed_loop_models import run_closed_loop
 
         return run_closed_loop
     if name == "record_rule_outcome":
-        from app.dreaming.closed_loop import record_rule_outcome
+        from app.dreaming._closed_loop_models import record_rule_outcome
 
         return record_rule_outcome
     raise AttributeError(f"module 'app.dreaming' has no attribute {name!r}")

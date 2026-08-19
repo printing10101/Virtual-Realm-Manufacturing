@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from app.data.process_data_manager import MaterialEntry, QueryError, ToolEntry
 from app.process_planning._tool_models import HoleProcessPlan, MatchedTool
 
 
 class _MatchingMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _build_match_reason: Callable[..., Any]
+    _calculate_suitability: Callable[..., Any]
+    _estimate_drilling_time: Callable[..., Any]
+    _generate_warnings: Callable[..., Any]
+    _select_best_diameter: Callable[..., Any]
+    HOLE_PROCESS_TEMPLATES: Any
+    _data: Any
+
+
     def match_tool_for_hole(
         self,
         material_id: str,

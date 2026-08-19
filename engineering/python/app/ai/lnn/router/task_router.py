@@ -158,7 +158,7 @@ class TaskRouter:
         for eng in EngineType:
             combined[eng] = self._rule_weight * rule_scores.get(eng, 0.0) + self._ml_weight * ml_scores.get(eng, 0.0)
 
-        selected_engine = max(combined, key=combined.get)
+        selected_engine = max(combined, key=lambda e: combined[e])
         confidence = max(0.0, min(1.0, combined[selected_engine]))
         factors = {eng.value: round(score, 4) for eng, score in combined.items()}
 
@@ -376,8 +376,8 @@ class TaskRouter:
     ) -> str:
         parts = [
             f"category={category.value}",
-            f"rule_top={max(rule_scores, key=rule_scores.get).value}",
-            f"ml_top={max(ml_scores, key=ml_scores.get).value}",
+            f"rule_top={max(rule_scores, key=lambda e: rule_scores[e]).value}",
+            f"ml_top={max(ml_scores, key=lambda e: ml_scores[e]).value}",
             f"selected={engine.value}",
         ]
         if below_threshold:

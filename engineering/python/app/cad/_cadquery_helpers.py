@@ -13,14 +13,15 @@ from pathlib import Path
 from typing import Any
 
 # 平台兼容：resource 模块仅在 Unix 可用，Windows 下跳过 RLIMIT 配置
+_resource: Any
 try:
     import resource as _resource
 except ImportError:
     _resource = None
 
-import cadquery as cq
-import numpy as np
-from PIL import Image, ImageFilter, ImageOps
+import cadquery as cq  # noqa: E402
+import numpy as np  # noqa: E402
+from PIL import Image, ImageFilter, ImageOps  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -256,7 +257,7 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
                 # 内存上限（字节）
                 mem_bytes = memory_limit_mb * 1024 * 1024
                 if hasattr(_resource, "setrlimit") and hasattr(_resource, "RLIMIT_AS"):
-                    _resource.setrlimit(_resource.RLIMIT_AS, (mem_bytes, mem_bytes))  # type: ignore[attr-defined]
+                    _resource.setrlimit(_resource.RLIMIT_AS, (mem_bytes, mem_bytes))
                 logger.debug("Set RLIMIT_AS=%d MB for task %s", memory_limit_mb, task_id)
             except (ValueError, OSError) as e:
                 # setrlimit 失败不应阻断执行，仅记录警告

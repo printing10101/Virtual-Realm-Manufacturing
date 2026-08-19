@@ -9,6 +9,11 @@ from app.process_planning._boss_models import BossFeature, BossRecognitionResult
 
 
 class _BossRecognizeMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    COAXIAL_THRESHOLD: Any
+    MIN_BOSS_DIAMETER: Any
+
+
     def recognize_from_part_description(
         self,
         part_description: dict[str, Any],
@@ -27,7 +32,7 @@ class _BossRecognizeMixin:
         """
         if not part_description:
             raise ManufacturingError(
-                category=ErrorCategory.BOSS_RECOGNITION_FAILED,
+                category=ErrorCategory.FEATURE_RECOGNITION_INCOMPLETE,
                 detail="零件描述数据不能为空",
             )
 

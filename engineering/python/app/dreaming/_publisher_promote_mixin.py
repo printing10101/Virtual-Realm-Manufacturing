@@ -11,7 +11,7 @@ from app.dreaming._publisher_models import (  # noqa: F401
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 from app.dreaming.rule_synthesizer import RuleDraft
 from app.dreaming.rule_validator import ValidationResult
 from datetime import timezone
@@ -21,6 +21,16 @@ logger = logging.getLogger(__name__)
 
 
 class _PublisherPromoteMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _save_record: Callable[..., Any]
+    _update_stage_only: Callable[..., Any]
+    publish: Callable[..., Any]
+    _lock: Any
+    _promotion_thresholds: Any
+    _records: Any
+    _validator: Any
+
+
     def promote(
         self,
         rule_id: str,

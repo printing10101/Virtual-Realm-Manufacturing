@@ -237,7 +237,7 @@ class CavityRecognizer:
         """
         if not part_description:
             raise ManufacturingError(
-                category=ErrorCategory.CAVITY_RECOGNITION_FAILED,
+                category=ErrorCategory.FEATURE_RECOGNITION_INCOMPLETE,
                 detail="零件描述数据不能为空",
             )
 

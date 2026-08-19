@@ -158,7 +158,7 @@ class CamValidationPipeline(
             # cfg 为 None 的测试场景：构造一个最小可用 config
             # （InternalValidator 需要 config.precision_tier 等字段，
             #  此分支仅用于单元测试注入 validator 时跳过构造）
-            self._validator = validator  # type: ignore[assignment]
+            self._validator = validator
 
         if adapter is not None:
             self._adapter = adapter
@@ -167,4 +167,4 @@ class CamValidationPipeline(
         else:
             # cfg 为 None：无法构造 CamAdapter（依赖 config 的 5 个后端配置）
             # 测试场景必须显式注入 adapter
-            self._adapter = adapter  # type: ignore[assignment]
+            self._adapter = adapter

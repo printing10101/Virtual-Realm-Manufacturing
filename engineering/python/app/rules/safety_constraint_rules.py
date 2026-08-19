@@ -35,7 +35,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
@@ -510,7 +510,7 @@ class SafeMathEvaluator:
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, self._ALLOWED_UNARYOPS):
             self._validate(node.operand)
             return
-        if isinstance(node, self._ALLOWED_CONSTANTS):
+        if isinstance(node, ast.Constant):
             value = node.value
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ValueError(f"仅允许数值常量，发现: {type(value).__name__}")

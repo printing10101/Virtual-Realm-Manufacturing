@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import numpy as np
 
@@ -39,7 +39,7 @@ class CNNFeatureExtractor:
         self.config = config
         self.device = device
         self.use_torch = use_torch
-        self._model = None
+        self._model: Any = None
         self._is_loaded = False
 
     def load_model(self):

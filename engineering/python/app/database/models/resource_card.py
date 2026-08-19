@@ -196,29 +196,29 @@ class ModelArtifact(Base):
     @property
     def metrics(self) -> dict[str, Any]:
         """当前指标快照（反序列化）."""
-        return _json_loads(self.metrics_json, {}) or {}
+        return _json_loads(str(self.metrics_json), {}) or {}
 
     @metrics.setter
     def metrics(self, value: dict[str, Any]) -> None:
-        self.metrics_json = _json_dumps(value)
+        self.metrics_json = _json_dumps(value)  # type: ignore[assignment]
 
     @property
     def metrics_history(self) -> list[dict[str, Any]]:
         """指标历史列表（反序列化）."""
-        return _json_loads(self.metrics_history_json, []) or []
+        return _json_loads(str(self.metrics_history_json), []) or []
 
     @metrics_history.setter
     def metrics_history(self, value: list[dict[str, Any]]) -> None:
-        self.metrics_history_json = _json_dumps(value)
+        self.metrics_history_json = _json_dumps(value)  # type: ignore[assignment]
 
     @property
     def tags(self) -> list[str]:
         """标签列表（反序列化）."""
-        return _json_loads(self.tags_json, []) or []
+        return _json_loads(str(self.tags_json), []) or []
 
     @tags.setter
     def tags(self, value: list[str]) -> None:
-        self.tags_json = _json_dumps(value)
+        self.tags_json = _json_dumps(value)  # type: ignore[assignment]
 
     def append_metrics(self, metrics: dict[str, Any], *, timestamp: Optional[datetime] = None) -> None:
         """追加一条指标记录到历史.

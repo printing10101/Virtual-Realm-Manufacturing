@@ -170,7 +170,7 @@ class ReportGenerator:
         warning = sum(1 for s in sessions if s.outcome == "warning")
 
         # 按数据源统计
-        by_source = {}
+        by_source: dict[str, int] = {}
         for s in sessions:
             by_source[s.source] = by_source.get(s.source, 0) + 1
 

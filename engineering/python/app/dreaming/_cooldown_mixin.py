@@ -6,12 +6,19 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
 
 
 class _CooldownMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _cooldowns: Any
+    _lock: Any
+    _rollback_history: Any
+    history_dir: Any
+
+
     def _history_file(self) -> Path:
         return self.history_dir / "rollback_history.json"
 

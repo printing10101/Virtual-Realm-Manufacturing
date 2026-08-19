@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 # 同时注册为正确的模块名称以便 coverage 可以追踪
 module_path = Path(__file__).parent.parent / "lnn_uncertain.py"
 spec = importlib.util.spec_from_file_location("app.api.v1.lnn_uncertain", module_path)
+assert spec is not None and spec.loader is not None
 lnn_uncertain = importlib.util.module_from_spec(spec)
 sys.modules["app.api.v1.lnn_uncertain"] = lnn_uncertain
 spec.loader.exec_module(lnn_uncertain)
@@ -302,7 +303,7 @@ class TestPredictUncertainEndpoint:
         values = [8.0, 10.0, 12.0, 10.0]
         expected_mean = np.mean(values)
         expected_std = np.std(values)
-        expected_confidence = 1.0 - min(max(expected_std / abs(expected_mean), 0.0), 1.0)
+        expected_confidence = 1.0 - min(max(float(expected_std) / abs(float(expected_mean)), 0.0), 1.0)
 
         assert result["prediction"] == pytest.approx(expected_mean, rel=1e-5)
         assert result["uncertainty"] == pytest.approx(expected_std, rel=1e-5)

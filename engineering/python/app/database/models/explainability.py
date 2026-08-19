@@ -174,7 +174,7 @@ class ExplanationRecord(Base):
         metadata: dict[str, Any] = {}
         if self.metadata_json:
             try:
-                metadata = json.loads(self.metadata_json)
+                metadata = json.loads(str(self.metadata_json))
             except (ValueError, TypeError):
                 metadata = {}
         return {

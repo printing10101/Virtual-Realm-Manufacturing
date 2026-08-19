@@ -69,6 +69,8 @@ def _get_condition_signature(rule: ProcessRule) -> frozenset:
 
 def _get_result_signature(rule: ProcessRule) -> Tuple[str, str, str]:
     """获取规则结果的签名"""
+    if rule.result is None:
+        return ("", "", "")
     return _normalize_result(rule.result)
 
 
@@ -121,7 +123,7 @@ def _detect_contradiction(rules: List[ProcessRule]) -> List[ConflictReport]:
         for i in range(len(rule_group)):
             for j in range(i + 1, len(rule_group)):
                 r1, r2 = rule_group[i], rule_group[j]
-                if _results_conflict(r1.result, r2.result):
+                if r1.result is not None and r2.result is not None and _results_conflict(r1.result, r2.result):
                     # 获取冲突的参数名
                     conflict_params = []
                     if r1.result and r2.result:
@@ -132,7 +134,7 @@ def _detect_contradiction(rules: List[ProcessRule]) -> List[ConflictReport]:
 
                     reports.append(
                         ConflictReport(
-                            conflicting_rule_ids=[r1.id, r2.id],
+                            conflicting_rule_ids=[r1.id or 0, r2.id or 0],
                             conflict_type=ConflictType.CONTRADICTION,
                             severity=ConflictSeverity.HIGH,
                             description=(
@@ -173,8 +175,10 @@ def _detect_subset(rules: List[ProcessRule]) -> List[ConflictReport]:
 
             # 检查 sig_i 是否是 sig_j 的子集
             if _is_subset(sig_i, sig_j):
-                if _results_conflict(sorted_rules[i].result, sorted_rules[j].result):
-                    r1, r2 = sorted_rules[i], sorted_rules[j]
+                r1, r2 = sorted_rules[i], sorted_rules[j]
+                result_i = r1.result
+                result_j = r2.result
+                if result_i is not None and result_j is not None and _results_conflict(result_i, result_j):
                     conflict_params = []
                     if r1.result and r2.result:
                         n1 = _normalize_result(r1.result)
@@ -184,15 +188,15 @@ def _detect_subset(rules: List[ProcessRule]) -> List[ConflictReport]:
 
                     reports.append(
                         ConflictReport(
-                            conflicting_rule_ids=[r1.id, r2.id],
+                            conflicting_rule_ids=[r1.id or 0, r2.id or 0],
                             conflict_type=ConflictType.SUBSET,
                             severity=ConflictSeverity.MEDIUM,
                             description=(
                                 f"规则 {r1.id} 和规则 {r2.id} 存在子集冲突："
                                 f"规则 {r1.id} 的条件({len(r1.conditions)}个)是规则 {r2.id} 条件({len(r2.conditions)}个)的子集，"
                                 f"但结论不同。"
-                                f"规则 {r1.id} 结论: {r1.result.parameter} {r1.result.operator} {r1.result.value}, "
-                                f"规则 {r2.id} 结论: {r2.result.parameter} {r2.result.operator} {r2.result.value}"
+                                f"规则 {r1.id} 结论: {result_i.parameter} {result_i.operator} {result_i.value}, "
+                                f"规则 {r2.id} 结论: {result_j.parameter} {result_j.operator} {result_j.value}"
                             ),
                             conflicting_parameters=conflict_params,
                         )
@@ -230,19 +234,21 @@ def _detect_parameter(rules: List[ProcessRule]) -> List[ConflictReport]:
         for i in range(len(rule_group)):
             for j in range(i + 1, len(rule_group)):
                 r1, r2 = rule_group[i], rule_group[j]
-                if _results_conflict(r1.result, r2.result):
+                result_i = r1.result
+                result_j = r2.result
+                if result_i is not None and result_j is not None and _results_conflict(result_i, result_j):
                     # 跳过已经作为矛盾冲突或子集冲突报告的
                     # （参数冲突是更一般的冲突，避免重复报告）
                     reports.append(
                         ConflictReport(
-                            conflicting_rule_ids=[r1.id, r2.id],
+                            conflicting_rule_ids=[r1.id or 0, r2.id or 0],
                             conflict_type=ConflictType.PARAMETER,
                             severity=ConflictSeverity.LOW,
                             description=(
                                 f"规则 {r1.id} 和规则 {r2.id} 存在参数冲突："
                                 f"对同一参数 '{param_name}' 赋予了不同的值。"
-                                f"规则 {r1.id}: {r1.result.parameter} {r1.result.operator} {r1.result.value}, "
-                                f"规则 {r2.id}: {r2.result.parameter} {r2.result.operator} {r2.result.value}"
+                                f"规则 {r1.id}: {result_i.parameter} {result_i.operator} {result_i.value}, "
+                                f"规则 {r2.id}: {result_j.parameter} {result_j.operator} {result_j.value}"
                             ),
                             conflicting_parameters=[param_name],
                         )
@@ -283,7 +289,7 @@ def detect_conflicts(rules: List[ProcessRule]) -> List[ConflictReport]:
     seen_pairs: Set[Tuple[int, int]] = set()
     unique_reports = []
     for report in all_reports:
-        pair = tuple(sorted(report.conflicting_rule_ids))
+        pair = (int(report.conflicting_rule_ids[0]), int(report.conflicting_rule_ids[1]))
         if pair not in seen_pairs:
             seen_pairs.add(pair)
             unique_reports.append(report)

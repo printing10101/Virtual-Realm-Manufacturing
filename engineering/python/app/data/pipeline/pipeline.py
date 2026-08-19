@@ -81,11 +81,11 @@ class DataPipeline:
         self.device = device
         self._preprocessors: Dict[DataSourceType, Any] = {}
         self._feature_extractors: Dict[DataSourceType, Any] = {}
-        self._fusion = None
-        self._quality_checker = None
-        self._validator = None
-        self._cache = None
-        self._monitor = None
+        self._fusion: Any = None
+        self._quality_checker: Any = None
+        self._validator: Any = None
+        self._cache: Any = None
+        self._monitor: Any = None
         self._initialized = False
 
         self._init_components()

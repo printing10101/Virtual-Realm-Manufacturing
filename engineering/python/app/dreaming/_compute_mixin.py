@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Callable
 
 from app.dreaming._metrics_models import CONFIDENT_HIGH_SAMPLES, CONFIDENT_MID_SAMPLES, EffectivenessMetrics, OutcomeSample
 
@@ -12,6 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 class _ComputeMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_audit_recorder: Callable[..., Any]
+    _lock: Any
+    _samples: Any
+    min_sample_size: Any
+    window_days: Any
+
+
     def collect_metrics(
         self,
         rule_id: str,

@@ -163,7 +163,7 @@ class AutoDetector:
                     raw,
                     exc_info=raw,
                 )
-            else:
+            elif isinstance(raw, DetectionResult):
                 results.append(raw)
         return results
 

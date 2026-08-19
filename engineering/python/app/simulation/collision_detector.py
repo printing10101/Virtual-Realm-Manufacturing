@@ -430,6 +430,9 @@ class CollisionDetector:
         """
         sx, sy, sz = seg.start_point
         ex, ey, ez = seg.end_point
+        if seg.arc_center is None:
+            # 防御：圆弧段缺少圆心（正常流程在调用前已检查，此处兜底避免 TypeError）
+            return
         cx, cy, cz = seg.arc_center
 
         # 计算圆弧半径

@@ -195,6 +195,8 @@ class CamValidationPipelineError(CamValidationError):
 
 @dataclass
 class FeatureValidationResult:
+
+
     """单个特征的 CAM 校验结果。
 
     封装两层校验对该特征的结论：
@@ -404,6 +406,7 @@ class CamTaskStore:
     """
 
     _instance: CamTaskStore | None = None
+    _initialized: bool = False
     _instance_lock = threading.Lock()
 
     def __new__(cls) -> CamTaskStore:
@@ -436,7 +439,7 @@ class CamTaskStore:
         """获取任务。"""
         with self._tasks_lock:
             if task_id not in self._tasks:
-                raise CamValidationError(safe_error_message(f"任务不存在: {task_id}"))
+                raise CamValidationError(safe_error_message(ValueError(f"任务不存在: {task_id}")))
             return self._tasks[task_id]
 
     def list_tasks(
@@ -456,7 +459,7 @@ class CamTaskStore:
         """更新任务。"""
         with self._tasks_lock:
             if task.task_id not in self._tasks:
-                raise CamValidationError(safe_error_message(f"任务不存在: {task.task_id}"))
+                raise CamValidationError(safe_error_message(ValueError(f"任务不存在: {task.task_id}")))
             self._tasks[task.task_id] = task
 
     def delete_task(
@@ -474,7 +477,7 @@ class CamTaskStore:
         """
         with self._tasks_lock:
             if task_id not in self._tasks:
-                raise CamValidationError(safe_error_message(f"任务不存在: {task_id}"))
+                raise CamValidationError(safe_error_message(ValueError(f"任务不存在: {task_id}")))
             task = self._tasks[task_id]
             if task.status == CamValidationTaskStatus.SUCCEEDED.value:
                 if not allow_delete_succeeded:

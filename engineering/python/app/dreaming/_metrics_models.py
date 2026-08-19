@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 @dataclass
 class OutcomeSample:
+
     """单次规则触发的效果观测样本。
 
     Attributes:

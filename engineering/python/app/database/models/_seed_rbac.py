@@ -44,7 +44,7 @@ async def _upgrade_rbac_permissions(session) -> None:
                 )
                 session.add(perm)
                 await session.flush()
-                existing_map[pdata["code"]] = perm.id
+                existing_map[pdata["code"]] = int(perm.id)
                 new_perm_added = True
 
         # 3. 查询 admin 角色
@@ -120,7 +120,7 @@ async def _seed_rbac(session):
             perm = Permission(name=pdata["name"], code=pdata["code"], description=pdata["description"])
             session.add(perm)
             await session.flush()
-            perm_map[pdata["code"]] = perm.id
+            perm_map[pdata["code"]] = int(perm.id)
 
         for rdata in PRESET_ROLES:
             role = Role(name=rdata["name"], code=rdata["code"], description=rdata["description"])

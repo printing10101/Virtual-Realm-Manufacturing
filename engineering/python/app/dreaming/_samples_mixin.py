@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Any
 
 from app.dreaming._metrics_models import OutcomeSample
 
@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class _SamplesMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _lock: Any
+    _samples: Any
+    samples_dir: Any
+
+
     def _samples_file(self, rule_id: str) -> Path:
         return self.samples_dir / f"{rule_id}.json"
 

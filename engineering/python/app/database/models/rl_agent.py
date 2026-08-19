@@ -289,7 +289,7 @@ class RLAgentTrainingRunORM(Base):
         metrics: dict[str, Any] = {}
         if self.metrics_json:
             try:
-                metrics = json.loads(self.metrics_json)
+                metrics = json.loads(str(self.metrics_json))
             except (ValueError, TypeError):
                 metrics = {}
         return {

@@ -279,7 +279,7 @@ class AgentOrchestrator:
             logger.warning("Step '%s' failed: %s", step_name, exc)
 
         step_result.completed_at = time.perf_counter()
-        step_result.duration_ms = (step_result.completed_at - step_result.started_at) * 1000
+        step_result.duration_ms = (step_result.completed_at - (step_result.started_at or step_result.completed_at)) * 1000
         return step_result
 
     # -----------------------------------------------------------------------
@@ -297,11 +297,11 @@ class AgentOrchestrator:
 
             svc = DxfProcessService()
             # [A-H9] DXF 解析涉及文件 I/O + CPU 计算，用 asyncio.to_thread 包装
-            parse_result = await asyncio.to_thread(svc.process_dxf, dxf_path)
+            parse_result = await asyncio.to_thread(svc.process, dxf_path)
 
             # parse_result 是 DxfProcessResult 对象，需要转换为 dict
             if hasattr(parse_result, "features"):
-                features = parse_result.features
+                features: Any = parse_result.features
             elif isinstance(parse_result, dict):
                 features = parse_result.get("features", [])
             else:

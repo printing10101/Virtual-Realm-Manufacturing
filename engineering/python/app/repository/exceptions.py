@@ -16,9 +16,12 @@ class RepositoryError(AppException):
         self,
         message: str = "数据仓库操作异常",
         repository_type: str = "generic",
+        code: int = 3001,
+        status_code: int = 500,
         detail: str | None = None,
     ):
-        super().__init__(code=3001, message=message, status_code=500, detail=detail)
+        # code/status_code 可覆盖：ValidationError 需 3003/400，RecordNotFoundError 可 404
+        super().__init__(code=code, message=message, status_code=status_code, detail=detail)
         self.repository_type = repository_type
 
 

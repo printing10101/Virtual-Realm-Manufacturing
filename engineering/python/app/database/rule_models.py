@@ -19,7 +19,7 @@ from sqlalchemy.orm import declarative_base, relationship
 Base = declarative_base()
 
 
-class RuleGroup(Base):
+class RuleGroup(Base):  # type: ignore[misc, valid-type]
     """规则分组模型"""
 
     __tablename__ = "rule_groups"
@@ -45,7 +45,7 @@ class RuleGroup(Base):
         return f"<RuleGroup(id={self.id}, name={self.name})>"
 
 
-class ProcessRule(Base):
+class ProcessRule(Base):  # type: ignore[misc, valid-type]
     """工艺规则模型"""
 
     __tablename__ = "rules"

@@ -74,14 +74,14 @@ def _resolve_stability_limit(
             workpiece=material,
         )
         limit_depth = result.get("limit_depth")
-        if limit_depth is not None and float(limit_depth) > 0:
+        if limit_depth is not None and float(limit_depth) > 0:  # type: ignore[arg-type]
             logger.info(
                 "LTC 颤振预测桥接: spindle_rpm=%s, tool=%s → limit_depth=%.3f mm",
                 spindle_rpm,
                 tool_id,
-                float(limit_depth),
+                float(limit_depth),  # type: ignore[arg-type]
             )
-            return float(limit_depth)
+            return float(limit_depth)  # type: ignore[arg-type]
     except Exception as e:
         logger.debug("ChatterPredictor 桥接失败，跳过稳定性约束: %s", e)
 

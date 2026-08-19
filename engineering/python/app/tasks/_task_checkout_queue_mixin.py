@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime
-from typing import List
+from typing import List, Any, Callable
 
 from app.tasks._checkout_models import (
     MAX_RETRY_COUNT,
@@ -17,6 +17,14 @@ logger = logging.getLogger(__name__)
 
 
 class _TaskCheckoutQueueMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_conn: Callable[..., Any]
+    checkout_task: Callable[..., Any]
+    fail_task: Callable[..., Any]
+    get_task: Callable[..., Any]
+    _queue_lock: Any
+
+
     def enqueue_checkout(self, request: CheckoutRequest) -> CheckoutQueueEntry:
         with self._queue_lock:
             conn = self._get_conn()

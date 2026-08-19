@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, Any, Callable
 
 from app.dreaming._closed_loop_models import (
     ClosedLoopDecision,
@@ -13,6 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 class _ClosedLoopActionMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_publisher: Callable[..., Any]
+    _get_rollback_manager: Callable[..., Any]
+    _record_decision_to_audit: Callable[..., Any]
+
+
     def apply_decision(self, decision: ClosedLoopDecision) -> bool:
         """应用闭环决策。
 

@@ -70,7 +70,7 @@ class ResultPostprocessor:
             result_metadata.update(
                 {
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "input_shape": list(input_data.shape) if hasattr(input_data, "shape") else None,
+                    "input_shape": list(input_data.shape) if input_data is not None and hasattr(input_data, "shape") else None,
                     "prediction_shape": list(predictions.shape),
                 }
             )
@@ -103,7 +103,7 @@ class ResultPostprocessor:
             predictions = predictions.reshape(1, -1)
 
         # 空数组防御 [N-H2]：np.max 在空轴上会抛 ValueError
-        if predictions.size == 0 or predictions.shape[1] == 0:
+        if predictions.size == 0 or predictions.shape[0] == 0:
             return np.zeros(predictions.shape[0], dtype=np.float32)
 
         # Softmax归一化

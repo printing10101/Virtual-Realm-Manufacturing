@@ -14,6 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 class _SourcesMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    audit_log_dir: Any
+    cam_reports_dir: Any
+    cutting_store: Any
+    mlflow_tracking_uri: Any
+
+
     def _extract_mlflow_sessions(self, cutoff: datetime) -> List[ProjectSession]:
         """从 MLflow 拉取实验 run，归一化为 ProjectSession。"""
         try:

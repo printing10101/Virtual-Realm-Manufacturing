@@ -243,8 +243,8 @@ class EvaluationDataset:
         return None
 
     def get_stats(self) -> dict:
-        categories = {}
-        difficulties = {}
+        categories: dict[str, int] = {}
+        difficulties: dict[str, int] = {}
 
         for q in self.queries:
             categories[q.category] = categories.get(q.category, 0) + 1

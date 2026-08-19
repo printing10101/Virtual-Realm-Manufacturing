@@ -695,7 +695,7 @@ class RLAgentService(BaseSingletonService):
         # v1 使用默认 SafetyConstraints（Spec 仅用于校验阈值，物理边界由
         # SafetyConstraints 默认值提供）
         cache_key = "default"
-        shield = self._shield_cache.get(cache_key)
+        shield: Any = self._shield_cache.get(cache_key)
         if shield is not None:
             return shield
 

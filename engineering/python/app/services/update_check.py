@@ -89,7 +89,7 @@ async def check_for_updates() -> dict[str, Any]:
     payload: dict[str, Any] = {
         "current_version": VERSION,
         "latest_version": latest_version,
-        "update_available": bool(latest_version) and version_gt(latest_version, VERSION),
+        "update_available": latest_version is not None and version_gt(latest_version, VERSION),
         "latest_release_url": latest_url,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "error": None,

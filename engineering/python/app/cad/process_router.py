@@ -92,9 +92,9 @@ async def generate_process_plan(body: ProcessPlanRequest) -> dict[str, Any]:
 
         return success(
             data={
-                "plan": result.get("operations", []),
-                "parameters": result.get("parameters", {}),
-                "confidence": result.get("confidence", 0.0),
+                "plan": result.operation_plan.to_dict() if result.operation_plan else {},
+                "parameters": {},
+                "confidence": 0.0,
             }
         )
 
@@ -130,7 +130,7 @@ async def recognize_features(body: FeatureRecognitionRequest) -> dict[str, Any]:
         return success(
             data={
                 "features": features,
-                "count": len(features),
+                "count": len(features.holes) + len(features.planes),
             }
         )
 

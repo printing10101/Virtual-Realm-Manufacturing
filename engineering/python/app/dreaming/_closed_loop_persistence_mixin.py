@@ -6,7 +6,7 @@ import json
 import logging
 from collections import deque
 from datetime import datetime, timezone
-from typing import Any, Deque, Dict, List, Callable
+from typing import Any, Deque, Dict, List
 
 from app.dreaming._closed_loop_models import (
     ClosedLoopDecision,
@@ -15,10 +15,8 @@ from app.dreaming._closed_loop_models import (
 
 logger = logging.getLogger(__name__)
 
-
 class _ClosedLoopPersistenceMixin:
-
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _decision_history: Any
     _demote_confidence: Any
     _fusion: Any

@@ -269,9 +269,9 @@ class LNNPredictor(
                 m = get_metrics_collector()
                 m.record_lnn_inference(self.model_name, inference_time / 1000.0)
                 m.record_lnn_prediction(self.model_name, "success")
-            except (ImportError, AttributeError, RuntimeError, ValueError) as e:
+            except (ImportError, AttributeError, RuntimeError, ValueError) as inner_e:
                 logger.debug(
-                    f"Failed to record inference metrics for {self.model_name}: {e}",
+                    f"Failed to record inference metrics for {self.model_name}: {inner_e}",
                     exc_info=True,
                 )
 
@@ -281,8 +281,8 @@ class LNNPredictor(
             if self._constraint_validator and isinstance(processed_output, dict):
                 try:
                     constraint_result = self._constraint_validator.validate(
-                        material_id=self._material_id,
-                        tool_id=self._tool_id,
+                        material_id=self._material_id or "",
+                        tool_id=self._tool_id or "",
                         params=processed_output,
                         machine_id=self._machine_id,
                     )
@@ -322,9 +322,9 @@ class LNNPredictor(
 
                 m = get_metrics_collector()
                 m.record_lnn_prediction(self.model_name, "error")
-            except (ImportError, AttributeError, RuntimeError, ValueError) as e:
+            except (ImportError, AttributeError, RuntimeError, ValueError) as e2:
                 logger.debug(
-                    f"Failed to record error metrics for {self.model_name}: {e}",
+                    f"Failed to record error metrics for {self.model_name}: {e2}",
                     exc_info=True,
                 )
             raise RuntimeError(

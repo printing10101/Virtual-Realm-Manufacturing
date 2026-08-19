@@ -60,7 +60,8 @@ EDGE_APPLIED_TO = "APPLIED_TO"
 EDGE_USED = "USED"
 
 # 工具 → 特征 的映射（基于 series 或 application 关键词）
-_SERIES_TO_FEATURES: dict[str, list[tuple[str, str]]] = {
+# 值元组为 (feature_id, feature_name, feature_type) 三元组
+_SERIES_TO_FEATURES: dict[str, list[tuple[str, str, str]]] = {
     # series -> [(feature_id, feature_name, feature_type)]
     "twist_drill": [("feature-hole", "孔", "hole")],
     "endmill": [

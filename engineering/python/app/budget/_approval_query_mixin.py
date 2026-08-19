@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Any, Callable
 from app.models.governance import (
     ApprovalRequest,
     ApprovalStatus,
@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class _ApprovalQueryMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_request: Callable[..., Any]
+    _row_to_request: Callable[..., Any]
+    _conn: Any
+
+
     def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
         """获取审批请求"""
         return self._get_request(request_id)

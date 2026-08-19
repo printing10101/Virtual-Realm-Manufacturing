@@ -215,7 +215,8 @@ class StreamingPredictor:
             self._stats["cache_evictions"] = self._cache.stats()["eviction_count"]
 
         # 注入流式元数据
-        base_result.model_info.update(
+        if base_result.model_info is not None:
+            base_result.model_info.update(
             {
                 "is_keyframe": kf_decision.is_keyframe,
                 "keyframe_reason": kf_decision.reason,
@@ -307,7 +308,7 @@ class StreamingPredictor:
             window_results = [self.predict_frame(d) for d in window]
             results.extend(window_results)
             # 取本窗口尾部关键帧作为下一窗口 carryover
-            kf_indices = [i for i, r in enumerate(window_results) if r.model_info.get("is_keyframe")]
+            kf_indices = [i for i, r in enumerate(window_results) if (r.model_info or {}).get("is_keyframe")]
             if kf_indices and end < total:
                 kf_tail = kf_indices[-okf:] if okf > 0 else []
                 carryover = [window[i] for i in kf_tail]
@@ -352,7 +353,7 @@ class StreamingPredictor:
     def get_statistics(self) -> Dict[str, Any]:
         """获取流式推理统计信息。"""
         with self._stats_lock:
-            stats = dict(self._stats)
+            stats: Dict[str, Any] = dict(self._stats)
         stats["cache"] = self._cache.stats()
         stats["anchor"] = self._anchor.stats()
         stats["trajectory"] = self._trajectory.stats()

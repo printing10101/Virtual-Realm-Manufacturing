@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import List, Optional
+from typing import List, Optional, Any
 from app.models.budget import (
     BudgetLevel,
     BudgetPeriod,
@@ -18,6 +18,11 @@ logger = logging.getLogger(__name__)
 
 
 class _BudgetPolicyMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _conn: Any
+    _policies: Any
+
+
     def _load_policies(self) -> None:
         rows = self._conn.execute("SELECT * FROM budget_policies ORDER BY level, scope_id").fetchall()
 

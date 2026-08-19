@@ -90,7 +90,7 @@ class _TaskRecoveryMixin:
                 orphans = result.scalars().all()
                 requeued = 0
                 for task in orphans:
-                    task.status = TaskStatusEnum.QUEUED
+                    task.status = TaskStatusEnum.PENDING
                     task.error = None
                     task.started_at = None
                     task.completed_at = None

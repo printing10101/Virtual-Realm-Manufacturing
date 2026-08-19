@@ -157,7 +157,7 @@ class ClosedLoop(_ClosedLoopRuleMixin, _ClosedLoopActionMixin, _ClosedLoopPersis
             "min_confidence": fusion_min_confidence,
             "enable_conflict_resolution": True,
         }
-        self._router_params = {
+        self._router_params: dict[str, Any] = {
             "rule_weight": 0.4,
             "ml_weight": 0.6,
             "confidence_threshold": router_confidence_threshold,

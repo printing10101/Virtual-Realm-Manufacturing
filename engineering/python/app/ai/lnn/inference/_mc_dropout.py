@@ -52,7 +52,7 @@ class _MCDropoutMixin:
     _to_tensor: Callable[..., Any]
     _update_stats: Callable[..., Any]
     _write_trace: Callable[..., Any]
-    model: Callable[..., Any]
+    model: Any
     predict: Callable[..., Any]
     _mc_lock: Any
     device: Any
@@ -84,8 +84,9 @@ class _MCDropoutMixin:
 
         result = self.predict(input_data, return_confidence=True)
         if isinstance(result, PredictionResult):
-            result.model_info.setdefault("mc_n_samples", 1)
-            result.model_info.setdefault("mc_std", 0.0)
+            if result.model_info is not None:
+                result.model_info.setdefault("mc_n_samples", 1)
+                result.model_info.setdefault("mc_std", 0.0)
             return result
         return PredictionResult(
             value=result,

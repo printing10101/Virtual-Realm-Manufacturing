@@ -79,6 +79,8 @@ REQUIRED_GCODE_REPORT_FIELDS: frozenset[str] = frozenset(
 
 @dataclass
 class GCodeLoadResult:
+
+
     """阶段 6 G 代码加载结果。
 
     封装从阶段 6 report.json + G 代码文件加载的全部上下文，
@@ -196,14 +198,14 @@ class GCodeLoader:
         # ------------------------------------------------------------------
         report_full_path = self._resolve_path(report_path)
         if not os.path.isfile(report_full_path):
-            raise GCodeReportLoadError(safe_error_message(f"阶段 6 report.json 不存在: {report_path}"))
+            raise GCodeReportLoadError(safe_error_message(ValueError(f"阶段 6 report.json 不存在: {report_path}")))
         try:
             with open(report_full_path, "r", encoding="utf-8") as f:
                 report_data: dict[str, Any] = json.load(f)
         except json.JSONDecodeError as e:
             raise GCodeReportLoadError(f"阶段 6 report.json 解析失败: {e}") from e
         except OSError as e:
-            raise GCodeReportLoadError(safe_error_message(f"阶段 6 report.json 读取失败: {e}")) from e
+            raise GCodeReportLoadError(safe_error_message(ValueError(f"阶段 6 report.json 读取失败: {e}"))) from e
 
         logger.debug(
             "GCodeLoader: report.json loaded (path=%s, task_id=%s)",
@@ -352,12 +354,12 @@ class GCodeLoader:
         """
         full_path = self._resolve_path(gcode_file_path)
         if not os.path.isfile(full_path):
-            raise GCodeReportLoadError(safe_error_message(f"阶段 6 G 代码文件不存在: {gcode_file_path}"))
+            raise GCodeReportLoadError(safe_error_message(ValueError(f"阶段 6 G 代码文件不存在: {gcode_file_path}")))
         try:
             with open(full_path, "r", encoding="utf-8") as f:
                 return f.read()
         except OSError as e:
-            raise GCodeReportLoadError(safe_error_message(f"阶段 6 G 代码文件读取失败: {e}")) from e
+            raise GCodeReportLoadError(safe_error_message(ValueError(f"阶段 6 G 代码文件读取失败: {e}"))) from e
 
 
 __all__ = [

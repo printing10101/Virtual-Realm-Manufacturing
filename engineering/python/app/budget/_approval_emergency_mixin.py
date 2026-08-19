@@ -12,6 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 class _ApprovalEmergencyMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _emergency_audit_callback: Any
+    _log_audit: Callable[..., Any]
+    _conn: Any
+    _consecutive_emergency_count: Any
+    _emergency_threshold: Any
+
+
     def record_emergency_operation(
         self,
         request_id: str,
@@ -44,7 +52,7 @@ class _ApprovalEmergencyMixin:
 
         self._consecutive_emergency_count += 1
         if self._consecutive_emergency_count >= self._emergency_threshold:
-            if self._emergency_audit_callback:
+            if self._emergency_audit_callback is not None:
                 self._emergency_audit_callback(
                     consecutive_count=self._consecutive_emergency_count,
                     emergency_id=emergency_id,

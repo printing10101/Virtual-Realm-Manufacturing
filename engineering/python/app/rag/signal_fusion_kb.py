@@ -274,8 +274,8 @@ class SignalFusionKnowledgeBase:
         self._lock = threading.RLock()
         self._vector_store = None  # lazy
         self._embedding_service = None  # lazy
-        self._weighted_fusion = None  # lazy
-        self._attention_fusion = None  # lazy
+        self._weighted_fusion: Any = None  # lazy
+        self._attention_fusion: Any = None  # lazy
 
     # ------------------------------------------------------------------
     # 懒加载依赖（避免在 import 时触发 ChromaDB / 模型加载）
@@ -510,7 +510,7 @@ class SignalFusionKnowledgeBase:
             raise ValueError("samples 不能为空")
 
         # 按 signal_type 分组（同类型取均值，避免重复样本偏置）
-        grouped: dict[str, list[float]] = {}
+        grouped: dict[str, list[np.ndarray]] = {}
         for s in samples:
             arr = np.asarray(s.features, dtype=np.float32)
             grouped.setdefault(s.signal_type, []).append(arr)

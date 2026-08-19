@@ -9,6 +9,10 @@ from app.process_planning._plane_models import PlaneFeature, PlaneRecognitionRes
 
 
 class _PlaneRecognizeMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    MIN_PLANE_AREA: Any
+
+
     def recognize_from_part_description(
         self,
         part_description: dict[str, Any],
@@ -27,7 +31,7 @@ class _PlaneRecognizeMixin:
         """
         if not part_description:
             raise ManufacturingError(
-                category=ErrorCategory.PLANE_RECOGNITION_FAILED,
+                category=ErrorCategory.FEATURE_RECOGNITION_INCOMPLETE,
                 detail="零件描述数据不能为空",
             )
 

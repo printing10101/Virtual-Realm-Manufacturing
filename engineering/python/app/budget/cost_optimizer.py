@@ -95,7 +95,7 @@ class CostOptimizer(BaseSingletonService):
     def analyze_model_cost(self) -> List[CostOptimizationSuggestion]:
         from app.budget.cost_tracker import CostDimension, ModelType as CTModelType
 
-        suggestions = []
+        suggestions: List[CostOptimizationSuggestion] = []
 
         if self._cost_tracker is None:
             return suggestions
@@ -141,7 +141,7 @@ class CostOptimizer(BaseSingletonService):
         return suggestions
 
     def analyze_gpu_utilization(self, gpu_utilization_threshold: float = 0.5) -> List[CostOptimizationSuggestion]:
-        suggestions = []
+        suggestions: List[CostOptimizationSuggestion] = []
 
         if self._cost_tracker is None:
             return suggestions
@@ -182,7 +182,7 @@ class CostOptimizer(BaseSingletonService):
         return suggestions
 
     def analyze_training_efficiency(self) -> List[CostOptimizationSuggestion]:
-        suggestions = []
+        suggestions: List[CostOptimizationSuggestion] = []
 
         if self._cost_tracker is None:
             return suggestions

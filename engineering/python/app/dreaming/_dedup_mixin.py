@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class _DedupMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    store: Any
+
+
     def _deduplicate_memories(self) -> DeduplicationResult:
         """合并重复的 memory 条目。
 

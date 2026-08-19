@@ -10,6 +10,7 @@ from app.dreaming.apply_rules import RollbackResult
 
 @dataclass
 class RollbackDecision:
+
     """回滚决策。
 
     Attributes:

@@ -77,32 +77,32 @@ class DeviceInfo(Protocol):
 
 def detect_device(force_cpu: bool = False) -> DeviceInfo:
     """检测可用设备（CPU/CUDA/MPS）。原生实现在 research_bridge 中。"""
-    ...
+    raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
 def get_optimal_batch_size(device: DeviceInfo, default: int = 32) -> int:
     """根据设备计算最优 batch size。"""
-    ...
+    raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
 def get_optimal_num_workers(device: DeviceInfo, default: int = 4) -> int:
     """根据设备计算最优 DataLoader workers。"""
-    ...
+    raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
 def get_device_status() -> Dict[str, Any]:
     """获取设备状态摘要。"""
-    ...
+    raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
 def get_available_devices() -> List[DeviceInfo]:
     """列出所有可用设备。"""
-    ...
+    raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
 def clear_gpu_memory() -> None:
     """清理 GPU 显存缓存。"""
-    ...
+    raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +146,7 @@ class QuantizerProtocol(Protocol):
 
 def set_global_seed(seed: int = 42) -> None:
     """设置全局随机种子以确保实验可复现。"""
-    ...
+    raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
 # ---------------------------------------------------------------------------

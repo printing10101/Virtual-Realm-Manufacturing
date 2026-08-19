@@ -6,7 +6,7 @@ import json
 import logging
 import shutil
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
 from app.config.limits import MAX_EXPORT_LIMIT
 from app.database._constants import CURRENT_FORMAT_VERSION, DB_DIR
@@ -17,6 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 class _TransferMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _find_group_by_name: Callable[..., Any]
+    _get_conn: Callable[..., Any]
+    _now: Callable[..., Any]
+    create_group: Callable[..., Any]
+    create_rule: Callable[..., Any]
+    list_groups: Callable[..., Any]
+    list_rules: Callable[..., Any]
+    db_path: Any
+
+
     def export_rules(self, output_path: str) -> Dict[str, Any]:
         """导出所有规则和分组到JSON文件"""
         rules = self.list_rules(limit=MAX_EXPORT_LIMIT)

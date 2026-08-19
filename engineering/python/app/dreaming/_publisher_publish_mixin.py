@@ -11,7 +11,7 @@ from app.dreaming._publisher_models import (  # noqa: F401
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 from app.dreaming.apply_rules import (
     ApplyResult,
 )
@@ -24,6 +24,17 @@ logger = logging.getLogger(__name__)
 
 
 class _PublisherPublishMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _check_demotion_thresholds: Callable[..., Any]
+    _get_applicator: Callable[..., Any]
+    _get_audit_recorder: Callable[..., Any]
+    _get_or_create_record: Callable[..., Any]
+    _save_record: Callable[..., Any]
+    _lock: Any
+    _records: Any
+    _validator: Any
+
+
     def publish(
         self,
         rule: RuleDraft,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class APIKeyCipher:
 
     def __init__(self, strict: bool = True) -> None:
         self._strict = strict
-        self._fernet = None
+        self._fernet: Any = None
         self._key_source: str = "unknown"
         try:
             from cryptography.fernet import Fernet

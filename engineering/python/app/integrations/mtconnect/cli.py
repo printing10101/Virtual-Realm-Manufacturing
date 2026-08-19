@@ -31,7 +31,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence, cast
 
 from app.integrations._common import (
     build_tdengine_client,
@@ -239,7 +239,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 def _print_sample(sample: Sample) -> None:
     """Default CLI callback that prints the sample to stdout."""
-    sys.stdout.write(format_sample(sample) + "\n")
+    sys.stdout.write(format_sample(cast(Any, sample)) + "\n")
     sys.stdout.flush()
 
 

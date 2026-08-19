@@ -117,11 +117,11 @@ class SlidingWindowProcessor:
             raise ValueError(f"数据长度 {n_samples} 小于最小样本数 {self.config.min_samples}")
 
         if n_samples < window_size:
-            pad_size = window_size - n_samples
+            pad_size = int(window_size - n_samples)
             data = np.pad(
                 data,
                 ((0, pad_size), (0, 0)),
-                mode=self.config.pad_mode,
+                mode=str(self.config.pad_mode),  # type: ignore[call-overload]
             )
             n_samples = data.shape[0]
 

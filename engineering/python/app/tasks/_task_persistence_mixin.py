@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 class _TaskPersistenceMixin:
+    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    _get_task_lock: Callable[..., Any]
+    _tasks: Any
+
+
     async def _persist_task_to_db(self, record: TaskRecord):
         from app.tasks.task_system import get_sessionmaker  # 惰性导入：使测试 monkeypatch 生效
 

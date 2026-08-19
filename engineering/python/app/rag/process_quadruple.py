@@ -466,7 +466,7 @@ class ProcessQuadrupleIndex:
             if not force and (now - self._last_flush_time) < self._flush_interval:
                 return False
             try:
-                os.makedirs(self._persist_dir, exist_ok=True)
+                os.makedirs(str(self._persist_dir), exist_ok=True)
                 serializable = {
                     "quadruples": [q.to_dict() for q in self._all],
                     "stats": self.get_stats(),

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class InsightItem:
+
     """单条浮现的洞察。"""
 
     category: str  # "pattern" | "anomaly" | "rule_candidate" | "warning"

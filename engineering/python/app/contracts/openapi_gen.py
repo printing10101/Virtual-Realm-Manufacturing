@@ -136,7 +136,7 @@ def _python_type_to_schema(tp: Any) -> dict[str, Any]:
 
     # list[X]
     if origin is list:
-        args = get_args(tp)
+        args = list(get_args(tp))
         items = _python_type_to_schema(args[0]) if args else {}
         return {"type": "array", "items": items}
 

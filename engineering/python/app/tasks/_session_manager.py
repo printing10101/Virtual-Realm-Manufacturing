@@ -186,5 +186,5 @@ class SessionManager:
         """关闭数据库连接，归还连接到连接池"""
         if hasattr(self, "_conn") and self._conn:
             self._pool.return_connection(self._conn)
-            self._conn = None
+            self._conn = None  # type: ignore[assignment]
             logger.info("SessionManager closed")

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, List
 
 
 @dataclass
@@ -191,11 +191,11 @@ class IExtensionRegistry(ABC):
         """取消注册. extension_point=None 时取消该插件所有贡献。返回取消数量。"""
 
     @abstractmethod
-    def list(self, extension_point: str) -> list[dict[str, Any]]:
+    def list(self, extension_point: str) -> List[dict[str, Any]]:
         """列出某扩展点的所有贡献元信息."""
 
     @abstractmethod
-    async def invoke(self, extension_point: str, payload: dict[str, Any]) -> list[Any]:
+    async def invoke(self, extension_point: str, payload: dict[str, Any]) -> List[Any]:
         """调用某扩展点的所有贡献，返回结果列表（按注册顺序）."""
 
 

@@ -41,7 +41,7 @@ class CollectionProxy:
     def get(self, ids=None, include=None, **kwargs):
         if include is None:
             include = ["documents", "metadatas"]
-        records = self._store.get_all(limit=kwargs.get("limit", 100))
+        records = self._store.get_all()
         if ids:
             records = [r for r in records if r["id"] in ids]
         result: dict[str, list] = {

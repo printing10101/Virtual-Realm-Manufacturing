@@ -174,7 +174,7 @@ class FixtureAnalyzer:
             for k in scores:
                 scores[k] = max(scores[k] - 5, 0)
 
-        best_id = max(scores, key=scores.get)
+        best_id = max(scores, key=lambda k: scores[k])
         t = self._templates.get(best_id, {})
 
         clamp_force = self._estimate_clamping_force(

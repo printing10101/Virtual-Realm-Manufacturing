@@ -256,7 +256,7 @@ def voxelize_mesh(
 
     try:
         return _voxelize_contains(mesh, bbox_min, padding, nx, ny, nz, voxel_size)
-    except (ValueError, TypeError, np.AxisError) as e:
+    except (ValueError, TypeError, np.exceptions.AxisError) as e:
         logger.debug(
             f"Voxelize-contains fallback failed, returning empty grid: {e}",
             exc_info=True,
@@ -288,7 +288,7 @@ def _voxelize_contains(
             y = bbox_min[1] - padding + (iy + 0.5) * voxel_size
             for iz in range(nz):
                 z = bbox_min[2] - padding + (iz + 0.5) * voxel_size
-                all_points_list.append([x, y, z])
+                all_points_list.append(np.array([x, y, z]))
                 all_indices_list.append((np.array([ix]), np.array([iy]), np.array([iz])))
 
                 if len(all_points_list) >= batch_size:
