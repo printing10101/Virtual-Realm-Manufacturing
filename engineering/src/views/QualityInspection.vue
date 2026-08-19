@@ -23,24 +23,7 @@
     </div>
 
     <!-- 统计卡片 -->
-    <div class="stats-row">
-      <div
-        v-for="stat in statsCards"
-        :key="stat.label"
-        class="stat-card"
-        :class="'stat-card--' + stat.type"
-      >
-        <div class="stat-card__icon">
-          <el-icon :size="24">
-            <component :is="stat.icon" />
-          </el-icon>
-        </div>
-        <div class="stat-card__content">
-          <span class="stat-card__value">{{ stat.value }}</span>
-          <span class="stat-card__label">{{ stat.label }}</span>
-        </div>
-      </div>
-    </div>
+    <QualityStatsCards :stats="statsCards" />
 
     <!-- 检测记录 -->
     <div class="content-card">
@@ -76,69 +59,12 @@
         </div>
       </div>
       <div class="content-card__body">
-        <el-table
-          v-loading="loading"
-          :data="records"
-          style="width: 100%"
-          stripe
-          :empty-text="loadError ? t('qualityInspection.emptyLoadFailed') : t('qualityInspection.emptyRecords')"
-        >
-          <el-table-column
-            prop="inspection_no"
-            :label="t('qualityInspection.colId')"
-            width="180"
-          />
-          <el-table-column
-            prop="inspection_type"
-            :label="t('qualityInspection.colProductName')"
-            min-width="140"
-          />
-          <el-table-column
-            prop="batch_no"
-            :label="t('qualityInspection.colBatch')"
-            width="150"
-          />
-          <el-table-column
-            :label="t('qualityInspection.colResult')"
-            width="100"
-          >
-            <template #default="{ row }">
-              <el-tag
-                :type="resultTagType(row.result)"
-                size="small"
-                effect="light"
-              >
-                {{ row.result }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="inspector"
-            :label="t('qualityInspection.colInspector')"
-            width="100"
-          />
-          <el-table-column
-            prop="created_at"
-            :label="t('qualityInspection.colTime')"
-            width="170"
-          />
-          <el-table-column
-            :label="t('qualityInspection.colAction')"
-            width="100"
-            fixed="right"
-          >
-            <template #default="{ row }">
-              <el-button
-                type="primary"
-                text
-                size="small"
-                @click="handleViewDetail(row as InspectionRecord)"
-              >
-                {{ t('qualityInspection.btnView') }}
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <QualityRecordsTable
+          :records="records"
+          :loading="loading"
+          :load-error="loadError"
+          @view="handleViewDetail"
+        />
       </div>
     </div>
 
@@ -259,6 +185,8 @@ import { Plus, Checked, DataLine, WarningFilled } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import http from '@/utils/http'
 import { API_CONFIG } from '@/config/api'
+import QualityStatsCards from '@/components/quality/QualityStatsCards.vue'
+import QualityRecordsTable from '@/components/quality/QualityRecordsTable.vue'
 
 const { t } = useI18n()
 
@@ -473,21 +401,5 @@ watch([resultFilter, searchKeyword], () => {
   padding: var(--page-padding);
   max-width: var(--content-max-width);
   margin: 0 auto;
-}
-
-/* 统计卡片图标颜色 */
-.stat-card--success .stat-card__icon {
-  background: var(--success-bg);
-  color: var(--success);
-}
-
-.stat-card--warning .stat-card__icon {
-  background: var(--warning-bg);
-  color: var(--warning);
-}
-
-.stat-card--danger .stat-card__icon {
-  background: var(--error-bg);
-  color: var(--error);
 }
 </style>
