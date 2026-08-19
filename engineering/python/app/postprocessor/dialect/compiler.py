@@ -150,7 +150,7 @@ class DialectCompiler:
             merged_config = _deep_merge(dict(config), params)
             if merged_config:
                 kwargs["config"] = merged_config
-            base_cls.__init__(self, *args, **kwargs)  # type: ignore[misc]
+            base_cls.__init__(self, *args, **kwargs)
 
         cls = type(
             f"CompiledDialect_{declaration.id.replace('-', '_')}",
@@ -315,7 +315,7 @@ class DialectCompiler:
     ) -> Optional[Callable[..., Any]]:
         """在基类 MRO 中查找指定方法。"""
         classes = _load_builtin_dialect_classes()
-        base = classes.get(declaration.extends or "")  # type: ignore[arg-type]
+        base = classes.get(declaration.extends or "")
         if base is None:
             return None
         for cls in base.__mro__:

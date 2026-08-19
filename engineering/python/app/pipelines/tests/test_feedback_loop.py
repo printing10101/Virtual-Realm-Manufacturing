@@ -12,6 +12,7 @@ import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -119,7 +120,7 @@ class TestTrainingDataLake:
 
     def test_write_sample_without_record_id(self, training_data_lake):
         """测试写入缺少record_id的样本"""
-        sample = {"features": {}}
+        sample: dict[str, Any] = {"features": {}}
 
         with pytest.raises(ValueError, match="must contain 'record_id'"):
             training_data_lake.write_training_sample(sample)
@@ -442,6 +443,7 @@ class TestEndToEnd:
         # 验证知识图谱
         process_id = "process-face-mill-001"
         node = graph_store.get_node(process_id)
+        assert node is not None
         assert node["properties"]["sample_count"] == 5
         assert node["properties"]["success_count"] == 3  # 3次合格
 

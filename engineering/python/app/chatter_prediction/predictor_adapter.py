@@ -42,7 +42,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from app.chatter_prediction.chatter_store import (
     FeatureChatterResult,
@@ -336,9 +336,10 @@ class ChatterPredictorAdapter:
         )
 
         ltc_active = bool(result.get("ltc_active", False))
-        limit_depth = float(result.get("limit_depth", 0.0))
+        # result 是 dict[str, object]（外部 predict_stability 返回），显式 cast 解包
+        limit_depth = float(cast(Any, result.get("limit_depth", 0.0)))
         stable = bool(result.get("stable", True))
-        inference_time = float(result.get("inference_time_ms", 0.0))
+        inference_time = float(cast(Any, result.get("inference_time_ms", 0.0)))
 
         # 若 predict_stability 内部已回退到解析法，标记为 analytical
         if not ltc_active:

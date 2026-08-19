@@ -242,7 +242,7 @@ class CylinderExtractor:
     def _fit_single_cylinder(
         self,
         vertices: np.ndarray,
-    ) -> tuple[dict[str, Any], np.ndarray | None]:
+    ) -> tuple[dict[str, Any] | None, np.ndarray | None]:
         """拟合单个圆柱。
 
         Returns:
@@ -255,7 +255,7 @@ class CylinderExtractor:
     def _fit_cylinder_pyransac3d(
         self,
         vertices: np.ndarray,
-    ) -> tuple[dict[str, Any], np.ndarray | None]:
+    ) -> tuple[dict[str, Any] | None, np.ndarray | None]:
         """用 pyransac3d 拟合圆柱。"""
         try:
             cyl = self._pyransac3d.cylinder()
@@ -292,7 +292,7 @@ class CylinderExtractor:
     def _fit_cylinder_numpy(
         self,
         vertices: np.ndarray,
-    ) -> tuple[dict[str, Any], np.ndarray | None]:
+    ) -> tuple[dict[str, Any] | None, np.ndarray | None]:
         """纯 numpy RANSAC 圆柱拟合。
 
         算法：

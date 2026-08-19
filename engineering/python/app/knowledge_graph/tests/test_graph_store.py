@@ -95,6 +95,7 @@ class TestGraphStoreNodes:
         g.add_node("material", "material-45steel", {"name": "45 steel", "density": 7.85})
         assert g.update_node_properties("material-45steel", {"hardness_hb": 197.0}) is True
         node = g.get_node("material-45steel")
+        assert node is not None
         assert node["properties"] == {
             "name": "45 steel",
             "density": 7.85,
@@ -103,6 +104,7 @@ class TestGraphStoreNodes:
         # 已存在键被覆盖
         g.update_node_properties("material-45steel", {"name": "45#钢"})
         node = g.get_node("material-45steel")
+        assert node is not None
         assert node["properties"]["name"] == "45#钢"
 
     def test_update_node_properties_missing_returns_false(self) -> None:
@@ -287,6 +289,7 @@ class TestGraphStoreEdges:
             is True
         )
         edge = g.get_edge("tool-endmill-10", "material-45steel", "SUITABLE_FOR")
+        assert edge is not None
         assert edge["properties"]["confidence"] == 0.85
         assert edge["properties"]["source"] == "rule"
 

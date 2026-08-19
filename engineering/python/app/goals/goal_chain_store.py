@@ -39,7 +39,7 @@ class GoalChainStore:
         # 使用统一的连接池管理器（传入 db_path，避免不同测试共享连接池导致死锁）
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("goal_chain", db_path=self._db_path)
-        self._conn = self._pool.get_connection()
+        self._conn: Any = self._pool.get_connection()
         # 即使 check_same_thread=False 允许多线程访问连接，sqlite3 本身对单连接的
         # 写操作不是线程安全的；通过统一的写锁保护 _conn 上的所有写入，避免
         # "OperationalError: database is locked" 与数据竞争。
@@ -195,7 +195,8 @@ class GoalChainStore:
     def resolve_goal_chain(self, goal_id: str) -> List[GoalRef]:
         chain: List[GoalRef] = []
         visited = set()
-        current_id = goal_id
+        # parent_id 可为 None（链终止）；Optional 使 213 行赋值类型一致
+        current_id: Optional[str] = goal_id
 
         while current_id and current_id not in visited:
             visited.add(current_id)

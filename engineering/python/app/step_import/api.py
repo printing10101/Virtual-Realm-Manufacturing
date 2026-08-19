@@ -10,6 +10,7 @@ import asyncio
 import logging
 import uuid
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -125,8 +126,8 @@ def _parse_and_convert(
         "errors": batch_result.errors,
     }
 
-    stl_files = []
-    brep_files = []
+    stl_files: list[dict[str, Any]] = []
+    brep_files: list[dict[str, Any]] = []
     for f in batch_result.files:
         file_info = {
             "file_name": f.file_name,
