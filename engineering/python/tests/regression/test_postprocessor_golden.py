@@ -5,6 +5,11 @@
 ``tests/golden/postprocessor/`` 下的黄金文件逐字节比对，防止后处理器重构或配置
 调整引入意外的输出漂移（这是「G 代码能否上机床」的回归护栏）。
 
+另有一套**扩展序列**（``build_extended_program``）覆盖各方言的全部能力
+（攻丝/镗孔/螺纹/切槽/子程序/高精度/五轴/RTCP/探针等，按 ``hasattr`` 能力探测），
+黄金文件为 ``*_extended.nc``——这是方言声明化（docs/development/postprocessor-方言声明化设计.md
+P0）的行为基线：任何方言从「代码类」迁移到「声明 + 模板」都必须逐字符保持输出一致。
+
 黄金文件更新：审阅输出变更后执行 ``UPDATE_GOLDEN=1 pytest <本文件>`` 重新生成。
 
 设计说明：
@@ -17,7 +22,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Callable, Type
+from typing import Type
 
 import pytest
 
@@ -29,6 +34,7 @@ from app.postprocessor.heidenhain import HeidenhainPostProcessor
 from app.postprocessor.hnc import HNCPostProcessor
 from app.postprocessor.knd import KNDPostProcessor
 from app.postprocessor.mitsubishi import MitsubishiPostProcessor
+from app.postprocessor.preview_sequence import build_standard_program
 from app.postprocessor.siemens import SiemensPostProcessor
 from app.postprocessor.xmachine import XMachineXM100PostProcessor
 
@@ -47,26 +53,6 @@ CONTROLLERS: dict[str, Type[BasePostProcessor]] = {
 
 GOLDEN_DIR = Path(__file__).resolve().parent.parent / "golden" / "postprocessor"
 FIXED_DATE = "2026-01-01"
-
-
-def build_standard_program(processor: BasePostProcessor) -> str:
-    """用一套确定性加工序列生成完整 NC 程序文本。"""
-    # 坐标统一控制在 ±50mm 内：XM100 桌面五轴机行程仅 ±50mm，需兼容所有控制器。
-    lines = [
-        processor.format_header(program_number=1000),
-        processor.format_tool_change(tool_id=1, length_comp=50.0, radius_comp=5.0),
-        processor.format_tool_compensation(length_offset=1, radius_offset=1),
-        processor.format_coolant("on"),
-        processor.format_rapid_move(0.0, 0.0, 30.0),
-        processor.format_linear_move(10.0, 20.0, 25.0, feed=500.0),
-        processor.format_arc(
-            (10.0, 20.0, 25.0), (20.0, 30.0, 25.0), (15.0, 25.0, 25.0), clockwise=True
-        ),
-        processor.format_cycle_drill(x=20.0, y=30.0, z=25.0, depth=8.0, dwell=0.5),
-        processor.format_coolant("off"),
-        processor.format_footer(),
-    ]
-    return "\n".join(lines) + "\n"
 
 
 @pytest.mark.regression
@@ -94,6 +80,144 @@ def test_golden_output_matches(controller_id: str, monkeypatch):
     assert output == golden, (
         f"{controller_id} 后处理器输出与黄金文件不一致。建议操作：若变更为预期，执行 "
         f"UPDATE_GOLDEN=1 更新黄金文件；否则回退后处理器改动。"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 扩展序列：覆盖各方言全部能力（方言声明化 P0 行为基线）
+# ---------------------------------------------------------------------------
+
+
+def build_extended_program(processor: BasePostProcessor) -> str:
+    """用覆盖各方言全部能力的扩展序列生成完整 NC 程序文本。
+
+    通过 ``hasattr`` 能力探测按方言实际拥有的方法调用，保证：
+    - 所有 9 个方言都能跑同一构建器；
+    - 能力差异（如仅 Heidenhain 有探针、仅 XMachine 有 RTCP）体现在黄金文件差异中。
+    """
+    lines: list[str] = []
+
+    def emit(text: str) -> None:
+        lines.append(text)
+
+    emit(processor.format_header(program_number=2000))
+
+    if hasattr(processor, "format_tool_change"):
+        emit(processor.format_tool_change(tool_id=2, length_comp=30.0, radius_comp=5.0))
+    if hasattr(processor, "format_tool_compensation"):
+        emit(processor.format_tool_compensation(length_offset=2, radius_offset=2))
+    emit(processor.format_coolant("on"))
+    if hasattr(processor, "format_rapid_move"):
+        emit(processor.format_rapid_move(5.0, 10.0, 40.0))
+    if hasattr(processor, "format_linear_move"):
+        emit(processor.format_linear_move(15.0, 25.0, 20.0, feed=600.0))
+
+    # 圆弧（顺/逆时针各一）
+    if hasattr(processor, "format_arc"):
+        emit(
+            processor.format_arc(
+                (15.0, 25.0, 20.0), (25.0, 35.0, 20.0), (20.0, 30.0, 20.0), clockwise=True
+            )
+        )
+        emit(
+            processor.format_arc(
+                (25.0, 35.0, 20.0), (15.0, 25.0, 20.0), (20.0, 30.0, 20.0), clockwise=False
+            )
+        )
+
+    # 固定循环：钻孔 / 攻丝 / 镗孔 / 螺纹 / 切槽 / 螺纹车削
+    if hasattr(processor, "format_cycle_drill"):
+        emit(processor.format_cycle_drill(x=20.0, y=30.0, z=20.0, depth=10.0, dwell=0.3))
+    if hasattr(processor, "format_cycle_tapping"):
+        emit(
+            processor.format_cycle_tapping(
+                x=30.0, y=20.0, z=20.0, depth=12.0, pitch=1.5, spindle_rpm=800.0
+            )
+        )
+    if hasattr(processor, "format_cycle_boring"):
+        emit(processor.format_cycle_boring(x=40.0, y=20.0, z=20.0, depth=8.0, cycle_type="G86", dwell=0.4))
+    if hasattr(processor, "format_cycle_threading"):
+        emit(
+            processor.format_cycle_threading(
+                x=10.0, y=10.0, depth=15.0, lead=1.5,
+                passes=4, depth_cut_first=0.3, depth_cut_last=0.1,
+                finishing_passes=1, tool_angle=55.0,
+            )
+        )
+    if hasattr(processor, "format_cycle_groove"):
+        emit(processor.format_cycle_groove(x=50.0, z=15.0, depth=2.0, width=4.0))
+    if hasattr(processor, "format_cycle_thread_turning"):
+        emit(
+            processor.format_cycle_thread_turning(
+                x=30.0, z=25.0, depth=2.0, pitch=2.0,
+                passes=4, first_depth=0.4, last_depth=0.1,
+            )
+        )
+
+    # 子程序
+    if hasattr(processor, "format_subprogram_call"):
+        emit(processor.format_subprogram_call(program_number=5000, repeat=2))
+    if hasattr(processor, "format_subprogram_end"):
+        emit(processor.format_subprogram_end())
+
+    # 高级模式（高精度 / 五轴 / RTCP / 刀轴 / 探针 / 法向补偿）
+    if hasattr(processor, "format_high_precision_mode"):
+        emit(processor.format_high_precision_mode(enable=True))
+    if hasattr(processor, "format_five_axis_mode"):
+        emit(processor.format_five_axis_mode(enable=True))
+    if hasattr(processor, "format_rtcp_on"):
+        emit(processor.format_rtcp_on(tool_length=120.0))
+    if hasattr(processor, "format_rtcp_off"):
+        emit(processor.format_rtcp_off())
+    if hasattr(processor, "format_twp_on"):
+        emit(processor.format_twp_on(tool_axis_i=0.0, tool_axis_j=0.0, tool_axis_k=1.0))
+    if hasattr(processor, "format_twp_off"):
+        emit(processor.format_twp_off())
+    if hasattr(processor, "format_rotary_axis_config"):
+        emit(processor.format_rotary_axis_config(a_axis_zero=0.0, c_axis_zero=0.0))
+    if hasattr(processor, "format_workspace_check"):
+        emit(processor.format_workspace_check(x=20.0, y=20.0, z=20.0))
+    if hasattr(processor, "format_probe_cycle"):
+        emit(
+            processor.format_probe_cycle(
+                probe_number=1, x_pos=25.0, y_pos=25.0, z_depth=-5.0
+            )
+        )
+    if hasattr(processor, "format_surface_normal_compensation"):
+        emit(processor.format_surface_normal_compensation(enable=True))
+
+    # 冷却关 / 程序尾
+    emit(processor.format_coolant("off"))
+    emit(processor.format_footer())
+    return "\n".join(lines) + "\n"
+
+
+@pytest.mark.regression
+@pytest.mark.parametrize("controller_id", list(CONTROLLERS.keys()))
+def test_golden_extended_matches(controller_id: str, monkeypatch):
+    """扩展序列黄金比对：覆盖各方言全部能力（方言声明化 P0 基线）。"""
+    monkeypatch.setattr(
+        BasePostProcessor, "_date_string", staticmethod(lambda: FIXED_DATE)
+    )
+    processor = CONTROLLERS[controller_id]()
+    output = build_extended_program(processor)
+    golden_path = GOLDEN_DIR / f"{controller_id}_extended.nc"
+
+    if os.environ.get("UPDATE_GOLDEN") == "1":
+        golden_path.parent.mkdir(parents=True, exist_ok=True)
+        golden_path.write_text(output, encoding="utf-8")
+        pytest.skip("UPDATE_GOLDEN=1：已重新生成扩展黄金文件")
+
+    if not golden_path.exists():
+        pytest.fail(
+            f"扩展黄金文件缺失: {golden_path}。建议操作：审阅当前输出后执行 "
+            f"UPDATE_GOLDEN=1 pytest tests/regression/test_postprocessor_golden.py 生成。"
+        )
+
+    golden = golden_path.read_text(encoding="utf-8")
+    assert output == golden, (
+        f"{controller_id} 后处理器扩展序列输出与黄金文件不一致。建议操作：若变更为预期，"
+        f"执行 UPDATE_GOLDEN=1 更新黄金文件；否则回退后处理器改动。"
     )
 
 
