@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .models import Skill, SkillLevel
 
@@ -15,8 +15,8 @@ class SkillRegistry:
     """技能注册表 - 线程安全的技能存储和查询。"""
 
     def __init__(self):
-        self._skills: Dict[str, Skill] = {}
-        self._skill_order: List[str] = []
+        self._skills: dict[str, Skill] = {}
+        self._skill_order: list[str] = []
         self._lock = threading.RLock()
 
     def register(self, skill: Skill) -> None:
@@ -32,27 +32,27 @@ class SkillRegistry:
             skill.metadata.version,
         )
 
-    def get(self, skill_id: str) -> Optional[Skill]:
+    def get(self, skill_id: str) -> Skill | None:
         """根据 ID 获取技能。"""
         with self._lock:
             return self._skills.get(skill_id)
 
-    def get_by_level(self, level: SkillLevel) -> List[Skill]:
+    def get_by_level(self, level: SkillLevel) -> list[Skill]:
         """获取指定级别的所有活跃技能。"""
         with self._lock:
             return [s for s in self._skills.values() if s.metadata.level == level and s.is_active]
 
-    def get_by_task(self, task_type: str) -> List[Skill]:
+    def get_by_task(self, task_type: str) -> list[Skill]:
         """获取适用于指定任务类型的所有活跃技能。"""
         with self._lock:
             return [s for s in self._skills.values() if s.is_active and s.metadata.applicable_to(task_type)]
 
-    def list_all(self) -> List[Skill]:
+    def list_all(self) -> list[Skill]:
         """列出所有已注册的技能。"""
         with self._lock:
             return list(self._skills.values())
 
-    def list_all_metadata(self) -> List[Dict[str, Any]]:
+    def list_all_metadata(self) -> list[dict[str, Any]]:
         """列出所有技能的元数据。"""
         with self._lock:
             return [s.metadata.to_dict() for s in self._skills.values()]
@@ -93,7 +93,7 @@ class SkillRegistry:
                     self._skill_order.remove(sid)
             return len(to_remove)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """获取注册表统计信息。"""
         with self._lock:
             skills = list(self._skills.values())

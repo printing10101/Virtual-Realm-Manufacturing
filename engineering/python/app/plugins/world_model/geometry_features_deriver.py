@@ -45,7 +45,8 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 from app.feature_extraction.feature_store import (
     ExtractedFeature,

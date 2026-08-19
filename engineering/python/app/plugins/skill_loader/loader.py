@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from app.config import config
 
@@ -58,14 +58,14 @@ class SkillLoader(
     - :class:`VersionControlMixin` — 版本控制
     """
 
-    def __init__(self, skills_base_dir: Optional[str] = None):
+    def __init__(self, skills_base_dir: str | None = None):
         if skills_base_dir is None:
             skills_base_dir = DEFAULT_SKILLS_BASE
 
         self.skills_base = skills_base_dir
         self.registry = SkillRegistry()
-        self._context: Dict[str, Any] = {}
-        self._watcher: Optional[SkillFileWatcher] = None
+        self._context: dict[str, Any] = {}
+        self._watcher: SkillFileWatcher | None = None
 
         self._ensure_directory_structure()
         self._load_all_skills()
@@ -84,11 +84,11 @@ class SkillLoader(
     def get_skills_for_task(
         self,
         task_type: str,
-        project_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        available_context: Optional[Set[str]] = None,
-    ) -> List[Skill]:
-        skills: List[Skill] = []
+        project_id: str | None = None,
+        agent_id: str | None = None,
+        available_context: set[str] | None = None,
+    ) -> list[Skill]:
+        skills: list[Skill] = []
 
         all_globals = self.registry.get_by_level(SkillLevel.GLOBAL)
         skills.extend(all_globals)
@@ -115,7 +115,7 @@ class SkillLoader(
         )
         return skills
 
-    def inject_context(self, context: Dict[str, Any]) -> None:
+    def inject_context(self, context: dict[str, Any]) -> None:
         self._context.update(context)
         for skill in self.registry.list_all():
             skill.context.update(context)
@@ -129,12 +129,12 @@ class SkillLoader(
     def execute_all(
         self,
         task_type: str,
-        project_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
+        project_id: str | None = None,
+        agent_id: str | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         skills = self.get_skills_for_task(task_type, project_id, agent_id)
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
 
         for skill in skills:
             try:
@@ -168,18 +168,18 @@ class SkillLoader(
     async def inject_skills(
         self,
         task_type: str,
-        project_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        available_context: Optional[Set[str]] = None,
+        project_id: str | None = None,
+        agent_id: str | None = None,
+        available_context: set[str] | None = None,
     ) -> str:
         skills = self.get_skills_for_task(task_type, project_id, agent_id, available_context)
         return self._merge_skills_to_context(skills)
 
-    def _merge_skills_to_context(self, skills: List[Skill]) -> str:
+    def _merge_skills_to_context(self, skills: list[Skill]) -> str:
         if not skills:
             return ""
 
-        lines: List[str] = [
+        lines: list[str] = [
             "## 已注入技能指南\n",
             "_以下技能为运行时动态注入，用于指导当前任务执行：_\n",
         ]
@@ -222,7 +222,7 @@ class SkillLoader(
 
         return "\n".join(lines)
 
-    def hot_reload(self, skill_id: Optional[str] = None) -> Dict[str, Any]:
+    def hot_reload(self, skill_id: str | None = None) -> dict[str, Any]:
         if skill_id:
             skill = self.registry.get(skill_id)
             if skill and skill.metadata.source_path:
@@ -241,7 +241,7 @@ class SkillLoader(
         self._load_all_skills()
         return {"status": "full_reload", "count": len(self.registry.list_all())}
 
-    def rate_skill(self, skill_id: str, rating: float) -> Dict[str, Any]:
+    def rate_skill(self, skill_id: str, rating: float) -> dict[str, Any]:
         if rating < 0 or rating > 5:
             raise ValueError("Rating must be between 0 and 5")
 
@@ -265,7 +265,7 @@ class SkillLoader(
             "rating_count": len(skill.metadata.ratings),
         }
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         registry_stats = self.registry.get_stats()
         registry_stats["skills_base_dir"] = self.skills_base
         registry_stats["watcher_active"] = self._watcher is not None and self._watcher._running
@@ -281,7 +281,7 @@ class _LoaderHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[SkillLoader] = None
+        self._instance: SkillLoader | None = None
 
     def get(self) -> SkillLoader:
         if self._instance is not None:
@@ -291,7 +291,7 @@ class _LoaderHolder:
                 self._instance = SkillLoader()
             return self._instance
 
-    def init(self, skills_base_dir: Optional[str] = None) -> SkillLoader:
+    def init(self, skills_base_dir: str | None = None) -> SkillLoader:
         with self._lock:
             if self._instance is not None:
                 self._instance.shutdown()
@@ -311,16 +311,16 @@ def get_skill_loader() -> SkillLoader:
     return _holder.get()
 
 
-def init_skill_loader(skills_base_dir: Optional[str] = None) -> SkillLoader:
+def init_skill_loader(skills_base_dir: str | None = None) -> SkillLoader:
     """初始化技能加载器，行为与重构前完全一致。"""
     return _holder.init(skills_base_dir)
 
 
 async def inject_skills(
     task_type: str,
-    project_id: Optional[str] = None,
-    agent_id: Optional[str] = None,
-    available_context: Optional[Set[str]] = None,
+    project_id: str | None = None,
+    agent_id: str | None = None,
+    available_context: set[str] | None = None,
 ) -> str:
     loader = get_skill_loader()
     return await loader.inject_skills(task_type, project_id, agent_id, available_context)

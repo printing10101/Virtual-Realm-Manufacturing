@@ -23,7 +23,8 @@ DynamicsEncoder / FusionLayer）。在此之前，生产代码中 ``UnifiedState
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 from app.plugins.world_model.dynamics_state_bridge import (
     BridgeResult,

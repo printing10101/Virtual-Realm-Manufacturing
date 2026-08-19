@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -149,9 +149,9 @@ class SafetyShield:
 
     def __init__(
         self,
-        constraints: Optional[SafetyConstraints] = None,
+        constraints: SafetyConstraints | None = None,
         strict: bool = True,
-        default_safe_action: Optional[np.ndarray] = None,
+        default_safe_action: np.ndarray | None = None,
     ) -> None:
         self._constraints = constraints or SafetyConstraints()
         self._constraints.validate()
@@ -162,13 +162,13 @@ class SafetyShield:
             if default_safe_action is None
             else np.asarray(default_safe_action, dtype=np.float32).copy()
         )
-        self._last_safe: Optional[np.ndarray] = None
+        self._last_safe: np.ndarray | None = None
         self._lock = __import__("threading").Lock()
 
     def filter(
         self,
         action: np.ndarray,
-        prev_action: Optional[np.ndarray] = None,
+        prev_action: np.ndarray | None = None,
     ) -> tuple[np.ndarray, SafetyFilterResult]:
         """过滤动作.
 
@@ -299,7 +299,7 @@ class SafetyShield:
         clipped_diff = np.clip(diff, -max_delta, max_delta)
         return (prev + clipped_diff).astype(np.float32)
 
-    def _resolve_reference(self, prev_action: Optional[np.ndarray]) -> np.ndarray:
+    def _resolve_reference(self, prev_action: np.ndarray | None) -> np.ndarray:
         """解析参考动作（用于变化率检查）."""
         if prev_action is not None:
             return np.asarray(prev_action, dtype=np.float32)

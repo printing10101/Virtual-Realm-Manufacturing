@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 
@@ -87,15 +87,15 @@ class TrajectoryPredictor:
 
     def __init__(
         self,
-        config: Optional[WorldModelConfig] = None,
+        config: WorldModelConfig | None = None,
         device: str = "auto",
     ) -> None:
         self.config = config or WorldModelConfig()
         self.config.validate()
         self._device_str = device
         self._device = self._select_device(device)
-        self._model: Optional[WorldModelNet] = None
-        self._model_uri: Optional[str] = None
+        self._model: WorldModelNet | None = None
+        self._model_uri: str | None = None
         self._lock = threading.Lock()
         logger.info(
             "TrajectoryPredictor 初始化: device=%s config=%s",
@@ -115,7 +115,7 @@ class TrajectoryPredictor:
             return torch.device("cpu")
         return torch.device(device)
 
-    def load_model(self, model_uri: str, weights_path: Optional[str] = None) -> None:
+    def load_model(self, model_uri: str, weights_path: str | None = None) -> None:
         """加载模型权重.
 
         Args:
@@ -155,7 +155,7 @@ class TrajectoryPredictor:
     def predict(
         self,
         current_state: Union[np.ndarray, UnifiedState, dict, None] = None,
-        candidate_action: Optional[np.ndarray] = None,
+        candidate_action: np.ndarray | None = None,
         horizon: int = 10,
         unified_state: Union[UnifiedState, dict, None] = None,
     ) -> TrajectoryPrediction:
@@ -435,7 +435,7 @@ class TrajectoryPredictor:
         )
 
     @property
-    def model_uri(self) -> Optional[str]:
+    def model_uri(self) -> str | None:
         """已加载的模型 URI."""
         return self._model_uri
 

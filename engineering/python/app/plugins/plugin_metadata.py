@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.plugins.plugin_types import PluginStatus
 
@@ -29,19 +29,19 @@ class PluginMetadata:
     description: str = ""
     entry_point: str = "main.py"
     plugin_type: str = ""
-    capabilities: List[str] = field(default_factory=list)
-    dependencies: List[PluginDependency] = field(default_factory=list)
-    config_schema: Dict[str, Any] = field(default_factory=dict)
+    capabilities: list[str] = field(default_factory=list)
+    dependencies: list[PluginDependency] = field(default_factory=list)
+    config_schema: dict[str, Any] = field(default_factory=dict)
     min_core_version: str = "1.0.0"
     max_core_version: str = "99.99.99"
     plugin_path: str = ""
     status: PluginStatus = PluginStatus.DISCOVERED
-    config: Dict[str, Any] = field(default_factory=dict)
-    enabled_at: Optional[float] = None
-    disabled_at: Optional[float] = None
-    installed_at: Optional[float] = None
+    config: dict[str, Any] = field(default_factory=dict)
+    enabled_at: float | None = None
+    disabled_at: float | None = None
+    installed_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -64,7 +64,7 @@ class PluginMetadata:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PluginMetadata":
+    def from_dict(cls, data: dict[str, Any]) -> "PluginMetadata":
         deps = []
         for d in data.get("dependencies", []):
             deps.append(

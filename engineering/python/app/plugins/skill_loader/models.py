@@ -5,7 +5,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any
+from collections.abc import Callable
 
 
 class SkillLevel(str, Enum):
@@ -39,7 +40,7 @@ class SkillVersion:
     content_hash: str
     file_path: str
     created_at: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -53,16 +54,16 @@ class SkillMetadata:
     version: str = "1.0.0"
     level: SkillLevel = SkillLevel.GLOBAL
     priority: SkillPriority = SkillPriority.GLOBAL
-    applicable_tasks: List[str] = field(default_factory=list)
-    required_context: List[str] = field(default_factory=list)
+    applicable_tasks: list[str] = field(default_factory=list)
+    required_context: list[str] = field(default_factory=list)
     author: str = ""
-    tags: List[str] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    source_path: Optional[str] = None
-    ratings: List[float] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
+    parameters: dict[str, Any] = field(default_factory=dict)
+    source_path: str | None = None
+    ratings: list[float] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典格式。"""
         return {
             "skill_id": self.skill_id,
@@ -88,7 +89,7 @@ class SkillMetadata:
             return True
         return task_type in self.applicable_tasks or "*" in self.applicable_tasks
 
-    def contexts_satisfied(self, available_context: Set[str]) -> Tuple[bool, List[str]]:
+    def contexts_satisfied(self, available_context: set[str]) -> tuple[bool, list[str]]:
         """检查所需上下文是否满足。"""
         if not self.required_context:
             return True, []
@@ -103,16 +104,16 @@ class Skill:
     metadata: SkillMetadata
     raw_content: str = ""
     body: str = ""
-    code_blocks: List[Tuple[str, str]] = field(default_factory=list)
-    versions: Dict[str, SkillVersion] = field(default_factory=dict)
-    executor: Optional[Callable] = None
-    context: Dict[str, Any] = field(default_factory=dict)
+    code_blocks: list[tuple[str, str]] = field(default_factory=list)
+    versions: dict[str, SkillVersion] = field(default_factory=dict)
+    executor: Callable | None = None
+    context: dict[str, Any] = field(default_factory=dict)
     is_loaded: bool = False
     is_active: bool = True
     loaded_at: float = field(default_factory=time.time)
 
     @property
-    def current_version(self) -> Optional[SkillVersion]:
+    def current_version(self) -> SkillVersion | None:
         """获取当前版本。"""
         if not self.versions:
             return None
@@ -128,7 +129,7 @@ class Skill:
         merged_kwargs = {**self.context, **kwargs}
         return self.executor(**merged_kwargs)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典格式。"""
         return {
             "metadata": self.metadata.to_dict(),

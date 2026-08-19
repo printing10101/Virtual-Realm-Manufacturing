@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -173,7 +173,7 @@ if HAS_TORCH:
         def forward(
             self,
             x: "torch.Tensor",
-            h: Optional["torch.Tensor"] = None,
+            h: "torch.Tensor" | None = None,
         ) -> "torch.Tensor":
             """前向传播.
 
@@ -300,10 +300,10 @@ if HAS_TORCH:
 
         def forward(
             self,
-            states: Optional["torch.Tensor"],
+            states: "torch.Tensor" | None,
             actions: "torch.Tensor",
             horizon: int,
-            unified_states: Optional[tuple["torch.Tensor", "torch.Tensor"]] = None,
+            unified_states: tuple["torch.Tensor", "torch.Tensor"] | None = None,
         ) -> dict[str, "torch.Tensor"]:
             """前向传播：预测未来 ``horizon`` 步的状态轨迹.
 
@@ -438,7 +438,7 @@ else:
             states: np.ndarray,
             actions: np.ndarray,
             horizon: int,
-            unified_states: Optional[tuple[np.ndarray, np.ndarray]] = None,
+            unified_states: tuple[np.ndarray, np.ndarray] | None = None,
         ) -> dict[str, np.ndarray]:
             """NumPy 前向传播（简化版）.
 

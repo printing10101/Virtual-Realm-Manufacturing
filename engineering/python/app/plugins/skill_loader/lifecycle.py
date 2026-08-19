@@ -6,7 +6,7 @@ import logging
 import os
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from app.config.limits import DEFAULT_THREAD_JOIN_TIMEOUT_SEC
 from .models import SkillLevel
@@ -27,9 +27,9 @@ class SkillFileWatcher:
         self.skills_dir = skills_dir
         self.loader = loader
         self.poll_interval = poll_interval
-        self._mtime_cache: Dict[str, float] = {}
+        self._mtime_cache: dict[str, float] = {}
         self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
     def start(self) -> None:
@@ -65,7 +65,7 @@ class SkillFileWatcher:
 
     def _scan_changes(self) -> None:
         """扫描文件变化。"""
-        current_files: Dict[str, float] = {}
+        current_files: dict[str, float] = {}
 
         for root, dirs, files in os.walk(self.skills_dir):
             for f in files:

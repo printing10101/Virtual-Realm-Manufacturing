@@ -22,13 +22,15 @@ import inspect
 import logging
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 
 from app.contracts.plugin import (
     BUILTIN_EXTENSION_POINTS,
     ExtensionPointContribution,
     IExtensionRegistry,
 )
+import builtins
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +49,11 @@ class _Registration:
 
     extension_point: str
     plugin_id: str
-    handler: Callable[[Dict[str, Any]], Any]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    handler: Callable[[dict[str, Any]], Any]
+    metadata: dict[str, Any] = field(default_factory=dict)
     order: int = 0  # 注册顺序，用于稳定排序
 
-    def to_public_dict(self) -> Dict[str, Any]:
+    def to_public_dict(self) -> dict[str, Any]:
         """转换为对外可见的字典（剥离 handler 引用）."""
         return {
             "extension_point": self.extension_point,
@@ -88,9 +90,9 @@ class ExtensionRegistry(IExtensionRegistry):
 
     def __init__(self) -> None:
         # extension_point → list[_Registration]
-        self._registrations: Dict[str, List[_Registration]] = {}
+        self._registrations: dict[str, list[_Registration]] = {}
         # plugin_id → set[extension_point]（反向索引，加速 unregister）
-        self._plugin_index: Dict[str, set] = {}
+        self._plugin_index: dict[str, set] = {}
         self._lock = threading.RLock()
         self._order_counter = 0
 
@@ -100,9 +102,9 @@ class ExtensionRegistry(IExtensionRegistry):
         self,
         extension_point: str,
         plugin_id: str,
-        handler: Callable[[Dict[str, Any]], Any],
+        handler: Callable[[dict[str, Any]], Any],
         *,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """注册扩展点贡献.
 
@@ -178,8 +180,8 @@ class ExtensionRegistry(IExtensionRegistry):
         plugin_id: str,
         component_url: str,
         *,
-        props: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        props: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """注册前端组件贡献（无 handler，仅 component_url）.
 
@@ -194,7 +196,7 @@ class ExtensionRegistry(IExtensionRegistry):
         full_meta["props"] = props or {}
 
         # 前端组件无后端 handler，存一个返回元信息的存根
-        def _component_stub(payload: Dict[str, Any]) -> Dict[str, Any]:
+        def _component_stub(payload: dict[str, Any]) -> dict[str, Any]:
             return {"component_url": component_url, "props": props or {}}
 
         self.register(
@@ -206,7 +208,7 @@ class ExtensionRegistry(IExtensionRegistry):
 
     # ----- 取消注册 -----
 
-    def unregister(self, plugin_id: str, extension_point: Optional[str] = None) -> int:
+    def unregister(self, plugin_id: str, extension_point: str | None = None) -> int:
         """取消注册.
 
         Args:
@@ -267,7 +269,7 @@ class ExtensionRegistry(IExtensionRegistry):
 
     # ----- 查询 -----
 
-    def list(self, extension_point: str) -> List[Dict[str, Any]]:
+    def list(self, extension_point: str) -> builtins.list[dict[str, Any]]:
         """列出某扩展点的所有贡献元信息（按注册顺序）.
 
         返回的字典不包含 handler 引用，可安全序列化给前端。
@@ -277,11 +279,11 @@ class ExtensionRegistry(IExtensionRegistry):
             # 复制避免外部修改
             return [r.to_public_dict() for r in regs]
 
-    def list_by_plugin(self, plugin_id: str) -> List[Dict[str, Any]]:
+    def list_by_plugin(self, plugin_id: str) -> builtins.list[dict[str, Any]]:
         """列出某插件的所有贡献（跨扩展点）."""
         with self._lock:
             ext_set = self._plugin_index.get(plugin_id, set())
-            result: List[Dict[str, Any]] = []
+            result: list[dict[str, Any]] = []
             for ext_point in ext_set:
                 regs = self._registrations.get(ext_point, [])
                 for r in regs:
@@ -290,7 +292,7 @@ class ExtensionRegistry(IExtensionRegistry):
             result.sort(key=lambda d: d["order"])
             return result
 
-    def count(self, extension_point: Optional[str] = None) -> int:
+    def count(self, extension_point: str | None = None) -> int:
         """统计注册数. extension_point=None 时返回总数."""
         with self._lock:
             if extension_point is not None:
@@ -299,7 +301,7 @@ class ExtensionRegistry(IExtensionRegistry):
 
     # ----- 调用 -----
 
-    async def invoke(self, extension_point: str, payload: Dict[str, Any]) -> List[Any]:
+    async def invoke(self, extension_point: str, payload: dict[str, Any]) -> builtins.list[Any]:
         """调用某扩展点的所有贡献，返回结果列表（按注册顺序）.
 
         同步 handler 直接调用，异步 handler 自动 await。
@@ -312,7 +314,7 @@ class ExtensionRegistry(IExtensionRegistry):
         if not regs_snapshot:
             return []
 
-        results: List[Any] = []
+        results: list[Any] = []
         for reg in regs_snapshot:
             try:
                 result = reg.handler(payload)
@@ -336,7 +338,7 @@ class ExtensionRegistry(IExtensionRegistry):
     async def invoke_first(
         self,
         extension_point: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         *,
         default: Any = None,
     ) -> Any:
@@ -376,12 +378,12 @@ class ExtensionRegistry(IExtensionRegistry):
             self._plugin_index.clear()
             self._order_counter = 0
 
-    def all_extension_points(self) -> List[str]:
+    def all_extension_points(self) -> builtins.list[str]:
         """返回当前有注册的扩展点列表."""
         with self._lock:
             return list(self._registrations.keys())
 
-    def all_plugin_ids(self) -> List[str]:
+    def all_plugin_ids(self) -> builtins.list[str]:
         """返回当前有注册的插件 ID 列表."""
         with self._lock:
             return list(self._plugin_index.keys())
@@ -392,7 +394,7 @@ class ExtensionRegistry(IExtensionRegistry):
 # ---------------------------------------------------------------------------
 
 
-_registry_singleton: Optional[ExtensionRegistry] = None
+_registry_singleton: ExtensionRegistry | None = None
 _registry_lock = threading.Lock()
 
 

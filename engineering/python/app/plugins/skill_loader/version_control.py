@@ -18,7 +18,8 @@ import logging
 import os
 import shutil
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from .models import (
     PRIORITY_MAP,
@@ -48,7 +49,7 @@ class VersionControlMixin:
     skills_base: str
     registry: SkillRegistry
 
-    def get_version_history(self, skill_id: str) -> Optional[list]:
+    def get_version_history(self, skill_id: str) -> list | None:
         skill = self.registry.get(skill_id)
         if skill is None:
             return None
@@ -72,7 +73,7 @@ class VersionControlMixin:
         skill_id: str,
         content: str,
         level: SkillLevel = SkillLevel.PROJECT,
-        sub_id: Optional[str] = None,
+        sub_id: str | None = None,
     ) -> str:
         safe_skill_id = self._sanitize_path_segment(skill_id)
 
@@ -112,7 +113,7 @@ class VersionControlMixin:
         logger.info("Skill saved: %s", file_path)
         return file_path
 
-    def export_skill(self, skill_id: str) -> Optional[Dict[str, Any]]:
+    def export_skill(self, skill_id: str) -> dict[str, Any] | None:
         skill = self.registry.get(skill_id)
         if skill is None:
             return None
@@ -128,10 +129,10 @@ class VersionControlMixin:
 
     def import_skill(
         self,
-        skill_package: Dict[str, Any],
+        skill_package: dict[str, Any],
         level: SkillLevel = SkillLevel.PROJECT,
-        sub_id: Optional[str] = None,
-    ) -> Optional[Skill]:
+        sub_id: str | None = None,
+    ) -> Skill | None:
         skill_id = skill_package.get("skill_id")
         raw_content = skill_package.get("raw_content")
 

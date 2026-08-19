@@ -19,7 +19,8 @@ import logging
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from .models import (
     PRIORITY_MAP,
@@ -146,8 +147,8 @@ class SkillDiscoveryMixin:
             if not self.registry.get(skill.metadata.skill_id):
                 self.registry.register(skill)
 
-    def _load_skills_from_directory(self, directory: str, level: SkillLevel) -> List[Skill]:
-        skills: List[Skill] = []
+    def _load_skills_from_directory(self, directory: str, level: SkillLevel) -> list[Skill]:
+        skills: list[Skill] = []
         if not os.path.exists(directory):
             return skills
 
@@ -161,7 +162,7 @@ class SkillDiscoveryMixin:
 
         return skills
 
-    def _load_skill_from_file(self, file_path: str, level: SkillLevel) -> Optional[Skill]:
+    def _load_skill_from_file(self, file_path: str, level: SkillLevel) -> Skill | None:
         parsed = MarkdownSkillParser.parse(file_path)
         if parsed is None:
             return None
@@ -221,13 +222,13 @@ class SkillDiscoveryMixin:
 
         return skill
 
-    def load_project_skills(self, project_id: str) -> List[Skill]:
+    def load_project_skills(self, project_id: str) -> list[Skill]:
         project_dir = self._resolve_safe_subpath("projects", project_id)
         if os.path.exists(project_dir):
             return self._load_skills_from_directory(project_dir, SkillLevel.PROJECT)
         return []
 
-    def load_agent_skills(self, agent_id: str) -> List[Skill]:
+    def load_agent_skills(self, agent_id: str) -> list[Skill]:
         agent_dir = self._resolve_safe_subpath("agents", agent_id)
         if os.path.exists(agent_dir):
             return self._load_skills_from_directory(agent_dir, SkillLevel.AGENT)

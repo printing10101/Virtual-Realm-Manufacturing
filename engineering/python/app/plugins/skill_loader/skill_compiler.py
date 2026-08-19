@@ -18,7 +18,8 @@ import hashlib
 import logging
 import re
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 
 from .sandbox_executor import SecurityError, _SubprocessSkillExecutor
 
@@ -96,7 +97,7 @@ class SkillCompilerMixin:
         }
     )
 
-    def _compile_code(self, code: str, skill_id: str) -> Optional[Callable]:
+    def _compile_code(self, code: str, skill_id: str) -> Callable | None:
         self._audit_code_security(code, skill_id)
 
         if self._USE_SUBPROCESS_ISOLATION:
@@ -152,7 +153,7 @@ class SkillCompilerMixin:
 
         return self._extract_callable(restricted_globals, skill_id)
 
-    def _compile_code_in_process(self, code: str, skill_id: str) -> Optional[Callable]:
+    def _compile_code_in_process(self, code: str, skill_id: str) -> Callable | None:
         """备用编译方法：当 RestrictedPython 不可用时使用受限 builtins。
 
         安全警告：此方法不提供与 compile_restricted 相同级别的安全保护，
@@ -183,7 +184,7 @@ class SkillCompilerMixin:
             return None
 
         # 安全修复：使用受限的 builtins，移除危险函数
-        namespace: Dict[str, Any] = {"__builtins__": self._SAFE_BUILTINS}
+        namespace: dict[str, Any] = {"__builtins__": self._SAFE_BUILTINS}
         try:
             exec(compiled, namespace)
         except (SyntaxError, NameError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
@@ -204,7 +205,7 @@ class SkillCompilerMixin:
 
         return self._extract_callable(namespace, skill_id)
 
-    def _extract_callable(self, namespace: Dict[str, Any], skill_id: str) -> Optional[Callable]:
+    def _extract_callable(self, namespace: dict[str, Any], skill_id: str) -> Callable | None:
         for name in ("execute", "run", "main", "handler"):
             if name in namespace and callable(namespace[name]):
                 return namespace[name]
@@ -228,7 +229,7 @@ class SkillCompilerMixin:
 
     @staticmethod
     def _audit_code_security(code: str, skill_id: str) -> None:
-        dangerous_patterns: List[tuple] = [
+        dangerous_patterns: list[tuple] = [
             (r"__import__\s*\(", "直接调用 __import__"),
             # P1 安全修复：原负向预查 (?!...) 导致安全 import 被误报、危险 import 漏报。
             # 改为正向匹配危险模块，仅阻断 import os/sys/subprocess/ctypes/socket/shutil。

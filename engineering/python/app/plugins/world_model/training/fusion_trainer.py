@@ -37,7 +37,7 @@ import os
 import time
 from contextlib import nullcontext
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Union
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class FusionWorldModelTrainer:
     lr_scheduler_type : str
         学习率调度器：``cosine`` / ``step`` / ``reduce_on_plateau`` /
         ``exponential`` / ``none``。
-    lr_scheduler_params : Optional[Dict[str, Any]]
+    lr_scheduler_params : Optional[dict[str, Any]]
         调度器参数（如 ``{"step_size": 30, "gamma": 0.1}``）。
     device : Union[str, torch.device]
         计算设备（``"cpu"`` / ``"cuda"`` / ``"auto"``）。
@@ -133,15 +133,15 @@ class FusionWorldModelTrainer:
         weight_decay: float = 1e-5,
         epochs: int = 100,
         early_stopping_patience: int = 10,
-        gradient_clip_value: Optional[float] = 1.0,
+        gradient_clip_value: float | None = 1.0,
         lr_scheduler_type: str = "cosine",
-        lr_scheduler_params: Optional[Dict[str, Any]] = None,
+        lr_scheduler_params: dict[str, Any] | None = None,
         device: Union[str, "torch.device"] = "auto",
         use_amp: bool = True,
         seed: int = 42,
         track_experiment: bool = True,
         experiment_name: str = DEFAULT_FUSION_EXPERIMENT_NAME,
-        models_dir: Optional[str] = None,
+        models_dir: str | None = None,
         save_every_epoch: bool = False,
     ) -> None:
         if not HAS_TORCH:
@@ -186,7 +186,7 @@ class FusionWorldModelTrainer:
         self.optimizer = self._build_optimizer()
 
         # AMP scaler（CPU 时禁用）
-        self.scaler: Optional["torch.cuda.amp.GradScaler"] = None
+        self.scaler: "torch.cuda.amp.GradScaler" | None = None
         if self.use_amp and self.device.type == "cuda":
             self.scaler = torch.cuda.amp.GradScaler()
 
@@ -200,7 +200,7 @@ class FusionWorldModelTrainer:
         self.current_epoch = 0
         self.best_val_loss = float("inf")
         self.epochs_without_improvement = 0
-        self.training_history: Dict[str, List[float]] = {
+        self.training_history: dict[str, list[float]] = {
             "train_loss": [],
             "val_loss": [],
             "learning_rate": [],
@@ -229,7 +229,7 @@ class FusionWorldModelTrainer:
             return torch.optim.RMSprop(params, lr=self.learning_rate, weight_decay=self.weight_decay)
         raise FusionTrainerError(f"不支持的优化器类型: {self.optimizer_type}（支持 adam/adamw/sgd/rmsprop）")
 
-    def _build_lr_scheduler(self) -> Optional[Any]:
+    def _build_lr_scheduler(self) -> Any | None:
         """构造学习率调度器."""
         sch_type = self.lr_scheduler_type.lower()
         params = self.lr_scheduler_params
@@ -272,7 +272,7 @@ class FusionWorldModelTrainer:
         train_loader: "DataLoader",
         val_loader: "DataLoader",
         horizon: int,
-    ) -> Dict[str, List[float]]:
+    ) -> dict[str, list[float]]:
         """执行完整训练流程.
 
         Parameters
@@ -566,8 +566,8 @@ class FusionWorldModelTrainer:
     def save_checkpoint(
         self,
         version: str,
-        epoch: Optional[int] = None,
-        metrics: Optional[Dict[str, float]] = None,
+        epoch: int | None = None,
+        metrics: dict[str, float] | None = None,
     ) -> str:
         """保存 checkpoint 到规范路径.
 
@@ -582,7 +582,7 @@ class FusionWorldModelTrainer:
             仅允许 ``[A-Za-z0-9_.-]``，防止路径穿越。
         epoch : Optional[int]
             当前 epoch。None 时使用 ``self.current_epoch``。
-        metrics : Optional[Dict[str, float]]
+        metrics : Optional[dict[str, float]]
             附加指标（如 ``{"val_loss": 0.01}``）。
 
         Returns
@@ -617,7 +617,7 @@ class FusionWorldModelTrainer:
         logger.info("融合模型 checkpoint 已保存: %s", path)
         return path
 
-    def load_checkpoint(self, path: str) -> Dict[str, Any]:
+    def load_checkpoint(self, path: str) -> dict[str, Any]:
         """加载 checkpoint.
 
         Parameters
@@ -664,10 +664,10 @@ class FusionWorldModelTrainer:
     # 辅助方法
     # ------------------------------------------------------------------
 
-    def _collect_hyperparams(self, horizon: int) -> Dict[str, Any]:
+    def _collect_hyperparams(self, horizon: int) -> dict[str, Any]:
         """收集超参（含融合专属字段）用于 MLflow 记录."""
         cfg = self.model.config
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "model_uri": self.model_uri,
             "learning_rate": self.learning_rate,
             "optimizer_type": self.optimizer_type,
@@ -695,7 +695,7 @@ class FusionWorldModelTrainer:
         }
         return params
 
-    def _serialize_model_config(self) -> Dict[str, Any]:
+    def _serialize_model_config(self) -> dict[str, Any]:
         """序列化模型配置用于 checkpoint（恢复训练时重建模型）."""
         cfg = self.model.config
         if hasattr(cfg, "to_dict"):
@@ -718,7 +718,7 @@ class FusionWorldModelTrainer:
         # 回退：时间戳版本（保证 save_every_epoch 不会因 URI 异常而失败）
         return f"auto_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    def get_training_summary(self) -> Dict[str, Any]:
+    def get_training_summary(self) -> dict[str, Any]:
         """获取训练摘要."""
         return {
             "total_epochs": self.current_epoch,

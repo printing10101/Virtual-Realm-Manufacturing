@@ -12,7 +12,7 @@ import logging
 import os
 import shutil
 import sys
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -92,8 +92,8 @@ except (RuntimeError, ValueError, TypeError, OSError, NameError, AttributeError,
         self.code = code
         self.skill_id = skill_id
         self.timeout = timeout
-        self._worker_path: Optional[str] = None
-        self._worker_dir: Optional[str] = None  # P1-3：保存临时目录以便主动清理
+        self._worker_path: str | None = None
+        self._worker_dir: str | None = None  # P1-3：保存临时目录以便主动清理
 
     def cleanup(self) -> None:
         """主动清理临时 worker 目录。

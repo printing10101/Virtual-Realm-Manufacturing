@@ -56,7 +56,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from app.contracts.plugin import (
     PluginManifest,
@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-REQUIRED_FIELDS: Tuple[str, ...] = (
+REQUIRED_FIELDS: tuple[str, ...] = (
     "id",
     "name",
     "version",
@@ -81,7 +81,7 @@ REQUIRED_FIELDS: Tuple[str, ...] = (
     "entrypoint",
 )
 
-OPTIONAL_FIELDS: Tuple[str, ...] = (
+OPTIONAL_FIELDS: tuple[str, ...] = (
     "homepage",
     "tags",
     "required_contracts",
@@ -117,7 +117,7 @@ _ENTRYPOINT_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]*:[A-Z][a-zA-Z0-9_]*$"
 class ManifestValidationError(ValueError):
     """manifest 校验失败异常."""
 
-    def __init__(self, errors: List[str]) -> None:
+    def __init__(self, errors: list[str]) -> None:
         self.errors = errors
         super().__init__("; ".join(errors))
 
@@ -127,7 +127,7 @@ class ManifestValidationError(ValueError):
 # ---------------------------------------------------------------------------
 
 
-def validate_manifest_dict(data: Dict[str, Any]) -> List[str]:
+def validate_manifest_dict(data: dict[str, Any]) -> list[str]:
     """校验 manifest dict，返回错误列表（空列表表示通过）.
 
     校验项：
@@ -139,7 +139,7 @@ def validate_manifest_dict(data: Dict[str, Any]) -> List[str]:
         6. required/optional_capabilities 在内置清单中
         7. dependencies 是字符串列表
     """
-    errors: List[str] = []
+    errors: list[str] = []
 
     # 必填字段
     for field_name in REQUIRED_FIELDS:
@@ -205,7 +205,7 @@ def validate_manifest_dict(data: Dict[str, Any]) -> List[str]:
 # ---------------------------------------------------------------------------
 
 
-def load_manifest_from_dict(data: Dict[str, Any]) -> PluginManifest:
+def load_manifest_from_dict(data: dict[str, Any]) -> PluginManifest:
     """从 dict 构造 PluginManifest（带校验）.
 
     Raises:
@@ -290,7 +290,7 @@ def load_manifest_from_dir(plugin_dir: str | Path) -> PluginManifest:
     return load_manifest_from_yaml(yaml_path)
 
 
-def manifest_to_dict(manifest: PluginManifest) -> Dict[str, Any]:
+def manifest_to_dict(manifest: PluginManifest) -> dict[str, Any]:
     """把 PluginManifest 序列化为 dict（可写回 YAML）."""
     return {
         "id": manifest.id,
@@ -335,7 +335,7 @@ def manifest_to_yaml(manifest: PluginManifest) -> str:
 def create_example_manifest_dict(
     plugin_id: str = "example_plugin",
     plugin_name: str = "示例插件",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """生成示例 manifest dict（供插件脚手架使用）."""
     return {
         "id": plugin_id,

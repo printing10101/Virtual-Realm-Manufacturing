@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class MarkdownSkillParser:
     HEADING_PATTERN = re.compile(r"^#{1,6}\s+(.*)$", re.MULTILINE)
 
     @classmethod
-    def parse(cls, file_path: str) -> Optional[Dict[str, Any]]:
+    def parse(cls, file_path: str) -> dict[str, Any] | None:
         """解析技能文件。"""
         path = Path(file_path)
         if not path.exists():
@@ -37,7 +37,7 @@ class MarkdownSkillParser:
             )
             return None
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "metadata": {},
             "code_blocks": [],
             "body": "",
@@ -67,9 +67,9 @@ class MarkdownSkillParser:
         return result
 
     @classmethod
-    def _parse_frontmatter(cls, fm_text: str) -> Dict[str, Any]:
+    def _parse_frontmatter(cls, fm_text: str) -> dict[str, Any]:
         """解析 YAML frontmatter。"""
-        metadata: Dict[str, Any] = {}
+        metadata: dict[str, Any] = {}
         for line in fm_text.strip().split("\n"):
             line = line.strip()
             if not line or line.startswith("#"):
@@ -98,14 +98,14 @@ class MarkdownSkillParser:
         return metadata
 
     @classmethod
-    def _parse_legacy_metadata(cls, content: str) -> Optional[Dict[str, Any]]:
+    def _parse_legacy_metadata(cls, content: str) -> dict[str, Any] | None:
         """解析旧版元数据格式。"""
         table_pattern = re.compile(r"\|\s*字段\s*\|\s*值\s*\|\s*\n\|[-| ]+\|\s*\n((?:\|.*\|\s*\n?)+)")
         match = table_pattern.search(content)
         if not match:
             return None
 
-        metadata: Dict[str, Any] = {}
+        metadata: dict[str, Any] = {}
         field_map = {
             "技能名称": "display_name",
             "英文名称": "name",
@@ -130,7 +130,7 @@ class MarkdownSkillParser:
         return metadata
 
     @classmethod
-    def _extract_task_types(cls, text: str) -> List[str]:
+    def _extract_task_types(cls, text: str) -> list[str]:
         """提取任务类型。"""
         type_keywords = {
             "预测": "prediction",

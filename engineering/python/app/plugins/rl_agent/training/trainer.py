@@ -39,7 +39,8 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 import numpy as np
 
@@ -282,8 +283,8 @@ class TrainingSnapshot:
     episode: int
     metrics: TrainingMetrics
     replay_buffer_stats: ReplayBufferStats
-    policy_weights_path: Optional[str] = None
-    value_weights_path: Optional[str] = None
+    policy_weights_path: str | None = None
+    value_weights_path: str | None = None
     config: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -610,8 +611,8 @@ class PPOTrainer:
 
     def train(
         self,
-        snapshot_callback: Optional[Callable[[TrainingSnapshot], None]] = None,
-        eval_callback: Optional[Callable[[TrainingMetrics], bool]] = None,
+        snapshot_callback: Callable[[TrainingSnapshot], None] | None = None,
+        eval_callback: Callable[[TrainingMetrics], bool] | None = None,
     ) -> list[TrainingSnapshot]:
         """执行完整训练循环.
 
@@ -842,8 +843,8 @@ class PPOTrainer:
         snapshot_id = f"rl_snapshot_{self._metrics.step}_{int(time.time())}"
 
         # 权重持久化（实际部署中应保存到文件，此处仅记录路径占位）
-        policy_path: Optional[str] = None
-        value_path: Optional[str] = None
+        policy_path: str | None = None
+        value_path: str | None = None
         if HAS_TORCH and isinstance(self._policy_net, nn.Module):
             policy_path = f"checkpoint://{snapshot_id}/policy.pt"
         if HAS_TORCH and isinstance(self._value_net, nn.Module):

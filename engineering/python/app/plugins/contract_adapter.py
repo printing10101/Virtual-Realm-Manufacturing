@@ -33,7 +33,8 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 
 from app.contracts.plugin import (
     BUILTIN_EXTENSION_POINTS,
@@ -68,7 +69,7 @@ class PluginStatusMapper:
     这是单向投影：legacy → 契约，不丢失信息（原始状态仍可通过 metadata 查询）。
     """
 
-    _MAP: Dict[PluginStatus, str] = {
+    _MAP: dict[PluginStatus, str] = {
         PluginStatus.DISCOVERED: "installed",
         PluginStatus.REGISTERED: "installed",
         PluginStatus.INITIALIZED: "installed",
@@ -84,7 +85,7 @@ class PluginStatusMapper:
         return cls._MAP.get(legacy, "error")
 
     @classmethod
-    def all_contract_statuses(cls) -> List[str]:
+    def all_contract_statuses(cls) -> list[str]:
         """返回契约层所有合法状态字符串."""
         return ["installed", "enabled", "disabled", "error", "uninstalled"]
 
@@ -102,7 +103,7 @@ class ExtensionPointNameMapper:
     本映射器负责在两个命名空间之间转换，避免在业务代码中硬编码字符串。
     """
 
-    _BACKEND_TO_FRONTEND: Dict[str, str] = {
+    _BACKEND_TO_FRONTEND: dict[str, str] = {
         BUILTIN_EXTENSION_POINTS.TASK_HANDLER: "task_handler",
         BUILTIN_EXTENSION_POINTS.DATASET_READER: "dataset_reader",
         BUILTIN_EXTENSION_POINTS.MODEL_REGISTRY: "model_registry",
@@ -112,7 +113,7 @@ class ExtensionPointNameMapper:
         BUILTIN_EXTENSION_POINTS.CHAT_COMMAND: "chat_command",
     }
 
-    _FRONTEND_TO_BACKEND: Dict[str, str] = {v: k for k, v in _BACKEND_TO_FRONTEND.items()}
+    _FRONTEND_TO_BACKEND: dict[str, str] = {v: k for k, v in _BACKEND_TO_FRONTEND.items()}
 
     @classmethod
     def to_frontend_name(cls, backend: str) -> str:
@@ -131,7 +132,7 @@ class ExtensionPointNameMapper:
         return cls._FRONTEND_TO_BACKEND.get(frontend, frontend)
 
     @classmethod
-    def all_backend_names(cls) -> List[str]:
+    def all_backend_names(cls) -> list[str]:
         return list(cls._BACKEND_TO_FRONTEND.keys())
 
 
@@ -229,7 +230,7 @@ class LegacyPluginInstanceAdapter(IPlugin):
         legacy_instance: Any,
         metadata: PluginMetadata,
         *,
-        manifest: Optional[PluginManifest] = None,
+        manifest: PluginManifest | None = None,
     ) -> None:
         self._legacy = legacy_instance
         self._metadata = metadata
@@ -254,7 +255,7 @@ class LegacyPluginInstanceAdapter(IPlugin):
                 return
 
             # legacy initialize 接收的是 dict context，不是 PluginContext dataclass
-            legacy_ctx: Dict[str, Any] = {
+            legacy_ctx: dict[str, Any] = {
                 "plugin_id": context.plugin_id,
                 "config": context.config,
                 "data_dir": context.data_dir,
@@ -313,7 +314,7 @@ class LegacyPluginInstanceAdapter(IPlugin):
                 self._metadata.id,
             )
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """健康检查：优先调用 legacy health_check，否则返回基础信息."""
         if hasattr(self._legacy, "health_check"):
             try:
@@ -372,7 +373,7 @@ class PluginContextFactory:
     def build(
         self,
         plugin_id: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> PluginContext:
         return PluginContext(
             plugin_id=plugin_id,
@@ -418,29 +419,29 @@ class PluginLifecycleManagerAdapter:
     def __init__(
         self,
         legacy_manager: PluginLifecycleManager,
-        registry: Optional[PluginRegistry] = None,
-        loader: Optional[PluginLoader] = None,
-        context_factory: Optional[PluginContextFactory] = None,
+        registry: PluginRegistry | None = None,
+        loader: PluginLoader | None = None,
+        context_factory: PluginContextFactory | None = None,
     ) -> None:
         self._mgr = legacy_manager
         self._registry = registry or PluginRegistry.get_instance()
         self._loader = loader or PluginLoader(self._registry)
         self._context_factory = context_factory or PluginContextFactory()
-        self._adapter_cache: Dict[str, LegacyPluginInstanceAdapter] = {}
+        self._adapter_cache: dict[str, LegacyPluginInstanceAdapter] = {}
         self._lock = threading.Lock()
 
     # ----- 查询接口 -----
 
-    def list_manifests(self, *, include_uninstalled: bool = False) -> List[PluginManifest]:
+    def list_manifests(self, *, include_uninstalled: bool = False) -> list[PluginManifest]:
         """列出所有插件的 manifest（契约视图）."""
-        result: List[PluginManifest] = []
+        result: list[PluginManifest] = []
         for metadata in self._registry.list_plugins():
             if not include_uninstalled and metadata.status == PluginStatus.UNINSTALLED:
                 continue
             result.append(adapt_metadata_to_manifest(metadata))
         return result
 
-    def get_manifest(self, plugin_id: str) -> Optional[PluginManifest]:
+    def get_manifest(self, plugin_id: str) -> PluginManifest | None:
         """获取单个插件 manifest，不存在返回 None."""
         metadata = self._registry.get(plugin_id)
         if metadata is None:
@@ -454,7 +455,7 @@ class PluginLifecycleManagerAdapter:
             return "uninstalled"
         return PluginStatusMapper.to_contract_status(metadata.status)
 
-    def to_contract_info(self, plugin_id: str) -> Dict[str, Any]:
+    def to_contract_info(self, plugin_id: str) -> dict[str, Any]:
         """转换为 API 友好的契约信息字典.
 
         不在错误消息中回显 plugin_id（防枚举攻击），调用方负责权限校验。
@@ -511,7 +512,7 @@ class PluginLifecycleManagerAdapter:
     async def load_and_enable(
         self,
         plugin_id: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> IPlugin:
         """一步加载 + on_load：契约层启用入口.
 
@@ -610,7 +611,7 @@ class PluginLifecycleManagerAdapter:
     def _get_or_create_adapter(
         self,
         metadata: PluginMetadata,
-        legacy_instance: Optional[Any] = None,
+        legacy_instance: Any | None = None,
     ) -> LegacyPluginInstanceAdapter:
         with self._lock:
             adapter = self._adapter_cache.get(metadata.id)
@@ -640,7 +641,7 @@ class PluginLifecycleManagerAdapter:
 # ---------------------------------------------------------------------------
 
 
-_adapter_singleton: Optional[PluginLifecycleManagerAdapter] = None
+_adapter_singleton: PluginLifecycleManagerAdapter | None = None
 _adapter_lock = threading.Lock()
 
 

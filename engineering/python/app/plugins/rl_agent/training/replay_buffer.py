@@ -31,7 +31,7 @@ import logging
 import threading
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -236,7 +236,7 @@ class ReplayBuffer:
             for exp in experiences:
                 self._buffer.append(exp)
 
-    def sample(self, batch_size: int = 64, seed: Optional[int] = None) -> list[Experience]:
+    def sample(self, batch_size: int = 64, seed: int | None = None) -> list[Experience]:
         """随机采样 mini-batch.
 
         Args:
@@ -266,7 +266,7 @@ class ReplayBuffer:
             buffer_list = list(self._buffer)
             return [buffer_list[i] for i in indices]
 
-    def sample_arrays(self, batch_size: int = 64, seed: Optional[int] = None) -> dict[str, np.ndarray]:
+    def sample_arrays(self, batch_size: int = 64, seed: int | None = None) -> dict[str, np.ndarray]:
         """随机采样并返回数组形式（便于 PPO 训练器批量计算）.
 
         Args:

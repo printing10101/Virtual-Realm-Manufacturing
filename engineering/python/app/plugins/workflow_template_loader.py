@@ -74,7 +74,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from app.contracts.workflow_template import (
     TEMPLATE_CATEGORIES,
@@ -89,7 +89,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-REQUIRED_FIELDS: Tuple[str, ...] = (
+REQUIRED_FIELDS: tuple[str, ...] = (
     "id",
     "name",
     "version",
@@ -99,7 +99,7 @@ REQUIRED_FIELDS: Tuple[str, ...] = (
     "spec",
 )
 
-OPTIONAL_FIELDS: Tuple[str, ...] = (
+OPTIONAL_FIELDS: tuple[str, ...] = (
     "category",
     "tags",
     "plugin_id",
@@ -132,7 +132,7 @@ _CONTRACT_PATTERN = re.compile(r"^[a-z][a-z0-9_]*@[^\s]+$")
 class TemplateValidationError(ValueError):
     """工作流模板校验失败异常."""
 
-    def __init__(self, errors: List[str]) -> None:
+    def __init__(self, errors: list[str]) -> None:
         self.errors = errors
         super().__init__("; ".join(errors))
 
@@ -142,7 +142,7 @@ class TemplateValidationError(ValueError):
 # ---------------------------------------------------------------------------
 
 
-def validate_template_dict(data: Dict[str, Any]) -> List[str]:
+def validate_template_dict(data: dict[str, Any]) -> list[str]:
     """校验 template dict，返回错误列表（空列表表示通过）.
 
     校验项：
@@ -155,7 +155,7 @@ def validate_template_dict(data: Dict[str, Any]) -> List[str]:
         7. tags 是字符串列表
         8. inputs_schema / parameters 是 dict
     """
-    errors: List[str] = []
+    errors: list[str] = []
 
     # 必填字段
     for field_name in REQUIRED_FIELDS:
@@ -218,7 +218,7 @@ def validate_template_dict(data: Dict[str, Any]) -> List[str]:
 # ---------------------------------------------------------------------------
 
 
-def load_template_from_dict(data: Dict[str, Any]) -> WorkflowTemplateManifest:
+def load_template_from_dict(data: dict[str, Any]) -> WorkflowTemplateManifest:
     """从 dict 构造 WorkflowTemplateManifest（带校验）.
 
     Raises:
@@ -284,7 +284,7 @@ def load_template_from_yaml(path: str | Path) -> WorkflowTemplateManifest:
 
 def load_templates_from_dir(
     templates_dir: str | Path,
-) -> List[WorkflowTemplateManifest]:
+) -> list[WorkflowTemplateManifest]:
     """从目录批量加载所有 template.yaml / template.yml 文件.
 
     用于插件 on_load 时扫描插件根目录下的 templates/ 子目录。
@@ -300,7 +300,7 @@ def load_templates_from_dir(
     if not templates_dir.exists() or not templates_dir.is_dir():
         return []
 
-    results: List[WorkflowTemplateManifest] = []
+    results: list[WorkflowTemplateManifest] = []
     # 优先 template.yaml，兼容 .yml；也支持任意 *.yaml 文件
     yaml_files = sorted(list(templates_dir.glob("*.yaml")) + list(templates_dir.glob("*.yml")))
 
@@ -322,8 +322,8 @@ def load_templates_from_dir(
 
 def load_templates_from_plugin(
     plugin_dir: str | Path,
-    relative_paths: List[str],
-) -> List[WorkflowTemplateManifest]:
+    relative_paths: list[str],
+) -> list[WorkflowTemplateManifest]:
     """根据 plugin.yaml 中声明的 workflow_templates 路径列表加载模板.
 
     Args:
@@ -334,7 +334,7 @@ def load_templates_from_plugin(
         成功加载的 WorkflowTemplateManifest 列表
     """
     plugin_dir = Path(plugin_dir)
-    results: List[WorkflowTemplateManifest] = []
+    results: list[WorkflowTemplateManifest] = []
 
     for rel_path in relative_paths:
         yaml_path = plugin_dir / rel_path
@@ -389,7 +389,7 @@ def _infer_plugin_id(plugin_dir: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def template_to_dict(manifest: WorkflowTemplateManifest) -> Dict[str, Any]:
+def template_to_dict(manifest: WorkflowTemplateManifest) -> dict[str, Any]:
     """把 WorkflowTemplateManifest 序列化为 dict（可写回 YAML）."""
     return {
         "id": manifest.id,
@@ -433,7 +433,7 @@ def template_to_yaml(manifest: WorkflowTemplateManifest) -> str:
 def create_example_template_dict(
     template_id: str = "example_pipeline",
     template_name: str = "示例工作流模板",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """生成示例 template dict（供模板脚手架使用）."""
     return {
         "id": template_id,

@@ -35,7 +35,8 @@ target_trajectory 作为 MSE 监督信号。
 from __future__ import annotations
 
 import logging
-from typing import Any, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 import numpy as np
 

@@ -17,7 +17,7 @@ import sys
 import time
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from app.plugins.plugin_metadata import PluginMetadata
 from app.plugins.plugin_types import (
@@ -29,14 +29,14 @@ logger = logging.getLogger(__name__)
 
 
 class PluginRegistry:
-    _instance: Optional["PluginRegistry"] = None
+    _instance: "PluginRegistry" | None = None
     _instance_lock = threading.Lock()
 
     def __init__(self):
-        self._plugins: Dict[str, PluginMetadata] = {}
-        self._plugins_by_type: Dict[str, List[str]] = {}
-        self._plugins_by_capability: Dict[str, List[str]] = {}
-        self._plugin_instances: Dict[str, Any] = {}
+        self._plugins: dict[str, PluginMetadata] = {}
+        self._plugins_by_type: dict[str, list[str]] = {}
+        self._plugins_by_capability: dict[str, list[str]] = {}
+        self._plugin_instances: dict[str, Any] = {}
         self._lock = threading.Lock()
 
     @classmethod
@@ -94,12 +94,12 @@ class PluginRegistry:
 
             logger.info("Plugin unregistered: %s", plugin_id)
 
-    def get(self, plugin_id: str) -> Optional[PluginMetadata]:
+    def get(self, plugin_id: str) -> PluginMetadata | None:
         # 安全修复：保护 _plugins 字典的并发读
         with self._lock:
             return self._plugins.get(plugin_id)
 
-    def get_plugin_instance(self, plugin_id: str) -> Optional[Any]:
+    def get_plugin_instance(self, plugin_id: str) -> Any | None:
         # 安全修复：保护 _plugin_instances 字典的并发读
         with self._lock:
             return self._plugin_instances.get(plugin_id)
@@ -111,10 +111,10 @@ class PluginRegistry:
 
     def list_plugins(
         self,
-        status: Optional[PluginStatus] = None,
-        plugin_type: Optional[str] = None,
-        capability: Optional[str] = None,
-    ) -> List[PluginMetadata]:
+        status: PluginStatus | None = None,
+        plugin_type: str | None = None,
+        capability: str | None = None,
+    ) -> list[PluginMetadata]:
         # 安全修复：保护 _plugins 字典的并发读，构建快照避免迭代时被修改
         with self._lock:
             result = list(self._plugins.values())
@@ -128,12 +128,12 @@ class PluginRegistry:
 
         return result
 
-    def get_plugins_by_type(self, plugin_type: str) -> List[str]:
+    def get_plugins_by_type(self, plugin_type: str) -> list[str]:
         # 安全修复：保护 _plugins_by_type 字典的并发读
         with self._lock:
             return list(self._plugins_by_type.get(plugin_type, []))
 
-    def get_plugins_by_capability(self, capability: str) -> List[str]:
+    def get_plugins_by_capability(self, capability: str) -> list[str]:
         # 安全修复：保护 _plugins_by_capability 字典的并发读
         with self._lock:
             return list(self._plugins_by_capability.get(capability, []))
@@ -153,13 +153,13 @@ class PluginRegistry:
                 elif status == PluginStatus.DISABLED:
                     self._plugins[plugin_id].disabled_at = time.time()
 
-    def update_config(self, plugin_id: str, config: Dict[str, Any]) -> None:
+    def update_config(self, plugin_id: str, config: dict[str, Any]) -> None:
         # 安全修复：保护 _plugins 字典的并发读写
         with self._lock:
             if plugin_id in self._plugins:
                 self._plugins[plugin_id].config.update(config)
 
-    def get_all_metadata(self) -> Dict[str, Any]:
+    def get_all_metadata(self) -> dict[str, Any]:
         # 安全修复：保护所有字典的并发读，构建快照
         with self._lock:
             return {
@@ -172,14 +172,14 @@ class PluginRegistry:
 class PluginDiscovery:
     def __init__(
         self,
-        plugin_dirs: Optional[List[str]] = None,
-        user_dirs: Optional[List[str]] = None,
+        plugin_dirs: list[str] | None = None,
+        user_dirs: list[str] | None = None,
     ):
         self.plugin_dirs = plugin_dirs or []
         self.user_dirs = user_dirs or []
         self._registry = PluginRegistry.get_instance()
 
-    def discover(self) -> List[PluginMetadata]:
+    def discover(self) -> list[PluginMetadata]:
         discovered = []
 
         all_dirs = self.plugin_dirs + self.user_dirs
@@ -194,7 +194,7 @@ class PluginDiscovery:
         logger.info("Discovered %s plugins", len(discovered))
         return discovered
 
-    def _scan_directory(self, directory: Path) -> List[PluginMetadata]:
+    def _scan_directory(self, directory: Path) -> list[PluginMetadata]:
         plugins = []
 
         for item in directory.iterdir():
@@ -205,7 +205,7 @@ class PluginDiscovery:
 
         return plugins
 
-    def _load_plugin_meta(self, plugin_dir: Path) -> Optional[PluginMetadata]:
+    def _load_plugin_meta(self, plugin_dir: Path) -> PluginMetadata | None:
         plugin_json = plugin_dir / "plugin.json"
 
         if not plugin_json.exists():
@@ -236,7 +236,7 @@ class PluginDiscovery:
             logger.error("Failed to load plugin from %s: %s", plugin_dir, e)
             return None
 
-    def _validate_metadata(self, data: Dict[str, Any], plugin_dir: Path) -> None:
+    def _validate_metadata(self, data: dict[str, Any], plugin_dir: Path) -> None:
         required_fields = ["id", "name", "version"]
         for field_name in required_fields:
             if field_name not in data:
@@ -259,7 +259,7 @@ class PluginDiscovery:
 
 
 class PluginLoader:
-    def __init__(self, registry: Optional[PluginRegistry] = None):
+    def __init__(self, registry: PluginRegistry | None = None):
         self._registry = registry or PluginRegistry.get_instance()
 
     def load_plugin(self, metadata: PluginMetadata) -> Any:
@@ -353,17 +353,17 @@ class PluginLoader:
 class PluginLifecycleManager:
     def __init__(
         self,
-        registry: Optional[PluginRegistry] = None,
-        loader: Optional[PluginLoader] = None,
+        registry: PluginRegistry | None = None,
+        loader: PluginLoader | None = None,
     ):
         self._registry = registry or PluginRegistry.get_instance()
         self._loader = loader or PluginLoader(self._registry)
-        self._context: Dict[str, Any] = {}
+        self._context: dict[str, Any] = {}
 
     def set_context(self, key: str, value: Any) -> None:
         self._context[key] = value
 
-    def get_context(self, key: str) -> Optional[Any]:
+    def get_context(self, key: str) -> Any | None:
         return self._context.get(key)
 
     def initialize_plugin(self, plugin_id: str) -> None:
@@ -454,7 +454,7 @@ class PluginLifecycleManager:
         self._registry.unregister(plugin_id)
         logger.info("Plugin uninstalled: %s", plugin_id)
 
-    def discover_and_register_all(self, plugin_dirs: List[str], user_dirs: Optional[List[str]] = None) -> int:
+    def discover_and_register_all(self, plugin_dirs: list[str], user_dirs: list[str] | None = None) -> int:
         discovery = PluginDiscovery(plugin_dirs=plugin_dirs, user_dirs=user_dirs)
         plugins = discovery.discover()
 
@@ -521,7 +521,7 @@ class PluginLifecycleManager:
                     exc_info=True,
                 )
 
-    def get_plugin_info(self, plugin_id: str) -> Dict[str, Any]:
+    def get_plugin_info(self, plugin_id: str) -> dict[str, Any]:
         metadata = self._registry.get(plugin_id)
         if metadata is None:
             raise KeyError(f"Plugin '{plugin_id}' not found")
@@ -534,21 +534,21 @@ class PluginLifecycleManager:
 
 
 class DependencyResolver:
-    def __init__(self, registry: Optional[PluginRegistry] = None):
+    def __init__(self, registry: PluginRegistry | None = None):
         self._registry = registry or PluginRegistry.get_instance()
 
-    def resolve_dependencies(self, plugin_id: str) -> List[str]:
+    def resolve_dependencies(self, plugin_id: str) -> list[str]:
         metadata = self._registry.get(plugin_id)
         if metadata is None:
             raise KeyError(f"Plugin '{plugin_id}' not found")
 
-        visited: Set[str] = set()
-        order: List[str] = []
+        visited: set[str] = set()
+        order: list[str] = []
         self._dfs(plugin_id, visited, order)
 
         return order
 
-    def _dfs(self, plugin_id: str, visited: Set[str], order: List[str]) -> None:
+    def _dfs(self, plugin_id: str, visited: set[str], order: list[str]) -> None:
         if plugin_id in visited:
             return
 
@@ -583,7 +583,7 @@ class DependencyResolver:
             # packaging 不可用或版本字符串格式异常时，宽松视为兼容
             return True
 
-    def get_dependency_tree(self, plugin_id: str, depth: int = 0) -> Dict[str, Any]:
+    def get_dependency_tree(self, plugin_id: str, depth: int = 0) -> dict[str, Any]:
         metadata = self._registry.get(plugin_id)
         if metadata is None:
             return {}
@@ -617,14 +617,14 @@ class _PluginSystemHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._plugin_manager: Optional[PluginLifecycleManager] = None
-        self._dependency_resolver: Optional[DependencyResolver] = None
+        self._plugin_manager: PluginLifecycleManager | None = None
+        self._dependency_resolver: DependencyResolver | None = None
 
     def init(
         self,
-        plugin_dirs: Optional[List[str]] = None,
-        user_dirs: Optional[List[str]] = None,
-        context: Optional[Dict[str, Any]] = None,
+        plugin_dirs: list[str] | None = None,
+        user_dirs: list[str] | None = None,
+        context: dict[str, Any] | None = None,
     ) -> PluginLifecycleManager:
         """强制初始化插件系统（与重构前 init_plugin_system 行为一致）。"""
         with self._lock:
@@ -688,9 +688,9 @@ _holder = _PluginSystemHolder()
 
 
 def init_plugin_system(
-    plugin_dirs: Optional[List[str]] = None,
-    user_dirs: Optional[List[str]] = None,
-    context: Optional[Dict[str, Any]] = None,
+    plugin_dirs: list[str] | None = None,
+    user_dirs: list[str] | None = None,
+    context: dict[str, Any] | None = None,
 ) -> PluginLifecycleManager:
     """初始化插件系统，行为与重构前完全一致。"""
     return _holder.init(

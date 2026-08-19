@@ -49,7 +49,7 @@ import sys
 import threading
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Tuple, Type
+from typing import Any
 
 from app.contracts.plugin import IPlugin, PluginManifest
 from app.plugins.contract_adapter import LegacyPluginInstanceAdapter
@@ -94,7 +94,7 @@ def parse_entrypoint(
     entrypoint: str,
     *,
     fmt: EntryPointFormat = EntryPointFormat.AUTO,
-) -> Tuple[EntryPointFormat, str, Optional[str]]:
+) -> tuple[EntryPointFormat, str, str | None]:
     """解析入口点字符串.
 
     Args:
@@ -161,7 +161,7 @@ def _safe_module_name(plugin_id: str) -> str:
 def load_class_from_module(
     module_path: str,
     class_name: str,
-) -> Type[Any]:
+) -> type[Any]:
     """从 Python 模块路径加载类.
 
     Args:
@@ -205,9 +205,9 @@ def load_class_from_file(
     file_path: str | Path,
     class_name: str,
     *,
-    module_name: Optional[str] = None,
-    plugin_dir: Optional[str | Path] = None,
-) -> Type[Any]:
+    module_name: str | None = None,
+    plugin_dir: str | Path | None = None,
+) -> type[Any]:
     """从文件路径加载类（legacy 格式）.
 
     模拟 legacy PluginLoader 的行为：
@@ -296,10 +296,10 @@ def load_class_from_file(
 def load_plugin_class(
     entrypoint: str,
     *,
-    plugin_dir: Optional[str | Path] = None,
+    plugin_dir: str | Path | None = None,
     fmt: EntryPointFormat = EntryPointFormat.AUTO,
-    module_name: Optional[str] = None,
-) -> Type[Any]:
+    module_name: str | None = None,
+) -> type[Any]:
     """统一入口点加载：根据格式选择加载策略.
 
     Args:
@@ -325,7 +325,7 @@ def load_plugin_class(
     if class_name:
         candidate_names.insert(0, class_name)
 
-    last_error: Optional[Exception] = None
+    last_error: Exception | None = None
     for name in candidate_names:
         try:
             return load_class_from_file(
@@ -374,7 +374,7 @@ def _build_legacy_metadata_from_manifest(
 
 
 def create_plugin_instance(
-    cls: Type[Any],
+    cls: type[Any],
     manifest: PluginManifest,
     *,
     plugin_path: str = "",
@@ -452,7 +452,7 @@ def create_plugin_instance(
 def load_plugin_from_manifest(
     manifest: PluginManifest,
     *,
-    plugin_dir: Optional[str | Path] = None,
+    plugin_dir: str | Path | None = None,
 ) -> IPlugin:
     """从 manifest 完整加载插件：解析 entrypoint → 加载类 → 实例化.
 
@@ -493,11 +493,11 @@ class ExplicitPluginRegistry:
     线程安全。
     """
 
-    _instance: Optional["ExplicitPluginRegistry"] = None
+    _instance: "ExplicitPluginRegistry" | None = None
     _instance_lock = threading.Lock()
 
     def __init__(self) -> None:
-        self._classes: dict[str, Type[Any]] = {}
+        self._classes: dict[str, type[Any]] = {}
         self._lock = threading.RLock()
 
     @classmethod
@@ -513,7 +513,7 @@ class ExplicitPluginRegistry:
         with cls._instance_lock:
             cls._instance = None
 
-    def register(self, plugin_id: str, cls: Type[Any]) -> None:
+    def register(self, plugin_id: str, cls: type[Any]) -> None:
         """注册插件类. 重复注册抛 ValueError."""
         with self._lock:
             if plugin_id in self._classes:
@@ -524,7 +524,7 @@ class ExplicitPluginRegistry:
         with self._lock:
             return self._classes.pop(plugin_id, None) is not None
 
-    def get(self, plugin_id: str) -> Optional[Type[Any]]:
+    def get(self, plugin_id: str) -> type[Any] | None:
         with self._lock:
             return self._classes.get(plugin_id)
 
@@ -540,8 +540,8 @@ class ExplicitPluginRegistry:
 def load_explicit_plugin(
     manifest: PluginManifest,
     *,
-    registry: Optional[ExplicitPluginRegistry] = None,
-) -> Optional[IPlugin]:
+    registry: ExplicitPluginRegistry | None = None,
+) -> IPlugin | None:
     """从显式注册表加载插件.
 
     若 manifest.id 在 ExplicitPluginRegistry 中已注册，直接用注册的类实例化；
@@ -562,8 +562,8 @@ def load_explicit_plugin(
 def load_plugin(
     manifest: PluginManifest,
     *,
-    plugin_dir: Optional[str | Path] = None,
-    registry: Optional[ExplicitPluginRegistry] = None,
+    plugin_dir: str | Path | None = None,
+    registry: ExplicitPluginRegistry | None = None,
 ) -> IPlugin:
     """统一插件加载入口：优先显式注册表，回退到 entrypoint 加载.
 

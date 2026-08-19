@@ -11,7 +11,8 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -33,29 +34,29 @@ class WorkerConfig:
     max_restarts: int = 3
     health_check_interval: float = 30.0
     restart_delay: float = 5.0
-    resource_limits: Dict[str, Any] = field(default_factory=dict)
-    environment: Dict[str, str] = field(default_factory=dict)
+    resource_limits: dict[str, Any] = field(default_factory=dict)
+    environment: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class WorkerInfo:
     config: WorkerConfig
     status: WorkerStatus = WorkerStatus.STOPPED
-    process: Optional[multiprocessing.Process] = None
-    pid: Optional[int] = None
-    port: Optional[int] = None
-    started_at: Optional[float] = None
+    process: multiprocessing.Process | None = None
+    pid: int | None = None
+    port: int | None = None
+    started_at: float | None = None
     restart_count: int = 0
-    last_health_check: Optional[float] = None
-    last_error: Optional[str] = None
+    last_health_check: float | None = None
+    last_error: str | None = None
 
 
 class PluginWorkerManager:
-    _instance: Optional["PluginWorkerManager"] = None
+    _instance: "PluginWorkerManager" | None = None
 
     def __init__(self):
-        self._workers: Dict[str, WorkerInfo] = {}
-        self._health_check_callbacks: List[Callable] = []
+        self._workers: dict[str, WorkerInfo] = {}
+        self._health_check_callbacks: list[Callable] = []
         self._running = False
 
     @classmethod
@@ -157,7 +158,7 @@ class PluginWorkerManager:
 
         return new_info
 
-    def health_check(self, plugin_id: Optional[str] = None) -> Dict[str, Any]:
+    def health_check(self, plugin_id: str | None = None) -> dict[str, Any]:
         results: dict[str, Any] = {}
 
         plugin_ids = [plugin_id] if plugin_id else list(self._workers.keys())
@@ -197,7 +198,7 @@ class PluginWorkerManager:
 
         return results
 
-    def get_worker_info(self, plugin_id: str) -> Optional[Dict[str, Any]]:
+    def get_worker_info(self, plugin_id: str) -> dict[str, Any] | None:
         info = self._workers.get(plugin_id)
         if info is None:
             return None
@@ -213,7 +214,7 @@ class PluginWorkerManager:
             "uptime": time.time() - info.started_at if info.started_at else 0,
         }
 
-    def list_workers(self) -> List[Dict[str, Any]]:
+    def list_workers(self) -> list[dict[str, Any]]:
         result = []
         for pid in self._workers:
             info = self.get_worker_info(pid)

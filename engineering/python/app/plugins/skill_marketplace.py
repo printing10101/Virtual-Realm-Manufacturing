@@ -7,7 +7,7 @@ import threading
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.plugins.skill_loader import (
     SkillLevel,
@@ -26,7 +26,7 @@ class MarketListing:
     version: str
     description: str
     author: str
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     downloads: int = 0
     avg_rating: float = 0.0
     rating_count: int = 0
@@ -35,16 +35,16 @@ class MarketListing:
 
 
 class SkillMarketplace:
-    def __init__(self, market_dir: Optional[str] = None):
+    def __init__(self, market_dir: str | None = None):
         self.market_dir = market_dir or DEFAULT_MARKET_DIR
         os.makedirs(self.market_dir, exist_ok=True)
         self._listings_file = os.path.join(self.market_dir, "listings.json")
         # 修复 [并发安全]：保护 ``_listings`` 内存视图与 listings.json 文件写，
         # 避免多线程下 publish/download/rate/unpublish 之间的覆盖与丢更新。
         self._lock = threading.Lock()
-        self._listings: Dict[str, MarketListing] = self._load_listings()
+        self._listings: dict[str, MarketListing] = self._load_listings()
 
-    def _load_listings(self) -> Dict[str, MarketListing]:
+    def _load_listings(self) -> dict[str, MarketListing]:
         if not os.path.exists(self._listings_file):
             return {}
         try:
@@ -86,8 +86,8 @@ class SkillMarketplace:
         skill_id: str,
         author: str,
         level: SkillLevel = SkillLevel.PROJECT,
-        sub_id: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        sub_id: str | None = None,
+    ) -> dict[str, Any] | None:
         loader = get_skill_loader()
         package = loader.export_skill(skill_id)
         if package is None:
@@ -122,7 +122,7 @@ class SkillMarketplace:
             "package_path": pkg_file,
         }
 
-    def _build_package(self, package: Dict[str, Any]) -> str:
+    def _build_package(self, package: dict[str, Any]) -> str:
         skill_id = package["skill_id"]
         package_file = os.path.join(
             self.market_dir,
@@ -148,7 +148,7 @@ class SkillMarketplace:
         logger.info("Package built: %s", package_file)
         return package_file
 
-    def list_available(self, tag: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_available(self, tag: str | None = None) -> list[dict[str, Any]]:
         # 修复 [并发安全]：持锁遍历 _listings，避免其他线程在迭代过程中增删
         # 键引发 RuntimeError: dictionary changed size during iteration。
         with self._lock:
@@ -176,7 +176,7 @@ class SkillMarketplace:
         results.sort(key=lambda x: (x["avg_rating"], x["downloads"]), reverse=True)
         return results
 
-    def search(self, query: str) -> List[Dict[str, Any]]:
+    def search(self, query: str) -> list[dict[str, Any]]:
         # 修复 [并发安全]：持锁读取快照后再做匹配。
         with self._lock:
             snapshot = list(self._listings.items())
@@ -206,8 +206,8 @@ class SkillMarketplace:
         self,
         skill_id: str,
         target_level: SkillLevel = SkillLevel.PROJECT,
-        target_sub_id: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        target_sub_id: str | None = None,
+    ) -> dict[str, Any] | None:
         loader = get_skill_loader()
 
         matching_files = [f for f in os.listdir(self.market_dir) if f.startswith(f"{skill_id}_") and f.endswith(".skz")]
@@ -247,7 +247,7 @@ class SkillMarketplace:
             "sub_id": target_sub_id,
         }
 
-    def rate_skill(self, skill_id: str, rating: float, agent_id: str = "") -> Dict[str, Any]:
+    def rate_skill(self, skill_id: str, rating: float, agent_id: str = "") -> dict[str, Any]:
         loader = get_skill_loader()
         result = loader.rate_skill(skill_id, rating)
 
@@ -282,7 +282,7 @@ class SkillMarketplace:
         logger.info("Skill unpublished: %s", skill_id)
         return True
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         # 修复 [并发安全]：持锁访问 _listings 的可变视图，避免并发迭代出错。
         with self._lock:
             listings_view = self._listings.values()
@@ -302,9 +302,9 @@ class _MarketplaceHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[SkillMarketplace] = None
+        self._instance: SkillMarketplace | None = None
 
-    def get(self, market_dir: Optional[str] = None) -> SkillMarketplace:
+    def get(self, market_dir: str | None = None) -> SkillMarketplace:
         # 快速路径：已存在则直接返回，避免持锁开销
         if self._instance is not None:
             return self._instance
@@ -322,7 +322,7 @@ class _MarketplaceHolder:
 _holder = _MarketplaceHolder()
 
 
-def get_marketplace(market_dir: Optional[str] = None) -> SkillMarketplace:
+def get_marketplace(market_dir: str | None = None) -> SkillMarketplace:
     """获取共享的 :class:`SkillMarketplace` 单例；首次访问时懒初始化。
 
     Returns:
