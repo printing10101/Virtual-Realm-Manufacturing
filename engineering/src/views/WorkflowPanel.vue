@@ -1,5 +1,4 @@
 <template>
-  <!-- TODO: 巨型组件拆分 — 工作流编排功能已拆分为 WorkflowPageHeader / WorkflowListPanel / WorkflowDag / WorkflowEventLog / WorkflowSubmitDialog 五个子组件 -->
   <div class="workflow-panel-page">
     <!-- ===== Page Header ===== -->
     <WorkflowPageHeader
@@ -32,7 +31,6 @@
       />
 
       <!-- ===== Right: DAG Visualization + Event Log ===== -->
-      <!-- TODO: 已拆分到 WorkflowDag / WorkflowEventLog 子组件 -->
       <div class="workflow-detail-panel">
         <WorkflowDag
           :nodes="dagLayout.nodes"
@@ -66,7 +64,6 @@
     </div>
 
     <!-- ===== Submit / Resume Dialog ===== -->
-    <!-- TODO: 已拆分到 WorkflowSubmitDialog 子组件 -->
     <WorkflowSubmitDialog
       :visible="submitDialogVisible"
       :mode="submitMode"
@@ -199,7 +196,6 @@ const streamStatusText = computed(() => {
 // ---------------------------------------------------------------------------
 // 节点状态：合并 SSE nodeStatuses + 持久化 node_statuses
 // ---------------------------------------------------------------------------
-// TODO: 合并节点状态映射，供 WorkflowDag 子组件使用
 const nodeStatusMap = computed<Record<string, TaskStatus>>(() => {
   const map: Record<string, TaskStatus> = {}
   // SSE 节点状态（高优先级）
@@ -453,7 +449,6 @@ watch(
 </script>
 
 <style scoped>
-/* TODO: 巨型组件拆分 — 样式已迁移到子组件中 */
 .workflow-panel-page {
   padding: 16px;
   height: 100%;

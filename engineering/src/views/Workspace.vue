@@ -70,12 +70,9 @@
 </template>
 
 <script setup lang="ts">
-// TODO(P1-3): 巨型组件拆分 — 本文件 1087 行，应拆分为子组件/composable：
-//   - 工作区列表/网格 → WorkspaceGrid.vue
-//   - 项目卡片 → ProjectCard.vue
-//   - 创建/编辑弹窗 → ProjectDialog.vue
-//   - 数据获取逻辑 → useWorkspace.ts
-// 拆分时注意保持 props/emits 接口不变，逐模块迁移并验证。
+// 注：本文件已从 1087 行拆至 379 行——训练表单/监控/预测/模型列表
+// 已分别抽为 WorkspaceTrainForm / WorkspaceTrainMonitor / WorkspacePredictTab /
+// WorkspaceModelsTab，插件面板由 WorkspacePanelHost 渲染。剩余编排逻辑保持内联。
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
