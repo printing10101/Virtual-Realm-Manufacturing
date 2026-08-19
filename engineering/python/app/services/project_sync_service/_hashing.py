@@ -143,6 +143,9 @@ class _HashingMixin:
                 return ""
             return self._sha256_json(spec.to_dict() if hasattr(spec, "to_dict") else str(spec))
         except Exception:
+            # 哈希失败静默返回 "" 会导致 project_sync 的变更检测失效
+            #（内容变更可能被误判为无变化），记录日志便于排查。
+            logger.warning("_lookup_config_hash failed for spec %r", spec_name, exc_info=True)
             return ""
 
     async def _lookup_snapshot_hash(self, snapshot_id: str) -> str:

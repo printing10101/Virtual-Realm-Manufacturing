@@ -155,6 +155,7 @@ async def get_system_status():
         sessionmaker = get_sessionmaker()
         components["database"] = "ok" if sessionmaker is not None else "unavailable"
     except Exception:
+        logger.warning("[system/status] database health check failed", exc_info=True)
         components["database"] = "error"
 
     # 任务管理器
@@ -162,6 +163,7 @@ async def get_system_status():
         await task_manager.list_tasks(limit=1)
         components["tasks"] = "ok"
     except Exception:
+        logger.warning("[system/status] task manager health check failed", exc_info=True)
         components["tasks"] = "error"
 
     # 插件系统
@@ -171,6 +173,7 @@ async def get_system_status():
         get_plugin_manager()
         components["plugins"] = "ok"
     except Exception:
+        logger.warning("[system/status] plugin manager health check failed", exc_info=True)
         components["plugins"] = "error"
 
     return success(
