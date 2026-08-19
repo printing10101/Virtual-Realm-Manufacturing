@@ -86,7 +86,8 @@ class TrajectoryStep:
             return self.observation
         if isinstance(self.observation, dict):
             # 截断过长的 content 字段
-            result = {}
+            # 值类型混合（str / list / 原样值），显式 Any 注解
+            result: dict[str, Any] = {}
             for k, v in self.observation.items():
                 if isinstance(v, str) and len(v) > 500:
                     result[k] = v[:500] + "...（截断）"

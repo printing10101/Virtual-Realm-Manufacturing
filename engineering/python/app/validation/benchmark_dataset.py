@@ -186,7 +186,7 @@ class BenchmarkDataset:
         self._cache: dict[str, PartMetadata] = {}
 
     def list_parts(self) -> list[str]:
-        parts = []
+        parts: list[str] = []
         if not self.root_dir.exists():
             return parts
         for entry in self.root_dir.iterdir():

@@ -107,7 +107,9 @@ def register_middleware_stack(
     # =============================================================================
     if config.security.rate_limit_enabled:
         app.state.limiter = limiter
-        app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+        # RateLimitExceeded 是 Exception 子类；starlette 泛型签名不接受更具体的
+        # 处理器类型（运行时正常），类型层面 ignore
+        app.add_exception_handler(RateLimitExceeded, rate_limit_handler)  # type: ignore[arg-type]
         logger.info("Rate limiting enabled (default: 100 req/min per IP, per-endpoint overrides apply)")
     else:
         logger.info("Rate limiting is disabled via config")

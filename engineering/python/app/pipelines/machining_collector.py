@@ -151,9 +151,11 @@ class CollectorStats:
         }
         if self.started_at is not None:
             d["started_at"] = self.started_at
-        if self.stopped_at is not None:
+        if self.stopped_at is not None and self.started_at is not None:
             d["stopped_at"] = self.stopped_at
             d["runtime_seconds"] = round(self.stopped_at - self.started_at, 3)
+        elif self.stopped_at is not None:
+            d["stopped_at"] = self.stopped_at
         return d
 
 

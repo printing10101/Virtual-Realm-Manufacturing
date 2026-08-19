@@ -583,7 +583,8 @@ async def export_simulation_animation(
                 import imageio
 
                 frames_array = [np.array(frame) for frame in frames]
-                imageio.mimsave(buffer, frames_array, format="MP4", fps=10)
+                # imageio.v2.mimsave 接受 fps 参数（v3 默认模块的 stub 不完整）
+                imageio.v2.mimsave(buffer, frames_array, format="MP4", fps=10)  # type: ignore[call-overload]
                 media_type = "video/mp4"
                 filename = f"simulation_{uuid.uuid4().hex[:8]}.mp4"
             except ImportError:

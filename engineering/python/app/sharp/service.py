@@ -224,9 +224,10 @@ class SharpService:
             self._query_api = None
 
     def _load_rag_engine(self) -> None:
-        """加载 RagRetrievalEngine 单例（复用 rag/routes 的懒加载逻辑）。"""
+        """加载 RagRetrievalEngine 单例（复用 rag/service 的懒加载逻辑）。"""
         try:
-            from app.rag.routes import _get_rag_engine
+            # 2026-08-20 修复：_get_rag_engine 实际定义在 app.rag.service（原误写 app.rag.routes）
+            from app.rag.service import _get_rag_engine
 
             self._rag_engine = _get_rag_engine()
             logger.info("SHARP: RagRetrievalEngine loaded")

@@ -196,14 +196,18 @@ class IDatasetStore(ABC):
         """获取版本。version=None 返回最新 published 版本。"""
 
     @abstractmethod
-    async def read(
+    def read(
         self,
         dataset_id: str,
         version: Optional[str] = None,
         *,
         batch_size: int = 1000,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """流式读取数据集版本内容（按 batch_size 分批）。"""
+        """流式读取数据集版本内容（按 batch_size 分批）。
+
+        注意：这是 async 生成器（用 ``async for`` 消费），因此声明为
+        普通 ``def`` 而非 ``async def``（mypy 类型正确性要求）。
+        """
 
     @abstractmethod
     async def list_versions(self, dataset_id: str) -> list[DatasetVersion]:

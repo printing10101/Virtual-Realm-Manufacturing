@@ -267,9 +267,20 @@ class VoxelCutter(_PyVoxelCutter):
         try:
             stock_mesh = trimesh.load(str(stock_stl_path), file_type="stl")
             if not isinstance(stock_mesh, trimesh.Trimesh):
-                stock_mesh = stock_mesh if hasattr(stock_mesh, "geometry") else None
-                if stock_mesh is None or not isinstance(stock_mesh, trimesh.Trimesh):
-                    return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL解析失败")
+                # Scene 类型：尝试取首个几何体（trimesh.load 可能返回 Scene）
+                scene_geoms = getattr(stock_mesh, "geometry", None)
+                if isinstance(scene_geoms, dict) and scene_geoms:
+                    first_mesh = next(iter(scene_geoms.values()))
+                    if isinstance(first_mesh, trimesh.Trimesh):
+                        stock_mesh = first_mesh
+                    else:
+                        return self._generate_fallback_result(
+                            task_id, output_dir, segments, start_time, "STL解析失败"
+                        )
+                else:
+                    return self._generate_fallback_result(
+                        task_id, output_dir, segments, start_time, "STL解析失败"
+                    )
         except (OSError, ValueError, TypeError, RuntimeError) as load_err:
             logger.warning("STL文件加载失败: %s", load_err, exc_info=True)
             return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL文件加载失败")

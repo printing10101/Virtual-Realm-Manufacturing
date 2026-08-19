@@ -22,8 +22,8 @@ try:
     from app.database import models as db_models
 
     if not hasattr(db_models, "TrainingTask"):
-        db_models.TrainingTask = MagicMock()
+        db_models.TrainingTask = MagicMock()  # type: ignore[misc]  # 测试运行时补 mock
     if not hasattr(db_models, "TaskStatusEnum"):
-        db_models.TaskStatusEnum = MagicMock()
+        db_models.TaskStatusEnum = MagicMock()  # type: ignore[misc]  # 测试运行时补 mock
 except ImportError:
     pass

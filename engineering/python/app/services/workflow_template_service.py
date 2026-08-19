@@ -275,7 +275,8 @@ class WorkflowTemplateService(BaseSingletonService):
         """
         limit = max(1, min(100, limit))
         offset = max(0, offset)
-        valid_sort = {
+        # SQLAlchemy 表达式字典：值类型为 desc() 表达式，显式 Any 注解
+        valid_sort: dict[str, Any] = {
             "downloads": desc(TemplateORM.downloads),
             "avg_rating": desc(TemplateORM.avg_rating),
             "created_at": desc(TemplateORM.created_at),

@@ -1,4 +1,4 @@
-﻿"""IDatasetStore 的 SQLite + 文件系统实现.
+"""IDatasetStore 的 SQLite + 文件系统实现.
 
 对应 ADR-005 阶段 2 / core-contracts-design.md 第 4 章。
 
@@ -342,7 +342,7 @@ class DatasetStore(IDatasetStore):
 
             return _version_orm_to_contract(orm, schema)
 
-    async def read(  # type: ignore[override]
+    async def read(
         self,
         dataset_id: str,
         version: Optional[str] = None,

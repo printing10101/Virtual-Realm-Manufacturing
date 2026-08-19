@@ -321,7 +321,7 @@ class YamlLoader:
     def _read_yaml(self, path: Path) -> dict[str, Any]:
         """读取并解析 YAML 文件。"""
         try:
-            import yaml
+            import yaml  # type: ignore[import-untyped]  # PyYAML 无官方 stub，可选依赖
         except ImportError as e:
             raise ImportError("PyYAML is required for YAML loading. Install with: pip install pyyaml") from e
 

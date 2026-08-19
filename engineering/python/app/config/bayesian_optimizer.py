@@ -221,11 +221,11 @@ class BayesianOptimizer:
 
         # 迭代
         while self.eval_count < max_evals:
-            cfg = self.suggest()
-            if cfg is None:
+            suggested_cfg = self.suggest()
+            if suggested_cfg is None:
                 break
-            score = objective(cfg)
-            self.update(cfg, score)
+            score = objective(suggested_cfg)
+            self.update(suggested_cfg, score)
 
         return self.best()
 
