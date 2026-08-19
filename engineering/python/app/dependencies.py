@@ -24,7 +24,8 @@
 from __future__ import annotations
 
 import threading
-from typing import Callable, Generic, Optional, TypeVar
+from typing import Generic, TypeVar
+from collections.abc import Callable
 
 T = TypeVar("T")
 
@@ -47,7 +48,7 @@ class _LazySingleton(Generic[T]):
 
     def __init__(self, factory: Callable[[], T]) -> None:
         self._factory = factory
-        self._instance: Optional[T] = None
+        self._instance: T | None = None
         self._lock = threading.Lock()
         self._initialized = False
 

@@ -10,7 +10,7 @@ import os
 import json
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 from pathlib import Path
 
 from app.ai.lnn.core import ModelType

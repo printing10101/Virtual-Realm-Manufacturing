@@ -12,7 +12,7 @@ import argparse
 import logging
 import os
 import time
-from typing import Dict, List, Optional, Tuple
+
 
 import numpy as np
 import torch
@@ -127,7 +127,7 @@ class SyntheticCuttingForceDataset(Dataset):
     def __len__(self) -> int:
         return self.num_samples
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         return (
             torch.tensor(self.inputs_norm[idx]),
             torch.tensor(self.targets[idx]),
@@ -150,13 +150,13 @@ class CuttingForceTrainer:
 
     def __init__(
         self,
-        model: Optional[CuttingForcePINN] = None,
+        model: CuttingForcePINN | None = None,
         learning_rate: float = 1e-3,
         physics_weight: float = 0.1,
         epochs: int = 100,
         batch_size: int = 64,
         device: str = "cpu",
-        save_dir: Optional[str] = None,
+        save_dir: str | None = None,
         seed: int = 42,
     ) -> None:
         # 必须在任何随机操作之前调用，确保可复现性
@@ -180,7 +180,7 @@ class CuttingForceTrainer:
         self.save_dir = save_dir
         os.makedirs(self.save_dir, exist_ok=True)
 
-        self.history: Dict[str, List[float]] = {
+        self.history: dict[str, list[float]] = {
             "train_loss": [],
             "val_loss": [],
             "data_loss": [],
@@ -189,9 +189,9 @@ class CuttingForceTrainer:
 
     def train(
         self,
-        train_dataset: Optional[SyntheticCuttingForceDataset] = None,
-        val_dataset: Optional[SyntheticCuttingForceDataset] = None,
-    ) -> Dict[str, List[float]]:
+        train_dataset: SyntheticCuttingForceDataset | None = None,
+        val_dataset: SyntheticCuttingForceDataset | None = None,
+    ) -> dict[str, list[float]]:
         """执行训练。
 
         Args:
@@ -230,9 +230,9 @@ class CuttingForceTrainer:
         for epoch in range(1, self.epochs + 1):
             # 训练阶段
             self.model.train()
-            train_losses: List[float] = []
-            train_data_losses: List[float] = []
-            train_phys_losses: List[float] = []
+            train_losses: list[float] = []
+            train_data_losses: list[float] = []
+            train_phys_losses: list[float] = []
 
             for inputs, targets, kienzle in train_loader:
                 inputs = inputs.to(self.device)
@@ -252,7 +252,7 @@ class CuttingForceTrainer:
 
             # 验证阶段
             self.model.eval()
-            val_losses: List[float] = []
+            val_losses: list[float] = []
             with torch.no_grad():
                 for inputs, targets, kienzle in val_loader:
                     inputs = inputs.to(self.device)

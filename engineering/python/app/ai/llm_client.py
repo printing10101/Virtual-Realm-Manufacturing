@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -42,7 +42,7 @@ DEFAULT_RETRY_DELAY = 1.0
 _shared_http_client: httpx.AsyncClient | None = None
 # [H1] asyncio.Lock 懒初始化：模块级创建会绑定到导入时的事件循环，
 # 在多事件循环场景（如 FastAPI + 测试）下抛 RuntimeError。
-_shared_http_client_lock: Optional[asyncio.Lock] = None
+_shared_http_client_lock: asyncio.Lock | None = None
 
 # 共享连接池配置：默认 60s 总超时，5s 连接超时，最多 100 连接，20 keepalive
 _SHARED_TIMEOUT = httpx.Timeout(60.0, connect=5.0)

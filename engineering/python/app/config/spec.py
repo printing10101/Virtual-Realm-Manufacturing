@@ -30,7 +30,7 @@ import itertools
 import random
 import threading
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from app.config.yaml_loader import (
     flatten_dict,

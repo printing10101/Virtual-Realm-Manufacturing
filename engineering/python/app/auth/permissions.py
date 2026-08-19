@@ -21,11 +21,13 @@ import logging
 import threading
 from enum import Enum
 from functools import wraps
-from typing import Dict, Callable, Optional, List, Set
+
+from collections.abc import Callable
 
 from dataclasses import dataclass, field
 from fastapi import HTTPException, status, Request
 from typing import Any
+import builtins
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +72,7 @@ class RateLimitState:
 
 
 class PermissionChecker:
-    ENDPOINT_PERMISSIONS: Dict[str, PermissionLevel] = {
+    ENDPOINT_PERMISSIONS: dict[str, PermissionLevel] = {
         "GET /api/v1/lnn/predict": PermissionLevel.R,
         "GET /api/v1/lnn/models": PermissionLevel.R,
         "GET /api/v1/lnn/tasks": PermissionLevel.R,
@@ -107,7 +109,7 @@ class PermissionChecker:
     }
 
     def __init__(self):
-        self._rate_limiter: Dict[str, RateLimitState] = {}
+        self._rate_limiter: dict[str, RateLimitState] = {}
         self._rate_limit_config = RateLimitConfig()
 
     def has_permission(self, token_level: PermissionLevel, endpoint: str, method: str) -> bool:
@@ -148,10 +150,10 @@ permission_checker = PermissionChecker()
 
 
 class RBACPermissionCache:
-    _instance: Optional[RBACPermissionCache] = None
+    _instance: RBACPermissionCache | None = None
     _instance_lock = threading.Lock()
     _cache_lock: threading.Lock = threading.Lock()
-    _cache: Dict[str, tuple[Set[str], float]] = {}
+    _cache: dict[str, tuple[builtins.set[str], float]] = {}
     _ttl: float = 60.0
 
     def __new__(cls):
@@ -164,7 +166,7 @@ class RBACPermissionCache:
                     cls._instance = instance
         return cls._instance
 
-    def get(self, role_code: str) -> Optional[Set[str]]:
+    def get(self, role_code: str) -> builtins.set[str] | None:
         # 安全修复：缓存读取加锁，防止与 set/invalidate 并发修改导致字典状态不一致
         with self._cache_lock:
             entry = self._cache.get(role_code)
@@ -176,11 +178,11 @@ class RBACPermissionCache:
                 return None
             return perms
 
-    def set(self, role_code: str, permissions: Set[str]):
+    def set(self, role_code: str, permissions: builtins.set[str]):
         with self._cache_lock:
             self._cache[role_code] = (permissions, time.time() + self._ttl)
 
-    def invalidate(self, role_code: Optional[str] = None):
+    def invalidate(self, role_code: str | None = None):
         with self._cache_lock:
             if role_code:
                 self._cache.pop(role_code, None)
@@ -191,7 +193,7 @@ class RBACPermissionCache:
 rbac_cache = RBACPermissionCache()
 
 
-async def _get_role_permissions_from_db(role_code: str) -> Set[str]:
+async def _get_role_permissions_from_db(role_code: str) -> set[str]:
     from app.database.connection import get_sessionmaker
     from sqlalchemy import select
     from app.database.models import Role, Permission, RolePermission
@@ -224,7 +226,7 @@ async def _get_role_permissions_from_db(role_code: str) -> Set[str]:
     return perms
 
 
-async def get_user_permissions(username: str) -> Set[str]:
+async def get_user_permissions(username: str) -> set[str]:
     from app.dependencies import get_user_store
 
     store = get_user_store()
@@ -240,12 +242,12 @@ async def check_user_has_permission(username: str, required: str) -> bool:
     return required in perms
 
 
-async def check_user_has_any_permission(username: str, required: List[str]) -> bool:
+async def check_user_has_any_permission(username: str, required: list[str]) -> bool:
     perms = await get_user_permissions(username)
     return any(p in perms for p in required)
 
 
-async def check_user_has_all_permissions(username: str, required: List[str]) -> bool:
+async def check_user_has_all_permissions(username: str, required: list[str]) -> bool:
     perms = await get_user_permissions(username)
     return all(p in perms for p in required)
 
@@ -429,7 +431,7 @@ class PaperOnlyGuard:
     def __init__(self):
         # 兼容旧代码：保留实例字段，但 is_live_execution_allowed 改为实时读取
         # 避免启动时固化配置导致无法热切换
-        self._live_execution_cached: Optional[bool] = None
+        self._live_execution_cached: bool | None = None
 
     @staticmethod
     def _read_live_execution_enabled() -> bool:
@@ -445,7 +447,7 @@ class PaperOnlyGuard:
         has_t_permission: bool,
         ui_confirmed: bool,
         supervisor_confirmed: bool = False,
-        machine_safety_status: Optional[Dict[str, bool]] = None,
+        machine_safety_status: dict[str, bool] | None = None,
     ) -> tuple[bool, str]:
         """T 级操作前置校验。
 
@@ -492,7 +494,7 @@ class PaperOnlyGuard:
 
         return True, "T operation approved"
 
-    def simulate_t_operation(self, operation: Dict[str, Any], operator: str = "unknown") -> Dict[str, Any]:
+    def simulate_t_operation(self, operation: dict[str, Any], operator: str = "unknown") -> dict[str, Any]:
         """模拟 T 级操作，记录审计日志（脱敏）。
 
         Args:
@@ -544,13 +546,13 @@ class PaperOnlyGuard:
         }
 
     @staticmethod
-    def _sanitize_operation(operation: Dict[str, Any]) -> Dict[str, Any]:
+    def _sanitize_operation(operation: dict[str, Any]) -> dict[str, Any]:
         """脱敏操作字典，移除敏感字段值。
 
         依据 F-P0-4 安全要求：NC 程序内容、API Key、密码等
         不得明文写入审计日志或普通日志。
         """
-        sanitized: Dict[str, Any] = {}
+        sanitized: dict[str, Any] = {}
         for key, value in operation.items():
             key_lower = str(key).lower()
             if any(sensitive in key_lower for sensitive in _SENSITIVE_FIELDS):

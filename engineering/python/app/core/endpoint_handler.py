@@ -29,7 +29,8 @@ import asyncio
 import functools
 import inspect
 import logging
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Callable
 
 from app.core.response import error, ErrorCode
 from app.core.safe_errors import safe_error_message
@@ -43,7 +44,7 @@ def safe_endpoint(
     *,
     context: str = "",
     fallback: str = "服务内部错误，请稍后重试",
-    reraise: Optional[tuple[type[BaseException], ...]] = None,
+    reraise: tuple[type[BaseException], ...] | None = None,
 ) -> Callable[[F], F]:
     """为 FastAPI 端点提供统一的异常处理包裹器。
 

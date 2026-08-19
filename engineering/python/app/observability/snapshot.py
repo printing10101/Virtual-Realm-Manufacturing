@@ -24,7 +24,7 @@ import sys
 import uuid
 from datetime import datetime
 from app.utils.time import utcnow
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

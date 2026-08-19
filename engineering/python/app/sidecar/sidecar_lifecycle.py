@@ -5,7 +5,6 @@ import asyncio
 import logging
 import atexit
 from pathlib import Path
-from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -18,7 +17,7 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
         self,
         app,
         idle_timeout: int = 1800,
-        state_file_path: Optional[str] = None,
+        state_file_path: str | None = None,
         check_interval: int = 60,
     ):
         super().__init__(app)
@@ -151,12 +150,12 @@ class IdleAutoShutdownMiddleware(BaseHTTPMiddleware):
 
 
 class GracefulShutdownHandler:
-    def __init__(self, app=None, state_file_path: Optional[str] = None):
+    def __init__(self, app=None, state_file_path: str | None = None):
         self.app = app
         self.state_file_path = state_file_path
         self._shutting_down = False
         # [H6] 保存 create_task 引用防止 GC 回收
-        self._shutdown_task: Optional[asyncio.Task] = None
+        self._shutdown_task: asyncio.Task | None = None
 
     def setup(self):
         # signal.signal() 仅在主线程中可用；在测试环境（TestClient 运行于

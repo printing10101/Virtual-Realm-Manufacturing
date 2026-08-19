@@ -25,7 +25,7 @@ from datetime import datetime
 from enum import Enum
 
 # [H18] 补充 Optional 导入——dataclass 字段多处使用 Optional[str]/Optional[float]
-from typing import Any, Optional
+from typing import Any
 from collections.abc import Callable
 
 from app.core.safe_errors import safe_error_message

@@ -21,7 +21,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ async def retry_with_backoff(
     max_retries: int,
     backoff_base: float = 1.0,
     backoff_max: float = 60.0,
-    failure_callback: Optional[Callable[[str, BaseException, int], None]] = None,
+    failure_callback: Callable[[str, BaseException, int], None] | None = None,
 ) -> Any:
     """通用异步指数退避重试。
 
@@ -52,7 +53,7 @@ async def retry_with_backoff(
     Raises:
         RuntimeError: 达到最大重试次数后仍失败。
     """
-    last_error: Optional[BaseException] = None
+    last_error: BaseException | None = None
     # 总尝试次数 = 1 (初始) + max_retries (重试)
     total_attempts = max_retries + 1
     for attempt in range(total_attempts):

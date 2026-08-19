@@ -7,7 +7,7 @@ import logging
 import secrets
 import threading
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 from pathlib import Path
 
 import bcrypt
@@ -219,7 +219,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BANNED_TOKENS_FILE = os.environ.get("LNN_BANNED_TOKENS_FILE") or str(_PROJECT_ROOT / ".lnn_banned_tokens.json")
 
 
-def _reset_secret_for_testing(secret: Optional[str] = None) -> str:
+def _reset_secret_for_testing(secret: str | None = None) -> str:
     """仅供单元测试使用：允许在运行时替换 SECRET_KEY 以避开模块级副作用。
 
     正常业务代码不应调用此函数。
@@ -250,7 +250,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """创建 JWT access token（访问令牌）。
 
     Args:
@@ -270,7 +270,7 @@ def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta]
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """创建 JWT refresh token（刷新令牌）。
 
     Args:
@@ -290,7 +290,7 @@ def create_refresh_token(data: dict[str, Any], expires_delta: Optional[timedelta
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(token: str) -> Optional[dict]:
+def decode_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError as e:
@@ -306,7 +306,7 @@ def decode_token(token: str) -> Optional[dict]:
     return payload
 
 
-def decode_token_strict(token: str, expected_type: str = "access") -> Optional[dict]:
+def decode_token_strict(token: str, expected_type: str = "access") -> dict | None:
     payload = decode_token(token)
     if payload is None:
         return None
@@ -320,7 +320,7 @@ def decode_token_strict(token: str, expected_type: str = "access") -> Optional[d
 
 
 class TokenBanList:
-    def __init__(self, file_path: Optional[str] = None):
+    def __init__(self, file_path: str | None = None):
         self._file_path = Path(file_path or BANNED_TOKENS_FILE)
         self._banned: set[str] = set()
         # 修复：_expiry 必须在 __init__ 中显式初始化，避免 _load/_cleanup_expired
@@ -393,7 +393,7 @@ class _TokenBanListHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[TokenBanList] = None
+        self._instance: TokenBanList | None = None
 
     def get(self) -> TokenBanList:
         # 快速路径：已存在则直接返回，避免持锁开销

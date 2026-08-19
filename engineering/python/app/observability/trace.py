@@ -21,7 +21,7 @@ import threading
 import time
 import uuid
 from collections import defaultdict, deque
-from typing import Any, Optional
+from typing import Any
 
 from app.contracts.observability import (
     ILogSink,

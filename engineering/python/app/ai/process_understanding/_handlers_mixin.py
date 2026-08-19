@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.ai.process_understanding._output import ProcessUnderstandingOutput, task_type_to_code
 from app.ai.process_understanding._prompts import ENTITY_EXTRACTION_PROMPT, FAULT_DIAGNOSIS_PROMPT, GENERAL_QA_PROMPT

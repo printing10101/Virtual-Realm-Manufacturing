@@ -31,7 +31,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 from app.sharp.schema.domain_schema import Triple
 from app.sharp.schema.strategic_planner import VerificationStrategy
@@ -130,7 +130,7 @@ _FINISH_PATTERN = re.compile(
 
 def parse_action(
     response_text: str,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """解析 LLM 输出为结构化 action。
 
     Returns
@@ -196,7 +196,7 @@ def _extract_thought(text: str) -> str:
     return ""
 
 
-def _safe_json_loads(text: str) -> Optional[dict]:
+def _safe_json_loads(text: str) -> dict | None:
     """容错 JSON 解析。"""
     if not text:
         return None

@@ -26,7 +26,7 @@ import math
 import re
 import threading
 from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from app.postprocessor.registry import PostProcessorRegistry
 from app.services.tool_wear_predictor import ToolWearPredictor

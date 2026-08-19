@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from app.sharp.memory.trajectory_store import StoredTrajectory, TrajectoryStore
 from app.sharp.schema.domain_schema import Triple
@@ -135,7 +135,7 @@ class SimilarityRetriever:
         self,
         triple: Triple,
         store: TrajectoryStore,
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
     ) -> list[tuple[StoredTrajectory, SimilarityScore]]:
         """从轨迹存储中检索与给定三元组相似的案例。
 

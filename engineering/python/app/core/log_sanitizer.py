@@ -12,7 +12,8 @@ Filters sensitive information from logs and error responses:
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 import getpass
 
 logger = logging.getLogger(__name__)

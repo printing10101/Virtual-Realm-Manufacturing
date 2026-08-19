@@ -9,7 +9,7 @@ import logging
 import time
 import threading
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.models.goals import (
     Goal,

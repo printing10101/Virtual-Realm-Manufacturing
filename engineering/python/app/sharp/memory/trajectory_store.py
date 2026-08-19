@@ -25,7 +25,7 @@ import threading
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ class StoredTrajectory:
         )
 
     @classmethod
-    def from_verification_result(cls, result: Any, timestamp: Optional[float] = None) -> "StoredTrajectory":
+    def from_verification_result(cls, result: Any, timestamp: float | None = None) -> "StoredTrajectory":
         """从 `VerificationResult` 构造存储记录。
 
         Args:
@@ -154,7 +154,7 @@ class TrajectoryStore:
 
     def __init__(
         self,
-        storage_path: Optional[str] = None,
+        storage_path: str | None = None,
         max_records: int = 1000,
         autoload: bool = True,
     ) -> None:
@@ -178,7 +178,7 @@ class TrajectoryStore:
     # 公共接口
     # ------------------------------------------------------------------
 
-    def store(self, result: Any, timestamp: Optional[float] = None) -> StoredTrajectory:
+    def store(self, result: Any, timestamp: float | None = None) -> StoredTrajectory:
         """存储一条验证轨迹。
 
         Args:
@@ -220,7 +220,7 @@ class TrajectoryStore:
         with self._lock:
             return list(self._records)
 
-    def get(self, verification_id: str) -> Optional[StoredTrajectory]:
+    def get(self, verification_id: str) -> StoredTrajectory | None:
         """按 ID 查询轨迹。"""
         with self._lock:
             for r in self._records:

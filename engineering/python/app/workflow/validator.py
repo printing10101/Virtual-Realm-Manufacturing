@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+
 
 from app.contracts import ITaskRegistry, WorkflowSpec
 
@@ -29,7 +29,7 @@ class WorkflowValidationError(Exception):
 def validate_workflow_spec(
     spec: WorkflowSpec,
     *,
-    registry: Optional[ITaskRegistry] = None,
+    registry: ITaskRegistry | None = None,
 ) -> list[str]:
     """校验工作流规格.
 
@@ -83,7 +83,7 @@ def validate_workflow_spec(
 def validate_or_raise(
     spec: WorkflowSpec,
     *,
-    registry: Optional[ITaskRegistry] = None,
+    registry: ITaskRegistry | None = None,
 ) -> None:
     """校验工作流规格，失败时抛出 WorkflowValidationError."""
     errors = validate_workflow_spec(spec, registry=registry)

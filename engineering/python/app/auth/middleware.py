@@ -24,7 +24,7 @@ import stat
 import time
 import uuid
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 
-def _get_token_metadata(token: str) -> Optional[dict]:
+def _get_token_metadata(token: str) -> dict | None:
     # 安全修复 B4：fail-closed 策略
     # 元数据文件不存在、解析失败或 token 未匹配时返回 None，
     # 由上层调用方根据 None 拒绝访问，避免回退到 "R" 只读权限造成越权风险。
@@ -100,7 +100,7 @@ def _get_token_file_path() -> Path:
     return Path(os.environ.get("LNN_TOKEN_FILE", ".lnn_token"))
 
 
-def _save_token(token: str, file_path: Optional[Path] = None) -> Path:
+def _save_token(token: str, file_path: Path | None = None) -> Path:
     if file_path is None:
         file_path = _get_token_file_path()
     # 修复：若目标路径已是 symlink，强制替换为普通文件以避免令牌被劫持
@@ -118,7 +118,7 @@ def _save_token(token: str, file_path: Optional[Path] = None) -> Path:
     return file_path
 
 
-def _load_token(file_path: Optional[Path] = None) -> Optional[str]:
+def _load_token(file_path: Path | None = None) -> str | None:
     if file_path is None:
         file_path = _get_token_file_path()
     if not file_path.exists():
@@ -146,7 +146,7 @@ def _initialize_token() -> str:
 # ============================================================
 
 
-def _decode_token(token: str) -> Optional[dict]:
+def _decode_token(token: str) -> dict | None:
     """Decode a JWT token (from security module)."""
     try:
         from app.auth.security import decode_token
@@ -157,7 +157,7 @@ def _decode_token(token: str) -> Optional[dict]:
         return None
 
 
-def _decode_token_strict(token: str, expected_type: str = "access") -> Optional[dict]:
+def _decode_token_strict(token: str, expected_type: str = "access") -> dict | None:
     """Strictly decode a JWT token (from security module)."""
     try:
         from app.auth.security import decode_token_strict
@@ -168,7 +168,7 @@ def _decode_token_strict(token: str, expected_type: str = "access") -> Optional[
         return None
 
 
-def _get_token_ban_list() -> Optional["_TokenBanList"]:
+def _get_token_ban_list() -> "_TokenBanList" | None:
     """Get token ban list (from security module)."""
     # 使用 TYPE_CHECKING 解决循环导入：运行时延迟导入，类型检查时可用具体类型
     try:
@@ -309,7 +309,7 @@ class UnifiedAuthMiddleware:
             )
 
         # LNN token singleton
-        self._lnn_token: Optional[str] = None
+        self._lnn_token: str | None = None
         if lnn_auth_enabled:
             self._lnn_token = _initialize_token()
 

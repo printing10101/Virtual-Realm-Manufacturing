@@ -39,7 +39,7 @@ import threading
 import warnings
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.contracts.dataset import IDatasetStore
 from app.contracts.observability import ISnapshotStore

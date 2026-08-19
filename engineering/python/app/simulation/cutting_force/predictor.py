@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 import logging
-from typing import Dict, Optional, Any
+from typing import Any
 
 # torch 软依赖：桌面 MVP 打包时排除 torch，此时仅 Kienzle 解析解可用
 try:
@@ -41,7 +41,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # 全局模型缓存
-_model_cache: Dict[str, Any] = {}
+_model_cache: dict[str, Any] = {}
 _model_dir = os.path.join(os.path.dirname(__file__), "checkpoints")
 
 
@@ -78,9 +78,9 @@ def _load_model(device: str = "cpu") -> Any:
 def predict_cutting_force(
     material: str = "45steel",
     tool: str = "endmill_d10",
-    params: Optional[Dict] = None,
+    params: dict | None = None,
     use_pinn: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """预测切削力。
 
     Args:

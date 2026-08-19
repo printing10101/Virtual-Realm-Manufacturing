@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional, Set
+
 
 from fastapi import HTTPException, UploadFile, status
 
@@ -52,7 +52,7 @@ _CHUNK_SIZE = STREAM_CHUNK_SIZE
 # 每个键为 MIME 类型字符串，值为该类型可接受的字节签名列表；
 # ``None`` 表示该类型跳过 magic bytes 校验（用于纯文本/JSON/CSV 等
 # 编码可变、签名不固定的格式）。
-ALLOWED_MIME_SIGNATURES: dict[str, list[Optional[bytes]]] = {
+ALLOWED_MIME_SIGNATURES: dict[str, list[bytes | None]] = {
     "application/pdf": [b"%PDF"],
     "image/png": [b"\x89PNG\r\n\x1a\n"],
     "image/jpeg": [b"\xff\xd8\xff"],
@@ -115,7 +115,7 @@ EXTENSION_TO_MIME: dict[str, str] = {
 
 # 文本类扩展名集合：跳过 magic bytes 校验，仅做扩展名 + 大小校验。
 # 这些格式编码可变（UTF-8/UTF-16/GBK），固定签名校验会误杀。
-_TEXT_EXTENSIONS: Set[str] = {
+_TEXT_EXTENSIONS: set[str] = {
     ".csv",
     ".txt",
     ".json",
@@ -149,8 +149,8 @@ except ImportError:
 async def validate_upload(
     file: UploadFile,
     max_size: int = MAX_UPLOAD_SIZE,
-    allowed_extensions: Optional[Set[str]] = None,
-    allowed_mimes: Optional[Set[str]] = None,
+    allowed_extensions: set[str] | None = None,
+    allowed_mimes: set[str] | None = None,
 ) -> bytes:
     """统一上传校验：扩展名 + magic bytes + 大小限制 + 分块读取。
 
@@ -248,7 +248,7 @@ async def validate_upload(
 def _verify_magic_bytes(
     content: bytes,
     ext: str,
-    allowed_mimes: Optional[Set[str]],
+    allowed_mimes: set[str] | None,
 ) -> None:
     """校验文件内容的 magic bytes 签名。
 
@@ -316,6 +316,6 @@ def _verify_magic_bytes(
     )
 
 
-def get_expected_mime(ext: str) -> Optional[str]:
+def get_expected_mime(ext: str) -> str | None:
     """查询扩展名对应的预期 MIME 类型（供业务层使用）。"""
     return EXTENSION_TO_MIME.get(ext.lower())

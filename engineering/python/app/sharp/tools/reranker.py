@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ class EvidenceReranker:
 
     def __init__(
         self,
-        source_weights: Optional[dict[str, float]] = None,
+        source_weights: dict[str, float] | None = None,
         default_top_k: int = 5,
     ) -> None:
         self.source_weights = source_weights or SOURCE_WEIGHTS
@@ -149,7 +149,7 @@ class EvidenceReranker:
     def collect_from_tool_results(
         self,
         tool_results: list,
-        triple: Optional[Any] = None,
+        triple: Any | None = None,
     ) -> list[Evidence]:
         """从 ToolResult 列表中提取证据。
 
@@ -320,7 +320,7 @@ class EvidenceReranker:
     def rerank(
         self,
         evidences: list[Evidence],
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
     ) -> list[Evidence]:
         """按加权分数排序并截断。
 

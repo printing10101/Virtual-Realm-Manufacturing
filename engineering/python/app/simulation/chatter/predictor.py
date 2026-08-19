@@ -26,12 +26,12 @@ import os
 import logging
 import time
 import numpy as np
-from typing import Dict, Tuple
+
 
 logger = logging.getLogger(__name__)
 
 # 全局模型缓存
-_model_cache: Dict[str, object] = {}
+_model_cache: dict[str, object] = {}
 _model_dir = os.path.join(os.path.dirname(__file__), "checkpoints")
 
 
@@ -136,7 +136,7 @@ class ChatterPredictor:
         machine_freq: float,
         tool_diameter: float,
         tool_k_s: float,
-    ) -> Tuple[bool, float]:
+    ) -> tuple[bool, float]:
         """预测稳定性状态和极限切削深度。
 
         Args:
@@ -199,7 +199,7 @@ def predict_stability(
     machine: str = "vmc_850",
     tool: str = "endmill_d10",
     workpiece: str = "aluminum",
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """预测颤振稳定性。
 
     主接口函数，整合解析法和神经网络预测。

@@ -34,7 +34,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from app.models.knowledge_graph import RelationSource
 from app.sharp.schema.domain_schema import (
@@ -153,11 +152,11 @@ class StrategicPlanner:
 
     def __init__(
         self,
-        schema: Optional[DomainSchema] = None,
+        schema: DomainSchema | None = None,
         max_react_steps: int = 8,
         confidence_threshold: float = 0.85,
         evidence_convergence_window: int = 2,
-        ablation_mode: Optional[str] = None,
+        ablation_mode: str | None = None,
     ) -> None:
         self.schema = schema or DEFAULT_SCHEMA
         self.default_max_steps = max_react_steps

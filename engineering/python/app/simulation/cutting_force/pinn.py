@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, Optional, Tuple
+
 
 
 class ResidualBlock(nn.Module):
@@ -54,7 +54,7 @@ class CuttingForcePINN(nn.Module):
     """
 
     # 输入参数归一化范围
-    PARAM_RANGES: Dict[str, Tuple[float, float]] = {
+    PARAM_RANGES: dict[str, tuple[float, float]] = {
         "speed": (500.0, 20000.0),
         "feed": (100.0, 5000.0),
         "depth": (0.1, 5.0),
@@ -163,8 +163,8 @@ class PINNLoss(nn.Module):
         self,
         pred_forces: torch.Tensor,
         target_forces: torch.Tensor,
-        kienzle_forces: Optional[torch.Tensor] = None,
-    ) -> Dict[str, torch.Tensor]:
+        kienzle_forces: torch.Tensor | None = None,
+    ) -> dict[str, torch.Tensor]:
         """计算混合损失。
 
         Args:

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from app.models.knowledge_graph import (
     Material,
@@ -121,9 +121,9 @@ class Triple:
     relation: RelationType
     tail_type: EntityType
     tail_id: str
-    head_properties: Optional[dict] = None
-    tail_properties: Optional[dict] = None
-    relation_properties: Optional[dict] = None
+    head_properties: dict | None = None
+    tail_properties: dict | None = None
+    relation_properties: dict | None = None
 
     def as_dict(self) -> dict:
         """序列化为可 JSON 化的字典。"""
@@ -207,15 +207,15 @@ class DomainSchema:
             return False
         return (head_type, tail_type) == expected
 
-    def get_entity_model(self, entity_type: EntityType) -> Optional[type]:
+    def get_entity_model(self, entity_type: EntityType) -> type | None:
         """获取实体类型对应的 Pydantic 模型类。"""
         return ENTITY_TYPE_TO_MODEL.get(entity_type)
 
-    def get_relation_model(self, relation: RelationType) -> Optional[type]:
+    def get_relation_model(self, relation: RelationType) -> type | None:
         """获取关系类型对应的 Pydantic 关系模型类。"""
         return RELATION_TYPE_TO_MODEL.get(relation)
 
-    def get_relation_domain(self, relation: RelationType) -> Optional[tuple[EntityType, EntityType]]:
+    def get_relation_domain(self, relation: RelationType) -> tuple[EntityType, EntityType] | None:
         """获取关系的合法 (头类型, 尾类型)。"""
         return self.relation_domains.get(relation)
 

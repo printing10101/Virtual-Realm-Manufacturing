@@ -30,7 +30,7 @@ import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field, asdict
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -670,7 +670,7 @@ class ProcessQuadrupleIndex:
 # 全局单例
 # =====================================================================
 
-_singleton: Optional[ProcessQuadrupleIndex] = None
+_singleton: ProcessQuadrupleIndex | None = None
 _singleton_lock = threading.Lock()
 
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def run_factory_closed_loop(
     n_parts: int = 5,
     max_ticks: int = 800,
     seed: int = 42,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """运行仿真工厂闭环生产，返回 NLDF 风格 KPI 报告。
 
     Returns:
@@ -73,7 +73,7 @@ def run_factory_closed_loop(
         return {"error": f"仿真工厂闭环运行失败: {e}"}
 
 
-def get_factory_demo_status() -> Optional[dict[str, Any]]:
+def get_factory_demo_status() -> dict[str, Any] | None:
     """返回演示设备清单（Phase 2 demo registry）。"""
     if not is_factory_sandbox_available():
         return None

@@ -12,7 +12,8 @@ import logging
 import random
 import sqlite3
 import time
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ def sqlite_retry(
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_error: Optional[Exception] = None
+            last_error: Exception | None = None
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
@@ -110,7 +111,7 @@ def async_sqlite_retry(
     def decorator(func: F) -> F:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_error: Optional[Exception] = None
+            last_error: Exception | None = None
             for attempt in range(max_retries + 1):
                 try:
                     return await func(*args, **kwargs)
@@ -169,7 +170,7 @@ class SqliteTransaction:
         self._max_delay = max_delay
 
     def execute(self, sql: str, params: Any = None) -> sqlite3.Cursor:
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
                 if params is not None:
@@ -187,7 +188,7 @@ class SqliteTransaction:
         raise last_error  # type: ignore[misc]
 
     def commit(self) -> None:
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
                 self._conn.commit()
@@ -234,7 +235,7 @@ class AsyncSqliteTransaction:
         self._max_delay = max_delay
 
     async def execute(self, sql: str, params: Any = None) -> sqlite3.Cursor:
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
                 if params is not None:
@@ -253,7 +254,7 @@ class AsyncSqliteTransaction:
         raise last_error  # type: ignore[misc]
 
     async def commit(self) -> None:
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
                 self._conn.commit()

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.data.process_data_manager import MaterialEntry, QueryError, ToolEntry
 from app.process_planning._tool_models import HoleProcessPlan, MatchedTool
@@ -159,7 +160,7 @@ class _MatchingMixin:
         plan.estimated_time_min = total_time
         return plan
 
-    def get_material_info(self, material_name: str) -> Optional[MaterialEntry]:
+    def get_material_info(self, material_name: str) -> MaterialEntry | None:
         """查询材料基本信息。
 
         Args:

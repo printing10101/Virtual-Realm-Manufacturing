@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from app.data.process_data_manager import CuttingParameterEntry, ToolEntry
 
@@ -20,7 +20,7 @@ class MatchedTool:
     """
 
     tool: ToolEntry
-    cutting_params: Optional[CuttingParameterEntry] = None
+    cutting_params: CuttingParameterEntry | None = None
     suitability_score: float = 80.0
     match_reason: str = ""
     warnings: list[str] = field(default_factory=list)

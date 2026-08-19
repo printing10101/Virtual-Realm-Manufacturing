@@ -8,7 +8,6 @@ Version is sourced from project root VERSION file (single source of truth).
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ def _load_version() -> str:
     return "0.0.0"
 
 
-def _get_commit_hash() -> Optional[str]:
+def _get_commit_hash() -> str | None:
     """Get current git commit hash if available."""
     try:
         result = subprocess.run(

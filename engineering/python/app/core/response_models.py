@@ -48,7 +48,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -72,11 +72,11 @@ class ErrorResponse(BaseModel):
     message: str = Field(..., description="错误描述信息")
     request_id: str = Field(..., description="请求追踪标识")
 
-    detail: Optional[Any] = Field(default=None, description="错误详情（如字段校验失败详情）")
-    suggestion: Optional[str] = Field(default=None, description="修复建议（面向开发者或用户）")
-    severity: Optional[str] = Field(default=None, description="错误严重级别：info/warning/error/critical")
-    recoverable: Optional[bool] = Field(default=None, description="是否可恢复（True 时前端可重试）")
-    adjusted_values: Optional[dict[str, Any]] = Field(default=None, description="服务端调整后的建议值（如参数修正）")
+    detail: Any | None = Field(default=None, description="错误详情（如字段校验失败详情）")
+    suggestion: str | None = Field(default=None, description="修复建议（面向开发者或用户）")
+    severity: str | None = Field(default=None, description="错误严重级别：info/warning/error/critical")
+    recoverable: bool | None = Field(default=None, description="是否可恢复（True 时前端可重试）")
+    adjusted_values: dict[str, Any] | None = Field(default=None, description="服务端调整后的建议值（如参数修正）")
 
 
 class SuccessResponse(BaseModel, Generic[T]):
@@ -105,7 +105,7 @@ class SuccessResponse(BaseModel, Generic[T]):
         description="响应描述信息",
         examples=["Success"],
     )
-    data: Optional[T] = Field(
+    data: T | None = Field(
         default=None,
         description="业务数据载荷，类型由泛型参数 T 决定",
     )
@@ -130,10 +130,10 @@ def error_response_model(
     code: ErrorCode,
     message: str = "Error",
     detail: Any = None,
-    suggestion: Optional[str] = None,
-    severity: Optional[str] = None,
+    suggestion: str | None = None,
+    severity: str | None = None,
     recoverable: bool = False,
-    adjusted_values: Optional[dict[str, Any]] = None,
+    adjusted_values: dict[str, Any] | None = None,
 ) -> ErrorResponse:
     """构造 ``ErrorResponse`` 实例（与 ``error()`` 函数对齐）。
 

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
+
 
 from app.models.knowledge_graph import RelationSource
 from app.sharp.schema.domain_schema import (
@@ -110,7 +110,7 @@ class SchemaConstraints:
 
     def __init__(
         self,
-        schema: Optional[DomainSchema] = None,
+        schema: DomainSchema | None = None,
         strict_id_prefix: bool = False,
     ) -> None:
         self.schema = schema or DEFAULT_SCHEMA

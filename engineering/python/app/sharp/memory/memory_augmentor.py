@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from app.sharp.memory.similarity_retriever import (
     SimilarityRetriever,
@@ -173,7 +173,7 @@ class MemoryAugmentor:
 
         return "\n".join(lines)
 
-    def store(self, result: Any, timestamp: Optional[float] = None) -> Optional[StoredTrajectory]:
+    def store(self, result: Any, timestamp: float | None = None) -> StoredTrajectory | None:
         """存储验证结果到轨迹库。
 
         Args:

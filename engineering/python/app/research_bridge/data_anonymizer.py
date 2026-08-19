@@ -15,7 +15,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class DataAnonymizer:
     # 路径分隔符（Windows 与 Unix）
     _PATH_SEP_RE = re.compile(r"[\\/]+")
 
-    def __init__(self, salt: Optional[str] = None):
+    def __init__(self, salt: str | None = None):
         # salt 用于让 hash 不可跨实例比对，但同实例内一致
         self._salt = salt or "lingjing-default-salt-2026"
 
@@ -52,13 +52,13 @@ class DataAnonymizer:
         salted = f"{self._salt}|{value}"
         return hashlib.sha256(salted.encode("utf-8")).hexdigest()[:length]
 
-    def anonymize_user_id(self, user_id: Optional[str]) -> str:
+    def anonymize_user_id(self, user_id: str | None) -> str:
         """把 user_id 脱敏成不可逆 token。"""
         if not user_id:
             return "anon"
         return f"u_{self._stable_hash(user_id, 12)}"
 
-    def anonymize_path(self, path: Optional[str]) -> str:
+    def anonymize_path(self, path: str | None) -> str:
         """把文件路径脱敏成 hash + 扩展名。"""
         if not path:
             return ""
@@ -71,7 +71,7 @@ class DataAnonymizer:
         ext_part = f".{ext}" if ext else ""
         return f"file_{self._stable_hash(path, 12)}{ext_part}"
 
-    def anonymize_text(self, text: Optional[str]) -> str:
+    def anonymize_text(self, text: str | None) -> str:
         """把字符串里的邮箱、IP 全部替换。"""
         if not text:
             return ""
@@ -103,7 +103,7 @@ class DataAnonymizer:
         self,
         feature_name: str,
         payload: dict,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> AnonymizedSample:
         """脱敏一个完整的数据载荷。
 

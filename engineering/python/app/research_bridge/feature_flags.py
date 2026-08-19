@@ -16,7 +16,7 @@ import os
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class RolloutConfig:
     status: FeatureStatus = FeatureStatus.DISABLED
     user_whitelist: list = field(default_factory=list)
     rollout_percent: float = 0.0  # 0.0 - 1.0
-    ab_test_baseline: Optional[str] = None  # 对照组名
+    ab_test_baseline: str | None = None  # 对照组名
     description: str = ""
 
 

@@ -27,7 +27,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-from typing import Any, Optional
+from typing import Any
 
 from app.sharp.memory import (
     MemoryAugmentor,
@@ -74,7 +74,7 @@ class SharpService:
         result = await service.verify(triple)
     """
 
-    _singleton: Optional["SharpService"] = None
+    _singleton: "SharpService" | None = None
     _lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -94,7 +94,7 @@ class SharpService:
     def __init__(self) -> None:
         """初始化服务。直接 ``__init__`` 会绕过单例，请使用 ``instance()``。"""
         # 配置（运行时可修改）—— 先用模块级默认值兜底
-        self._ablation_mode: Optional[str] = None
+        self._ablation_mode: str | None = None
         self._max_react_steps: int = DEFAULT_MAX_REACT_STEPS
         self._confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD
         self._evidence_convergence_window: int = DEFAULT_EVIDENCE_CONVERGENCE_WINDOW
@@ -104,11 +104,11 @@ class SharpService:
         self._llm_router: Any = None
         self._query_api: Any = None
         self._rag_engine: Any = None
-        self._tool_registry: Optional[ToolRegistry] = None
-        self._strategic_planner: Optional[StrategicPlanner] = None
-        self._trajectory_store: Optional[TrajectoryStore] = None
-        self._memory_augmentor: Optional[MemoryAugmentor] = None
-        self._react_loop: Optional[ReActLoop] = None
+        self._tool_registry: ToolRegistry | None = None
+        self._strategic_planner: StrategicPlanner | None = None
+        self._trajectory_store: TrajectoryStore | None = None
+        self._memory_augmentor: MemoryAugmentor | None = None
+        self._react_loop: ReActLoop | None = None
 
         # 标记依赖是否已尝试加载（避免重复尝试失败的依赖）
         self._deps_loaded: bool = False
@@ -162,7 +162,7 @@ class SharpService:
             logger.warning("SHARP: load SharpConfig failed, use module defaults: %s", e)
 
     @staticmethod
-    def _derive_ablation_from_toggles(cfg: Any) -> Optional[str]:
+    def _derive_ablation_from_toggles(cfg: Any) -> str | None:
         """根据 ``enable_*`` 开关反推消融模式。
 
         优先级：no_react > no_toolset > no_memory > no_schema
@@ -295,7 +295,7 @@ class SharpService:
     # 配置管理
     # ------------------------------------------------------------------
 
-    def set_ablation_mode(self, mode: Optional[str]) -> None:
+    def set_ablation_mode(self, mode: str | None) -> None:
         """切换消融模式并重建 pipeline。"""
         if mode not in VALID_ABLATION_MODES:
             raise ValueError(f"ablation_mode 必须是 {VALID_ABLATION_MODES} 之一，实际: {mode}")
@@ -314,7 +314,7 @@ class SharpService:
         if self._deps_loaded:
             self._build_pipeline()
 
-    def get_ablation_mode(self) -> Optional[str]:
+    def get_ablation_mode(self) -> str | None:
         return self._ablation_mode
 
     def get_status(self) -> dict[str, Any]:
@@ -341,8 +341,8 @@ class SharpService:
     async def verify(
         self,
         triple: Triple,
-        ablation_mode: Optional[str] = None,
-        max_react_steps: Optional[int] = None,
+        ablation_mode: str | None = None,
+        max_react_steps: int | None = None,
     ) -> VerificationResult:
         """验证单个三元组。
 
@@ -514,8 +514,8 @@ class SharpService:
 
     def _build_pipeline_with_override(
         self,
-        ablation_mode: Optional[str],
-        max_react_steps: Optional[int],
+        ablation_mode: str | None,
+        max_react_steps: int | None,
     ) -> None:
         """临时切换消融模式与 max_steps 后重建 pipeline。"""
         original_mode = self._ablation_mode
@@ -535,15 +535,15 @@ class SharpService:
     async def batch_verify(
         self,
         triples: list[Triple],
-        ablation_mode: Optional[str] = None,
-        max_react_steps: Optional[int] = None,
-    ) -> list[tuple[int, VerificationResult, Optional[str]]]:
+        ablation_mode: str | None = None,
+        max_react_steps: int | None = None,
+    ) -> list[tuple[int, VerificationResult, str | None]]:
         """批量验证三元组。
 
         Returns:
             list of (index, result, error)。成功时 error 为 None。
         """
-        results: list[tuple[int, VerificationResult, Optional[str]]] = []
+        results: list[tuple[int, VerificationResult, str | None]] = []
         for idx, triple in enumerate(triples):
             try:
                 result = await self.verify(
@@ -564,8 +564,8 @@ class SharpService:
     def list_trajectories(
         self,
         limit: int = 50,
-        verdict: Optional[str] = None,
-        relation: Optional[str] = None,
+        verdict: str | None = None,
+        relation: str | None = None,
     ) -> list[Any]:
         """查询历史轨迹（带过滤）。"""
         if self._trajectory_store is None:
@@ -581,7 +581,7 @@ class SharpService:
         # 截断
         return records[-limit:] if limit < len(records) else list(records)
 
-    def get_trajectory(self, verification_id: str) -> Optional[Any]:
+    def get_trajectory(self, verification_id: str) -> Any | None:
         """按 ID 取单条轨迹。"""
         if self._trajectory_store is None:
             self._ensure_dependencies()

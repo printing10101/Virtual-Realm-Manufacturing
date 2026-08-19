@@ -25,7 +25,6 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

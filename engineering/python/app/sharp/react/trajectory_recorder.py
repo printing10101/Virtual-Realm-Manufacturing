@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from app.sharp.tools.base import ToolCall, ToolResult
 
@@ -61,7 +61,7 @@ class TrajectoryStep:
     elapsed_ms: float = 0.0
     timestamp: float = field(default_factory=time.time)
     confidence_delta: float = 0.0
-    finish_action: Optional[dict[str, Any]] = None  # LLM Finish 时的完整动作
+    finish_action: dict[str, Any] | None = None  # LLM Finish 时的完整动作
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为 dict（observation 自动转为可序列化形式）。"""
@@ -131,7 +131,7 @@ class TrajectoryRecorder:
         # 始终为 0（因为没有下一步来更新它），导致 evidence_converged 误触发。
         # 改为：setter 暂存 _pending_confidence，record_step 创建 step 时
         # 计算 delta = _pending_confidence - _current_confidence。
-        self._pending_confidence: Optional[float] = None
+        self._pending_confidence: float | None = None
 
     @property
     def steps(self) -> list[TrajectoryStep]:
@@ -166,10 +166,10 @@ class TrajectoryRecorder:
     def record_step(
         self,
         thought: str,
-        tool_call: Optional[ToolCall],
-        tool_result: Optional[ToolResult],
+        tool_call: ToolCall | None,
+        tool_result: ToolResult | None,
         elapsed_ms: float = 0.0,
-        finish_action: Optional[dict[str, Any]] = None,
+        finish_action: dict[str, Any] | None = None,
     ) -> TrajectoryStep:
         """记录一步推理。
 
@@ -234,7 +234,7 @@ class TrajectoryRecorder:
             "steps": [s.to_dict() for s in self._steps],
         }
 
-    def to_prompt_text(self, last_n: Optional[int] = None) -> str:
+    def to_prompt_text(self, last_n: int | None = None) -> str:
         """生成用于后续 prompt 的历史轨迹文本。
 
         Args:

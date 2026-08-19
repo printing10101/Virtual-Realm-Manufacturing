@@ -14,7 +14,7 @@ import os
 import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -334,7 +334,7 @@ class _VectorStoreHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[VectorStore] = None
+        self._instance: VectorStore | None = None
 
     def get(self) -> VectorStore:
         # 快速路径：已存在则直接返回，避免持锁开销

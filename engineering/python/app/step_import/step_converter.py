@@ -14,7 +14,6 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import cadquery as cq
 
@@ -98,7 +97,7 @@ class StepConverter:
 
     def __init__(
         self,
-        output_dir: Optional[str | Path] = None,
+        output_dir: str | Path | None = None,
         base_url: str = "/api/import/step/output",
     ) -> None:
         if output_dir is None:

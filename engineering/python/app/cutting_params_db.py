@@ -5,7 +5,7 @@ Provides recommended cutting parameters for different material categories
 and machining operations based on tool diameter.
 """
 
-from typing import Dict, List, NotRequired, Tuple, TypedDict
+from typing import NotRequired, TypedDict
 
 # 切削参数推荐结果的精确类型（2026-08-19：从 Dict[str, Union[...]] 收紧，
 # 修复 mypy 调用方取值推断为 int|float|list[str] 联合类型的问题）
@@ -15,7 +15,7 @@ class CuttingParamsResult(TypedDict):
     spindle_speed: int  # RPM
     feed_rate: float  # mm/min（turning 为 mm/rev）
     depth_of_cut: float  # mm
-    warnings: NotRequired[List[str]]  # 仅 validate_machine_limits=True 时存在
+    warnings: NotRequired[list[str]]  # 仅 validate_machine_limits=True 时存在
 
 # Material categories with their machinability properties
 MATERIAL_CATEGORIES = {
@@ -49,9 +49,9 @@ MATERIAL_CATEGORIES = {
 # Format: (spindle_speed_rpm, feed_rate_mm_per_min, depth_of_cut_mm)
 # These are baseline values for a 10mm diameter tool
 # 显式类型注解：mypy 对深层嵌套字面量推导会退化为 float（见 mypy 修复批次）
-OperationParams = Dict[str, Tuple[float, float]]  # {"spindle_speed_range": (min, max)}
-MaterialOps = Dict[str, OperationParams]  # {"drilling": {...}}
-MaterialParams = Dict[str, MaterialOps]  # {"aluminum": {...}}
+OperationParams = dict[str, tuple[float, float]]  # {"spindle_speed_range": (min, max)}
+MaterialOps = dict[str, OperationParams]  # {"drilling": {...}}
+MaterialParams = dict[str, MaterialOps]  # {"aluminum": {...}}
 BASE_PARAMETERS: MaterialParams = {
     "aluminum": {
         "drilling": {

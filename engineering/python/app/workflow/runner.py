@@ -35,7 +35,8 @@ import time
 import uuid
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Optional
+from typing import Any
+from collections.abc import AsyncIterator
 
 try:
     import networkx as nx
@@ -118,7 +119,7 @@ def _spec_to_dict(spec: WorkflowSpec) -> dict[str, Any]:
     }
 
 
-def _resolve_artifact_ref(ref: str, completed_outputs: dict[str, dict[str, Any]]) -> Optional[Artifact]:
+def _resolve_artifact_ref(ref: str, completed_outputs: dict[str, dict[str, Any]]) -> Artifact | None:
     """解析 ``${node_id.output_name}`` 引用为 Artifact 实例。
 
     Args:
@@ -164,8 +165,8 @@ class WorkflowRunner(IWorkflowRunner):
 
     def __init__(
         self,
-        dag_store: Optional[DAGStore] = None,
-        registry: Optional[Any] = None,
+        dag_store: DAGStore | None = None,
+        registry: Any | None = None,
     ) -> None:
         self._store: DAGStore = dag_store or get_dag_store()
         self._registry = registry
@@ -195,9 +196,9 @@ class WorkflowRunner(IWorkflowRunner):
         self,
         spec: WorkflowSpec,
         *,
-        inputs: Optional[dict[str, Artifact]] = None,
-        resume_from: Optional[str] = None,
-        owner_id: Optional[str] = None,
+        inputs: dict[str, Artifact] | None = None,
+        resume_from: str | None = None,
+        owner_id: str | None = None,
     ) -> str:
         """启动工作流，返回 workflow_run_id。
 
@@ -929,9 +930,9 @@ class WorkflowRunner(IWorkflowRunner):
 # 单例访问
 # ---------------------------------------------------------------------------
 
-_runner: Optional[WorkflowRunner] = None
+_runner: WorkflowRunner | None = None
 # [A-H17] 懒初始化 asyncio.Lock，避免模块导入时绑定到错误的事件循环
-_runner_lock: Optional[asyncio.Lock] = None
+_runner_lock: asyncio.Lock | None = None
 
 
 def _get_runner_lock() -> asyncio.Lock:

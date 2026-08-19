@@ -18,7 +18,7 @@ ReAct 循环的多重终止条件：
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+
 
 from app.sharp.react.trajectory_recorder import TrajectoryRecorder
 from app.sharp.schema.strategic_planner import VerificationStrategy
@@ -95,9 +95,9 @@ class StoppingCriteria:
         step_idx: int,
         strategy: VerificationStrategy,
         recorder: TrajectoryRecorder,
-        llm_action: Optional[dict] = None,
+        llm_action: dict | None = None,
         consecutive_errors: int = 0,
-        max_steps_override: Optional[int] = None,
+        max_steps_override: int | None = None,
     ) -> StoppingDecision:
         """综合检查所有终止条件。
 

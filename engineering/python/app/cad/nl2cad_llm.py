@@ -19,7 +19,8 @@ import logging
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 from app.cad._brep_validator import BrepValidationReport, validate_exported_model
 from app.cad.cadquery_gen import (

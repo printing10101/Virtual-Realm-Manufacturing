@@ -43,7 +43,7 @@ from __future__ import annotations
 import math
 import random
 import threading
-from typing import Any, Optional
+from typing import Any
 from collections.abc import Callable
 
 from app.config.spec import ConfigStore

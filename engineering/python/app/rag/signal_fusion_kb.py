@@ -45,7 +45,7 @@ import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -68,7 +68,7 @@ SUPPORTED_SIGNAL_TYPES = (
 )
 
 # 信号类型 → sensor_features 字段映射
-SIGNAL_TYPE_TO_SENSOR_FIELD: dict[str, Optional[str]] = {
+SIGNAL_TYPE_TO_SENSOR_FIELD: dict[str, str | None] = {
     "vibration": "vibration_rms",
     "cutting_force": "cutting_force",
     "temperature": "temperature",
@@ -120,7 +120,7 @@ class SignalSample:
     sensor_features: dict[str, float] = field(default_factory=dict)
     process_context: dict[str, Any] = field(default_factory=dict)
     machine_id: str = ""
-    tool_id: Optional[int] = None
+    tool_id: int | None = None
     material: str = ""
     label: str = ""
     timestamp: float = field(default_factory=time.time)
@@ -390,10 +390,10 @@ class SignalFusionKnowledgeBase:
     def retrieve_similar(
         self,
         features: list[float],
-        signal_type: Optional[str] = None,
-        machine_id: Optional[str] = None,
-        material: Optional[str] = None,
-        tool_id: Optional[int] = None,
+        signal_type: str | None = None,
+        machine_id: str | None = None,
+        material: str | None = None,
+        tool_id: int | None = None,
         top_k: int = 10,
     ) -> list[SignalSample]:
         """检索与给定特征向量相似的信号样本。
@@ -494,7 +494,7 @@ class SignalFusionKnowledgeBase:
         self,
         samples: list[SignalSample],
         strategy: str = "weighted",
-        weights: Optional[dict[str, float]] = None,
+        weights: dict[str, float] | None = None,
     ) -> FusionResult:
         """将多个信号样本融合为统一特征向量。
 
@@ -609,7 +609,7 @@ class SignalFusionKnowledgeBase:
     def correlate_with_chatter(
         self,
         samples: list[SignalSample],
-        process_context: Optional[dict[str, Any]] = None,
+        process_context: dict[str, Any] | None = None,
     ) -> ChatterCorrelation:
         """将信号样本关联为 ChatterPredictor 可消费的特征。
 
@@ -834,7 +834,7 @@ class _SingletonHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[SignalFusionKnowledgeBase] = None
+        self._instance: SignalFusionKnowledgeBase | None = None
 
     def get(self) -> SignalFusionKnowledgeBase:
         if self._instance is not None:

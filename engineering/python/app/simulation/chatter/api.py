@@ -18,7 +18,7 @@ import csv
 import io
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -62,13 +62,13 @@ class SLDRequest(BaseModel):
     num_points: int = Field(default=100, ge=20, le=500, description="每叶点数")
     num_lobes: int = Field(default=5, ge=1, le=10, description="叶图数")
     # 自定义模态参数（可选，覆盖默认机床参数）
-    custom_modal: Optional[dict] = Field(
+    custom_modal: dict | None = Field(
         default=None,
         description=("自定义模态参数，覆盖机床默认值。字段：stiffness_z, damping_ratio, natural_freq, modal_mass"),
     )
     # 实际加工切深（可选，用于计算不稳定转速区间）
     # 未传时默认 2.0mm，并在响应中标注 depth_source="default"
-    actual_axial_depth: Optional[float] = Field(
+    actual_axial_depth: float | None = Field(
         default=None,
         gt=0,
         description="实际加工轴向切深 (mm)，用于精确计算不稳定转速区间",
@@ -90,7 +90,7 @@ class PredictRequest(BaseModel):
     spindle_rpm: float = Field(..., gt=0, description="主轴转速 rpm")
     machine_id: str = Field(default="vmc_850")
     tool_id: str = Field(default="endmill_d10")
-    axial_depth: Optional[float] = Field(default=None, gt=0, description="实际轴向切深 mm，用于判定稳定性")
+    axial_depth: float | None = Field(default=None, gt=0, description="实际轴向切深 mm，用于判定稳定性")
 
 
 # =====================================================================

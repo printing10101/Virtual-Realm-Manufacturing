@@ -19,7 +19,8 @@ import hashlib
 import logging
 import os
 import threading
-from typing import Any, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 # 设置 HuggingFace 中国镜像，加速模型下载
 # 可通过环境变量 HF_ENDPOINT 覆盖，默认为 https://hf-mirror.com

@@ -11,7 +11,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .data_anonymizer import DataAnonymizer
 
@@ -24,9 +24,9 @@ DEFAULT_BRIDGE_ROOT = "data/bridge"
 class UsageDataCollector:
     """使用数据收集器（单例）。"""
 
-    _instance: Optional["UsageDataCollector"] = None
+    _instance: "UsageDataCollector" | None = None
 
-    def __init__(self, bridge_root: Optional[str] = None):
+    def __init__(self, bridge_root: str | None = None):
         self._bridge_root = Path(bridge_root or DEFAULT_BRIDGE_ROOT)
         self._usage_logs_dir = self._bridge_root / "usage_logs"
         self._error_samples_dir = self._bridge_root / "error_samples"
@@ -53,8 +53,8 @@ class UsageDataCollector:
         dxf_path: str,
         success: bool,
         latency_ms: int,
-        user_id: Optional[str] = None,
-        extra: Optional[dict] = None,
+        user_id: str | None = None,
+        extra: dict | None = None,
     ) -> None:
         """记录一次特征识别调用。
 
@@ -87,7 +87,7 @@ class UsageDataCollector:
         baseline_result: Any,
         research_result: Any,
         dxf_path: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> None:
         """记录一次影子模式下的 baseline 与 research 的 diff。"""
         payload = {
@@ -110,8 +110,8 @@ class UsageDataCollector:
         feature: str,
         error_type: str,
         error_message: str,
-        context: Optional[dict] = None,
-        user_id: Optional[str] = None,
+        context: dict | None = None,
+        user_id: str | None = None,
     ) -> None:
         """记录一次产品错误。"""
         payload = {
@@ -133,8 +133,8 @@ class UsageDataCollector:
         feature: str,
         error_type: str,
         error_messages: list[str],
-        context: Optional[dict] = None,
-        user_id: Optional[str] = None,
+        context: dict | None = None,
+        user_id: str | None = None,
     ) -> None:
         """批量记录错误，避免循环中的 N+1 I/O 操作。"""
         if not error_messages:
@@ -170,9 +170,9 @@ class UsageDataCollector:
         self,
         feature: str,
         feedback: str,
-        rating: Optional[int] = None,
-        context: Optional[dict] = None,
-        user_id: Optional[str] = None,
+        rating: int | None = None,
+        context: dict | None = None,
+        user_id: str | None = None,
     ) -> None:
         """记录用户主动反馈。"""
         payload = {
@@ -226,7 +226,7 @@ class UsageDataCollector:
         self,
         feature: str,
         items: list[dict[str, Any]],
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> int:
         """批量记录（如端到端测试一次性写 20 个 fixture 的结果）。
 

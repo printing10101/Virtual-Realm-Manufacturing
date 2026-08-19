@@ -22,7 +22,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncIterator, Optional
+from typing import Any
+from collections.abc import AsyncIterator
 
 from app.contracts.dataset import (
     DatasetSchema,
@@ -60,11 +61,11 @@ class TrainingDataLakeAdapter(IDatasetStore):
 
     def __init__(
         self,
-        lake: Optional[TrainingDataLake] = None,
+        lake: TrainingDataLake | None = None,
         *,
         dataset_name: str = "training_data_lake",
-        dataset_store: Optional[DatasetStore] = None,
-        schema: Optional[DatasetSchema] = None,
+        dataset_store: DatasetStore | None = None,
+        schema: DatasetSchema | None = None,
         owner_id: str = "system",
     ) -> None:
         self._lake = lake or TrainingDataLake()
@@ -72,7 +73,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         self._store = dataset_store or get_dataset_store()
         self._schema = schema or _DEFAULT_LAKE_SCHEMA
         self._owner_id = owner_id
-        self._dataset_id: Optional[str] = None  # 懒注册
+        self._dataset_id: str | None = None  # 懒注册
 
     # ------------------------------------------------------------------
     # 内部：懒注册 dataset
@@ -153,8 +154,8 @@ class TrainingDataLakeAdapter(IDatasetStore):
         dataset_id: str,
         records: list[dict[str, Any]],
         *,
-        version: Optional[str] = None,
-        lineage: Optional[LineageRecord] = None,
+        version: str | None = None,
+        lineage: LineageRecord | None = None,
     ) -> DatasetVersion:
         """提交版本（委托给底层 DatasetStore）.
 
@@ -170,14 +171,14 @@ class TrainingDataLakeAdapter(IDatasetStore):
             )
         return await self._store.commit_version(dataset_id, records, version=version, lineage=lineage)
 
-    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersion:
+    async def get_version(self, dataset_id: str, version: str | None = None) -> DatasetVersion:
         """获取版本（委托）."""
         return await self._store.get_version(dataset_id, version)
 
     async def read(
         self,
         dataset_id: str,
-        version: Optional[str] = None,
+        version: str | None = None,
         *,
         batch_size: int = 1000,
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -200,8 +201,8 @@ class TrainingDataLakeAdapter(IDatasetStore):
     async def snapshot_lake(
         self,
         *,
-        version: Optional[str] = None,
-        lineage: Optional[LineageRecord] = None,
+        version: str | None = None,
+        lineage: LineageRecord | None = None,
     ) -> DatasetVersion:
         """便捷方法：把当前 lake 全量数据快照为一个新版本.
 
@@ -227,7 +228,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         return self._lake
 
     @property
-    def dataset_id(self) -> Optional[str]:
+    def dataset_id(self) -> str | None:
         """当前适配器注册的 dataset_id（未 commit 前为 None）."""
         return self._dataset_id
 
@@ -237,7 +238,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
 # ---------------------------------------------------------------------------
 
 
-_adapter: Optional[TrainingDataLakeAdapter] = None
+_adapter: TrainingDataLakeAdapter | None = None
 
 
 def get_training_data_lake_adapter() -> TrainingDataLakeAdapter:

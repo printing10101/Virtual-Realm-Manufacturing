@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from app.process_planning.gcode_generator import GCodeResult
 from app.process_planning.hole_recognizer import HoleRecognitionResult
@@ -61,11 +61,11 @@ class PipelineResult:
 
     success: bool = False
     stages: list[PipelineStage] = field(default_factory=list)
-    hole_recognition: Optional[HoleRecognitionResult] = None
+    hole_recognition: HoleRecognitionResult | None = None
     process_plans: list[HoleProcessPlan] = field(default_factory=list)
-    operation_plan: Optional[OperationPlan] = None
-    gcode_result: Optional[GCodeResult] = None
-    simulation: Optional[dict[str, Any]] = None
+    operation_plan: OperationPlan | None = None
+    gcode_result: GCodeResult | None = None
+    simulation: dict[str, Any] | None = None
     total_duration_ms: float = 0.0
     summary: str = ""
 

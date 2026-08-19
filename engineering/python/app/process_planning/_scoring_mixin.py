@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+
 
 from app.data.process_data_manager import CuttingParameterEntry, ToolEntry
 
@@ -39,7 +39,7 @@ class _ScoringMixin:
         self,
         tool: ToolEntry,
         target_diameter: float,
-        params: Optional[CuttingParameterEntry],
+        params: CuttingParameterEntry | None,
     ) -> float:
         """计算刀具适用度评分 (0-100)。
 
@@ -83,7 +83,7 @@ class _ScoringMixin:
         self,
         tool: ToolEntry,
         target_diameter: float,
-        params: Optional[CuttingParameterEntry],
+        params: CuttingParameterEntry | None,
     ) -> str:
         """生成刀具匹配原因说明。
 
@@ -116,7 +116,7 @@ class _ScoringMixin:
         self,
         tool: ToolEntry,
         target_diameter: float,
-        params: Optional[CuttingParameterEntry],
+        params: CuttingParameterEntry | None,
     ) -> list[str]:
         """生成刀具使用注意事项。
 
@@ -140,7 +140,7 @@ class _ScoringMixin:
         self,
         hole_diameter: float,
         tool: ToolEntry,
-        params: Optional[CuttingParameterEntry],
+        params: CuttingParameterEntry | None,
         is_center_drill: bool = False,
         depth: float = 20.0,
     ) -> float:

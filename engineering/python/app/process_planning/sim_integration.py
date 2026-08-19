@@ -31,7 +31,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 # torch 相关模块软依赖：桌面 MVP 打包时排除 torch，此时
 # app.simulation.cutting_force.predictor 的 predict_cutting_force 会被
@@ -62,8 +62,8 @@ class SimulationResult:
     passed: bool = False
     score: float = 0.0
     recommendation: str = "not_recommended"
-    cutting_force: Optional[dict[str, Any]] = None
-    chatter_stability: Optional[dict[str, Any]] = None
+    cutting_force: dict[str, Any] | None = None
+    chatter_stability: dict[str, Any] | None = None
     duration_ms: float = 0.0
     error_message: str = ""
 
@@ -117,7 +117,7 @@ class SimulationIntegration:
         feed_rate: float = 1200,
         depth_of_cut: float = 2.0,
         machine: str = "vmc_850",
-        workpiece: Optional[str] = None,
+        workpiece: str | None = None,
     ) -> SimulationResult:
         """执行完整仿真流程。
 

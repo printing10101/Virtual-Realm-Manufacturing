@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import functools
 import logging
-from typing import Any, Callable, Coroutine, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
+from collections.abc import Callable, Coroutine
 
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message

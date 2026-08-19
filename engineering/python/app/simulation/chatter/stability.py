@@ -28,14 +28,14 @@ import json
 import os
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 # 默认机床动态参数（刚度、阻尼比、固有频率）
 # 物理一致性：f_n = sqrt(k/m) / (2π)
-DEFAULT_MACHINE_PARAMS: Dict[str, Dict[str, float]] = {
+DEFAULT_MACHINE_PARAMS: dict[str, dict[str, float]] = {
     "vmc_850": {
         "stiffness_x": 1.5e7,  # X向刚度 (N/m)
         "stiffness_y": 1.5e7,  # Y向刚度 (N/m)
@@ -63,7 +63,7 @@ DEFAULT_MACHINE_PARAMS: Dict[str, Dict[str, float]] = {
 }
 
 # 默认刀具参数
-DEFAULT_TOOL_PARAMS: Dict[str, Dict[str, Any]] = {
+DEFAULT_TOOL_PARAMS: dict[str, dict[str, Any]] = {
     "endmill_d10": {
         "diameter": 10.0,  # 刀具直径 (mm)
         "num_flutes": 4,  # 齿数
@@ -136,7 +136,7 @@ class ChatterParams:
     spindle_rpm: float = 8000.0  # 主轴转速 (rpm)
     machine: MachineParams = field(default_factory=MachineParams)
     tool: ToolParams = field(default_factory=ToolParams)
-    axial_depth: Optional[float] = None  # 轴向切深 (mm)，None 时计算极限切深
+    axial_depth: float | None = None  # 轴向切深 (mm)，None 时计算极限切深
 
     def __post_init__(self) -> None:
         if self.spindle_rpm <= 0:
@@ -190,7 +190,7 @@ def get_machine_params(machine_id: str) -> MachineParams:
     return MachineParams(machine_id=machine_id, **params)
 
 
-def get_default_machine_params() -> Dict[str, Dict[str, float]]:
+def get_default_machine_params() -> dict[str, dict[str, float]]:
     """获取所有默认机床参数。"""
     return DEFAULT_MACHINE_PARAMS.copy()
 
@@ -296,10 +296,10 @@ def compute_stability_limit(
 def compute_stability_lobe(
     machine: MachineParams,
     tool: ToolParams,
-    speed_range: Tuple[float, float] = (1000, 10000),
+    speed_range: tuple[float, float] = (1000, 10000),
     num_points: int = 100,
     num_lobes: int = 5,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """计算稳定性叶图。
 
     生成主轴转速与极限切削深度的关系曲线（稳定性叶图）。

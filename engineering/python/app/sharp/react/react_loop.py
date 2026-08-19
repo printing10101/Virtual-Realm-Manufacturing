@@ -31,7 +31,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from app.sharp.react.prompt_templates import (
     SYSTEM_PROMPT,
@@ -153,12 +153,12 @@ class ReActLoop:
         llm_router,
         tool_registry: ToolRegistry,
         strategic_planner: StrategicPlanner,
-        evidence_reranker: Optional[EvidenceReranker] = None,
-        stopping_criteria: Optional[StoppingCriteria] = None,
+        evidence_reranker: EvidenceReranker | None = None,
+        stopping_criteria: StoppingCriteria | None = None,
         max_react_steps: int = 8,
         llm_max_tokens: int = 768,
         llm_temperature: float = 0.3,
-        memory_augmentor: Optional[Any] = None,
+        memory_augmentor: Any | None = None,
     ) -> None:
         """初始化 ReAct 循环。
 
@@ -190,7 +190,7 @@ class ReActLoop:
     async def verify(
         self,
         triple: Triple,
-        max_steps_override: Optional[int] = None,
+        max_steps_override: int | None = None,
     ) -> VerificationResult:
         """验证单个三元组。
 
@@ -233,7 +233,7 @@ class ReActLoop:
         recorder = TrajectoryRecorder(max_observation_length=500)
         tool_results: list = []  # 收集所有 ToolResult 用于证据聚合
         consecutive_errors = 0
-        stopping_decision: Optional[StoppingDecision] = None
+        stopping_decision: StoppingDecision | None = None
 
         # 3. M4 Memory 增强：注入历史相似案例到 prompt
         memory_context = ""
@@ -446,7 +446,7 @@ class ReActLoop:
 
     async def _call_llm_with_retry(
         self, user_prompt: str, verification_id: str, step_idx: int
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """调用 LLM，失败重试 1 次。"""
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -481,7 +481,7 @@ class ReActLoop:
                     return None
         return None
 
-    async def _execute_tool(self, tool_name: str, action_input: Any) -> Optional[Any]:
+    async def _execute_tool(self, tool_name: str, action_input: Any) -> Any | None:
         """执行工具调用。
 
         Returns:

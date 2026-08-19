@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+
 
 from app.sharp.tools.base import BaseTool
 from app.sharp.tools.kg_tools import (
@@ -77,7 +77,7 @@ class ToolRegistry:
         """注销工具。返回是否成功。"""
         return self._tools.pop(name, None) is not None
 
-    def get(self, name: str) -> Optional[BaseTool]:
+    def get(self, name: str) -> BaseTool | None:
         """按名称查找工具。"""
         return self._tools.get(name)
 
@@ -97,7 +97,7 @@ class ToolRegistry:
     # Prompt 生成
     # ------------------------------------------------------------------
 
-    def to_prompt_text(self, tool_names: Optional[list[str]] = None) -> str:
+    def to_prompt_text(self, tool_names: list[str] | None = None) -> str:
         """生成工具集描述文本，用于 LLM prompt 注入。
 
         Args:
@@ -118,7 +118,7 @@ class ToolRegistry:
         query_api=None,
         rag_engine=None,
         llm_router=None,
-        ablation_mode: Optional[str] = None,
+        ablation_mode: str | None = None,
     ) -> "ToolRegistry":
         """根据依赖自动装配默认工具集。
 

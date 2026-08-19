@@ -23,7 +23,7 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.utils.utils import sanitize_filename
 
@@ -341,7 +341,7 @@ async def get_simulation_output(
 
 @router.get("/history")
 async def get_simulation_history(
-    project_id: Optional[str] = Query(default=None, description="Filter by project ID."),
+    project_id: str | None = Query(default=None, description="Filter by project ID."),
     limit: int = Query(default=50, ge=1, le=200, description="Maximum number of records."),
     current_user: dict = Depends(get_current_user),
 ) -> dict:

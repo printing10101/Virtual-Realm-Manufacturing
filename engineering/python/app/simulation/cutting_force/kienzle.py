@@ -22,13 +22,13 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import Dict, Optional
+
 
 logger = logging.getLogger(__name__)
 
 
 # 常用材料 Kienzle 系数 (kc1.1, mc)
-DEFAULT_MATERIAL_COEFFICIENTS: Dict[str, Dict[str, float]] = {
+DEFAULT_MATERIAL_COEFFICIENTS: dict[str, dict[str, float]] = {
     "45steel": {"kc1_1": 2000.0, "mc": 0.25},
     "aluminum_6061": {"kc1_1": 800.0, "mc": 0.20},
     "stainless_304": {"kc1_1": 2500.0, "mc": 0.28},
@@ -38,14 +38,14 @@ DEFAULT_MATERIAL_COEFFICIENTS: Dict[str, Dict[str, float]] = {
 }
 
 # 力方向比例系数
-FORCE_DIRECTION_RATIOS: Dict[str, float] = {
+FORCE_DIRECTION_RATIOS: dict[str, float] = {
     "Fx_ratio": 0.3,  # 进给力 / 主切削力
     "Fy_ratio": 0.4,  # 径向力 / 主切削力
 }
 
 # 材料名规范化：中文名 / materials.json ID / 常见别名 → 标准系数表 ID
 # （真实输入常为中文材料名或数据库 ID，如 "45#钢"、"steel_45"、"TC4"）
-MATERIAL_ALIASES: Dict[str, str] = {
+MATERIAL_ALIASES: dict[str, str] = {
     # 碳钢
     "45#钢": "45steel",
     "45钢": "45steel",
@@ -95,8 +95,8 @@ class KienzleParams:
     material: str = "45steel"
     width: float = 10.0  # 切削宽度 b (mm)
     chip_thickness: float = 0.1  # 未变形切屑厚度 h (mm)
-    kc1_1: Optional[float] = None  # 比切削力，None 时从配置读取
-    mc: Optional[float] = None  # 切削力指数，None 时从配置读取
+    kc1_1: float | None = None  # 比切削力，None 时从配置读取
+    mc: float | None = None  # 切削力指数，None 时从配置读取
 
     def __post_init__(self) -> None:
         if self.width <= 0:
@@ -110,7 +110,7 @@ class KienzleParams:
             self.mc = coeffs["mc"]
 
 
-def get_kienzle_coefficients(material: str) -> Dict[str, float]:
+def get_kienzle_coefficients(material: str) -> dict[str, float]:
     """获取材料的 Kienzle 系数。
 
     优先从 process_rules.json 读取，若不存在则使用硬编码默认值。
@@ -169,9 +169,9 @@ def compute_cutting_forces(
     material: str = "45steel",
     width: float = 10.0,
     chip_thickness: float = 0.1,
-    kc1_1: Optional[float] = None,
-    mc: Optional[float] = None,
-) -> Dict[str, float]:
+    kc1_1: float | None = None,
+    mc: float | None = None,
+) -> dict[str, float]:
     """计算三个方向的切削力。
 
     Args:

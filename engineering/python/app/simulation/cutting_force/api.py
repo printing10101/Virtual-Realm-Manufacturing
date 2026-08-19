@@ -18,7 +18,7 @@
 
 import asyncio
 import logging
-from typing import Optional
+
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
@@ -49,8 +49,8 @@ def _resolve_stability_limit(
     spindle_rpm: float,
     material: str,
     cutter_diameter: float,
-    explicit_limit: Optional[float] = None,
-) -> Optional[float]:
+    explicit_limit: float | None = None,
+) -> float | None:
     """解析稳定性叶图极限切深（LTC → 自适应铣削 桥接）。
 
     优先使用显式传入的 explicit_limit；若为 None，则尝试调用 ChatterPredictor
@@ -109,14 +109,14 @@ class AdaptiveSolveSegmentRequest(BaseModel):
     max_feed: float = Field(default=DEFAULT_MAX_FEED_MM_PER_MIN, gt=0, description="机床最大进给 mm/min")
     min_feed: float = Field(default=100.0, gt=0, description="机床最小进给 mm/min")
     spindle_rpm: float = Field(default=6000.0, gt=0, description="主轴转速 rpm")
-    stability_limit_ap: Optional[float] = Field(default=None, gt=0, description="稳定性叶图极限切深 mm（可选约束）")
-    kc1_1: Optional[float] = Field(default=None, gt=0, description="比切削力 N/mm²（覆盖材料库）")
-    mc: Optional[float] = Field(default=None, gt=0, description="切削力指数（覆盖材料库）")
+    stability_limit_ap: float | None = Field(default=None, gt=0, description="稳定性叶图极限切深 mm（可选约束）")
+    kc1_1: float | None = Field(default=None, gt=0, description="比切削力 N/mm²（覆盖材料库）")
+    mc: float | None = Field(default=None, gt=0, description="切削力指数（覆盖材料库）")
     safety_margin: float = Field(default=0.85, gt=0, le=1.0, description="安全裕度 (0,1]")
 
     # 单段专用
-    material_remainder_mm: Optional[float] = Field(default=None, gt=0, description="该段剩余材料厚度 mm（可选约束）")
-    force_override_n: Optional[float] = Field(default=None, gt=0, description="该段目标力覆盖 N（可选）")
+    material_remainder_mm: float | None = Field(default=None, gt=0, description="该段剩余材料厚度 mm（可选约束）")
+    force_override_n: float | None = Field(default=None, gt=0, description="该段目标力覆盖 N（可选）")
 
 
 class AdaptiveSolveSegmentsRequest(AdaptiveSolveSegmentRequest):
@@ -124,7 +124,7 @@ class AdaptiveSolveSegmentsRequest(AdaptiveSolveSegmentRequest):
 
     material_remainders: list[float] = Field(default_factory=list, description="每段剩余材料厚度列表 mm")
     force_overrides: list[float] = Field(default_factory=list, description="每段目标力覆盖列表 N")
-    num_segments: Optional[int] = Field(default=None, ge=1, le=1000, description="段数（仅当两列表为空时使用）")
+    num_segments: int | None = Field(default=None, ge=1, le=1000, description="段数（仅当两列表为空时使用）")
 
 
 class KienzleComputeRequest(BaseModel):
@@ -133,8 +133,8 @@ class KienzleComputeRequest(BaseModel):
     material: str = Field(default="45steel")
     width: float = Field(default=10.0, gt=0, description="切削宽度 b mm")
     chip_thickness: float = Field(default=0.1, gt=0, description="未变形切屑厚度 h mm")
-    kc1_1: Optional[float] = Field(default=None, gt=0)
-    mc: Optional[float] = Field(default=None, gt=0)
+    kc1_1: float | None = Field(default=None, gt=0)
+    mc: float | None = Field(default=None, gt=0)
 
 
 # =====================================================================

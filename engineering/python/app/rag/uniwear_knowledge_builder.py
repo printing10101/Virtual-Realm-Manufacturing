@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
 
 from app.data.uniwear_loader import (

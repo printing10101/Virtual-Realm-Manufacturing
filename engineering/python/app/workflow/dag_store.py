@@ -15,7 +15,8 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Optional
+from typing import Any
+from collections.abc import AsyncIterator
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,10 +63,10 @@ class DAGStore:
         *,
         name: str,
         version: str = "1.0.0",
-        inputs: Optional[dict[str, Any]] = None,
-        outputs: Optional[dict[str, Any]] = None,
-        owner_id: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        inputs: dict[str, Any] | None = None,
+        outputs: dict[str, Any] | None = None,
+        owner_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """创建工作流运行记录，返回 workflow_run_id."""
         run_id = _new_run_id()
@@ -85,7 +86,7 @@ class DAGStore:
             await session.commit()
         return run_id
 
-    async def get_run(self, workflow_run_id: str) -> Optional[dict[str, Any]]:
+    async def get_run(self, workflow_run_id: str) -> dict[str, Any] | None:
         """获取工作流运行记录（含节点状态）."""
         async with self._locked_session() as session:
             stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
@@ -103,10 +104,10 @@ class DAGStore:
         workflow_run_id: str,
         status: str,
         *,
-        error: Optional[str] = None,
-        outputs: Optional[dict[str, Any]] = None,
-        started_at: Optional[datetime] = None,
-        completed_at: Optional[datetime] = None,
+        error: str | None = None,
+        outputs: dict[str, Any] | None = None,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
     ) -> bool:
         """更新工作流运行状态。返回是否成功."""
         values: dict[str, Any] = {"status": status}
@@ -136,8 +137,8 @@ class DAGStore:
     async def list_runs(
         self,
         *,
-        status: Optional[str] = None,
-        owner_id: Optional[str] = None,
+        status: str | None = None,
+        owner_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -194,7 +195,7 @@ class DAGStore:
             nodes = result.scalars().all()
             return [n.to_dict() for n in nodes]
 
-    async def get_node_state(self, workflow_run_id: str, node_id: str) -> Optional[dict[str, Any]]:
+    async def get_node_state(self, workflow_run_id: str, node_id: str) -> dict[str, Any] | None:
         """获取单个节点状态."""
         async with self._locked_session() as session:
             stmt = select(WorkflowRunNode).where(
@@ -228,16 +229,16 @@ class DAGStore:
         workflow_run_id: str,
         node_id: str,
         *,
-        status: Optional[str] = None,
-        job_id: Optional[str] = None,
-        params: Optional[dict[str, Any]] = None,
-        inputs: Optional[dict[str, Any]] = None,
-        outputs: Optional[dict[str, Any]] = None,
-        metrics: Optional[dict[str, Any]] = None,
-        error: Optional[str] = None,
-        retry_count: Optional[int] = None,
-        started_at: Optional[datetime] = None,
-        completed_at: Optional[datetime] = None,
+        status: str | None = None,
+        job_id: str | None = None,
+        params: dict[str, Any] | None = None,
+        inputs: dict[str, Any] | None = None,
+        outputs: dict[str, Any] | None = None,
+        metrics: dict[str, Any] | None = None,
+        error: str | None = None,
+        retry_count: int | None = None,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
     ) -> bool:
         """更新节点状态。返回是否成功."""
         values: dict[str, Any] = {}
@@ -297,7 +298,7 @@ class DAGStore:
 
 
 # 单例
-_dag_store: Optional[DAGStore] = None
+_dag_store: DAGStore | None = None
 
 
 def get_dag_store() -> DAGStore:

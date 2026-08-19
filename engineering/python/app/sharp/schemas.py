@@ -13,7 +13,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -82,14 +82,14 @@ class VerifyRequest(BaseModel):
     """`POST /sharp/verify` 请求体。"""
 
     triple: TripleRequest = Field(..., description="待验证的三元组")
-    ablation_mode: Optional[str] = Field(
+    ablation_mode: str | None = Field(
         None,
         description=(
             "消融模式覆盖（None / 'no_schema' / 'no_memory' / "
             "'no_react' / 'no_toolset'）。None 表示使用服务端默认配置。"
         ),
     )
-    max_react_steps: Optional[int] = Field(
+    max_react_steps: int | None = Field(
         None,
         ge=1,
         le=20,
@@ -110,11 +110,11 @@ class BatchVerifyRequest(BaseModel):
         max_length=50,
         description="待验证的三元组列表（单次最多 50 条）",
     )
-    ablation_mode: Optional[str] = Field(
+    ablation_mode: str | None = Field(
         None,
         description="消融模式（应用于本批所有三元组）",
     )
-    max_react_steps: Optional[int] = Field(
+    max_react_steps: int | None = Field(
         None,
         ge=1,
         le=20,
@@ -147,12 +147,12 @@ class TrajectoryStep(BaseModel):
 
     step: int = Field(..., description="步序号")
     thought: str = Field("", description="LLM 思考")
-    action: Optional[str] = Field(None, description="动作名")
-    action_input: Optional[Any] = Field(None, description="动作输入")
-    observation: Optional[str] = Field(None, description="观察结果")
+    action: str | None = Field(None, description="动作名")
+    action_input: Any | None = Field(None, description="动作输入")
+    observation: str | None = Field(None, description="观察结果")
     elapsed_ms: float = Field(0.0, description="本步耗时（毫秒）")
     success: bool = Field(True, description="是否成功")
-    finish_action: Optional[dict[str, Any]] = Field(
+    finish_action: dict[str, Any] | None = Field(
         None, description="若为 Finish 步骤，包含 verdict/confidence/reasoning"
     )
 
@@ -219,7 +219,7 @@ class BatchVerifyItem(BaseModel):
     reasoning: str = Field("", description="推理依据")
     steps_taken: int = Field(0, description="执行步数")
     elapsed_ms: float = Field(0.0, description="耗时（毫秒）")
-    error: Optional[str] = Field(None, description="错误信息（成功为 None）")
+    error: str | None = Field(None, description="错误信息（成功为 None）")
 
 
 class BatchVerifyResponse(BaseModel):
@@ -266,22 +266,22 @@ class TrajectoryQueryRequest(BaseModel):
     """`POST /sharp/trajectory/query` 请求体。"""
 
     limit: int = Field(50, ge=1, le=500, description="返回记录数上限")
-    verdict: Optional[str] = Field(None, description="按 verdict 过滤")
-    relation: Optional[str] = Field(None, description="按关系类型过滤")
+    verdict: str | None = Field(None, description="按 verdict 过滤")
+    relation: str | None = Field(None, description="按关系类型过滤")
 
 
 class AblationInfo(BaseModel):
     """消融模式信息。"""
 
-    current_mode: Optional[str] = Field(..., description="当前消融模式")
-    available_modes: list[Optional[str]] = Field(..., description="可选消融模式列表（None 表示完整 SHARP）")
+    current_mode: str | None = Field(..., description="当前消融模式")
+    available_modes: list[str | None] = Field(..., description="可选消融模式列表（None 表示完整 SHARP）")
     description: str = Field(..., description="当前模式说明")
 
 
 class AblationUpdateRequest(BaseModel):
     """`POST /sharp/ablation` 请求体：切换消融模式。"""
 
-    mode: Optional[str] = Field(
+    mode: str | None = Field(
         None,
         description=("消融模式：None / 'no_schema' / 'no_memory' / 'no_react' / 'no_toolset'"),
     )
@@ -294,7 +294,7 @@ class StatusResponse(BaseModel):
     enabled_components: dict[str, bool] = Field(..., description="各组件启用状态")
     tool_registry_size: int = Field(..., description="已注册工具数")
     trajectory_count: int = Field(..., description="历史轨迹数")
-    ablation_mode: Optional[str] = Field(..., description="当前消融模式")
+    ablation_mode: str | None = Field(..., description="当前消融模式")
 
 
 __all__ = [

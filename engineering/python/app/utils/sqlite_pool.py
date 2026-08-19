@@ -20,7 +20,8 @@ import time
 import weakref
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
-from typing import AsyncGenerator, Optional, Generator
+
+from collections.abc import AsyncGenerator, Generator
 
 from app.utils.utils import get_output_dir
 
@@ -112,7 +113,7 @@ class SQLiteConnectionPool:
         conn.row_factory = sqlite3.Row
         return conn
 
-    def _try_get_from_pool(self) -> Optional[sqlite3.Connection]:
+    def _try_get_from_pool(self) -> sqlite3.Connection | None:
         """尝试从连接池获取连接"""
         with self._lock:
             if self._pool:
@@ -132,7 +133,7 @@ class SQLiteConnectionPool:
                     self._created_count -= 1
             return None
 
-    def _create_new_connection(self) -> Optional[sqlite3.Connection]:
+    def _create_new_connection(self) -> sqlite3.Connection | None:
         """创建新连接（如果未超过限制）"""
         with self._lock:
             if self._created_count < self.pool_size + self.max_overflow:
@@ -397,7 +398,7 @@ class SQLiteConnectionManager:
     管理多个数据库的连接池，提供统一的访问接口。
     """
 
-    _instance: Optional[SQLiteConnectionManager] = None
+    _instance: SQLiteConnectionManager | None = None
     _lock = threading.Lock()
 
     def __init__(self):
@@ -420,7 +421,7 @@ class SQLiteConnectionManager:
         db_name: str,
         pool_size: int = 5,
         max_overflow: int = 10,
-        db_path: Optional[str] = None,
+        db_path: str | None = None,
     ) -> SQLiteConnectionPool:
         """
         获取指定数据库的连接池
