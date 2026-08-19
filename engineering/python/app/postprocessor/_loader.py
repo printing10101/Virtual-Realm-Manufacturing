@@ -5,7 +5,7 @@ import copy
 import os
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+
 import yaml  # type: ignore[import-untyped]
 
 import logging
@@ -58,7 +58,7 @@ class ConfigLoader:
     配置验证、以及配置缓存管理。
     """
 
-    _cache: Dict[str, Tuple[dict, float]] = {}
+    _cache: dict[str, tuple[dict, float]] = {}
     _cache_ttl: float = 300.0
 
     def __init__(self, cache_ttl: float = 300.0) -> None:
@@ -70,7 +70,7 @@ class ConfigLoader:
         self._cache_ttl = cache_ttl
 
     @classmethod
-    def clear_cache(cls, controller_id: Optional[str] = None) -> None:
+    def clear_cache(cls, controller_id: str | None = None) -> None:
         """清除配置缓存。
 
         Args:
@@ -87,7 +87,7 @@ class ConfigLoader:
             if keys_to_delete:
                 logger.info("已清除控制器 %s 的配置缓存 (%d 个)", controller_id, len(keys_to_delete))
 
-    def _resolve_path(self, config_path: Optional[str]) -> str:
+    def _resolve_path(self, config_path: str | None) -> str:
         """解析配置文件路径。
 
         支持相对路径（相对于项目根目录）和绝对路径。
@@ -119,8 +119,8 @@ class ConfigLoader:
 
     def load(
         self,
-        config_path: Optional[str] = None,
-        controller_id: Optional[str] = None,
+        config_path: str | None = None,
+        controller_id: str | None = None,
         use_cache: bool = True,
     ) -> dict:
         """加载并合并配置。
@@ -241,7 +241,7 @@ class ConfigLoader:
     def load_for_controller(
         self,
         controller_id: str,
-        config_path: Optional[str] = None,
+        config_path: str | None = None,
     ) -> dict:
         """加载指定控制器的配置。
 
@@ -258,7 +258,7 @@ class ConfigLoader:
         """
         return self.load(config_path=config_path, controller_id=controller_id)
 
-    def reload(self, config_path: Optional[str] = None) -> dict:
+    def reload(self, config_path: str | None = None) -> dict:
         """强制重新加载配置（忽略缓存）。
 
         Args:

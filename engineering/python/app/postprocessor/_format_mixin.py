@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import Optional, Tuple, Callable
+
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +32,8 @@ class _FormatMixin:
 
     @staticmethod
     def _calc_arc_radius(
-        end: Tuple[float, float, float],
-        center: Tuple[float, float, float],
+        end: tuple[float, float, float],
+        center: tuple[float, float, float],
     ) -> float:
         """计算圆弧半径 sqrt((ex-cx)² + (ey-cy)²)。"""
         return ((end[0] - center[0]) ** 2 + (end[1] - center[1]) ** 2) ** 0.5
@@ -104,9 +105,9 @@ class _FormatMixin:
         x: float,
         y: float,
         z: float,
-        feed: Optional[float] = None,
-        a: Optional[float] = None,
-        c: Optional[float] = None,
+        feed: float | None = None,
+        a: float | None = None,
+        c: float | None = None,
     ) -> str:
         """生成直线插补指令（G01）。
 
@@ -137,8 +138,8 @@ class _FormatMixin:
         x: float,
         y: float,
         z: float,
-        a: Optional[float] = None,
-        c: Optional[float] = None,
+        a: float | None = None,
+        c: float | None = None,
     ) -> str:
         """生成快速定位指令（G00）。
 

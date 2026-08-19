@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from app.postprocessor.base import BasePostProcessor
 
@@ -36,7 +36,7 @@ class FanucPostProcessor(BasePostProcessor):
         decimal_places: int = 3,
         safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(decimal_places, safe_z_height, rapid_feed, config)
 
@@ -83,9 +83,9 @@ class FanucPostProcessor(BasePostProcessor):
 
     def format_arc(
         self,
-        start: Tuple[float, float, float],
-        end: Tuple[float, float, float],
-        center: Tuple[float, float, float],
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+        center: tuple[float, float, float],
         clockwise: bool = True,
     ) -> str:
         g_code = "G02" if clockwise else "G03"
@@ -152,7 +152,7 @@ class FanucPostProcessor(BasePostProcessor):
         z: float,
         depth: float,
         pitch: float = 1.0,
-        spindle_rpm: Optional[float] = None,
+        spindle_rpm: float | None = None,
     ) -> str:
         cfg = self.get_cycle_config("tapping", "G84")
         rpm = self.get_spindle_rpm(spindle_rpm)
@@ -220,12 +220,12 @@ class FanucPostProcessor(BasePostProcessor):
         y: float,
         depth: float,
         lead: float = 1.0,
-        passes: Optional[int] = None,
-        depth_cut_first: Optional[float] = None,
-        depth_cut_last: Optional[float] = None,
-        finishing_passes: Optional[int] = None,
-        tool_angle: Optional[float] = None,
-        taper: Optional[float] = None,
+        passes: int | None = None,
+        depth_cut_first: float | None = None,
+        depth_cut_last: float | None = None,
+        finishing_passes: int | None = None,
+        tool_angle: float | None = None,
+        taper: float | None = None,
     ) -> str:
         cfg = self.get_cycle_config("threading", "G76")
 
@@ -394,7 +394,7 @@ class FanucPostProcessor(BasePostProcessor):
 
     def format_subprogram_end(
         self,
-        return_value: Optional[str] = None,
+        return_value: str | None = None,
     ) -> str:
         sub_cfg = self.get_subprogram_config()
         end_code = sub_cfg.get("end_code", "M99")

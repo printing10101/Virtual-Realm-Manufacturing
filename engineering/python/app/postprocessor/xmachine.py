@@ -18,7 +18,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from app.postprocessor.fanuc import FanucPostProcessor
 
@@ -59,7 +59,7 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
         decimal_places: int = 3,
         safe_z_height: float = 30.0,
         rapid_feed: float = 2000,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         # XM-100 安全高度较低（Z行程仅100mm）
         if safe_z_height > 80.0:
@@ -124,8 +124,8 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
         x: float,
         y: float,
         z: float,
-        a: Optional[float] = None,
-        c: Optional[float] = None,
+        a: float | None = None,
+        c: float | None = None,
     ) -> str:
         """生成快速定位指令（支持五轴 A/C 轴）。
 
@@ -154,9 +154,9 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
         x: float,
         y: float,
         z: float,
-        feed: Optional[float] = None,
-        a: Optional[float] = None,
-        c: Optional[float] = None,
+        feed: float | None = None,
+        a: float | None = None,
+        c: float | None = None,
     ) -> str:
         """生成直线插补指令（支持五轴 A/C 轴）。
 
@@ -282,8 +282,8 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
         x: float,
         y: float,
         z: float,
-        a: Optional[float] = None,
-        c: Optional[float] = None,
+        a: float | None = None,
+        c: float | None = None,
     ) -> None:
         """验证坐标是否在 XM-100 工作空间内。
 
@@ -326,9 +326,9 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
 
     def format_arc(
         self,
-        start: Tuple[float, float, float],
-        end: Tuple[float, float, float],
-        center: Tuple[float, float, float],
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+        center: tuple[float, float, float],
         clockwise: bool = True,
     ) -> str:
         g_code = "G02" if clockwise else "G03"
@@ -386,7 +386,7 @@ class XMachineXM100PostProcessor(FanucPostProcessor):
         ]
         return "\n".join(lines)
 
-    def get_machine_info(self) -> Dict[str, Any]:
+    def get_machine_info(self) -> dict[str, Any]:
         """获取 XM-100 机床信息。"""
         return {
             "machine_name": "XMachine XM-100",

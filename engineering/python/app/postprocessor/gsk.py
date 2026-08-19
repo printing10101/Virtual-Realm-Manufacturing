@@ -21,7 +21,7 @@ GSK 与 Fanuc 0i 的关键差异：
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from app.postprocessor.fanuc import FanucPostProcessor
 
@@ -37,7 +37,7 @@ class GSKPostProcessor(FanucPostProcessor):
         decimal_places: int = 3,
         safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(decimal_places, safe_z_height, rapid_feed, config)
 
@@ -88,9 +88,9 @@ class GSKPostProcessor(FanucPostProcessor):
 
     def format_arc(
         self,
-        start: Tuple[float, float, float],
-        end: Tuple[float, float, float],
-        center: Tuple[float, float, float],
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+        center: tuple[float, float, float],
         clockwise: bool = True,
     ) -> str:
         """GSK 圆弧优先 I/J/K 模式（中心坐标），R 模式需显式标注。"""
@@ -145,7 +145,7 @@ class GSKPostProcessor(FanucPostProcessor):
         z: float,
         depth: float,
         pitch: float = 1.0,
-        spindle_rpm: Optional[float] = None,
+        spindle_rpm: float | None = None,
     ) -> str:
         """GSK 攻丝：与 Fanuc 类似但固定用 G99。"""
         cfg = self.get_cycle_config("tapping", "G84")

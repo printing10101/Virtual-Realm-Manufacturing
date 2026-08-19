@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from app.postprocessor.config_loader import ConfigLimiter, create_limiter
 from app.postprocessor._config_mixin import _ConfigMixin
@@ -44,7 +44,7 @@ class BasePostProcessor(_ConfigMixin, _FormatMixin, ABC):
         decimal_places: int = 3,
         safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         if decimal_places < 0:
             raise ValueError(f"decimal_places must be >= 0, got {decimal_places}")
@@ -57,7 +57,7 @@ class BasePostProcessor(_ConfigMixin, _FormatMixin, ABC):
         self.rapid_feed = rapid_feed
 
         self.config = config or {}
-        self.limiter: Optional[ConfigLimiter] = None
+        self.limiter: ConfigLimiter | None = None
         # Always initialize defaults so subclasses can rely on these
         # attributes being present regardless of whether a config dict
         # is supplied.
@@ -67,7 +67,7 @@ class BasePostProcessor(_ConfigMixin, _FormatMixin, ABC):
         self._feed_min_rate = 10.0
         self._feed_max_rate = 20000.0
         self._feed_default_rate = 1000.0
-        self._work_coordinates: Dict[str, Dict[str, Any]] = {
+        self._work_coordinates: dict[str, dict[str, Any]] = {
             cs: {} for cs in ("G54", "G55", "G56", "G57", "G58", "G59")
         }
         self._default_coordinate_system = "G54"
@@ -111,9 +111,9 @@ class BasePostProcessor(_ConfigMixin, _FormatMixin, ABC):
     @abstractmethod
     def format_arc(
         self,
-        start: Tuple[float, float, float],
-        end: Tuple[float, float, float],
-        center: Tuple[float, float, float],
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+        center: tuple[float, float, float],
         clockwise: bool = True,
     ) -> str:
         """生成圆弧插补指令。
@@ -190,7 +190,7 @@ class BasePostProcessor(_ConfigMixin, _FormatMixin, ABC):
         z: float,
         depth: float,
         pitch: float = 1.0,
-        spindle_rpm: Optional[float] = None,
+        spindle_rpm: float | None = None,
     ) -> str:
         """生成攻丝固定循环指令（G84）。
 
@@ -237,12 +237,12 @@ class BasePostProcessor(_ConfigMixin, _FormatMixin, ABC):
         y: float,
         depth: float,
         lead: float = 1.0,
-        passes: Optional[int] = None,
-        depth_cut_first: Optional[float] = None,
-        depth_cut_last: Optional[float] = None,
-        finishing_passes: Optional[int] = None,
-        tool_angle: Optional[float] = None,
-        taper: Optional[float] = None,
+        passes: int | None = None,
+        depth_cut_first: float | None = None,
+        depth_cut_last: float | None = None,
+        finishing_passes: int | None = None,
+        tool_angle: float | None = None,
+        taper: float | None = None,
     ) -> str:
         """生成螺纹加工固定循环指令（G76）。
 
@@ -281,7 +281,7 @@ class BasePostProcessor(_ConfigMixin, _FormatMixin, ABC):
     @abstractmethod
     def format_subprogram_end(
         self,
-        return_value: Optional[str] = None,
+        return_value: str | None = None,
     ) -> str:
         """生成子程序结束指令。
 

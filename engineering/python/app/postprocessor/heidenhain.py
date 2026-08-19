@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.postprocessor.base import BasePostProcessor
 from app.postprocessor._heidenhain_core_mixin import _HeidenhainCoreMixin
@@ -37,7 +37,7 @@ class HeidenhainPostProcessor(_HeidenhainCoreMixin, _HeidenhainCyclesMixin, Base
         decimal_places: int = 3,
         safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(decimal_places, safe_z_height, rapid_feed, config)
         self._block_counter = 0

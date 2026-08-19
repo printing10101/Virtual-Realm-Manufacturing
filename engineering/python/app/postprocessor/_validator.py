@@ -1,7 +1,7 @@
 """Postprocessor config submodule (split from config_loader)."""
 
 from __future__ import annotations
-from typing import Any, List
+from typing import Any
 
 import logging
 
@@ -16,15 +16,15 @@ class ConfigValidator:
     """
 
     def __init__(self) -> None:
-        self._errors: List[str] = []
-        self._warnings: List[str] = []
+        self._errors: list[str] = []
+        self._warnings: list[str] = []
 
     @property
-    def errors(self) -> List[str]:
+    def errors(self) -> list[str]:
         return self._errors
 
     @property
-    def warnings(self) -> List[str]:
+    def warnings(self) -> list[str]:
         return self._warnings
 
     def _add_error(self, path: str, message: str) -> None:

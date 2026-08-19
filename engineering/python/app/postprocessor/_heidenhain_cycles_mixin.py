@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Callable, Any, Dict
+from typing import Any
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class _HeidenhainCyclesMixin:
     get_feed_rate: Callable[..., float]
     get_spindle_rpm: Callable[..., float]
     get_subprogram_config: Callable[..., Any]
-    get_cycle_config: Callable[..., Dict[str, Any]]
+    get_cycle_config: Callable[..., dict[str, Any]]
 
     def format_cycle_drill(
         self,
@@ -70,7 +71,7 @@ class _HeidenhainCyclesMixin:
         z: float,
         depth: float,
         pitch: float = 1.0,
-        spindle_rpm: Optional[float] = None,
+        spindle_rpm: float | None = None,
     ) -> str:
         cfg = self.get_cycle_config("tapping", "G84")
         rpm = self.get_spindle_rpm(spindle_rpm)
@@ -156,12 +157,12 @@ class _HeidenhainCyclesMixin:
         y: float,
         depth: float,
         lead: float = 1.0,
-        passes: Optional[int] = None,
-        depth_cut_first: Optional[float] = None,
-        depth_cut_last: Optional[float] = None,
-        finishing_passes: Optional[int] = None,
-        tool_angle: Optional[float] = None,
-        taper: Optional[float] = None,
+        passes: int | None = None,
+        depth_cut_first: float | None = None,
+        depth_cut_last: float | None = None,
+        finishing_passes: int | None = None,
+        tool_angle: float | None = None,
+        taper: float | None = None,
     ) -> str:
         cfg = self.get_cycle_config("threading", "G76")
 

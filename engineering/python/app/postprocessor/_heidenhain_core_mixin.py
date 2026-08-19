@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple, Callable, Any, Dict
+from typing import Any
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class _HeidenhainCoreMixin:
     get_feed_rate: Callable[..., float]
     get_spindle_rpm: Callable[..., float]
     get_subprogram_config: Callable[..., Any]
-    get_cycle_config: Callable[..., Dict[str, Any]]
+    get_cycle_config: Callable[..., dict[str, Any]]
 
     def format_header(self, program_number: int = 1) -> str:
         self._block_counter = 0
@@ -58,9 +59,9 @@ class _HeidenhainCoreMixin:
 
     def format_arc(
         self,
-        start: Tuple[float, float, float],
-        end: Tuple[float, float, float],
-        center: Tuple[float, float, float],
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+        center: tuple[float, float, float],
         clockwise: bool = True,
     ) -> str:
         if clockwise:
@@ -114,7 +115,7 @@ class _HeidenhainCoreMixin:
 
     def format_subprogram_end(
         self,
-        return_value: Optional[str] = None,
+        return_value: str | None = None,
     ) -> str:
         sub_cfg = self.get_subprogram_config()
         end_code = sub_cfg.get("end_code", "LBL 0")
@@ -155,7 +156,7 @@ class _HeidenhainCoreMixin:
         x_pos: float = 0.0,
         y_pos: float = 0.0,
         z_depth: float = -10.0,
-        feed_rate: Optional[float] = None,
+        feed_rate: float | None = None,
     ) -> str:
         """生成测头测量循环（CYCL DEF 19）。
 

@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class _ConfigMixin:
     # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
-    config: Dict[str, Any]
+    config: dict[str, Any]
     limiter: Any
 
     def _validate_and_complete_config(self) -> None:
@@ -87,7 +87,7 @@ class _ConfigMixin:
         self._ensure_keys_with_defaults(self.config["tool_offset"], tool_offset_defaults, "tool_offset")
 
         # 验证并补全 fixed_cycles 节
-        fixed_cycles_defaults: Dict[str, Dict[str, Any]] = {
+        fixed_cycles_defaults: dict[str, dict[str, Any]] = {
             "drilling": {},
             "tapping": {},
             "boring": {},
@@ -151,12 +151,12 @@ class _ConfigMixin:
         self._feed_default_rate = feed.get("default_rate", 1000.0)
 
         wcs = self.config.get("work_coordinate", {})
-        self._work_coordinates: Dict[str, Dict[str, Any]] = {}
+        self._work_coordinates: dict[str, dict[str, Any]] = {}
         for cs in ("G54", "G55", "G56", "G57", "G58", "G59"):
             self._work_coordinates[cs] = wcs.get(cs, {})
         self._default_coordinate_system = wcs.get("default_coordinate_system", "G54")
 
-    def get_spindle_rpm(self, requested_rpm: Optional[float] = None) -> float:
+    def get_spindle_rpm(self, requested_rpm: float | None = None) -> float:
         """获取限制后的主轴转速。
 
         Args:
@@ -173,7 +173,7 @@ class _ConfigMixin:
             return self.limiter.get_spindle_default()
         return float(self._spindle_default_rpm)
 
-    def get_feed_rate(self, requested_feed: Optional[float] = None) -> float:
+    def get_feed_rate(self, requested_feed: float | None = None) -> float:
         """获取限制后的进给速度。
 
         Args:
@@ -190,7 +190,7 @@ class _ConfigMixin:
             return self.limiter.get_feed_default()
         return float(self._feed_default_rate)
 
-    def get_work_coordinate(self, system: str = "G54") -> Dict[str, Any]:
+    def get_work_coordinate(self, system: str = "G54") -> dict[str, Any]:
         """获取指定工件坐标系的配置。
 
         Args:
@@ -210,7 +210,7 @@ class _ConfigMixin:
             self._default_coordinate_system
         ]
 
-    def get_cycle_config(self, group: str, cycle: str) -> Dict[str, Any]:
+    def get_cycle_config(self, group: str, cycle: str) -> dict[str, Any]:
         """获取指定固定循环的配置参数。
 
         Args:
@@ -224,11 +224,11 @@ class _ConfigMixin:
         group_cfg = cycles.get(group, {})
         return group_cfg.get(cycle, {})
 
-    def get_tool_offset_config(self) -> Dict[str, Any]:
+    def get_tool_offset_config(self) -> dict[str, Any]:
         """获取刀具补偿寄存器配置。"""
         return self.config.get("tool_offset", {})
 
-    def get_subprogram_config(self) -> Dict[str, Any]:
+    def get_subprogram_config(self) -> dict[str, Any]:
         """获取子程序/宏程序配置。"""
         return self.config.get("subprogram", {})
 

@@ -20,7 +20,7 @@ KND 与 Fanuc 0i 的关键差异：
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from app.postprocessor.fanuc import FanucPostProcessor
 
@@ -36,7 +36,7 @@ class KNDPostProcessor(FanucPostProcessor):
         decimal_places: int = 3,
         safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(decimal_places, safe_z_height, rapid_feed, config)
 
@@ -84,9 +84,9 @@ class KNDPostProcessor(FanucPostProcessor):
 
     def format_arc(
         self,
-        start: Tuple[float, float, float],
-        end: Tuple[float, float, float],
-        center: Tuple[float, float, float],
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+        center: tuple[float, float, float],
         clockwise: bool = True,
     ) -> str:
         """KND 圆弧：默认 R 模式（跟 Fanuc 一致）。"""
@@ -139,7 +139,7 @@ class KNDPostProcessor(FanucPostProcessor):
         z: float,
         depth: float,
         pitch: float = 1.0,
-        spindle_rpm: Optional[float] = None,
+        spindle_rpm: float | None = None,
     ) -> str:
         """KND 攻丝：与 Fanuc G84 一致。"""
         cfg = self.get_cycle_config("tapping", "G84")

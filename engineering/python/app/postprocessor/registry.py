@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Optional, Type
+from typing import Any
 
 from app.postprocessor.base import BasePostProcessor
 from app.postprocessor.config_loader import ConfigLoader, CONTROLLER_ID_TO_FULL
@@ -38,9 +38,9 @@ class PostProcessorRegistry:
         _config_loader: 配置加载器实例
     """
 
-    _instance: Optional[PostProcessorRegistry] = None
+    _instance: PostProcessorRegistry | None = None
     _instance_lock = threading.Lock()
-    _processors: dict[str, Type[BasePostProcessor]] = {}
+    _processors: dict[str, type[BasePostProcessor]] = {}
     _instances: dict[str, BasePostProcessor] = {}
     _config_loader: ConfigLoader
     _lock: threading.Lock = threading.Lock()
@@ -83,7 +83,7 @@ class PostProcessorRegistry:
     def register(
         self,
         controller_id: str,
-        processor_cls: Type[BasePostProcessor],
+        processor_cls: type[BasePostProcessor],
     ) -> None:
         """注册新的后处理器类型。
 
@@ -147,7 +147,7 @@ class PostProcessorRegistry:
 
     def load_from_config(
         self,
-        config_path: Optional[str] = None,
+        config_path: str | None = None,
         use_cache: bool = True,
     ) -> BasePostProcessor:
         """从配置文件加载并实例化后处理器。
@@ -196,7 +196,7 @@ class PostProcessorRegistry:
         )
         return instance
 
-    def reload_config(self, config_path: Optional[str] = None) -> BasePostProcessor:
+    def reload_config(self, config_path: str | None = None) -> BasePostProcessor:
         """强制重新加载配置并返回新实例。
 
         清除所有缓存后重新加载配置。

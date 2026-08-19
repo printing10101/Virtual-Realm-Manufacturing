@@ -24,7 +24,7 @@ HNC 与 Fanuc 0i 的关键差异：
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from app.postprocessor.fanuc import FanucPostProcessor
 
@@ -40,7 +40,7 @@ class HNCPostProcessor(FanucPostProcessor):
         decimal_places: int = 3,
         safe_z_height: float = 80.0,
         rapid_feed: float = 10000,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(decimal_places, safe_z_height, rapid_feed, config)
 
@@ -90,9 +90,9 @@ class HNCPostProcessor(FanucPostProcessor):
 
     def format_arc(
         self,
-        start: Tuple[float, float, float],
-        end: Tuple[float, float, float],
-        center: Tuple[float, float, float],
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+        center: tuple[float, float, float],
         clockwise: bool = True,
     ) -> str:
         """HNC 圆弧：I/J/K 中心坐标模式。"""
@@ -146,7 +146,7 @@ class HNCPostProcessor(FanucPostProcessor):
         z: float,
         depth: float,
         pitch: float = 1.0,
-        spindle_rpm: Optional[float] = None,
+        spindle_rpm: float | None = None,
     ) -> str:
         """HNC 攻丝：G84 标准。"""
         cfg = self.get_cycle_config("tapping", "G84")
@@ -170,7 +170,7 @@ class HNCPostProcessor(FanucPostProcessor):
 
     def format_subprogram_end(
         self,
-        return_value: Optional[str] = None,
+        return_value: str | None = None,
     ) -> str:
         """HNC 子程序结束：M99 必须独占一行（不接 P）。"""
         if return_value:
