@@ -85,7 +85,7 @@ class XmakerIntegration:
         self.api_key = api_key
         self.timeout_sec = timeout_sec
         self.max_retries = max_retries
-        self._session: Optional[requests.Session] = None
+        self._session: requests.Session | None = None
 
     # ------------------------------------------------------------------
     # 内部辅助
@@ -142,12 +142,12 @@ class XmakerIntegration:
         method: str,
         path: str,
         *,
-        json_body: Optional[dict] = None,
-        params: Optional[dict] = None,
-        files: Optional[dict] = None,
-        data: Optional[dict] = None,
+        json_body: dict | None = None,
+        params: dict | None = None,
+        files: dict | None = None,
+        data: dict | None = None,
         stream: bool = False,
-        extra_timeout: Optional[float] = None,
+        extra_timeout: float | None = None,
     ) -> requests.Response:
         """统一的 HTTP 请求入口，带日志与异常转换"""
         session = self._get_session()
@@ -187,8 +187,8 @@ class XmakerIntegration:
     def upload_gcode(
         self,
         file_path: str | Path,
-        job_name: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        job_name: str | None = None,
+        metadata: dict | None = None,
     ) -> UploadResult:
         """上传 G-code 文件到 Xmaker 平台
 
@@ -361,7 +361,7 @@ class XmakerIntegration:
         self,
         file_id: str,
         machine_id: str = "default",
-        parameters: Optional[dict] = None,
+        parameters: dict | None = None,
     ) -> bool:
         """启动加工任务
 

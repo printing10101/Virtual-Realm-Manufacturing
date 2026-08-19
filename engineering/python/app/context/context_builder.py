@@ -7,7 +7,7 @@ alignment context of every task they execute.
 """
 
 from __future__ import annotations
-from typing import Any, Dict
+from typing import Any
 
 from app.models.tasks import EnhancedTask
 from app.models.goals import GoalLevel
@@ -26,7 +26,7 @@ CONTEXT_TEMPLATE = """当前任务：{task_title}
 class ContextBuilder:
     """Builds execution context with goal alignment information"""
 
-    def build_context(self, task: EnhancedTask) -> Dict[str, Any]:
+    def build_context(self, task: EnhancedTask) -> dict[str, Any]:
         parent_goal = task.get_parent_goal()
         mission = task.get_mission()
 
@@ -117,7 +117,7 @@ class ContextBuilder:
 
         return " ".join(parts)
 
-    def build_minimal_context(self, task: EnhancedTask) -> Dict[str, Any]:
+    def build_minimal_context(self, task: EnhancedTask) -> dict[str, Any]:
         return {
             "task_title": task.title,
             "task_description": task.description,

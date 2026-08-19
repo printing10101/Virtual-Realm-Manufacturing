@@ -25,7 +25,8 @@ from datetime import datetime
 from enum import Enum
 
 # [H18] 补充 Optional 导入——dataclass 字段多处使用 Optional[str]/Optional[float]
-from typing import Any, Callable, Optional
+from typing import Any, Optional
+from collections.abc import Callable
 
 from app.core.safe_errors import safe_error_message
 
@@ -57,10 +58,10 @@ class StepResult:
     step_name: str
     status: StepStatus
     output: dict[str, Any] = field(default_factory=dict)
-    error: Optional[str] = None
+    error: str | None = None
     duration_ms: float = 0.0
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
+    started_at: float | None = None
+    completed_at: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -108,7 +109,7 @@ class AgentOrchestrator:
     and execution tracing.
     """
 
-    def __init__(self, trace_log_dir: Optional[str] = None):
+    def __init__(self, trace_log_dir: str | None = None):
         self._trace_log_dir = trace_log_dir or os.path.join(os.getcwd(), "data", "traces")
         self._pipeline_history: list[PipelineResult] = []
         self._step_registry: dict[str, Callable] = {}
@@ -599,7 +600,7 @@ class AgentOrchestrator:
 
 
 # Singleton instance
-_orchestrator: Optional[AgentOrchestrator] = None
+_orchestrator: AgentOrchestrator | None = None
 _orchestrator_lock = threading.Lock()
 
 

@@ -29,7 +29,7 @@ class AgentAuditEntry:
     permission_class: str
     status_code: int
     latency_ms: float
-    details: Optional[dict] = None
+    details: dict | None = None
     # P0-16 修复：哈希链字段，保证审计日志防篡改
     # chain_seq：链序号，从 0 单调递增
     # prev_hash：上一条 entry_hash（首条为 "GENESIS"）
@@ -371,7 +371,7 @@ class AgentAuditLog:
         permission_class: str,
         status_code: int,
         latency_ms: float,
-        details: Optional[dict] = None,
+        details: dict | None = None,
     ):
         entry = AgentAuditEntry(
             timestamp_ms=int(time.time() * 1000),
@@ -532,7 +532,7 @@ class IdempotencyStore:
         self._last_cleanup = time.time()
         self._cleanup_interval = min(300, max_age // 4 or 60)
 
-    def check_and_set(self, key: str, agent_id: str) -> Optional[dict]:
+    def check_and_set(self, key: str, agent_id: str) -> dict | None:
         """Returns cached result if key exists, None if new."""
         with self._lock:
             self._maybe_cleanup_locked()
@@ -567,7 +567,7 @@ class IdempotencyStore:
         for k in expired:
             del self._keys[k]
 
-    def cleanup(self, max_age: Optional[int] = None):
+    def cleanup(self, max_age: int | None = None):
         """兼容旧接口：显式调用以立即清理过期条目。"""
         threshold = max_age if max_age is not None else self._max_age
         with self._lock:
@@ -595,7 +595,7 @@ idempotency_store = IdempotencyStore()
 # 调用方应优先使用 ``get_agent_audit_log()``，直接使用模块级
 # ``agent_audit_log`` 仍可工作（向后兼容），但不再创建新实例。
 
-_global_agent_audit_log: Optional[AgentAuditLog] = None
+_global_agent_audit_log: AgentAuditLog | None = None
 _global_agent_audit_log_lock = threading.Lock()
 
 
