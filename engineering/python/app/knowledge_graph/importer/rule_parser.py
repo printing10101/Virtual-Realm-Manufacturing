@@ -36,7 +36,8 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Optional
+from typing import Any
+from collections.abc import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ class RuleParser:
 
     def __init__(
         self,
-        keywords: Optional[list[tuple[str, str, str]]] = None,
+        keywords: list[tuple[str, str, str]] | None = None,
         default_confidence: float = 0.9,
     ) -> None:
         self._keywords = keywords if keywords is not None else _DEFAULT_KEYWORDS
@@ -253,7 +254,7 @@ class RuleParser:
 def parse_process_rules(
     rules: Iterable[dict[str, Any]],
     *,
-    keywords: Optional[list[tuple[str, str, str]]] = None,
+    keywords: list[tuple[str, str, str]] | None = None,
     default_confidence: float = 0.9,
 ) -> list[ParsedRule]:
     """便捷函数：解析 ``process_rules.json`` 加载后的规则列表。

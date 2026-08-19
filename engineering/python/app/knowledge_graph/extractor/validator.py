@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from app.models.knowledge_graph import (
     Feature,
@@ -293,7 +293,7 @@ class ExtractionValidator:
     @staticmethod
     def _get_relation_field_map(
         model_key: tuple[str, str, str],
-    ) -> Optional[dict[str, str]]:
+    ) -> dict[str, str] | None:
         """获取关系模型的字段映射。"""
         field_maps = {
             ("SUITABLE_FOR", "Tool", "Material"): {

@@ -32,7 +32,8 @@ import time
 import logging
 import hashlib
 from pathlib import Path
-from typing import Any, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 from dataclasses import dataclass, asdict
 from enum import Enum
 
@@ -73,16 +74,16 @@ class AuditLogEntry:
     user_decision: str
     final_execution: dict
     operation_status: str
-    input_parameters: Optional[dict] = None
-    user_id: Optional[str] = None
-    username: Optional[str] = None
-    confidence: Optional[float] = None
-    reasoning: Optional[str] = None
-    user_modifications: Optional[dict] = None
-    metadata: Optional[dict] = None
+    input_parameters: dict | None = None
+    user_id: str | None = None
+    username: str | None = None
+    confidence: float | None = None
+    reasoning: str | None = None
+    user_modifications: dict | None = None
+    metadata: dict | None = None
     # 哈希链字段（强制启用，不可禁用，无配置开关）
-    prev_hash: Optional[str] = None  # 上一条目的哈希
-    entry_hash: Optional[str] = None  # 本条目的哈希
+    prev_hash: str | None = None  # 上一条目的哈希
+    entry_hash: str | None = None  # 本条目的哈希
     chain_seq: int = 0  # 链内序号，单调递增
 
     def __post_init__(self):

@@ -15,7 +15,7 @@ import re
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.knowledge_graph.graph_store import GraphStore
 from app.knowledge_graph.importer.importers._common import (
@@ -41,9 +41,9 @@ logger = logging.getLogger(__name__)
 def import_process_rules(
     graph: GraphStore,
     *,
-    source_path: Optional[Path] = None,
+    source_path: Path | None = None,
     retries: int = 3,
-    rule_parser: Optional[RuleParser] = None,
+    rule_parser: RuleParser | None = None,
 ) -> ImportStats:
     """导入 ``process_rules.json`` → Process + Feature 节点 + 关系。
 

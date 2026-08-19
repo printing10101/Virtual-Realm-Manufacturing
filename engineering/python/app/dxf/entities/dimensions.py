@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+
 
 from app.dxf._entities import DxfDimension
 from .common import safe_color
 
 logger = logging.getLogger(__name__)
 
-def dimension_to_obj(entity) -> Optional[DxfDimension]:
+def dimension_to_obj(entity) -> DxfDimension | None:
     """提取单个尺寸标注实体的完整信息。
 
     利用ezdxf的Dimension对象API获取标注的几何信息、

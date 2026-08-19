@@ -9,7 +9,7 @@ import logging
 import time
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from app.models.goals import (
     Goal,
@@ -31,7 +31,7 @@ class GoalChainStore:
     # 允许的列名白名单，防止 SQL 注入
     _ALLOWED_COLUMNS = {"name", "description", "level", "parent_id", "status", "created_at", "completed_at", "version"}
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         if db_path is None:
             db_path = str(Path(".lingjing/.gstack") / "goal_chain.db")
         self._db_path = db_path
@@ -129,13 +129,13 @@ class GoalChainStore:
             self._conn.commit()
         return goal
 
-    def get_goal(self, goal_id: str) -> Optional[Goal]:
+    def get_goal(self, goal_id: str) -> Goal | None:
         row = self._conn.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
         if row is None:
             return None
         return self._row_to_goal(row)
 
-    def update_goal(self, goal_id: str, **kwargs) -> Optional[Goal]:
+    def update_goal(self, goal_id: str, **kwargs) -> Goal | None:
         goal = self.get_goal(goal_id)
         if goal is None:
             return None
@@ -185,18 +185,18 @@ class GoalChainStore:
             self._conn.commit()
             return True
 
-    def get_children(self, goal_id: str) -> List[Goal]:
+    def get_children(self, goal_id: str) -> list[Goal]:
         rows = self._conn.execute(
             "SELECT * FROM goals WHERE parent_id = ? ORDER BY created_at",
             (goal_id,),
         ).fetchall()
         return [self._row_to_goal(r) for r in rows]
 
-    def resolve_goal_chain(self, goal_id: str) -> List[GoalRef]:
-        chain: List[GoalRef] = []
+    def resolve_goal_chain(self, goal_id: str) -> list[GoalRef]:
+        chain: list[GoalRef] = []
         visited = set()
         # parent_id 可为 None（链终止）；Optional 使 213 行赋值类型一致
-        current_id: Optional[str] = goal_id
+        current_id: str | None = goal_id
 
         while current_id and current_id not in visited:
             visited.add(current_id)
@@ -215,7 +215,7 @@ class GoalChainStore:
 
         return chain
 
-    def get_all_goals(self, level: Optional[GoalLevel] = None) -> List[Goal]:
+    def get_all_goals(self, level: GoalLevel | None = None) -> list[Goal]:
         if level:
             rows = self._conn.execute(
                 "SELECT * FROM goals WHERE level = ? ORDER BY created_at",
@@ -225,14 +225,14 @@ class GoalChainStore:
             rows = self._conn.execute("SELECT * FROM goals ORDER BY level, created_at").fetchall()
         return [self._row_to_goal(r) for r in rows]
 
-    def get_goal_tree(self) -> List[Dict[str, Any]]:
+    def get_goal_tree(self) -> list[dict[str, Any]]:
         all_goals = self.get_all_goals()
         {g.id: g for g in all_goals}
         root_goals = [g for g in all_goals if g.parent_id is None or g.level == GoalLevel.MISSION]
 
-        def _build_tree(goal: Goal) -> Dict[str, Any]:
+        def _build_tree(goal: Goal) -> dict[str, Any]:
             children = [g for g in all_goals if g.parent_id == goal.id]
-            node: Dict[str, Any] = {
+            node: dict[str, Any] = {
                 **goal.to_dict(),
                 "children": [_build_tree(c) for c in children],
             }
@@ -240,7 +240,7 @@ class GoalChainStore:
 
         return [_build_tree(g) for g in root_goals]
 
-    def compute_progress(self, goal_id: str, task_status_map: Optional[Dict[str, str]] = None) -> GoalProgress:
+    def compute_progress(self, goal_id: str, task_status_map: dict[str, str] | None = None) -> GoalProgress:
         goal = self.get_goal(goal_id)
         if goal is None:
             return GoalProgress()
@@ -279,19 +279,19 @@ class GoalChainStore:
         )
         return progress
 
-    def get_version_history(self, goal_id: str, limit: int = 50) -> List[GoalVersion]:
+    def get_version_history(self, goal_id: str, limit: int = 50) -> list[GoalVersion]:
         rows = self._conn.execute(
             "SELECT * FROM goal_versions WHERE goal_id = ? ORDER BY changed_at DESC LIMIT ?",
             (goal_id, limit),
         ).fetchall()
         return [self._row_to_version(r) for r in rows]
 
-    def propagate_cancellation(self, cancelled_goal_id: str) -> List[str]:
-        affected_ids: List[str] = []
+    def propagate_cancellation(self, cancelled_goal_id: str) -> list[str]:
+        affected_ids: list[str] = []
         self._mark_descendants_needs_review(cancelled_goal_id, affected_ids)
         return affected_ids
 
-    def _mark_descendants_needs_review(self, parent_id: str, affected: List[str]):
+    def _mark_descendants_needs_review(self, parent_id: str, affected: list[str]):
         children = self.get_children(parent_id)
         updates: list = []
         for child in children:
@@ -384,9 +384,9 @@ class _GoalChainStoreHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[GoalChainStore] = None
+        self._instance: GoalChainStore | None = None
 
-    def get(self, db_path: Optional[str] = None) -> GoalChainStore:
+    def get(self, db_path: str | None = None) -> GoalChainStore:
         # 快速路径：已存在则直接返回，避免持锁开销
         if self._instance is not None:
             return self._instance
@@ -395,7 +395,7 @@ class _GoalChainStoreHolder:
                 self._instance = GoalChainStore(db_path)
             return self._instance
 
-    def init(self, db_path: Optional[str] = None) -> GoalChainStore:
+    def init(self, db_path: str | None = None) -> GoalChainStore:
         """强制重新创建实例（用于启动时指定 db_path 的场景）。"""
         with self._lock:
             self._instance = GoalChainStore(db_path)
@@ -410,7 +410,7 @@ class _GoalChainStoreHolder:
 _holder = _GoalChainStoreHolder()
 
 
-def get_goal_chain_store(db_path: Optional[str] = None) -> GoalChainStore:
+def get_goal_chain_store(db_path: str | None = None) -> GoalChainStore:
     """获取共享的 :class:`GoalChainStore` 单例；首次访问时懒初始化。
 
     Returns:
@@ -423,6 +423,6 @@ def get_goal_chain_store(db_path: Optional[str] = None) -> GoalChainStore:
     return _holder.get(db_path)
 
 
-def init_goal_chain_store(db_path: Optional[str] = None) -> GoalChainStore:
+def init_goal_chain_store(db_path: str | None = None) -> GoalChainStore:
     """初始化目标链存储，行为与重构前完全一致。"""
     return _holder.init(db_path)

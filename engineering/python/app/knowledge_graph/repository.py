@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Callable, Optional, Sequence, cast
+from typing import Any, cast
+from collections.abc import Callable, Sequence
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.engine import Engine
@@ -83,8 +84,8 @@ class KnowledgeGraphRepository:
             )
     """
 
-    def __init__(self, session_factory: Optional[SessionFactory] = None) -> None:
-        self._session_factory: Optional[SessionFactory] = session_factory
+    def __init__(self, session_factory: SessionFactory | None = None) -> None:
+        self._session_factory: SessionFactory | None = session_factory
 
     # ------------------------------------------------------------------ utils
 
@@ -124,7 +125,7 @@ class KnowledgeGraphRepository:
         self,
         node_id: str,
         node_type: str,
-        properties: Optional[dict[str, Any]] = None,
+        properties: dict[str, Any] | None = None,
     ) -> KGNode:
         """插入或更新节点，按 ``node_id`` 主键匹配。
 
@@ -166,7 +167,7 @@ class KnowledgeGraphRepository:
             session.expunge(orm_obj)
             return orm_obj
 
-    def get_node(self, node_id: str) -> Optional[KGNode]:
+    def get_node(self, node_id: str) -> KGNode | None:
         """按主键查询节点。"""
         with self._session() as session:
             orm_obj = session.get(KGNode, node_id)
@@ -246,7 +247,7 @@ class KnowledgeGraphRepository:
                 raise
             return True
 
-    def count_nodes(self, node_type: Optional[str] = None) -> int:
+    def count_nodes(self, node_type: str | None = None) -> int:
         """统计节点数量；可选按 ``node_type`` 过滤。"""
         with self._session() as session:
             stmt = select(func.count()).select_from(KGNode)
@@ -262,7 +263,7 @@ class KnowledgeGraphRepository:
         target_id: str,
         edge_type: str,
         confidence: float = 0.5,
-        properties: Optional[dict[str, Any]] = None,
+        properties: dict[str, Any] | None = None,
     ) -> KGEdge:
         """插入或更新关系，按 ``(source_id, target_id, edge_type)`` 唯一键匹配。
 
@@ -345,7 +346,7 @@ class KnowledgeGraphRepository:
         source_id: str,
         target_id: str,
         edge_type: str,
-    ) -> Optional[KGEdge]:
+    ) -> KGEdge | None:
         """按业务唯一键 ``(source_id, target_id, edge_type)`` 查询关系。"""
         with self._session() as session:
             stmt = select(KGEdge).where(
@@ -387,7 +388,7 @@ class KnowledgeGraphRepository:
     def list_edges_by_source(
         self,
         source_id: str,
-        edge_type: Optional[str] = None,
+        edge_type: str | None = None,
         *,
         limit: int = 1000,
     ) -> list[KGEdge]:
@@ -407,7 +408,7 @@ class KnowledgeGraphRepository:
     def list_edges_by_target(
         self,
         target_id: str,
-        edge_type: Optional[str] = None,
+        edge_type: str | None = None,
         *,
         limit: int = 1000,
     ) -> list[KGEdge]:
@@ -429,7 +430,7 @@ class KnowledgeGraphRepository:
         min_confidence: float,
         *,
         max_confidence: float = 1.0,
-        edge_type: Optional[str] = None,
+        edge_type: str | None = None,
         limit: int = 1000,
     ) -> list[KGEdge]:
         """按可信度区间查询边；可选 ``edge_type`` 过滤。"""
@@ -485,7 +486,7 @@ class KnowledgeGraphRepository:
                 raise
             return True
 
-    def count_edges(self, edge_type: Optional[str] = None) -> int:
+    def count_edges(self, edge_type: str | None = None) -> int:
         """统计关系数量；可选按 ``edge_type`` 过滤。"""
         with self._session() as session:
             stmt = select(func.count()).select_from(KGEdge)

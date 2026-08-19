@@ -21,7 +21,8 @@ import time
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 from app.audit.chain import (
     AuditLogEntry,
@@ -70,13 +71,13 @@ class WriterMixin:
         user_decision: UserDecision,
         final_execution: dict,
         operation_status: OperationStatus,
-        user_id: Optional[str] = None,
-        username: Optional[str] = None,
-        input_parameters: Optional[dict] = None,
-        confidence: Optional[float] = None,
-        reasoning: Optional[str] = None,
-        user_modifications: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        user_id: str | None = None,
+        username: str | None = None,
+        input_parameters: dict | None = None,
+        confidence: float | None = None,
+        reasoning: str | None = None,
+        user_modifications: dict | None = None,
+        metadata: dict | None = None,
     ) -> AuditLogEntry:
         entry = AuditLogEntry(
             timestamp_ms=int(time.time() * 1000),
@@ -132,10 +133,10 @@ class WriterMixin:
         self,
         event_type: str,
         operation_status: OperationStatus = OperationStatus.SUCCESS,
-        user_id: Optional[str] = None,
-        username: Optional[str] = None,
-        input_parameters: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        user_id: str | None = None,
+        username: str | None = None,
+        input_parameters: dict | None = None,
+        metadata: dict | None = None,
     ) -> AuditLogEntry:
         """记录安全相关事件（登录/登出/令牌刷新/权限变更等）。
 

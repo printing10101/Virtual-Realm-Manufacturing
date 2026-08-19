@@ -18,7 +18,7 @@ import logging
 import time
 import zlib
 from pathlib import Path
-from typing import Optional
+
 
 # shared imports moved to state/__init__.py
 
@@ -86,7 +86,7 @@ class CheckpointLifecycleManager:
         path.write_bytes(compressed)
         return path
 
-    def load_checkpoint_file(self, agent_id: str, checkpoint_id: str) -> Optional[bytes]:
+    def load_checkpoint_file(self, agent_id: str, checkpoint_id: str) -> bytes | None:
         path = self.get_checkpoint_path(agent_id, checkpoint_id)
         if not path.exists():
             return None

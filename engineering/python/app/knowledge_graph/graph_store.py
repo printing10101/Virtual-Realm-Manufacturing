@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 import re
 import threading
-from typing import Any, Optional
+from typing import Any
 
 import networkx as nx
 
@@ -50,7 +50,7 @@ def _validate_node_id(node_id: str) -> None:
         )
 
 
-def _ensure_props(props: Optional[dict[str, Any]]) -> dict[str, Any]:
+def _ensure_props(props: dict[str, Any] | None) -> dict[str, Any]:
     """归一化属性字典（拷贝 + 默认空 dict）。"""
     if props is None:
         return {}
@@ -133,7 +133,7 @@ class GraphStore:
         self,
         node_type: str,
         node_id: str,
-        properties: Optional[dict[str, Any]] = None,
+        properties: dict[str, Any] | None = None,
     ) -> None:
         """添加或更新一个节点。
 
@@ -166,7 +166,7 @@ class GraphStore:
         with self._lock:
             return self._graph.has_node(node_id)
 
-    def get_node(self, node_id: str) -> Optional[dict[str, Any]]:
+    def get_node(self, node_id: str) -> dict[str, Any] | None:
         """按 ID 查询节点；返回包含 ``node_id`` / ``node_type`` / ``properties`` 的字典。"""
         with self._lock:
             if not self._graph.has_node(node_id):
@@ -221,7 +221,7 @@ class GraphStore:
             results.sort(key=lambda x: x["node_id"])
             return results
 
-    def node_count(self, node_type: Optional[str] = None) -> int:
+    def node_count(self, node_type: str | None = None) -> int:
         """返回节点数量；可选按类型过滤。"""
         with self._lock:
             if node_type is None:
@@ -235,7 +235,7 @@ class GraphStore:
         source_id: str,
         target_id: str,
         edge_type: str,
-        properties: Optional[dict[str, Any]] = None,
+        properties: dict[str, Any] | None = None,
     ) -> None:
         """添加或更新一条有向关系。
 
@@ -309,7 +309,7 @@ class GraphStore:
         source_id: str,
         target_id: str,
         edge_type: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """按 ``(source, target, type)`` 三元组查询关系。"""
         with self._lock:
             if not self._graph.has_edge(source_id, target_id, key=edge_type):
@@ -375,7 +375,7 @@ class GraphStore:
     def list_edges_by_source(
         self,
         source_id: str,
-        edge_type: Optional[str] = None,
+        edge_type: str | None = None,
     ) -> list[dict[str, Any]]:
         """按起始节点查询出边。"""
         with self._lock:
@@ -398,7 +398,7 @@ class GraphStore:
     def list_edges_by_target(
         self,
         target_id: str,
-        edge_type: Optional[str] = None,
+        edge_type: str | None = None,
     ) -> list[dict[str, Any]]:
         """按目标节点查询入边。"""
         with self._lock:
@@ -422,7 +422,7 @@ class GraphStore:
         self,
         min_confidence: float = 0.0,
         max_confidence: float = 1.0,
-        edge_type: Optional[str] = None,
+        edge_type: str | None = None,
     ) -> list[dict[str, Any]]:
         """按可信度区间查询关系；可选 ``edge_type`` 过滤。
 
@@ -465,7 +465,7 @@ class GraphStore:
             results.sort(key=lambda x: x.get("confidence", 0.0), reverse=True)
             return results
 
-    def edge_count(self, edge_type: Optional[str] = None) -> int:
+    def edge_count(self, edge_type: str | None = None) -> int:
         """返回关系数量；可选按类型过滤。"""
         with self._lock:
             if edge_type is None:
@@ -494,7 +494,7 @@ class GraphStore:
         self,
         *,
         clear_first: bool = False,
-        session_factory: Optional[Any] = None,
+        session_factory: Any | None = None,
     ) -> dict[str, int]:
         """将当前内存图落库到 PostgreSQL（便捷方法）。
 
@@ -539,7 +539,7 @@ class GraphStore:
         node_limit: int = 100000,
         edge_limit: int = 1000000,
         replace: bool = True,
-        session_factory: Optional[Any] = None,
+        session_factory: Any | None = None,
     ) -> dict[str, int]:
         """从数据库加载节点和关系到当前内存图（便捷方法）。
 

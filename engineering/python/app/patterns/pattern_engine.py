@@ -8,7 +8,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.utils.sqlite_pool import get_sqlite_manager
 
@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 class ExecutionRecord:
     task_id: str
     branch_id: str
-    elements: Dict[str, Any]
-    conditions: Dict[str, Any]
-    metrics: Dict[str, Any]
+    elements: dict[str, Any]
+    conditions: dict[str, Any]
+    metrics: dict[str, Any]
     success: bool
     created_at: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "task_id": self.task_id,
             "branch_id": self.branch_id,
@@ -37,7 +37,7 @@ class ExecutionRecord:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ExecutionRecord":
+    def from_dict(cls, data: dict[str, Any]) -> "ExecutionRecord":
         return cls(
             task_id=data["task_id"],
             branch_id=data["branch_id"],
@@ -54,14 +54,14 @@ class Pattern:
     pattern_id: str
     pattern_type: str
     description: str
-    elements: Dict[str, Any]
-    conditions: Dict[str, Any]
-    metrics: Dict[str, Any]
+    elements: dict[str, Any]
+    conditions: dict[str, Any]
+    metrics: dict[str, Any]
     sample_size: int
-    suggestion: Optional[str] = None
+    suggestion: str | None = None
     created_at: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "pattern_id": self.pattern_id,
             "pattern_type": self.pattern_type,
@@ -75,7 +75,7 @@ class Pattern:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Pattern":
+    def from_dict(cls, data: dict[str, Any]) -> "Pattern":
         return cls(**data)
 
 
@@ -91,8 +91,8 @@ class PatternEngine:
         self.db_path = db_path
         self._lock = threading.RLock()
         self._db: sqlite3.Connection
-        self._executions: List[ExecutionRecord] = []
-        self._patterns: List[Pattern] = []
+        self._executions: list[ExecutionRecord] = []
+        self._patterns: list[Pattern] = []
         # 自动初始化数据库
         self.initialize()
 
@@ -167,9 +167,9 @@ class PatternEngine:
         self,
         task_id: str,
         branch_id: str,
-        elements: Dict[str, Any],
-        conditions: Dict[str, Any],
-        metrics: Dict[str, Any],
+        elements: dict[str, Any],
+        conditions: dict[str, Any],
+        metrics: dict[str, Any],
         success: bool,
     ) -> ExecutionRecord:
         with self._lock:
@@ -199,7 +199,7 @@ class PatternEngine:
             self._db.commit()
             return record
 
-    def analyze_patterns(self, min_samples: int | None = None) -> List[Pattern]:
+    def analyze_patterns(self, min_samples: int | None = None) -> list[Pattern]:
         if min_samples is None:
             min_samples = self.MIN_SAMPLES
 
@@ -241,8 +241,8 @@ class PatternEngine:
             self._db.commit()
             return new_patterns
 
-    def _detect_workflow_patterns(self, min_samples: int) -> List[Pattern]:
-        groups: Dict[str, List[ExecutionRecord]] = {}
+    def _detect_workflow_patterns(self, min_samples: int) -> list[Pattern]:
+        groups: dict[str, list[ExecutionRecord]] = {}
         for exe in self._executions:
             key = json.dumps(exe.elements, sort_keys=True)
             groups.setdefault(key, []).append(exe)
@@ -276,8 +276,8 @@ class PatternEngine:
 
         return patterns
 
-    def _detect_anti_patterns(self, min_samples: int) -> List[Pattern]:
-        groups: Dict[str, List[ExecutionRecord]] = {}
+    def _detect_anti_patterns(self, min_samples: int) -> list[Pattern]:
+        groups: dict[str, list[ExecutionRecord]] = {}
         for exe in self._executions:
             key = json.dumps(exe.elements, sort_keys=True)
             groups.setdefault(key, []).append(exe)
@@ -327,8 +327,8 @@ class PatternEngine:
 
         return patterns
 
-    def _detect_combination_patterns(self, min_samples: int) -> List[Pattern]:
-        cond_groups: Dict[str, List[ExecutionRecord]] = {}
+    def _detect_combination_patterns(self, min_samples: int) -> list[Pattern]:
+        cond_groups: dict[str, list[ExecutionRecord]] = {}
         for exe in self._executions:
             key = json.dumps(exe.conditions, sort_keys=True)
             cond_groups.setdefault(key, []).append(exe)
@@ -338,7 +338,7 @@ class PatternEngine:
             if len(records) < min_samples:
                 continue
 
-            elem_groups: Dict[str, List[ExecutionRecord]] = {}
+            elem_groups: dict[str, list[ExecutionRecord]] = {}
             for r in records:
                 ekey = json.dumps(r.elements, sort_keys=True)
                 elem_groups.setdefault(ekey, []).append(r)
@@ -375,9 +375,9 @@ class PatternEngine:
 
     def get_patterns(
         self,
-        pattern_type: Optional[str] = None,
-        conditions: Optional[Dict[str, Any]] = None,
-    ) -> List[Pattern]:
+        pattern_type: str | None = None,
+        conditions: dict[str, Any] | None = None,
+    ) -> list[Pattern]:
         with self._lock:
             patterns = self._patterns
             if pattern_type:
@@ -386,10 +386,10 @@ class PatternEngine:
                 patterns = [p for p in patterns if all(p.conditions.get(k) == v for k, v in conditions.items())]
             return sorted(patterns, key=lambda p: p.sample_size, reverse=True)
 
-    def get_anti_patterns(self) -> List[Pattern]:
+    def get_anti_patterns(self) -> list[Pattern]:
         return self.get_patterns(pattern_type="anti_pattern")
 
-    def generate_suggestions(self, pattern_id: str) -> Optional[Dict[str, Any]]:
+    def generate_suggestions(self, pattern_id: str) -> dict[str, Any] | None:
         with self._lock:
             pattern = next((p for p in self._patterns if p.pattern_id == pattern_id), None)
             if pattern is None:
@@ -416,7 +416,7 @@ class _PatternEngineHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[PatternEngine] = None
+        self._instance: PatternEngine | None = None
 
     def get(self) -> PatternEngine:
         # 快速路径：已存在则直接返回，避免持锁开销

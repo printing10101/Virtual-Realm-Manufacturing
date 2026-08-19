@@ -25,7 +25,7 @@ import logging
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +49,10 @@ class DxfProcessResult:
     file_name: str = ""
     success: bool = False
     total_latency_ms: float = 0.0
-    parse: Optional[StageResult] = None
-    features: Optional[StageResult] = None
-    model3d: Optional[StageResult] = None
-    gcode: Optional[StageResult] = None
+    parse: StageResult | None = None
+    features: StageResult | None = None
+    model3d: StageResult | None = None
+    gcode: StageResult | None = None
     output_files: dict[str, str] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -91,15 +91,15 @@ class DxfProcessService:
     def process(
         self,
         dxf_path: str | Path,
-        output_dir: Optional[str | Path] = None,
-        postprocessor: Optional[str] = None,
-        user_id: Optional[str] = None,
+        output_dir: str | Path | None = None,
+        postprocessor: str | None = None,
+        user_id: str | None = None,
     ) -> DxfProcessResult:
         """一站式处理 DXF 文件。"""
         t0 = time.time()
         path = Path(dxf_path)
         result = DxfProcessResult(file_path=str(path), file_name=path.name)
-        out_dir: Optional[Path] = None
+        out_dir: Path | None = None
         if output_dir is not None:
             out_dir = Path(output_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -167,7 +167,7 @@ class DxfProcessService:
         self,
         path: Path,
         result: "DxfProcessResult",
-        user_id: Optional[str],
+        user_id: str | None,
     ) -> None:
         """研究轨影子模式：跑 IJepa-3D chamfer 启发式识别。
 
@@ -253,7 +253,7 @@ class DxfProcessService:
         with diff_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
-    def _run_parse(self, path: Path, user_id: Optional[str]) -> StageResult:
+    def _run_parse(self, path: Path, user_id: str | None) -> StageResult:
         t0 = time.time()
         try:
             from app.dxf.dxf_parser import DxfParser
@@ -288,7 +288,7 @@ class DxfProcessService:
                 error="DXF 解析遇到未知错误，请联系管理员",
             )
 
-    def _run_features(self, path: Path, user_id: Optional[str]) -> StageResult:
+    def _run_features(self, path: Path, user_id: str | None) -> StageResult:
         t0 = time.time()
         try:
             from app.dxf.feature_extractor import FeatureExtractor
@@ -316,7 +316,7 @@ class DxfProcessService:
                 error=f"feature extraction failed: {e}",
             )
 
-    def _run_model3d(self, path: Path, out_dir: Optional[Path], user_id: Optional[str]) -> StageResult:
+    def _run_model3d(self, path: Path, out_dir: Path | None, user_id: str | None) -> StageResult:
         t0 = time.time()
         try:
             from app.dxf.dxf_parser import DxfParser
@@ -368,7 +368,7 @@ class DxfProcessService:
         path: Path,
         out_dir: Path,
         controller: str,
-        user_id: Optional[str],
+        user_id: str | None,
     ) -> StageResult:
         t0 = time.time()
         try:

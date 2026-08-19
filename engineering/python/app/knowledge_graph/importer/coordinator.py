@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Optional
+
 
 from app.knowledge_graph.graph_store import GraphStore
 from app.knowledge_graph.importer.importers._common import ImportReport
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 def import_all(
-    graph: Optional[GraphStore] = None,
+    graph: GraphStore | None = None,
     *,
     flush_to_db: bool = True,
     db_clear_first: bool = False,

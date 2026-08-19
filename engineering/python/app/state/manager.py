@@ -19,7 +19,8 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 
 # shared imports moved to state/__init__.py
 from app.models.agent_state import (
@@ -65,10 +66,10 @@ class StatePersistenceManager:
         self._compressor = StateCompressor()
         self._migration_engine = StateMigrationEngine()
         self._heartbeat_interval = HEARTBEAT_INTERVAL_SECONDS
-        self._heartbeat_tasks: Dict[str, asyncio.Task] = {}
-        self._save_locks: Dict[str, asyncio.Lock] = {}
-        self._active_states: Dict[str, AgentState] = {}
-        self._event_handlers: Dict[str, List[Callable]] = {}
+        self._heartbeat_tasks: dict[str, asyncio.Task] = {}
+        self._save_locks: dict[str, asyncio.Lock] = {}
+        self._active_states: dict[str, AgentState] = {}
+        self._event_handlers: dict[str, list[Callable]] = {}
         self._running = False
         self._db_consecutive_failures: int = 0  # P0 修复: 跟踪连续数据库失败次数
         # [R-H1] 保留 engine 引用以便 shutdown 时 dispose，避免连接池泄漏
@@ -144,7 +145,7 @@ class StatePersistenceManager:
                 e,
             )
 
-    async def _load_redis(self, agent_id: str) -> Optional[AgentState]:
+    async def _load_redis(self, agent_id: str) -> AgentState | None:
         if not self._redis:
             return None
         try:
@@ -304,7 +305,7 @@ class StatePersistenceManager:
                 self._db_consecutive_failures,
             )
 
-    async def _load_db(self, agent_id: str) -> Optional[AgentState]:
+    async def _load_db(self, agent_id: str) -> AgentState | None:
         if not self._db_session_factory:
             return None
         # P0-3 修复：session 必须在 finally 块中关闭，防止异常路径下 session 泄漏
@@ -408,7 +409,7 @@ class StatePersistenceManager:
             )
             return state
 
-    async def load_state(self, agent_id: str) -> Optional[AgentState]:
+    async def load_state(self, agent_id: str) -> AgentState | None:
         """Load state from fastest available storage tier"""
         if agent_id in self._active_states:
             return self._active_states[agent_id]
@@ -478,7 +479,7 @@ class StatePersistenceManager:
     async def update_context_increment(
         self,
         agent_id: str,
-        updates: Dict[str, Any],
+        updates: dict[str, Any],
         trigger: str = "incremental",
     ) -> AgentState:
         state = await self.load_state(agent_id)
@@ -534,7 +535,7 @@ class StatePersistenceManager:
     async def stop_heartbeat(self, agent_id: str):
         self._stop_heartbeat(agent_id)
 
-    async def snapshot_for_rollback(self, agent_id: str) -> Optional[str]:
+    async def snapshot_for_rollback(self, agent_id: str) -> str | None:
         """Create a snapshot and return its version identifier"""
         state = await self.load_state(agent_id)
         if not state:
@@ -552,7 +553,7 @@ class StatePersistenceManager:
                 )
         return rollback_key
 
-    async def rollback_to_version(self, agent_id: str) -> Optional[AgentState]:
+    async def rollback_to_version(self, agent_id: str) -> AgentState | None:
         rollback_key = f"agent_state_rollback:{agent_id}"
         if not self._redis:
             return None
@@ -583,7 +584,7 @@ class StatePersistenceManager:
 
         return decorator
 
-    async def emit_event(self, event: str, agent_id: str, data: Optional[Dict] = None):
+    async def emit_event(self, event: str, agent_id: str, data: dict | None = None):
         handlers = self._event_handlers.get(event, [])
         for handler in handlers:
             try:
@@ -619,7 +620,7 @@ class StatePersistenceManager:
         self._active_states.clear()
         self._heartbeat_tasks.clear()
 
-    async def list_all_agent_states(self) -> List[Dict[str, Any]]:
+    async def list_all_agent_states(self) -> list[dict[str, Any]]:
         if not self._db_session_factory:
             return [
                 {

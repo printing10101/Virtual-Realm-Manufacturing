@@ -23,7 +23,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.ai.llm_client import (
     BaseLLMClient,
@@ -63,7 +63,7 @@ class ExtractionResult:
     extraction_method: str = ""
     total_pages: int = 0
     processed_pages: int = 0
-    validation_report: Optional[dict[str, Any]] = None
+    validation_report: dict[str, Any] | None = None
     status: str = "unverified"  # unverified / approved / needs_revision
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -275,7 +275,7 @@ class LLMExtractor:
         self,
         messages: list[dict[str, str]],
         batch_idx: int,
-    ) -> Optional[str]:
+    ) -> str | None:
         """调用 LLM 并处理重试。
 
         Args:
@@ -285,7 +285,7 @@ class LLMExtractor:
         Returns:
             LLM 响应文本，失败返回 None。
         """
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -376,7 +376,7 @@ class LLMExtractor:
         return normalized_entities, normalized_relations
 
     @staticmethod
-    def _extract_json(text: str) -> Optional[str]:
+    def _extract_json(text: str) -> str | None:
         """从文本中提取 JSON 字符串。"""
         # 尝试直接解析
         text = text.strip()

@@ -4,7 +4,7 @@ import logging
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class FileAccessRule:
 @dataclass
 class NetworkAccessRule:
     host_pattern: str
-    port_range: Optional[tuple] = None
+    port_range: tuple | None = None
     protocol: str = "*"
 
     def matches(self, host: str, port: int = 0) -> bool:
@@ -48,26 +48,26 @@ class NetworkAccessRule:
 class GpuResourceLimit:
     max_memory_mb: float = 1024.0
     max_utilization_percent: float = 50.0
-    allowed_devices: List[int] = field(default_factory=lambda: [0])
+    allowed_devices: list[int] = field(default_factory=lambda: [0])
 
 
 @dataclass
 class CapabilityGrant:
     capability: str
     level: CapabilityLevel = CapabilityLevel.READ_ONLY
-    file_rules: List[FileAccessRule] = field(default_factory=list)
-    network_rules: List[NetworkAccessRule] = field(default_factory=list)
-    gpu_limits: Optional[GpuResourceLimit] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    file_rules: list[FileAccessRule] = field(default_factory=list)
+    network_rules: list[NetworkAccessRule] = field(default_factory=list)
+    gpu_limits: GpuResourceLimit | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class CapabilityGatekeeper:
-    _instance: Optional["CapabilityGatekeeper"] = None
+    _instance: "CapabilityGatekeeper" | None = None
     _instance_lock = threading.Lock()
 
     def __init__(self):
-        self._grants: Dict[str, Dict[str, CapabilityGrant]] = {}
-        self._default_grants: Dict[str, CapabilityGrant] = self._create_default_grants()
+        self._grants: dict[str, dict[str, CapabilityGrant]] = {}
+        self._default_grants: dict[str, CapabilityGrant] = self._create_default_grants()
         # 安全修复：保护 _grants 字典的并发读写
         self._lock = threading.Lock()
 
@@ -85,7 +85,7 @@ class CapabilityGatekeeper:
         with cls._instance_lock:
             cls._instance = None
 
-    def _create_default_grants(self) -> Dict[str, CapabilityGrant]:
+    def _create_default_grants(self) -> dict[str, CapabilityGrant]:
         return {
             "data_source": CapabilityGrant(
                 capability="data_source",
@@ -117,7 +117,7 @@ class CapabilityGatekeeper:
             ),
         }
 
-    def grant_capabilities(self, plugin_id: str, capabilities: List[str]) -> List[CapabilityGrant]:
+    def grant_capabilities(self, plugin_id: str, capabilities: list[str]) -> list[CapabilityGrant]:
         # 安全修复：保护 _grants 字典的并发读写
         with self._lock:
             if plugin_id not in self._grants:
@@ -135,7 +135,7 @@ class CapabilityGatekeeper:
         logger.info("Granted %s capabilities to plugin '%s'", len(granted), plugin_id)
         return granted
 
-    def revoke_capabilities(self, plugin_id: str, capabilities: List[str]) -> None:
+    def revoke_capabilities(self, plugin_id: str, capabilities: list[str]) -> None:
         # 安全修复：保护 _grants 字典的并发读写
         with self._lock:
             if plugin_id in self._grants:
@@ -152,7 +152,7 @@ class CapabilityGatekeeper:
         with self._lock:
             return plugin_id in self._grants and capability in self._grants[plugin_id]
 
-    def get_grant(self, plugin_id: str, capability: str) -> Optional[CapabilityGrant]:
+    def get_grant(self, plugin_id: str, capability: str) -> CapabilityGrant | None:
         # 安全修复：保护 _grants 字典的并发读
         with self._lock:
             if plugin_id in self._grants:
@@ -193,24 +193,24 @@ class CapabilityGatekeeper:
 
         return False
 
-    def check_gpu_access(self, plugin_id: str) -> Optional[GpuResourceLimit]:
+    def check_gpu_access(self, plugin_id: str) -> GpuResourceLimit | None:
         grant = self.get_grant(plugin_id, "gpu_access")
         if grant is None:
             return None
 
         return grant.gpu_limits
 
-    def get_plugin_capabilities(self, plugin_id: str) -> List[str]:
+    def get_plugin_capabilities(self, plugin_id: str) -> list[str]:
         # 安全修复：保护 _grants 字典的并发读
         with self._lock:
             if plugin_id in self._grants:
                 return list(self._grants[plugin_id].keys())
         return []
 
-    def get_all_grants(self) -> Dict[str, List[Dict[str, Any]]]:
+    def get_all_grants(self) -> dict[str, list[dict[str, Any]]]:
         # 安全修复：保护 _grants 字典的并发读，构建快照避免迭代时被修改
         with self._lock:
-            result: Dict[str, List[Dict[str, Any]]] = {}
+            result: dict[str, list[dict[str, Any]]] = {}
             for plugin_id, caps in self._grants.items():
                 result[plugin_id] = []
                 for cap_name, grant in caps.items():
@@ -238,9 +238,9 @@ class CapabilityGatekeeper:
         self,
         plugin_id: str,
         capability: str,
-        file_rules: Optional[List[Dict]] = None,
-        network_rules: Optional[List[Dict]] = None,
-        gpu_limits: Optional[Dict] = None,
+        file_rules: list[dict] | None = None,
+        network_rules: list[dict] | None = None,
+        gpu_limits: dict | None = None,
     ) -> None:
         # 安全修复：保护 _grants 字典的并发读写
         with self._lock:

@@ -19,7 +19,7 @@ import json
 import time
 import logging
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any
 
 from app.audit.chain import AuditLogEntry
 from app.config.limits import MAX_AUDIT_EXPORT_LIMIT
@@ -58,11 +58,11 @@ class ReaderMixin:
 
     def get_logs(
         self,
-        start_time: Optional[int] = None,
-        end_time: Optional[int] = None,
-        ai_module: Optional[str] = None,
-        user_decision: Optional[str] = None,
-        user_id: Optional[str] = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
+        ai_module: str | None = None,
+        user_decision: str | None = None,
+        user_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[AuditLogEntry]:
@@ -127,9 +127,9 @@ class ReaderMixin:
     def export_logs(
         self,
         format: str = "json",
-        start_time: Optional[int] = None,
-        end_time: Optional[int] = None,
-        ai_module: Optional[str] = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
+        ai_module: str | None = None,
     ) -> str:
         logs = self.get_logs(
             start_time=start_time, end_time=end_time, ai_module=ai_module, limit=MAX_AUDIT_EXPORT_LIMIT

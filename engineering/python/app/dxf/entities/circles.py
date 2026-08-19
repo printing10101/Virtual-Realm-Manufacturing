@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+
 
 from app.dxf._entities import DxfCircle
 from .common import safe_color
 
 logger = logging.getLogger(__name__)
 
-def circle_to_obj(entity) -> Optional[DxfCircle]:
+def circle_to_obj(entity) -> DxfCircle | None:
     """将单个 CIRCLE 实体转换为 DxfCircle；radius<=0 返回 None。"""
     circle = DxfCircle(
         center=(

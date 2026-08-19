@@ -26,7 +26,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -77,7 +77,7 @@ class EntityReview(BaseModel):
     confidence: float = 50.0
     status: str = ReviewStatus.UNVERIFIED
     review_comment: str = ""
-    reviewed_at: Optional[str] = None
+    reviewed_at: str | None = None
 
 
 class RelationReview(BaseModel):
@@ -90,7 +90,7 @@ class RelationReview(BaseModel):
     confidence: float = 50.0
     status: str = ReviewStatus.UNVERIFIED
     review_comment: str = ""
-    reviewed_at: Optional[str] = None
+    reviewed_at: str | None = None
 
 
 class ExtractionReviewData(BaseModel):
@@ -103,7 +103,7 @@ class ExtractionReviewData(BaseModel):
     processed_pages: int = 0
     entities: list[EntityReview] = []
     relations: list[RelationReview] = []
-    validation_report: Optional[dict[str, Any]] = None
+    validation_report: dict[str, Any] | None = None
     created_at: str = ""
     updated_at: str = ""
     overall_status: str = ReviewStatus.UNVERIFIED
@@ -204,7 +204,7 @@ class ReviewManager:
 
         return review_id
 
-    def get_review(self, review_id: str) -> Optional[ExtractionReviewData]:
+    def get_review(self, review_id: str) -> ExtractionReviewData | None:
         """获取审核记录。"""
         with self._lock:
             return self.reviews.get(review_id)
@@ -385,7 +385,7 @@ class ReviewManager:
             self._save_to_disk(review)
             return True
 
-    def get_approved_data(self, review_id: str) -> Optional[dict[str, Any]]:
+    def get_approved_data(self, review_id: str) -> dict[str, Any] | None:
         """获取已批准的数据，可用于写入图谱。
 
         Args:

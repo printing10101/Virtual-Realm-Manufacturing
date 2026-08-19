@@ -12,7 +12,7 @@ Features:
 from __future__ import annotations
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.models.goals import GoalStatus, GoalProgress
 from app.models.tasks import EnhancedTask, EnhancedTaskStatus
@@ -32,13 +32,13 @@ class GoalAlignmentError(Exception):
 class GoalAlignmentChecker:
     """Validates and maintains goal alignment for all tasks"""
 
-    def __init__(self, store: Optional[GoalChainStore] = None):
+    def __init__(self, store: GoalChainStore | None = None):
         self._store = store or get_goal_chain_store()
         self._context_builder = ContextBuilder()
-        self._last_scan_at: Optional[float] = None
+        self._last_scan_at: float | None = None
         self._scan_interval_seconds = 86400
-        self._task_status_map: Dict[str, str] = {}
-        self._task_map: Dict[str, EnhancedTask] = {}
+        self._task_status_map: dict[str, str] = {}
+        self._task_map: dict[str, EnhancedTask] = {}
 
     def validate_task_goal_chain(self, task: EnhancedTask) -> bool:
         if not task.goal_chain:
@@ -64,9 +64,9 @@ class GoalAlignmentChecker:
             self._task_map[task_id].status = new_status
         self._task_status_map[task_id] = new_status.value
 
-    def run_alignment_scan(self) -> Dict[str, Any]:
+    def run_alignment_scan(self) -> dict[str, Any]:
         self._last_scan_at = time.time()
-        issues: List[Dict[str, Any]] = []
+        issues: list[dict[str, Any]] = []
 
         for task_id, task in list(self._task_map.items()):
             if task.status == EnhancedTaskStatus.IN_PROGRESS:
@@ -97,7 +97,7 @@ class GoalAlignmentChecker:
             return True
         return (time.time() - self._last_scan_at) >= self._scan_interval_seconds
 
-    def propagate_goal_change(self, changed_goal_id: str) -> Dict[str, Any]:
+    def propagate_goal_change(self, changed_goal_id: str) -> dict[str, Any]:
         affected_task_ids = self._store.propagate_cancellation(changed_goal_id)
 
         updated_tasks = []
@@ -137,7 +137,7 @@ class GoalAlignmentChecker:
     def compute_goal_progress(self, goal_id: str) -> GoalProgress:
         return self._store.compute_progress(goal_id, self._task_status_map)
 
-    def compute_all_progress(self) -> List[GoalProgress]:
+    def compute_all_progress(self) -> list[GoalProgress]:
         all_goals = self._store.get_all_goals()
         results = []
         for goal in all_goals:
@@ -145,7 +145,7 @@ class GoalAlignmentChecker:
             results.append(progress)
         return results
 
-    def build_task_context(self, task: EnhancedTask) -> Dict[str, Any]:
+    def build_task_context(self, task: EnhancedTask) -> dict[str, Any]:
         return self._context_builder.build_context(task)
 
     def _refresh_goal_chain(self, task: EnhancedTask):
@@ -154,7 +154,7 @@ class GoalAlignmentChecker:
             new_chain = self._store.resolve_goal_chain(first_ref.id)
             task.goal_chain = new_chain
 
-    def get_alignment_summary(self) -> Dict[str, Any]:
+    def get_alignment_summary(self) -> dict[str, Any]:
         total_tasks = len(self._task_map)
         aligned_tasks = 0
         unaligned_tasks = 0

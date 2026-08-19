@@ -19,7 +19,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Sequence, cast
+from typing import Any, cast
+from collections.abc import Sequence
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -59,9 +60,9 @@ class GraphPersistence:
 
     def __init__(
         self,
-        session_factory: Optional[SessionFactory] = None,
+        session_factory: SessionFactory | None = None,
     ) -> None:
-        self._session_factory: Optional[SessionFactory] = session_factory
+        self._session_factory: SessionFactory | None = session_factory
         # Repository 仅用于复用其内部 _session() 与字段映射逻辑
         self._repo = KnowledgeGraphRepository(session_factory=session_factory)
 

@@ -15,7 +15,8 @@ References Paperclip's Persistent Agent State design:
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List
+from typing import Any
+from collections.abc import Callable
 
 # shared imports moved to state/__init__.py
 from app.models.agent_state import (
@@ -38,9 +39,9 @@ class StateMigrationEngine:
     """Handles automatic state migration when schema changes"""
 
     def __init__(self):
-        self._migrations: List[Dict[str, Any]] = []
+        self._migrations: list[dict[str, Any]] = []
 
-    def register_migration(self, from_version: str, to_version: str, migrator: Callable[[Dict], Dict]):
+    def register_migration(self, from_version: str, to_version: str, migrator: Callable[[dict], dict]):
         self._migrations.append(
             {
                 "from": from_version,
@@ -49,10 +50,10 @@ class StateMigrationEngine:
             }
         )
 
-    def migrate(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def migrate(self, data: dict[str, Any]) -> dict[str, Any]:
         return migrate_state(data, CURRENT_SCHEMA_VERSION)
 
-    def get_migration_path(self, from_version: str) -> List[str]:
+    def get_migration_path(self, from_version: str) -> list[str]:
         path = [from_version]
         visited = {from_version}
         changed = True

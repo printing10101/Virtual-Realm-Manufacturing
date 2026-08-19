@@ -83,7 +83,7 @@ class AuditLog(ChainMixin, WriterMixin, ReaderMixin, ArchiverMixin):
     - ``_chain_lock``：哈希链并发保护 RLock
     """
 
-    def __init__(self, log_dir: Optional[str] = None, max_entries: int = 10000):
+    def __init__(self, log_dir: str | None = None, max_entries: int = 10000):
         if log_dir is None:
             _default_root = os.environ.get(
                 "LNN_LOG_DIR",

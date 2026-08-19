@@ -26,7 +26,8 @@ import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -283,7 +284,7 @@ def _retry_with_backoff(
         最后一次尝试的异常。
     """
     attempts = max(1, int(retries))
-    last_exc: Optional[BaseException] = None
+    last_exc: BaseException | None = None
     for i in range(attempts):
         try:
             return func()
@@ -328,7 +329,7 @@ class _MaterialDeduper:
     def __init__(self) -> None:
         self._name_to_id: dict[str, str] = {}
 
-    def resolve(self, raw: dict[str, Any]) -> tuple[Optional[str], bool]:
+    def resolve(self, raw: dict[str, Any]) -> tuple[str | None, bool]:
         """返回 ``(node_id, is_duplicate)``。``is_duplicate=True`` 时不要新建。"""
         name = str(raw.get("name", "")).strip()
         if not name:
@@ -346,7 +347,7 @@ class _ToolDeduper:
     def __init__(self) -> None:
         self._seen: dict[tuple[str, float], str] = {}
 
-    def resolve(self, raw: dict[str, Any]) -> tuple[Optional[str], bool]:
+    def resolve(self, raw: dict[str, Any]) -> tuple[str | None, bool]:
         """返回 ``(node_id, is_duplicate)``。"""
         series = str(raw.get("series", "")).strip()
         diameter = raw.get("diameter_mm")
@@ -375,7 +376,7 @@ class _MachineDeduper:
     def __init__(self) -> None:
         self._ids: dict[str, str] = {}
 
-    def resolve(self, raw: dict[str, Any]) -> tuple[Optional[str], bool]:
+    def resolve(self, raw: dict[str, Any]) -> tuple[str | None, bool]:
         machine_id = str(raw.get("id", "")).strip()
         if not machine_id:
             return None, False

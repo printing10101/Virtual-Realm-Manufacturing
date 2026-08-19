@@ -27,7 +27,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.core.safe_errors import safe_error_message
 from app.dxf.exceptions import DxfError
@@ -94,10 +94,10 @@ class DxfPipelineResult:
 
     success: bool = False
     stages: list[DxfPipelineStage] = field(default_factory=list)
-    parse_result: Optional[DxfParseResult] = None
-    feature_result: Optional[FeatureExtractionResult] = None
-    model_result: Optional[ModelConversionResult] = None
-    process_result: Optional[ProcessPipelineResult] = None
+    parse_result: DxfParseResult | None = None
+    feature_result: FeatureExtractionResult | None = None
+    model_result: ModelConversionResult | None = None
+    process_result: ProcessPipelineResult | None = None
     total_duration_ms: float = 0.0
     summary: str = ""
     # 修复：新增 error_id 字段以便客户端报错时与服务端日志关联，

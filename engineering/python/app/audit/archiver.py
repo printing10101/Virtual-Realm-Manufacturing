@@ -24,7 +24,8 @@ H18 修复：``clear_logs_with_authorization`` 不用 exists() 预检，直接 t
 """
 
 import os
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 import json
 import time

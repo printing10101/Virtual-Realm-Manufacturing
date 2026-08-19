@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+
 
 from app.knowledge_graph.graph_store import GraphStore
 import time
@@ -46,8 +46,8 @@ class ContradictoryEdgeResult:
     target_id: str
     edge_type_forward: str  # A→B 的关系类型
     edge_type_reverse: str  # B→A 的关系类型
-    forward_created_at: Optional[str] = None
-    reverse_created_at: Optional[str] = None
+    forward_created_at: str | None = None
+    reverse_created_at: str | None = None
 
 
 @dataclass
@@ -56,7 +56,7 @@ class StaleNodeResult:
 
     node_id: str
     node_type: str
-    last_updated: Optional[str]
+    last_updated: str | None
     age_days: int
     threshold_years: int
 

@@ -20,7 +20,8 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 import ezdxf
 
@@ -95,8 +96,8 @@ class DxfParser:
         self,
         file_path: str | Path,
         *,
-        user_id: Optional[str] = None,
-        base_dir: Optional[str] = None,
+        user_id: str | None = None,
+        base_dir: str | None = None,
     ) -> DxfParseResult:
         """解析DXF文件并返回结构化数据。
 

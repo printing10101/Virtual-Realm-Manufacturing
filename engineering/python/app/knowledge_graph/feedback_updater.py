@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from app.knowledge_graph.graph_store import GraphStore
 
@@ -35,7 +35,7 @@ class FeedbackUpdater:
     4. 可信度调整：首次合格提升置信度，不合格降低置信度
     """
 
-    def __init__(self, graph_store: Optional[GraphStore] = None):
+    def __init__(self, graph_store: GraphStore | None = None):
         """初始化反馈更新器
 
         Args:

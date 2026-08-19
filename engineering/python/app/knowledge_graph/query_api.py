@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 from .graph_store import GraphStore
 
@@ -43,7 +43,7 @@ def _wildcard_to_regex(pattern: str) -> str:
     return "^" + "".join(out) + "$"
 
 
-def _match(value: Any, pattern: Optional[str]) -> bool:
+def _match(value: Any, pattern: str | None) -> bool:
     if pattern is None:
         return True
     if value is None:
@@ -76,7 +76,7 @@ class KnowledgeGraphQueryAPI:
 
     # ============================================================== 基础查询
 
-    def node(self, node_id: str) -> Optional[dict[str, Any]]:
+    def node(self, node_id: str) -> dict[str, Any] | None:
         """按 ID 精确取节点。"""
         return self._store.get_node(node_id)
 
@@ -86,9 +86,9 @@ class KnowledgeGraphQueryAPI:
 
     def search_nodes(
         self,
-        id_pattern: Optional[str] = None,
-        node_type: Optional[str] = None,
-        prop_filter: Optional[dict[str, Any]] = None,
+        id_pattern: str | None = None,
+        node_type: str | None = None,
+        prop_filter: dict[str, Any] | None = None,
         limit: int = 200,
     ) -> list[dict[str, Any]]:
         """按 ID 通配符 + 类型 + 属性过滤搜索节点。
@@ -129,9 +129,9 @@ class KnowledgeGraphQueryAPI:
 
     def edges(
         self,
-        edge_type: Optional[str] = None,
-        source_id: Optional[str] = None,
-        target_id: Optional[str] = None,
+        edge_type: str | None = None,
+        source_id: str | None = None,
+        target_id: str | None = None,
         min_confidence: float = 0.0,
         max_confidence: float = 1.0,
         limit: int = 1000,

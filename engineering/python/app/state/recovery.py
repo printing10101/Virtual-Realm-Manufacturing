@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Optional
+from collections.abc import Callable
 
 # shared imports moved to state/__init__.py
 from app.state.exceptions import StatePersistenceError
@@ -49,9 +50,9 @@ class StateRecoveryManager:
     async def resume_agent(
         self,
         agent_id: str,
-        task_loader: Optional[Callable[[str], Any]] = None,
-        task_runner: Optional[Callable[[str, Optional[Checkpoint]], Any]] = None,
-    ) -> Dict[str, Any]:
+        task_loader: Callable[[str], Any] | None = None,
+        task_runner: Callable[[str, Checkpoint | None], Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Resume an agent from its persisted state.
         Returns a dict with recovery status and details.
@@ -251,7 +252,7 @@ class StateRecoveryManager:
         self,
         source_agent_id: str,
         target_agent_id: str,
-    ) -> Optional[AgentState]:
+    ) -> AgentState | None:
         source = await self._persistence.load_state(source_agent_id)
         if not source:
             return None
@@ -259,7 +260,7 @@ class StateRecoveryManager:
         await self._persistence.save_state(clone, trigger="clone")
         return clone
 
-    async def get_recovery_history(self, agent_id: str) -> List[Dict[str, Any]]:
+    async def get_recovery_history(self, agent_id: str) -> list[dict[str, Any]]:
         state = await self._persistence.load_state(agent_id)
         if not state:
             return []
@@ -267,8 +268,8 @@ class StateRecoveryManager:
 
 
 async def create_state_persistence(
-    redis_url: Optional[str] = None,
-    db_url: Optional[str] = None,
+    redis_url: str | None = None,
+    db_url: str | None = None,
     checkpoint_dir: str = CHECKPOINT_BASE_DIR,
 ) -> StatePersistenceManager:
     redis_client = None

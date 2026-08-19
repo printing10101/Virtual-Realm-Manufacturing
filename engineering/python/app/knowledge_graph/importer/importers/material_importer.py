@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.knowledge_graph.graph_store import GraphStore
 from app.knowledge_graph.importer.importers._common import (
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def import_materials(
     graph: GraphStore,
     *,
-    source_path: Optional[Path] = None,
+    source_path: Path | None = None,
     retries: int = 3,
 ) -> ImportStats:
     """导入 ``materials.json`` → 若干 ``material`` 节点。
