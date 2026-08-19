@@ -28,7 +28,7 @@ from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
@@ -68,9 +68,12 @@ class DatasetSchemaModel(BaseModel):
 class CreateDatasetRequest(BaseModel):
     """创建数据集请求体。"""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     description: str = ""
-    dataset_schema: DatasetSchemaModel
+    # 兼容两种输入名：schema（契约标准）与 dataset_schema（旧调用方）
+    dataset_schema: DatasetSchemaModel = Field(alias="schema")
     owner_id: str
 
 

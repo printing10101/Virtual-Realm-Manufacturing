@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -62,10 +62,10 @@ class TraceSpan:
 
     span_id: str
     trace_id: str
-    parent_span_id: Optional[str] = None
+    parent_span_id: str | None = None
     name: str = ""
     start_ts: float = 0.0
-    end_ts: Optional[float] = None
+    end_ts: float | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
     events: list[dict[str, Any]] = field(default_factory=list)
     status: str = "ok"
@@ -140,8 +140,8 @@ class LogEntry:
     message: str
     logger: str = ""
     attributes: dict[str, Any] = field(default_factory=dict)
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
+    trace_id: str | None = None
+    span_id: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.timestamp, (int, float)) or isinstance(self.timestamp, bool):
@@ -194,8 +194,8 @@ class ExperimentSnapshot:
     model_uri: str
     metrics: dict[str, float]
     environment: dict[str, str]
-    lineage_record_id: Optional[str] = None
-    mlflow_run_id: Optional[str] = None
+    lineage_record_id: str | None = None
+    mlflow_run_id: str | None = None
     notes: str = ""
 
     def __post_init__(self) -> None:
@@ -238,7 +238,7 @@ class ITraceSink(ABC):
     """
 
     @abstractmethod
-    def start_span(self, name: str, parent: Optional[str] = None) -> str:
+    def start_span(self, name: str, parent: str | None = None) -> str:
         """开启一个 span，返回 span_id。
 
         Args:
@@ -279,15 +279,15 @@ class IMetricSink(ABC):
     """
 
     @abstractmethod
-    def counter(self, name: str, value: float = 1, labels: Optional[dict[str, str]] = None) -> None:
+    def counter(self, name: str, value: float = 1, labels: dict[str, str] | None = None) -> None:
         """递增计数器。"""
 
     @abstractmethod
-    def gauge(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
+    def gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """设置 gauge 当前值。"""
 
     @abstractmethod
-    def histogram(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
+    def histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """记录 histogram 样本。"""
 
 
@@ -352,7 +352,7 @@ class ISnapshotStore(ABC):
         """按 ID 取快照，不存在抛 KeyError。"""
 
     @abstractmethod
-    async def list(self, *, filters: Optional[dict[str, Any]] = None) -> list[ExperimentSnapshot]:
+    async def list(self, *, filters: dict[str, Any] | None = None) -> list[ExperimentSnapshot]:
         """列出快照，可选过滤。
 
         Args:

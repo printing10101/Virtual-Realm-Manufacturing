@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -56,10 +56,10 @@ class _SyncSingletons:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._engine: Optional[Engine] = None
-        self._sessionmaker: Optional[sessionmaker] = None
+        self._engine: Engine | None = None
+        self._sessionmaker: sessionmaker | None = None
 
-    def get_engine(self) -> Optional[Engine]:
+    def get_engine(self) -> Engine | None:
         if self._engine is not None:
             return self._engine
         with self._lock:
@@ -86,7 +86,7 @@ class _SyncSingletons:
             self._engine = create_engine(sync_url, **engine_kwargs)
             return self._engine
 
-    def get_sessionmaker(self) -> Optional[sessionmaker]:
+    def get_sessionmaker(self) -> sessionmaker | None:
         if self._sessionmaker is not None:
             return self._sessionmaker
         # 修复：原实现在 self._lock 内调用 self.get_engine()，而
@@ -120,12 +120,12 @@ class _SyncSingletons:
 _singletons = _SyncSingletons()
 
 
-def get_sync_engine() -> Optional[Engine]:
+def get_sync_engine() -> Engine | None:
     """获取全局同步数据库引擎（首次访问时惰性创建）。"""
     return _singletons.get_engine()
 
 
-def get_sync_sessionmaker() -> Optional[sessionmaker]:
+def get_sync_sessionmaker() -> sessionmaker | None:
     """获取全局同步 ``sessionmaker``（首次访问时惰性创建）。"""
     return _singletons.get_sessionmaker()
 

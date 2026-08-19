@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ class WorldModelPredictRequest:
     horizon: int = DEFAULT_HORIZON
     model_uri: str = "model://world_model/1.0.0"
     # ADR-020 思路 1：融合模式可选输入（默认 None 保持向后兼容）
-    unified_state: Optional[dict[str, Any]] = None
+    unified_state: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         # 融合模式下 current_state 可为空（由 unified_state 提供状态信息）

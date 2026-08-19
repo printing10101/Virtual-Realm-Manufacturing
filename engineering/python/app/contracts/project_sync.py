@@ -28,7 +28,7 @@ app/database/models/project_sync.py（ORM 持久化）。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -374,7 +374,7 @@ class ProjectSyncManifest:
         """是否配置了远端仓库."""
         return bool(self.remote_url)
 
-    def get_ref(self, resource_uri: str) -> Optional[ResourceRef]:
+    def get_ref(self, resource_uri: str) -> ResourceRef | None:
         """按 URI 查询资源引用."""
         for ref in self.resource_refs:
             if ref.resource_uri == resource_uri:

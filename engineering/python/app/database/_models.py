@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 @dataclass
 class RuleCondition:
@@ -13,13 +13,13 @@ class RuleCondition:
     parameter: str
     operator: str
     value: str
-    unit: Optional[str] = None
+    unit: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "RuleCondition":
+    def from_dict(cls, d: dict[str, Any]) -> "RuleCondition":
         return cls(
             parameter=d.get("parameter", ""),
             operator=d.get("operator", "="),
@@ -35,13 +35,13 @@ class RuleResult:
     parameter: str
     operator: str
     value: str
-    unit: Optional[str] = None
+    unit: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "RuleResult":
+    def from_dict(cls, d: dict[str, Any]) -> "RuleResult":
         return cls(
             parameter=d.get("parameter", ""),
             operator=d.get("operator", "<="),
@@ -54,19 +54,19 @@ class RuleResult:
 class ProcessRule:
     """工艺规则数据模型"""
 
-    id: Optional[int] = None
+    id: int | None = None
     name: str = ""
     description: str = ""
-    group_id: Optional[int] = None
-    conditions: List[RuleCondition] = field(default_factory=list)
+    group_id: int | None = None
+    conditions: list[RuleCondition] = field(default_factory=list)
     logic_operator: str = "AND"
-    result: Optional[RuleResult] = None
+    result: RuleResult | None = None
     status: str = "active"
     priority: int = 0
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["conditions"] = [c.to_dict() if isinstance(c, RuleCondition) else c for c in self.conditions]
         d["result"] = self.result.to_dict() if isinstance(self.result, RuleResult) else self.result
@@ -76,7 +76,7 @@ class ProcessRule:
         return json.dumps(self.to_dict(), ensure_ascii=False)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ProcessRule":
+    def from_dict(cls, d: dict[str, Any]) -> "ProcessRule":
         conditions = []
         for c in d.get("conditions", []):
             if isinstance(c, RuleCondition):
@@ -133,17 +133,17 @@ class ProcessRule:
 class RuleGroup:
     """规则分组数据模型"""
 
-    id: Optional[int] = None
+    id: int | None = None
     name: str = ""
     description: str = ""
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "RuleGroup":
+    def from_dict(cls, d: dict[str, Any]) -> "RuleGroup":
         return cls(
             id=d.get("id"),
             name=d.get("name", ""),

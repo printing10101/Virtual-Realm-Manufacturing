@@ -22,7 +22,8 @@ import socket
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 from .mtconnect_client import MTConnectClient
 from .opcu_client import OPCUAClient
@@ -49,18 +50,18 @@ class UnifiedMachineStatus:
     timestamp: str  # ISO 8601
     connected: bool = False
     # 加工状态
-    spindle_speed_rpm: Optional[float] = None
-    feed_rate_mm_per_min: Optional[float] = None
+    spindle_speed_rpm: float | None = None
+    feed_rate_mm_per_min: float | None = None
     # 位置（mm）
-    x_position: Optional[float] = None
-    y_position: Optional[float] = None
-    z_position: Optional[float] = None
+    x_position: float | None = None
+    y_position: float | None = None
+    z_position: float | None = None
     # 运行状态
-    execution_mode: Optional[str] = None  # ACTIVE / FEED_HOLD / STOPPED
-    controller_mode: Optional[str] = None  # AUTOMATIC / MANUAL / MDI
-    machine_mode: Optional[str] = None
-    alarm_active: Optional[bool] = None
-    availability: Optional[str] = None  # AVAILABLE / UNAVAILABLE
+    execution_mode: str | None = None  # ACTIVE / FEED_HOLD / STOPPED
+    controller_mode: str | None = None  # AUTOMATIC / MANUAL / MDI
+    machine_mode: str | None = None
+    alarm_active: bool | None = None
+    availability: str | None = None  # AVAILABLE / UNAVAILABLE
     # 协议特有原始数据
     raw: dict = field(default_factory=dict)
 
@@ -146,8 +147,8 @@ class OPCUAAdapter(MachineAdapter):
     def __init__(
         self,
         endpoint: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
         machine_id: str = "",
     ):
         self.machine_id = machine_id or endpoint
@@ -197,16 +198,16 @@ class UnifiedDNCAdapter:
 
     def __init__(self, machine_id: str):
         self.machine_id = machine_id
-        self.primary: Optional[MachineAdapter] = None
-        self.fallback: Optional[MachineAdapter] = None
-        self._active: Optional[MachineAdapter] = None
-        self._subscription_task: Optional[asyncio.Task] = None
+        self.primary: MachineAdapter | None = None
+        self.fallback: MachineAdapter | None = None
+        self._active: MachineAdapter | None = None
+        self._subscription_task: asyncio.Task | None = None
         self._failover_count = 0
 
     async def connect_auto(
         self,
         endpoints: list[str],
-        credentials: Optional[dict] = None,
+        credentials: dict | None = None,
         timeout: float = 5.0,
     ) -> dict:
         """自动探测并连接可用协议。
@@ -273,7 +274,7 @@ class UnifiedDNCAdapter:
         self,
         protocol: ProtocolType,
         endpoint: str,
-        credentials: Optional[dict] = None,
+        credentials: dict | None = None,
         timeout: float = 10.0,
     ) -> bool:
         """单协议连接（兼容旧 DNCManager 用法）。"""
@@ -412,7 +413,7 @@ class UnifiedDNCAdapter:
         return self._active is not None and self._active.is_connected()
 
     @property
-    def active_protocol(self) -> Optional[str]:
+    def active_protocol(self) -> str | None:
         return self._protocol_name(self._active) if self._active else None
 
     @property
@@ -420,7 +421,7 @@ class UnifiedDNCAdapter:
         return self._failover_count
 
     @staticmethod
-    def _protocol_name(adapter: Optional[MachineAdapter]) -> str:
+    def _protocol_name(adapter: MachineAdapter | None) -> str:
         if isinstance(adapter, MTConnectAdapter):
             return "mtconnect"
         if isinstance(adapter, OPCUAAdapter):
@@ -436,7 +437,7 @@ class UnifiedDNCAdapter:
 async def discover_machines(
     subnet: str = "192.168.1",
     timeout: float = 0.3,
-    ports: Optional[list[int]] = None,
+    ports: list[int] | None = None,
 ) -> list[dict]:
     """扫描子网内 MTConnect (5000) 与 OPC UA (4840) 端口。
 
@@ -516,7 +517,7 @@ def _socket_check(ip: str, port: int, timeout: float) -> bool:
 # =====================================================================
 
 
-def _safe_float(value: Any) -> Optional[float]:
+def _safe_float(value: Any) -> float | None:
     """安全转换为 float，失败返回 None。"""
     if value is None:
         return None

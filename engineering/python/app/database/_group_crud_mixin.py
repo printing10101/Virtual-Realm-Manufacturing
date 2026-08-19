@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from typing import List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.database._models import RuleGroup
 
@@ -46,7 +47,7 @@ class _GroupCrudMixin:
         logger.info("创建规则分组: %s (id=%s)", group.name, group.id)
         return group
 
-    def update_group(self, group_id: int, group: RuleGroup) -> Optional[RuleGroup]:
+    def update_group(self, group_id: int, group: RuleGroup) -> RuleGroup | None:
         now = self._now()
         group.updated_at = now
 
@@ -69,7 +70,7 @@ class _GroupCrudMixin:
         conn.commit()
         return cursor.rowcount > 0
 
-    def get_group(self, group_id: int) -> Optional[RuleGroup]:
+    def get_group(self, group_id: int) -> RuleGroup | None:
         conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM rule_groups WHERE id=?", (group_id,))
@@ -78,7 +79,7 @@ class _GroupCrudMixin:
             return None
         return self._row_to_group(row)
 
-    def list_groups(self) -> List[RuleGroup]:
+    def list_groups(self) -> list[RuleGroup]:
         conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM rule_groups ORDER BY created_at DESC")
@@ -90,7 +91,7 @@ class _GroupCrudMixin:
         cursor.execute("SELECT COUNT(*) FROM rules WHERE group_id=?", (group_id,))
         return cursor.fetchone()[0]
 
-    def _find_group_by_name(self, name: str) -> Optional[RuleGroup]:
+    def _find_group_by_name(self, name: str) -> RuleGroup | None:
         conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM rule_groups WHERE name=?", (name,))

@@ -22,7 +22,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Generic, TypeVar, Callable
+from typing import Any, Generic, TypeVar
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 

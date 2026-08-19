@@ -9,7 +9,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.utils.sqlite_pool import get_sqlite_manager
 
@@ -21,9 +21,9 @@ class CommitEntry:
     action: str
     branch_name: str
     timestamp: float = field(default_factory=time.time)
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "action": self.action,
             "branch_name": self.branch_name,
@@ -36,14 +36,14 @@ class CommitEntry:
 class TemplateBranch:
     branch_id: str
     name: str
-    base_branch: Optional[str]
-    template_data: Dict[str, Any]
-    metadata: Dict[str, Any]
+    base_branch: str | None
+    template_data: dict[str, Any]
+    metadata: dict[str, Any]
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
-    commit_log: List[CommitEntry] = field(default_factory=list)
+    commit_log: list[CommitEntry] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "branch_id": self.branch_id,
             "name": self.name,
@@ -56,7 +56,7 @@ class TemplateBranch:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TemplateBranch":
+    def from_dict(cls, data: dict[str, Any]) -> "TemplateBranch":
         return cls(
             branch_id=data["branch_id"],
             name=data["name"],
@@ -82,7 +82,7 @@ class TemplateBranchManager:
         self.db_path = db_path
         self.json_dir = json_dir
         self._lock = threading.RLock()
-        self._cache: Dict[str, TemplateBranch] = {}
+        self._cache: dict[str, TemplateBranch] = {}
         # 使用统一的连接池管理器（传入 db_path 避免跨测试共享连接池死锁）
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("template_branches", db_path=self.db_path)
@@ -161,15 +161,15 @@ class TemplateBranchManager:
         )
         self._db.commit()
 
-    def _compute_content_hash(self, data: Dict[str, Any]) -> str:
+    def _compute_content_hash(self, data: dict[str, Any]) -> str:
         return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16]
 
     def create_branch(
         self,
         name: str,
-        base_branch: Optional[str],
-        data: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
+        base_branch: str | None,
+        data: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
     ) -> TemplateBranch:
         """Create a new template branch."""
         with self._lock:
@@ -208,12 +208,12 @@ class TemplateBranchManager:
             )
             return branch
 
-    def get_branch(self, branch_id: str) -> Optional[TemplateBranch]:
+    def get_branch(self, branch_id: str) -> TemplateBranch | None:
         """Retrieve a branch by ID."""
         with self._lock:
             return self._cache.get(branch_id)
 
-    def list_branches(self, type_filter: Optional[str] = None) -> List[TemplateBranch]:
+    def list_branches(self, type_filter: str | None = None) -> list[TemplateBranch]:
         """List all branches, optionally filtered by type."""
         with self._lock:
             branches = list(self._cache.values())
@@ -221,7 +221,7 @@ class TemplateBranchManager:
                 branches = [b for b in branches if b.metadata.get("type") == type_filter]
             return sorted(branches, key=lambda b: b.updated_at, reverse=True)
 
-    def get_commit_log(self, branch_id: str) -> List[Dict[str, Any]]:
+    def get_commit_log(self, branch_id: str) -> list[dict[str, Any]]:
         """Get full commit history for a branch."""
         with self._lock:
             branch = self._cache.get(branch_id)
@@ -230,8 +230,8 @@ class TemplateBranchManager:
             return [e.to_dict() for e in branch.commit_log]
 
     def update_branch_data(
-        self, branch_id: str, data: Dict[str, Any], action: str = "update"
-    ) -> Optional[TemplateBranch]:
+        self, branch_id: str, data: dict[str, Any], action: str = "update"
+    ) -> TemplateBranch | None:
         """Update a branch's template data and log the change."""
         with self._lock:
             branch = self._cache.get(branch_id)
@@ -253,7 +253,7 @@ class TemplateBranchManager:
             logger.info("Branch updated: id=%s, action=%s", branch_id, action)
             return branch
 
-    def merge_branch(self, source_id: str, target_id: str, strategy: str = "overwrite") -> Optional[TemplateBranch]:
+    def merge_branch(self, source_id: str, target_id: str, strategy: str = "overwrite") -> TemplateBranch | None:
         """Merge source branch into target branch."""
         with self._lock:
             source = self._cache.get(source_id)
@@ -285,7 +285,7 @@ class TemplateBranchManager:
             logger.info("Branch merged: %s → %s (strategy=%s)", source_id, target_id, strategy)
             return target
 
-    def _deep_merge(self, base: Dict, override: Dict) -> Dict:
+    def _deep_merge(self, base: dict, override: dict) -> dict:
         """Recursively merge override into base."""
         result = base.copy()
         for key, value in override.items():
@@ -333,7 +333,7 @@ class _BranchManagerHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[TemplateBranchManager] = None
+        self._instance: TemplateBranchManager | None = None
 
     def get(self) -> TemplateBranchManager:
         # 快速路径：已存在则直接返回，避免持锁开销

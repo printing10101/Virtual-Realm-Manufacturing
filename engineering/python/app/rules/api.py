@@ -11,7 +11,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import List, Optional
+
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse
@@ -62,21 +62,21 @@ class ConditionItem(BaseModel):
     parameter: str
     operator: str
     value: str
-    unit: Optional[str] = None
+    unit: str | None = None
 
 
 class ResultItem(BaseModel):
     parameter: str
     operator: str
     value: str
-    unit: Optional[str] = None
+    unit: str | None = None
 
 
 class RuleCreateRequest(BaseModel):
     name: str
     description: str = ""
-    group_id: Optional[int] = None
-    conditions: List[ConditionItem]
+    group_id: int | None = None
+    conditions: list[ConditionItem]
     logic_operator: str = "AND"
     result: ResultItem
     status: str = "active"
@@ -84,14 +84,14 @@ class RuleCreateRequest(BaseModel):
 
 
 class RuleUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    group_id: Optional[int] = None
-    conditions: Optional[List[ConditionItem]] = None
-    logic_operator: Optional[str] = None
-    result: Optional[ResultItem] = None
-    status: Optional[str] = None
-    priority: Optional[int] = None
+    name: str | None = None
+    description: str | None = None
+    group_id: int | None = None
+    conditions: list[ConditionItem] | None = None
+    logic_operator: str | None = None
+    result: ResultItem | None = None
+    status: str | None = None
+    priority: int | None = None
 
 
 class GroupCreateRequest(BaseModel):
@@ -100,11 +100,11 @@ class GroupCreateRequest(BaseModel):
 
 
 class GroupUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
 
-def _validate_rule_data(conditions: List[ConditionItem], result: ResultItem, logic_operator: str) -> Optional[str]:
+def _validate_rule_data(conditions: list[ConditionItem], result: ResultItem, logic_operator: str) -> str | None:
     if not conditions:
         return "规则条件不能为空"
 
@@ -173,7 +173,7 @@ def _conflict_report_to_dict(report: ConflictReport) -> dict:
     }
 
 
-def _run_conflict_check(rules_to_check: List[ProcessRule]) -> Optional[List[dict]]:
+def _run_conflict_check(rules_to_check: list[ProcessRule]) -> list[dict] | None:
     """
     执行冲突检测，返回警告列表（如果有冲突）
     冲突仅作为警告，不阻塞规则保存
@@ -236,9 +236,9 @@ async def create_rule(request: RuleCreateRequest):
 
 @router.get("/list", dependencies=[Depends(get_current_user)])
 async def list_rules(
-    group_id: Optional[int] = Query(None, description="规则分组ID"),
-    status: Optional[str] = Query(None, description="规则状态"),
-    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    group_id: int | None = Query(None, description="规则分组ID"),
+    status: str | None = Query(None, description="规则状态"),
+    keyword: str | None = Query(None, description="搜索关键词"),
     sort_by: str = Query("updated_at", description="排序字段"),
     sort_order: str = Query("DESC", description="排序方向"),
     page: int = Query(1, ge=1, description="页码"),

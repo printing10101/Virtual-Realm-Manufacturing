@@ -18,7 +18,8 @@ OPC UA 客户端实现
 
 import asyncio
 import logging
-from typing import Optional, Dict, Any, Callable
+from typing import Any
+from collections.abc import Callable
 from datetime import datetime, timezone
 
 from app.utils.retry import retry_with_backoff
@@ -41,7 +42,7 @@ DEFAULT_OPCUA_TIMEOUT_SEC: float = 10.0
 class OPCUASubscriptionHandler:
     """OPC UA 数据变更订阅处理器"""
 
-    def __init__(self, callback: Optional[Callable] = None):
+    def __init__(self, callback: Callable | None = None):
         self.callback = callback
 
     def datachange_notification(self, node, val, data):
@@ -68,15 +69,15 @@ class OPCUAClient:
     def __init__(
         self,
         endpoint: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
         max_reconnect_attempts: int = 5,
         reconnect_backoff_base: float = 1.0,
         reconnect_backoff_max: float = 60.0,
         node_namespace: int = 2,
         nc_program_node_template: str = "NCProgram/{program_name}",
-        heartbeat_node_id: Optional[str] = None,
-        failure_callback: Optional[Callable] = None,
+        heartbeat_node_id: str | None = None,
+        failure_callback: Callable | None = None,
     ):
         """
         初始化 OPC UA 客户端
@@ -99,9 +100,9 @@ class OPCUAClient:
         self.endpoint = endpoint
         self.username = username
         self.password = password
-        self.client: Optional[Client] = None
+        self.client: Client | None = None
         self.subscription = None
-        self.handler: Optional[OPCUASubscriptionHandler] = None
+        self.handler: OPCUASubscriptionHandler | None = None
         self.connected = False
         # 重连参数（IEC 62443-3-3 SR 7.2 网络可用性，禁止硬编码）
         self.max_reconnect_attempts = max_reconnect_attempts
@@ -320,7 +321,7 @@ class OPCUAClient:
             self.subscription = None
             logger.info("OPC UA 订阅已取消")
 
-    async def get_machine_status(self) -> Dict[str, Any]:
+    async def get_machine_status(self) -> dict[str, Any]:
         """
         获取机床状态（标准 OPC UA 机床信息模型）
 

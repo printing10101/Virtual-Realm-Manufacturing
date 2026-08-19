@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict, Tuple, Set
+
 
 from app.database.rule_db import ProcessRule, RuleCondition, RuleResult
 
@@ -41,19 +41,19 @@ class ConflictSeverity(str, Enum):
 class ConflictReport:
     """冲突报告数据结构"""
 
-    conflicting_rule_ids: List[int]  # 冲突规则ID列表
+    conflicting_rule_ids: list[int]  # 冲突规则ID列表
     conflict_type: ConflictType  # 冲突类型
     severity: ConflictSeverity  # 严重程度
     description: str  # 冲突详细描述
-    conflicting_parameters: List[str] = field(default_factory=list)  # 冲突涉及的参数
+    conflicting_parameters: list[str] = field(default_factory=list)  # 冲突涉及的参数
 
 
-def _normalize_condition(cond: RuleCondition) -> Tuple[str, str, str]:
+def _normalize_condition(cond: RuleCondition) -> tuple[str, str, str]:
     """将条件项标准化为可比较的元组"""
     return (cond.parameter.strip().lower(), cond.operator.strip(), cond.value.strip())
 
 
-def _normalize_result(result: RuleResult) -> Tuple[str, str, str]:
+def _normalize_result(result: RuleResult) -> tuple[str, str, str]:
     """将结果项标准化为可比较的元组"""
     return (result.parameter.strip().lower(), result.operator.strip(), result.value.strip())
 
@@ -67,7 +67,7 @@ def _get_condition_signature(rule: ProcessRule) -> frozenset:
     return frozenset(_normalize_condition(c) for c in rule.conditions)
 
 
-def _get_result_signature(rule: ProcessRule) -> Tuple[str, str, str]:
+def _get_result_signature(rule: ProcessRule) -> tuple[str, str, str]:
     """获取规则结果的签名"""
     if rule.result is None:
         return ("", "", "")
@@ -95,7 +95,7 @@ def _results_conflict(r1: RuleResult, r2: RuleResult) -> bool:
     return False
 
 
-def _detect_contradiction(rules: List[ProcessRule]) -> List[ConflictReport]:
+def _detect_contradiction(rules: list[ProcessRule]) -> list[ConflictReport]:
     """
     检测矛盾冲突
 
@@ -106,7 +106,7 @@ def _detect_contradiction(rules: List[ProcessRule]) -> List[ConflictReport]:
     """
     reports = []
     # 条件签名 -> 规则列表
-    sig_map: Dict[frozenset, List[ProcessRule]] = {}
+    sig_map: dict[frozenset, list[ProcessRule]] = {}
 
     for rule in rules:
         if not rule.conditions or not rule.result:
@@ -155,7 +155,7 @@ def _is_subset(small: frozenset, large: frozenset) -> bool:
     return small < large  # 严格子集
 
 
-def _detect_subset(rules: List[ProcessRule]) -> List[ConflictReport]:
+def _detect_subset(rules: list[ProcessRule]) -> list[ConflictReport]:
     """
     检测子集冲突
 
@@ -205,7 +205,7 @@ def _detect_subset(rules: List[ProcessRule]) -> List[ConflictReport]:
     return reports
 
 
-def _detect_parameter(rules: List[ProcessRule]) -> List[ConflictReport]:
+def _detect_parameter(rules: list[ProcessRule]) -> list[ConflictReport]:
     """
     检测参数冲突
 
@@ -216,7 +216,7 @@ def _detect_parameter(rules: List[ProcessRule]) -> List[ConflictReport]:
     """
     reports = []
     # 结果参数 -> 规则列表
-    param_map: Dict[str, List[ProcessRule]] = {}
+    param_map: dict[str, list[ProcessRule]] = {}
 
     for rule in rules:
         if not rule.result:
@@ -257,7 +257,7 @@ def _detect_parameter(rules: List[ProcessRule]) -> List[ConflictReport]:
     return reports
 
 
-def detect_conflicts(rules: List[ProcessRule]) -> List[ConflictReport]:
+def detect_conflicts(rules: list[ProcessRule]) -> list[ConflictReport]:
     """
     检测规则列表中的所有冲突
 
@@ -286,7 +286,7 @@ def detect_conflicts(rules: List[ProcessRule]) -> List[ConflictReport]:
     all_reports.extend(_detect_parameter(rules))
 
     # 去重：同一对规则ID不应在多种冲突类型中重复出现
-    seen_pairs: Set[Tuple[int, int]] = set()
+    seen_pairs: set[tuple[int, int]] = set()
     unique_reports = []
     for report in all_reports:
         pair = (int(report.conflicting_rule_ids[0]), int(report.conflicting_rule_ids[1]))

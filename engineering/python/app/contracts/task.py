@@ -12,7 +12,8 @@ from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncIterator, Optional, Protocol
+from typing import Any, Protocol
+from collections.abc import AsyncIterator
 
 
 class TaskStatus(str, Enum):
@@ -109,11 +110,11 @@ class TaskContext:
     """任务运行时上下文，由编排器注入。"""
 
     job_id: str
-    workflow_run_id: Optional[str] = None
+    workflow_run_id: str | None = None
     inputs: dict[str, Artifact] = field(default_factory=dict)
     config: dict[str, Any] = field(default_factory=dict)
     retry_count: int = 0
-    deadline_ts: Optional[float] = None  # Unix ts，超时自动 CANCELLED
+    deadline_ts: float | None = None  # Unix ts，超时自动 CANCELLED
 
 
 @dataclass
@@ -123,8 +124,8 @@ class TaskResult:
     status: TaskStatus
     outputs: dict[str, Artifact] = field(default_factory=dict)
     metrics: dict[str, float] = field(default_factory=dict)
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    error: str | None = None
+    error_code: str | None = None
 
 
 @dataclass
@@ -134,7 +135,7 @@ class TaskProgress:
     job_id: str
     status: TaskStatus
     progress: float  # 0.0 .. 1.0
-    message: Optional[str] = None
+    message: str | None = None
     timestamp: float = 0.0
 
     def __post_init__(self) -> None:
@@ -189,8 +190,8 @@ class ITaskExecutor(ABC):
         task_type: str,
         params: dict[str, Any],
         *,
-        owner_id: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
+        owner_id: str | None = None,
+        idempotency_key: str | None = None,
         priority: TaskPriority = TaskPriority.NORMAL,
         timeout_seconds: int = 3600,
     ) -> str:
@@ -330,10 +331,10 @@ class WorkflowSpec:
 def _validate_artifact_ref(
     ref: str,
     valid_node_ids: set[str],
-    current_node_id: Optional[str],
+    current_node_id: str | None,
     field_name: str,
-    workflow_input_names: Optional[set[str]] = None,
-) -> Optional[str]:
+    workflow_input_names: set[str] | None = None,
+) -> str | None:
     """校验 artifact 引用合法性.
 
     支持两种引用形式:
@@ -394,7 +395,7 @@ def _detect_cycle(nodes: list[WorkflowNode], edges: list[WorkflowEdge]) -> list[
     path: list[str] = []
     path_set: set[str] = set()
 
-    def dfs(node: str) -> Optional[list[str]]:
+    def dfs(node: str) -> list[str] | None:
         if node in path_set:
             idx = path.index(node)
             return path[idx:] + [node]
@@ -425,8 +426,8 @@ class WorkflowEvent:
 
     workflow_run_id: str
     event_type: str  # node_started / node_completed / node_failed / workflow_completed
-    node_id: Optional[str] = None
-    payload: Optional[dict[str, Any]] = None  # TaskResult 或 TaskProgress 的序列化形式
+    node_id: str | None = None
+    payload: dict[str, Any] | None = None  # TaskResult 或 TaskProgress 的序列化形式
     timestamp: float = 0.0
 
     def __post_init__(self) -> None:
@@ -455,9 +456,9 @@ class IWorkflowRunner(ABC):
         self,
         spec: WorkflowSpec,
         *,
-        inputs: Optional[dict[str, Artifact]] = None,
-        resume_from: Optional[str] = None,  # workflow_run_id，断点续跑
-        owner_id: Optional[str] = None,
+        inputs: dict[str, Artifact] | None = None,
+        resume_from: str | None = None,  # workflow_run_id，断点续跑
+        owner_id: str | None = None,
     ) -> str:
         """启动工作流，返回 workflow_run_id。"""
 

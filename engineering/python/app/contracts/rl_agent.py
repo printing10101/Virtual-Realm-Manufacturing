@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -532,10 +532,10 @@ class TrainingStatusInfo:
     current_step: int
     max_steps: int
     current_episode: int
-    metrics: Optional[TrainingMetricsSnapshot] = None
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    metrics: TrainingMetricsSnapshot | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    error_message: str | None = None
 
     def __post_init__(self) -> None:
         if not TrainingStatus.is_valid(self.status):
@@ -577,7 +577,7 @@ class TrainingStartRequest:
     """
 
     max_steps: int = 100000
-    seed: Optional[int] = None
+    seed: int | None = None
     algorithm: str = PolicyAlgorithm.PPO
     optimization_target: str = OptimizationTarget.BALANCE
 

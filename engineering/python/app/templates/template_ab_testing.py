@@ -9,7 +9,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.utils.sqlite_pool import get_sqlite_manager
 
@@ -24,12 +24,12 @@ class ABExperiment:
     candidate_branch: str
     traffic_split: float
     status: str
-    metrics: Dict[str, Any]
+    metrics: dict[str, Any]
     created_at: float = field(default_factory=time.time)
-    concluded_at: Optional[float] = None
-    result: Optional[str] = None
+    concluded_at: float | None = None
+    result: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "experiment_id": self.experiment_id,
             "name": self.name,
@@ -44,7 +44,7 @@ class ABExperiment:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ABExperiment":
+    def from_dict(cls, data: dict[str, Any]) -> "ABExperiment":
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
@@ -58,8 +58,8 @@ class ABTestingFramework:
     def __init__(self, db_path: str = "data/templates/ab_testing.db"):
         self.db_path = db_path
         self._lock = threading.RLock()
-        self._experiments: Dict[str, ABExperiment] = {}
-        self._traffic_map: Dict[str, str] = {}
+        self._experiments: dict[str, ABExperiment] = {}
+        self._traffic_map: dict[str, str] = {}
         # 自动初始化数据库
         self.initialize()
 
@@ -183,7 +183,7 @@ class ABTestingFramework:
         self,
         experiment_id: str,
         branch: str,
-        metrics: Dict[str, Any],
+        metrics: dict[str, Any],
     ) -> None:
         with self._lock:
             exp = self._experiments.get(experiment_id)
@@ -236,7 +236,7 @@ class ABTestingFramework:
             self._db.commit()
             return branch
 
-    def evaluate(self, experiment_id: str) -> Optional[Dict[str, Any]]:
+    def evaluate(self, experiment_id: str) -> dict[str, Any] | None:
         with self._lock:
             exp = self._experiments.get(experiment_id)
             if exp is None:
@@ -257,7 +257,7 @@ class ABTestingFramework:
             result["experiment_id"] = experiment_id
             return result
 
-    def _statistical_test(self, control: Dict, candidate: Dict) -> Dict[str, Any]:
+    def _statistical_test(self, control: dict, candidate: dict) -> dict[str, Any]:
         control_times = control.get("execution_times", [])
         candidate_times = candidate.get("execution_times", [])
 
@@ -296,7 +296,7 @@ class ABTestingFramework:
             "candidate_success_rate": round(candidate_rate, 4),
         }
 
-    def _compute_confidence(self, control: List[float], candidate: List[float]) -> float:
+    def _compute_confidence(self, control: list[float], candidate: list[float]) -> float:
         if len(control) < 2 or len(candidate) < 2:
             return 0.0
 
@@ -340,7 +340,7 @@ class ABTestingFramework:
         front = math.exp(a * math.log(x) + b * math.log(1 - x) - log_beta)
         return front / max(a, 0.001)
 
-    def auto_conclude(self, experiment_id: str) -> Optional[ABExperiment]:
+    def auto_conclude(self, experiment_id: str) -> ABExperiment | None:
         """Evaluate and automatically merge or rollback based on criteria."""
         with self._lock:
             exp = self._experiments.get(experiment_id)
@@ -383,18 +383,18 @@ class ABTestingFramework:
             self._db.commit()
             return exp
 
-    def get_active_experiments(self) -> List[ABExperiment]:
+    def get_active_experiments(self) -> list[ABExperiment]:
         with self._lock:
             return [e for e in self._experiments.values() if e.status == "running"]
 
-    def get_experiment_results(self, experiment_id: str) -> Optional[Dict[str, Any]]:
+    def get_experiment_results(self, experiment_id: str) -> dict[str, Any] | None:
         with self._lock:
             exp = self._experiments.get(experiment_id)
             if exp is None:
                 return None
             return exp.to_dict()
 
-    def list_experiments(self, status_filter: Optional[str] = None) -> List[ABExperiment]:
+    def list_experiments(self, status_filter: str | None = None) -> list[ABExperiment]:
         with self._lock:
             exps = list(self._experiments.values())
             if status_filter:
@@ -411,7 +411,7 @@ class _ABFrameworkHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[ABTestingFramework] = None
+        self._instance: ABTestingFramework | None = None
 
     def get(self) -> ABTestingFramework:
         # 快速路径：已存在则直接返回，避免持锁开销

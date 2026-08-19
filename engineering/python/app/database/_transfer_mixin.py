@@ -6,7 +6,8 @@ import json
 import logging
 import shutil
 from datetime import datetime
-from typing import Any, Dict, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.config.limits import MAX_EXPORT_LIMIT
 from app.database._constants import CURRENT_FORMAT_VERSION, DB_DIR
@@ -28,7 +29,7 @@ class _TransferMixin:
     db_path: Any
 
 
-    def export_rules(self, output_path: str) -> Dict[str, Any]:
+    def export_rules(self, output_path: str) -> dict[str, Any]:
         """导出所有规则和分组到JSON文件"""
         rules = self.list_rules(limit=MAX_EXPORT_LIMIT)
         groups = self.list_groups()
@@ -51,7 +52,7 @@ class _TransferMixin:
         logger.info(f"导出规则到: {output_path} ({len(rules)} 条规则, {len(groups)} 个分组, 版本: {project_version})")
         return data
 
-    def import_rules(self, input_path: str) -> Dict[str, Any]:
+    def import_rules(self, input_path: str) -> dict[str, Any]:
         """从JSON文件导入规则和分组
 
         Returns:
@@ -87,7 +88,7 @@ class _TransferMixin:
 
         imported_groups = 0
         imported_rules = 0
-        group_id_map: Dict[int, int] = {}
+        group_id_map: dict[int, int] = {}
 
         self._get_conn()
 
@@ -130,7 +131,7 @@ class _TransferMixin:
             "version_message": version_message,
         }
 
-    def backup_database(self, backup_path: Optional[str] = None) -> str:
+    def backup_database(self, backup_path: str | None = None) -> str:
         """备份数据库到指定路径"""
         if backup_path is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

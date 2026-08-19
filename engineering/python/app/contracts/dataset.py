@@ -14,7 +14,8 @@ from datetime import datetime
 from enum import Enum
 
 from app.utils.time import utcnow
-from typing import Any, AsyncIterator, Optional
+from typing import Any
+from collections.abc import AsyncIterator
 
 
 class DatasetStatus(str, Enum):
@@ -94,7 +95,7 @@ class DatasetVersion:
     created_at: datetime
     created_by: str  # user_id 或 plugin_id
     storage_uri: str  # 实际存储位置
-    lineage: Optional[str] = None  # lineage record id
+    lineage: str | None = None  # lineage record id
 
     def __post_init__(self) -> None:
         if not self.dataset_id:
@@ -182,8 +183,8 @@ class IDatasetStore(ABC):
         dataset_id: str,
         records: list[dict[str, Any]],
         *,
-        version: Optional[str] = None,  # None 则自动递增 patch
-        lineage: Optional[LineageRecord] = None,
+        version: str | None = None,  # None 则自动递增 patch
+        lineage: LineageRecord | None = None,
     ) -> DatasetVersion:
         """提交一个不可变版本.
 
@@ -192,14 +193,14 @@ class IDatasetStore(ABC):
         """
 
     @abstractmethod
-    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersion:
+    async def get_version(self, dataset_id: str, version: str | None = None) -> DatasetVersion:
         """获取版本。version=None 返回最新 published 版本。"""
 
     @abstractmethod
     def read(
         self,
         dataset_id: str,
-        version: Optional[str] = None,
+        version: str | None = None,
         *,
         batch_size: int = 1000,
     ) -> AsyncIterator[list[dict[str, Any]]]:

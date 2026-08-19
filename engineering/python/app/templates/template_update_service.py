@@ -8,7 +8,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.utils.sqlite_pool import get_sqlite_manager
 
@@ -23,12 +23,12 @@ class UpdateNotification:
     priority: str
     title: str
     description: str
-    change_preview: Dict[str, Any]
-    expected_impact: Dict[str, Any]
+    change_preview: dict[str, Any]
+    expected_impact: dict[str, Any]
     created_at: float = field(default_factory=time.time)
     status: str = "pending"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "notification_id": self.notification_id,
             "project_id": self.project_id,
@@ -43,7 +43,7 @@ class UpdateNotification:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UpdateNotification":
+    def from_dict(cls, data: dict[str, Any]) -> "UpdateNotification":
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
@@ -62,7 +62,7 @@ class TemplateUpdateService:
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("template_updates", db_path=self.db_path)
         self._db: sqlite3.Connection
-        self._notifications: Dict[str, UpdateNotification] = {}
+        self._notifications: dict[str, UpdateNotification] = {}
 
     def initialize(self) -> None:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -114,7 +114,7 @@ class TemplateUpdateService:
     def create_notification(
         self,
         project_id: str,
-        suggestion: Dict[str, Any],
+        suggestion: dict[str, Any],
         priority: str,
     ) -> UpdateNotification:
         with self._lock:
@@ -158,8 +158,8 @@ class TemplateUpdateService:
     def scan_for_updates(
         self,
         project_id: str,
-        suggestions: List[Dict[str, Any]],
-    ) -> List[UpdateNotification]:
+        suggestions: list[dict[str, Any]],
+    ) -> list[UpdateNotification]:
         with self._lock:
             notifications = []
             for suggestion in suggestions:
@@ -181,7 +181,7 @@ class TemplateUpdateService:
 
             return notifications
 
-    def apply_update(self, notification_id: str) -> Optional[UpdateNotification]:
+    def apply_update(self, notification_id: str) -> UpdateNotification | None:
         with self._lock:
             notif = self._notifications.get(notification_id)
             if notif is None:
@@ -211,7 +211,7 @@ class TemplateUpdateService:
             logger.info("Notification dismissed: id=%s", notification_id)
             return True
 
-    def preview_update(self, notification_id: str) -> Optional[Dict[str, Any]]:
+    def preview_update(self, notification_id: str) -> dict[str, Any] | None:
         with self._lock:
             notif = self._notifications.get(notification_id)
             if notif is None:
@@ -227,8 +227,8 @@ class TemplateUpdateService:
     def get_notifications(
         self,
         project_id: str,
-        status_filter: Optional[str] = None,
-    ) -> List[UpdateNotification]:
+        status_filter: str | None = None,
+    ) -> list[UpdateNotification]:
         with self._lock:
             notifs = [n for n in self._notifications.values() if n.project_id == project_id]
             if status_filter:
@@ -248,7 +248,7 @@ class _UpdateServiceHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[TemplateUpdateService] = None
+        self._instance: TemplateUpdateService | None = None
 
     def get(self) -> TemplateUpdateService:
         # 快速路径：已存在则直接返回，避免持锁开销

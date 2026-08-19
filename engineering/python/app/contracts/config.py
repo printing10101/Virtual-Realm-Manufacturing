@@ -16,7 +16,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 
 # ---------------------------------------------------------------------------
@@ -56,9 +56,9 @@ class ConfigField:
     description: str = ""
     required: bool = False
     choices: list[Any] = field(default_factory=list)
-    min: Optional[float] = None
-    max: Optional[float] = None
-    sweep: Optional[dict[str, Any]] = None
+    min: float | None = None
+    max: float | None = None
+    sweep: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if not self.name or not isinstance(self.name, str):
@@ -111,7 +111,7 @@ class ConfigSpec:
     version: str
     description: str
     fields: list[ConfigField]
-    parent: Optional[str] = None
+    parent: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -127,7 +127,7 @@ class ConfigSpec:
             dups = {n for n in names if names.count(n) > 1}
             raise ValueError(f"ConfigSpec {self.name!r}: duplicate field names: {dups}")
 
-    def get_field(self, name: str) -> Optional[ConfigField]:
+    def get_field(self, name: str) -> ConfigField | None:
         """按名取字段，不存在返回 None。"""
         for f in self.fields:
             if f.name == name:
@@ -227,7 +227,7 @@ class IConfigStore(ABC):
     def resolve(
         self,
         spec_name: str,
-        overrides: Optional[dict[str, Any]] = None,
+        overrides: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """合并 spec 默认值 + YAML + overrides，返回最终配置。
 
@@ -298,7 +298,7 @@ def _is_valid_semver(version: str) -> bool:
     return all(p.isdigit() for p in parts)
 
 
-def _check_type(name: str, value: Any, expected: str) -> Optional[str]:
+def _check_type(name: str, value: Any, expected: str) -> str | None:
     """类型校验，返回错误消息或 None。"""
     # 注意：bool 是 int 的子类，需先判断 bool
     if expected == "int":

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from app.contracts._base_models import (
     PackageFormatVersion,
@@ -174,7 +174,7 @@ class PackageManifest:
         """是否包含任何资源内容（至少一个条目 has_content=True）."""
         return any(entry.has_content for entry in self.resources)
 
-    def get_entry(self, resource_uri: str) -> Optional[PackageResourceEntry]:
+    def get_entry(self, resource_uri: str) -> PackageResourceEntry | None:
         """按 URI 查询资源条目."""
         for entry in self.resources:
             if entry.resource_uri == resource_uri:
@@ -393,8 +393,8 @@ class ExportResult:
     package_size_bytes: int = 0
     status: str = PackageTaskStatus.COMPLETED
     error_message: str = ""
-    created_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    completed_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.export_id:
@@ -473,8 +473,8 @@ class ImportResult:
     warnings: tuple[str, ...] = field(default_factory=tuple)
     status: str = PackageTaskStatus.COMPLETED
     error_message: str = ""
-    created_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    completed_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.import_id:

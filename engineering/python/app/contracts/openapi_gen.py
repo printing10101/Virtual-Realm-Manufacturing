@@ -29,7 +29,7 @@ from dataclasses import field, fields, is_dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Union, get_args, get_origin, get_type_hints
+from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from app.contracts import (
     CONTRACTS_VERSION,
@@ -359,7 +359,7 @@ def build_contracts_schema() -> dict[str, Any]:
 DEFAULT_OUTPUT_PATH = Path(__file__).resolve().parents[3] / "docs" / "api" / "openapi.json"
 
 
-def export_openapi(output: Optional[Union[str, Path]] = None) -> Path:
+def export_openapi(output: Union[str, Path] | None = None) -> Path:
     """导出 OpenAPI schema 到文件，返回写入路径。"""
     path = Path(output) if output else DEFAULT_OUTPUT_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -370,7 +370,7 @@ def export_openapi(output: Optional[Union[str, Path]] = None) -> Path:
     return path
 
 
-def verify_openapi(path: Optional[Union[str, Path]] = None) -> tuple[bool, str]:
+def verify_openapi(path: Union[str, Path] | None = None) -> tuple[bool, str]:
     """校验现有 openapi.json 与代码生成的 schema 一致。
 
     Returns:
@@ -437,7 +437,7 @@ def _cmd_print(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="app.contracts.openapi_gen",
         description="灵境制造核心契约 OpenAPI 生成与校验",

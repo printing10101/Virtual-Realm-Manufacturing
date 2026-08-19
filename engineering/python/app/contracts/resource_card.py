@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ class DatasetReadmeScope:
         return [cls.DATASET_LEVEL, cls.VERSION_LEVEL]
 
     @classmethod
-    def from_version(cls, version: Optional[str]) -> str:
+    def from_version(cls, version: str | None) -> str:
         """根据 version 字段推断作用域.
 
         Args:
@@ -185,8 +185,8 @@ class ModelArtifact:
     metrics_history: list[dict[str, Any]] = field(default_factory=list)  # 指标历史（追加式）
     readme_md: str = ""  # markdown README
     tags: list[str] = field(default_factory=list)  # 标签数组
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.model_id:
@@ -247,8 +247,8 @@ class DatasetReadme:
     dataset_id: str  # 关联 datasets.id
     readme_md: str  # markdown 内容
     updated_by: str  # 最后更新者 user_id
-    version: Optional[str] = None  # None 表示数据集级 README
-    updated_at: Optional[datetime] = None
+    version: str | None = None  # None 表示数据集级 README
+    updated_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.readme_id:
@@ -346,11 +346,11 @@ class DatasetCard:
     version_count: int  # 版本总数
     total_rows: int  # 所有版本累计行数
     total_size_bytes: int  # 所有版本累计字节数
-    latest_version: Optional[dict[str, Any]] = None  # 最新版本元数据
-    readme: Optional[DatasetReadme] = None  # README（None 表示未设置）
-    lineage_summary: Optional[LineageSummary] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    latest_version: dict[str, Any] | None = None  # 最新版本元数据
+    readme: DatasetReadme | None = None  # README（None 表示未设置）
+    lineage_summary: LineageSummary | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.dataset_id:
@@ -399,8 +399,8 @@ class ModelCard:
 
     model: ModelArtifact  # 模型产物元数据
     snapshot_count: int  # 关联该模型的实验快照数
-    lineage_summary: Optional[LineageSummary] = None
-    latest_snapshot: Optional[dict[str, Any]] = None  # 最近一次快照摘要
+    lineage_summary: LineageSummary | None = None
+    latest_snapshot: dict[str, Any] | None = None  # 最近一次快照摘要
 
     def __post_init__(self) -> None:
         if self.snapshot_count < 0:

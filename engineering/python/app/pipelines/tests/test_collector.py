@@ -25,7 +25,8 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
+from collections.abc import Sequence
 from unittest.mock import MagicMock
 
 import pytest
@@ -60,12 +61,12 @@ from app.pipelines.machining_collector import CollectorStats
 
 def _make_sample(
     *,
-    spindle_speed: Optional[float] = 5000.0,
-    spindle_load: Optional[float] = 30.0,
-    feedrate: Optional[float] = 800.0,
-    execution: Optional[str] = "ACTIVE",
-    observed_at: Optional[datetime] = None,
-    extras: Optional[Dict[str, Any]] = None,
+    spindle_speed: float | None = 5000.0,
+    spindle_load: float | None = 30.0,
+    feedrate: float | None = 800.0,
+    execution: str | None = "ACTIVE",
+    observed_at: datetime | None = None,
+    extras: dict[str, Any] | None = None,
 ) -> Sample:
     """构造一条 :class:`Sample` 便于测试。"""
     return Sample(
@@ -84,7 +85,7 @@ def _make_context(
     tool_id: str = "T-TEST",
     material: str = "45号钢",
     series_id_prefix: str = "test",
-    process_params: Optional[Dict[str, Any]] = None,
+    process_params: dict[str, Any] | None = None,
 ) -> CollectorContext:
     return CollectorContext(
         machine_id=machine_id,
@@ -144,7 +145,7 @@ class TestCollectorContext:
             {"material": ""},
         ],
     )
-    def test_required_fields_validation(self, kw: Dict[str, str]) -> None:
+    def test_required_fields_validation(self, kw: dict[str, str]) -> None:
         base = dict(machine_id="X", tool_id="Y", material="Z")
         base.update(kw)
         with pytest.raises(ValueError):
@@ -374,14 +375,14 @@ class TestSampleBatchAggregator:
 class _StubAdapter:
     """同步适配器桩：返回预定义的样本序列，并支持 stop 事件。"""
 
-    def __init__(self, samples: List[Sample]) -> None:
+    def __init__(self, samples: list[Sample]) -> None:
         self._samples = list(samples)
         self._idx = 0
         self._stopped = False
         self.probe_calls = 0
         self.fetch_calls = 0
 
-    def probe(self) -> Dict[str, str]:
+    def probe(self) -> dict[str, str]:
         self.probe_calls += 1
         return {"instance_id": "test", "sender": "stub"}
 
@@ -400,7 +401,7 @@ class _StubAdapter:
 def _build_collector(
     config: CollectorConfig,
     *,
-    samples: Optional[List[Sample]] = None,
+    samples: list[Sample] | None = None,
     record_sink=None,
     tdengine_sink_fn=None,
 ) -> MachiningCollector:
@@ -416,7 +417,7 @@ def _build_collector(
 class TestCollectorLifecycle:
     @pytest.mark.asyncio
     async def test_start_returns_job_id_and_runs(self, base_config: CollectorConfig) -> None:
-        records_written: List[MachiningRecordCreate] = []
+        records_written: list[MachiningRecordCreate] = []
 
         async def sink(recs: Sequence[MachiningRecordCreate]) -> int:
             records_written.extend(recs)

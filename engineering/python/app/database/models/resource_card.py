@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from app.utils.time import utcnow
 
@@ -61,7 +61,7 @@ def _json_dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, default=str)
 
 
-def _json_loads(value: Optional[str], default: Any) -> Any:
+def _json_loads(value: str | None, default: Any) -> Any:
     """安全 JSON 反序列化."""
     if not value:
         return default
@@ -220,7 +220,7 @@ class ModelArtifact(Base):
     def tags(self, value: list[str]) -> None:
         self.tags_json = _json_dumps(value)  # type: ignore[assignment]
 
-    def append_metrics(self, metrics: dict[str, Any], *, timestamp: Optional[datetime] = None) -> None:
+    def append_metrics(self, metrics: dict[str, Any], *, timestamp: datetime | None = None) -> None:
         """追加一条指标记录到历史.
 
         Args:

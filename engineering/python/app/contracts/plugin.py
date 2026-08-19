@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, List
+from typing import Any
+from collections.abc import Callable
+import builtins
 
 
 @dataclass
@@ -154,9 +156,9 @@ class ExtensionPointContribution:
 
     extension_point: str  # 扩展点名称
     plugin_id: str  # 贡献此内容的插件 id
-    handler: Optional[Callable[[dict[str, Any]], Any]] = None  # 后端调用处理器
+    handler: Callable[[dict[str, Any]], Any] | None = None  # 后端调用处理器
     # 前端扩展点用 component_url 加载远程组件（当前阶段：仅本地插件）
-    component_url: Optional[str] = None
+    component_url: str | None = None
     props: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -182,20 +184,20 @@ class IExtensionRegistry(ABC):
         plugin_id: str,
         handler: Callable[[dict[str, Any]], Any],
         *,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """注册扩展点贡献."""
 
     @abstractmethod
-    def unregister(self, plugin_id: str, extension_point: Optional[str] = None) -> int:
+    def unregister(self, plugin_id: str, extension_point: str | None = None) -> int:
         """取消注册. extension_point=None 时取消该插件所有贡献。返回取消数量。"""
 
     @abstractmethod
-    def list(self, extension_point: str) -> List[dict[str, Any]]:
+    def list(self, extension_point: str) -> builtins.list[dict[str, Any]]:
         """列出某扩展点的所有贡献元信息."""
 
     @abstractmethod
-    async def invoke(self, extension_point: str, payload: dict[str, Any]) -> List[Any]:
+    async def invoke(self, extension_point: str, payload: dict[str, Any]) -> builtins.list[Any]:
         """调用某扩展点的所有贡献，返回结果列表（按注册顺序）."""
 
 

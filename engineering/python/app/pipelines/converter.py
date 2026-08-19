@@ -31,7 +31,8 @@ import uuid
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Deque, Dict, List, Optional, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 from app.integrations.mtconnect.parser import Sample
 from app.models.machining_record import (
@@ -64,7 +65,7 @@ class CollectorContext:
     tool_id: str
     material: str
     series_id_prefix: str = "mach"
-    process_params: Dict[str, Any] = field(default_factory=dict)
+    process_params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.machine_id or not self.tool_id or not self.material:
@@ -76,7 +77,7 @@ class CollectorContext:
 # ---------------------------------------------------------------------------
 
 
-def _safe_float(value: Optional[float], default: float = 0.0) -> float:
+def _safe_float(value: float | None, default: float = 0.0) -> float:
     """将 ``None`` 替换为 ``default``，保证 Pydantic 字段非空。"""
     if value is None:
         return default
@@ -93,8 +94,8 @@ def convert_sample_to_record(
     sample: Sample,
     context: CollectorContext,
     *,
-    record_id: Optional[str] = None,
-    timestamp: Optional[datetime] = None,
+    record_id: str | None = None,
+    timestamp: datetime | None = None,
 ) -> MachiningRecordCreate:
     """把一条 MTConnect 样本转成 MachiningRecordCreate。
 
@@ -144,7 +145,7 @@ def aggregate_samples_to_record(
     samples: Sequence[Sample],
     context: CollectorContext,
     *,
-    record_id: Optional[str] = None,
+    record_id: str | None = None,
     strategy: str = "mean",
 ) -> MachiningRecordCreate:
     """把 N 条 Sample 聚合为 1 条 MachiningRecordCreate（关系型入库）。
@@ -180,7 +181,7 @@ def aggregate_samples_to_record(
     load_values = [s.spindle_load for s in samples if s.spindle_load is not None]
     executions = [s.execution for s in samples if s.execution is not None]
 
-    def _reduce(values: List[float], strat: str) -> float:
+    def _reduce(values: list[float], strat: str) -> float:
         if not values:
             return 0.0
         if strat == "mean":
@@ -263,9 +264,9 @@ class SampleBatchAggregator:
         self.flush_interval = flush_interval
         self.batch_size = batch_size
         self.max_samples_per_record = max_samples_per_record
-        self._buffer: Deque[Sample] = deque()
-        self._last_flush_at: Optional[float] = None
-        self._current_window_start: Optional[datetime] = None
+        self._buffer: deque[Sample] = deque()
+        self._last_flush_at: float | None = None
+        self._current_window_start: datetime | None = None
 
     # ----------------------------------------------------------------- add
 
@@ -298,7 +299,7 @@ class SampleBatchAggregator:
 
     # ----------------------------------------------------------------- flush
 
-    def should_flush(self, now_monotonic: Optional[float] = None) -> bool:
+    def should_flush(self, now_monotonic: float | None = None) -> bool:
         """判断是否到达 flush 条件（条数阈值或时间窗阈值）。"""
         if not self._buffer:
             return False
@@ -322,7 +323,7 @@ class SampleBatchAggregator:
         context: CollectorContext,
         *,
         strategy: str = "mean",
-    ) -> List[MachiningRecordCreate]:
+    ) -> list[MachiningRecordCreate]:
         """把缓冲区的所有样本聚合成 1 条 MachiningRecordCreate。"""
         if not self._buffer:
             return []
@@ -342,7 +343,7 @@ class SampleBatchAggregator:
 
     # ----------------------------------------------------------------- introspection
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         """导出当前聚合器状态（用于调试 / 指标）。"""
         return {
             "buffer_size": len(self._buffer),

@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional, Sequence
+from typing import Any
+from collections.abc import Callable, Sequence
 
 from sqlalchemy import and_, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -104,8 +105,8 @@ class MachiningRecordRepository:
             return MachiningRecordRepository(session_factory=lambda: Session(...))
     """
 
-    def __init__(self, session_factory: Optional[SessionFactory] = None) -> None:
-        self._session_factory: Optional[SessionFactory] = session_factory
+    def __init__(self, session_factory: SessionFactory | None = None) -> None:
+        self._session_factory: SessionFactory | None = session_factory
 
     # ------------------------------------------------------------------ utils
 
@@ -144,7 +145,7 @@ class MachiningRecordRepository:
 
     # -------------------------------------------------------------------- get
 
-    def get(self, record_id: str) -> Optional[MachiningRecordRead]:
+    def get(self, record_id: str) -> MachiningRecordRead | None:
         """按主键查询；未找到返回 ``None``。"""
         with self._session() as session:
             orm_obj = session.get(MachiningRecordORM, record_id)
@@ -153,7 +154,7 @@ class MachiningRecordRepository:
             session.expunge(orm_obj)
             return _orm_to_read(orm_obj)
 
-    def get_by_triple(self, machine_id: str, tool_id: str, timestamp: datetime) -> Optional[MachiningRecordRead]:
+    def get_by_triple(self, machine_id: str, tool_id: str, timestamp: datetime) -> MachiningRecordRead | None:
         """按业务唯一键 ``(machine_id, tool_id, timestamp)`` 查询。"""
         with self._session() as session:
             stmt = select(MachiningRecordORM).where(
@@ -212,7 +213,7 @@ class MachiningRecordRepository:
 
     # ----------------------------------------------------------------- update
 
-    def update(self, record_id: str, patch: MachiningRecordUpdate) -> Optional[MachiningRecordRead]:
+    def update(self, record_id: str, patch: MachiningRecordUpdate) -> MachiningRecordRead | None:
         """局部更新；返回更新后的 Read，未找到则返回 ``None``。"""
         with self._session() as session:
             orm_obj = session.get(MachiningRecordORM, record_id)

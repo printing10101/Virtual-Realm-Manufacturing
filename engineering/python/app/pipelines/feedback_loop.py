@@ -21,7 +21,7 @@ import threading
 import uuid
 from collections import deque
 from datetime import datetime, timezone
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from app.knowledge_graph.feedback_updater import FeedbackUpdater
 from app.training.data_lake import TrainingDataLake
@@ -45,15 +45,15 @@ class FeedbackTask:
     - 任务状态
     """
 
-    def __init__(self, record: dict[str, Any], task_id: Optional[str] = None):
+    def __init__(self, record: dict[str, Any], task_id: str | None = None):
         self.task_id = task_id or f"task_{uuid.uuid4().hex[:12]}"
         self.record = record
         self.retry_count = 0
         self.max_retries = 3
         self.status = "pending"  # pending, processing, completed, failed
-        self.error_message: Optional[str] = None
+        self.error_message: str | None = None
         self.created_at = datetime.now(timezone.utc)
-        self.processed_at: Optional[datetime] = None
+        self.processed_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典"""
@@ -79,7 +79,7 @@ class FeedbackLoopPipeline:
     """
 
     def __init__(
-        self, feedback_updater: Optional[FeedbackUpdater] = None, training_data_lake: Optional[TrainingDataLake] = None
+        self, feedback_updater: FeedbackUpdater | None = None, training_data_lake: TrainingDataLake | None = None
     ):
         """初始化回灌管线
 
@@ -294,7 +294,7 @@ class FeedbackLoopPipeline:
 
 
 # 全局实例（单例模式）
-_pipeline_instance: Optional[FeedbackLoopPipeline] = None
+_pipeline_instance: FeedbackLoopPipeline | None = None
 _pipeline_instance_lock = threading.Lock()
 
 

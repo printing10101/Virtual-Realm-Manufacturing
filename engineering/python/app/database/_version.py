@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Tuple
+
 
 from app.database._constants import VERSION_FILE
 
@@ -20,7 +20,7 @@ def get_project_version() -> str:
         return "0.0.0"
 
 
-def parse_version(version_str: str) -> Tuple[int, int, int]:
+def parse_version(version_str: str) -> tuple[int, int, int]:
     """解析版本字符串为 (major, minor, patch) 元组"""
     try:
         parts = version_str.strip().split(".")
@@ -32,7 +32,7 @@ def parse_version(version_str: str) -> Tuple[int, int, int]:
         return (0, 0, 0)
 
 
-def check_version_compatibility(import_version: str, current_version: str) -> Tuple[bool, str]:
+def check_version_compatibility(import_version: str, current_version: str) -> tuple[bool, str]:
     """
     检查导入文件版本与当前项目版本的兼容性
 

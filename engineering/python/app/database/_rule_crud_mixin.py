@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from typing import List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.config.limits import DEFAULT_QUERY_LIMIT
 from app.database._models import ProcessRule, RuleCondition, RuleResult
@@ -70,7 +71,7 @@ class _RuleCrudMixin:
         logger.info("创建规则: %s (id=%s)", rule.name, rule.id)
         return rule
 
-    def update_rule(self, rule_id: int, rule: ProcessRule) -> Optional[ProcessRule]:
+    def update_rule(self, rule_id: int, rule: ProcessRule) -> ProcessRule | None:
         now = self._now()
         rule.updated_at = now
 
@@ -113,7 +114,7 @@ class _RuleCrudMixin:
             return True
         return False
 
-    def get_rule(self, rule_id: int) -> Optional[ProcessRule]:
+    def get_rule(self, rule_id: int) -> ProcessRule | None:
         conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM rules WHERE id=?", (rule_id,))
@@ -124,14 +125,14 @@ class _RuleCrudMixin:
 
     def list_rules(
         self,
-        group_id: Optional[int] = None,
-        status: Optional[str] = None,
-        keyword: Optional[str] = None,
+        group_id: int | None = None,
+        status: str | None = None,
+        keyword: str | None = None,
         sort_by: str = "updated_at",
         sort_order: str = "DESC",
         limit: int = 100,
         offset: int = 0,
-    ) -> List[ProcessRule]:
+    ) -> list[ProcessRule]:
         query = "SELECT * FROM rules WHERE 1=1"
         params: list = []
 
@@ -162,9 +163,9 @@ class _RuleCrudMixin:
 
     def count_rules(
         self,
-        group_id: Optional[int] = None,
-        status: Optional[str] = None,
-        keyword: Optional[str] = None,
+        group_id: int | None = None,
+        status: str | None = None,
+        keyword: str | None = None,
     ) -> int:
         query = "SELECT COUNT(*) FROM rules WHERE 1=1"
         params: list = []
@@ -184,6 +185,6 @@ class _RuleCrudMixin:
         cursor.execute(query, params)
         return cursor.fetchone()[0]
 
-    def load_all_active_rules(self) -> List[ProcessRule]:
+    def load_all_active_rules(self) -> list[ProcessRule]:
         """加载所有启用状态的规则（用于LNN引擎启动时加载）"""
         return self.list_rules(status="active", sort_by="priority", sort_order="DESC", limit=DEFAULT_QUERY_LIMIT)

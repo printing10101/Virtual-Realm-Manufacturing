@@ -35,7 +35,8 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence
+from typing import Any
+from collections.abc import Awaitable, Callable, Sequence
 
 from app.database.repository.machining_record_repo import (
     MachiningRecordRepository,
@@ -98,7 +99,7 @@ class CollectorConfig:
     flush_interval: float = DEFAULT_FLUSH_INTERVAL
     aggregation_strategy: str = "mean"
     series_id_prefix: str = "mach"
-    process_params: Dict[str, Any] = field(default_factory=dict)
+    process_params: dict[str, Any] = field(default_factory=dict)
     max_write_retries: int = DEFAULT_MAX_WRITE_RETRIES
     retry_backoff: float = DEFAULT_RETRY_BACKOFF
     use_task_manager: bool = False
@@ -137,11 +138,11 @@ class CollectorStats:
     write_retries: int = 0
     write_failures: int = 0
     poll_errors: int = 0
-    started_at: Optional[float] = None
-    stopped_at: Optional[float] = None
+    started_at: float | None = None
+    stopped_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
-        d: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
             "samples_consumed": self.samples_consumed,
             "records_written": self.records_written,
             "tdengine_rows_written": self.tdengine_rows_written,
@@ -206,7 +207,7 @@ async def tdengine_sink(
     samples: Sequence[Sample],
     *,
     table_name: str = "mtconnect",
-    database: Optional[str] = None,
+    database: str | None = None,
 ) -> int:
     """把 MTConnect 原始时序数据写入 TDengine。"""
     if not samples:
@@ -217,7 +218,7 @@ async def tdengine_sink(
         logger.warning("tdengine_client 模块不可用，跳过时序写入")
         return -1
 
-    rows: List[List[Any]] = []
+    rows: list[list[Any]] = []
     for s in samples:
         ts = s.observed_at or datetime.now(timezone.utc)
         rows.append(
@@ -248,11 +249,11 @@ class MachiningCollector:
 
     def __init__(
         self,
-        config: Optional[CollectorConfig] = None,
+        config: CollectorConfig | None = None,
         *,
-        adapter: Optional[MTConnectAdapter] = None,
-        record_sink: Optional[RecordSink] = None,
-        tdengine_sink_fn: Optional[Callable[[Sequence[Sample]], Awaitable[int]]] = None,
+        adapter: MTConnectAdapter | None = None,
+        record_sink: RecordSink | None = None,
+        tdengine_sink_fn: Callable[[Sequence[Sample]], Awaitable[int]] | None = None,
     ) -> None:
         self.config = config or CollectorConfig()
         self.context = self.config.to_collector_context()
@@ -264,14 +265,14 @@ class MachiningCollector:
             batch_size=self.config.batch_size,
         )
         self._stop_event = asyncio.Event()
-        self._run_task: Optional[asyncio.Task[None]] = None
+        self._run_task: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
         self._stats = CollectorStats()
-        self._job_id: Optional[str] = None
+        self._job_id: str | None = None
         # 待重试的写库队列（PostgreSQL）
-        self._retry_queue: List[MachiningRecordCreate] = []
+        self._retry_queue: list[MachiningRecordCreate] = []
         # 待重试的 TDengine 样本队列
-        self._tdengine_retry: List[Sample] = []
+        self._tdengine_retry: list[Sample] = []
 
     # ------------------------------------------------------------------ factory
 
@@ -285,10 +286,10 @@ class MachiningCollector:
         return self._run_task is not None and not self._run_task.done()
 
     @property
-    def job_id(self) -> Optional[str]:
+    def job_id(self) -> str | None:
         return self._job_id
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         return self._stats.to_dict()
 
     async def start(self) -> str:
@@ -329,7 +330,7 @@ class MachiningCollector:
             )
             return self._job_id
 
-    async def stop(self, *, timeout: float = 10.0) -> Dict[str, Any]:
+    async def stop(self, *, timeout: float = 10.0) -> dict[str, Any]:
         """停止采集循环并 flush 残留数据，返回最终统计。"""
         async with self._lock:
             if not self.is_running:
@@ -430,7 +431,7 @@ class MachiningCollector:
             logger.exception("Collector[%s] run loop crashed", self._job_id)
             raise
 
-    def _fetch_one_sample(self) -> Optional[Sample]:
+    def _fetch_one_sample(self) -> Sample | None:
         """单次拉取（同步），由 ``asyncio.to_thread`` 调度。"""
         try:
             return self._adapter.fetch_sample()
@@ -449,8 +450,8 @@ class MachiningCollector:
         context = self.context
 
         # 1) 把聚合器当前窗口样本聚合成 1 条 MachiningRecordCreate
-        records: List[MachiningRecordCreate] = []
-        pending_samples: List[Sample] = []
+        records: list[MachiningRecordCreate] = []
+        pending_samples: list[Sample] = []
         if len(self._aggregator) > 0:
             pending_samples = list(self._aggregator._buffer)
             try:
@@ -577,7 +578,7 @@ class MachiningCollector:
 
     # ------------------------------------------------------------------ utilities
 
-    def dump_state(self) -> Dict[str, Any]:
+    def dump_state(self) -> dict[str, Any]:
         """导出内部状态，用于诊断 / 监控。"""
         return {
             "job_id": self._job_id,
@@ -603,10 +604,10 @@ class MachiningCollector:
 # ---------------------------------------------------------------------------
 
 
-_collector_singleton: Optional[MachiningCollector] = None
+_collector_singleton: MachiningCollector | None = None
 # [H3] asyncio.Lock 懒初始化：模块级创建会绑定到导入时的事件循环，
 # 在多事件循环场景下抛 RuntimeError "bound to a different event loop"。
-_collector_lock: Optional[asyncio.Lock] = None
+_collector_lock: asyncio.Lock | None = None
 
 
 def _get_collector_lock() -> asyncio.Lock:
@@ -617,25 +618,25 @@ def _get_collector_lock() -> asyncio.Lock:
     return _collector_lock
 
 
-def get_collector() -> Optional[MachiningCollector]:
+def get_collector() -> MachiningCollector | None:
     """返回当前活动的全局采集器实例（若已通过 :func:`start_collector` 启动）。"""
     return _collector_singleton
 
 
 async def start_collector(
     *,
-    duration: Optional[float] = None,
-    agent_url: Optional[str] = None,
-    machine_id: Optional[str] = None,
-    tool_id: Optional[str] = None,
-    material: Optional[str] = None,
-    sample_interval: Optional[float] = None,
-    batch_size: Optional[int] = None,
-    flush_interval: Optional[float] = None,
-    config: Optional[CollectorConfig] = None,
-    adapter: Optional[MTConnectAdapter] = None,
-    record_sink: Optional[RecordSink] = None,
-    tdengine_sink_fn: Optional[Callable[[Sequence[Sample]], Awaitable[int]]] = None,
+    duration: float | None = None,
+    agent_url: str | None = None,
+    machine_id: str | None = None,
+    tool_id: str | None = None,
+    material: str | None = None,
+    sample_interval: float | None = None,
+    batch_size: int | None = None,
+    flush_interval: float | None = None,
+    config: CollectorConfig | None = None,
+    adapter: MTConnectAdapter | None = None,
+    record_sink: RecordSink | None = None,
+    tdengine_sink_fn: Callable[[Sequence[Sample]], Awaitable[int]] | None = None,
 ) -> str:
     """启动采集任务并运行指定时长（秒），返回 job_id。
 
@@ -680,7 +681,7 @@ async def start_collector(
     return job_id
 
 
-async def stop_collector(*, timeout: float = 10.0) -> Dict[str, Any]:
+async def stop_collector(*, timeout: float = 10.0) -> dict[str, Any]:
     """停止当前全局采集器并返回统计信息。"""
     async with _get_collector_lock():
         collector = _collector_singleton

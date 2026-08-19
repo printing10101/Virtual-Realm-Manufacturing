@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Generic, List, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -34,7 +34,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     生成精确的分页 schema。
     """
 
-    items: List[T] = Field(..., description="当前页数据列表")
+    items: list[T] = Field(..., description="当前页数据列表")
     total: int = Field(..., ge=0, description="数据总条数")
     page: int = Field(1, ge=1, description="当前页码（1-based）")
     page_size: int = Field(..., ge=1, le=1000, description="每页条数")
@@ -50,8 +50,8 @@ class ErrorResponse(BaseModel):
 
     code: str = Field(..., description="字符串错误码，如 INVALID_INPUT")
     message: str = Field(..., description="错误描述信息")
-    detail: Optional[str] = Field(default=None, description="错误详情")
-    request_id: Optional[str] = Field(default=None, description="请求追踪标识")
+    detail: str | None = Field(default=None, description="错误详情")
+    request_id: str | None = Field(default=None, description="请求追踪标识")
 
 
 class TimestampedModel(BaseModel):
@@ -60,8 +60,8 @@ class TimestampedModel(BaseModel):
     可作为需要记录创建/更新时间的领域模型基类继承使用。
     """
 
-    created_at: Optional[datetime] = Field(default=None, description="创建时间")
-    updated_at: Optional[datetime] = Field(default=None, description="更新时间")
+    created_at: datetime | None = Field(default=None, description="创建时间")
+    updated_at: datetime | None = Field(default=None, description="更新时间")
 
 
 class MessageResponse(BaseModel):
@@ -80,8 +80,8 @@ class HealthResponse(BaseModel):
     """
 
     status: str = Field(default="ok", description="服务状态")
-    version: Optional[str] = Field(default=None, description="服务版本")
-    uptime_seconds: Optional[float] = Field(default=None, description="运行时长（秒）")
+    version: str | None = Field(default=None, description="服务版本")
+    uptime_seconds: float | None = Field(default=None, description="运行时长（秒）")
 
 
 class TaskListResponse(BaseModel):
@@ -91,7 +91,7 @@ class TaskListResponse(BaseModel):
     统一引用以消除重复维护负担，OpenAPI schema 也将合并为单一 ``TaskListResponse``。
     """
 
-    tasks: List[dict[str, Any]] = Field(..., description="任务列表")
+    tasks: list[dict[str, Any]] = Field(..., description="任务列表")
     total: int = Field(..., description="任务总数")
 
 

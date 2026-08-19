@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 
 class PackageFormatVersion:
@@ -389,7 +389,7 @@ class ValidationResult:
     verified_count: int = 0
     errors: tuple[str, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
-    validated_at: Optional[datetime] = None
+    validated_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.package_path:

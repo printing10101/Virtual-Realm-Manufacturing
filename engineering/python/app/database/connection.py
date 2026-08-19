@@ -17,7 +17,7 @@ import logging
 import os
 import threading
 from dataclasses import dataclass, field
-from typing import Optional, Any
+from typing import Any
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -94,10 +94,10 @@ class _DatabaseSingletons:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._engine: Optional[AsyncEngine] = None
-        self._sessionmaker: Optional[async_sessionmaker] = None
+        self._engine: AsyncEngine | None = None
+        self._sessionmaker: async_sessionmaker | None = None
 
-    def get_engine(self) -> Optional[AsyncEngine]:
+    def get_engine(self) -> AsyncEngine | None:
         # 快速路径：已存在则直接返回，避免持锁开销
         if self._engine is not None:
             return self._engine
@@ -154,7 +154,7 @@ class _DatabaseSingletons:
                 )
             return self._engine
 
-    def get_sessionmaker(self) -> Optional[async_sessionmaker]:
+    def get_sessionmaker(self) -> async_sessionmaker | None:
         if self._sessionmaker is not None:
             return self._sessionmaker
         # 在锁外获取 engine 引用，避免不可重入锁死锁：
@@ -189,7 +189,7 @@ _singletons = _DatabaseSingletons()
 # ---------------------------------------------------------------------------
 
 
-def get_engine() -> Optional[AsyncEngine]:
+def get_engine() -> AsyncEngine | None:
     """获取全局数据库引擎（首次访问时惰性创建）。
 
     Returns:
@@ -198,7 +198,7 @@ def get_engine() -> Optional[AsyncEngine]:
     return _singletons.get_engine()
 
 
-def get_sessionmaker() -> Optional[async_sessionmaker]:
+def get_sessionmaker() -> async_sessionmaker | None:
     """获取全局 sessionmaker（首次访问时惰性创建）。
 
     Returns:
@@ -264,7 +264,7 @@ async def close_db() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def get_db_engine() -> Optional[AsyncEngine]:
+async def get_db_engine() -> AsyncEngine | None:
     """FastAPI 依赖：返回当前数据库引擎（可能为 ``None``）。
 
     用法::
@@ -276,7 +276,7 @@ async def get_db_engine() -> Optional[AsyncEngine]:
     return _singletons.get_engine()
 
 
-async def get_db_sessionmaker() -> Optional[async_sessionmaker]:
+async def get_db_sessionmaker() -> async_sessionmaker | None:
     """FastAPI 依赖：返回当前 sessionmaker（可能为 ``None``）。"""
     return _singletons.get_sessionmaker()
 

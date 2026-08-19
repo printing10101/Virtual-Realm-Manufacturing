@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 from datetime import datetime
-from typing import Optional
+
 
 from app.utils.sqlite_pool import get_sqlite_manager
 
@@ -38,12 +38,12 @@ logger = logging.getLogger(__name__)
 class RuleDatabase(_RuleCrudMixin, _GroupCrudMixin, _TransferMixin):
     """工艺规则 SQLite 数据库操作类"""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         self.db_path = db_path or str(DB_PATH)
         # 使用统一的连接池管理器（传入 db_path 避免跨测试共享连接池死锁）
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("process_rules", db_path=self.db_path)
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
         self._closed = False  # P3 幂等性标志位
         self._init_db()
 
@@ -140,7 +140,7 @@ class _RuleDbHolder:
         import threading
 
         self._lock = threading.Lock()
-        self._instance: Optional[RuleDatabase] = None
+        self._instance: RuleDatabase | None = None
 
     def get(self) -> RuleDatabase:
         # 快速路径：已存在则直接返回，避免持锁开销
@@ -165,7 +165,7 @@ _holder = _RuleDbHolder()
 # 测试可通过 ``rule_db_module._global_db = temp_db`` 直接覆盖，
 # ``get_rule_db()`` 会优先返回此变量（若非 None），否则回退到 holder 单例。
 # 生产代码不应直接修改此变量。
-_global_db: Optional[RuleDatabase] = None
+_global_db: RuleDatabase | None = None
 
 
 def get_rule_db() -> RuleDatabase:

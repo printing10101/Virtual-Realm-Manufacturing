@@ -33,14 +33,14 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
 # 模块级缓存：避免对相同字符串重复扫描/编译，提升性能
-_SAFE_EXPR_CACHE: Dict[str, "SafeMathEvaluator"] = {}
+_SAFE_EXPR_CACHE: dict[str, "SafeMathEvaluator"] = {}
 _SAFE_EXPR_CACHE_MAX = 512
 
 # ---------------------------------------------------------------------------
@@ -104,7 +104,7 @@ ACTION_TYPE_MAP = {
     "暂停+报警": ActionType.PAUSE_AND_ALERT,
 }
 
-PRIORITY_ORDER: List[Priority] = [Priority.P0, Priority.P1, Priority.P2, Priority.P3]
+PRIORITY_ORDER: list[Priority] = [Priority.P0, Priority.P1, Priority.P2, Priority.P3]
 
 # ---------------------------------------------------------------------------
 # 数据模型
@@ -120,7 +120,7 @@ class RuleCondition:
     operator: str
     value: Any
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "type": self.condition_type,
             "field": self.field,
@@ -129,7 +129,7 @@ class RuleCondition:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "RuleCondition":
+    def from_dict(cls, d: dict[str, Any]) -> "RuleCondition":
         return cls(
             condition_type=d.get("type", "threshold"),
             field=d["field"],
@@ -147,7 +147,7 @@ class RuleAction:
     value: Any
     duration: str = "until_condition_cleared"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "type": self.action_type.value,
             "target": self.target,
@@ -156,7 +156,7 @@ class RuleAction:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any], action_desc: str = "") -> "RuleAction":
+    def from_dict(cls, d: dict[str, Any], action_desc: str = "") -> "RuleAction":
         raw_type = d.get("type", "")
         atype = cls._resolve_action_type(raw_type, action_desc)
         return cls(
@@ -195,7 +195,7 @@ class SafetyRule:
     action: RuleAction  # 执行动作
     audit: bool = True  # 是否记录审计日志
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "rule_id": self.rule_id,
             "name": self.name,
@@ -207,7 +207,7 @@ class SafetyRule:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "SafetyRule":
+    def from_dict(cls, d: dict[str, Any]) -> "SafetyRule":
         raw_action_desc = d.get("action_description", "")
         return cls(
             rule_id=d["rule_id"],
@@ -226,12 +226,12 @@ class AuditEntry:
 
     timestamp: float  # Unix时间戳
     rule_id: str  # 触发规则ID
-    condition_values: Dict[str, Any]  # 触发时的条件值
-    action: Dict[str, Any]  # 执行的动作
+    condition_values: dict[str, Any]  # 触发时的条件值
+    action: dict[str, Any]  # 执行的动作
     result: str  # 执行结果 description
     priority: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "timestamp": self.timestamp,
             "rule_id": self.rule_id,
@@ -256,7 +256,7 @@ class ValidationError:
     message: str
 
 
-def validate_rules(rules: List[SafetyRule]) -> List[ValidationError]:
+def validate_rules(rules: list[SafetyRule]) -> list[ValidationError]:
     """
     完整规则验证，包含:
     - 语法检查（rule_id格式、必填字段）
@@ -265,7 +265,7 @@ def validate_rules(rules: List[SafetyRule]) -> List[ValidationError]:
     - 优先级循环依赖检查
     - 动作目标有效性检查
     """
-    errors: List[ValidationError] = []
+    errors: list[ValidationError] = []
     if not rules:
         errors.append(ValidationError("", "rules", "规则列表为空"))
         return errors
@@ -278,7 +278,7 @@ def validate_rules(rules: List[SafetyRule]) -> List[ValidationError]:
     return errors
 
 
-def _check_syntax(rules: List[SafetyRule]) -> List[ValidationError]:
+def _check_syntax(rules: list[SafetyRule]) -> list[ValidationError]:
     """语法检查: rule_id格式、必填字段"""
     errors = []
     seen_ids: set = set()
@@ -321,7 +321,7 @@ def _is_valid_rule_id(rule_id: str) -> bool:
     return bool(re.match(r"^[A-Z]-\d{3}$", rule_id))
 
 
-def _check_field_existence(rules: List[SafetyRule]) -> List[ValidationError]:
+def _check_field_existence(rules: list[SafetyRule]) -> list[ValidationError]:
     """条件字段存在性检查 - 确保condition.field引用的是已知的传感器/参数域"""
     errors = []
 
@@ -381,7 +381,7 @@ VALID_ACTION_TYPES = {
 }
 
 
-def _check_action_type(rules: List[SafetyRule]) -> List[ValidationError]:
+def _check_action_type(rules: list[SafetyRule]) -> list[ValidationError]:
     """校验 action.type 是否为合法枚举值 [F-P0-3]。"""
     errors = []
     for rule in rules:
@@ -398,7 +398,7 @@ def _check_action_type(rules: List[SafetyRule]) -> List[ValidationError]:
     return errors
 
 
-def _check_priority_dependency(rules: List[SafetyRule]) -> List[ValidationError]:
+def _check_priority_dependency(rules: list[SafetyRule]) -> list[ValidationError]:
     """优先级循环依赖检查 - P0规则不能被其他低优先级规则覆盖"""
     errors = []
 
@@ -420,7 +420,7 @@ def _check_priority_dependency(rules: List[SafetyRule]) -> List[ValidationError]
     return errors
 
 
-def _check_action_target_validity(rules: List[SafetyRule]) -> List[ValidationError]:
+def _check_action_target_validity(rules: list[SafetyRule]) -> list[ValidationError]:
     """动作目标有效性检查 - 确保动作类型与目标匹配"""
     errors = []
 
@@ -467,9 +467,9 @@ class SafeMathEvaluator:
     - 解析后的 AST 在模块级 LRU 缓存中复用，避免重复解析开销
     """
 
-    _ALLOWED_BINOPS: Tuple[type, ...] = (ast.Add, ast.Sub, ast.Mult, ast.Div)
-    _ALLOWED_UNARYOPS: Tuple[type, ...] = (ast.UAdd, ast.USub)
-    _ALLOWED_CONSTANTS: Tuple[type, ...] = (ast.Constant,)
+    _ALLOWED_BINOPS: tuple[type, ...] = (ast.Add, ast.Sub, ast.Mult, ast.Div)
+    _ALLOWED_UNARYOPS: tuple[type, ...] = (ast.UAdd, ast.USub)
+    _ALLOWED_CONSTANTS: tuple[type, ...] = (ast.Constant,)
     # 仅由数字、小数点、空白、四个基本运算符和括号组成的字符串
     _PRECHECK_PATTERN = re.compile(r"^[\d\s\+\-\*\/\(\)\.]+$")
 
@@ -584,11 +584,11 @@ class SafetyRuleEngine:
     """
 
     def __init__(self):
-        self.rules: List[SafetyRule] = []
-        self._audit_log: List[AuditEntry] = []
-        self._machine_context: Dict[str, Any] = {}
+        self.rules: list[SafetyRule] = []
+        self._audit_log: list[AuditEntry] = []
+        self._machine_context: dict[str, Any] = {}
 
-    def load_rules(self, rules: List[SafetyRule]) -> List[ValidationError]:
+    def load_rules(self, rules: list[SafetyRule]) -> list[ValidationError]:
         """加载并验证规则列表，返回验证错误"""
         errors = validate_rules(rules)
         self.rules = sorted(rules, key=lambda r: r.priority.level)
@@ -620,10 +620,10 @@ class SafetyRuleEngine:
 
     def evaluate(
         self,
-        sensor_data: Dict[str, Any],
+        sensor_data: dict[str, Any],
         *,
         collect_audit: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         评估传感器数据，返回触发的动作列表
 
@@ -634,7 +634,7 @@ class SafetyRuleEngine:
         Returns:
             触发的动作列表，按优先级排序
         """
-        triggered: List[Dict[str, Any]] = []
+        triggered: list[dict[str, Any]] = []
 
         for rule in self.rules:
             if self._evaluate_condition(rule.condition, sensor_data):
@@ -647,7 +647,7 @@ class SafetyRuleEngine:
 
         return triggered
 
-    def _evaluate_condition(self, condition: RuleCondition, sensor_data: Dict[str, Any]) -> bool:
+    def _evaluate_condition(self, condition: RuleCondition, sensor_data: dict[str, Any]) -> bool:
         """
         评估单个条件是否满足
 
@@ -691,7 +691,7 @@ class SafetyRuleEngine:
             return a != e
         return False
 
-    def _build_action_result(self, rule: SafetyRule, sensor_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_action_result(self, rule: SafetyRule, sensor_data: dict[str, Any]) -> dict[str, Any]:
         """构建动作结果"""
         action_value = rule.action.value
         if isinstance(action_value, str) and "*" in action_value:
@@ -708,7 +708,7 @@ class SafetyRuleEngine:
             "timestamp": time.time(),
         }
 
-    def _resolve_expression(self, expr: str, sensor_data: Dict[str, Any]) -> float:
+    def _resolve_expression(self, expr: str, sensor_data: dict[str, Any]) -> float:
         """
         解析简单算术表达式，如 ``max_spindle_speed * 0.9``。
 
@@ -737,7 +737,7 @@ class SafetyRuleEngine:
             logger.warning("规则表达式求值失败: expr=%s, error=%s", expr, e)
             return 0.0
 
-    def _record_audit(self, rule: SafetyRule, sensor_data: Dict[str, Any], action_result: Dict[str, Any]) -> None:
+    def _record_audit(self, rule: SafetyRule, sensor_data: dict[str, Any], action_result: dict[str, Any]) -> None:
         """记录审计日志"""
         entry = AuditEntry(
             timestamp=time.time(),
@@ -753,7 +753,7 @@ class SafetyRuleEngine:
         )
         self._audit_log.append(entry)
 
-    def get_audit_log(self) -> List[Dict[str, Any]]:
+    def get_audit_log(self) -> list[dict[str, Any]]:
         """获取审计日志"""
         return [e.to_dict() for e in self._audit_log]
 
@@ -761,11 +761,11 @@ class SafetyRuleEngine:
         """清除审计日志"""
         self._audit_log.clear()
 
-    def get_rules_by_category(self, category: RuleCategory) -> List[SafetyRule]:
+    def get_rules_by_category(self, category: RuleCategory) -> list[SafetyRule]:
         """按类别获取规则"""
         return [r for r in self.rules if r.category == category]
 
-    def get_rules_by_priority(self, priority: Priority) -> List[SafetyRule]:
+    def get_rules_by_priority(self, priority: Priority) -> list[SafetyRule]:
         """按优先级获取规则"""
         return [r for r in self.rules if r.priority == priority]
 

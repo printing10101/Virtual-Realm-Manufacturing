@@ -8,7 +8,8 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 
 from app.utils.sqlite_pool import get_sqlite_manager
 
@@ -20,13 +21,13 @@ class EvolutionSuggestion:
     suggestion_id: str
     trigger_type: str
     description: str
-    data_evidence: Dict[str, Any]
-    proposed_change: Dict[str, Any]
+    data_evidence: dict[str, Any]
+    proposed_change: dict[str, Any]
     confidence: float
     created_at: float = field(default_factory=time.time)
     status: str = "pending"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "suggestion_id": self.suggestion_id,
             "trigger_type": self.trigger_type,
@@ -39,15 +40,15 @@ class EvolutionSuggestion:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "EvolutionSuggestion":
+    def from_dict(cls, data: dict[str, Any]) -> "EvolutionSuggestion":
         return cls(**data)
 
 
 @dataclass
 class EvolutionTrigger:
     trigger_type: str
-    condition: Callable[[Dict[str, Any]], bool]
-    action: Callable[[Dict[str, Any]], Optional[EvolutionSuggestion]]
+    condition: Callable[[dict[str, Any]], bool]
+    action: Callable[[dict[str, Any]], EvolutionSuggestion | None]
     cooldown_hours: int = 24
     last_triggered: float = 0.0
 
@@ -73,9 +74,9 @@ class TemplateEvolutionEngine:
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("template_evolution", db_path=self.db_path)
         self._db: sqlite3.Connection
-        self._triggers: Dict[str, EvolutionTrigger] = {}
-        self._suggestions: List[EvolutionSuggestion] = []
-        self._metrics_data: Dict[str, Any] = {}
+        self._triggers: dict[str, EvolutionTrigger] = {}
+        self._suggestions: list[EvolutionSuggestion] = []
+        self._metrics_data: dict[str, Any] = {}
 
     def initialize(self) -> None:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -172,7 +173,7 @@ class TemplateEvolutionEngine:
             cooldown_hours=168,
         )
 
-    def _create_skill_suggestion(self, metrics: Dict[str, Any]) -> EvolutionSuggestion:
+    def _create_skill_suggestion(self, metrics: dict[str, Any]) -> EvolutionSuggestion:
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
             trigger_type="skill",
@@ -185,7 +186,7 @@ class TemplateEvolutionEngine:
             confidence=min(0.95, 0.5 + metrics.get("error_count_same_type", 0) * 0.1),
         )
 
-    def _create_model_config_suggestion(self, metrics: Dict[str, Any]) -> EvolutionSuggestion:
+    def _create_model_config_suggestion(self, metrics: dict[str, Any]) -> EvolutionSuggestion:
         winner = metrics.get("ab_test_winner", {})
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
@@ -196,7 +197,7 @@ class TemplateEvolutionEngine:
             confidence=metrics.get("confidence", 0.95),
         )
 
-    def _create_approval_suggestion(self, metrics: Dict[str, Any]) -> EvolutionSuggestion:
+    def _create_approval_suggestion(self, metrics: dict[str, Any]) -> EvolutionSuggestion:
         fpr = metrics.get("false_positive_rate", 0)
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
@@ -210,7 +211,7 @@ class TemplateEvolutionEngine:
             confidence=min(0.9, 0.5 + fpr * 0.5),
         )
 
-    def _create_heartbeat_suggestion(self, metrics: Dict[str, Any]) -> EvolutionSuggestion:
+    def _create_heartbeat_suggestion(self, metrics: dict[str, Any]) -> EvolutionSuggestion:
         gpu = metrics.get("gpu_utilization_avg_7d", 0)
         return EvolutionSuggestion(
             suggestion_id=f"ev_{uuid.uuid4().hex[:8]}",
@@ -224,7 +225,7 @@ class TemplateEvolutionEngine:
             confidence=0.85,
         )
 
-    def _create_budget_suggestion(self, metrics: Dict[str, Any]) -> EvolutionSuggestion:
+    def _create_budget_suggestion(self, metrics: dict[str, Any]) -> EvolutionSuggestion:
         overspend = metrics.get("overspend_rate", 0)
         waste = metrics.get("resource_waste_rate", 0)
         return EvolutionSuggestion(
@@ -243,8 +244,8 @@ class TemplateEvolutionEngine:
     def register_trigger(
         self,
         trigger_type: str,
-        condition: Callable[[Dict[str, Any]], bool],
-        action: Callable[[Dict[str, Any]], Optional[EvolutionSuggestion]],
+        condition: Callable[[dict[str, Any]], bool],
+        action: Callable[[dict[str, Any]], EvolutionSuggestion | None],
         cooldown_hours: int = 24,
     ) -> None:
         with self._lock:
@@ -260,7 +261,7 @@ class TemplateEvolutionEngine:
                 cooldown_hours,
             )
 
-    def update_metrics(self, metrics: Dict[str, Any]) -> None:
+    def update_metrics(self, metrics: dict[str, Any]) -> None:
         with self._lock:
             for key, value in metrics.items():
                 stored_value = value if isinstance(value, (int, float)) else json.dumps(value)
@@ -272,7 +273,7 @@ class TemplateEvolutionEngine:
                 )
             self._db.commit()
 
-    def evaluate_triggers(self) -> List[EvolutionSuggestion]:
+    def evaluate_triggers(self) -> list[EvolutionSuggestion]:
         with self._lock:
             flattened = {
                 k: v["value"] if isinstance(v, dict) and "value" in v else v for k, v in self._metrics_data.items()
@@ -317,8 +318,8 @@ class TemplateEvolutionEngine:
     def create_suggestion(
         self,
         trigger_type: str,
-        evidence: Dict[str, Any],
-        proposed_change: Dict[str, Any],
+        evidence: dict[str, Any],
+        proposed_change: dict[str, Any],
     ) -> EvolutionSuggestion:
         with self._lock:
             suggestion = EvolutionSuggestion(
@@ -348,7 +349,7 @@ class TemplateEvolutionEngine:
             self._db.commit()
             return suggestion
 
-    def apply_suggestion(self, suggestion_id: str, branch_id: str) -> Optional[EvolutionSuggestion]:
+    def apply_suggestion(self, suggestion_id: str, branch_id: str) -> EvolutionSuggestion | None:
         with self._lock:
             suggestion = next((s for s in self._suggestions if s.suggestion_id == suggestion_id), None)
             if suggestion is None:
@@ -374,14 +375,14 @@ class TemplateEvolutionEngine:
             logger.info("Suggestion applied: id=%s, branch=%s", suggestion_id, branch_id)
             return suggestion
 
-    def list_suggestions(self, status_filter: Optional[str] = None) -> List[EvolutionSuggestion]:
+    def list_suggestions(self, status_filter: str | None = None) -> list[EvolutionSuggestion]:
         with self._lock:
             suggestions = self._suggestions
             if status_filter:
                 suggestions = [s for s in suggestions if s.status == status_filter]
             return sorted(suggestions, key=lambda s: s.created_at, reverse=True)
 
-    def get_evolution_history(self, branch_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_evolution_history(self, branch_id: str | None = None) -> list[dict[str, Any]]:
         with self._lock:
             if branch_id:
                 cursor = self._db.execute(
@@ -419,7 +420,7 @@ class _EvolutionEngineHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[TemplateEvolutionEngine] = None
+        self._instance: TemplateEvolutionEngine | None = None
 
     def get(self) -> TemplateEvolutionEngine:
         # 快速路径：已存在则直接返回，避免持锁开销

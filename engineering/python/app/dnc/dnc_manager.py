@@ -17,7 +17,7 @@ DNC 管理器
 
 import logging
 import threading
-from typing import Dict, Any, List
+from typing import Any
 from datetime import datetime, timezone
 
 from .unified_adapter import UnifiedDNCAdapter, ProtocolType as _UnifiedProtocolType
@@ -35,16 +35,16 @@ class DNCManager:
 
     def __init__(self):
         # 内部主存储：machine_id -> UnifiedDNCAdapter
-        self._adapters: Dict[str, UnifiedDNCAdapter] = {}
+        self._adapters: dict[str, UnifiedDNCAdapter] = {}
         # 元数据存储：machine_id -> {endpoint, protocol, connected_at}
-        self._meta: Dict[str, Dict[str, Any]] = {}
+        self._meta: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # 对外兼容视图：connections 字典
     # ------------------------------------------------------------------
     @property
-    def connections(self) -> Dict[str, Dict[str, Any]]:
+    def connections(self) -> dict[str, dict[str, Any]]:
         """只读兼容视图，返回 machine_id -> 连接元信息字典。
 
         每个条目包含：
@@ -53,7 +53,7 @@ class DNCManager:
             - endpoint: 连接端点
             - connected_at: ISO 8601 时间字符串
         """
-        view: Dict[str, Dict[str, Any]] = {}
+        view: dict[str, dict[str, Any]] = {}
         with self._lock:
             for mid, adapter in self._adapters.items():
                 meta = self._meta.get(mid, {})
@@ -139,7 +139,7 @@ class DNCManager:
     # ------------------------------------------------------------------
     # 状态查询
     # ------------------------------------------------------------------
-    async def get_machine_status(self, machine_id: str) -> Dict[str, Any]:
+    async def get_machine_status(self, machine_id: str) -> dict[str, Any]:
         """获取机床状态（返回 UnifiedMachineStatus.to_dict 或 error 字典）。"""
         with self._lock:
             adapter = self._adapters.get(machine_id)
@@ -161,7 +161,7 @@ class DNCManager:
             )
             return {"error": err["message"], "error_id": err.get("error_id")}
 
-    async def get_all_machines_status(self) -> Dict[str, Dict[str, Any]]:
+    async def get_all_machines_status(self) -> dict[str, dict[str, Any]]:
         """获取所有机床状态。"""
         result = {}
         # 复制 keys 避免迭代时锁竞争
@@ -182,7 +182,7 @@ class DNCManager:
 
         return await adapter.send_nc_program(program_path, program_name)
 
-    def list_machines(self) -> List[Dict[str, str]]:
+    def list_machines(self) -> list[dict[str, str]]:
         """列出所有已连接的机床。"""
         with self._lock:
             return [

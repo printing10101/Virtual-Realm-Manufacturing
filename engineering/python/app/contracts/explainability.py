@@ -44,7 +44,7 @@ import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from app.utils.time import utcnow
 
@@ -429,10 +429,10 @@ class ExplanationRequest:
 
     explanation_type: str
     model_uri: str
-    source_snapshot_id: Optional[str] = None
-    input_data: Optional[dict[str, Any]] = None
+    source_snapshot_id: str | None = None
+    input_data: dict[str, Any] | None = None
     options: dict[str, Any] = field(default_factory=dict)
-    created_by: Optional[str] = None
+    created_by: str | None = None
 
     def __post_init__(self) -> None:
         if not ExplanationType.is_valid(self.explanation_type):
@@ -498,14 +498,14 @@ class ExplanationRecord:
     id: str
     explanation_type: str
     model_uri: str
-    source_snapshot_id: Optional[str]
+    source_snapshot_id: str | None
     input_signature: str
     payload_path: str
     payload_size_bytes: int
     metadata_json: dict[str, Any] = field(default_factory=dict)
-    created_by: Optional[str] = None
+    created_by: str | None = None
     created_at: datetime = field(default_factory=utcnow)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.id:
@@ -566,7 +566,7 @@ class ExplanationComparison:
     compared_explanation_id: str
     comparison_type: str
     diff_payload_path: str
-    created_by: Optional[str] = None
+    created_by: str | None = None
     created_at: datetime = field(default_factory=utcnow)
 
     def __post_init__(self) -> None:
@@ -665,11 +665,11 @@ class IExplainabilityService(ABC):
         self,
         model_uri: str,
         *,
-        source_snapshot_id: Optional[str] = None,
+        source_snapshot_id: str | None = None,
         projection_method: str = ProjectionMethod.PCA,
         projection_dim: int = 2,
         max_frames: int = 1000,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> ExplanationRecord:
         """生成隐状态投影解释.
 
@@ -692,9 +692,9 @@ class IExplainabilityService(ABC):
         self,
         model_uri: str,
         *,
-        source_snapshot_id: Optional[str] = None,
+        source_snapshot_id: str | None = None,
         anomaly_sigma: float = 2.0,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> ExplanationRecord:
         """生成门控动力学解释.
 
@@ -717,10 +717,10 @@ class IExplainabilityService(ABC):
         *,
         base_input: dict[str, float],
         perturbed_feature: str,
-        perturbation_range: Optional[list[float]] = None,
+        perturbation_range: list[float] | None = None,
         perturbation_step: float = 0.05,
-        source_snapshot_id: Optional[str] = None,
-        created_by: Optional[str] = None,
+        source_snapshot_id: str | None = None,
+        created_by: str | None = None,
     ) -> ExplanationRecord:
         """生成反事实解释.
 
@@ -746,8 +746,8 @@ class IExplainabilityService(ABC):
         *,
         input_data: dict[str, Any],
         sample_count: int = 30,
-        source_snapshot_id: Optional[str] = None,
-        created_by: Optional[str] = None,
+        source_snapshot_id: str | None = None,
+        created_by: str | None = None,
     ) -> ExplanationRecord:
         """生成置信度分布解释（MC dropout 采样）.
 
@@ -787,8 +787,8 @@ class IExplainabilityService(ABC):
     async def list_explanations(
         self,
         *,
-        explanation_type: Optional[str] = None,
-        model_uri: Optional[str] = None,
+        explanation_type: str | None = None,
+        model_uri: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[ExplanationRecord], int]:
@@ -831,7 +831,7 @@ class IExplainabilityService(ABC):
         compared_explanation_id: str,
         *,
         comparison_type: str = ComparisonType.SAME_MODEL_DIFF_INPUT,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> ExplanationComparison:
         """对比两个解释.
 

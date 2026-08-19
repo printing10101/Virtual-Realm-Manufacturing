@@ -459,13 +459,17 @@ class TestAPIRouteStaticContract:
         )
 
     def test_create_dataset_request_fields(self):
-        """CreateDatasetRequest 必须包含 name/schema/owner_id 字段."""
+        """CreateDatasetRequest 必须包含 name/schema/owner_id 字段（schema 为输入别名）."""
         from app.api.v1.datasets import CreateDatasetRequest
 
         model_fields = set(CreateDatasetRequest.model_fields.keys())
-        expected = {"name", "schema", "owner_id"}
+        expected = {"name", "dataset_schema", "owner_id"}
         assert expected.issubset(model_fields), (
             f"CreateDatasetRequest 缺少字段：{expected - model_fields}"
+        )
+        # schema 作为输入别名必须可用（契约标准字段名）
+        assert CreateDatasetRequest.model_fields["dataset_schema"].alias == "schema", (
+            "dataset_schema 字段必须带 schema 别名以兼容契约标准输入名"
         )
 
     def test_create_snapshot_request_fields(self):

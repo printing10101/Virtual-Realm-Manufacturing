@@ -16,7 +16,8 @@ MTConnect 客户端实现
 
 import logging
 import xml.etree.ElementTree as ET
-from typing import Optional, Dict, Any, Callable
+from typing import Any
+from collections.abc import Callable
 from datetime import datetime, timezone
 
 import httpx
@@ -55,8 +56,8 @@ class MTConnectClient:
         max_retries: int = 3,
         retry_backoff_base: float = 1.0,
         retry_backoff_max: float = 60.0,
-        failure_callback: Optional[Callable] = None,
-        audit_log: Optional[AuditLog] = None,
+        failure_callback: Callable | None = None,
+        audit_log: AuditLog | None = None,
     ):
         """
         初始化 MTConnect 客户端
@@ -72,7 +73,7 @@ class MTConnectClient:
         """
         self.agent_url = agent_url.rstrip("/")
         self.device_name = device_name
-        self.client: Optional[httpx.AsyncClient] = None
+        self.client: httpx.AsyncClient | None = None
         self.connected = False
         self.sequence = 0
         # 重试参数（IEC 62443-3-3 SR 7.2 网络可用性，禁止硬编码）
@@ -114,8 +115,8 @@ class MTConnectClient:
         self,
         operation: str,
         status: OperationStatus,
-        program_name: Optional[str] = None,
-        error: Optional[str] = None,
+        program_name: str | None = None,
+        error: str | None = None,
     ) -> None:
         """记录审计日志（NC 程序传输尝试、失败、成功）"""
         if not self.audit_log:
@@ -196,7 +197,7 @@ class MTConnectClient:
             self.connected = False
             logger.info("MTConnect 连接已断开")
 
-    async def get_current_status(self) -> Dict[str, Any]:
+    async def get_current_status(self) -> dict[str, Any]:
         """
         获取当前机床状态（网络异常时自动重试）
 
@@ -222,7 +223,7 @@ class MTConnectClient:
             logger.error("获取 MTConnect 状态失败: %s", e)
             return safe_error_message(e, fallback="MTConnect 状态查询失败", context="mtconnect.get_current_status")
 
-    def _parse_current_response(self, xml_content: str) -> Dict[str, Any]:
+    def _parse_current_response(self, xml_content: str) -> dict[str, Any]:
         """解析 MTConnect Current 响应"""
         status = {
             "connected": True,
@@ -256,8 +257,8 @@ class MTConnectClient:
         return status
 
     def _find_data_item(
-        self, root: ET.Element, item_type: str, sub_type: Optional[str], namespaces: Dict
-    ) -> Optional[Any]:
+        self, root: ET.Element, item_type: str, sub_type: str | None, namespaces: dict
+    ) -> Any | None:
         """查找特定类型的数据项"""
         # 简化实现，实际需要根据 MTConnect 标准解析
         for elem in root.iter():
@@ -266,7 +267,7 @@ class MTConnectClient:
                     return elem.text
         return None
 
-    async def get_alarms(self) -> list[Dict[str, Any]]:
+    async def get_alarms(self) -> list[dict[str, Any]]:
         """
         获取机床报警信息
 
@@ -274,6 +275,8 @@ class MTConnectClient:
             报警信息列表
         """
         if not self.connected:
+            return []
+        if not self.client:
             return []
 
         try:
@@ -290,7 +293,7 @@ class MTConnectClient:
             logger.error("获取报警信息失败: %s", e)
             return []
 
-    def _parse_alarms(self, xml_content: str) -> list[Dict[str, Any]]:
+    def _parse_alarms(self, xml_content: str) -> list[dict[str, Any]]:
         """解析报警信息"""
         alarms = []
         try:
