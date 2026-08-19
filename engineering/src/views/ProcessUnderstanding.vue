@@ -57,132 +57,15 @@
         </div>
       </div>
 
-      <!-- 消息列表 -->
+      <!-- 消息列表（拆分子组件 ProcessMessageList） -->
       <div
         v-else
         class="pu-messages"
       >
-        <div
-          v-for="msg in store.messages"
-          :key="msg.id"
-          :class="['pu-message', `pu-message-${msg.role}`]"
-        >
-          <div class="pu-message-avatar">
-            <el-icon :size="20">
-              <component :is="msg.role === 'user' ? User : Cpu" />
-            </el-icon>
-          </div>
-          <div class="pu-message-body">
-            <!-- 用户消息 -->
-            <div
-              v-if="msg.role === 'user'"
-              class="pu-message-content"
-            >
-              {{ msg.content }}
-            </div>
-
-            <!-- 助手消息 -->
-            <template v-else>
-              <div class="pu-message-content">
-                {{ msg.content }}
-              </div>
-
-              <!-- 结构化结果展示 -->
-              <div
-                v-if="msg.result"
-                class="pu-result"
-              >
-                <!-- 任务类型 + 置信度 -->
-                <div class="pu-result-meta">
-                  <el-tag
-                    size="small"
-                    type="info"
-                  >
-                    {{ taskTypeLabel(msg.result.task_type) }}
-                  </el-tag>
-                  <el-tag
-                    size="small"
-                    type="primary"
-                  >
-                    {{ msg.result.intent }}
-                  </el-tag>
-                  <div class="pu-confidence">
-                    <span class="pu-confidence-label">{{ t('processUnderstanding.confidenceLabel') }}</span>
-                    <el-progress
-                      :percentage="Math.round(msg.result.confidence * 100)"
-                      :stroke-width="6"
-                      :status="confidenceStatus(msg.result.confidence)"
-                      style="width: 120px"
-                    />
-                  </div>
-                </div>
-
-                <!-- 实体识别 -->
-                <div
-                  v-if="Object.keys(msg.result.entities).length > 0"
-                  class="pu-entities"
-                >
-                  <span class="pu-section-label">{{ t('processUnderstanding.sectionEntities') }}</span>
-                  <div class="pu-entity-tags">
-                    <el-tag
-                      v-for="(val, key) in msg.result.entities"
-                      :key="key"
-                      size="small"
-                      effect="plain"
-                    >
-                      {{ key }}: {{ val }}
-                    </el-tag>
-                  </div>
-                </div>
-
-                <!-- 来源 -->
-                <div
-                  v-if="msg.result.sources.length > 0"
-                  class="pu-sources"
-                >
-                  <span class="pu-section-label">{{ t('processUnderstanding.sectionSources') }}</span>
-                  <ul class="pu-source-list">
-                    <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
-                    <li
-                      v-for="(src, i) in msg.result.sources"
-                      :key="`src-${i}`"
-                    >
-                      {{ src }}
-                    </li>
-                  </ul>
-                </div>
-
-                <!-- 建议动作 -->
-                <div
-                  v-if="msg.result.actions.length > 0"
-                  class="pu-actions"
-                >
-                  <span class="pu-section-label">{{ t('processUnderstanding.sectionActions') }}</span>
-                  <ul class="pu-action-list">
-                    <!-- 动态字符串列表，无业务唯一 id，index 作为 key 可接受 -->
-                    <li
-                      v-for="(act, i) in msg.result.actions"
-                      :key="`src-${i}`"
-                    >
-                      {{ act }}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- 加载指示器 -->
-        <div
-          v-if="store.loading"
-          class="pu-loading"
-        >
-          <el-icon class="pu-loading-icon">
-            <Loading />
-          </el-icon>
-          <span>{{ t('processUnderstanding.loadingThinking') }}</span>
-        </div>
+        <ProcessMessageList
+          :messages="store.messages"
+          :loading="store.loading"
+        />
       </div>
     </main>
 
@@ -213,11 +96,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import {
-  ChatDotRound, User, Cpu, Delete, Promotion,
-  CircleCheck, CircleClose, Loading,
+  ChatDotRound, Delete, Promotion,
+  CircleCheck, CircleClose,
 } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { useProcessUnderstandingStore } from '@/stores/processUnderstanding'
+import ProcessMessageList from '@/components/process/ProcessMessageList.vue'
 
 const { t } = useI18n()
 const store = useProcessUnderstandingStore()
@@ -232,27 +116,6 @@ const suggestions = computed(() => [
   t('processUnderstanding.suggestionRoughing'),
   t('processUnderstanding.suggestionChatter'),
 ])
-
-/** 任务类型标签 */
-function taskTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    'A': t('processUnderstanding.taskTypeConsulting'),
-    'B': t('processUnderstanding.taskTypeDiagnosis'),
-    'C': t('processUnderstanding.taskTypeSolution'),
-    'D': t('processUnderstanding.taskTypeKnowledge'),
-    'E': t('processUnderstanding.taskTypeChat'),
-  }
-  // 支持完整格式 "A-工艺咨询" 或简写 "A"
-  const key = type.split('-')[0]
-  return map[key] || type || t('processUnderstanding.taskTypeUnknown')
-}
-
-/** 置信度状态 */
-function confidenceStatus(c: number): 'success' | 'warning' | 'exception' {
-  if (c >= 0.7) return 'success'
-  if (c >= 0.4) return 'warning'
-  return 'exception'
-}
 
 /** 发送消息 */
 async function send(): Promise<void> {
@@ -354,145 +217,13 @@ onMounted(() => {
   margin-top: 16px;
 }
 
-/* 消息列表 */
+/* 消息列表（消息内部样式已迁移至 ProcessMessageList.vue） */
 .pu-messages {
   display: flex;
   flex-direction: column;
   gap: 16px;
   max-width: 900px;
   margin: 0 auto;
-}
-
-.pu-message {
-  display: flex;
-  gap: 12px;
-}
-
-.pu-message-user {
-  flex-direction: row-reverse;
-}
-
-.pu-message-avatar {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
-.pu-message-user .pu-message-avatar {
-  background: var(--accent-primary);
-  color: var(--text-white);
-}
-
-.pu-message-body {
-  flex: 1;
-  min-width: 0;
-  max-width: calc(100% - 48px);
-}
-
-.pu-message-content {
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  background: var(--bg-primary);
-  border: 1px solid var(--border-lighter);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.pu-message-user .pu-message-content {
-  background: var(--accent-primary);
-  color: var(--text-white);
-  border-color: var(--accent-primary);
-}
-
-/* 结构化结果 */
-.pu-result {
-  margin-top: 8px;
-  padding: 12px 16px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-lighter);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-}
-
-.pu-result-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--border-lighter);
-}
-
-.pu-confidence {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.pu-confidence-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.pu-section-label {
-  display: block;
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.pu-entities,
-.pu-sources,
-.pu-actions {
-  margin-top: 8px;
-}
-
-.pu-entity-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.pu-source-list,
-.pu-action-list {
-  margin: 0;
-  padding-left: 20px;
-  color: var(--text-regular);
-  line-height: 1.8;
-}
-
-.pu-action-list li {
-  color: var(--accent-primary);
-}
-
-/* 加载指示器 */
-.pu-loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-  padding: 16px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.pu-loading-icon {
-  animation: pu-spin 1s linear infinite;
-}
-
-@keyframes pu-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 /* 底部输入区 */
