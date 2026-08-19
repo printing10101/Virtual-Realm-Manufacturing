@@ -3033,6 +3033,7 @@ export default {
     hintClose: "关闭",
     commandCount: "个命令",
     otherCategory: "其他",
+    pluginCategory: "插件",
   },
 
   // === AppLayout.vue 应用布局 ===

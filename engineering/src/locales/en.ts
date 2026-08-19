@@ -3036,6 +3036,7 @@ export default {
     hintClose: "Close",
     commandCount: "commands",
     otherCategory: "Other",
+    pluginCategory: "Plugins",
   },
   // === Tour.vue Onboarding Component ===
   onboardingTour: {

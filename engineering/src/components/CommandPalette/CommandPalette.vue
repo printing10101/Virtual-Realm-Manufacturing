@@ -128,6 +128,7 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search, Warning, Operation } from '@element-plus/icons-vue'
 import type { Command } from '@/composables/useCommandPalette'
+import { useExtensionRegistry } from '@/composables/useExtensionRegistry'
 
 const { t } = useI18n()
 
@@ -140,6 +141,31 @@ const props = defineProps<{
 const emit = defineEmits<{
   execute: [command: Command]
 }>()
+
+// 扩展点：合并插件通过 command_palette.command 贡献的命令
+// 插件注册格式：handler 接收 { name, description, category }，返回 { result, close } 或 undefined
+const { list } = useExtensionRegistry()
+const extensionCommands = computed<Command[]>(() => {
+  const contributions = list('command_palette.command')
+  return contributions
+    .filter((c) => c.handler_fn)
+    .map((c) => {
+      const meta = c.metadata ?? {}
+      return {
+        id: `plugin:${c.plugin_id}:${c.extension_point}`,
+        name: (meta.title as string) || c.plugin_id,
+        description: (meta.description as string) || '',
+        category: (meta.category as string) || t('commandPalette.pluginCategory'),
+        icon: (meta.icon as string) || undefined,
+        action: async () => {
+          await c.handler_fn?.({})
+        },
+      } satisfies Command
+    })
+})
+
+// 合并后的完整命令列表（插件命令 + 本地命令）
+const allCommands = computed<Command[]>(() => [...props.commands, ...extensionCommands.value])
 
 // 状态
 const inputRef = ref<HTMLInputElement | null>(null)
@@ -156,7 +182,7 @@ const state = computed(() => ({
 
 const filteredCommands = computed(() => {
   const q = query.value.toLowerCase().trim()
-  let result = props.commands.filter(cmd => !cmd.disabled)
+  let result = allCommands.value.filter(cmd => !cmd.disabled)
 
   if (q) {
     result = result.filter(cmd => {

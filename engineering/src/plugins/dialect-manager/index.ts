@@ -30,13 +30,29 @@ const PANEL_METADATA = {
  */
 export function registerDialectManagerPlugin(): void {
   // 先卸载旧贡献，保证幂等
-  extensionRegistry.unregister(DIALECT_MANAGER_PLUGIN_ID, 'workspace.panel')
+  extensionRegistry.unregister(DIALECT_MANAGER_PLUGIN_ID)
 
   extensionRegistry.register({
     plugin_id: DIALECT_MANAGER_PLUGIN_ID,
     extension_point: 'workspace.panel',
     component_url: PANEL_COMPONENT_URL,
     metadata: PANEL_METADATA,
+  })
+
+  // 命令面板贡献：打开方言管理页（路由跳转）
+  extensionRegistry.register({
+    plugin_id: DIALECT_MANAGER_PLUGIN_ID,
+    extension_point: 'command_palette.command',
+    handler: async () => {
+      const { default: router } = await import('@/router')
+      await router.push('/dialect-manager')
+    },
+    metadata: {
+      title: '打开方言管理',
+      description: '跳转到后处理器方言管理页',
+      category: '制造工具',
+      icon: 'Cpu',
+    },
   })
 }
 
@@ -54,3 +70,4 @@ export default {
   register: registerDialectManagerPlugin,
   unregister: unregisterDialectManagerPlugin,
 }
+

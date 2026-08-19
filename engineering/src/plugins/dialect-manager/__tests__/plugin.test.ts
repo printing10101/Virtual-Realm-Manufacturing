@@ -33,13 +33,24 @@ describe('dialect-manager 前端插件', () => {
     expect(panels[0].metadata?.title).toBe('后处理器方言')
   })
 
-  it('重复注册幂等（不产生重复面板）', () => {
+  it('注册后贡献出现在 command_palette.command 扩展点（含 handler）', () => {
+    registerDialectManagerPlugin()
+
+    const commands = extensionRegistry.list('command_palette.command')
+    expect(commands).toHaveLength(1)
+    expect(commands[0].handler_fn).toBeTypeOf('function')
+    expect(commands[0].metadata?.title).toBe('打开方言管理')
+  })
+
+  it('重复注册幂等（不产生重复贡献）', () => {
     registerDialectManagerPlugin()
     registerDialectManagerPlugin()
     registerDialectManagerPlugin()
 
     const panels = extensionRegistry.list('workspace.panel')
+    const commands = extensionRegistry.list('command_palette.command')
     expect(panels).toHaveLength(1)
+    expect(commands).toHaveLength(1)
   })
 
   it('组件加载器解析到真实面板组件', async () => {
@@ -53,11 +64,13 @@ describe('dialect-manager 前端插件', () => {
     expect(typeof comp).toBe('object')
   })
 
-  it('卸载后贡献移除', () => {
+  it('卸载后所有贡献移除', () => {
     registerDialectManagerPlugin()
     expect(extensionRegistry.list('workspace.panel')).toHaveLength(1)
+    expect(extensionRegistry.list('command_palette.command')).toHaveLength(1)
 
     unregisterDialectManagerPlugin()
     expect(extensionRegistry.list('workspace.panel')).toHaveLength(0)
+    expect(extensionRegistry.list('command_palette.command')).toHaveLength(0)
   })
 })
