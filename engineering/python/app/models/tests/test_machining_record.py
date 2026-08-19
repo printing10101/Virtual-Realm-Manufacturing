@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Iterator
+from typing import Any, Iterator
 
 import pytest
 from pydantic import ValidationError
@@ -489,7 +489,8 @@ class TestSchemaIntegration:
     def test_pydantic_orm_round_trip(self) -> None:
         from app.models.machining_record import MachiningRecordRead
 
-        payload = {
+        # Any 注解：**展开到 Pydantic 参数时 mypy 不按 dict 不变性报错
+        payload: dict[str, Any] = {
             "machine_id": "CNC-01",
             "tool_id": "T-EM-10",
             "material": "45号钢",

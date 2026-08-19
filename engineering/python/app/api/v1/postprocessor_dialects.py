@@ -38,7 +38,7 @@ router = APIRouter(
 )
 
 # 内置方言（引擎自带，非声明镜像）
-BUILTIN_DIALECTS = [
+BUILTIN_DIALECTS: List[Dict[str, Any]] = [
     {
         "id": "fanuc_0i",
         "name": "Fanuc 0i-MF",
@@ -618,7 +618,7 @@ def get_dialect_params(dialect_id: str) -> Dict[str, Any]:
 
     try:
         loader = ConfigLoader()
-        resolved = loader._resolve_path(None)  # type: ignore[attr-defined]
+        resolved = loader._resolve_path(None)
         with open(resolved, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
         base_config = raw.get("base", {}) if isinstance(raw, dict) else {}
@@ -661,7 +661,7 @@ def save_dialect_params(dialect_id: str, req: SaveParamsRequest) -> Dict[str, An
             message=f"方言 '{dialect_id}' 不存在。建议操作：先通过新建向导创建。",
         )
 
-    import yaml  # type: ignore[import-untyped]
+    import yaml
 
     try:
         with open(yaml_path, "r", encoding="utf-8") as f:

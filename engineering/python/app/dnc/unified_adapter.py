@@ -80,6 +80,10 @@ class UnifiedMachineStatus:
 class MachineAdapter(abc.ABC):
     """机床协议适配器抽象基类。"""
 
+    # 底层协议客户端（MTConnectAdapter → MTConnectClient，OPCUAAdapter → OPCUAClient）。
+    # 声明为 Any：各具体子类类型不同，统一在 ABC 层暴露只读访问。
+    client: Any
+
     @abc.abstractmethod
     async def connect(self, timeout: float = 10.0) -> bool: ...
 
@@ -284,7 +288,9 @@ class UnifiedDNCAdapter:
                 machine_id=self.machine_id,
             )
         else:
-            return await self.connect_auto([endpoint], credentials, timeout) and self.primary is not None
+            # connect_auto 返回 dict 摘要；成功标准是 primary 已建立
+            await self.connect_auto([endpoint], credentials, timeout)
+            return self.primary is not None
 
         ok = await self.primary.connect(timeout=timeout)
         if ok:

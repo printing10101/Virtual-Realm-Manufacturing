@@ -103,7 +103,13 @@ class StateRecoveryManager:
                 result["state"] = state
                 return result
             task_status = getattr(task, "status", None)
-            task_status_str = task_status.value if hasattr(task_status, "value") else str(task_status)
+            # hasattr 不缩小 Optional 类型：先判 None，再取 value（枚举）或转 str
+            if task_status is None:
+                task_status_str = ""
+            else:
+                task_status_str = (
+                    task_status.value if hasattr(task_status, "value") else str(task_status)
+                )
             result["task"] = {
                 "task_id": state.current_task_id,
                 "status": task_status_str,
@@ -344,8 +350,8 @@ async def create_state_persistence(
                 if sync_url.startswith("postgresql+asyncpg://"):
                     sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://", 1)
                 sync_engine = create_engine(sync_url, echo=False)
-                with sync_engine.begin() as conn:
-                    conn.execute(
+                with sync_engine.begin() as sync_conn:
+                    sync_conn.execute(
                         text(
                             """CREATE TABLE IF NOT EXISTS agent_states (
                                 agent_id VARCHAR(128) PRIMARY KEY,

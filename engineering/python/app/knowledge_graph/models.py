@@ -69,7 +69,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
 # ---------------------------------------------------------------------------
 
 
-class KGNode(Base):
+class KGNode(Base):  # type: ignore[valid-type, misc]  # declarative_base() 返回值 mypy 不识别为类型
     """知识图谱节点表。
 
     存储 Material / Tool / Feature / Process 等实体，每个节点拥有唯一
@@ -131,7 +131,7 @@ class KGNode(Base):
 # ---------------------------------------------------------------------------
 
 
-class KGEdge(Base):
+class KGEdge(Base):  # type: ignore[valid-type, misc]  # declarative_base() 返回值 mypy 不识别为类型
     """知识图谱关系表。
 
     存储 (source_id) -[edge_type]-> (target_id) 三元组及其属性（如

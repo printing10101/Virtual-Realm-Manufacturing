@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -33,7 +34,7 @@ from app.knowledge_graph.importer import (
     load_graph_from_repository,
     parse_process_rules,
 )
-from app.knowledge_graph.importer.json_importer import (
+from app.knowledge_graph.importer.importers._common import (
     EDGE_APPLIED_TO,
     EDGE_SUITABLE_FOR,
     EDGE_USED,
@@ -260,7 +261,7 @@ class TestMaterialDeduper:
         assert not is_dup1
         assert is_dup2
         assert nid1 == nid2
-        assert nid1.startswith("material-")
+        assert nid1 is not None and nid1.startswith("material-")
 
     def test_dedup_distinct_names(self) -> None:
         d = _MaterialDeduper()
@@ -395,7 +396,8 @@ class TestRuleParser:
             parser.parse_single_rule("not a dict")  # type: ignore[arg-type]
 
     def test_parse_rules_file_skips_invalid(self) -> None:
-        rules = [
+        # 混合合法 dict 与非法 str：验证解析器跳过非法条目
+        rules: list[Any] = [
             {"id": "r1", "name": "面", "description": "平面", "details": {}},
             {"id": "", "name": "x", "description": "x", "details": {}},
             "not-a-dict",
@@ -587,9 +589,21 @@ class TestImportAll:
 
 
 class TestEndToEndRealData:
-    """使用项目根目录下的真实 JSON 端到端测试。"""
+    """使用项目根目录下的真实 JSON 端到端测试。
+
+    依赖部署时提供的数据文件（app/data/materials.json 等，不属于仓库）。
+    数据缺失时 skip（验收测试需在完整数据环境运行），而非失败。
+    """
 
     def test_real_import_minimum_thresholds(self) -> None:
+        from app.utils.utils import get_project_root
+
+        data_dir = get_project_root() / "app" / "data"
+        required = ["materials.json", "tools.json", "machines.json", "process_rules.json"]
+        missing = [f for f in required if not (data_dir / f).exists()]
+        if missing:
+            pytest.skip(f"真实数据文件缺失（{', '.join(missing)}），跳过验收测试")
+
         g = GraphStore(auto_load=False)
         report = import_all(graph=g, flush_to_db=False)
         # 验收要求：至少 30 节点，50 关系

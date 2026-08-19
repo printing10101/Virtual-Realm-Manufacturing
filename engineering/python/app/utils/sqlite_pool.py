@@ -20,7 +20,7 @@ import time
 import weakref
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
-from typing import Optional, Generator
+from typing import AsyncGenerator, Optional, Generator
 
 from app.utils.utils import get_output_dir
 
@@ -307,7 +307,7 @@ class SQLiteConnectionPool:
             self.return_connection(conn)
 
     @asynccontextmanager
-    async def async_connection(self) -> "Generator[sqlite3.Connection, None, None]":
+    async def async_connection(self) -> "AsyncGenerator[sqlite3.Connection, None]":
         """
         异步上下文管理器：自动获取和归还连接（不阻塞事件循环）
 
@@ -402,7 +402,8 @@ class SQLiteConnectionManager:
 
     def __init__(self):
         """初始化连接管理器"""
-        self._pools: dict[str, SQLiteConnectionPool] = {}
+        # 键类型：默认路径用 db_name(str)，自定义路径用 (db_name, db_path) 元组
+        self._pools: dict[tuple[str, str] | str, SQLiteConnectionPool] = {}
         self._pool_lock = threading.Lock()
 
     @classmethod

@@ -21,7 +21,7 @@ import threading
 import uuid
 from collections import deque
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from app.knowledge_graph.feedback_updater import FeedbackUpdater
 from app.training.data_lake import TrainingDataLake
@@ -51,9 +51,9 @@ class FeedbackTask:
         self.retry_count = 0
         self.max_retries = 3
         self.status = "pending"  # pending, processing, completed, failed
-        self.error_message = None
+        self.error_message: Optional[str] = None
         self.created_at = datetime.now(timezone.utc)
-        self.processed_at = None
+        self.processed_at: Optional[datetime] = None
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典"""
@@ -179,7 +179,7 @@ class FeedbackLoopPipeline:
             # 4. 标记任务完成
             task.status = "completed"
             task.processed_at = datetime.now(timezone.utc)
-            self._processed_record_ids.add(record_id)
+            self._processed_record_ids.add(cast(str, record_id))
 
             logger.info("Task %s completed successfully", task.task_id)
 

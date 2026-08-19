@@ -19,17 +19,15 @@ import logging
 import threading
 from typing import Dict, Any, List
 from datetime import datetime, timezone
-from enum import Enum
 
-from .unified_adapter import UnifiedDNCAdapter
+from .unified_adapter import UnifiedDNCAdapter, ProtocolType as _UnifiedProtocolType
 from app.core.safe_errors import safe_error_message
 
+# 协议类型枚举：复用 unified_adapter 的定义（消除重复枚举，保证 connect_single
+# 参数类型一致）。保留本模块导出名供外部兼容导入（api/v1/dnc.py、测试）。
+ProtocolType = _UnifiedProtocolType
+
 logger = logging.getLogger(__name__)
-
-
-class ProtocolType(str, Enum):
-    OPC_UA = "opcua"
-    MTCONNECT = "mtconnect"
 
 
 class DNCManager:
