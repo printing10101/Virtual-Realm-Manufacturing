@@ -24,7 +24,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Callable, Optional, TypeVar
+from typing import Callable, Generic, Optional, TypeVar
 
 T = TypeVar("T")
 
@@ -34,7 +34,7 @@ T = TypeVar("T")
 # ============================================================================
 
 
-class _LazySingleton:
+class _LazySingleton(Generic[T]):
     """线程安全的懒加载单例包装器。
 
     用于包装原始 ``get_xxx()`` 函数，确保：
@@ -53,12 +53,14 @@ class _LazySingleton:
 
     def get(self) -> T:
         if self._initialized:
-            return self._instance  # type: ignore[return-value]
+            assert self._instance is not None  # 已初始化则实例必存在
+            return self._instance
         with self._lock:
             if not self._initialized:
                 self._instance = self._factory()
                 self._initialized = True
-            return self._instance  # type: ignore[return-value]
+            assert self._instance is not None  # 初始化完成后实例必存在
+            return self._instance
 
     def reset(self) -> None:
         """重置缓存实例（用于测试 teardown）。"""
@@ -346,7 +348,7 @@ def get_task_checkout_manager():
 
 def get_flywheel_metrics():
     """飞轮指标收集器单例。"""
-    from app.metrics.flywheel_metrics import get_flywheel_metrics as _impl
+    from app.metrics.flywheel_metrics import get_flywheel_collector as _impl
 
     return _impl()
 

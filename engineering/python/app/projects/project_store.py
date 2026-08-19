@@ -315,6 +315,8 @@ class ProjectStore:
         self._validate_version(data.get("version", ""))
         manifest = ProjectManifest.from_dict(data)
 
+        # from_dict 总是构造 metadata（默认"未命名工程"）；断言收窄 Optional
+        assert manifest.metadata is not None
         manifest.metadata.touch()
         return manifest
 
@@ -396,6 +398,7 @@ class ProjectStore:
         Returns:
             新文件的完整路径
         """
+        assert manifest.metadata is not None  # 同 load_project：metadata 总是存在
         manifest.metadata.touch()
         return self.save_project(manifest, output_path, resource_files)
 

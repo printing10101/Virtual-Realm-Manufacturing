@@ -321,7 +321,7 @@ class GeometryDiffer:
 
     def _voxelize_unified(
         self,
-        mesh: "trimesh.Trimesh",  # noqa: F821  # 字符串注解：trimesh 可选依赖延迟导入，运行时不求值
+        mesh: "trimesh.Trimesh",  # type: ignore[name-defined]  # noqa: F821  # trimesh 可选依赖延迟导入，字符串注解不求值
         bbox_min: np.ndarray,
         bbox_max: np.ndarray,
     ) -> np.ndarray:
@@ -360,7 +360,7 @@ class GeometryDiffer:
 
     def _voxelize_contains_unified(
         self,
-        mesh: "trimesh.Trimesh",  # noqa: F821  # 字符串注解：trimesh 可选依赖延迟导入，运行时不求值
+        mesh: "trimesh.Trimesh",  # type: ignore[name-defined]  # noqa: F821  # trimesh 可选依赖延迟导入，字符串注解不求值
         bbox_min: np.ndarray,
         padding: float,
         nx: int,

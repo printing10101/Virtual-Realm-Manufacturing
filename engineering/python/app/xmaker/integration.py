@@ -16,7 +16,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -218,7 +218,8 @@ class XmakerIntegration:
         # 调用 Xmaker REST API 上传文件
         try:
             upload_name = job_name or path.stem
-            form_data = {"job_name": (None, upload_name)}
+            # 值类型混合（元组表单值 / 文件 3 元组 / JSON 字符串），显式 Any
+            form_data: dict[str, Any] = {"job_name": (None, upload_name)}
             if metadata:
                 form_data["metadata"] = (None, json.dumps(metadata, ensure_ascii=False))
 
@@ -373,7 +374,8 @@ class XmakerIntegration:
             bool: 是否启动成功
         """
         try:
-            payload = {
+            # 值类型混合（str 字段 / 嵌套 dict parameters），显式 Any
+            payload: dict[str, Any] = {
                 "file_id": file_id,
                 "machine_id": machine_id,
             }

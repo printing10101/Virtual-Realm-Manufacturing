@@ -299,9 +299,13 @@ class SafetyValidator:
             "Y": (self._y_min, self._y_max),
             "Z": (self._z_min, self._z_max),
         }
-        lo, hi = limits.get(axis.upper(), (None, None))
-        if lo is None or position < lo or position > hi:
-            clamped = min(max(position, lo), hi) if lo is not None else position
+        key = axis.upper()
+        if key not in limits:
+            # 未知轴无软限位定义，跳过
+            return []
+        lo, hi = limits[key]
+        if position < lo or position > hi:
+            clamped = min(max(position, lo), hi)
             return [
                 SafetyIssue(
                     ERR_AXIS_TRAVEL_EXCEEDED,

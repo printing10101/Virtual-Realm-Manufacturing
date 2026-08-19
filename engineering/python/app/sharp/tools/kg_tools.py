@@ -173,6 +173,8 @@ class KGQueryPathTool(BaseTool):
         target_id = arguments.get("target_id")
         if not all([source_id, target_id]):
             raise ValueError("source_id / target_id 不能为空")
+        # all() 校验后收窄 Optional（mypy 不追踪 all 的收窄）
+        assert source_id is not None and target_id is not None
         max_hops = int(arguments.get("max_hops", 2))
         max_hops = max(1, min(max_hops, 3))
 

@@ -229,7 +229,7 @@ class PlaneExtractor:
     def _fit_single_plane(
         self,
         vertices: np.ndarray,
-    ) -> tuple[dict[str, Any], np.ndarray | None]:
+    ) -> tuple[dict[str, Any] | None, np.ndarray | None]:
         """拟合单个平面。
 
         Returns:
@@ -244,7 +244,7 @@ class PlaneExtractor:
     def _fit_plane_sklearn(
         self,
         vertices: np.ndarray,
-    ) -> tuple[dict[str, Any], np.ndarray | None]:
+    ) -> tuple[dict[str, Any] | None, np.ndarray | None]:
         """用 sklearn RANSACRegressor 拟合平面。
 
         平面方程: z = ax + by + c，法向量 (-a, -b, 1) / norm
@@ -292,7 +292,7 @@ class PlaneExtractor:
     def _fit_plane_numpy(
         self,
         vertices: np.ndarray,
-    ) -> tuple[dict[str, Any], np.ndarray | None]:
+    ) -> tuple[dict[str, Any] | None, np.ndarray | None]:
         """纯 numpy 实现的 RANSAC 平面拟合。
 
         算法：

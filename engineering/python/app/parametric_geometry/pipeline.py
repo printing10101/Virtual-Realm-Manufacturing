@@ -250,6 +250,7 @@ class ParametricGeometryPipeline:
             assembly_summary = get_assembly_summary(assembly_plan)
 
             # 4. 写入 STEP（write_step_with_fallback 自动选择引擎）
+            assert task.workspace_dir is not None  # 任务创建时必设工作目录（见 184 行）
             step_path = Path(task.workspace_dir) / f"{task_id}.step"
             write_result = write_step_with_fallback(
                 shapes=brep_result.shapes,
@@ -440,6 +441,7 @@ class ParametricGeometryPipeline:
             )
 
             # 3. 写入最终 STEP
+            assert task.workspace_dir is not None  # 任务创建时必设工作目录
             final_step_path = Path(task.workspace_dir) / f"{task_id}_final.step"
             write_result = write_step_with_fallback(
                 shapes=brep_result.shapes,

@@ -29,8 +29,8 @@ from typing import Any, List, Optional, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from requests import Session  # type: ignore[import-untyped]
-from requests.exceptions import ConnectionError as ReqConnectionError  # type: ignore[import-untyped]
+from requests import Session
+from requests.exceptions import ConnectionError as ReqConnectionError
 from requests.exceptions import HTTPError
 
 # Ensure the ``app`` package is importable when the tests are run from
