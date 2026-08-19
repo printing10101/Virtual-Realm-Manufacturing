@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.tasks._checkout_models import (
     CheckoutFailureReason, CheckoutResult, CheckoutStatus, TaskRecord, TaskStatus,
@@ -54,7 +55,7 @@ class _TaskCheckoutOpsMixin:
             ),
         )
         conn.commit()
-    def get_task(self, task_id: str) -> Optional[TaskRecord]:
+    def get_task(self, task_id: str) -> TaskRecord | None:
         conn = self._get_conn()
         row = conn.execute("SELECT * FROM checkout_tasks WHERE id = ?", (task_id,)).fetchone()
         if row is None:
@@ -193,11 +194,11 @@ class _TaskCheckoutOpsMixin:
             agent_id=agent_id,
             message="Task abandoned, returned to pending",
         )
-    def get_task_board(self) -> Dict[str, List[dict]]:
+    def get_task_board(self) -> dict[str, list[dict]]:
         conn = self._get_conn()
         rows = conn.execute("SELECT * FROM checkout_tasks ORDER BY priority ASC, created_at ASC").fetchall()
 
-        board: Dict[str, List[dict]] = {
+        board: dict[str, list[dict]] = {
             "pending": [],
             "in_progress": [],
             "completed": [],
@@ -222,7 +223,7 @@ class _TaskCheckoutOpsMixin:
                 board["pending"].append(task_dict)
 
         return board
-    def get_task_checkout_history(self, task_id: str) -> Dict[str, Any]:
+    def get_task_checkout_history(self, task_id: str) -> dict[str, Any]:
         task = self.get_task(task_id)
         if task is None:
             return {"task": None, "lock_history": [], "failure_history": []}
@@ -251,7 +252,7 @@ class _TaskCheckoutOpsMixin:
             "lock_history": lock_history,
             "failure_history": failure_history,
         }
-    def get_agent_status(self, agent_id: str) -> Dict[str, Any]:
+    def get_agent_status(self, agent_id: str) -> dict[str, Any]:
         active_lock = self._lock_store.get_active_lock_by_agent(agent_id)
         pending_count = self._count_tasks_by_agent(agent_id, TaskStatus.PENDING.value)
         in_progress_count = self._count_tasks_by_agent(agent_id, TaskStatus.IN_PROGRESS.value)
@@ -272,7 +273,7 @@ class _TaskCheckoutOpsMixin:
             (agent_id, status),
         ).fetchone()
         return row["cnt"] if row else 0
-    def get_all_locks(self) -> List[dict]:
+    def get_all_locks(self) -> list[dict]:
         return [lock.to_dict() for lock in self._lock_store.list_all_locks()]
     def close(self):
         # 修复：原实现直接调用 self._conn.close() 关闭连接，

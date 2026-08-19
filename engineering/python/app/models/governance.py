@@ -13,7 +13,7 @@ Multi-dimensional policy: Global → TaskType → AgentRole → ResourceSensitiv
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class ApprovalStrategy(str, Enum):
@@ -83,9 +83,9 @@ class ApprovalDecision:
     approver_id: str
     decision: str  # approved/rejected/request_info/escalated
     comment: str = ""
-    decided_at: Optional[float] = None
+    decided_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "approver_id": self.approver_id,
             "decision": self.decision,
@@ -98,7 +98,7 @@ class ApprovalDecision:
 class ApprovalPolicy:
     """审批策略配置"""
 
-    id: Optional[str] = None
+    id: str | None = None
     dimension: str = "global"  # global/task_type/agent_role/resource_sensitivity
     dimension_value: str = "default"
     strategy: ApprovalStrategy = ApprovalStrategy.AUTO_EXECUTE
@@ -111,10 +111,10 @@ class ApprovalPolicy:
     auto_reject_on_timeout: bool = False
 
     enabled: bool = True
-    created_at: Optional[float] = None
-    updated_at: Optional[float] = None
+    created_at: float | None = None
+    updated_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "dimension": self.dimension,
@@ -141,27 +141,27 @@ class ApprovalRequest:
     requester: str
     requested_at: float
     priority: ApprovalPriority = ApprovalPriority.MEDIUM
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
 
     status: ApprovalStatus = ApprovalStatus.PENDING
-    assigned_approver: Optional[str] = None
-    approvers: List[str] = field(default_factory=list)
-    decisions: List[ApprovalDecision] = field(default_factory=list)
+    assigned_approver: str | None = None
+    approvers: list[str] = field(default_factory=list)
+    decisions: list[ApprovalDecision] = field(default_factory=list)
     required_approvals: int = 1
 
     risk_score: float = 0.0
-    risk_factors: List[str] = field(default_factory=list)
+    risk_factors: list[str] = field(default_factory=list)
     suggested_decision: str = ""
 
-    escalated_from: Optional[str] = None
-    escalated_at: Optional[float] = None
+    escalated_from: str | None = None
+    escalated_at: float | None = None
     emergency_override: bool = False
     emergency_reason: str = ""
 
-    expires_at: Optional[float] = None
-    completed_at: Optional[float] = None
+    expires_at: float | None = None
+    completed_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "request_id": self.request_id,
             "task_id": self.task_id,
@@ -190,15 +190,15 @@ class ApprovalRequest:
 class ApprovalDelegation:
     """审批委托记录"""
 
-    id: Optional[str] = None
+    id: str | None = None
     delegator_id: str = ""
     delegate_id: str = ""
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
+    start_time: float | None = None
+    end_time: float | None = None
     reason: str = ""
-    created_at: Optional[float] = None
+    created_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "delegator_id": self.delegator_id,
@@ -214,18 +214,18 @@ class ApprovalDelegation:
 class EmergencyOperation:
     """紧急操作记录"""
 
-    id: Optional[str] = None
+    id: str | None = None
     request_id: str = ""
     task_id: str = ""
     operator_id: str = ""
     reason: str = ""
     emergency_type: str = ""
-    executed_at: Optional[float] = None
+    executed_at: float | None = None
     retroactive_approval_required: bool = True
     retroactive_approval_completed: bool = False
-    created_at: Optional[float] = None
+    created_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "request_id": self.request_id,
@@ -245,9 +245,9 @@ class GovernanceReport:
     """治理报告"""
 
     report_id: str = ""
-    period_start: Optional[float] = None
-    period_end: Optional[float] = None
-    generated_at: Optional[float] = None
+    period_start: float | None = None
+    period_end: float | None = None
+    generated_at: float | None = None
 
     total_requests: int = 0
     approved_count: int = 0
@@ -259,10 +259,10 @@ class GovernanceReport:
     rejection_rate: float = 0.0
     escalation_rate: float = 0.0
 
-    risk_trend: List[Dict[str, Any]] = field(default_factory=list)
-    top_risk_operations: List[Dict[str, Any]] = field(default_factory=list)
+    risk_trend: list[dict[str, Any]] = field(default_factory=list)
+    top_risk_operations: list[dict[str, Any]] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "report_id": self.report_id,
             "period_start": self.period_start,
@@ -281,7 +281,7 @@ class GovernanceReport:
         }
 
 
-DEFAULT_GLOBAL_POLICIES: List[ApprovalPolicy] = [
+DEFAULT_GLOBAL_POLICIES: list[ApprovalPolicy] = [
     ApprovalPolicy(
         dimension="global",
         dimension_value="default",

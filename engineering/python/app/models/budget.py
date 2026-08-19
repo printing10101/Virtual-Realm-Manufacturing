@@ -7,7 +7,7 @@ Hierarchical budget configuration: Global → Project → Agent → Task
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class BudgetLevel(str, Enum):
@@ -65,11 +65,11 @@ class BudgetPolicy:
 
     enabled: bool = True
     current_usage: float = 0.0
-    last_reset_at: Optional[float] = None
-    created_at: Optional[float] = None
-    updated_at: Optional[float] = None
+    last_reset_at: float | None = None
+    created_at: float | None = None
+    updated_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "level": self.level.value,
             "scope_id": self.scope_id,
@@ -112,16 +112,16 @@ class BudgetCheckResult:
     """预算检查结果"""
 
     passed: bool = True
-    policy: Optional[BudgetPolicy] = None
+    policy: BudgetPolicy | None = None
     status: BudgetStatus = BudgetStatus.OK
     usage_ratio: float = 0.0
     remaining: float = 0.0
     limit: float = 0.0
     block_reason: str = ""
-    warnings: List[str] = field(default_factory=list)
-    checked_at: Optional[float] = None
+    warnings: list[str] = field(default_factory=list)
+    checked_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "passed": self.passed,
             "policy": self.policy.to_dict() if self.policy else None,
@@ -139,7 +139,7 @@ class BudgetCheckResult:
 class BudgetAdjustment:
     """预算调整记录"""
 
-    id: Optional[int] = None
+    id: int | None = None
     level: BudgetLevel = BudgetLevel.GLOBAL
     scope_id: str = "default"
     resource_type: ResourceType = ResourceType.TOTAL_COST
@@ -147,9 +147,9 @@ class BudgetAdjustment:
     new_limit: float = 0.0
     reason: str = ""
     adjusted_by: str = "admin"
-    adjusted_at: Optional[float] = None
+    adjusted_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "level": self.level.value,
@@ -167,7 +167,7 @@ class BudgetAdjustment:
 class BudgetAlert:
     """预算告警"""
 
-    id: Optional[int] = None
+    id: int | None = None
     level: BudgetLevel = BudgetLevel.GLOBAL
     scope_id: str = "default"
     resource_type: ResourceType = ResourceType.TOTAL_COST
@@ -177,9 +177,9 @@ class BudgetAlert:
     usage_ratio: float = 0.0
     message: str = ""
     is_read: bool = False
-    created_at: Optional[float] = None
+    created_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "level": self.level.value,
@@ -208,10 +208,10 @@ class CostOptimizationSuggestion:
     savings_percentage: float = 0.0
     priority: str = "medium"
     recommendation: str = ""
-    metrics: Dict[str, Any] = field(default_factory=dict)
-    generated_at: Optional[float] = None
+    metrics: dict[str, Any] = field(default_factory=dict)
+    generated_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "suggestion_id": self.suggestion_id,
             "category": self.category,
@@ -227,7 +227,7 @@ class CostOptimizationSuggestion:
         }
 
 
-DEFAULT_GLOBAL_BUDGETS: List[BudgetPolicy] = [
+DEFAULT_GLOBAL_BUDGETS: list[BudgetPolicy] = [
     BudgetPolicy(
         level=BudgetLevel.GLOBAL,
         scope_id="default",

@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime
-from typing import List, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.tasks._checkout_models import (
     MAX_RETRY_COUNT,
@@ -57,7 +58,7 @@ class _TaskCheckoutQueueMixin:
             priority=request.priority,
             created_at=now,
         )
-    def process_queue(self, max_batch: int = 10) -> List[CheckoutResult]:
+    def process_queue(self, max_batch: int = 10) -> list[CheckoutResult]:
         with self._queue_lock:
             conn = self._get_conn()
             now = time.time()
@@ -69,7 +70,7 @@ class _TaskCheckoutQueueMixin:
                 (now, max_batch),
             ).fetchall()
 
-            results: List[CheckoutResult] = []
+            results: list[CheckoutResult] = []
             for row in rows:
                 # [C4] 枚举构造防御：数据库可能存在老版本/手动修改的非法值，
                 # 直接构造会抛 ValueError 中断整个队列处理，降级为默认值并记录
@@ -149,7 +150,7 @@ class _TaskCheckoutQueueMixin:
 
             conn.commit()
             return results
-    def get_queue_status(self) -> List[dict]:
+    def get_queue_status(self) -> list[dict]:
         conn = self._get_conn()
         rows = conn.execute("SELECT * FROM checkout_queue ORDER BY priority ASC, created_at ASC").fetchall()
         return [
@@ -166,7 +167,7 @@ class _TaskCheckoutQueueMixin:
             }
             for row in rows
         ]
-    def _get_unresolved_blockers(self, blockers: List[str]) -> List[str]:
+    def _get_unresolved_blockers(self, blockers: list[str]) -> list[str]:
         unresolved = []
         for blocker_id in blockers:
             blocker_task = self.get_task(blocker_id)

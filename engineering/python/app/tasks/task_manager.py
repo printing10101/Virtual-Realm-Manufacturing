@@ -5,7 +5,7 @@ Manages task lifecycle, status tracking, and task type definitions.
 """
 
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 from dataclasses import dataclass
 
 # TaskType 已提升到 contracts/task.py 以避免 models → tasks 循环依赖
@@ -32,6 +32,6 @@ class TaskResult:
 
     job_id: str
     status: TaskStatus
-    result_data: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
-    metrics: Optional[Dict[str, Any]] = None
+    result_data: dict[str, Any] | None = None
+    error_message: str | None = None
+    metrics: dict[str, Any] | None = None

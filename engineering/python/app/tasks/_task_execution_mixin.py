@@ -6,7 +6,8 @@ import asyncio
 import json
 import time
 from datetime import datetime, timezone
-from typing import Callable, Dict, Optional, Any
+from typing import Any
+from collections.abc import Callable
 
 
 from app.core.safe_errors import safe_error_message
@@ -276,7 +277,7 @@ class _TaskExecutionMixin:
             # 但为安全起见保留此兜底）
             logger.error("Task %s exhausted all %d retries", job_id, self._max_retries)
     def _create_progress_updater(self, job_id: str) -> Callable:
-        async def update_progress(percent: float, message: str = "", metrics: Optional[Dict] = None):
+        async def update_progress(percent: float, message: str = "", metrics: dict | None = None):
             async with self._get_task_lock():
                 if job_id in self._tasks:
                     self._tasks[job_id].progress = percent

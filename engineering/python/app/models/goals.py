@@ -11,7 +11,7 @@ Four-level goal hierarchy based on Paperclip's Goal Alignment design:
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class GoalLevel(str, Enum):
@@ -41,13 +41,13 @@ class Goal:
     name: str
     description: str
     level: GoalLevel
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     status: GoalStatus = GoalStatus.NOT_STARTED
-    created_at: Optional[float] = None
-    completed_at: Optional[float] = None
+    created_at: float | None = None
+    completed_at: float | None = None
     version: int = 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -70,7 +70,7 @@ class GoalRef:
     name: str
     description: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "type": self.level.value,
@@ -83,17 +83,17 @@ class GoalRef:
 class GoalVersion:
     """Version history record for goal changes"""
 
-    id: Optional[int] = None
+    id: int | None = None
     goal_id: str = ""
     version: int = 1
-    changed_at: Optional[float] = None
+    changed_at: float | None = None
     changed_by: str = "system"
     change_type: str = ""
     field_name: str = ""
     old_value: str = ""
     new_value: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "goal_id": self.goal_id,
@@ -118,9 +118,9 @@ class GoalProgress:
     completed_tasks: int = 0
     in_progress_tasks: int = 0
     progress_percent: float = 0.0
-    last_updated: Optional[float] = None
+    last_updated: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "goal_id": self.goal_id,
             "goal_name": self.goal_name,
@@ -159,4 +159,4 @@ DEFAULT_PROJECT = Goal(
     status=GoalStatus.IN_PROGRESS,
 )
 
-DEFAULT_GOALS: List[Goal] = [DEFAULT_MISSION, DEFAULT_STRATEGIC_GOAL, DEFAULT_PROJECT]
+DEFAULT_GOALS: list[Goal] = [DEFAULT_MISSION, DEFAULT_STRATEGIC_GOAL, DEFAULT_PROJECT]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
 from app.services.redis_client import get_task_progress
@@ -20,7 +20,7 @@ class _TaskStatsMixin:
     _tasks: Any
 
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         total = len(self._tasks)
         active = sum(1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING)
         queued = sum(1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED)
@@ -36,5 +36,5 @@ class _TaskStatsMixin:
             "max_concurrent": self._max_concurrent,
             "available_slots": self._max_concurrent - active,
         }
-    async def get_task_progress_from_redis(self, job_id: str) -> Dict[str, Any]:
+    async def get_task_progress_from_redis(self, job_id: str) -> dict[str, Any]:
         return await get_task_progress(job_id)

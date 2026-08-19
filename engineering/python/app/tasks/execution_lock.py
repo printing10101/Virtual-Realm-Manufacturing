@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+
 
 from app.utils.sqlite_pool import get_sqlite_manager
 
@@ -32,8 +32,8 @@ class ExecutionLock:
     created_at: float = field(default_factory=time.time)
     expires_at: float = field(default_factory=lambda: time.time() + DEFAULT_LOCK_TIMEOUT_HOURS * 3600)
     heartbeat_at: float = field(default_factory=time.time)
-    released_at: Optional[float] = None
-    release_reason: Optional[str] = None
+    released_at: float | None = None
+    release_reason: str | None = None
 
     def is_expired(self) -> bool:
         return time.time() > self.expires_at
@@ -96,7 +96,7 @@ class ExecutionLockStore:
         """)
         conn.commit()
 
-    def _record_history(self, task_id: str, agent_id: str, action: str, reason: Optional[str] = None):
+    def _record_history(self, task_id: str, agent_id: str, action: str, reason: str | None = None):
         conn = self._get_conn()
         conn.execute(
             "INSERT INTO lock_history (task_id, agent_id, action, reason, timestamp) VALUES (?, ?, ?, ?, ?)",
@@ -152,7 +152,7 @@ class ExecutionLockStore:
             )
             return lock
 
-    def get_lock(self, task_id: str) -> Optional[ExecutionLock]:
+    def get_lock(self, task_id: str) -> ExecutionLock | None:
         conn = self._get_conn()
         row = conn.execute("SELECT * FROM execution_locks WHERE task_id = ?", (task_id,)).fetchone()
         if row is None:
@@ -202,7 +202,7 @@ class ExecutionLockStore:
             )
             return lock
 
-    def release_lock(self, task_id: str, agent_id: str, reason: Optional[str] = None) -> ExecutionLock:
+    def release_lock(self, task_id: str, agent_id: str, reason: str | None = None) -> ExecutionLock:
         with self._lock:
             conn = self._get_conn()
 
@@ -264,7 +264,7 @@ class ExecutionLockStore:
             logger.warning("Execution lock force-released: task=%s by=%s", task_id, admin_id)
             return lock
 
-    def cleanup_expired_locks(self) -> List[ExecutionLock]:
+    def cleanup_expired_locks(self) -> list[ExecutionLock]:
         with self._lock:
             conn = self._get_conn()
             now = time.time()
@@ -274,7 +274,7 @@ class ExecutionLockStore:
                 (now,),
             ).fetchall()
 
-            expired_locks: List[ExecutionLock] = []
+            expired_locks: list[ExecutionLock] = []
             for row in rows:
                 conn.execute(
                     "UPDATE execution_locks SET status = ? WHERE task_id = ?",
@@ -291,17 +291,17 @@ class ExecutionLockStore:
                 logger.info("Cleaned up %d expired locks", len(expired_locks))
             return expired_locks
 
-    def list_active_locks(self) -> List[ExecutionLock]:
+    def list_active_locks(self) -> list[ExecutionLock]:
         conn = self._get_conn()
         rows = conn.execute("SELECT * FROM execution_locks WHERE status = 'active' ORDER BY created_at DESC").fetchall()
         return [self._row_to_lock(row) for row in rows]
 
-    def list_all_locks(self) -> List[ExecutionLock]:
+    def list_all_locks(self) -> list[ExecutionLock]:
         conn = self._get_conn()
         rows = conn.execute("SELECT * FROM execution_locks ORDER BY created_at DESC").fetchall()
         return [self._row_to_lock(row) for row in rows]
 
-    def get_lock_history(self, task_id: str) -> List[dict]:
+    def get_lock_history(self, task_id: str) -> list[dict]:
         conn = self._get_conn()
         rows = conn.execute(
             "SELECT * FROM lock_history WHERE task_id = ? ORDER BY timestamp DESC",
@@ -318,7 +318,7 @@ class ExecutionLockStore:
             for row in rows
         ]
 
-    def get_active_lock_by_agent(self, agent_id: str) -> Optional[ExecutionLock]:
+    def get_active_lock_by_agent(self, agent_id: str) -> ExecutionLock | None:
         conn = self._get_conn()
         row = conn.execute(
             "SELECT * FROM execution_locks WHERE agent_id = ? AND status = 'active' LIMIT 1",
@@ -387,7 +387,7 @@ class _LockStoreHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[ExecutionLockStore] = None
+        self._instance: ExecutionLockStore | None = None
 
     def get(self) -> ExecutionLockStore:
         # 快速路径：已存在则直接返回，避免持锁开销

@@ -33,7 +33,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -90,17 +90,17 @@ class Material(_EntityBase):
         max_length=64,
         description="材料类别（如 carbon_steel / aluminum / stainless_steel / alloy_steel）",
     )
-    density_gcm3: Optional[float] = Field(
+    density_gcm3: float | None = Field(
         default=None,
         ge=0.0,
         description="密度，单位 g/cm³",
     )
-    hardness_hb: Optional[float] = Field(
+    hardness_hb: float | None = Field(
         default=None,
         ge=0.0,
         description="布氏硬度 HB",
     )
-    tensile_strength_mpa: Optional[float] = Field(
+    tensile_strength_mpa: float | None = Field(
         default=None,
         ge=0.0,
         description="抗拉强度，单位 MPa",
@@ -140,7 +140,7 @@ class Tool(_EntityBase):
         max_length=64,
         description="刀具系列（如 twist_drill / endmill / face_mill / center_drill）",
     )
-    diameter_mm: Optional[float] = Field(
+    diameter_mm: float | None = Field(
         default=None,
         ge=0.0,
         description="刀具直径，单位 mm",
@@ -185,12 +185,12 @@ class Feature(_EntityBase):
         max_length=64,
         description="特征类型（如 hole / pocket / face / contour / slot / thread）",
     )
-    tolerance_mm: Optional[float] = Field(
+    tolerance_mm: float | None = Field(
         default=None,
         ge=0.0,
         description="尺寸公差，单位 mm",
     )
-    surface_roughness_ra: Optional[float] = Field(
+    surface_roughness_ra: float | None = Field(
         default=None,
         ge=0.0,
         description="表面粗糙度 Ra，单位 μm",

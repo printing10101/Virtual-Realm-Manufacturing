@@ -8,7 +8,7 @@ import logging
 import threading
 import time
 import traceback
-from typing import Any, Optional
+from typing import Any
 
 from app.dependencies import get_budget_manager
 from app.dependencies import get_cost_tracker
@@ -310,7 +310,7 @@ class _EngineHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[ExecutionEngine] = None
+        self._instance: ExecutionEngine | None = None
 
     def get(self) -> ExecutionEngine:
         # 快速路径：已存在则直接返回，避免持锁开销

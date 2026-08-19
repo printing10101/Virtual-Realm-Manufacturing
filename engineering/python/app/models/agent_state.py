@@ -14,7 +14,8 @@ import time
 import uuid
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
+from collections.abc import Callable
 
 
 class AgentStatus(str, Enum):
@@ -41,18 +42,18 @@ class Checkpoint:
     checkpoint_id: str = field(default_factory=lambda: f"ckpt_{uuid.uuid4().hex[:12]}")
     epoch: int = 0
     step: int = 0
-    best_metric: Optional[float] = None
+    best_metric: float | None = None
     best_metric_name: str = "loss"
     state_dict_path: str = ""
     optimizer_state_path: str = ""
-    rng_state: Optional[Dict[str, Any]] = None
+    rng_state: dict[str, Any] | None = None
     created_at: float = field(default_factory=time.time)
     checkpoint_type: CheckpointType = CheckpointType.EPOCH
-    metrics: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     file_size_bytes: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "checkpoint_id": self.checkpoint_id,
             "epoch": self.epoch,
@@ -70,7 +71,7 @@ class Checkpoint:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Checkpoint":
+    def from_dict(cls, data: dict[str, Any]) -> "Checkpoint":
         return cls(
             checkpoint_id=data.get("checkpoint_id", f"ckpt_{uuid.uuid4().hex[:12]}"),
             epoch=data.get("epoch", 0),
@@ -92,17 +93,17 @@ class Checkpoint:
 class SessionContext:
     """Agent session context - what the agent is currently working on"""
 
-    task_id: Optional[str] = None
-    task_type: Optional[str] = None
+    task_id: str | None = None
+    task_type: str | None = None
     task_description: str = ""
-    goal_chain: List[Dict[str, Any]] = field(default_factory=list)
+    goal_chain: list[dict[str, Any]] = field(default_factory=list)
     current_stage: str = ""
-    conversation_history: List[Dict[str, Any]] = field(default_factory=list)
-    injected_skills: List[str] = field(default_factory=list)
-    active_context_keys: Set[str] = field(default_factory=set)
-    custom_context: Dict[str, Any] = field(default_factory=dict)
+    conversation_history: list[dict[str, Any]] = field(default_factory=list)
+    injected_skills: list[str] = field(default_factory=list)
+    active_context_keys: set[str] = field(default_factory=set)
+    custom_context: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "task_id": self.task_id,
             "task_type": self.task_type,
@@ -116,7 +117,7 @@ class SessionContext:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SessionContext":
+    def from_dict(cls, data: dict[str, Any]) -> "SessionContext":
         return cls(
             task_id=data.get("task_id"),
             task_type=data.get("task_type"),
@@ -129,7 +130,7 @@ class SessionContext:
             custom_context=data.get("custom_context", {}),
         )
 
-    def increment_update(self, updates: Dict[str, Any]) -> "SessionContext":
+    def increment_update(self, updates: dict[str, Any]) -> "SessionContext":
         """Apply incremental context update without replacing full context"""
         if "task_description" in updates:
             self.task_description = updates["task_description"]
@@ -157,15 +158,15 @@ class MemoryEntry:
     created_at: float = field(default_factory=time.time)
     last_accessed: float = field(default_factory=time.time)
     access_count: int = 0
-    tags: List[str] = field(default_factory=list)
-    embedding_ref: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
+    embedding_ref: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryEntry":
+    def from_dict(cls, data: dict[str, Any]) -> "MemoryEntry":
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
@@ -177,11 +178,11 @@ class StateVersion:
     schema_version: str = "1.0.0"
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
-    migration_history: List[Dict[str, Any]] = field(default_factory=list)
-    parent_version_id: Optional[str] = None
+    migration_history: list[dict[str, Any]] = field(default_factory=list)
+    parent_version_id: str | None = None
     change_description: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "state_version": self.state_version,
             "schema_version": self.schema_version,
@@ -193,7 +194,7 @@ class StateVersion:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "StateVersion":
+    def from_dict(cls, data: dict[str, Any]) -> "StateVersion":
         return cls(
             state_version=data.get("state_version", 1),
             schema_version=data.get("schema_version", "1.0.0"),
@@ -210,19 +211,19 @@ class AgentState:
     """Persistent agent state with full lifecycle tracking"""
 
     agent_id: str
-    current_task_id: Optional[str] = None
+    current_task_id: str | None = None
     session_context: SessionContext = field(default_factory=SessionContext)
-    memory: List[MemoryEntry] = field(default_factory=list)
-    checkpoint: Optional[Checkpoint] = None
+    memory: list[MemoryEntry] = field(default_factory=list)
+    checkpoint: Checkpoint | None = None
     last_heartbeat: float = field(default_factory=time.time)
     status: AgentStatus = AgentStatus.IDLE
-    checkpoints_history: List[Checkpoint] = field(default_factory=list)
+    checkpoints_history: list[Checkpoint] = field(default_factory=list)
     state_version: StateVersion = field(default_factory=StateVersion)
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "current_task_id": self.current_task_id,
@@ -239,7 +240,7 @@ class AgentState:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AgentState":
+    def from_dict(cls, data: dict[str, Any]) -> "AgentState":
         state = cls(
             agent_id=data["agent_id"],
             current_task_id=data.get("current_task_id"),
@@ -276,11 +277,11 @@ class AgentState:
         self.checkpoints_history.append(checkpoint)
         self.updated_at = time.time()
 
-    def add_context_increment(self, updates: Dict[str, Any]):
+    def add_context_increment(self, updates: dict[str, Any]):
         self.session_context.increment_update(updates)
         self.updated_at = time.time()
 
-    def clone(self, new_agent_id: Optional[str] = None) -> "AgentState":
+    def clone(self, new_agent_id: str | None = None) -> "AgentState":
         """Create a complete clone for A/B testing scenarios"""
         data = self.to_dict()
         if new_agent_id:
@@ -296,7 +297,7 @@ class AgentState:
         )
         return clone
 
-    def get_checkpoints_for_rollback(self) -> List[Checkpoint]:
+    def get_checkpoints_for_rollback(self) -> list[Checkpoint]:
         return sorted(
             self.checkpoints_history,
             key=lambda c: c.created_at,
@@ -314,7 +315,7 @@ class AgentState:
 
 CURRENT_SCHEMA_VERSION = "1.0.0"
 
-STATE_MIGRATIONS: Dict[str, List[Callable[[Dict[str, Any]], Dict[str, Any]]]] = {}
+STATE_MIGRATIONS: dict[str, list[Callable[[dict[str, Any]], dict[str, Any]]]] = {}
 
 
 def register_migration(from_version: str, to_version: str):
@@ -329,7 +330,7 @@ def register_migration(from_version: str, to_version: str):
     return decorator
 
 
-def migrate_state(data: Dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION) -> Dict[str, Any]:
+def migrate_state(data: dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION) -> dict[str, Any]:
     """Apply registered migrations to bring state data to target version"""
     current = data.get("state_version", {}).get("schema_version", "1.0.0")
     while current != target_version:

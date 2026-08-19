@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.utils.utils import get_output_dir
 from app.utils.sqlite_pool import get_sqlite_manager
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class SessionManager:
     """会话状态管理器"""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         if db_path is None:
             db_path = str(get_output_dir("data") / "sessions.db")
 
@@ -79,7 +79,7 @@ class SessionManager:
         self,
         session_id: str,
         status: ExecutionStatus,
-        checkpoint_data: Optional[Dict[str, Any]] = None,
+        checkpoint_data: dict[str, Any] | None = None,
     ) -> None:
         """更新会话状态"""
         updates = {
@@ -102,7 +102,7 @@ class SessionManager:
         self._conn.execute(f"UPDATE execution_sessions SET {set_clause} WHERE session_id = ?", values)
         self._conn.commit()
 
-    def get_session(self, session_id: str) -> Optional[ExecutionSession]:
+    def get_session(self, session_id: str) -> ExecutionSession | None:
         """获取会话"""
         row = self._conn.execute("SELECT * FROM execution_sessions WHERE session_id = ?", (session_id,)).fetchone()
 
@@ -120,7 +120,7 @@ class SessionManager:
             max_retries=row["max_retries"],
         )
 
-    def get_sessions_by_task(self, task_id: str) -> List[ExecutionSession]:
+    def get_sessions_by_task(self, task_id: str) -> list[ExecutionSession]:
         """获取任务的所有会话"""
         rows = self._conn.execute(
             "SELECT * FROM execution_sessions WHERE task_id = ? ORDER BY started_at DESC",
@@ -144,7 +144,7 @@ class SessionManager:
 
         return sessions
 
-    def get_orphaned_sessions(self, timeout_seconds: float = 3600) -> List[ExecutionSession]:
+    def get_orphaned_sessions(self, timeout_seconds: float = 3600) -> list[ExecutionSession]:
         """
         获取孤立会话（超时未更新的运行中会话）
 

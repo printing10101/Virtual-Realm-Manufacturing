@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import List, Optional
+
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -57,7 +57,7 @@ class _TaskRecoveryMixin:
     async def requeue_orphan_tasks(
         self,
         *,
-        task_types: Optional[List[str]] = None,
+        task_types: list[str] | None = None,
         max_age_seconds: int = 3600,
     ) -> int:
         """将历史 RUNNING 任务重置为 QUEUED，便于重新调度。

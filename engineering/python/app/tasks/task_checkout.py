@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Callable, List, Optional
+
+from collections.abc import Callable
 
 from app.tasks.execution_lock import (
     ExecutionLockStore,
@@ -64,7 +65,7 @@ logger = logging.getLogger(__name__)
 
 
 class TaskCheckoutManager(_TaskCheckoutLocksMixin, _TaskCheckoutQueueMixin, _TaskCheckoutOpsMixin):
-    def __init__(self, lock_store: ExecutionLockStore, db_path: Optional[str] = None):
+    def __init__(self, lock_store: ExecutionLockStore, db_path: str | None = None):
         self._lock_store = lock_store
         if db_path is None:
             db_path = str(get_output_dir("data") / "task_checkout.db")
@@ -75,11 +76,11 @@ class TaskCheckoutManager(_TaskCheckoutLocksMixin, _TaskCheckoutQueueMixin, _Tas
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("task_checkout", db_path=self._db_path)
         self._conn = self._pool.get_connection()
-        self._budget_checker: Optional[Callable[[str, Optional[str]], bool]] = None
-        self._gpu_checker: Optional[Callable[[float], bool]] = None
+        self._budget_checker: Callable[[str, str | None], bool] | None = None
+        self._gpu_checker: Callable[[float], bool] | None = None
         self._ensure_tables()
 
-    def set_budget_checker(self, checker: Callable[[str, Optional[str]], bool]):
+    def set_budget_checker(self, checker: Callable[[str, str | None], bool]):
         self._budget_checker = checker
 
     def set_gpu_checker(self, checker: Callable[[float], bool]):
@@ -117,7 +118,7 @@ class TaskCheckoutManager(_TaskCheckoutLocksMixin, _TaskCheckoutQueueMixin, _Tas
         )
 
     @staticmethod
-    def _serialize_blockers(blockers: List[str]) -> str:
+    def _serialize_blockers(blockers: list[str]) -> str:
         import json
 
         return json.dumps(blockers, ensure_ascii=False)
@@ -147,7 +148,7 @@ class _CheckoutManagerHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[TaskCheckoutManager] = None
+        self._instance: TaskCheckoutManager | None = None
 
     def get(self) -> TaskCheckoutManager:
         # 快速路径：已存在则直接返回，避免持锁开销

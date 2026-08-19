@@ -6,7 +6,8 @@ import asyncio
 import logging
 import time
 import traceback
-from typing import Any, Callable, Dict, Optional
+from typing import Any
+from collections.abc import Callable
 
 from app.tasks._execution_models import ExecutionResult, ExecutionStatus
 
@@ -17,7 +18,7 @@ class TaskExecutor:
     """任务执行器 - 适配器模式"""
 
     def __init__(self):
-        self._executors: Dict[str, Callable] = {}
+        self._executors: dict[str, Callable] = {}
         self._register_default_executors()
 
     def _register_default_executors(self) -> None:
@@ -34,7 +35,7 @@ class TaskExecutor:
         self,
         task_type: str,
         workspace_context: Any,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
     ) -> ExecutionResult:
         """
         执行任务
@@ -86,7 +87,7 @@ class TaskExecutor:
                 error_traceback=traceback.format_exc(),
             )
 
-    def _execute_lnn_inference(self, workspace_context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_lnn_inference(self, workspace_context: Any, params: dict[str, Any]) -> dict[str, Any]:
         """执行LNN推理任务"""
         from app.ai.lnn.inference.predictor import LNNPredictor
         from app.dependencies import get_model_registry_service
@@ -120,7 +121,7 @@ class TaskExecutor:
             "inference_time": result.inference_time,
         }
 
-    def _execute_lnn_training(self, workspace_context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_lnn_training(self, workspace_context: Any, params: dict[str, Any]) -> dict[str, Any]:
         """执行 LNN 训练任务。
 
         接口修复说明：
@@ -204,7 +205,7 @@ class TaskExecutor:
             "metrics": trainer.get_training_summary(),
         }
 
-    def _execute_lnn_analysis(self, workspace_context: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_lnn_analysis(self, workspace_context: Any, params: dict[str, Any]) -> dict[str, Any]:
         from app.ai.lnn.inference.predictor import LNNPredictor
         from app.dependencies import get_model_registry_service
         import numpy as np

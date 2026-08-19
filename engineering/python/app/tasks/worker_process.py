@@ -22,7 +22,7 @@ import socketserver
 import sys
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,7 +37,7 @@ class _WorkerState:
     plugin_id: str = ""
     plugin_path: str = ""
     plugin_port: int = 0
-    plugin_instance: Optional[Any] = None
+    plugin_instance: Any | None = None
     started_at: float = 0.0
     running: bool = True
 

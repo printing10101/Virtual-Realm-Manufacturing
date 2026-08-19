@@ -29,7 +29,8 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
+from collections.abc import Callable
 
 from app.config.limits import DEFAULT_THREAD_JOIN_TIMEOUT_SEC
 from app.integrations._common import parse_tds_url
@@ -51,7 +52,7 @@ _NETWORK_EXCEPTIONS = (ConnectionError, OSError, TimeoutError)
 # Table schema for TDengine.  Kept here (rather than in the TDengine
 # client) because the column set is a property of the *OPC UA* contract,
 # not of the storage backend.
-DEFAULT_TABLE_DDL: Tuple[str, ...] = (
+DEFAULT_TABLE_DDL: tuple[str, ...] = (
     "(ts TIMESTAMP, ",
     "spindle_speed DOUBLE, ",
     "spindle_load DOUBLE, ",
@@ -85,18 +86,18 @@ class AdapterConfig:
     table: str = "opcua"  # TDengine super/sub-table name
 
     # Node configuration
-    node_ids: Optional[List[str]] = None  # OPC UA node IDs to subscribe
+    node_ids: list[str] | None = None  # OPC UA node IDs to subscribe
 
     # === 安全配置（S1 修复） ===
     # 安全策略：默认强制 Basic256Sha256（工业生产最低安全基线）。
     # 设为 "None" 显式降级为明文（仅开发/仿真环境，会记录 WARNING）。
     security_policy: str = "Basic256Sha256"
     # 客户端证书/私钥路径（PEM 格式，None 表示使用 asyncua 默认自签名）
-    cert_path: Optional[str] = None
-    key_path: Optional[str] = None
+    cert_path: str | None = None
+    key_path: str | None = None
     # 用户名/密码凭据（None 表示匿名；生产环境必须配置）
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
 
     def __post_init__(self) -> None:
         # Normalize the endpoint URL
@@ -152,15 +153,15 @@ class OPCUAAdapter:
 
     def __init__(
         self,
-        config: Optional[AdapterConfig] = None,
-        tdengine_client: Optional[Any] = None,
+        config: AdapterConfig | None = None,
+        tdengine_client: Any | None = None,
     ) -> None:
         self.config = config or AdapterConfig()
         # Same trick for the TDengine client – the dependency is
         # imported lazily so unit tests don't need a running TDengine.
         self._tdengine = tdengine_client
         # Internal state
-        self._buffer: List[Any] = []
+        self._buffer: list[Any] = []
         self._buffer_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._last_flush = time.monotonic()
@@ -175,7 +176,7 @@ class OPCUAAdapter:
     # Public API
     # ------------------------------------------------------------------
 
-    def connect(self) -> Dict[str, str]:
+    def connect(self) -> dict[str, str]:
         """Connect to the OPC UA server and create a subscription.
 
         Returns a dict with the server's identity information:
@@ -326,7 +327,7 @@ class OPCUAAdapter:
         future = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return future.result(timeout=self.config.timeout)
 
-    def _discover_cnc_nodes(self) -> List[str]:
+    def _discover_cnc_nodes(self) -> list[str]:
         """Auto-discover common CNC data nodes from the OPC UA server.
 
         Looks for nodes with browse names matching common CNC data items:
@@ -418,8 +419,8 @@ class OPCUAAdapter:
 
     def run(
         self,
-        duration: Optional[float] = None,
-        on_sample: Optional[SampleCallback] = None,
+        duration: float | None = None,
+        on_sample: SampleCallback | None = None,
     ) -> int:
         """Subscribe to data until ``duration`` seconds elapse or :meth:`stop`.
 
@@ -639,7 +640,7 @@ class OPCUAAdapter:
         if too_many or too_old:
             self.flush()
 
-    def _row_for_storage(self, sample: Any) -> List[Any]:
+    def _row_for_storage(self, sample: Any) -> list[Any]:
         """Convert a :class:`Sample` into a row matching ``DEFAULT_TABLE_DDL``.
 
         Column order must stay in lockstep with the DDL constant
@@ -654,7 +655,7 @@ class OPCUAAdapter:
             sample.execution,
         ]
 
-    def _persist_rows(self, rows: List[List[Any]]) -> int:
+    def _persist_rows(self, rows: list[list[Any]]) -> int:
         """Persist a batch of rows through the TDengine client."""
         if not rows:
             return 0
@@ -696,7 +697,7 @@ class OPCUAAdapter:
                 logger.error("Failed to persist rows in sync context: %s", exc, exc_info=True)
                 return 0
 
-    async def _insert_async(self, client: Any, insert: Callable, rows: List[Any]) -> int:
+    async def _insert_async(self, client: Any, insert: Callable, rows: list[Any]) -> int:
         result = await insert(
             table_name=self.config.table,
             rows=rows,
@@ -766,7 +767,7 @@ class SubHandler:
 # ---------------------------------------------------------------------------
 
 
-def build_table_ddl() -> Tuple[str, ...]:
+def build_table_ddl() -> tuple[str, ...]:
     """Return the canonical TDengine DDL column list for the table."""
     return DEFAULT_TABLE_DDL
 

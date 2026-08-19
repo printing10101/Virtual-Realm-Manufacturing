@@ -12,7 +12,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.utils.utils import get_output_dir
 
@@ -48,13 +48,13 @@ class ExecutionResult:
     start_time: float
     end_time: float
     duration_ms: float
-    result_data: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
-    error_traceback: Optional[str] = None
-    resource_usage: Dict[str, Any] = field(default_factory=dict)
-    cost_events: List[Dict[str, Any]] = field(default_factory=list)
+    result_data: dict[str, Any] | None = None
+    error_message: str | None = None
+    error_traceback: str | None = None
+    resource_usage: dict[str, Any] = field(default_factory=dict)
+    cost_events: list[dict[str, Any]] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "task_id": self.task_id,
             "status": self.status.value,
@@ -76,13 +76,13 @@ class ExecutionSession:
     session_id: str
     task_id: str
     status: ExecutionStatus
-    checkpoint_data: Optional[Dict[str, Any]] = None
-    started_at: Optional[float] = None
-    last_updated: Optional[float] = None
+    checkpoint_data: dict[str, Any] | None = None
+    started_at: float | None = None
+    last_updated: float | None = None
     retry_count: int = 0
     max_retries: int = 3
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
             "task_id": self.task_id,
@@ -98,7 +98,7 @@ class ExecutionSession:
 class StructuredLogger:
     """结构化日志生成系统"""
 
-    def __init__(self, log_dir: Optional[str] = None):
+    def __init__(self, log_dir: str | None = None):
         """
         初始化结构化日志器
 
@@ -112,7 +112,7 @@ class StructuredLogger:
         os.makedirs(log_dir, exist_ok=True)
         logger.info("StructuredLogger initialized at %s", log_dir)
 
-    def log_execution_start(self, task_id: str, task_type: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def log_execution_start(self, task_id: str, task_type: str, metadata: dict[str, Any] | None = None) -> None:
         """记录执行开始"""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -129,7 +129,7 @@ class StructuredLogger:
         task_id: str,
         status: ExecutionStatus,
         duration_ms: float,
-        result_summary: Optional[str] = None,
+        result_summary: str | None = None,
     ) -> None:
         """记录执行结束"""
         entry = {
@@ -148,7 +148,7 @@ class StructuredLogger:
             duration_ms,
         )
 
-    def log_resource_usage(self, task_id: str, resource_usage: Dict[str, Any]) -> None:
+    def log_resource_usage(self, task_id: str, resource_usage: dict[str, Any]) -> None:
         """记录资源使用情况"""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -159,7 +159,7 @@ class StructuredLogger:
         self._write_log(task_id, entry)
         logger.debug("[RESOURCE_USAGE] task=%s %s", task_id, resource_usage)
 
-    def log_error(self, task_id: str, error: Exception, traceback_str: Optional[str] = None) -> None:
+    def log_error(self, task_id: str, error: Exception, traceback_str: str | None = None) -> None:
         """记录错误信息"""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -172,7 +172,7 @@ class StructuredLogger:
         self._write_log(task_id, entry)
         logger.error("[ERROR] task=%s type=%s msg=%s", task_id, type(error).__name__, error)
 
-    def log_cost_event(self, task_id: str, cost_event: Dict[str, Any]) -> None:
+    def log_cost_event(self, task_id: str, cost_event: dict[str, Any]) -> None:
         """记录成本事件"""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -182,7 +182,7 @@ class StructuredLogger:
         }
         self._write_log(task_id, entry)
 
-    def _write_log(self, task_id: str, entry: Dict[str, Any]) -> None:
+    def _write_log(self, task_id: str, entry: dict[str, Any]) -> None:
         """写入日志条目"""
         log_file = os.path.join(self.log_dir, f"{task_id}.jsonl")
 
@@ -192,7 +192,7 @@ class StructuredLogger:
         except OSError as e:
             logger.warning("Failed to write log entry: %s", e)
 
-    def get_task_logs(self, task_id: str) -> List[Dict[str, Any]]:
+    def get_task_logs(self, task_id: str) -> list[dict[str, Any]]:
         """获取任务日志"""
         log_file = os.path.join(self.log_dir, f"{task_id}.jsonl")
 

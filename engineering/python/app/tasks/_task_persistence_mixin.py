@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -73,7 +74,7 @@ class _TaskPersistenceMixin:
                     raise
         except (RuntimeError, OSError, SQLAlchemyError) as e:
             logger.error("Failed to persist task %s to DB: %s", record.job_id, e)
-    async def get_task(self, job_id: str) -> Optional[TaskRecord]:
+    async def get_task(self, job_id: str) -> TaskRecord | None:
         async with self._get_task_lock():
             if job_id in self._tasks:
                 return self._tasks[job_id]
@@ -100,9 +101,9 @@ class _TaskPersistenceMixin:
         return None
     async def count_tasks(
         self,
-        owner_id: Optional[str] = None,
-        task_type: Optional[TaskType] = None,
-        status: Optional[TaskStatus] = None,
+        owner_id: str | None = None,
+        task_type: TaskType | None = None,
+        status: TaskStatus | None = None,
     ) -> int:
         """统计符合条件的任务总数（用于分页）"""
         from app.tasks.task_system import get_sessionmaker  # 惰性导入：使测试 monkeypatch 生效
@@ -143,12 +144,12 @@ class _TaskPersistenceMixin:
             return len(filtered)
     async def list_tasks(
         self,
-        owner_id: Optional[str] = None,
-        task_type: Optional[TaskType] = None,
-        status: Optional[TaskStatus] = None,
+        owner_id: str | None = None,
+        task_type: TaskType | None = None,
+        status: TaskStatus | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[TaskRecord]:
+    ) -> list[TaskRecord]:
         from app.tasks.task_system import get_sessionmaker  # 惰性导入：使测试 monkeypatch 生效
 
         sessionmaker = get_sessionmaker()
@@ -196,13 +197,13 @@ class _TaskPersistenceMixin:
             return self._filter_tasks(tasks, owner_id, task_type, status, limit, offset)
     def _filter_tasks(
         self,
-        tasks: List[TaskRecord],
-        owner_id: Optional[str],
-        task_type: Optional[TaskType],
-        status: Optional[TaskStatus],
+        tasks: list[TaskRecord],
+        owner_id: str | None,
+        task_type: TaskType | None,
+        status: TaskStatus | None,
         limit: int,
         offset: int,
-    ) -> List[TaskRecord]:
+    ) -> list[TaskRecord]:
         if owner_id:
             tasks = [t for t in tasks if t.owner_id == owner_id]
         if task_type:

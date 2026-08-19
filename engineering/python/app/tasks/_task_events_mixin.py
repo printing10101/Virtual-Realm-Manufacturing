@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Dict
+from typing import Any
 
 
 
@@ -36,7 +36,7 @@ class _TaskEventsMixin:
                     remove_err,
                     exc_info=True,
                 )
-    async def _broadcast_event(self, job_id: str, event_type: str, data: Dict[str, Any]):
+    async def _broadcast_event(self, job_id: str, event_type: str, data: dict[str, Any]):
         event = f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
         if job_id in self._subscribers:

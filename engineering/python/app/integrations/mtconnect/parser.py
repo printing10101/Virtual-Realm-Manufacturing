@@ -49,7 +49,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from xml.etree import ElementTree as ET
 
@@ -73,18 +73,18 @@ class Sample:
     only the four primary items.
     """
 
-    spindle_speed: Optional[float] = None
-    spindle_load: Optional[float] = None
-    feedrate: Optional[float] = None
-    execution: Optional[str] = None
+    spindle_speed: float | None = None
+    spindle_load: float | None = None
+    feedrate: float | None = None
+    execution: str | None = None
 
     # Free-form extras so future requirements don't require a data model
     # change.  The adapter does not persist ``extras`` by default.
-    extras: Dict[str, Any] = field(default_factory=dict)
+    extras: dict[str, Any] = field(default_factory=dict)
 
     # The wall-clock time at which the sample was received from the
     # agent.  Stored alongside the values for time-series correlation.
-    observed_at: Optional[datetime] = None
+    observed_at: datetime | None = None
 
     def is_empty(self) -> bool:
         """Return ``True`` when every canonical data item is missing."""
@@ -93,7 +93,7 @@ class Sample:
             for field_name in ("spindle_speed", "spindle_load", "feedrate", "execution")
         )
 
-    def to_storage_row(self) -> Dict[str, Any]:
+    def to_storage_row(self) -> dict[str, Any]:
         """Return a dict ready to be fed to :class:`TDengineClient.insert_rows`.
 
         The timestamp is converted to an ISO-8601 string; ``None`` values
@@ -127,7 +127,7 @@ def _local_tag(tag: str) -> str:
     return tag
 
 
-def _coerce_float(value: Optional[str]) -> Optional[float]:
+def _coerce_float(value: str | None) -> float | None:
     """Convert an MTConnect numeric text node to ``float`` when possible.
 
     Returns ``None`` for empty strings, ``UNAVAILABLE`` (MTConnect's
@@ -146,7 +146,7 @@ def _coerce_float(value: Optional[str]) -> Optional[float]:
         return None
 
 
-def _find_first_numeric(root: ET.Element, tag: str) -> Optional[float]:
+def _find_first_numeric(root: ET.Element, tag: str) -> float | None:
     """Return the first numeric value found for a given element ``tag``.
 
     The MTConnect schema allows the same data item to be reported under
@@ -163,7 +163,7 @@ def _find_first_numeric(root: ET.Element, tag: str) -> Optional[float]:
     return None
 
 
-def _find_first_text(root: ET.Element, tag: str) -> Optional[str]:
+def _find_first_text(root: ET.Element, tag: str) -> str | None:
     """Return the first non-empty text content for a given element ``tag``."""
     for elem in root.iter():
         if _local_tag(elem.tag) != tag:

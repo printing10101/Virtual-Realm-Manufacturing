@@ -21,7 +21,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
@@ -52,12 +52,12 @@ class WorkOrderData:
     product_code: str
     quantity: int
     priority: int = 5
-    planned_start: Optional[datetime] = None
-    planned_end: Optional[datetime] = None
-    customer_order_no: Optional[str] = None
-    remarks: Optional[str] = None
+    planned_start: datetime | None = None
+    planned_end: datetime | None = None
+    customer_order_no: str | None = None
+    remarks: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典格式，用于 JSON 序列化。"""
         data = {
             "work_order_no": self.work_order_no,
@@ -90,11 +90,11 @@ class SyncResult:
 
     success: bool
     message: str
-    data_id: Optional[str] = None
-    error_code: Optional[str] = None
+    data_id: str | None = None
+    error_code: str | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典格式，用于 JSON 序列化。"""
         return {
             "success": self.success,
@@ -126,10 +126,10 @@ class MaterialInfo:
     unit: str
     stock_quantity: float
     warehouse_location: str
-    batch_no: Optional[str] = None
-    expiry_date: Optional[datetime] = None
+    batch_no: str | None = None
+    expiry_date: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典格式，用于 JSON 序列化。"""
         data = {
             "material_code": self.material_code,
@@ -173,10 +173,10 @@ class QualityData:
     sample_size: int
     qualified_qty: int
     defective_qty: int = 0
-    defect_code: Optional[str] = None
-    remarks: Optional[str] = None
+    defect_code: str | None = None
+    remarks: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典格式，用于 JSON 序列化。"""
         data = {
             "batch_no": self.batch_no,
@@ -244,7 +244,7 @@ class MESClient:
         self.timeout = timeout
 
         # 配置 httpx 客户端
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
         self._headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -482,7 +482,7 @@ class MESClient:
                 error_code="UNKNOWN_ERROR",
             )
 
-    async def query_material(self, material_code: str) -> Optional[MaterialInfo]:
+    async def query_material(self, material_code: str) -> MaterialInfo | None:
         """从 MES 系统查询物料信息。
 
         Args:

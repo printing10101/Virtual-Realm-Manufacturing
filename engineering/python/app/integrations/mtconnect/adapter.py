@@ -30,7 +30,8 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
+from collections.abc import Callable
 from xml.etree import ElementTree as ET
 
 import requests
@@ -64,7 +65,7 @@ def _local_attr_name(name: str) -> str:
 # Table schema for TDengine.  Kept here (rather than in the TDengine
 # client) because the column set is a property of the *MTConnect*
 # contract, not of the storage backend.
-DEFAULT_TABLE_DDL: Tuple[str, ...] = (
+DEFAULT_TABLE_DDL: tuple[str, ...] = (
     "(ts TIMESTAMP, ",
     "spindle_speed DOUBLE, ",
     "spindle_load DOUBLE, ",
@@ -136,9 +137,9 @@ class MTConnectAdapter:
 
     def __init__(
         self,
-        config: Optional[AdapterConfig] = None,
-        session: Optional[Session] = None,
-        tdengine_client: Optional[Any] = None,
+        config: AdapterConfig | None = None,
+        session: Session | None = None,
+        tdengine_client: Any | None = None,
     ) -> None:
         self.config = config or AdapterConfig()
         # Allow tests to inject a mocked ``requests.Session``; in
@@ -148,7 +149,7 @@ class MTConnectAdapter:
         # imported lazily so unit tests don't need a running TDengine.
         self._tdengine = tdengine_client
         # Internal state
-        self._buffer: List[Sample] = []
+        self._buffer: list[Sample] = []
         self._buffer_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._last_flush = time.monotonic()
@@ -173,7 +174,7 @@ class MTConnectAdapter:
     # Public API
     # ------------------------------------------------------------------
 
-    def probe(self) -> Dict[str, str]:
+    def probe(self) -> dict[str, str]:
         """Verify the agent responds to ``/probe``.
 
         Returns a dict with the agent's identity information:
@@ -208,7 +209,7 @@ class MTConnectAdapter:
         # the lookup below works for both the strict v1.5 layout and
         # for any conformant agent that places the identity header on
         # the root element.
-        namespace_attrs: Dict[str, str] = {}
+        namespace_attrs: dict[str, str] = {}
         for attr_name, attr_value in root.attrib.items():
             namespace_attrs[_local_attr_name(attr_name)] = attr_value
         for header in root.iter():
@@ -225,7 +226,7 @@ class MTConnectAdapter:
             "version": "version",
             "mtconnect_version": "mtconnectVersion",
         }
-        result: Dict[str, str] = {}
+        result: dict[str, str] = {}
         for out_key, attr_name in attrs.items():
             value = namespace_attrs.get(attr_name)
             if value is not None:
@@ -251,8 +252,8 @@ class MTConnectAdapter:
 
     def run(
         self,
-        duration: Optional[float] = None,
-        on_sample: Optional[SampleCallback] = None,
+        duration: float | None = None,
+        on_sample: SampleCallback | None = None,
     ) -> int:
         """Poll the agent until ``duration`` seconds elapse or :meth:`stop`.
 
@@ -368,14 +369,14 @@ class MTConnectAdapter:
         )
         return session
 
-    def _fetch_with_retry(self) -> Optional[Sample]:
+    def _fetch_with_retry(self) -> Sample | None:
         """Fetch + parse a single sample, with exponential back-off.
 
         Returns ``None`` if every retry attempt failed; the caller
         should sleep one full interval and try again later.
         """
         backoff = self.config.initial_backoff
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(1, self.config.max_retries + 1):
             try:
@@ -431,7 +432,7 @@ class MTConnectAdapter:
         if too_many or too_old:
             self.flush()
 
-    def _row_for_storage(self, sample: Sample) -> List[Any]:
+    def _row_for_storage(self, sample: Sample) -> list[Any]:
         """Convert a :class:`Sample` into a row matching ``DEFAULT_TABLE_DDL``.
 
         Column order must stay in lockstep with the DDL constant
@@ -446,7 +447,7 @@ class MTConnectAdapter:
             sample.execution,
         ]
 
-    def _persist_rows(self, rows: List[List[Any]]) -> int:
+    def _persist_rows(self, rows: list[list[Any]]) -> int:
         """Persist a batch of rows through the TDengine client.
 
         The TDengine client API exposed by M0.2 is async; we run it
@@ -494,7 +495,7 @@ class MTConnectAdapter:
                 logger.error("Failed to persist rows in sync context: %s", exc, exc_info=True)
                 return 0
 
-    async def _insert_async(self, client: Any, insert: Callable, rows: List[Any]) -> int:
+    async def _insert_async(self, client: Any, insert: Callable, rows: list[Any]) -> int:
         result = await insert(
             table_name=self.config.table,
             rows=rows,
@@ -511,7 +512,7 @@ class MTConnectAdapter:
 # ---------------------------------------------------------------------------
 
 
-def build_table_ddl() -> Tuple[str, ...]:
+def build_table_ddl() -> tuple[str, ...]:
     """Return the canonical TDengine DDL column list for the table."""
     return DEFAULT_TABLE_DDL
 

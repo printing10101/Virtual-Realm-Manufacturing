@@ -17,7 +17,8 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Optional
+
+from collections.abc import Callable
 
 # pyserial 是可选依赖，只在需要串口时导入
 try:
@@ -93,7 +94,7 @@ class DNCResult:
     success: bool
     bytes_sent: int
     duration_seconds: float
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class DNCTransfer:
@@ -113,7 +114,7 @@ class DNCTransfer:
         result = transfer.send_file(Path("program.nc"), target)
     """
 
-    def __init__(self, config: Optional[DNCConfig] = None) -> None:
+    def __init__(self, config: DNCConfig | None = None) -> None:
         """初始化 DNC 传输模块
 
         Args:
@@ -121,8 +122,8 @@ class DNCTransfer:
         """
         self.config = config or DNCConfig()
         self._status = DNCStatus.IDLE
-        self._socket: Optional[socket.socket] = None
-        self._serial: Optional["serial.Serial"] = None
+        self._socket: socket.socket | None = None
+        self._serial: "serial.Serial" | None = None
 
     @property
     def status(self) -> DNCStatus:
@@ -133,7 +134,7 @@ class DNCTransfer:
         self,
         gcode: str,
         target: DNCTarget,
-        on_progress: Optional[Callable[[int, int, float], None]] = None,
+        on_progress: Callable[[int, int, float], None] | None = None,
     ) -> DNCResult:
         """发送 G-code 字符串到目标机床
 
@@ -325,8 +326,8 @@ class DNCTransfer:
     def _send_tcp(
         self,
         data: bytes,
-        on_progress: Optional[Callable[[int, int, float], None]] = None,
-        total_bytes: Optional[int] = None,
+        on_progress: Callable[[int, int, float], None] | None = None,
+        total_bytes: int | None = None,
     ) -> int:
         """通过 TCP 发送数据
 
@@ -372,8 +373,8 @@ class DNCTransfer:
     def _send_serial(
         self,
         data: bytes,
-        on_progress: Optional[Callable[[int, int, float], None]] = None,
-        total_bytes: Optional[int] = None,
+        on_progress: Callable[[int, int, float], None] | None = None,
+        total_bytes: int | None = None,
     ) -> int:
         """通过串口发送数据
 

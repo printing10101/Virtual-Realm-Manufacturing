@@ -5,7 +5,7 @@ import os
 import json
 import threading
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 from pathlib import Path
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,7 @@ USER_STORE_FILE = os.environ.get("LNN_USER_STORE_FILE", ".lnn_users.json")
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_]+$")
     password: str = Field(..., min_length=8, max_length=128)
-    invite_code: Optional[str] = None
+    invite_code: str | None = None
 
 
 class UserLogin(BaseModel):
@@ -30,7 +30,7 @@ class UserResponse(BaseModel):
     username: str
     role: str = "user"
     created_at: str = ""
-    last_login: Optional[str] = None
+    last_login: str | None = None
 
 
 class UserRecord:
@@ -39,8 +39,8 @@ class UserRecord:
         username: str,
         password_hash: str,
         role: str = "user",
-        created_at: Optional[str] = None,
-        last_login: Optional[str] = None,
+        created_at: str | None = None,
+        last_login: str | None = None,
         is_active: bool = True,
         must_change_password: bool = False,
     ):
@@ -93,7 +93,7 @@ class UserRecord:
 
 
 class UserStore:
-    def __init__(self, file_path: Optional[str] = None):
+    def __init__(self, file_path: str | None = None):
         self._file_path = Path(file_path or USER_STORE_FILE)
         self._users: dict[str, UserRecord] = {}
         self._lock = threading.Lock()
@@ -140,7 +140,7 @@ class UserStore:
             self._save()
             return record
 
-    def get_user(self, username: str) -> Optional[UserRecord]:
+    def get_user(self, username: str) -> UserRecord | None:
         with self._lock:
             return self._users.get(username)
 
@@ -172,7 +172,7 @@ class _UserStoreHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[UserStore] = None
+        self._instance: UserStore | None = None
 
     def get(self) -> UserStore:
         # 快速路径：已存在则直接返回，避免持锁开销

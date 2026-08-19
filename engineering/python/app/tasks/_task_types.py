@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.database.models import TrainingTask
 from app.tasks.task_manager import TaskStatus, TaskType
@@ -32,17 +32,17 @@ class TaskRecord:
     task_type: TaskType
     status: TaskStatus
     progress: float = 0.0
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    params: Optional[Dict[str, Any]] = None
-    owner_id: Optional[str] = None
-    idempotency_key: Optional[str] = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    params: dict[str, Any] | None = None
+    owner_id: str | None = None
+    idempotency_key: str | None = None
     created_at: float = field(default_factory=time.time)
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
-    metrics: Optional[Dict[str, Any]] = None
+    started_at: float | None = None
+    completed_at: float | None = None
+    metrics: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["status"] = self.status.value
         d["task_type"] = self.task_type.value

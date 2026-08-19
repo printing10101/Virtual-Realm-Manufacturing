@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass, field
-from typing import Optional
+
 
 from app.contracts import ITaskRegistry, TaskHandler
 
@@ -133,7 +133,7 @@ class TaskRegistry(ITaskRegistry):
 
 
 # 全局单例
-_registry: Optional[TaskRegistry] = None
+_registry: TaskRegistry | None = None
 _registry_init_lock = threading.Lock()
 
 

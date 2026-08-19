@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import sqlite3
 from datetime import datetime, timedelta, timezone
-from typing import List, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.tasks._checkout_models import (
     CONFLICT_RETRY_DELAY_MINUTES, GPU_RETRY_DELAY_MINUTES, AgentMode, CheckoutFailureReason, CheckoutRequest, CheckoutResult, CheckoutStatus, TaskStatus,
@@ -270,7 +271,7 @@ class _TaskCheckoutLocksMixin:
                 message="锁不存在或已过期，无法强制释放",
                 failure_reason=CheckoutFailureReason.LOCK_EXISTS,
             )
-    def cleanup_expired_locks(self) -> List[dict]:
+    def cleanup_expired_locks(self) -> list[dict]:
         expired = self._lock_store.cleanup_expired_locks()
 
         for lock in expired:

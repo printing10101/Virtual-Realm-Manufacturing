@@ -25,7 +25,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List, Optional, cast
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -268,7 +268,7 @@ class _StubResponse:
             raise HTTPError(f"HTTP {self.status_code}")
 
 
-def _build_stub_session(responses: List[Any]) -> Session:
+def _build_stub_session(responses: list[Any]) -> Session:
     """Build a ``requests.Session`` whose ``get`` returns queued responses.
 
     The queue can hold either ``_StubResponse`` instances (success) or
@@ -277,7 +277,7 @@ def _build_stub_session(responses: List[Any]) -> Session:
     session = MagicMock(spec=Session)
     queue = list(responses)
 
-    def _get(url: str, timeout: Optional[float] = None) -> Any:
+    def _get(url: str, timeout: float | None = None) -> Any:
         if not queue:
             raise AssertionError("No more stub responses queued")
         item = queue.pop(0)
@@ -293,15 +293,15 @@ class _StubTDE:
     """In-memory stand-in for the M0.2 TDengine client."""
 
     def __init__(self) -> None:
-        self.inserted: List[List[Any]] = []
+        self.inserted: list[list[Any]] = []
         self.ensure_table_calls: int = 0
 
     async def insert_rows(
         self,
         *,
         table_name: str,
-        rows: List[List[Any]],
-        database: Optional[str] = None,
+        rows: list[list[Any]],
+        database: str | None = None,
     ) -> int:
         del database
         self.inserted.extend(rows)
@@ -314,8 +314,8 @@ class _StubTDE:
         self,
         *,
         table_name: str,
-        columns: List[str],
-        database: Optional[str] = None,
+        columns: list[str],
+        database: str | None = None,
     ) -> bool:
         del table_name, columns, database
         self.ensure_table_calls += 1
@@ -381,7 +381,7 @@ class TestAdapterRun:
             ),
             session=session,
         )
-        seen: List[Sample] = []
+        seen: list[Sample] = []
         ingested = adapter.run(duration=0.1, on_sample=seen.append)
         # At least three full polling cycles must have completed in
         # 100 ms with a 10 ms interval.  Exact equality is unsafe on

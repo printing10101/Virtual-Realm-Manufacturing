@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -38,18 +38,18 @@ class Sample:
     only the four primary items.
     """
 
-    spindle_speed: Optional[float] = None
-    spindle_load: Optional[float] = None
-    feedrate: Optional[float] = None
-    execution: Optional[str] = None
+    spindle_speed: float | None = None
+    spindle_load: float | None = None
+    feedrate: float | None = None
+    execution: str | None = None
 
     # Free-form extras so future requirements don't require a data model
     # change.  The adapter does not persist ``extras`` by default.
-    extras: Dict[str, Any] = field(default_factory=dict)
+    extras: dict[str, Any] = field(default_factory=dict)
 
     # The wall-clock time at which the sample was received from the
     # server.  Stored alongside the values for time-series correlation.
-    observed_at: Optional[datetime] = None
+    observed_at: datetime | None = None
 
     def is_empty(self) -> bool:
         """Return ``True`` when every canonical data item is missing."""
@@ -58,7 +58,7 @@ class Sample:
             for field_name in ("spindle_speed", "spindle_load", "feedrate", "execution")
         )
 
-    def to_storage_row(self) -> Dict[str, Any]:
+    def to_storage_row(self) -> dict[str, Any]:
         """Return a dict ready to be fed to :class:`TDengineClient.insert_rows`.
 
         The timestamp is converted to an ISO-8601 string; ``None`` values
@@ -79,7 +79,7 @@ class Sample:
 # ---------------------------------------------------------------------------
 
 
-def _coerce_float(value: Optional[Any]) -> Optional[float]:
+def _coerce_float(value: Any | None) -> float | None:
     """Convert an OPC UA numeric value to ``float`` when possible.
 
     Returns ``None`` for empty strings, ``None`` values and unparseable
@@ -102,7 +102,7 @@ def _coerce_float(value: Optional[Any]) -> Optional[float]:
         return None
 
 
-def _coerce_str(value: Optional[Any]) -> Optional[str]:
+def _coerce_str(value: Any | None) -> str | None:
     """Convert an OPC UA value to string when possible."""
     if value is None:
         return None
@@ -113,9 +113,9 @@ def _coerce_str(value: Optional[Any]) -> Optional[str]:
 
 
 def parse_opcua_data(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     *,
-    observed_at: Optional[datetime] = None,
+    observed_at: datetime | None = None,
 ) -> Sample:
     """Parse OPC UA data values into a :class:`Sample`.
 

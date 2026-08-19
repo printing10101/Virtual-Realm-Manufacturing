@@ -40,7 +40,8 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, AsyncIterator, Optional
+from typing import Any
+from collections.abc import AsyncIterator
 
 from app.contracts.task import (
     Artifact,
@@ -96,8 +97,8 @@ def _record_to_result(record: TaskRecord) -> TaskResult:
     """
     outputs: dict[str, Artifact] = {}
     metrics: dict[str, float] = {}
-    error: Optional[str] = record.error
-    error_code: Optional[str] = None
+    error: str | None = record.error
+    error_code: str | None = None
 
     if isinstance(record.result, dict):
         raw_outputs = record.result.get("outputs") or {}
@@ -133,7 +134,7 @@ def _record_to_result(record: TaskRecord) -> TaskResult:
     )
 
 
-def _parse_sse_event(raw: str) -> tuple[Optional[str], Optional[dict]]:
+def _parse_sse_event(raw: str) -> tuple[str | None, dict | None]:
     """解析 SSE 文本帧为 (event_type, data_dict)。
 
     AsyncTaskManager._broadcast_event 输出形如::
@@ -143,8 +144,8 @@ def _parse_sse_event(raw: str) -> tuple[Optional[str], Optional[dict]]:
 
     非法格式返回 (None, None)，由调用方跳过。
     """
-    event_type: Optional[str] = None
-    data: Optional[dict] = None
+    event_type: str | None = None
+    data: dict | None = None
     for line in raw.splitlines():
         if not line:
             continue
@@ -165,7 +166,7 @@ def _parse_sse_event(raw: str) -> tuple[Optional[str], Optional[dict]]:
 
 # 内部 SSE event_type → (契约 TaskStatus, progress_hint)
 # progress_hint 为 None 表示保留上一进度（不更新）
-_EVENT_TO_STATUS: dict[str, tuple[ContractTaskStatus, Optional[float]]] = {
+_EVENT_TO_STATUS: dict[str, tuple[ContractTaskStatus, float | None]] = {
     "queued": (ContractTaskStatus.QUEUED, 0.0),
     "started": (ContractTaskStatus.RUNNING, 0.0),
     "progress": (ContractTaskStatus.RUNNING, None),  # percent 由 data 提供
@@ -189,8 +190,8 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
 
     def __init__(
         self,
-        manager: Optional[AsyncTaskManager] = None,
-        registry: Optional[Any] = None,
+        manager: AsyncTaskManager | None = None,
+        registry: Any | None = None,
     ) -> None:
         # 显式注入仅用于测试；生产环境通过单例获取
         self._manager: AsyncTaskManager = manager or AsyncTaskManager()
@@ -208,8 +209,8 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
         task_type: str,
         params: dict[str, Any],
         *,
-        owner_id: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
+        owner_id: str | None = None,
+        idempotency_key: str | None = None,
         priority: TaskPriority = TaskPriority.NORMAL,
         timeout_seconds: int = 3600,
     ) -> str:
@@ -401,10 +402,10 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
 # 单例访问
 # ---------------------------------------------------------------------------
 
-_adapter: Optional[AsyncTaskManagerAdapter] = None
+_adapter: AsyncTaskManagerAdapter | None = None
 # [H2] asyncio.Lock 懒初始化：模块级创建会绑定到导入时的事件循环，
 # 在多事件循环场景下抛 RuntimeError "bound to a different event loop"。
-_adapter_lock: Optional[asyncio.Lock] = None
+_adapter_lock: asyncio.Lock | None = None
 
 # [H8] 调度任务引用集合：防止 create_task 弱引用被 GC 回收
 _pending_schedule_tasks: set = set()

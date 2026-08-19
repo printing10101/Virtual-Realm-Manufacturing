@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Union
+from typing import Union
 
 from pydantic import BaseModel, Field
 
@@ -12,7 +12,7 @@ _ScalarValue = Union[str, int, float, bool, None]
 class KnowledgeAddRequest(BaseModel):
     document: str = Field(..., description="知识文档内容")
     # [P0-17] 限制元数据键值数量与值类型，防止注入任意结构
-    metadata: Optional[Dict[str, _ScalarValue]] = Field(
+    metadata: dict[str, _ScalarValue] | None = Field(
         default=None,
         max_length=50,
         description="元数据键值对，最多50项，值仅支持标量",
@@ -36,7 +36,7 @@ class ProcessPlanRequest(BaseModel):
 class CadQueryRequest(BaseModel):
     material: str = Field(default="", max_length=64, description="材料类型")
     # [P0-17] 限制尺寸参数键值数量与值类型，下游按 float 读取
-    dimensions: Optional[Dict[str, Union[float, int]]] = Field(
+    dimensions: dict[str, Union[float, int]] | None = Field(
         default=None,
         max_length=20,
         description="尺寸参数键值对，最多20项，值为数值",
@@ -49,7 +49,7 @@ class CadQueryRequest(BaseModel):
 class CreateTaskRequest(BaseModel):
     task_type: TaskType = Field(..., description="任务类型")
     # [P0-17] 限制任务参数键值数量与值类型
-    params: Optional[Dict[str, _ScalarValue]] = Field(
+    params: dict[str, _ScalarValue] | None = Field(
         default=None,
         max_length=50,
         description="任务参数键值对，最多50项，值仅支持标量",
@@ -214,7 +214,7 @@ class LNNModelSizeResponse(BaseModel):
 class AlternativePlan(BaseModel):
     plan_id: str = Field(..., description="备选方案ID")
     # [P0-17] 限制方案参数键值数量与值类型
-    parameters: Dict[str, _ScalarValue] = Field(
+    parameters: dict[str, _ScalarValue] = Field(
         ...,
         max_length=30,
         description="方案参数配置，最多30项，值仅支持标量",
@@ -246,7 +246,7 @@ class TrainingPlanSummary(BaseModel):
     estimated_gpu_memory_mb: float | None = Field(default=None, description="预估GPU显存占用（MB）")
     dataset_samples: int = Field(..., description="数据集样本数")
     # [P0-17] 限制训练集/验证集划分比例的键值数量与值类型
-    train_val_split: Dict[str, Union[float, int]] = Field(
+    train_val_split: dict[str, Union[float, int]] = Field(
         ...,
         max_length=10,
         description="训练集/验证集划分比例，值为数值",
@@ -379,7 +379,7 @@ class AgentTrainRequest(BaseModel):
 class AgentExecuteRequest(BaseModel):
     machine_id: str = Field(..., description="机床ID", min_length=1)
     # [P0-17] 限制工艺参数键值数量与值类型
-    parameters: Dict[str, _ScalarValue] = Field(
+    parameters: dict[str, _ScalarValue] = Field(
         ...,
         max_length=50,
         description="工艺参数键值对，最多50项，值仅支持标量",
@@ -392,7 +392,7 @@ class AgentExecuteRequest(BaseModel):
         description="班长双因子确认（实模式必填，Paper-Only 模式可忽略）",
     )
     # [P0-17] 限制机床安全状态字典键值数量
-    machine_safety_status: Optional[Dict[str, bool]] = Field(
+    machine_safety_status: dict[str, bool] | None = Field(
         default=None,
         max_length=20,
         description=(
@@ -418,7 +418,7 @@ class AgentPipelineRequest(BaseModel):
     )
     # [P0-17] 限制管线输入数据键值数量与值类型，防止注入任意嵌套结构
     # 不同管线类型的输入结构不同，保留 dict 灵活性但约束规模与值类型
-    input_data: Dict[str, _ScalarValue] = Field(
+    input_data: dict[str, _ScalarValue] = Field(
         ...,
         max_length=50,
         description="管线输入数据，最多50项键值对，值仅支持标量",

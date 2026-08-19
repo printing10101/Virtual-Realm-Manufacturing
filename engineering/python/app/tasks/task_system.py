@@ -11,7 +11,8 @@ import time
 import uuid
 from datetime import datetime, timezone
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 
 from sqlalchemy import select
 
@@ -81,18 +82,18 @@ class AsyncTaskManager(_TaskExecutionMixin, _TaskPersistenceMixin, _TaskRecovery
             return
         self._initialized = True
 
-        self._tasks: Dict[str, TaskRecord] = {}
-        self._idempotency_map: Dict[str, str] = {}
-        self._cancel_events: Dict[str, asyncio.Event] = {}
+        self._tasks: dict[str, TaskRecord] = {}
+        self._idempotency_map: dict[str, str] = {}
+        self._cancel_events: dict[str, asyncio.Event] = {}
         # [A-H15] 懒初始化 asyncio.Lock/Semaphore，避免在 __init__（模块导入时）
         # 绑定到错误的事件循环。所有使用处都在 async 上下文中，第一次调用时
         # get_running_loop() 才会真正绑定。
-        self._task_lock: Optional[asyncio.Lock] = None
-        self._subscribers: Dict[str, List[asyncio.Queue]] = {}
-        self._cancel_hooks: Dict[str, Callable] = {}
+        self._task_lock: asyncio.Lock | None = None
+        self._subscribers: dict[str, list[asyncio.Queue]] = {}
+        self._cancel_hooks: dict[str, Callable] = {}
 
         self._max_concurrent = 3
-        self._semaphore: Optional[asyncio.Semaphore] = None
+        self._semaphore: asyncio.Semaphore | None = None
         self._started = False
         # P2-2 修复：shutdown 标志位，防止 shutdown 后再创建新任务
         self._shutdown = False
@@ -167,9 +168,9 @@ class AsyncTaskManager(_TaskExecutionMixin, _TaskPersistenceMixin, _TaskRecovery
     async def create_task(
         self,
         task_type: TaskType,
-        params: Dict[str, Any],
-        owner_id: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
+        params: dict[str, Any],
+        owner_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> TaskRecord:
         # P2-2 修复：shutdown 后拒绝创建新任务，避免在关闭流程中产生
         # 无法被调度执行的新任务（semaphore 已可能失效、事件循环即将关闭）

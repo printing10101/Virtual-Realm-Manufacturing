@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -93,7 +93,7 @@ class MachiningRecordBase(BaseModel):
         le=50000.0,
         description="进给速度，单位 mm/min，物理范围约束",
     )
-    tdengine_series_id: Optional[str] = Field(
+    tdengine_series_id: str | None = Field(
         default=None,
         max_length=128,
         description="TDengine 时序数据引用 ID（spindle_actual / feed_actual / "
@@ -108,7 +108,7 @@ class MachiningRecordBase(BaseModel):
 class MachiningRecordCreate(MachiningRecordBase):
     """创建 MachiningRecord 时的入参模型。"""
 
-    record_id: Optional[str] = Field(
+    record_id: str | None = Field(
         default=None,
         max_length=64,
         description="可选的记录 ID；为空时由仓储层自动生成 UUID",
@@ -120,24 +120,24 @@ class MachiningRecordUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    spindle_speed: Optional[float] = Field(
+    spindle_speed: float | None = Field(
         default=None,
         ge=0.0,
         le=200000.0,
         description="主轴转速，单位 RPM",
     )
-    feed_rate: Optional[float] = Field(
+    feed_rate: float | None = Field(
         default=None,
         ge=0.0,
         le=50000.0,
         description="进给速度，单位 mm/min",
     )
-    tdengine_series_id: Optional[str] = Field(
+    tdengine_series_id: str | None = Field(
         default=None,
         max_length=128,
         description="TDengine 时序数据引用 ID",
     )
-    process_params: Optional[dict[str, Any]] = Field(
+    process_params: dict[str, Any] | None = Field(
         default=None,
         description="附加工艺参数；提供时整体替换",
     )
@@ -153,11 +153,11 @@ class MachiningRecordRead(MachiningRecordBase):
         max_length=64,
         description="记录主键 ID",
     )
-    created_at: Optional[datetime] = Field(
+    created_at: datetime | None = Field(
         default=None,
         description="记录入库时间（由数据库生成）",
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None,
         description="记录最后更新时间（由数据库自动维护）",
     )

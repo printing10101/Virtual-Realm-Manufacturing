@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 from app.tasks.execution_lock import DEFAULT_LOCK_TIMEOUT_HOURS, ExecutionLock
@@ -67,12 +67,12 @@ class CheckoutResult:
     task_id: str
     agent_id: str
     message: str = ""
-    failure_reason: Optional[CheckoutFailureReason] = None
+    failure_reason: CheckoutFailureReason | None = None
     retry_recommended: bool = False
     retry_delay_minutes: int = 0
-    lock: Optional[ExecutionLock] = None
-    checked_out_at: Optional[str] = None
-    expires_at: Optional[str] = None
+    lock: ExecutionLock | None = None
+    checked_out_at: str | None = None
+    expires_at: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -96,8 +96,8 @@ class CheckoutQueueEntry:
     priority: CheckoutPriority
     created_at: float
     retry_count: int = 0
-    last_failure: Optional[CheckoutFailureReason] = None
-    next_retry_at: Optional[float] = None
+    last_failure: CheckoutFailureReason | None = None
+    next_retry_at: float | None = None
 
 
 @dataclass
@@ -107,17 +107,17 @@ class TaskRecord:
     description: str = ""
     task_type: str = "execution"
     status: str = "pending"
-    assigned_to: Optional[str] = None
-    parent_goal_id: Optional[str] = None
-    project_id: Optional[str] = None
+    assigned_to: str | None = None
+    parent_goal_id: str | None = None
+    project_id: str | None = None
     required_gpu_memory: float = 0.0
-    blockers: List[str] = field(default_factory=list)
+    blockers: list[str] = field(default_factory=list)
     priority: int = 3
-    checked_out_at: Optional[str] = None
-    checkout_expires_at: Optional[str] = None
+    checked_out_at: str | None = None
+    checkout_expires_at: str | None = None
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    completed_at: Optional[str] = None
-    failure_history: List[Dict[str, Any]] = field(default_factory=list)
+    completed_at: str | None = None
+    failure_history: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {

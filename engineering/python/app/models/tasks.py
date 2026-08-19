@@ -10,7 +10,7 @@ Extends the existing task model with:
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.models.goals import GoalRef
 
@@ -44,14 +44,14 @@ class EnhancedTask:
     description: str
     task_type: EnhancedTaskType
     status: EnhancedTaskStatus = EnhancedTaskStatus.PENDING
-    goal_chain: List[GoalRef] = field(default_factory=list)
-    blockers: List[str] = field(default_factory=list)
-    params: Optional[Dict[str, Any]] = None
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    created_at: Optional[float] = None
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
+    goal_chain: list[GoalRef] = field(default_factory=list)
+    blockers: list[str] = field(default_factory=list)
+    params: dict[str, Any] | None = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    created_at: float | None = None
+    started_at: float | None = None
+    completed_at: float | None = None
 
     @staticmethod
     def validate_task_type(value: str) -> EnhancedTaskType:
@@ -89,17 +89,17 @@ class EnhancedTask:
     def are_blockers_resolved(self, completed_task_ids: set) -> bool:
         return all(b in completed_task_ids for b in self.blockers)
 
-    def get_mission(self) -> Optional[GoalRef]:
+    def get_mission(self) -> GoalRef | None:
         if self.goal_chain:
             return self.goal_chain[-1]
         return None
 
-    def get_parent_goal(self) -> Optional[GoalRef]:
+    def get_parent_goal(self) -> GoalRef | None:
         if self.goal_chain:
             return self.goal_chain[0]
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["task_type"] = self.task_type.value
         d["status"] = self.status.value

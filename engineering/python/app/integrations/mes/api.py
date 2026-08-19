@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -64,10 +64,10 @@ class WorkOrderRequest(BaseModel):
     product_code: str = Field(..., description="产品编码", examples=["PROD-001"])
     quantity: int = Field(..., gt=0, description="计划数量", examples=[100])
     priority: int = Field(5, ge=1, le=10, description="优先级 (1-10)", examples=[5])
-    planned_start: Optional[datetime] = Field(None, description="计划开始时间", examples=["2024-01-01T08:00:00"])
-    planned_end: Optional[datetime] = Field(None, description="计划结束时间", examples=["2024-01-05T17:00:00"])
-    customer_order_no: Optional[str] = Field(None, description="客户订单号", examples=["CUST-ORD-123"])
-    remarks: Optional[str] = Field(None, description="备注信息", examples=["加急订单"])
+    planned_start: datetime | None = Field(None, description="计划开始时间", examples=["2024-01-01T08:00:00"])
+    planned_end: datetime | None = Field(None, description="计划结束时间", examples=["2024-01-05T17:00:00"])
+    customer_order_no: str | None = Field(None, description="客户订单号", examples=["CUST-ORD-123"])
+    remarks: str | None = Field(None, description="备注信息", examples=["加急订单"])
 
 
 class ProductionReportRequest(BaseModel):
@@ -110,8 +110,8 @@ class QualityReportRequest(BaseModel):
     sample_size: int = Field(..., gt=0, description="抽样数量", examples=[10])
     qualified_qty: int = Field(..., ge=0, description="合格数量", examples=[9])
     defective_qty: int = Field(0, ge=0, description="不合格数量", examples=[1])
-    defect_code: Optional[str] = Field(None, description="缺陷代码", examples=["DEF-001"])
-    remarks: Optional[str] = Field(None, description="备注", examples=["轻微划痕"])
+    defect_code: str | None = Field(None, description="缺陷代码", examples=["DEF-001"])
+    remarks: str | None = Field(None, description="备注", examples=["轻微划痕"])
 
 
 class SyncResultResponse(BaseModel):
@@ -127,8 +127,8 @@ class SyncResultResponse(BaseModel):
 
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="结果消息")
-    data_id: Optional[str] = Field(None, description="MES 系统中的数据 ID")
-    error_code: Optional[str] = Field(None, description="错误代码")
+    data_id: str | None = Field(None, description="MES 系统中的数据 ID")
+    error_code: str | None = Field(None, description="错误代码")
     timestamp: datetime = Field(..., description="结果时间戳")
 
 
@@ -152,8 +152,8 @@ class MaterialResponse(BaseModel):
     unit: str = Field(..., description="单位")
     stock_quantity: float = Field(..., description="库存数量")
     warehouse_location: str = Field(..., description="仓库位置")
-    batch_no: Optional[str] = Field(None, description="批次号")
-    expiry_date: Optional[datetime] = Field(None, description="有效期")
+    batch_no: str | None = Field(None, description="批次号")
+    expiry_date: datetime | None = Field(None, description="有效期")
 
 
 class HealthResponse(BaseModel):

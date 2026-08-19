@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.integrations.opcua.parser import Sample
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 _TDS_URL_RE = re.compile(r"^tds://([^:/]+):(\d+)/(.+)$")
 
 
-def parse_tds_url(url: str) -> Tuple[str, int, str]:
+def parse_tds_url(url: str) -> tuple[str, int, str]:
     """Parse a ``tds://host:port/database`` URL.
 
     Args:
@@ -68,7 +68,7 @@ def format_sample(sample: "Sample") -> str:
     return f"[{ts}] speed={speed} load={load} feed={feed} exec={exec_}"
 
 
-def _fmt(value: Optional[float]) -> str:
+def _fmt(value: float | None) -> str:
     """Format a float compactly; return ``-`` for ``None``."""
     if value is None:
         return "-"
