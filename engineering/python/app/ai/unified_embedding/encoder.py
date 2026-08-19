@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+
 
 import numpy as np
 
@@ -52,7 +52,7 @@ class EmbeddingEncoder(ABC):
         norms = np.where(norms < 1e-10, 1.0, norms)
         return embeddings / norms
 
-    def get_info(self) -> Dict[str, object]:
+    def get_info(self) -> dict[str, object]:
         return {
             "name": self.name,
             "input_dim": self.input_dim,
@@ -86,10 +86,10 @@ class LinearProjection:
             y = np.maximum(0, y)
         return y
 
-    def get_weights(self) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+    def get_weights(self) -> tuple[np.ndarray, np.ndarray | None]:
         return self.weight, self.bias
 
-    def set_weights(self, weight: np.ndarray, bias: Optional[np.ndarray] = None):
+    def set_weights(self, weight: np.ndarray, bias: np.ndarray | None = None):
         self.weight = weight.astype(np.float32)
         if bias is not None and self.bias is not None:
             self.bias = bias.astype(np.float32)
@@ -150,7 +150,7 @@ class LLMProjector(EmbeddingEncoder):
     def project_from_tokens(
         self,
         tokens: np.ndarray,
-        position_ids: Optional[np.ndarray] = None,
+        position_ids: np.ndarray | None = None,
     ) -> np.ndarray:
         aggregated = tokens.mean(axis=1) if tokens.ndim == 3 else tokens
         return self.encode(aggregated)
@@ -203,7 +203,7 @@ class LNNProjector(EmbeddingEncoder):
     def encode_timeseries(
         self,
         sequences: np.ndarray,
-        window_size: Optional[int] = None,
+        window_size: int | None = None,
     ) -> np.ndarray:
         if sequences.ndim == 2:
             return self.encode(sequences)
@@ -260,11 +260,11 @@ class JEPAProjector(EmbeddingEncoder):
     def encode_image_patch(
         self,
         patch_features: np.ndarray,
-        spatial_positions: Optional[np.ndarray] = None,
+        spatial_positions: np.ndarray | None = None,
     ) -> np.ndarray:
         return self.encode(patch_features.mean(axis=1) if patch_features.ndim == 3 else patch_features)
 
-    def set_weights(self, weight: np.ndarray, bias: Optional[np.ndarray] = None):
+    def set_weights(self, weight: np.ndarray, bias: np.ndarray | None = None):
         self._projection.weight = weight.astype(np.float32)
         if bias is not None and self._projection.bias is not None:
             self._projection.bias = bias.astype(np.float32)
@@ -306,8 +306,8 @@ class MultiModalEncoder:
 
     def fuse(
         self,
-        embeddings: List[np.ndarray],
-        weights: Optional[List[float]] = None,
+        embeddings: list[np.ndarray],
+        weights: list[float] | None = None,
     ) -> np.ndarray:
         if weights is None:
             weights = [1.0 / len(embeddings)] * len(embeddings)
@@ -322,12 +322,12 @@ class MultiModalEncoder:
 
     def fuse_batch(
         self,
-        llm_embeddings: Optional[np.ndarray] = None,
-        lnn_embeddings: Optional[np.ndarray] = None,
-        jepa_embeddings: Optional[np.ndarray] = None,
-        weights: Optional[List[float]] = None,
+        llm_embeddings: np.ndarray | None = None,
+        lnn_embeddings: np.ndarray | None = None,
+        jepa_embeddings: np.ndarray | None = None,
+        weights: list[float] | None = None,
     ) -> np.ndarray:
-        active: List[np.ndarray] = []
+        active: list[np.ndarray] = []
         for emb in [llm_embeddings, lnn_embeddings, jepa_embeddings]:
             if emb is not None:
                 active.append(emb)
@@ -355,14 +355,14 @@ class MultiModalEncoder:
 
     def encode_manufacturing_scene(
         self,
-        text_description: Optional[np.ndarray] = None,
-        state_features: Optional[np.ndarray] = None,
-        visual_features: Optional[np.ndarray] = None,
-        modality_weights: Optional[Dict[str, float]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
-        embeddings: Dict[str, np.ndarray] = {}
-        weight_list: List[float] = []
-        emb_list: List[np.ndarray] = []
+        text_description: np.ndarray | None = None,
+        state_features: np.ndarray | None = None,
+        visual_features: np.ndarray | None = None,
+        modality_weights: dict[str, float] | None = None,
+    ) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+        embeddings: dict[str, np.ndarray] = {}
+        weight_list: list[float] = []
+        emb_list: list[np.ndarray] = []
 
         if modality_weights is None:
             modality_weights = {}
@@ -397,7 +397,7 @@ class MultiModalEncoder:
         fused = self.fuse(emb_list, weight_list)
         return fused, embeddings
 
-    def get_info(self) -> Dict[str, object]:
+    def get_info(self) -> dict[str, object]:
         return {
             "llm": self.llm.get_info(),
             "lnn": self.lnn.get_info(),

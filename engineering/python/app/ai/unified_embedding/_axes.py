@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Sequence, Tuple
+
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -31,12 +32,12 @@ class SemanticAxis:
         self.offset = offset
         self.dims = dims
         self.description = description
-        self._sub_axes: Dict[str, Tuple[int, int]] = {}
+        self._sub_axes: dict[str, tuple[int, int]] = {}
 
     def register_sub_axis(self, name: str, offset: int, length: int):
         self._sub_axes[name] = (self.offset + offset, length)
 
-    def get_sub_axis(self, name: str) -> Tuple[int, int]:
+    def get_sub_axis(self, name: str) -> tuple[int, int]:
         return self._sub_axes[name]
 
     @property
@@ -52,7 +53,7 @@ class SemanticAxis:
         clamped = np.clip(values, -1.0, 1.0)
         return clamped.astype(np.float32)
 
-    def validate(self, embedding: np.ndarray) -> Dict[str, float]:
+    def validate(self, embedding: np.ndarray) -> dict[str, float]:
         segment = self.extract(embedding)
         return {
             f"{self.name}_mean": float(np.mean(segment)),
@@ -201,7 +202,7 @@ class ProcessAxis(SemanticAxis):
         vector[24:32] = np.clip(step_over / 100.0 * 2.0 - 1.0, -1.0, 1.0)
         return vector
 
-    def encode_sequence(self, operations: Sequence[Dict[str, float]]) -> np.ndarray:
+    def encode_sequence(self, operations: Sequence[dict[str, float]]) -> np.ndarray:
         vector = np.zeros(32, dtype=np.float32)
         n_ops = min(len(operations), 8)
         for i, op in enumerate(operations[:n_ops]):
@@ -364,7 +365,7 @@ class StateAxis(SemanticAxis):
         vector[120:128] = np.clip(runtime_hours / 10000.0 * 2.0 - 1.0, -1.0, 1.0)
         return vector
 
-    def encode_sensor_fusion(self, sensor_readings: Dict[str, float]) -> np.ndarray:
+    def encode_sensor_fusion(self, sensor_readings: dict[str, float]) -> np.ndarray:
         return self.encode_state(
             vibration_x=sensor_readings.get("vibration_x", 0.0),
             vibration_y=sensor_readings.get("vibration_y", 0.0),

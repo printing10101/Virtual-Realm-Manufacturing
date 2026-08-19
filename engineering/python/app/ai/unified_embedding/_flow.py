@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from app.ai.unified_embedding._models import (
     AnomalyEvent,
@@ -23,15 +23,15 @@ class MachiningProcessFlow:
 
     def __init__(self):
         self.flow_id = uuid.uuid4().hex[:16]
-        self.steps: List[Dict[str, Any]] = []
-        self.errors: List[str] = []
+        self.steps: list[dict[str, Any]] = []
+        self.errors: list[str] = []
 
     def step_cognitive_to_perception(
         self,
         process_intent: str,
         quality_requirements: QualityRequirements,
-        material_spec: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[CognitiveToPerceptionRequest, List[str]]:
+        material_spec: dict[str, Any] | None = None,
+    ) -> tuple[CognitiveToPerceptionRequest, list[str]]:
         req = CognitiveToPerceptionRequest(
             process_intent=process_intent,
             quality_requirements=quality_requirements,
@@ -54,9 +54,9 @@ class MachiningProcessFlow:
         self,
         geometry: GeometryInput,
         cutting_parameters: CuttingParameters,
-        material_spec: Optional[Dict[str, Any]] = None,
-        tool_spec: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[PerceptionToExecutionRequest, List[str]]:
+        material_spec: dict[str, Any] | None = None,
+        tool_spec: dict[str, Any] | None = None,
+    ) -> tuple[PerceptionToExecutionRequest, list[str]]:
         req = PerceptionToExecutionRequest(
             geometry=geometry,
             cutting_parameters=cutting_parameters,
@@ -79,8 +79,8 @@ class MachiningProcessFlow:
     def step_execution_to_cognitive(
         self,
         real_time_state: RealTimeState,
-        anomaly_events: Optional[List[AnomalyEvent]] = None,
-    ) -> Tuple[ExecutionToCognitiveRequest, List[str]]:
+        anomaly_events: list[AnomalyEvent] | None = None,
+    ) -> tuple[ExecutionToCognitiveRequest, list[str]]:
         req = ExecutionToCognitiveRequest(
             real_time_state=real_time_state,
             anomaly_events=anomaly_events or [],
@@ -98,7 +98,7 @@ class MachiningProcessFlow:
             self.errors.extend(errors)
         return req, errors
 
-    def get_flow_report(self) -> Dict[str, Any]:
+    def get_flow_report(self) -> dict[str, Any]:
         return {
             "flow_id": self.flow_id,
             "total_steps": len(self.steps),

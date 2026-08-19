@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+
 
 import numpy as np
 
@@ -40,15 +40,15 @@ class EmbeddingAligner(ABC):
         self.config = config
         self._space = get_embedding_space()
         self._iteration: int = 0
-        self._loss_history: List[float] = []
+        self._loss_history: list[float] = []
 
     @abstractmethod
     def compute_loss(
         self,
         anchor_embeddings: np.ndarray,
         positive_embeddings: np.ndarray,
-        negative_embeddings: Optional[np.ndarray] = None,
-    ) -> Tuple[float, Dict[str, float]]:
+        negative_embeddings: np.ndarray | None = None,
+    ) -> tuple[float, dict[str, float]]:
         pass
 
     @abstractmethod
@@ -58,10 +58,10 @@ class EmbeddingAligner(ABC):
         target_modality: str,
         source_embeddings: np.ndarray,
         target_embeddings: np.ndarray,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         pass
 
-    def get_loss_history(self) -> List[float]:
+    def get_loss_history(self) -> list[float]:
         return self._loss_history
 
 
@@ -85,10 +85,10 @@ class ContrastiveAligner(_LossesMixin, _AlignMixin):
         - Incremental update compatibility check
     """
 
-    def __init__(self, config: Optional[AlignerConfig] = None):
+    def __init__(self, config: AlignerConfig | None = None):
         self.config = config or AlignerConfig()
         self._space = get_embedding_space()
         self._iteration: int = 0
-        self._loss_history: List[float] = []
+        self._loss_history: list[float] = []
         self._temperature = self.config.contrastive.temperature
-        self._compatibility_scores: List[float] = []
+        self._compatibility_scores: list[float] = []

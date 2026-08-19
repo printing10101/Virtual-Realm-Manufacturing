@@ -20,7 +20,7 @@ import json
 import logging
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from app.ai.process_explainer.prompts import (
     SYSTEM_PROMPT_NC,
@@ -65,7 +65,7 @@ class ProcessExplainer:
 
     def __init__(
         self,
-        session_store: Optional[SessionStore] = None,
+        session_store: SessionStore | None = None,
     ) -> None:
         self._store = session_store or get_session_store()
 
@@ -79,8 +79,8 @@ class ProcessExplainer:
         user_question: str = "",
         material: str = "",
         blank_size: str = "",
-        feature_count: Optional[int] = None,
-        session_id: Optional[str] = None,
+        feature_count: int | None = None,
+        session_id: str | None = None,
     ) -> ExplanationResult:
         """解释工艺规划。
 
@@ -127,7 +127,7 @@ class ProcessExplainer:
         nc_code: str,
         controller_type: str = "fanuc",
         user_question: str = "",
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
     ) -> ExplanationResult:
         """解释 NC / G 代码。
 
@@ -173,7 +173,7 @@ class ProcessExplainer:
     async def chat(
         self,
         user_message: str,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
     ) -> ExplanationResult:
         """多轮对话：基于会话历史回答用户追问。
 
@@ -227,7 +227,7 @@ class ProcessExplainer:
     # 内部实现
     # ------------------------------------------------------------------
 
-    async def _ensure_session(self, session_id: Optional[str]) -> str:
+    async def _ensure_session(self, session_id: str | None) -> str:
         """确保 session_id 有效，None 则创建新会话。"""
         if session_id:
             return session_id
@@ -354,7 +354,7 @@ class ProcessExplainer:
 
 
 # ── 全局单例（双重检查锁，线程安全） ────────────────────────────────
-_global_explainer: Optional[ProcessExplainer] = None
+_global_explainer: ProcessExplainer | None = None
 _explainer_lock = threading.Lock()
 
 

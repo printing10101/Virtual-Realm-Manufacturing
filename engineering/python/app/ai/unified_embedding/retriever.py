@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+
 
 import numpy as np
 
@@ -36,7 +36,7 @@ class RetrievalResult:
     index: int
     similarity: float
     embedding: np.ndarray
-    metadata: Dict[str, object] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
     layer: str = ""
     modality: str = ""
     confidence: float = 0.0
@@ -45,7 +45,7 @@ class RetrievalResult:
     def is_valid(self) -> bool:
         return self.similarity > 0.0
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "index": self.index,
             "similarity": round(self.similarity, 6),
@@ -62,12 +62,12 @@ class BatchRetrievalResult:
 
     query_count: int
     total_results: int
-    results_per_query: List[List[RetrievalResult]] = field(default_factory=list)
+    results_per_query: list[list[RetrievalResult]] = field(default_factory=list)
     mean_recall_at_5: float = 0.0
     mean_similarity: float = 0.0
     query_time_ms: float = 0.0
 
-    def summary(self) -> Dict[str, object]:
+    def summary(self) -> dict[str, object]:
         return {
             "query_count": self.query_count,
             "total_results": self.total_results,
@@ -87,9 +87,9 @@ class KDTreeIndex:
 
     def __init__(self, leaf_size: int = 40):
         self.leaf_size = leaf_size
-        self._data: Optional[np.ndarray] = None
-        self._indices: Optional[np.ndarray] = None
-        self._chunks: List[Tuple[int, int]] = []
+        self._data: np.ndarray | None = None
+        self._indices: np.ndarray | None = None
+        self._chunks: list[tuple[int, int]] = []
 
     def build(self, data: np.ndarray):
         if data.ndim != 2:
@@ -98,7 +98,7 @@ class KDTreeIndex:
         self._indices = np.arange(len(data))
         self._chunks = [(0, len(data))]
 
-    def query(self, query_vec: np.ndarray, k: int = 10) -> Tuple[np.ndarray, np.ndarray]:
+    def query(self, query_vec: np.ndarray, k: int = 10) -> tuple[np.ndarray, np.ndarray]:
         if self._data is None or self._indices is None:
             return np.array([], dtype=np.int64), np.array([], dtype=np.float32)
 
@@ -140,16 +140,16 @@ class CrossLayerRetriever:
         self.default_k = default_k
         self._space = get_embedding_space()
 
-        self._indices: Dict[str, KDTreeIndex] = {}
-        self._embeddings: Dict[str, np.ndarray] = {}
-        self._metadata: Dict[str, List[Dict[str, object]]] = {}
-        self._stats: Dict[str, Dict[str, float]] = {}
+        self._indices: dict[str, KDTreeIndex] = {}
+        self._embeddings: dict[str, np.ndarray] = {}
+        self._metadata: dict[str, list[dict[str, object]]] = {}
+        self._stats: dict[str, dict[str, float]] = {}
 
     def build_index(
         self,
         layer: str,
         embeddings: np.ndarray,
-        metadata: Optional[List[Dict[str, object]]] = None,
+        metadata: list[dict[str, object]] | None = None,
     ):
         if embeddings.shape[-1] != self.embedding_dim:
             raise ValueError(
@@ -185,10 +185,10 @@ class CrossLayerRetriever:
         self,
         target_layer: str,
         query_embedding: np.ndarray,
-        k: Optional[int] = None,
-        axis_weights: Optional[Dict[str, float]] = None,
-        modality_filter: Optional[str] = None,
-    ) -> List[RetrievalResult]:
+        k: int | None = None,
+        axis_weights: dict[str, float] | None = None,
+        modality_filter: str | None = None,
+    ) -> list[RetrievalResult]:
         k = k or self.default_k
         if target_layer not in self._indices:
             raise ValueError(
@@ -205,7 +205,7 @@ class CrossLayerRetriever:
 
         indices, similarities = self._indices[target_layer].query(query, k)
 
-        results: List[RetrievalResult] = []
+        results: list[RetrievalResult] = []
         for idx, sim in zip(indices, similarities):
             meta = self._metadata[target_layer][int(idx)] if idx < len(self._metadata[target_layer]) else {}
             if modality_filter and meta.get("modality", "") != modality_filter:
@@ -229,13 +229,13 @@ class CrossLayerRetriever:
         self,
         target_layer: str,
         query_embeddings: np.ndarray,
-        k: Optional[int] = None,
-        axis_weights: Optional[Dict[str, float]] = None,
+        k: int | None = None,
+        axis_weights: dict[str, float] | None = None,
     ) -> BatchRetrievalResult:
         k = k or self.default_k
         query_count = query_embeddings.shape[0]
-        all_results: List[List[RetrievalResult]] = []
-        total_similarities: List[float] = []
+        all_results: list[list[RetrievalResult]] = []
+        total_similarities: list[float] = []
 
         start_time = time.perf_counter()
 
@@ -261,7 +261,7 @@ class CrossLayerRetriever:
         index = self._indices[target_layer]
         for i in range(query_count):
             indices, similarities = index.query(queries[i], k)
-            results: List[RetrievalResult] = []
+            results: list[RetrievalResult] = []
             for idx, sim in zip(indices, similarities):
                 meta = self._metadata[target_layer][int(idx)] if idx < len(self._metadata[target_layer]) else {}
                 confidence = self._calibrate_confidence(float(sim))
@@ -295,9 +295,9 @@ class CrossLayerRetriever:
         source_layer: str,
         target_layer: str,
         query_embedding: np.ndarray,
-        k: Optional[int] = None,
-        axis_weights: Optional[Dict[str, float]] = None,
-    ) -> List[RetrievalResult]:
+        k: int | None = None,
+        axis_weights: dict[str, float] | None = None,
+    ) -> list[RetrievalResult]:
         return self.query(target_layer, query_embedding, k, axis_weights)
 
     def compute_recall_at_k(
@@ -306,7 +306,7 @@ class CrossLayerRetriever:
         query_embeddings: np.ndarray,
         ground_truth_indices: np.ndarray,
         k: int = 5,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         if k > ground_truth_indices.shape[1]:
             k = ground_truth_indices.shape[1]
 
@@ -337,7 +337,7 @@ class CrossLayerRetriever:
     def _apply_axis_weights(
         self,
         embedding: np.ndarray,
-        weights: Dict[str, float],
+        weights: dict[str, float],
     ) -> np.ndarray:
         weighted = embedding.copy()
         axis_map = {
@@ -367,7 +367,7 @@ class CrossLayerRetriever:
         self,
         layer: str,
         new_embeddings: np.ndarray,
-        new_metadata: Optional[List[Dict[str, object]]] = None,
+        new_metadata: list[dict[str, object]] | None = None,
     ):
         if layer not in self._embeddings:
             self.build_index(layer, new_embeddings, new_metadata)
@@ -381,13 +381,13 @@ class CrossLayerRetriever:
             self._metadata[layer].extend([{}] * len(new_embeddings))
         self.build_index(layer, self._embeddings[layer], self._metadata[layer])
 
-    def get_layer_stats(self, layer: str) -> Dict[str, float]:
+    def get_layer_stats(self, layer: str) -> dict[str, float]:
         return self._stats.get(layer, {})
 
-    def get_all_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_all_stats(self) -> dict[str, dict[str, float]]:
         return dict(self._stats)
 
-    def size(self, layer: Optional[str] = None) -> int:
+    def size(self, layer: str | None = None) -> int:
         if layer:
             return len(self._embeddings.get(layer, []))
         return sum(len(v) for v in self._embeddings.values())

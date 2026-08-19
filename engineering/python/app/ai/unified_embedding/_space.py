@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+
 
 import numpy as np
 
@@ -67,12 +67,12 @@ class EmbeddingSpace:
 
     def compose(
         self,
-        material_vec: Optional[np.ndarray] = None,
-        process_vec: Optional[np.ndarray] = None,
-        precision_vec: Optional[np.ndarray] = None,
-        state_vec: Optional[np.ndarray] = None,
-        risk_vec: Optional[np.ndarray] = None,
-        reserved_vec: Optional[np.ndarray] = None,
+        material_vec: np.ndarray | None = None,
+        process_vec: np.ndarray | None = None,
+        precision_vec: np.ndarray | None = None,
+        state_vec: np.ndarray | None = None,
+        risk_vec: np.ndarray | None = None,
+        reserved_vec: np.ndarray | None = None,
     ) -> np.ndarray:
         embedding = self.create_empty()
         if material_vec is not None:
@@ -89,7 +89,7 @@ class EmbeddingSpace:
             embedding[RESERVED_OFFSET : RESERVED_OFFSET + RESERVED_DIMS] = reserved_vec[:RESERVED_DIMS]
         return embedding
 
-    def decompose(self, embedding: np.ndarray) -> Dict[str, np.ndarray]:
+    def decompose(self, embedding: np.ndarray) -> dict[str, np.ndarray]:
         return {
             "material": embedding[MATERIAL_OFFSET : MATERIAL_OFFSET + MATERIAL_DIMS].copy(),
             "process": embedding[PROCESS_OFFSET : PROCESS_OFFSET + PROCESS_DIMS].copy(),
@@ -99,7 +99,7 @@ class EmbeddingSpace:
             "reserved": embedding[RESERVED_OFFSET : RESERVED_OFFSET + RESERVED_DIMS].copy(),
         }
 
-    def validate(self, embedding: np.ndarray) -> Dict[str, float]:
+    def validate(self, embedding: np.ndarray) -> dict[str, float]:
         if embedding.shape[-1] != self.total_dims:
             raise ValueError(
                 f"嵌入空间维度验证失败：期望维度为 {self.total_dims}，实际维度为 {embedding.shape[-1]}。"
@@ -134,7 +134,7 @@ class EmbeddingSpace:
         b_norm = b / (np.linalg.norm(b) + 1e-10)
         return float(np.dot(a_norm, b_norm))
 
-    def axis_similarity(self, a: np.ndarray, b: np.ndarray) -> Dict[str, float]:
+    def axis_similarity(self, a: np.ndarray, b: np.ndarray) -> dict[str, float]:
         return {
             "material": self.similarity(
                 a[MATERIAL_OFFSET : MATERIAL_OFFSET + MATERIAL_DIMS],

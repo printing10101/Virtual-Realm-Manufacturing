@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -25,7 +25,7 @@ class DimensionalTolerance:
     lower_deviation_mm: float
     it_grade: QualityLevel = QualityLevel.IT8
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if self.nominal_mm <= 0:
             errors.append(f"nominal_mm must be positive, got {self.nominal_mm}")
@@ -39,11 +39,11 @@ class DimensionalTolerance:
 @dataclass
 class SurfaceRoughnessSpec:
     ra_um: float
-    rz_um: Optional[float] = None
-    rmax_um: Optional[float] = None
+    rz_um: float | None = None
+    rmax_um: float | None = None
     grade: SurfaceFinishGrade = SurfaceFinishGrade.N6
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if self.ra_um < 0.01 or self.ra_um > 50.0:
             errors.append(f"ra_um must be in [0.01, 50.0], got {self.ra_um}")
@@ -54,13 +54,13 @@ class SurfaceRoughnessSpec:
 
 @dataclass
 class QualityRequirements:
-    dimensional_tolerances: List[DimensionalTolerance] = field(default_factory=list)
-    surface_roughness: Optional[SurfaceRoughnessSpec] = None
-    geometric_tolerances_mm: Dict[str, float] = field(default_factory=dict)
+    dimensional_tolerances: list[DimensionalTolerance] = field(default_factory=list)
+    surface_roughness: SurfaceRoughnessSpec | None = None
+    geometric_tolerances_mm: dict[str, float] = field(default_factory=dict)
     max_burr_height_mm: float = 0.1
     target_quality_level: QualityLevel = QualityLevel.IT8
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         for i, tol in enumerate(self.dimensional_tolerances):
             for e in tol.validate():
@@ -80,11 +80,11 @@ class SensorConfig:
     sensor_type: SensorType
     installation_position: str
     sampling_frequency_hz: float
-    measurement_range: Tuple[float, float]
+    measurement_range: tuple[float, float]
     resolution: float
     axis: str = "Z"
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         valid_positions = {"spindle", "tool_holder", "worktable", "bed", "column", "coolant_line", "enclosure"}
         if self.installation_position not in valid_positions:
@@ -107,7 +107,7 @@ class CuttingParameters:
     approach_distance_mm: float = 5.0
     retract_distance_mm: float = 5.0
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if not (0.1 <= self.feed_rate_mm_min <= 10000.0):
             errors.append(f"feed_rate_mm_min must be in [0.1, 10000.0], got {self.feed_rate_mm_min}")
@@ -123,10 +123,10 @@ class CuttingParameters:
 @dataclass
 class PointCloudData:
     points: np.ndarray
-    normals: Optional[np.ndarray] = None
-    colors: Optional[np.ndarray] = None
+    normals: np.ndarray | None = None
+    colors: np.ndarray | None = None
     point_count: int = 0
-    bounding_box: Optional[Dict[str, float]] = None
+    bounding_box: dict[str, float] | None = None
     source_format: str = "numpy"
 
     def __post_init__(self):
@@ -145,14 +145,14 @@ class PointCloudData:
 
 @dataclass
 class GeometryInput:
-    point_cloud: Optional[PointCloudData] = None
-    stl_path: Optional[str] = None
-    step_path: Optional[str] = None
-    parametric_model: Optional[Dict[str, Any]] = None
-    stock_dimensions_mm: Optional[Tuple[float, float, float]] = None
+    point_cloud: PointCloudData | None = None
+    stl_path: str | None = None
+    step_path: str | None = None
+    parametric_model: dict[str, Any] | None = None
+    stock_dimensions_mm: tuple[float, float, float] | None = None
     material: str = "steel"
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if (
             self.point_cloud is None
@@ -190,7 +190,7 @@ class RealTimeState:
     position_z_mm: float = 0.0
     duty_cycle_pct: float = 0.0
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if self.spindle_speed_rpm < 0:
             errors.append(f"spindle_speed_rpm must be >= 0, got {self.spindle_speed_rpm}")
@@ -200,7 +200,7 @@ class RealTimeState:
             errors.append(f"tool_wear_mm must be in [0, 5.0], got {self.tool_wear_mm}")
         return errors
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         return asdict(self)
 
     def to_numpy(self) -> np.ndarray:
@@ -236,13 +236,13 @@ class AnomalyEvent:
     severity: EventSeverity = EventSeverity.WARNING
     timestamp: float = field(default_factory=time.time)
     description: str = ""
-    source_sensor: Optional[SensorType] = None
+    source_sensor: SensorType | None = None
     measured_value: float = 0.0
     threshold_value: float = 0.0
     duration_ms: float = 0.0
-    related_positions: Optional[List[Tuple[float, float, float]]] = None
+    related_positions: list[tuple[float, float, float]] | None = None
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if self.duration_ms < 0:
             errors.append(f"duration_ms must be >= 0, got {self.duration_ms}")
@@ -254,14 +254,14 @@ class AdjustmentSuggestion:
     suggestion_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     timestamp: float = field(default_factory=time.time)
     description: str = ""
-    suggested_parameters: Dict[str, float] = field(default_factory=dict)
+    suggested_parameters: dict[str, float] = field(default_factory=dict)
     confidence: float = 0.0
     priority: AdjustmentPriority = AdjustmentPriority.MEDIUM
     reasoning: str = ""
-    expected_improvement: Dict[str, float] = field(default_factory=dict)
-    alternatives: List[Dict[str, Any]] = field(default_factory=list)
+    expected_improvement: dict[str, float] = field(default_factory=dict)
+    alternatives: list[dict[str, Any]] = field(default_factory=list)
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if not (0.0 <= self.confidence <= 1.0):
             errors.append(f"confidence must be in [0.0, 1.0], got {self.confidence}")
@@ -270,13 +270,13 @@ class AdjustmentSuggestion:
 
 @dataclass
 class FeedbackSignal:
-    suggestions: List[AdjustmentSuggestion] = field(default_factory=list)
+    suggestions: list[AdjustmentSuggestion] = field(default_factory=list)
     overall_confidence: float = 0.0
     execution_priority: AdjustmentPriority = AdjustmentPriority.MEDIUM
     estimated_impact: str = ""
     requires_halt: bool = False
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         for i, s in enumerate(self.suggestions):
             for e in s.validate():

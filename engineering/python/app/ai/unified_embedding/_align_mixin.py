@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import numpy as np
-from typing import Dict, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,8 @@ class _AlignMixin:
         target_modality: str,
         source_embeddings: np.ndarray,
         target_embeddings: np.ndarray,
-        learning_rate: Optional[float] = None,
-    ) -> Dict[str, float]:
+        learning_rate: float | None = None,
+    ) -> dict[str, float]:
         """Perform one alignment step between two modalities.
 
         Uses gradient-based optimization to minimize the contrastive loss
@@ -121,8 +122,8 @@ class _AlignMixin:
         self,
         llm_embeddings: np.ndarray,
         lnn_embeddings: np.ndarray,
-        jepa_embeddings: Optional[np.ndarray] = None,
-    ) -> Dict[str, Dict[str, float]]:
+        jepa_embeddings: np.ndarray | None = None,
+    ) -> dict[str, dict[str, float]]:
         """Perform full cross-modal alignment across all three modalities.
 
         Args:
@@ -186,7 +187,7 @@ class _AlignMixin:
         recent_compat = np.mean(self._compatibility_scores[-10:])
         return recent_compat >= self.config.compatibility_threshold
 
-    def get_stats(self) -> Dict[str, float]:
+    def get_stats(self) -> dict[str, float]:
         return {
             "total_iterations": self._iteration,
             "current_temperature": self._temperature,

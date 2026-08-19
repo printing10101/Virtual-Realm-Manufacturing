@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any
+from collections.abc import Callable
 
 
 class _LossesMixin:
@@ -25,7 +26,7 @@ class _LossesMixin:
         self,
         embeddings_a: np.ndarray,
         embeddings_b: np.ndarray,
-    ) -> Tuple[float, Dict[str, float]]:
+    ) -> tuple[float, dict[str, float]]:
         """Compute symmetric InfoNCE contrastive loss.
 
         Args:
@@ -84,7 +85,7 @@ class _LossesMixin:
         anchor: np.ndarray,
         positive: np.ndarray,
         negative: np.ndarray,
-    ) -> Tuple[float, Dict[str, float]]:
+    ) -> tuple[float, dict[str, float]]:
         """Compute cross-modal triplet loss with optional hard negative mining.
 
         L_triplet(a, p, n) = max(0, ||a - p||_2 - ||a - n||_2 + margin)
@@ -140,7 +141,7 @@ class _LossesMixin:
         self,
         original_embeddings: np.ndarray,
         updated_embeddings: np.ndarray,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Compute space preservation loss for incremental updates.
 
         Ensures updated embeddings remain compatible with the original space.
@@ -158,10 +159,10 @@ class _LossesMixin:
         self,
         embeddings_a: np.ndarray,
         embeddings_b: np.ndarray,
-        negative_embeddings: Optional[np.ndarray] = None,
-        original_embeddings: Optional[np.ndarray] = None,
-        updated_embeddings: Optional[np.ndarray] = None,
-    ) -> Tuple[float, Dict[str, float]]:
+        negative_embeddings: np.ndarray | None = None,
+        original_embeddings: np.ndarray | None = None,
+        updated_embeddings: np.ndarray | None = None,
+    ) -> tuple[float, dict[str, float]]:
         """Compute combined alignment loss with all components.
 
         L_total = w_align * L_infoNCE + w_preserve * L_preservation + w_reg * L_reg

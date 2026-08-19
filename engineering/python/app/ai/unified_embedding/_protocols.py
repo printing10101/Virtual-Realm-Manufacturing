@@ -6,7 +6,7 @@ import json
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from app.ai.unified_embedding._enums import (
     FeatureExtractionAlgorithm,
@@ -36,8 +36,8 @@ class CognitiveToPerceptionRequest:
         self,
         process_intent: str,
         quality_requirements: QualityRequirements,
-        material_spec: Optional[Dict[str, Any]] = None,
-        request_id: Optional[str] = None,
+        material_spec: dict[str, Any] | None = None,
+        request_id: str | None = None,
         max_tokens: int = 512,
     ):
         self.request_id = request_id or uuid.uuid4().hex[:16]
@@ -47,7 +47,7 @@ class CognitiveToPerceptionRequest:
         self.max_tokens = max_tokens
         self.timestamp = time.time()
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if not self.process_intent or len(self.process_intent) > 512:
             errors.append(
@@ -105,15 +105,15 @@ class CognitiveToPerceptionResponse:
     """Perception layer → Cognitive layer (response to perception task config)."""
 
     request_id: str
-    sensor_configs: List[SensorConfig] = field(default_factory=list)
+    sensor_configs: list[SensorConfig] = field(default_factory=list)
     feature_algorithm: FeatureExtractionAlgorithm = FeatureExtractionAlgorithm.RESNET50
     sampling_frequency_hz: float = 100.0
-    region_of_interest: Optional[Dict[str, Any]] = None
-    preprocessing_pipeline: List[str] = field(default_factory=list)
+    region_of_interest: dict[str, Any] | None = None
+    preprocessing_pipeline: list[str] = field(default_factory=list)
     estimated_processing_time_ms: float = 0.0
-    embedding_projection: Optional[List[float]] = None
+    embedding_projection: list[float] | None = None
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         for i, sc in enumerate(self.sensor_configs):
             for e in sc.validate():
@@ -146,17 +146,17 @@ class PerceptionToExecutionRequest:
     cutting_parameters: CuttingParameters = field(
         default_factory=lambda: CuttingParameters(feed_rate_mm_min=500.0, depth_of_cut_mm=2.0, spindle_speed_rpm=8000.0)
     )
-    material_spec: Dict[str, Any] = field(default_factory=dict)
-    tool_spec: Dict[str, Any] = field(default_factory=dict)
+    material_spec: dict[str, Any] = field(default_factory=dict)
+    tool_spec: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         errors.extend(self.geometry.validate())
         errors.extend(self.cutting_parameters.validate())
         return errors
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         if self.geometry.point_cloud is not None:
             d["geometry"]["point_cloud"]["points"] = self.geometry.point_cloud.points.tolist()
@@ -171,7 +171,7 @@ class MonitoringPointConfig:
     data_format: str = "float32"
     channel_count: int = 1
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if self.installation_position not in {"spindle", "tool_holder", "worktable", "bed", "column", "coolant_line"}:
             errors.append(f"Invalid installation_position: {self.installation_position}")
@@ -186,11 +186,11 @@ class PredictionBaseline:
     expected_tool_wear_rate_um_per_min: float
     expected_cutting_force_n: float
     expected_power_consumption_kw: float
-    tolerance_range: Dict[str, Tuple[float, float]] = field(default_factory=dict)
-    control_thresholds: Dict[str, float] = field(default_factory=dict)
+    tolerance_range: dict[str, tuple[float, float]] = field(default_factory=dict)
+    control_thresholds: dict[str, float] = field(default_factory=dict)
     confidence: float = 0.0
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         if self.expected_surface_roughness_ra < 0:
             errors.append(f"expected_surface_roughness_ra must be >= 0, got {self.expected_surface_roughness_ra}")
@@ -204,13 +204,13 @@ class PerceptionToExecutionResponse:
     """Execution layer → Perception layer (monitoring config + prediction baseline)."""
 
     request_id: str
-    monitoring_points: List[MonitoringPointConfig] = field(default_factory=list)
-    prediction_baseline: Optional[PredictionBaseline] = None
+    monitoring_points: list[MonitoringPointConfig] = field(default_factory=list)
+    prediction_baseline: PredictionBaseline | None = None
     toolpath_segments: int = 0
     estimated_cycle_time_s: float = 0.0
-    embedding_projection: Optional[List[float]] = None
+    embedding_projection: list[float] | None = None
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         for i, mp in enumerate(self.monitoring_points):
             for e in mp.validate():
@@ -230,12 +230,12 @@ class ExecutionToCognitiveRequest:
 
     stream_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     real_time_state: RealTimeState = field(default_factory=RealTimeState)
-    anomaly_events: List[AnomalyEvent] = field(default_factory=list)
-    session_id: Optional[str] = None
+    anomaly_events: list[AnomalyEvent] = field(default_factory=list)
+    session_id: str | None = None
     batch_sequence: int = 0
     timestamp: float = field(default_factory=time.time)
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         errors = []
         errors.extend(self.real_time_state.validate())
         for i, evt in enumerate(self.anomaly_events):
@@ -252,6 +252,6 @@ class ExecutionToCognitiveResponse:
     feedback: FeedbackSignal = field(default_factory=FeedbackSignal)
     timestamp: float = field(default_factory=time.time)
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         return self.feedback.validate()
 

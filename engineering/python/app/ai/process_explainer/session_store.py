@@ -22,7 +22,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+
 
 from app.config.limits import DEFAULT_SQLITE_LOCK_TIMEOUT_SEC
 
@@ -79,7 +79,7 @@ class SessionStore:
           避免 sqlite3 自动 close 时序不确定导致的资源泄漏
     """
 
-    def __init__(self, db_path: Optional[str] = None) -> None:
+    def __init__(self, db_path: str | None = None) -> None:
         self._db_path = str(db_path or _DEFAULT_DB_PATH)
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         # 写入锁：串行化所有 DML，规避 SQLite 多写者冲突
@@ -202,7 +202,7 @@ class SessionStore:
         session_id: str,
         role: str,
         content: str,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> ChatMessage:
         """追加一条消息到会话历史。
 
@@ -407,7 +407,7 @@ class SessionStore:
 
 
 # ── 全局单例（双重检查锁） ────────────────────────────────────────────
-_global_store: Optional[SessionStore] = None
+_global_store: SessionStore | None = None
 _singleton_lock = threading.Lock()
 
 
