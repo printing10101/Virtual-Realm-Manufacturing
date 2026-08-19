@@ -127,7 +127,7 @@
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search, Warning, Operation } from '@element-plus/icons-vue'
-import type { Command } from '@/composables/useCommandPalette'
+import type { Command } from '@/types/command'
 import { useExtensionRegistry } from '@/composables/useExtensionRegistry'
 
 const { t } = useI18n()

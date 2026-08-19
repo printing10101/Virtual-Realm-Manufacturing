@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import CommandPalette from '@/components/CommandPalette/CommandPalette.vue'
-import type { Command } from '@/composables/useCommandPalette'
+import type { Command } from '@/types/command'
 
 // Mock vue-i18n
 vi.mock('vue-i18n', () => ({

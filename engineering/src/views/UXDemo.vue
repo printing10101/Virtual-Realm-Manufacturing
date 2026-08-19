@@ -109,7 +109,7 @@ import { Guide, Search } from '@element-plus/icons-vue'
 import Tour from '@/components/Onboarding/Tour.vue'
 import type { TourStep } from '@/components/Onboarding/Tour.vue'
 import CommandPalette from '@/components/CommandPalette/CommandPalette.vue'
-import type { Command } from '@/composables/useCommandPalette'
+import type { Command } from '@/types/command'
 import ExampleGallery from '@/examples/ExampleGallery.vue'
 import { exampleProjects } from '@/examples/data'
 

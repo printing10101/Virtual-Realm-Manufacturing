@@ -2,7 +2,6 @@
 
 export { useAuditLog } from './useAuditLog'
 export { useBackendStatus } from './useBackendStatus'
-export { useCommandPalette } from './useCommandPalette'
 export { useErrorBus } from './useErrorBus'
 export { useEventSource } from './useEventSource'
 export { useExtensionRegistry } from './useExtensionRegistry'
