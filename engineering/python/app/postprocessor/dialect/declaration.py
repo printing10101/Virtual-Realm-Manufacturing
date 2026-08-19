@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
@@ -88,11 +88,11 @@ class DialectDeclaration:
     id: str
     name: str
     version: str
-    extends: Optional[str] = None
-    target_controller: Optional[str] = None
-    templates: Dict[str, Path] = field(default_factory=dict)
-    params: Dict[str, Any] = field(default_factory=dict)
-    hooks: Optional[str] = None
+    extends: str | None = None
+    target_controller: str | None = None
+    templates: dict[str, Path] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
+    hooks: str | None = None
     author: str = ""
     description: str = ""
 
@@ -141,7 +141,7 @@ class DialectDeclaration:
                 )
 
         # --- templates：方法白名单 + 模板文件存在性 ---
-        templates: Dict[str, Path] = {}
+        templates: dict[str, Path] = {}
         raw_templates = raw.get("templates") or {}
         if not isinstance(raw_templates, dict):
             raise DialectDeclarationError(

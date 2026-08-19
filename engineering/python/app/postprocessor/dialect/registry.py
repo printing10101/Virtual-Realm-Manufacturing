@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Type
 
 from app.postprocessor.base import BasePostProcessor
 from app.postprocessor.dialect.compiler import DialectCompiler, DialectCompileError
@@ -45,20 +44,20 @@ class DialectRegistry:
 
     def __init__(
         self,
-        plugin_root: Optional[str | Path] = None,
-        compiler: Optional[DialectCompiler] = None,
+        plugin_root: str | Path | None = None,
+        compiler: DialectCompiler | None = None,
     ) -> None:
         self.plugin_root = Path(plugin_root) if plugin_root else Path(DEFAULT_DIALECT_PLUGIN_DIR)
         self.compiler = compiler or DialectCompiler()
-        self._declarations: Dict[str, DialectDeclaration] = {}
-        self._compiled_classes: Dict[str, Type[BasePostProcessor]] = {}
-        self._compile_errors: Dict[str, str] = {}
+        self._declarations: dict[str, DialectDeclaration] = {}
+        self._compiled_classes: dict[str, type[BasePostProcessor]] = {}
+        self._compile_errors: dict[str, str] = {}
 
     # ------------------------------------------------------------------
     # 发现 / 编译 / 注册
     # ------------------------------------------------------------------
 
-    def discover(self) -> List[str]:
+    def discover(self) -> list[str]:
         """扫描插件目录下的方言声明，返回发现的方言 id 列表。
 
         单目录声明失败仅记录错误并跳过（与其他插件失败降级策略一致），
@@ -71,7 +70,7 @@ class DialectRegistry:
             logger.warning("方言插件目录不存在: %s", self.plugin_root)
             return []
 
-        found: List[str] = []
+        found: list[str] = []
         for item in sorted(self.plugin_root.iterdir()):
             if not item.is_dir():
                 continue
@@ -91,7 +90,7 @@ class DialectRegistry:
 
         return found
 
-    def compile_all(self) -> Dict[str, Type[BasePostProcessor]]:
+    def compile_all(self) -> dict[str, type[BasePostProcessor]]:
         """编译全部已发现声明为方言类。
 
         Returns:
@@ -109,7 +108,7 @@ class DialectRegistry:
                 raise
         return dict(self._compiled_classes)
 
-    def register_to(self, target: Optional[PostProcessorRegistry] = None) -> int:
+    def register_to(self, target: PostProcessorRegistry | None = None) -> int:
         """把编译后的方言注册到 PostProcessorRegistry。
 
         Args:
@@ -142,21 +141,21 @@ class DialectRegistry:
     # 查询
     # ------------------------------------------------------------------
 
-    def list_dialects(self) -> List[str]:
+    def list_dialects(self) -> list[str]:
         """列出已发现（含编译失败）的方言 id。"""
         return sorted(self._declarations.keys())
 
-    def get_declaration(self, dialect_id: str) -> Optional[DialectDeclaration]:
+    def get_declaration(self, dialect_id: str) -> DialectDeclaration | None:
         return self._declarations.get(dialect_id)
 
-    def get_compile_errors(self) -> Dict[str, str]:
+    def get_compile_errors(self) -> dict[str, str]:
         """返回 {方言 id/目录名: 错误信息}（含加载与编译失败）。"""
         return dict(self._compile_errors)
 
 
 def load_dialects(
-    plugin_root: Optional[str | Path] = None,
-    target: Optional[PostProcessorRegistry] = None,
+    plugin_root: str | Path | None = None,
+    target: PostProcessorRegistry | None = None,
 ) -> int:
     """便捷入口：发现 + 编译 + 注册一次完成。
 
