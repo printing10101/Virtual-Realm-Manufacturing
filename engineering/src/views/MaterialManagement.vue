@@ -90,95 +90,14 @@
         </div>
       </div>
       <div class="content-card__body">
-        <el-table
-          v-loading="loading"
-          :data="materials"
-          style="width: 100%"
-          stripe
-          :empty-text="loadError ? t('materialManagement.emptyTextError') : t('materialManagement.emptyText')"
-        >
-          <el-table-column
-            prop="code"
-            :label="t('materialManagement.colMaterialCode')"
-            width="120"
-          />
-          <el-table-column
-            prop="name"
-            :label="t('materialManagement.colMaterialName')"
-            min-width="180"
-          />
-          <el-table-column
-            :label="t('materialManagement.colCategory')"
-            width="100"
-          >
-            <template #default="{ row }">
-              <span class="category-text">{{ row.category }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="quantity"
-            :label="t('materialManagement.colQuantity')"
-            width="110"
-          >
-            <template #default="{ row }">
-              <span :class="{ 'text-danger': row.status === t('materialManagement.labelStatusOut'), 'text-warning': row.status === t('materialManagement.labelStatusLow') }">
-                {{ row.quantity }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="safe_quantity"
-            :label="t('materialManagement.colSafeQuantity')"
-            width="110"
-          />
-          <el-table-column
-            :label="t('materialManagement.colStatus')"
-            width="100"
-          >
-            <template #default="{ row }">
-              <el-tag
-                :type="stockStatusTagType(row.status)"
-                size="small"
-                effect="light"
-              >
-                {{ row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column
-            :label="t('materialManagement.colActions')"
-            width="180"
-            fixed="right"
-          >
-            <template #default="{ row }">
-              <el-button
-                type="primary"
-                text
-                size="small"
-                @click="handleViewDetail(row as Material)"
-              >
-                {{ t('materialManagement.btnDetail') }}
-              </el-button>
-              <el-button
-                type="primary"
-                text
-                size="small"
-                @click="handleStockIn(row as Material)"
-              >
-                {{ t('materialManagement.btnStockInRow') }}
-              </el-button>
-              <el-button
-                v-if="row.status === t('materialManagement.labelStatusOut')"
-                type="warning"
-                text
-                size="small"
-                @click="handlePurchase(row as Material)"
-              >
-                {{ t('materialManagement.btnPurchase') }}
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <MaterialListTable
+          :materials="materials"
+          :loading="loading"
+          :load-error="loadError"
+          @view="handleViewDetail"
+          @stock-in="handleStockIn"
+          @purchase="handlePurchase"
+        />
       </div>
     </div>
 
@@ -222,6 +141,7 @@ import MaterialStatsCards from '@/components/material/MaterialStatsCards.vue'
 import MaterialStockInDialog from '@/components/material/MaterialStockInDialog.vue'
 import MaterialPurchaseDialog from '@/components/material/MaterialPurchaseDialog.vue'
 import MaterialDetailDialog from '@/components/material/MaterialDetailDialog.vue'
+import MaterialListTable from '@/components/material/MaterialListTable.vue'
 
 const { t } = useI18n()
 
@@ -269,15 +189,6 @@ const statsCards = computed(() => {
 })
 
 // ========================= 方法 =========================
-function stockStatusTagType(status: string): 'success' | 'warning' | 'danger' {
-  const map: Record<string, 'success' | 'warning' | 'danger'> = {
-    [t('materialManagement.labelStatusNormal')]: 'success',
-    [t('materialManagement.labelStatusLow')]: 'warning',
-    [t('materialManagement.labelStatusOut')]: 'danger',
-  }
-  return map[status] || 'info'
-}
-
 async function fetchMaterials() {
   loading.value = true
   loadError.value = false
@@ -455,20 +366,5 @@ onMounted(() => {
   padding: var(--page-padding);
   max-width: var(--content-max-width);
   margin: 0 auto;
-}
-
-/* 页面特有样式 */
-.category-text {
-  color: var(--text-secondary);
-}
-
-.text-danger {
-  color: var(--error);
-  font-weight: 600;
-}
-
-.text-warning {
-  color: var(--warning);
-  font-weight: 600;
 }
 </style>
