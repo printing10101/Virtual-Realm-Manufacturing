@@ -170,7 +170,6 @@ describe('BackendStartupDialog.vue', () => {
       mockState.last_error = '进程崩溃退出码 1'
       wrapper = mountComponent({ modelValue: true })
       await wrapper.vm.$nextTick()
-      console.log('[DIAG-HTML]', wrapper.find('.el-dialog').html().slice(0, 600))
       expect(wrapper.find('.el-alert').exists()).toBe(true)
       expect(wrapper.find('.error-detail').text()).toContain('进程崩溃退出码 1')
     })
