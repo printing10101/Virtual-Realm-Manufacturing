@@ -6,7 +6,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -45,8 +46,8 @@ class _ResourceRefMixin:
         resource_type: str,
         resource_uri: str,
         *,
-        sync_strategy: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        sync_strategy: str | None = None,
+        metadata: dict[str, Any] | None = None,
         compute_hash: bool = True,
     ) -> dict[str, Any]:
         """添加资源引用到项目.
@@ -88,7 +89,7 @@ class _ResourceRefMixin:
         self,
         resource_type: str,
         resource_uri: str,
-        sync_strategy: Optional[str],
+        sync_strategy: str | None,
     ) -> str:
         """校验 add_resource_ref 输入参数，返回解析后的 sync_strategy.
 
@@ -124,7 +125,7 @@ class _ResourceRefMixin:
         resource_uri: str,
         content_hash: str,
         strategy: str,
-        metadata: Optional[dict[str, Any]],
+        metadata: dict[str, Any] | None,
     ) -> dict[str, Any]:
         """持久化资源引用 + 更新项目状态为 dirty.
 
@@ -244,7 +245,7 @@ class _ResourceRefMixin:
         self,
         project_id: str,
         *,
-        resource_type: Optional[str] = None,
+        resource_type: str | None = None,
     ) -> dict[str, Any]:
         """列出项目的资源引用（可选按类型过滤）."""
         if resource_type is not None and not RESOURCE_TYPES.is_valid(resource_type):

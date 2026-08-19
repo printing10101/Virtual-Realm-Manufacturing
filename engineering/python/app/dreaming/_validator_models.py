@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # 禁止的动作关键词（硬约束）
 FORBIDDEN_ACTIONS = {
@@ -47,10 +47,10 @@ class ValidationTestCase:
 
     name: str
     description: str
-    input_data: Dict[str, Any]
+    input_data: dict[str, Any]
     expected_passed: bool
     actual_passed: bool
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 @dataclass
@@ -67,13 +67,13 @@ class ValidationResult:
     """
 
     passed: bool
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    test_cases: List[ValidationTestCase] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    test_cases: list[ValidationTestCase] = field(default_factory=list)
     validated_at: str = ""
     validator_version: str = "0.1.0"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "passed": self.passed,
             "errors": self.errors,

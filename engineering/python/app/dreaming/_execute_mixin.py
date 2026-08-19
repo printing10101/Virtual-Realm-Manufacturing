@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.dreaming.apply_rules import RollbackResult
 from app.dreaming.progressive_publisher import PublicationStage
@@ -59,7 +60,7 @@ class _ExecuteMixin:
         record = publisher.get_record(rule_id)
         previous_stage = record.current_stage.value if record else "unknown"
 
-        rollback_result: Optional[RollbackResult] = None
+        rollback_result: RollbackResult | None = None
         current_stage = previous_stage
         fully_deprecated = False
 
@@ -150,9 +151,9 @@ class _ExecuteMixin:
 
     def get_rollback_history(
         self,
-        rule_id: Optional[str] = None,
+        rule_id: str | None = None,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """查询回滚历史。
 
         Args:

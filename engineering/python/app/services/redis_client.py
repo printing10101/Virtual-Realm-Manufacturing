@@ -15,7 +15,7 @@ import logging
 import os
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.services.memory_cache import init_memory_cache
 
@@ -51,9 +51,9 @@ class _RedisHolder:
     def __init__(self) -> None:
         # [H5] asyncio.Lock 懒初始化：模块级 _holder 实例化时创建 Lock 会
         # 绑定到导入时的事件循环，多事件循环场景下抛 RuntimeError。
-        self._lock: Optional[asyncio.Lock] = None
+        self._lock: asyncio.Lock | None = None
         self._init_lock = threading.Lock()  # 保护 _client 字段的可见性
-        self._client: Optional[Any] = None
+        self._client: Any | None = None
 
     def _get_lock(self) -> asyncio.Lock:
         """懒初始化 Redis holder 锁，绑定到首次调用的事件循环。"""
@@ -61,7 +61,7 @@ class _RedisHolder:
             self._lock = asyncio.Lock()
         return self._lock
 
-    async def get(self) -> Optional[Any]:
+    async def get(self) -> Any | None:
         # 快速路径：已有客户端直接返回。
         # Redis 客户端已配置 health_check_interval=30，会自动进行健康检查
         # 并在连接异常时重连；内存缓存无需健康检查。
@@ -161,7 +161,7 @@ _holder = _RedisHolder()
 # ---------------------------------------------------------------------------
 
 
-async def get_redis() -> Optional[Any]:
+async def get_redis() -> Any | None:
     """获取共享的 Redis 客户端；首次访问时建立连接。
 
     .. deprecated:: V3.0
@@ -185,7 +185,7 @@ def _progress_key(task_id: str) -> str:
     return f"{TASK_PROGRESS_PREFIX}:{task_id}:progress"
 
 
-async def save_task_progress(task_id: str, data: Dict[str, Any]) -> bool:
+async def save_task_progress(task_id: str, data: dict[str, Any]) -> bool:
     r = await get_redis()
     if r is None:
         return False
@@ -199,7 +199,7 @@ async def save_task_progress(task_id: str, data: Dict[str, Any]) -> bool:
         return False
 
 
-async def get_task_progress(task_id: str) -> Dict[str, Any]:
+async def get_task_progress(task_id: str) -> dict[str, Any]:
     r = await get_redis()
     if r is None:
         return {}

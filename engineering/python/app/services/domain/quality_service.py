@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, date
-from typing import Optional
+
 
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
@@ -29,10 +29,10 @@ def _get_session():
 
 
 async def list_quality_records(
-    inspection_type: Optional[str] = None,
-    result: Optional[str] = None,
-    dt_from: Optional[datetime] = None,
-    dt_to: Optional[datetime] = None,
+    inspection_type: str | None = None,
+    result: str | None = None,
+    dt_from: datetime | None = None,
+    dt_to: datetime | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
@@ -76,7 +76,7 @@ async def create_quality_record(
     inspection_type: str,
     result: str,
     inspector: str,
-    notes: Optional[str] = None,
+    notes: str | None = None,
 ) -> dict:
     """创建质量检验记录。
 
@@ -111,7 +111,7 @@ async def create_quality_record(
             raise
 
 
-async def get_quality_record(record_id: str) -> Optional[dict]:
+async def get_quality_record(record_id: str) -> dict | None:
     """按 ID 获取质量检验记录详情。
 
     Args:
@@ -163,8 +163,8 @@ async def get_quality_stats() -> dict:
 
 
 async def list_anomalies(
-    anomaly_type: Optional[str] = None,
-    status: Optional[str] = None,
+    anomaly_type: str | None = None,
+    status: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:

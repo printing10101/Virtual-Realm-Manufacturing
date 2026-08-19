@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class DreamingSchedulerAdapter:
 
     def __init__(
         self,
-        scheduler: Optional[Any] = None,
+        scheduler: Any | None = None,
         cron_expression: str = DEFAULT_DREAMING_CRON,
         lookback_days: int = 1,
         max_sessions: int = 100,
@@ -251,7 +251,7 @@ class DreamingSchedulerAdapter:
                 result_summary=f"args={cli_args}",
             )
 
-    def get_execution_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_execution_history(self, limit: int = 50) -> list[dict[str, Any]]:
         """查询 Dreaming 反思任务的执行历史。
 
         Args:
@@ -262,7 +262,7 @@ class DreamingSchedulerAdapter:
         """
         return self._scheduler.wakeup_queue.get_task_history(DREAMING_TASK_ID, limit=limit)
 
-    def get_task_info(self) -> Optional[Dict[str, Any]]:
+    def get_task_info(self) -> dict[str, Any] | None:
         """查询 Dreaming 任务的当前状态。
 
         Returns:

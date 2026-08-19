@@ -38,7 +38,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class DreamingCLI:
     def __init__(self) -> None:
         self.parser = build_parser()
 
-    def run(self, argv: Optional[list] = None) -> int:
+    def run(self, argv: list | None = None) -> int:
         """执行命令行。
 
         Args:

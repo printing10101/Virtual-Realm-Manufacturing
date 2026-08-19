@@ -16,7 +16,8 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import Any, Callable, Coroutine, Optional, cast
+from typing import Any, cast
+from collections.abc import Callable, Coroutine
 
 from sqlalchemy import desc, func, select
 
@@ -59,12 +60,12 @@ class ExplanationRecordRepo:
         *,
         explanation_type: str,
         model_uri: str,
-        source_snapshot_id: Optional[str],
+        source_snapshot_id: str | None,
         input_signature: str,
         payload_path: str,
         payload_size_bytes: int,
         metadata: dict[str, Any],
-        created_by: Optional[str],
+        created_by: str | None,
     ) -> ExplanationRecord:
         """写入解释记录到数据库."""
         record_orm = ExplanationRecordORM(
@@ -121,8 +122,8 @@ class ExplanationRecordRepo:
     async def list_records(
         self,
         *,
-        explanation_type: Optional[str] = None,
-        model_uri: Optional[str] = None,
+        explanation_type: str | None = None,
+        model_uri: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[ExplanationRecord], int]:
@@ -206,7 +207,7 @@ class ExplanationRecordRepo:
         compared_explanation_id: str,
         comparison_type: str,
         diff_payload_path: str,
-        created_by: Optional[str],
+        created_by: str | None,
     ) -> ExplanationComparisonORM:
         """写入对比记录到数据库."""
         comparison_orm = ExplanationComparisonORM(

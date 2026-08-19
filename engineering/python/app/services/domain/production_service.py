@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import random
 from datetime import date, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
@@ -95,10 +95,10 @@ async def get_dashboard() -> dict:
 
 
 async def list_production_records(
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
-    line_name: Optional[str] = None,
-    shift: Optional[str] = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    line_name: str | None = None,
+    shift: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
@@ -134,8 +134,8 @@ async def list_production_records(
 
 
 async def list_work_orders(
-    status: Optional[str] = None,
-    priority: Optional[str] = None,
+    status: str | None = None,
+    priority: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
@@ -166,7 +166,7 @@ async def list_work_orders(
     }
 
 
-async def get_work_order(wo_id: str) -> Optional[dict]:
+async def get_work_order(wo_id: str) -> dict | None:
     """获取单个工单详情。
 
     Returns:
@@ -182,7 +182,7 @@ async def get_work_order(wo_id: str) -> Optional[dict]:
     return row.to_dict()
 
 
-async def update_work_order(wo_id: str, update_data: dict[str, Any]) -> Optional[dict[str, Any]]:
+async def update_work_order(wo_id: str, update_data: dict[str, Any]) -> dict[str, Any] | None:
     """更新工单信息。
 
     Args:

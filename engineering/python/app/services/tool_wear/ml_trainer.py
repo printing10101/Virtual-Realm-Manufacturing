@@ -1,7 +1,7 @@
 """ML 训练子服务：sklearn 模型训练 / 评估 / 推理（Bosch CNC + Uniwear）。"""
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -25,12 +25,12 @@ class WearMLTrainer:
     def __init__(self, curve_predictor: WearCurvePredictor) -> None:
         self.default_replacement_threshold = DEFAULT_REPLACEMENT_THRESHOLD
         self._curve_predictor = curve_predictor
-        self._bosch_model: Optional[Any] = None
-        self._bosch_scaler: Optional[Any] = None
-        self._bosch_feature_loader: Optional[Any] = None
+        self._bosch_model: Any | None = None
+        self._bosch_scaler: Any | None = None
+        self._bosch_feature_loader: Any | None = None
         self._uniwear_models: dict[str, Any] = {}
         self._uniwear_scalers: dict[str, Any] = {}
-        self._uniwear_loader: Optional[Any] = None
+        self._uniwear_loader: Any | None = None
         self._logger = logging.getLogger(self.__class__.__name__)
 
     # ------------------------------------------------------------------
@@ -53,8 +53,8 @@ class WearMLTrainer:
     def train_with_bosch_data(
         self,
         data_dir: str = "python/data/datasets/bosch_cnc",
-        machines: Optional[list[str]] = None,
-        processes: Optional[list[str]] = None,
+        machines: list[str] | None = None,
+        processes: list[str] | None = None,
         test_size: float = 0.2,
         model_type: str = "random_forest",
     ) -> dict:

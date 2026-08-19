@@ -4,7 +4,7 @@ import numpy as np
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class ExperienceStore:
             "validation_result": validation_result,
         }
 
-    def get_experience(self, experience_id: str) -> Optional[Experience]:
+    def get_experience(self, experience_id: str) -> Experience | None:
         return self._experiences.get(experience_id)
 
     def list_experiences(

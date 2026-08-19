@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from collections import deque
 from datetime import datetime, timezone
-from typing import List, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.dreaming._closed_loop_models import (
     ClosedLoopDecision,
@@ -118,7 +119,7 @@ class _ClosedLoopRuleMixin:
             decision.reason = f"融合置信度 {fused_confidence:.3f} 与冲突 {conflict:.3f} 均在容忍区间，保持现状"
 
         return decision
-    def _fuse_rule_evidence(self, samples: List[RuleOutcomeRecord]) -> tuple:
+    def _fuse_rule_evidence(self, samples: list[RuleOutcomeRecord]) -> tuple:
         """将规则样本融合为单一置信度。
 
         将成功样本与失败样本分别包装为 InferenceResult：
@@ -152,7 +153,7 @@ class _ClosedLoopRuleMixin:
         try:
             from app.ai.lnn.core import EngineType, InferenceResult
 
-            results: List[InferenceResult] = []
+            results: list[InferenceResult] = []
             for s in samples:
                 if s.success:
                     results.append(

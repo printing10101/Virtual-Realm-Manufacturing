@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from app.dreaming.rule_synthesizer import RuleDraft
 from app.dreaming._validator_models import ValidationTestCase
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class _TestMixin:
-    def _test_boundary_cases(self, rule: RuleDraft) -> List[ValidationTestCase]:
+    def _test_boundary_cases(self, rule: RuleDraft) -> list[ValidationTestCase]:
         """测试规则的边界情况。
 
         Args:
@@ -21,7 +21,7 @@ class _TestMixin:
         Returns:
             测试用例列表。
         """
-        cases: List[ValidationTestCase] = []
+        cases: list[ValidationTestCase] = []
 
         # 边界 1：空输入
         cases.append(
@@ -95,7 +95,7 @@ class _TestMixin:
     # 阶段 4：模拟执行
     # ------------------------------------------------------------------
 
-    def _simulate_execution(self, rule: RuleDraft) -> List[ValidationTestCase]:
+    def _simulate_execution(self, rule: RuleDraft) -> list[ValidationTestCase]:
         """使用合成数据模拟规则执行。
 
         Args:
@@ -104,7 +104,7 @@ class _TestMixin:
         Returns:
             测试用例列表。
         """
-        cases: List[ValidationTestCase] = []
+        cases: list[ValidationTestCase] = []
 
         # 模拟 1：典型成功场景
         cases.append(
@@ -158,7 +158,7 @@ class _TestMixin:
 
         return cases
 
-    def _simulate_apply(self, rule: RuleDraft, context: Dict[str, Any]) -> bool:
+    def _simulate_apply(self, rule: RuleDraft, context: dict[str, Any]) -> bool:
         """模拟规则应用（不触发真实操作）。
 
         Args:

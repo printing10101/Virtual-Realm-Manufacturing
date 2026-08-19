@@ -11,7 +11,7 @@ import os
 import platform
 import socket
 import zipfile
-from typing import Any, Optional
+from typing import Any
 
 from app.config import config
 from app.contracts.project_package import (
@@ -55,7 +55,7 @@ def _resolve_output_path(output_dir: str, options: ExportOptions) -> str:
     return os.path.abspath(os.path.join(output_dir, filename))
 
 
-def _resolve_resource_path(ref: dict[str, Any]) -> Optional[str]:
+def _resolve_resource_path(ref: dict[str, Any]) -> str | None:
     """从资源引用 metadata 解析实际文件路径.
 
     Args:

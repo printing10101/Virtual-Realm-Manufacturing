@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select, func, delete, or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -31,9 +31,9 @@ def _get_session():
 
 
 async def list_documents(
-    category: Optional[str] = None,
-    status: Optional[str] = None,
-    keyword: Optional[str] = None,
+    category: str | None = None,
+    status: str | None = None,
+    keyword: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
@@ -94,7 +94,7 @@ async def list_categories() -> dict:
     return {"categories": categories}
 
 
-async def get_document(doc_id: str) -> Optional[dict]:
+async def get_document(doc_id: str) -> dict | None:
     """获取单个文档详情并增加浏览量。
 
     Returns:
@@ -128,8 +128,8 @@ async def create_document(
     category: str,
     version: str = "v1.0",
     author: str = "",
-    content: Optional[str] = None,
-    tags: Optional[list[str]] = None,
+    content: str | None = None,
+    tags: list[str] | None = None,
     status: str = "待审核",
 ) -> dict:
     """创建文档，返回新建文档 dict。"""
@@ -159,7 +159,7 @@ async def create_document(
             raise
 
 
-async def update_document(doc_id: str, update_data: dict[str, Any]) -> Optional[dict[str, Any]]:
+async def update_document(doc_id: str, update_data: dict[str, Any]) -> dict[str, Any] | None:
     """更新文档字段。
 
     Args:
@@ -193,7 +193,7 @@ async def update_document(doc_id: str, update_data: dict[str, Any]) -> Optional[
             raise
 
 
-async def delete_document(doc_id: str) -> Optional[bool]:
+async def delete_document(doc_id: str) -> bool | None:
     """删除文档。
 
     Returns:

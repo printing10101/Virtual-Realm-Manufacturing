@@ -8,7 +8,8 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-from typing import Any, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
@@ -263,8 +264,8 @@ class _ProjectCrudMixin:
     async def list_projects(
         self,
         *,
-        status_filter: Optional[str] = None,
-        author: Optional[str] = None,
+        status_filter: str | None = None,
+        author: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> dict[str, Any]:

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select, func, or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -171,9 +171,9 @@ def _get_recommendation(t: Tool) -> str:
 
 
 async def list_tools(
-    type: Optional[str] = None,
-    status: Optional[str] = None,
-    keyword: Optional[str] = None,
+    type: str | None = None,
+    status: str | None = None,
+    keyword: str | None = None,
 ) -> list[dict]:
     """获取刀具列表，支持类型、状态筛选和关键词搜索。
 
@@ -216,7 +216,7 @@ async def stats_summary() -> dict:
         }
 
 
-async def get_tool(tool_id: str) -> Optional[dict]:
+async def get_tool(tool_id: str) -> dict | None:
     """根据 ID 获取单个刀具详情。
 
     Returns:
@@ -265,7 +265,7 @@ async def create_tool(body_data: dict[str, Any]) -> dict[str, Any]:
             raise
 
 
-async def update_tool(tool_id: str, update_data: dict[str, Any]) -> Optional[dict[str, Any]]:
+async def update_tool(tool_id: str, update_data: dict[str, Any]) -> dict[str, Any] | None:
     """更新刀具信息。
 
     Args:
@@ -299,7 +299,7 @@ async def update_tool(tool_id: str, update_data: dict[str, Any]) -> Optional[dic
             raise
 
 
-async def delete_tool(tool_id: str) -> Optional[bool]:
+async def delete_tool(tool_id: str) -> bool | None:
     """删除刀具。
 
     Returns:
@@ -331,7 +331,7 @@ async def update_tool_wear(
     additional_usage_time: float,
     additional_wear: float,
     sharpened: bool,
-) -> Optional[dict]:
+) -> dict | None:
     """更新刀具磨损信息。
 
     累加使用时间和磨损量，如果进行了刃磨则重置磨损量并记录刃磨时间。
@@ -376,7 +376,7 @@ async def update_tool_wear(
             raise
 
 
-async def tool_life_prediction(tool_id: str) -> Optional[dict]:
+async def tool_life_prediction(tool_id: str) -> dict | None:
     """获取刀具寿命预测信息。
 
     基于使用时间和磨损量估算剩余寿命。

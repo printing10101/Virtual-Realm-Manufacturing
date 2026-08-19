@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 @dataclass
 class OutcomeSample:
@@ -28,7 +28,7 @@ class OutcomeSample:
 
     rule_id: str
     triggered_at: str
-    trigger_context: Dict[str, Any] = field(default_factory=dict)
+    trigger_context: dict[str, Any] = field(default_factory=dict)
     predicted_outcome: Any = None
     actual_outcome: Any = None
     correct: bool = False
@@ -39,7 +39,7 @@ class OutcomeSample:
     succeeded_lock_violated: bool = False
     source: str = "unknown"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -69,7 +69,7 @@ class EffectivenessMetrics:
     false_positive_rate: float = 0.0
     error_rate: float = 0.0
     sample_size: int = 0
-    conflict: Optional[float] = None
+    conflict: float | None = None
     confidence: float = 0.0
     window_start: str = ""
     window_end: str = ""
@@ -77,10 +77,10 @@ class EffectivenessMetrics:
     insufficient_data: bool = False
     hard_constraint_violations: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
-    def to_publisher_snapshot(self) -> Dict[str, Any]:
+    def to_publisher_snapshot(self) -> dict[str, Any]:
         """转换为 ProgressivePublisher 使用的指标快照格式。
 
         ProgressivePublisher 的 _check_promotion_thresholds 和

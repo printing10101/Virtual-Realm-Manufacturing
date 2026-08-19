@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +33,7 @@ class _SyncRecordsMixin:
         commit_sha: str = "",
         status: str = "success",
         message: str = "",
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> ProjectSyncRecord:
         """写入一条同步记录（不 commit，由调用方负责 commit）.
 
@@ -65,7 +66,7 @@ class _SyncRecordsMixin:
         self,
         project_id: str,
         *,
-        direction: Optional[str] = None,
+        direction: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> dict[str, Any]:

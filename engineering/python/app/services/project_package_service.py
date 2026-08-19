@@ -34,7 +34,7 @@ import os
 import threading
 import zipfile
 from app.utils.time import utcnow, utcnow_iso_z
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import desc, func, select
 
@@ -173,7 +173,7 @@ class ProjectPackageService(BaseSingletonService):
         """从 _package_io 委托。"""
         return _resolve_output_path(output_dir, options)
 
-    def _resolve_resource_path(self, ref: dict[str, Any]) -> Optional[str]:
+    def _resolve_resource_path(self, ref: dict[str, Any]) -> str | None:
         """从 _package_io 委托。"""
         return _resolve_resource_path(ref)
 
@@ -745,9 +745,9 @@ class ProjectPackageService(BaseSingletonService):
     async def list_exports(
         self,
         *,
-        project_id: Optional[str] = None,
-        status_filter: Optional[str] = None,
-        exported_by: Optional[str] = None,
+        project_id: str | None = None,
+        status_filter: str | None = None,
+        exported_by: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -861,9 +861,9 @@ class ProjectPackageService(BaseSingletonService):
     async def list_imports(
         self,
         *,
-        target_project_id: Optional[str] = None,
-        status_filter: Optional[str] = None,
-        imported_by: Optional[str] = None,
+        target_project_id: str | None = None,
+        status_filter: str | None = None,
+        imported_by: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> dict[str, Any]:

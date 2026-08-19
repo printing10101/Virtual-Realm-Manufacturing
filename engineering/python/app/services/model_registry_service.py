@@ -13,7 +13,7 @@ each created their own LNNModelRegistry, causing data inconsistency.
 from __future__ import annotations
 
 import threading
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.ai.lnn.inference.registry import LNNModelRegistry, ModelRegistry
 from app.ai.lnn.inference.model_cache import get_model_cache, ModelCache
@@ -33,7 +33,7 @@ class ModelRegistryService(BaseSingletonService):
         self._model_registry: LNNModelRegistry = LNNModelRegistry()
         self._pytorch_registry: ModelRegistry = ModelRegistry()
         self._model_cache: ModelCache = get_model_cache()
-        self._training_tasks: Dict[str, Dict[str, Any]] = {}
+        self._training_tasks: dict[str, dict[str, Any]] = {}
         self._tasks_lock = threading.Lock()
 
     # ── Model Registry Delegation ──────────────────────────────────────
@@ -66,7 +66,7 @@ class ModelRegistryService(BaseSingletonService):
         """List all registered models."""
         return self._model_registry.list_models(return_objects=return_objects)
 
-    def validate_model(self, model_name: str) -> Dict[str, Any]:
+    def validate_model(self, model_name: str) -> dict[str, Any]:
         """Validate a model."""
         return self._model_registry.validate_model(model_name)
 
@@ -89,26 +89,26 @@ class ModelRegistryService(BaseSingletonService):
         """Clear all cached predictors."""
         return self._model_cache.clear()
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         return self._model_cache.get_stats()
 
     # ── Training Task Management ───────────────────────────────────────
 
-    def get_training_tasks(self) -> Dict[str, Dict[str, Any]]:
+    def get_training_tasks(self) -> dict[str, dict[str, Any]]:
         """Get the shared training tasks dictionary."""
         return self._training_tasks
 
-    def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+    def get_task(self, task_id: str) -> dict[str, Any] | None:
         """Get a specific training task by ID."""
         return self._training_tasks.get(task_id)
 
-    def create_task(self, task_id: str, task_data: Dict[str, Any]) -> None:
+    def create_task(self, task_id: str, task_data: dict[str, Any]) -> None:
         """Create a new training task entry."""
         with self._tasks_lock:
             self._training_tasks[task_id] = task_data
 
-    def update_task(self, task_id: str, updates: Dict[str, Any]) -> bool:
+    def update_task(self, task_id: str, updates: dict[str, Any]) -> bool:
         """Update an existing training task. Returns False if task not found."""
         with self._tasks_lock:
             if task_id in self._training_tasks:

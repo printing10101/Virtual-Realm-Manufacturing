@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.dreaming._metrics_models import CONFIDENT_HIGH_SAMPLES, CONFIDENT_MID_SAMPLES, EffectivenessMetrics, OutcomeSample
 
@@ -23,7 +24,7 @@ class _ComputeMixin:
     def collect_metrics(
         self,
         rule_id: str,
-        window_days: Optional[int] = None,
+        window_days: int | None = None,
     ) -> EffectivenessMetrics:
         """收集指定规则的效果度量。
 
@@ -42,7 +43,7 @@ class _ComputeMixin:
             all_samples = list(self._samples.get(rule_id, []))
 
         # 按窗口过滤
-        window_samples: List[OutcomeSample] = []
+        window_samples: list[OutcomeSample] = []
         for s in all_samples:
             try:
                 triggered = datetime.fromisoformat(s.triggered_at)
@@ -78,8 +79,8 @@ class _ComputeMixin:
 
     def collect_all_metrics(
         self,
-        window_days: Optional[int] = None,
-    ) -> Dict[str, EffectivenessMetrics]:
+        window_days: int | None = None,
+    ) -> dict[str, EffectivenessMetrics]:
         """收集所有已记录规则的效果度量。
 
         Args:
@@ -96,8 +97,8 @@ class _ComputeMixin:
     def get_samples(
         self,
         rule_id: str,
-        window_days: Optional[int] = None,
-    ) -> List[OutcomeSample]:
+        window_days: int | None = None,
+    ) -> list[OutcomeSample]:
         """获取指定规则在窗口内的样本列表。"""
         window = window_days or self.window_days
         window_end = datetime.now(timezone.utc)
@@ -106,7 +107,7 @@ class _ComputeMixin:
         with self._lock:
             all_samples = list(self._samples.get(rule_id, []))
 
-        result: List[OutcomeSample] = []
+        result: list[OutcomeSample] = []
         for s in all_samples:
             try:
                 triggered = datetime.fromisoformat(s.triggered_at)
@@ -123,7 +124,7 @@ class _ComputeMixin:
     def _compute_metrics(
         self,
         rule_id: str,
-        samples: List[OutcomeSample],
+        samples: list[OutcomeSample],
         window_start: str,
         window_end: str,
     ) -> EffectivenessMetrics:

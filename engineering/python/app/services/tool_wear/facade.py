@@ -1,7 +1,7 @@
 """ToolWearPredictor facade：组合 5 个职责单一的子服务，保持对外 API 不变。"""
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from app.services.tool_wear._constants import (
     DEFAULT_REPLACEMENT_THRESHOLD,
@@ -62,7 +62,7 @@ class ToolWearPredictor:
     def predict_remaining_life(self, current_wear: float, input_parameters: dict) -> float:
         return self._curve_predictor.predict_remaining_life(current_wear, input_parameters)
 
-    def get_replacement_threshold(self, material_type: Optional[str] = None) -> float:
+    def get_replacement_threshold(self, material_type: str | None = None) -> float:
         return self._curve_predictor.get_replacement_threshold(material_type)
 
     def get_supported_models(self) -> list[dict[str, Any]]:
@@ -119,8 +119,8 @@ class ToolWearPredictor:
     def train_with_bosch_data(
         self,
         data_dir: str = "python/data/datasets/bosch_cnc",
-        machines: Optional[list[str]] = None,
-        processes: Optional[list[str]] = None,
+        machines: list[str] | None = None,
+        processes: list[str] | None = None,
         test_size: float = 0.2,
         model_type: str = "random_forest",
     ) -> dict:

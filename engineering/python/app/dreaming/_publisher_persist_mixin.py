@@ -13,7 +13,8 @@ from app.dreaming._publisher_models import (  # noqa: F401
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 from app.dreaming.rule_validator import ValidationResult
 from datetime import timezone
 
@@ -57,18 +58,18 @@ class _PublisherPersistMixin:
         return self._records[rule_id]
     def _state_file(self, rule_id: str) -> Path:
         return self.state_dir / f"{rule_id}.json"
-    def get_record(self, rule_id: str) -> Optional[PublicationRecord]:
+    def get_record(self, rule_id: str) -> PublicationRecord | None:
         """查询规则的灰度发布记录。"""
         with self._lock:
             return self._records.get(rule_id)
-    def list_publications(self) -> List[PublicationRecord]:
+    def list_publications(self) -> list[PublicationRecord]:
         """列出所有灰度发布中的规则。"""
         with self._lock:
             return list(self._records.values())
     def update_metrics(
         self,
         rule_id: str,
-        metrics: Dict[str, Any],
+        metrics: dict[str, Any],
     ) -> bool:
         """更新规则的效果指标快照。
 
@@ -99,7 +100,7 @@ class _PublisherPersistMixin:
         rule_id: str,
         target_stage: PublicationStage,
         operated_at: str,
-        validation_result: Optional[ValidationResult],
+        validation_result: ValidationResult | None,
     ) -> PublicationResult:
         """非 FULL 阶段晋级：仅更新灰度记录，不真正 apply。"""
         with self._lock:

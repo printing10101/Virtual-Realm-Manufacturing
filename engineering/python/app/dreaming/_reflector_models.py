@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 @dataclass
 class InsightItem:
@@ -14,10 +14,10 @@ class InsightItem:
     category: str  # "pattern" | "anomaly" | "rule_candidate" | "warning"
     content: str  # 洞察文本
     confidence: float = 0.5  # 置信度 [0, 1]
-    supporting_sessions: List[str] = field(default_factory=list)  # 支撑该洞察的 session_id
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    supporting_sessions: list[str] = field(default_factory=list)  # 支撑该洞察的 session_id
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "category": self.category,
             "content": self.content,
@@ -32,17 +32,17 @@ class DeduplicationResult:
     """去重操作结果。"""
 
     merged_count: int = 0  # 合并的条目数
-    removed_node_ids: List[str] = field(default_factory=list)  # 被移除的节点
-    kept_node_ids: List[str] = field(default_factory=list)  # 保留的节点
+    removed_node_ids: list[str] = field(default_factory=list)  # 被移除的节点
+    kept_node_ids: list[str] = field(default_factory=list)  # 保留的节点
 
 
 @dataclass
 class UpdateResult:
     """过时更新操作结果。"""
 
-    updated_node_ids: List[str] = field(default_factory=list)
-    invalidated_node_ids: List[str] = field(default_factory=list)
-    details: List[Dict[str, Any]] = field(default_factory=list)
+    updated_node_ids: list[str] = field(default_factory=list)
+    invalidated_node_ids: list[str] = field(default_factory=list)
+    details: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -51,14 +51,14 @@ class ReflectionResult:
 
     deduplicated: DeduplicationResult
     updated: UpdateResult
-    insights: List[InsightItem]
-    new_memory_version: Optional[str] = None  # Git commit hash
+    insights: list[InsightItem]
+    new_memory_version: str | None = None  # Git commit hash
     summary: str = ""  # 人类可读的反思摘要
     llm_used: bool = False  # 是否成功调用了 LLM
-    llm_model: Optional[str] = None  # 实际使用的 LLM 模型
+    llm_model: str | None = None  # 实际使用的 LLM 模型
     reflected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "deduplicated": {
                 "merged_count": self.deduplicated.merged_count,

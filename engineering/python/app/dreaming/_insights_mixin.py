@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.dreaming._reflector_models import DeduplicationResult, InsightItem, UpdateResult
 from app.dreaming.session_extractor import ProjectSession
@@ -18,7 +19,7 @@ class _InsightsMixin:
     _get_llm_router: Callable[..., Any]
 
 
-    def _prepare_session_summaries(self, sessions: List[ProjectSession]) -> str:
+    def _prepare_session_summaries(self, sessions: list[ProjectSession]) -> str:
         """将 Session 列表准备为 LLM 输入文本。"""
         lines = []
         for s in sessions:
@@ -36,8 +37,8 @@ class _InsightsMixin:
     async def _llm_reflect(
         self,
         session_summaries: str,
-        instructions: Optional[str],
-    ) -> Optional[tuple[List[InsightItem], str]]:
+        instructions: str | None,
+    ) -> tuple[list[InsightItem], str] | None:
         """调用 LLM 进行反思。
 
         Returns:
@@ -85,7 +86,7 @@ class _InsightsMixin:
     def _build_reflection_prompt(
         self,
         session_summaries: str,
-        instructions: Optional[str],
+        instructions: str | None,
     ) -> str:
         """构造反思 prompt。"""
         prompt = "请分析以下项目 Session 记录：\n\n"
@@ -103,7 +104,7 @@ class _InsightsMixin:
         )
         return prompt
 
-    def _parse_llm_insights(self, content: str) -> List[InsightItem]:
+    def _parse_llm_insights(self, content: str) -> list[InsightItem]:
         """解析 LLM 输出为 InsightItem 列表。"""
         # 尝试提取 JSON
         try:
@@ -131,12 +132,12 @@ class _InsightsMixin:
             logger.warning("LLM 输出解析失败: %s", e)
             return []
 
-    def _rule_based_insights(self, sessions: List[ProjectSession]) -> List[InsightItem]:
+    def _rule_based_insights(self, sessions: list[ProjectSession]) -> list[InsightItem]:
         """规则统计降级：无 LLM 时的洞察生成。"""
-        insights: List[InsightItem] = []
+        insights: list[InsightItem] = []
 
         # 规则 1：按材料统计失败率
-        material_failures: Dict[str, List[str]] = {}
+        material_failures: dict[str, list[str]] = {}
         for s in sessions:
             if s.outcome == "failure" and s.material_type:
                 material_failures.setdefault(s.material_type, []).append(s.session_id)
@@ -185,10 +186,10 @@ class _InsightsMixin:
 
     def _generate_summary(
         self,
-        sessions: List[ProjectSession],
+        sessions: list[ProjectSession],
         dedup: DeduplicationResult,
         update: UpdateResult,
-        insights: List[InsightItem],
+        insights: list[InsightItem],
     ) -> str:
         """生成人类可读的反思摘要。"""
         success_count = sum(1 for s in sessions if s.outcome == "success")

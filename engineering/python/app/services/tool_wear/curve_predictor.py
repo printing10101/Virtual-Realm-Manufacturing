@@ -1,7 +1,7 @@
 """磨损曲线预测子服务：Usui + Taylor 混合模型拟合、外推、置信区间。"""
 
 import math
-from typing import Any, Optional
+from typing import Any
 
 from app.models.validation import (
     WearCurve,
@@ -97,7 +97,7 @@ class WearCurvePredictor:
 
     def _compute_confidence(
         self,
-        current_wear: Optional[float],
+        current_wear: float | None,
         cutting_speed: float,
         material: MaterialParams,
     ) -> float:
@@ -224,7 +224,7 @@ class WearCurvePredictor:
         t_threshold = simulated_curve.model_info.get("time_to_threshold", 0.0) if simulated_curve.model_info else 0.0
         return max(0.0, round(t_threshold - elapsed, 2))
 
-    def get_replacement_threshold(self, material_type: Optional[str] = None) -> float:
+    def get_replacement_threshold(self, material_type: str | None = None) -> float:
         if material_type is None:
             return self.default_replacement_threshold
 

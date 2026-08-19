@@ -45,7 +45,6 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from app.dreaming._compute_mixin import _ComputeMixin
 from app.dreaming._metrics_models import (  # noqa: F401
@@ -77,7 +76,7 @@ class EffectivenessMetricsCollector(_SamplesMixin, _ComputeMixin):
 
     def __init__(
         self,
-        samples_dir: Optional[str] = None,
+        samples_dir: str | None = None,
         window_days: int = DEFAULT_METRICS_WINDOW_DAYS,
         min_sample_size: int = DEFAULT_MIN_SAMPLE_SIZE,
     ) -> None:
@@ -94,7 +93,7 @@ class EffectivenessMetricsCollector(_SamplesMixin, _ComputeMixin):
         self.min_sample_size = min_sample_size
         self._lock = threading.RLock()
         # 内存缓存：rule_id -> List[OutcomeSample]
-        self._samples: Dict[str, List[OutcomeSample]] = {}
+        self._samples: dict[str, list[OutcomeSample]] = {}
         self._load_samples()
 
     # ------------------------------------------------------------------

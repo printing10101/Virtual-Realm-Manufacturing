@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
@@ -46,7 +46,7 @@ class _ManifestMixin:
                     pass
             raise
 
-    def _read_manifest_yaml(self, repo_path: str) -> Optional[dict[str, Any]]:
+    def _read_manifest_yaml(self, repo_path: str) -> dict[str, Any] | None:
         """读取 .lomo-project.yaml 清单文件（不存在返回 None）."""
         manifest_path = os.path.join(repo_path, self._MANIFEST_FILENAME)
         if not os.path.exists(manifest_path):

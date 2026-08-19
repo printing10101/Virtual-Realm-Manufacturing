@@ -31,7 +31,7 @@ import os
 import threading
 import time
 from app.utils.time import utcnow
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 from sqlalchemy import desc, select
@@ -517,7 +517,7 @@ class WorldModelService(BaseSingletonService):
             )
         return config
 
-    def _resolve_weights_path(self, model_uri: str) -> Optional[str]:
+    def _resolve_weights_path(self, model_uri: str) -> str | None:
         """从模型 URI 解析权重文件路径.
 
         v1 实现：返回 None（使用随机初始化，仅用于接口验证）.

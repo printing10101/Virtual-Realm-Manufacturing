@@ -34,7 +34,7 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.dreaming._cooldown_mixin import _CooldownMixin
 from app.dreaming._detect_mixin import _DetectMixin
@@ -74,10 +74,10 @@ class RollbackManager(_CooldownMixin, _DetectMixin, _ExecuteMixin):
 
     def __init__(
         self,
-        history_dir: Optional[str] = None,
-        publisher: Optional[ProgressivePublisher] = None,
-        applicator: Optional[RuleApplicator] = None,
-        metrics_collector: Optional[EffectivenessMetricsCollector] = None,
+        history_dir: str | None = None,
+        publisher: ProgressivePublisher | None = None,
+        applicator: RuleApplicator | None = None,
+        metrics_collector: EffectivenessMetricsCollector | None = None,
         cooldown_hours: int = DEFAULT_COOLDOWN_HOURS,
         consecutive_anomaly_threshold: int = DEFAULT_CONSECUTIVE_ANOMALY_THRESHOLD,
         production_error_rate_threshold: float = DEFAULT_PRODUCTION_ERROR_RATE_THRESHOLD,
@@ -103,11 +103,11 @@ class RollbackManager(_CooldownMixin, _DetectMixin, _ExecuteMixin):
         self.production_error_rate_threshold = production_error_rate_threshold
         self._lock = threading.RLock()
         # rule_id -> 冷却到期时间戳
-        self._cooldowns: Dict[str, str] = {}
+        self._cooldowns: dict[str, str] = {}
         # rule_id -> 连续异常计数
-        self._consecutive_anomalies: Dict[str, int] = {}
+        self._consecutive_anomalies: dict[str, int] = {}
         # 回滚历史
-        self._rollback_history: List[Dict[str, Any]] = []
+        self._rollback_history: list[dict[str, Any]] = []
         self._load_history()
 # -----------------------------------------------------------------------------
 # 便捷函数
@@ -120,7 +120,7 @@ def rollback_rule(rule_id: str, reason: str) -> RollbackExecutionResult:
     return manager.rollback_rule(rule_id, reason=reason)
 
 
-def monitor_and_rollback() -> List[RollbackExecutionResult]:
+def monitor_and_rollback() -> list[RollbackExecutionResult]:
     """便捷函数：扫描并回滚异常规则。"""
     manager = RollbackManager()
     return manager.monitor_and_rollback()

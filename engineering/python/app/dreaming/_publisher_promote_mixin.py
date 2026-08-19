@@ -11,7 +11,8 @@ from app.dreaming._publisher_models import (  # noqa: F401
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 from app.dreaming.rule_synthesizer import RuleDraft
 from app.dreaming.rule_validator import ValidationResult
 from datetime import timezone
@@ -34,9 +35,9 @@ class _PublisherPromoteMixin:
     def promote(
         self,
         rule_id: str,
-        target_stage: Optional[PublicationStage] = None,
-        metrics_snapshot: Optional[Dict[str, Any]] = None,
-        rule: Optional[RuleDraft] = None,
+        target_stage: PublicationStage | None = None,
+        metrics_snapshot: dict[str, Any] | None = None,
+        rule: RuleDraft | None = None,
     ) -> PublicationResult:
         """将规则晋级到下一阶段（或指定阶段）。
 
@@ -109,7 +110,7 @@ class _PublisherPromoteMixin:
                 record.last_metrics = dict(metrics_snapshot)
 
         # FULL 阶段必须重新沙箱校验
-        validation_result: Optional[ValidationResult] = None
+        validation_result: ValidationResult | None = None
         if next_stage == PublicationStage.FULL:
             if rule is None:
                 return PublicationResult(
@@ -165,7 +166,7 @@ class _PublisherPromoteMixin:
                     self._save_record(rec)
 
         return result
-    def _check_promotion_thresholds(self, metrics: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+    def _check_promotion_thresholds(self, metrics: dict[str, Any]) -> tuple[bool, str | None]:
         """检查指标是否达到晋级阈值。
 
         Returns:

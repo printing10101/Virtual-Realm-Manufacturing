@@ -25,7 +25,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 from app.dreaming._session_models import (  # noqa: F401
     MAX_SESSIONS_PER_DREAM,
@@ -51,10 +51,10 @@ class SessionExtractor(_SourcesMixin):
 
     def __init__(
         self,
-        mlflow_tracking_uri: Optional[str] = None,
-        cam_reports_dir: Optional[str] = None,
-        audit_log_dir: Optional[str] = None,
-        cutting_store: Optional[Any] = None,
+        mlflow_tracking_uri: str | None = None,
+        cam_reports_dir: str | None = None,
+        audit_log_dir: str | None = None,
+        cutting_store: Any | None = None,
     ) -> None:
         # 默认路径与项目实验追踪器保持一致
         self.mlflow_tracking_uri = mlflow_tracking_uri or os.environ.get(
@@ -74,7 +74,7 @@ class SessionExtractor(_SourcesMixin):
         lookback_days: int = 30,
         max_sessions: int = MAX_SESSIONS_PER_DREAM,
         include_ar_02_pre_fix: bool = False,
-    ) -> List[ProjectSession]:
+    ) -> list[ProjectSession]:
         """提取过去 N 天的所有 Session。
 
         Args:
@@ -87,7 +87,7 @@ class SessionExtractor(_SourcesMixin):
             归一化的 ProjectSession 列表，按时间倒序
         """
         cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
-        sessions: List[ProjectSession] = []
+        sessions: list[ProjectSession] = []
 
         # 1. MLflow 实验记录
         try:

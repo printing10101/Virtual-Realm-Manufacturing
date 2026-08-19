@@ -37,7 +37,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.dreaming.rule_synthesizer import RuleDraft
 from app.dreaming.rule_validator import RuleValidator
@@ -71,11 +71,11 @@ class ApplyResult:
     success: bool
     rule_id: str
     applied_at: str = ""
-    node_id: Optional[str] = None
-    audit_entry_seq: Optional[int] = None
-    error: Optional[str] = None
+    node_id: str | None = None
+    audit_entry_seq: int | None = None
+    error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -94,10 +94,10 @@ class RollbackResult:
     success: bool
     rule_id: str
     rolled_back_at: str = ""
-    previous_status: Optional[str] = None
-    error: Optional[str] = None
+    previous_status: str | None = None
+    error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -114,8 +114,8 @@ class RuleApplicator:
 
     def __init__(
         self,
-        output_dir: Optional[str] = None,
-        graph_store: Optional[Any] = None,
+        output_dir: str | None = None,
+        graph_store: Any | None = None,
     ) -> None:
         """初始化规则应用器。
 
@@ -357,13 +357,13 @@ class RuleApplicator:
             previous_status=previous_status,
         )
 
-    def list_applied_rules(self) -> List[Dict[str, Any]]:
+    def list_applied_rules(self) -> list[dict[str, Any]]:
         """列出所有已应用的规则。
 
         Returns:
             规则信息列表。
         """
-        rules: List[Dict[str, Any]] = []
+        rules: list[dict[str, Any]] = []
         try:
             graph = self._get_graph_store()
             nodes = graph.list_nodes_by_type("dreaming_rule")
@@ -382,7 +382,7 @@ class RuleApplicator:
             logger.error("列出已应用规则失败：%s", e)
         return rules
 
-    def get_rule(self, rule_id: str) -> Optional[Dict[str, Any]]:
+    def get_rule(self, rule_id: str) -> dict[str, Any] | None:
         """查询指定规则的详情。
 
         Args:
@@ -410,9 +410,9 @@ class RuleApplicator:
 
 
 def apply_validated_rules(
-    rules: List[RuleDraft],
+    rules: list[RuleDraft],
     skip_validation: bool = False,
-) -> List[ApplyResult]:
+) -> list[ApplyResult]:
     """批量应用已验证的规则。
 
     便捷函数，按顺序应用规则列表。任一规则应用失败不影响后续规则。
@@ -425,7 +425,7 @@ def apply_validated_rules(
         应用结果列表（与输入 rules 一一对应）。
     """
     applicator = RuleApplicator()
-    results: List[ApplyResult] = []
+    results: list[ApplyResult] = []
     for rule in rules:
         result = applicator.apply(rule, skip_validation=skip_validation)
         results.append(result)

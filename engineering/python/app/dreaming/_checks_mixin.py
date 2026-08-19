@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List
+
 
 from app.dreaming.rule_synthesizer import RuleDraft
 from app.dreaming._validator_models import FORBIDDEN_ACTIONS, FORBIDDEN_CONDITIONS, REQUIRED_HARD_CONSTRAINTS
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class _ChecksMixin:
-    def _check_hard_constraints(self, rule: RuleDraft) -> List[str]:
+    def _check_hard_constraints(self, rule: RuleDraft) -> list[str]:
         """检查规则是否违反硬约束。
 
         Args:
@@ -21,7 +21,7 @@ class _ChecksMixin:
         Returns:
             错误列表（空列表表示通过）。
         """
-        errors: List[str] = []
+        errors: list[str] = []
 
         # C3 bug 修复：rule.action / rule.condition 是 Dict[str, Any]，
         # 不能直接调用 .lower()。改用 json 序列化后做字符串匹配。
@@ -53,7 +53,7 @@ class _ChecksMixin:
 
         return errors
 
-    def _check_syntax(self, rule: RuleDraft) -> tuple[List[str], List[str]]:
+    def _check_syntax(self, rule: RuleDraft) -> tuple[list[str], list[str]]:
         """检查规则的语法可解析性。
 
         Args:
@@ -65,8 +65,8 @@ class _ChecksMixin:
         import json
         import re
 
-        errors: List[str] = []
-        warnings: List[str] = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # C3 同类 bug 修复：condition/action 是 Dict，不能调 .strip() / len()。
         # 改用 json 序列化字符串做非空与长度检查。

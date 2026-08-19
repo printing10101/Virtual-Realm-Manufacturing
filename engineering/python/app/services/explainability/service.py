@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 import os
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 
@@ -135,10 +135,10 @@ class ExplainabilityService(BaseSingletonService):
         explanation: Any,
         explanation_type: str,
         model_uri: str,
-        source_snapshot_id: Optional[str],
+        source_snapshot_id: str | None,
         request: ExplanationRequest,
         metadata: dict[str, Any],
-        created_by: Optional[str],
+        created_by: str | None,
     ) -> ExplanationRecord:
         """统一的「持久化 payload + 写入 DB 记录」收尾逻辑.
 
@@ -167,11 +167,11 @@ class ExplainabilityService(BaseSingletonService):
         self,
         model_uri: str,
         *,
-        source_snapshot_id: Optional[str] = None,
+        source_snapshot_id: str | None = None,
         projection_method: str = ProjectionMethod.PCA,
         projection_dim: int = 2,
         max_frames: int = 1000,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> ExplanationRecord:
         """生成隐状态投影解释."""
         if not ProjectionMethod.is_valid(projection_method):
@@ -223,9 +223,9 @@ class ExplainabilityService(BaseSingletonService):
         self,
         model_uri: str,
         *,
-        source_snapshot_id: Optional[str] = None,
+        source_snapshot_id: str | None = None,
         anomaly_sigma: float = 2.0,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> ExplanationRecord:
         """生成门控动力学解释."""
         if anomaly_sigma <= 0:
@@ -273,10 +273,10 @@ class ExplainabilityService(BaseSingletonService):
         *,
         base_input: dict[str, float],
         perturbed_feature: str,
-        perturbation_range: Optional[list[float]] = None,
+        perturbation_range: list[float] | None = None,
         perturbation_step: float = 0.05,
-        source_snapshot_id: Optional[str] = None,
-        created_by: Optional[str] = None,
+        source_snapshot_id: str | None = None,
+        created_by: str | None = None,
     ) -> ExplanationRecord:
         """生成反事实解释."""
         if not base_input:
@@ -340,8 +340,8 @@ class ExplainabilityService(BaseSingletonService):
         *,
         input_data: dict[str, Any],
         sample_count: int = 30,
-        source_snapshot_id: Optional[str] = None,
-        created_by: Optional[str] = None,
+        source_snapshot_id: str | None = None,
+        created_by: str | None = None,
     ) -> ExplanationRecord:
         """生成置信度分布解释（MC dropout 采样）."""
         if not input_data:
@@ -428,8 +428,8 @@ class ExplainabilityService(BaseSingletonService):
     async def list_explanations(
         self,
         *,
-        explanation_type: Optional[str] = None,
-        model_uri: Optional[str] = None,
+        explanation_type: str | None = None,
+        model_uri: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[ExplanationRecord], int]:
@@ -456,7 +456,7 @@ class ExplainabilityService(BaseSingletonService):
         compared_explanation_id: str,
         *,
         comparison_type: str = ComparisonType.SAME_MODEL_DIFF_INPUT,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> ExplanationComparison:
         """对比两个解释."""
         if not ComparisonType.is_valid(comparison_type):

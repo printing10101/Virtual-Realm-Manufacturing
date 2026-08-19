@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
-from typing import Any, Optional
+from typing import Any
 
 from app.contracts.project_sync import SYNC_STATUS
 from app.services.project_sync_service._exceptions import (
@@ -24,7 +24,7 @@ class _GitOpsMixin:
     # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
     _project_locks: dict[str, Any]
     _project_locks_guard: Any
-    _git_available: Optional[bool]
+    _git_available: bool | None
     _git_available_lock: Any
     _repos_root: str
     _GIT_TIMEOUT: float
@@ -75,7 +75,7 @@ class _GitOpsMixin:
         args: list[str],
         *,
         cwd: str,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> _GitResult:
         """执行 git 命令，返回 _GitResult.
 

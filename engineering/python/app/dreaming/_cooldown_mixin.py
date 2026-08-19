@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class _CooldownMixin:
                 # 视为冷却失效（兼容旧数据）
                 return False
 
-    def get_cooldown_remaining(self, rule_id: str) -> Optional[timedelta]:
+    def get_cooldown_remaining(self, rule_id: str) -> timedelta | None:
         """获取规则剩余冷却时间。
 
         Args:

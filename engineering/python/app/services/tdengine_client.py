@@ -37,7 +37,8 @@ import os
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -85,11 +86,11 @@ class _TdengineHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._client: Optional[Any] = None
+        self._client: Any | None = None
         self._connect_attempts: int = 0
         self._last_failure_ts: float = 0.0
 
-    def get(self) -> Optional[Any]:
+    def get(self) -> Any | None:
         # 快速路径：已有客户端则直接返回
         if self._client is not None:
             return self._client
@@ -176,7 +177,7 @@ async def _run_sync(func, /, *args, **kwargs):
 # ---------------------------------------------------------------------------
 
 
-def get_tdengine() -> Optional[Any]:
+def get_tdengine() -> Any | None:
     """获取共享的 TDengine 客户端（同步）。
 
     Returns:
@@ -192,7 +193,7 @@ def get_tdengine() -> Optional[Any]:
     return _holder.get()
 
 
-async def get_tdengine_async() -> Optional[Any]:
+async def get_tdengine_async() -> Any | None:
     """异步获取 TDengine 客户端，避免在事件循环中执行连接初始化。"""
     return await _run_sync(_holder.get)
 
@@ -276,7 +277,7 @@ def _validate_identifier(name: str, kind: str = "identifier") -> None:
         raise ValueError(f"Invalid {kind} identifier: {name!r}. Must match ^[A-Za-z_][A-Za-z0-9_]{{0,62}}$")
 
 
-async def ensure_database(database: Optional[str] = None) -> bool:
+async def ensure_database(database: str | None = None) -> bool:
     """确保指定数据库存在，不存在则创建。
 
     Args:
@@ -302,7 +303,7 @@ async def ensure_database(database: Optional[str] = None) -> bool:
         return False
 
 
-async def use_database(database: Optional[str] = None) -> bool:
+async def use_database(database: str | None = None) -> bool:
     """切换当前连接的活动数据库。"""
     client = await get_tdengine_async()
     if client is None:
@@ -319,7 +320,7 @@ async def use_database(database: Optional[str] = None) -> bool:
 async def create_table_if_not_exists(
     table_name: str,
     columns: Sequence[str],
-    database: Optional[str] = None,
+    database: str | None = None,
 ) -> bool:
     """创建超级表/子表占位方法（按需扩展）。
 
@@ -357,7 +358,7 @@ async def create_table_if_not_exists(
 async def insert_rows(
     table_name: str,
     rows: Sequence[Sequence[Any]],
-    database: Optional[str] = None,
+    database: str | None = None,
 ) -> int:
     """批量插入时序数据到指定表。
 
@@ -397,9 +398,9 @@ async def query_time_range(
     start_ts: Any,
     end_ts: Any,
     columns: str = "*",
-    database: Optional[str] = None,
+    database: str | None = None,
     limit: int = 10000,
-) -> List[List[Any]]:
+) -> list[list[Any]]:
     """按时间范围查询时序数据。
 
     Args:
@@ -437,11 +438,11 @@ async def query_time_range(
     )
     try:
 
-        def _query() -> List[List[Any]]:
+        def _query() -> list[list[Any]]:
             result = client.execute(sql)
             if result is None:
                 return []
-            rows: List[List[Any]] = []
+            rows: list[list[Any]] = []
             for row in result:
                 rows.append([_coerce(v) for v in row])
             return rows

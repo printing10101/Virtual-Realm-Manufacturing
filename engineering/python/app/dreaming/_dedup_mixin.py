@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from app.dreaming._reflector_models import DeduplicationResult
 
@@ -27,7 +27,7 @@ class _DedupMixin:
         result = DeduplicationResult()
 
         # 按 entity 分组
-        by_entity: Dict[str, List[Dict[str, Any]]] = {}
+        by_entity: dict[str, list[dict[str, Any]]] = {}
         for entry in all_entries:
             entity = entry["properties"].get("entity", "unknown")
             by_entity.setdefault(entity, []).append(entry)
@@ -40,7 +40,7 @@ class _DedupMixin:
 
             # 简单文本相似度：content 完全相同视为重复
             # （LLM 语义相似度在 _surface_insights 阶段处理）
-            content_groups: Dict[str, List[Dict[str, Any]]] = {}
+            content_groups: dict[str, list[dict[str, Any]]] = {}
             for entry in entries:
                 content = entry["properties"].get("content", "").strip()
                 content_groups.setdefault(content, []).append(entry)

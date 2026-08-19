@@ -11,7 +11,8 @@ from app.dreaming._publisher_models import (  # noqa: F401
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 from app.dreaming.apply_rules import (
     ApplyResult,
 )
@@ -52,7 +53,7 @@ class _PublisherPublishMixin:
             PublicationResult 实例。
         """
         operated_at = datetime.now(timezone.utc).isoformat()
-        validation_result: Optional[ValidationResult] = None
+        validation_result: ValidationResult | None = None
 
         # 阶段 1：沙箱校验（FULL 阶段必须通过，其他阶段也建议通过）
         if not skip_validation:
@@ -87,8 +88,8 @@ class _PublisherPublishMixin:
             self._save_record(record)
 
         # 阶段 3：FULL 阶段才真正应用到知识图谱
-        audit_seq: Optional[int] = None
-        apply_result: Optional[ApplyResult] = None
+        audit_seq: int | None = None
+        apply_result: ApplyResult | None = None
         if stage == PublicationStage.FULL:
             apply_result = self._get_applicator().apply(rule, skip_validation=skip_validation)
             if not apply_result.success:
@@ -150,8 +151,8 @@ class _PublisherPublishMixin:
     def check_auto_demotion(
         self,
         rule_id: str,
-        metrics: Dict[str, Any],
-    ) -> Optional[str]:
+        metrics: dict[str, Any],
+    ) -> str | None:
         """检查指标是否触发自动降级。
 
         Args:

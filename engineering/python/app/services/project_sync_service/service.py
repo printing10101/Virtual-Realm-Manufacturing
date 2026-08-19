@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import Optional
+
 
 from app.config import config
 from app.services._shared.service_base import BaseSingletonService
@@ -77,7 +77,7 @@ class ProjectSyncService(
         self._project_locks: dict[str, threading.Lock] = {}
         self._project_locks_guard = threading.Lock()
         # git 可用性缓存（None 表示未检测；True/False 为检测结果）
-        self._git_available: Optional[bool] = None
+        self._git_available: bool | None = None
         self._git_available_lock = threading.Lock()
         # 仓库存储根目录：<output_dir>/project_sync/
         self._repos_root = os.path.join(os.path.abspath(config.storage.output_dir), "project_sync")

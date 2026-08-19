@@ -8,7 +8,8 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-from typing import Any, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -219,7 +220,7 @@ class _CloneMixin:
     async def _sync_clone_refs_to_db(
         self,
         project_id: str,
-        manifest: Optional[dict[str, Any]],
+        manifest: dict[str, Any] | None,
     ) -> int:
         """将清单中的资源引用同步到 DB，返回添加数量.
 
@@ -250,7 +251,7 @@ class _CloneMixin:
         branch: str,
         head_sha: str,
         refs_added: int,
-        manifest: Optional[dict[str, Any]],
+        manifest: dict[str, Any] | None,
         *,
         name: str,
         author: str,

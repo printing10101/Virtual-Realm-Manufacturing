@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.audit.audit_log import (
     AIModule,
@@ -62,16 +62,16 @@ class DreamingAuditRecorder:
 
     def record_reflection(
         self,
-        memory_version: Optional[str],
+        memory_version: str | None,
         summary: str,
         dedup_count: int,
         update_count: int,
         insight_count: int,
         rule_count: int,
-        llm_model: Optional[str] = None,
+        llm_model: str | None = None,
         lookback_days: int = 30,
         session_count: int = 0,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Any:
         """记录一次完整的反思决策到审计日志。
 
@@ -92,7 +92,7 @@ class DreamingAuditRecorder:
         Returns:
             AuditLogEntry 实例。
         """
-        ai_recommendation: Dict[str, Any] = {
+        ai_recommendation: dict[str, Any] = {
             "module": "dreaming.reflect",
             "action": "consolidate_and_synthesize",
             "memory_version": memory_version,
@@ -104,7 +104,7 @@ class DreamingAuditRecorder:
             "llm_mode": "llm" if llm_model is not None else "rule_based_fallback",
         }
 
-        final_execution: Dict[str, Any] = {
+        final_execution: dict[str, Any] = {
             "memory_store_changes": {
                 "deduplicated_count": dedup_count,
                 "stale_updated_count": update_count,
@@ -254,7 +254,7 @@ class DreamingAuditRecorder:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _compute_confidence(llm_model: Optional[str], insight_count: int, session_count: int) -> float:
+    def _compute_confidence(llm_model: str | None, insight_count: int, session_count: int) -> float:
         """计算反思置信度。
 
         规则：

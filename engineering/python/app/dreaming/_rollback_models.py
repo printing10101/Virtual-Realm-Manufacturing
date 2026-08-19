@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.dreaming.apply_rules import RollbackResult
 
@@ -27,9 +27,9 @@ class RollbackDecision:
     reason: str = ""
     severity: str = "none"  # hard_constraint | production_error | metrics_degradation | none
     detected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    metrics_snapshot: Dict[str, Any] = field(default_factory=dict)
+    metrics_snapshot: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -54,12 +54,12 @@ class RollbackExecutionResult:
     previous_stage: str = ""
     current_stage: str = ""
     fully_deprecated: bool = False
-    rollback_result: Optional[RollbackResult] = None
+    rollback_result: RollbackResult | None = None
     operated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     reason: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         if self.rollback_result is not None:
             d["rollback_result"] = self.rollback_result.to_dict()

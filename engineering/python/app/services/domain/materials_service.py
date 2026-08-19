@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -174,9 +174,9 @@ def _row_to_dict(m: Material) -> dict:
 
 
 async def list_materials(
-    category: Optional[str] = None,
-    status: Optional[str] = None,
-    keyword: Optional[str] = None,
+    category: str | None = None,
+    status: str | None = None,
+    keyword: str | None = None,
     page: int = 1,
     page_size: int = 50,
 ) -> dict:
@@ -231,7 +231,7 @@ async def stats_summary() -> dict:
     }
 
 
-async def get_material(material_id: str) -> Optional[dict]:
+async def get_material(material_id: str) -> dict | None:
     """根据 ID 获取物料详情，未找到返回 None。"""
     sessionmaker = _get_session()
     async with sessionmaker() as session:
@@ -251,7 +251,7 @@ def _recalc_status(m: Material) -> None:
         m.status = "正常"  # type: ignore[assignment]
 
 
-async def stock_in_material(material_id: str, quantity: int, remark: Optional[str] = None) -> Optional[dict]:
+async def stock_in_material(material_id: str, quantity: int, remark: str | None = None) -> dict | None:
     """物料入库：库存数量增加并重算状态。
 
     Args:
@@ -286,7 +286,7 @@ async def stock_in_material(material_id: str, quantity: int, remark: Optional[st
             raise
 
 
-async def purchase_material(material_id: str, quantity: int, supplier: Optional[str] = None) -> Optional[dict]:
+async def purchase_material(material_id: str, quantity: int, supplier: str | None = None) -> dict | None:
     """物料采购：更新供应商信息并增加库存数量，重算状态。
 
     Args:
@@ -340,7 +340,7 @@ async def create_material(data: dict[str, Any]) -> dict[str, Any]:
             raise
 
 
-async def update_material(material_id: str, update_data: dict[str, Any]) -> Optional[dict[str, Any]]:
+async def update_material(material_id: str, update_data: dict[str, Any]) -> dict[str, Any] | None:
     """更新物料字段。
 
     Args:
@@ -373,7 +373,7 @@ async def update_material(material_id: str, update_data: dict[str, Any]) -> Opti
             raise
 
 
-async def delete_material(material_id: str) -> Optional[bool]:
+async def delete_material(material_id: str) -> bool | None:
     """删除物料。返回 True；未找到返回 None。"""
     sessionmaker = _get_session()
     async with sessionmaker() as session:

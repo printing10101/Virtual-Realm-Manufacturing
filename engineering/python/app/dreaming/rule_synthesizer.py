@@ -24,7 +24,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.dreaming.reflector import InsightItem, ReflectionResult
 
@@ -51,22 +51,22 @@ class RuleDraft:
     rule_id: str  # 唯一 ID
     rule_type: str  # parameter_adjustment | confidence_threshold | ...
     description: str  # 人类可读描述
-    condition: Dict[str, Any]  # 触发条件（JSON Schema 片段）
-    action: Dict[str, Any]  # 执行动作
+    condition: dict[str, Any]  # 触发条件（JSON Schema 片段）
+    action: dict[str, Any]  # 执行动作
     confidence: float = 0.5  # 规则置信度
     status: str = RULE_STATUS_DRAFT
     # 学术诚信追溯
     source_insight_category: str = ""
-    supporting_sessions: List[str] = field(default_factory=list)
+    supporting_sessions: list[str] = field(default_factory=list)
     source_insight_content: str = ""
     # 硬约束标记
     respects_cam_validation: bool = True  # 是否遵守 CAM 二次验证
     respects_succeeded_lock: bool = True  # 是否遵守 SUCCEEDED 禁删
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    validated_at: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    validated_at: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "rule_id": self.rule_id,
             "rule_type": self.rule_type,
@@ -86,7 +86,7 @@ class RuleDraft:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RuleDraft":
+    def from_dict(cls, data: dict[str, Any]) -> "RuleDraft":
         return cls(
             rule_id=data["rule_id"],
             rule_type=data["rule_type"],
@@ -122,7 +122,7 @@ class RuleSynthesizer:
 
     def __init__(
         self,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> None:
         """初始化规则合成器。
 
@@ -139,7 +139,7 @@ class RuleSynthesizer:
     def synthesize(
         self,
         reflection: ReflectionResult,
-    ) -> List[RuleDraft]:
+    ) -> list[RuleDraft]:
         """从反思结果合成规则草稿。
 
         Args:
@@ -148,7 +148,7 @@ class RuleSynthesizer:
         Returns:
             RuleDraft 列表，状态均为 draft，未经沙箱验证
         """
-        rules: List[RuleDraft] = []
+        rules: list[RuleDraft] = []
 
         for insight in reflection.insights:
             # 根据 insight.category 分派到不同的合成策略
@@ -190,7 +190,7 @@ class RuleSynthesizer:
     # 合成策略
     # ------------------------------------------------------------------
 
-    def _synthesize_pattern_rule(self, insight: InsightItem) -> Optional[RuleDraft]:
+    def _synthesize_pattern_rule(self, insight: InsightItem) -> RuleDraft | None:
         """从 pattern 类洞察合成规则。
 
         例如：洞察 "材料 HRC52 出现 3 次失败"
@@ -241,7 +241,7 @@ class RuleSynthesizer:
             source_insight_content=insight.content,
         )
 
-    def _synthesize_anomaly_rule(self, insight: InsightItem) -> Optional[RuleDraft]:
+    def _synthesize_anomaly_rule(self, insight: InsightItem) -> RuleDraft | None:
         """从 anomaly 类洞察合成规则。"""
         return RuleDraft(
             rule_id=self._gen_rule_id(),
@@ -261,7 +261,7 @@ class RuleSynthesizer:
             source_insight_content=insight.content,
         )
 
-    def _synthesize_rule_candidate(self, insight: InsightItem) -> Optional[RuleDraft]:
+    def _synthesize_rule_candidate(self, insight: InsightItem) -> RuleDraft | None:
         """从 rule_candidate 类洞察合成规则。
 
         例如：洞察 "3 个 Session 成功，对应 memory 应提升 validation_count"
@@ -287,7 +287,7 @@ class RuleSynthesizer:
             source_insight_content=insight.content,
         )
 
-    def _synthesize_warning_rule(self, insight: InsightItem) -> Optional[RuleDraft]:
+    def _synthesize_warning_rule(self, insight: InsightItem) -> RuleDraft | None:
         """从 warning 类洞察合成警告规则。"""
         return RuleDraft(
             rule_id=self._gen_rule_id(),
@@ -338,7 +338,7 @@ class RuleSynthesizer:
     # 工具方法
     # ------------------------------------------------------------------
 
-    def _extract_material(self, content: str) -> Optional[str]:
+    def _extract_material(self, content: str) -> str | None:
         """从洞察文本中提取材料类型。
 
         支持的项目材料：TC4 / HRC52 / 6061-T6 / 45钢 / AL7075 等
@@ -363,7 +363,7 @@ class RuleSynthesizer:
         """生成规则 ID。"""
         return f"rule_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:8]}"
 
-    def _persist_rules(self, rules: List[RuleDraft]) -> None:
+    def _persist_rules(self, rules: list[RuleDraft]) -> None:
         """将规则草稿持久化到 JSON 文件。"""
         if not rules:
             return
@@ -391,13 +391,13 @@ class RuleSynthesizer:
     # 规则加载（供 RuleValidator 使用）
     # ------------------------------------------------------------------
 
-    def load_rules(self, status: Optional[str] = None) -> List[RuleDraft]:
+    def load_rules(self, status: str | None = None) -> list[RuleDraft]:
         """加载已持久化的规则草稿。
 
         Args:
             status: 按状态过滤（如 "draft"），None 表示全部
         """
-        rules: List[RuleDraft] = []
+        rules: list[RuleDraft] = []
 
         for rule_file in self.output_dir.glob("rules_draft_*.json"):
             try:

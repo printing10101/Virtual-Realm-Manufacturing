@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+
 
 from app.dreaming.reflector import ReflectionResult
 from app.dreaming.rule_synthesizer import RuleDraft
@@ -45,7 +45,7 @@ class ReportGenerator:
 
     def __init__(
         self,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> None:
         """初始化报告生成器。
 
@@ -61,10 +61,10 @@ class ReportGenerator:
 
     def generate(
         self,
-        sessions: List[ProjectSession],
+        sessions: list[ProjectSession],
         reflection: ReflectionResult,
-        rules: Optional[List[RuleDraft]] = None,
-        instructions: Optional[str] = None,
+        rules: list[RuleDraft] | None = None,
+        instructions: str | None = None,
     ) -> str:
         """生成 Markdown 反思报告。
 
@@ -104,13 +104,13 @@ class ReportGenerator:
 
     def _build_report_content(
         self,
-        sessions: List[ProjectSession],
+        sessions: list[ProjectSession],
         reflection: ReflectionResult,
-        rules: List[RuleDraft],
-        instructions: Optional[str],
+        rules: list[RuleDraft],
+        instructions: str | None,
     ) -> str:
         """构建完整报告内容。"""
-        lines: List[str] = []
+        lines: list[str] = []
 
         # 头部
         lines.append(self._build_header(reflection, instructions))
@@ -145,7 +145,7 @@ class ReportGenerator:
     # 各章节构建
     # ------------------------------------------------------------------
 
-    def _build_header(self, reflection: ReflectionResult, instructions: Optional[str]) -> str:
+    def _build_header(self, reflection: ReflectionResult, instructions: str | None) -> str:
         """构建报告头部。"""
         return f"""# Dreaming 反思报告
 
@@ -162,7 +162,7 @@ class ReportGenerator:
 {reflection.summary}
 """
 
-    def _build_input_summary(self, sessions: List[ProjectSession]) -> str:
+    def _build_input_summary(self, sessions: list[ProjectSession]) -> str:
         """构建输入 Session 摘要。"""
         total = len(sessions)
         success = sum(1 for s in sessions if s.outcome == "success")
@@ -281,7 +281,7 @@ class ReportGenerator:
 {insights_text}
 """
 
-    def _build_rules_section(self, rules: List[RuleDraft]) -> str:
+    def _build_rules_section(self, rules: list[RuleDraft]) -> str:
         """构建规则候选章节。"""
         if not rules:
             return """
@@ -328,7 +328,7 @@ class ReportGenerator:
     def _build_compliance_section(
         self,
         reflection: ReflectionResult,
-        rules: List[RuleDraft],
+        rules: list[RuleDraft],
     ) -> str:
         """构建硬约束合规性章节。"""
         # 检查规则是否违反硬约束
@@ -361,7 +361,7 @@ class ReportGenerator:
 
     def _build_reviewer_section(
         self,
-        sessions: List[ProjectSession],
+        sessions: list[ProjectSession],
         reflection: ReflectionResult,
     ) -> str:
         """构建审稿人复核信息章节（学术诚信 D-2）。"""
@@ -408,7 +408,7 @@ class ReportGenerator:
     def _build_conclusion(
         self,
         reflection: ReflectionResult,
-        rules: List[RuleDraft],
+        rules: list[RuleDraft],
     ) -> str:
         """构建落地结论章节。"""
         return f"""

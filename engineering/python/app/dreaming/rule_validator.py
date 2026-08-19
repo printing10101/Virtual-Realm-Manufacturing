@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import List
+
 
 from app.dreaming.rule_synthesizer import RuleDraft
 from app.dreaming._checks_mixin import _ChecksMixin
@@ -76,9 +76,9 @@ class RuleValidator(_ChecksMixin, _TestMixin):
         Returns:
             ValidationResult 实例。
         """
-        errors: List[str] = []
-        warnings: List[str] = []
-        test_cases: List[ValidationTestCase] = []
+        errors: list[str] = []
+        warnings: list[str] = []
+        test_cases: list[ValidationTestCase] = []
 
         # 阶段 1：硬约束校验（fail-fast）
         hard_constraint_errors = self._check_hard_constraints(rule)

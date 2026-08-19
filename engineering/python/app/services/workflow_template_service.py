@@ -28,7 +28,7 @@ from __future__ import annotations
 import logging
 import threading
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
@@ -253,9 +253,9 @@ class WorkflowTemplateService(BaseSingletonService):
 
     async def list_templates(
         self,
-        category: Optional[str] = None,
-        tag: Optional[str] = None,
-        author: Optional[str] = None,
+        category: str | None = None,
+        tag: str | None = None,
+        author: str | None = None,
         limit: int = 50,
         offset: int = 0,
         sort_by: str = "downloads",
@@ -355,7 +355,7 @@ class WorkflowTemplateService(BaseSingletonService):
     async def get_template(
         self,
         template_id: str,
-        version: Optional[str] = None,
+        version: str | None = None,
     ) -> dict[str, Any]:
         """获取模板详情（含指定版本的 manifest + spec）.
 
@@ -400,7 +400,7 @@ class WorkflowTemplateService(BaseSingletonService):
     async def download(
         self,
         template_id: str,
-        version: Optional[str] = None,
+        version: str | None = None,
     ) -> dict[str, Any]:
         """下载模板（自增下载计数，返回完整 manifest）.
 

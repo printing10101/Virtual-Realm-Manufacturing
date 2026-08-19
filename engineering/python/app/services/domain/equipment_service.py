@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+
 
 from sqlalchemy import case, func, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -56,7 +56,7 @@ async def _ensure_tables():
 
 
 async def list_equipment(
-    status: Optional[str] = None,
+    status: str | None = None,
     page: int = 1,
     page_size: int = 50,
 ) -> dict:
@@ -105,7 +105,7 @@ async def get_equipment_stats() -> dict:
     }
 
 
-async def get_equipment(equipment_id: str) -> Optional[dict]:
+async def get_equipment(equipment_id: str) -> dict | None:
     """获取单台设备详情，未找到返回 None。"""
     sessionmaker = _get_session()
     async with sessionmaker() as session:
@@ -115,7 +115,7 @@ async def get_equipment(equipment_id: str) -> Optional[dict]:
         return equip.to_dict()
 
 
-async def update_equipment(equipment_id: str, body: dict) -> Optional[dict]:
+async def update_equipment(equipment_id: str, body: dict) -> dict | None:
     """更新设备状态和指标。
 
     Returns:
@@ -153,9 +153,9 @@ async def update_equipment(equipment_id: str, body: dict) -> Optional[dict]:
 
 
 async def list_alarms(
-    equipment_id: Optional[str] = None,
-    status: Optional[str] = None,
-    severity: Optional[str] = None,
+    equipment_id: str | None = None,
+    status: str | None = None,
+    severity: str | None = None,
     page: int = 1,
     page_size: int = 50,
 ) -> dict:
@@ -186,7 +186,7 @@ async def list_alarms(
     }
 
 
-async def update_alarm_status(alarm_id: str, body: dict) -> Optional[dict]:
+async def update_alarm_status(alarm_id: str, body: dict) -> dict | None:
     """更新告警状态。
 
     Returns:
@@ -224,8 +224,8 @@ async def update_alarm_status(alarm_id: str, body: dict) -> Optional[dict]:
 
 
 async def list_maintenance_plans(
-    equipment_id: Optional[str] = None,
-    status: Optional[str] = None,
+    equipment_id: str | None = None,
+    status: str | None = None,
     page: int = 1,
     page_size: int = 50,
 ) -> dict:
@@ -254,7 +254,7 @@ async def list_maintenance_plans(
     }
 
 
-async def update_maintenance_plan(plan_id: str, body: dict) -> Optional[dict]:
+async def update_maintenance_plan(plan_id: str, body: dict) -> dict | None:
     """更新维护计划。
 
     Returns:

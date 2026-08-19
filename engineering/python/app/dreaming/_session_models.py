@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Anthropic 限制：单次 Dream 最多 100 个 Sessions
 MAX_SESSIONS_PER_DREAM = 100
@@ -21,25 +21,25 @@ class ProjectSession:
     source: str  # "mlflow" | "cam_validation" | "audit_log" | "cutting_store"
     timestamp: str  # ISO 格式时间戳
     # 工艺上下文
-    material_type: Optional[str] = None
-    tool_params: Dict[str, Any] = field(default_factory=dict)
+    material_type: str | None = None
+    tool_params: dict[str, Any] = field(default_factory=dict)
     # 预测结果
-    chatter_confidence: Optional[float] = None
-    predicted_chatter: Optional[bool] = None
+    chatter_confidence: float | None = None
+    predicted_chatter: bool | None = None
     # 验证结果
-    cam_validation_passed: Optional[bool] = None
-    cam_validation_failure_reason: Optional[str] = None
+    cam_validation_passed: bool | None = None
+    cam_validation_failure_reason: str | None = None
     # 结果分类
     outcome: str = "unknown"  # "success" | "failure" | "warning" | "unknown"
-    failure_reason: Optional[str] = None
+    failure_reason: str | None = None
     # 学术诚信标记
     is_ar_02_pre_fix: bool = False  # AR-02 修复前数据，论文应排除
     # 原始记录路径（供审稿人复核）
-    raw_artifact_path: Optional[str] = None
+    raw_artifact_path: str | None = None
     # 附加元数据
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
             "source": self.source,

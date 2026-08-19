@@ -10,7 +10,7 @@ from datetime import datetime
 import logging
 
 import numpy as np
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from app.contracts.rl_agent import (
     ActionEvaluation,
@@ -53,7 +53,7 @@ def _orm_to_dataclass(orm: RLAgentPolicyVersionORM) -> PolicyVersion:
 
 def _training_run_to_status_info(orm: RLAgentTrainingRunORM) -> TrainingStatusInfo:
     """训练运行 ORM → TrainingStatusInfo."""
-    metrics: Optional[TrainingMetricsSnapshot] = None
+    metrics: TrainingMetricsSnapshot | None = None
     if orm.metrics_json:
         try:
             metrics_dict = json.loads(str(orm.metrics_json))

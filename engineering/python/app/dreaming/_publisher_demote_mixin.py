@@ -11,7 +11,8 @@ from app.dreaming._publisher_models import (  # noqa: F401
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 from datetime import timezone
 
 
@@ -32,7 +33,7 @@ class _PublisherDemoteMixin:
         self,
         rule_id: str,
         reason: str,
-        target_stage: Optional[PublicationStage] = None,
+        target_stage: PublicationStage | None = None,
         auto: bool = False,
     ) -> PublicationResult:
         """将规则降级到上一阶段（或指定阶段）。
@@ -137,7 +138,7 @@ class _PublisherDemoteMixin:
             traffic_percentage=prev_stage.traffic_percentage,
             operated_at=operated_at,
         )
-    def _check_demotion_thresholds(self, metrics: Dict[str, Any]) -> Optional[str]:
+    def _check_demotion_thresholds(self, metrics: dict[str, Any]) -> str | None:
         """检查指标是否触发降级。
 
         Returns:

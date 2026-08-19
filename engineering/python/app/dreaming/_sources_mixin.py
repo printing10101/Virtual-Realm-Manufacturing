@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.dreaming._session_models import ProjectSession
 
@@ -21,7 +21,7 @@ class _SourcesMixin:
     mlflow_tracking_uri: Any
 
 
-    def _extract_mlflow_sessions(self, cutoff: datetime) -> List[ProjectSession]:
+    def _extract_mlflow_sessions(self, cutoff: datetime) -> list[ProjectSession]:
         """从 MLflow 拉取实验 run，归一化为 ProjectSession。"""
         try:
             # P0#3 解耦: 通过 research_bridge 检查 MLflow 可用性
@@ -41,7 +41,7 @@ class _SourcesMixin:
 
         # 搜索指定时间后的所有 run
         experiments = mlflow.search_experiments()
-        sessions: List[ProjectSession] = []
+        sessions: list[ProjectSession] = []
 
         for exp in experiments:
             runs = mlflow.search_runs(
@@ -56,7 +56,7 @@ class _SourcesMixin:
 
         return sessions
 
-    def _normalize_mlflow_run(self, run, experiment_name: str) -> Optional[ProjectSession]:
+    def _normalize_mlflow_run(self, run, experiment_name: str) -> ProjectSession | None:
         """将 MLflow run 归一化为 ProjectSession。"""
         try:
             run_id = run.get("run_id", "")
@@ -107,13 +107,13 @@ class _SourcesMixin:
     # CAM 验证 report 数据源
     # ------------------------------------------------------------------
 
-    def _extract_cam_sessions(self, cutoff: datetime) -> List[ProjectSession]:
+    def _extract_cam_sessions(self, cutoff: datetime) -> list[ProjectSession]:
         """从 cam_validation report JSON 提取验证记录。"""
         if not self.cam_reports_dir.exists():
             logger.debug("CAM reports 目录不存在: %s", self.cam_reports_dir)
             return []
 
-        sessions: List[ProjectSession] = []
+        sessions: list[ProjectSession] = []
         cutoff_ts = cutoff.timestamp()
 
         # 遍历所有 report JSON
@@ -133,7 +133,7 @@ class _SourcesMixin:
 
         return sessions
 
-    def _normalize_cam_report(self, report: Dict[str, Any], file_path: str) -> Optional[ProjectSession]:
+    def _normalize_cam_report(self, report: dict[str, Any], file_path: str) -> ProjectSession | None:
         """将 CAM 验证 report 归一化为 ProjectSession。"""
         try:
             timestamp = report.get("timestamp") or report.get("created_at")
@@ -169,13 +169,13 @@ class _SourcesMixin:
     # 审计日志数据源
     # ------------------------------------------------------------------
 
-    def _extract_audit_sessions(self, cutoff: datetime) -> List[ProjectSession]:
+    def _extract_audit_sessions(self, cutoff: datetime) -> list[ProjectSession]:
         """从 audit_log 哈希链提取决策记录。"""
         if not self.audit_log_dir.exists():
             logger.debug("Audit log 目录不存在: %s", self.audit_log_dir)
             return []
 
-        sessions: List[ProjectSession] = []
+        sessions: list[ProjectSession] = []
         cutoff_ms = int(cutoff.timestamp() * 1000)
 
         # 审计日志按日期组织：audit/{YYYY-MM-DD}/audit.log
@@ -209,7 +209,7 @@ class _SourcesMixin:
 
         return sessions
 
-    def _normalize_audit_entry(self, entry: Dict[str, Any], log_path: str) -> Optional[ProjectSession]:
+    def _normalize_audit_entry(self, entry: dict[str, Any], log_path: str) -> ProjectSession | None:
         """将审计日志条目归一化为 ProjectSession。"""
         try:
             timestamp_ms = entry.get("timestamp_ms", 0)
@@ -252,12 +252,12 @@ class _SourcesMixin:
     # 切削参数任务数据源
     # ------------------------------------------------------------------
 
-    def _extract_cutting_sessions(self, cutoff: datetime) -> List[ProjectSession]:
+    def _extract_cutting_sessions(self, cutoff: datetime) -> list[ProjectSession]:
         """从 cutting_store 提取切削参数推荐任务。"""
         if self.cutting_store is None:
             return []
 
-        sessions: List[ProjectSession] = []
+        sessions: list[ProjectSession] = []
 
         try:
             # 调用 cutting_store 的列表接口（假设有 list_tasks 方法）

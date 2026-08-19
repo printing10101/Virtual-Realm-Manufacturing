@@ -26,7 +26,7 @@ from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from app.config import config
@@ -43,8 +43,8 @@ class BackupManifest:
     backup_id: str
     created_at: str
     # 值类型：name/source/sha256 为 str，size_bytes 为 int（见 create_backup 填充）
-    files: List[dict[str, Any]] = field(default_factory=list)
-    source_dirs: List[str] = field(default_factory=list)
+    files: list[dict[str, Any]] = field(default_factory=list)
+    source_dirs: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -55,10 +55,10 @@ class BackupManifest:
         }
 
 
-def _iter_sqlite_databases(source_dirs: List[Path]) -> List[Path]:
+def _iter_sqlite_databases(source_dirs: list[Path]) -> list[Path]:
     """枚举源目录下的所有 SQLite 库，排除备份与临时文件。"""
     excluded_suffixes = ("-wal", "-shm", "-journal")
-    dbs: List[Path] = []
+    dbs: list[Path] = []
     seen: set[Path] = set()
     for d in source_dirs:
         if not d.exists():
@@ -76,9 +76,9 @@ def _iter_sqlite_databases(source_dirs: List[Path]) -> List[Path]:
     return dbs
 
 
-def _default_source_dirs() -> List[Path]:
+def _default_source_dirs() -> list[Path]:
     """从配置推导默认源目录（桌面版数据分散在多处）。"""
-    dirs: List[Path] = []
+    dirs: list[Path] = []
     for raw in (config.paths.db_path, config.paths.vector_db_path):
         parent = Path(raw).expanduser().parent
         if str(parent) not in {str(d) for d in dirs}:
@@ -102,15 +102,15 @@ def _compute_sha256(path: Path) -> str:
 class BackupService:
     """SQLite 在线备份服务。"""
 
-    def __init__(self, backup_dir: Optional[str] = None):
+    def __init__(self, backup_dir: str | None = None):
         self.backup_dir = Path(backup_dir or config.paths.backup_dir).expanduser()
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
-    def discover_databases(self, source_dirs: Optional[List[Path]] = None) -> List[Path]:
+    def discover_databases(self, source_dirs: list[Path] | None = None) -> list[Path]:
         dirs = source_dirs or _default_source_dirs()
         return _iter_sqlite_databases(dirs)
 
-    def create_backup(self, source_dirs: Optional[List[Path]] = None) -> dict[str, Any]:
+    def create_backup(self, source_dirs: list[Path] | None = None) -> dict[str, Any]:
         """创建一次全量备份，返回 manifest dict。"""
         dirs = source_dirs or _default_source_dirs()
         dbs = _iter_sqlite_databases(dirs)
@@ -182,9 +182,9 @@ class BackupService:
             with closing(sqlite3.connect(dst)) as dst_conn:
                 src_conn.backup(dst_conn)
 
-    def list_backups(self) -> List[dict[str, Any]]:
+    def list_backups(self) -> list[dict[str, Any]]:
         """列出历史备份（按时间倒序）。"""
-        backups: List[dict[str, Any]] = []
+        backups: list[dict[str, Any]] = []
         for d in sorted(self.backup_dir.iterdir(), reverse=True):
             if not d.is_dir():
                 continue
@@ -229,8 +229,8 @@ class BackupService:
             )
         target = Path(target_dir).expanduser()
         target.mkdir(parents=True, exist_ok=True)
-        restored: List[str] = []
-        skipped: List[str] = []
+        restored: list[str] = []
+        skipped: list[str] = []
         for f in sorted(src_dir.iterdir()):
             if f.name == "manifest.json" or not f.is_file():
                 continue
@@ -245,7 +245,7 @@ class BackupService:
 
 
 # 模块级单例（与 app 其它服务保持一致）
-_backup_service: Optional[BackupService] = None
+_backup_service: BackupService | None = None
 
 
 def get_backup_service() -> BackupService:

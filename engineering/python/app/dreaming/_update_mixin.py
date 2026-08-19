@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.dreaming._reflector_models import InsightItem, UpdateResult
 from app.dreaming.session_extractor import ProjectSession
@@ -20,7 +21,7 @@ class _UpdateMixin:
     store: Any
 
 
-    def _update_stale_entries(self, sessions: List[ProjectSession]) -> UpdateResult:
+    def _update_stale_entries(self, sessions: list[ProjectSession]) -> UpdateResult:
         """用新 Session 数据修正过时的 memory 条目。
 
         策略：
@@ -97,9 +98,9 @@ class _UpdateMixin:
 
     async def _surface_insights(
         self,
-        sessions: List[ProjectSession],
-        instructions: Optional[str],
-    ) -> tuple[List[InsightItem], bool, Optional[str]]:
+        sessions: list[ProjectSession],
+        instructions: str | None,
+    ) -> tuple[list[InsightItem], bool, str | None]:
         """跨 Session 发现潜在规律。
 
         优先使用 LLM 反思；LLM 不可用时降级为规则统计。

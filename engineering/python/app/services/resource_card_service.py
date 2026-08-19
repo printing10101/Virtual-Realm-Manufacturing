@@ -28,7 +28,7 @@ from __future__ import annotations
 import logging
 import threading
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -157,8 +157,8 @@ class ResourceCardService(BaseSingletonService):
         storage_uri: str,
         owner_id: str,
         readme_md: str = "",
-        tags: Optional[list[str]] = None,
-        metrics: Optional[dict[str, Any]] = None,
+        tags: list[str] | None = None,
+        metrics: dict[str, Any] | None = None,
         status: str = ModelArtifactStatus.DRAFT,
     ) -> ModelArtifact:
         """注册新模型产物.
@@ -269,10 +269,10 @@ class ResourceCardService(BaseSingletonService):
     async def list_models(
         self,
         *,
-        owner_id: Optional[str] = None,
-        model_type: Optional[str] = None,
-        status: Optional[str] = None,
-        tag: Optional[str] = None,
+        owner_id: str | None = None,
+        model_type: str | None = None,
+        status: str | None = None,
+        tag: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -324,12 +324,12 @@ class ResourceCardService(BaseSingletonService):
         self,
         model_id: str,
         *,
-        readme_md: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        status: Optional[str] = None,
-        metrics: Optional[dict[str, Any]] = None,
-        framework: Optional[str] = None,
-        storage_uri: Optional[str] = None,
+        readme_md: str | None = None,
+        tags: list[str] | None = None,
+        status: str | None = None,
+        metrics: dict[str, Any] | None = None,
+        framework: str | None = None,
+        storage_uri: str | None = None,
     ) -> ModelArtifact:
         """更新模型卡片字段（部分更新，仅非 None 字段被写入）.
 
@@ -407,7 +407,7 @@ class ResourceCardService(BaseSingletonService):
         model_id: str,
         metrics: dict[str, Any],
         *,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> ModelArtifact:
         """追加一条指标记录到模型历史（同时更新当前指标快照）.
 
@@ -440,8 +440,8 @@ class ResourceCardService(BaseSingletonService):
         self,
         dataset_id: str,
         *,
-        version: Optional[str] = None,
-    ) -> Optional[DatasetReadme]:
+        version: str | None = None,
+    ) -> DatasetReadme | None:
         """获取数据集 README.
 
         优先取版本级（version 不为 None），回退到数据集级（version=None）。
@@ -485,7 +485,7 @@ class ResourceCardService(BaseSingletonService):
         readme_md: str,
         updated_by: str,
         *,
-        version: Optional[str] = None,
+        version: str | None = None,
     ) -> DatasetReadme:
         """插入或更新数据集 README（按 dataset_id + version 唯一）.
 
@@ -560,7 +560,7 @@ class ResourceCardService(BaseSingletonService):
         self,
         dataset_id: str,
         *,
-        version: Optional[str] = None,
+        version: str | None = None,
     ) -> bool:
         """删除数据集 README.
 
@@ -630,7 +630,7 @@ class ResourceCardService(BaseSingletonService):
         latest_version = versions[0] if versions else None
 
         # 获取 README（优先版本级，回退数据集级）
-        readme: Optional[DatasetReadme] = None
+        readme: DatasetReadme | None = None
         try:
             if latest_version is not None:
                 readme = await self.get_dataset_readme(dataset_id, version=latest_version.get("version"))
@@ -645,7 +645,7 @@ class ResourceCardService(BaseSingletonService):
             readme = None
 
         # 获取 lineage 摘要
-        lineage_summary: Optional[LineageSummary] = None
+        lineage_summary: LineageSummary | None = None
         if include_lineage and latest_version is not None:
             target_uri = f"dataset://{dataset_id}/{latest_version.get('version', 'latest')}"
             try:
@@ -697,7 +697,7 @@ class ResourceCardService(BaseSingletonService):
 
         # 获取关联快照
         snapshot_count = 0
-        latest_snapshot: Optional[dict[str, Any]] = None
+        latest_snapshot: dict[str, Any] | None = None
         try:
             snapshot_store = get_snapshot_store()
             snapshots = await snapshot_store.list(filters={"model_uri": artifact.model_uri})
@@ -721,7 +721,7 @@ class ResourceCardService(BaseSingletonService):
             )
 
         # 获取 lineage 摘要
-        lineage_summary: Optional[LineageSummary] = None
+        lineage_summary: LineageSummary | None = None
         if include_lineage:
             try:
                 lineage_summary = await self.get_lineage_summary(artifact.model_uri, max_depth=lineage_depth)

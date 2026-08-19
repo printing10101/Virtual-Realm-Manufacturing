@@ -42,7 +42,8 @@ import time
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterator, List
+from typing import Any
+from collections.abc import Iterator
 
 import pytest
 
@@ -237,7 +238,7 @@ class TestInsertAndQuery:
     async def test_insert_1000_rows_and_query(self, test_table: str, test_database: str) -> None:
         """主验收用例：插入 1000 条数据并按时间范围查询验证。"""
         now = datetime(2026, 1, 1, 0, 0, 0)
-        rows: List[List[Any]] = []
+        rows: list[list[Any]] = []
         for i in range(1000):
             ts = now + timedelta(milliseconds=i * 10)  # 每条 +10ms
             rows.append(

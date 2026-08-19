@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from app.contracts.resource_card import DatasetReadme, ModelArtifact
 from app.database.models.resource_card import (
@@ -23,7 +23,7 @@ def _json_dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, default=str)
 
 
-def _json_loads(value: Optional[str], default: Any) -> Any:
+def _json_loads(value: str | None, default: Any) -> Any:
     """安全 JSON 反序列化."""
     if not value:
         return default
@@ -66,7 +66,7 @@ def _orm_to_dataset_readme(orm: DatasetReadmeORM) -> DatasetReadme:
     )
 
 
-def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+def _parse_iso_datetime(value: str | None) -> datetime | None:
     """解析 ISO 字符串为 datetime（失败返回 None）."""
     if not value:
         return None

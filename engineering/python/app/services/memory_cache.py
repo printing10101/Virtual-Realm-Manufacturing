@@ -12,7 +12,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class CacheEntry:
     """缓存条目，支持 TTL"""
 
     value: Any
-    expire_at: Optional[float] = None
+    expire_at: float | None = None
 
     def is_expired(self) -> bool:
         if self.expire_at is None:
@@ -43,9 +43,9 @@ class MemoryCache:
 
     def __init__(self, cleanup_interval: int = 60):
         self._lock = threading.Lock()
-        self._data: Dict[str, CacheEntry] = {}
+        self._data: dict[str, CacheEntry] = {}
         self._cleanup_interval = cleanup_interval
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._cleanup_task: asyncio.Task | None = None
         self._started = False
 
     async def start(self):
@@ -93,7 +93,7 @@ class MemoryCache:
     # 简单 KV 操作
     # =========================================================================
 
-    async def set(self, key: str, value: Any, ex: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: Any, ex: int | None = None) -> bool:
         """设置键值对，ex 为过期时间（秒）"""
         expire_at = None
         if ex is not None:
@@ -103,7 +103,7 @@ class MemoryCache:
             self._data[key] = CacheEntry(value=value, expire_at=expire_at)
         return True
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """获取键值"""
         with self._lock:
             entry = self._data.get(key)
@@ -137,7 +137,7 @@ class MemoryCache:
     # Hash 操作（用于任务进度存储）
     # =========================================================================
 
-    async def hset(self, key: str, mapping: Dict[str, Any]) -> bool:
+    async def hset(self, key: str, mapping: dict[str, Any]) -> bool:
         """设置 Hash 字段"""
         with self._lock:
             entry = self._data.get(key)
@@ -149,7 +149,7 @@ class MemoryCache:
             entry.value.update(mapping)
         return True
 
-    async def hgetall(self, key: str) -> Dict[str, Any]:
+    async def hgetall(self, key: str) -> dict[str, Any]:
         """获取 Hash 所有字段"""
         with self._lock:
             entry = self._data.get(key)
@@ -162,7 +162,7 @@ class MemoryCache:
                 return {}
             return entry.value.copy()
 
-    async def hget(self, key: str, field: str) -> Optional[Any]:
+    async def hget(self, key: str, field: str) -> Any | None:
         """获取 Hash 单个字段"""
         with self._lock:
             entry = self._data.get(key)
@@ -192,7 +192,7 @@ class MemoryCache:
             entry.expire_at = time.time() + seconds
             return True
 
-    async def info(self, section: str = "memory") -> Dict[str, Any]:
+    async def info(self, section: str = "memory") -> dict[str, Any]:
         """兼容性方法：返回内存使用信息（供健康检查使用）"""
         with self._lock:
             entry_count = len(self._data)
@@ -207,7 +207,7 @@ class MemoryCache:
 # 全局单例
 # =============================================================================
 
-_memory_cache: Optional[MemoryCache] = None
+_memory_cache: MemoryCache | None = None
 _holder_lock = threading.Lock()
 
 

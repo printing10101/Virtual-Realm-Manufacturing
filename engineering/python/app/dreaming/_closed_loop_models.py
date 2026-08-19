@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -30,7 +30,7 @@ class ClosedLoopDecision:
 
     rule_id: str
     action: str  # promote | demote | keep | rollback
-    target_stage: Optional[str] = None
+    target_stage: str | None = None
     reason: str = ""
     fused_confidence: float = 0.0
     conflict: float = 0.0
@@ -38,9 +38,9 @@ class ClosedLoopDecision:
     sample_count: int = 0
     evaluated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     applied: bool = False
-    apply_error: Optional[str] = None
+    apply_error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -64,9 +64,9 @@ class RuleOutcomeRecord:
 
 
 def run_closed_loop(
-    rule_ids: Optional[List[str]] = None,
+    rule_ids: list[str] | None = None,
     apply: bool = True,
-) -> List[ClosedLoopDecision]:
+) -> list[ClosedLoopDecision]:
     """便捷函数：执行一次闭环迭代。
 
     Args:

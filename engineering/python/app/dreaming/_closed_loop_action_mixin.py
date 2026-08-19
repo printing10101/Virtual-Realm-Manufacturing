@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.dreaming._closed_loop_models import (
     ClosedLoopDecision,
@@ -151,7 +152,7 @@ class _ClosedLoopActionMixin:
                 exc_info=True,
             )
             return False
-    def _get_next_stage(self, rule_id: str) -> Optional[str]:
+    def _get_next_stage(self, rule_id: str) -> str | None:
         """获取规则的下一晋级阶段。"""
         publisher = self._get_publisher()
         if publisher is None:
@@ -168,7 +169,7 @@ class _ClosedLoopActionMixin:
         except Exception as e:
             logger.debug("ClosedLoop: get_next_stage 失败：%s", e)
             return None
-    def _get_previous_stage(self, rule_id: str) -> Optional[str]:
+    def _get_previous_stage(self, rule_id: str) -> str | None:
         """获取规则的降级目标阶段。"""
         publisher = self._get_publisher()
         if publisher is None:

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -154,7 +154,7 @@ def compute_gate_anomalies(gate_array: np.ndarray, anomaly_sigma: float) -> tupl
 
 
 def build_perturbation_range(
-    perturbation_range: Optional[list[float]],
+    perturbation_range: list[float] | None,
     perturbation_step: float,
 ) -> list[float]:
     """生成扰动序列（相对基准值的比例）.

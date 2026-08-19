@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from typing import Any, List, Optional
+from typing import Any
 
 # H12 修复：原代码在模块导入期临时篡改全局 sys.platform="linux" 以绕过
 # Windows asyncio Proactor 限制，但这是线程不安全的——其他线程在此时读取
@@ -62,7 +62,7 @@ class DreamReflector(_DedupMixin, _UpdateMixin, _InsightsMixin):
     def __init__(
         self,
         memory_store: LocalMemoryStore,
-        repo_root: Optional[str] = None,
+        repo_root: str | None = None,
         enable_llm: bool = True,
     ) -> None:
         self.store = memory_store
@@ -89,8 +89,8 @@ class DreamReflector(_DedupMixin, _UpdateMixin, _InsightsMixin):
 
     async def reflect(
         self,
-        sessions: List[ProjectSession],
-        instructions: Optional[str] = None,
+        sessions: list[ProjectSession],
+        instructions: str | None = None,
     ) -> ReflectionResult:
         """执行完整反思流程。
 

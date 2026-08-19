@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.dreaming.rule_validator import ValidationResult
 
@@ -39,7 +39,7 @@ class PublicationStage(str, Enum):
         return _STAGE_TRAFFIC_PERCENTAGE[self]
 
     @property
-    def next_stage(self) -> Optional["PublicationStage"]:
+    def next_stage(self) -> "PublicationStage" | None:
         """下一阶段（晋级方向）。FULL 已是最高，返回 None。"""
         idx = _STAGE_ORDER.index(self)
         if idx + 1 >= len(_STAGE_ORDER):
@@ -47,7 +47,7 @@ class PublicationStage(str, Enum):
         return _STAGE_ORDER[idx + 1]
 
     @property
-    def previous_stage(self) -> Optional["PublicationStage"]:
+    def previous_stage(self) -> "PublicationStage" | None:
         """上一阶段（降级方向）。SHADOW 已是最低，返回 None。"""
         idx = _STAGE_ORDER.index(self)
         if idx == 0:
@@ -78,18 +78,18 @@ class PublicationRecord:
     entered_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     promoted_count: int = 0
     demoted_count: int = 0
-    last_metrics: Dict[str, Any] = field(default_factory=dict)
-    stage_history: List[Dict[str, Any]] = field(default_factory=list)
+    last_metrics: dict[str, Any] = field(default_factory=dict)
+    stage_history: list[dict[str, Any]] = field(default_factory=list)
     promoted_to_full: bool = False
     auto_rollback_triggered: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["current_stage"] = self.current_stage.value
         return d
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PublicationRecord":
+    def from_dict(cls, data: dict[str, Any]) -> "PublicationRecord":
         stage_str = data.get("current_stage", "shadow")
         try:
             stage = PublicationStage(stage_str)
@@ -128,11 +128,11 @@ class PublicationResult:
     stage: PublicationStage
     traffic_percentage: float = 0.0
     operated_at: str = ""
-    validation_result: Optional[ValidationResult] = None
-    audit_entry_seq: Optional[int] = None
-    error: Optional[str] = None
+    validation_result: ValidationResult | None = None
+    audit_entry_seq: int | None = None
+    error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["stage"] = self.stage.value
         if self.validation_result is not None:
@@ -141,7 +141,7 @@ class PublicationResult:
 
 
 # 灰度阶段常量（自 progressive_publisher 迁移，置于类定义之后）
-_STAGE_ORDER: List[PublicationStage] = [
+_STAGE_ORDER: list[PublicationStage] = [
     PublicationStage.SHADOW,
     PublicationStage.CANARY,
     PublicationStage.ROLLING_10,
@@ -149,7 +149,7 @@ _STAGE_ORDER: List[PublicationStage] = [
     PublicationStage.FULL,
 ]
 
-_STAGE_TRAFFIC_PERCENTAGE: Dict[PublicationStage, float] = {
+_STAGE_TRAFFIC_PERCENTAGE: dict[PublicationStage, float] = {
     PublicationStage.SHADOW: 0.0,
     PublicationStage.CANARY: 0.01,
     PublicationStage.ROLLING_10: 0.10,

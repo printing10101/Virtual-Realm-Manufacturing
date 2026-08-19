@@ -6,7 +6,7 @@ import json
 import logging
 from collections import deque
 from datetime import datetime, timezone
-from typing import Any, Deque, Dict, List
+from typing import Any
 
 from app.dreaming._closed_loop_models import (
     ClosedLoopDecision,
@@ -70,7 +70,7 @@ class _ClosedLoopPersistenceMixin:
             with self._lock:
                 self._windows.clear()
                 for rule_id, samples in state.get("windows", {}).items():
-                    window: Deque[RuleOutcomeRecord] = deque(maxlen=self._window_size)
+                    window: deque[RuleOutcomeRecord] = deque(maxlen=self._window_size)
                     for s in samples:
                         window.append(
                             RuleOutcomeRecord(
@@ -114,7 +114,7 @@ class _ClosedLoopPersistenceMixin:
             )
         except (OSError, json.JSONDecodeError, KeyError) as e:
             logger.warning("ClosedLoop: 状态恢复失败：%s", e)
-    def _persist_iteration(self, decisions: List[ClosedLoopDecision]) -> None:
+    def _persist_iteration(self, decisions: list[ClosedLoopDecision]) -> None:
         """持久化单次迭代结果到 JSON 文件。"""
         if not decisions:
             return
@@ -135,17 +135,17 @@ class _ClosedLoopPersistenceMixin:
             logger.debug("ClosedLoop: 迭代结果已持久化 %s", output_file)
         except OSError as e:
             logger.warning("ClosedLoop: 迭代结果持久化失败（不影响决策）：%s", e)
-    def get_decision_history(self, rule_id: str, limit: int = 10) -> List[ClosedLoopDecision]:
+    def get_decision_history(self, rule_id: str, limit: int = 10) -> list[ClosedLoopDecision]:
         """获取指定规则的决策历史。"""
         with self._lock:
             history = self._decision_history.get(rule_id, [])
             return list(history[-limit:])
-    def get_window_samples(self, rule_id: str) -> List[RuleOutcomeRecord]:
+    def get_window_samples(self, rule_id: str) -> list[RuleOutcomeRecord]:
         """获取指定规则的当前窗口样本。"""
         with self._lock:
             window = self._windows.get(rule_id, deque(maxlen=self._window_size))
             return list(window)
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """获取闭环整体统计信息。"""
         with self._lock:
             total_samples = sum(len(w) for w in self._windows.values())

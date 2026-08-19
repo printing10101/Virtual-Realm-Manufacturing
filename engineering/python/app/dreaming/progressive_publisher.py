@@ -37,7 +37,7 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
-from typing import Dict, Optional
+
 
 from app.dreaming.apply_rules import (
     RuleApplicator,
@@ -86,7 +86,7 @@ PUBLICATION_STATE_DIR = "python/outputs/dreaming/publication_state"
 
 # 晋级阈值：效果指标达标才允许晋级
 # 这些阈值对应 effectiveness_metrics.py 中的指标
-DEFAULT_PROMOTION_THRESHOLDS: Dict[str, float] = {
+DEFAULT_PROMOTION_THRESHOLDS: dict[str, float] = {
     "min_accuracy": 0.70,  # 准确率下限
     "max_false_positive_rate": 0.20,  # 误报率上限
     "min_sample_size": 20,  # 最小样本数（canary 阶段必须有足够样本）
@@ -94,7 +94,7 @@ DEFAULT_PROMOTION_THRESHOLDS: Dict[str, float] = {
 }
 
 # 降级阈值：指标恶化时自动降级
-DEFAULT_DEMOTION_THRESHOLDS: Dict[str, float] = {
+DEFAULT_DEMOTION_THRESHOLDS: dict[str, float] = {
     "max_false_positive_rate": 0.40,  # 误报率超过 40% 降级
     "max_error_rate": 0.25,  # 错误率超过 25% 降级
     "min_accuracy": 0.50,  # 准确率低于 50% 降级
@@ -117,11 +117,11 @@ class ProgressivePublisher(_PublisherPersistMixin, _PublisherPublishMixin, _Publ
 
     def __init__(
         self,
-        state_dir: Optional[str] = None,
-        applicator: Optional[RuleApplicator] = None,
-        validator: Optional[RuleValidator] = None,
-        promotion_thresholds: Optional[Dict[str, float]] = None,
-        demotion_thresholds: Optional[Dict[str, float]] = None,
+        state_dir: str | None = None,
+        applicator: RuleApplicator | None = None,
+        validator: RuleValidator | None = None,
+        promotion_thresholds: dict[str, float] | None = None,
+        demotion_thresholds: dict[str, float] | None = None,
     ) -> None:
         """初始化灰度发布管理器。
 
@@ -137,7 +137,7 @@ class ProgressivePublisher(_PublisherPersistMixin, _PublisherPublishMixin, _Publ
         self._applicator = applicator
         self._validator = validator or RuleValidator()
         self._lock = threading.RLock()
-        self._records: Dict[str, PublicationRecord] = {}
+        self._records: dict[str, PublicationRecord] = {}
         self._promotion_thresholds = dict(promotion_thresholds or DEFAULT_PROMOTION_THRESHOLDS)
         self._demotion_thresholds = dict(demotion_thresholds or DEFAULT_DEMOTION_THRESHOLDS)
         self._load_state()
@@ -200,7 +200,7 @@ def publish_rule(
 
 def promote_rule(
     rule_id: str,
-    target_stage: Optional[PublicationStage] = None,
+    target_stage: PublicationStage | None = None,
 ) -> PublicationResult:
     """便捷函数：晋级规则。"""
     publisher = ProgressivePublisher()

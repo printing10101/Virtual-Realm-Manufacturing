@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Any
+from typing import Any
 
 from app.dreaming._metrics_models import OutcomeSample
 
@@ -80,7 +80,7 @@ class _SamplesMixin:
         self._save_samples(sample.rule_id)
         return True
 
-    def record_samples(self, samples: List[OutcomeSample]) -> int:
+    def record_samples(self, samples: list[OutcomeSample]) -> int:
         """批量录入样本。
 
         Args:

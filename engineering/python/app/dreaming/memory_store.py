@@ -24,7 +24,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.knowledge_graph.graph_store import GraphStore
 
@@ -47,9 +47,9 @@ class MemoryEntry:
     confidence: float = 0.5  # 初始置信度
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     last_updated: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "entity": self.entity,
             "content": self.content,
@@ -69,7 +69,7 @@ class MemoryVersion:
     version_id: str  # Git commit hash
     timestamp: str
     entry_count: int
-    parent_version: Optional[str] = None  # 上一个版本（用于 diff）
+    parent_version: str | None = None  # 上一个版本（用于 diff）
 
 
 class LocalMemoryStore:
@@ -91,7 +91,7 @@ class LocalMemoryStore:
         self,
         graph_store: GraphStore,
         repo_root: str,
-        watch_paths: Optional[List[str]] = None,
+        watch_paths: list[str] | None = None,
     ) -> None:
         """初始化 Memory Store。
 
@@ -109,7 +109,7 @@ class LocalMemoryStore:
     # 读取
     # ------------------------------------------------------------------
 
-    def read_all(self) -> List[Dict[str, Any]]:
+    def read_all(self) -> list[dict[str, Any]]:
         """读取全部 Dreaming memory 条目。
 
         对应 Anthropic 的 /mnt/memory/ 目录读取。
@@ -123,7 +123,7 @@ class LocalMemoryStore:
             for n in nodes
         ]
 
-    def read_by_entity(self, entity_id: str) -> List[Dict[str, Any]]:
+    def read_by_entity(self, entity_id: str) -> list[dict[str, Any]]:
         """读取与指定实体关联的所有 memory 条目。"""
         all_entries = self.read_all()
         return [e for e in all_entries if e["properties"].get("entity") == entity_id]
@@ -136,7 +136,7 @@ class LocalMemoryStore:
         self,
         entity: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         confidence: float = 0.5,
     ) -> str:
         """新增 memory 条目。
@@ -204,8 +204,8 @@ class LocalMemoryStore:
     def update_observation(
         self,
         node_id: str,
-        content: Optional[str] = None,
-        confidence: Optional[float] = None,
+        content: str | None = None,
+        confidence: float | None = None,
         increment_validation: bool = False,
     ) -> bool:
         """更新已有 memory 条目。
@@ -233,7 +233,7 @@ class LocalMemoryStore:
 
     def commit_version(
         self,
-        message: Optional[str] = None,
+        message: str | None = None,
     ) -> MemoryVersion:
         """生成不可变版本快照。
 
@@ -355,7 +355,7 @@ class LocalMemoryStore:
             logger.warning("git diff 超时（30s），返回空字符串")
             return ""
 
-    def _get_current_head(self) -> Optional[str]:
+    def _get_current_head(self) -> str | None:
         """获取当前 HEAD commit hash。"""
         try:
             result = subprocess.run(

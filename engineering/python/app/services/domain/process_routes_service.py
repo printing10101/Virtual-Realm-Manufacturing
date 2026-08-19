@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select, func, delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -27,8 +27,8 @@ def _get_session():
 
 
 async def list_process_routes(
-    status: Optional[str] = None,
-    part_type: Optional[str] = None,
+    status: str | None = None,
+    part_type: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
@@ -59,7 +59,7 @@ async def list_process_routes(
     }
 
 
-async def get_process_route(route_id: str) -> Optional[dict]:
+async def get_process_route(route_id: str) -> dict | None:
     """获取工艺路线详情（含所有工序步骤）。
 
     Returns:
@@ -125,8 +125,8 @@ async def create_process_route(body_data: dict[str, Any], steps: list[dict[str, 
 async def update_process_route(
     route_id: str,
     update_fields: dict,
-    steps: Optional[list[dict]] = None,
-) -> Optional[dict]:
+    steps: list[dict] | None = None,
+) -> dict | None:
     """更新工艺路线（含工序步骤替换）。
 
     Args:
@@ -182,7 +182,7 @@ async def update_process_route(
             raise
 
 
-async def delete_process_route(route_id: str) -> Optional[bool]:
+async def delete_process_route(route_id: str) -> bool | None:
     """删除工艺路线及其所有工序。
 
     Returns:

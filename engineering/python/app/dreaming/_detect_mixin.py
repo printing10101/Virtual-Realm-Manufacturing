@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.dreaming.apply_rules import RuleApplicator
 from app.dreaming.effectiveness_metrics import (
@@ -58,7 +59,7 @@ class _DetectMixin:
         self,
         rule_id: str,
         metrics: EffectivenessMetrics,
-        samples: Optional[List[OutcomeSample]] = None,
+        samples: list[OutcomeSample] | None = None,
     ) -> RollbackDecision:
         """检测规则是否存在异常需要回滚。
 
@@ -155,7 +156,7 @@ class _DetectMixin:
             metrics_snapshot=metrics_snapshot,
         )
 
-    def monitor_and_rollback(self) -> List[RollbackExecutionResult]:
+    def monitor_and_rollback(self) -> list[RollbackExecutionResult]:
         """扫描所有灰度发布中的规则，检测异常并自动回滚。
 
         Returns:
@@ -166,7 +167,7 @@ class _DetectMixin:
 
         # 获取所有灰度发布中的规则
         publications = publisher.list_publications()
-        results: List[RollbackExecutionResult] = []
+        results: list[RollbackExecutionResult] = []
 
         for record in publications:
             rule_id = record.rule_id

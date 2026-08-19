@@ -42,7 +42,7 @@ import logging
 import threading
 import time
 from app.utils.time import utcnow
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 from sqlalchemy import desc, select
@@ -150,7 +150,7 @@ class RLAgentService(BaseSingletonService):
         # 推理串行锁：NumPy 回退模式下避免随机状态污染（与 RLAgentPlugin 对齐）
         self._infer_lock = threading.Lock()
         # 记录最后一次合法动作（跨请求维持变化率约束的连续性）
-        self._last_action: Optional[np.ndarray] = None
+        self._last_action: np.ndarray | None = None
         self._last_action_lock = threading.Lock()
 
     # ── 版本管理 ──────────────────────────────────────────────────────
@@ -159,7 +159,7 @@ class RLAgentService(BaseSingletonService):
         self,
         *,
         active_only: bool = False,
-        algorithm: Optional[str] = None,
+        algorithm: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[PolicyVersion], int]:
@@ -719,7 +719,7 @@ class RLAgentService(BaseSingletonService):
     def _extract_value(self, value_out: Any) -> float:
         return _extract_value(value_out)
 
-    def _get_last_action(self) -> Optional[np.ndarray]:
+    def _get_last_action(self) -> np.ndarray | None:
         """获取最后一次合法动作（跨请求维持变化率约束）."""
         with self._last_action_lock:
             return self._last_action.copy() if self._last_action is not None else None

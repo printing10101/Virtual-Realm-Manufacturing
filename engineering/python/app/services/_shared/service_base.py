@@ -25,7 +25,7 @@ WorldModelService / WorkflowTemplateService / ModelRegistryService）提供
 from __future__ import annotations
 
 import threading
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 
 class BaseSingletonService:
@@ -46,7 +46,7 @@ class BaseSingletonService:
     """
 
     # 类属性声明：每个子类通过 __init_subclass__ 自动获得独立实例
-    _service_singleton: ClassVar[Optional["BaseSingletonService"]] = None
+    _service_singleton: ClassVar["BaseSingletonService" | None] = None
     _service_lock: ClassVar[threading.Lock]
 
     def __init_subclass__(cls, **kwargs: Any) -> None:

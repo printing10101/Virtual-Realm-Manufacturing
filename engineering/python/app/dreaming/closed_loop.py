@@ -35,7 +35,7 @@ import threading
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 from app.dreaming._closed_loop_models import (
     CLOSED_LOOP_STATE_DIR,
@@ -111,10 +111,10 @@ class ClosedLoop(_ClosedLoopRuleMixin, _ClosedLoopActionMixin, _ClosedLoopPersis
         fusion_conflict_threshold: float = DEFAULT_FUSION_CONFLICT_THRESHOLD,
         fusion_min_confidence: float = DEFAULT_FUSION_MIN_CONFIDENCE,
         router_confidence_threshold: float = DEFAULT_ROUTER_CONFIDENCE_THRESHOLD,
-        progressive_publisher: Optional[Any] = None,
-        metrics_collector: Optional[Any] = None,
-        rollback_manager: Optional[Any] = None,
-        state_dir: Optional[str] = None,
+        progressive_publisher: Any | None = None,
+        metrics_collector: Any | None = None,
+        rollback_manager: Any | None = None,
+        state_dir: str | None = None,
     ) -> None:
         """初始化闭环。
 
@@ -142,7 +142,7 @@ class ClosedLoop(_ClosedLoopRuleMixin, _ClosedLoopActionMixin, _ClosedLoopPersis
         self._hrc52_confidence_penalty = float(hrc52_confidence_penalty)
 
         # 自持滚动窗口：Dict[rule_id, Deque[RuleOutcomeRecord]]
-        self._windows: Dict[str, Deque[RuleOutcomeRecord]] = {}
+        self._windows: dict[str, deque[RuleOutcomeRecord]] = {}
 
         # 延迟初始化的依赖
         self._publisher = progressive_publisher
@@ -150,8 +150,8 @@ class ClosedLoop(_ClosedLoopRuleMixin, _ClosedLoopActionMixin, _ClosedLoopPersis
         self._rollback_mgr = rollback_manager
 
         # 自行实例化 DempsterShaferFusion 与 TaskRouter（不复用 HybridInferenceEngine 实例）
-        self._fusion: Optional[Any] = None
-        self._router: Optional[Any] = None
+        self._fusion: Any | None = None
+        self._router: Any | None = None
         self._fusion_params = {
             "conflict_threshold": fusion_conflict_threshold,
             "min_confidence": fusion_min_confidence,
@@ -170,7 +170,7 @@ class ClosedLoop(_ClosedLoopRuleMixin, _ClosedLoopActionMixin, _ClosedLoopPersis
         self._state_dir.mkdir(parents=True, exist_ok=True)
 
         # 决策历史（内存）
-        self._decision_history: Dict[str, List[ClosedLoopDecision]] = {}
+        self._decision_history: dict[str, list[ClosedLoopDecision]] = {}
 
     # ------------------------------------------------------------------
     # 延迟初始化依赖
@@ -386,9 +386,9 @@ class ClosedLoop(_ClosedLoopRuleMixin, _ClosedLoopActionMixin, _ClosedLoopPersis
 
     def run_closed_loop_iteration(
         self,
-        rule_ids: Optional[List[str]] = None,
+        rule_ids: list[str] | None = None,
         apply: bool = True,
-    ) -> List[ClosedLoopDecision]:
+    ) -> list[ClosedLoopDecision]:
         """执行一次闭环迭代。
 
         Args:
@@ -406,7 +406,7 @@ class ClosedLoop(_ClosedLoopRuleMixin, _ClosedLoopActionMixin, _ClosedLoopPersis
             logger.info("ClosedLoop: 无可评估规则，迭代结束")
             return []
 
-        decisions: List[ClosedLoopDecision] = []
+        decisions: list[ClosedLoopDecision] = []
         for rule_id in rule_ids:
             try:
                 decision = self.evaluate_rule(rule_id)
