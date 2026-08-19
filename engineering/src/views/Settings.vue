@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, type Component } from 'vue'
+import { ref, computed, defineAsyncComponent, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Setting, Cpu, Document, Connection, Service } from '@element-plus/icons-vue'
 import GeneralSettings from '@/components/settings/GeneralSettings.vue'
@@ -42,9 +42,15 @@ import AISettings from '@/components/settings/AISettings.vue'
 import ProcessSettings from '@/components/settings/ProcessSettings.vue'
 import UISettings from '@/components/settings/UISettings.vue'
 import LLMEngineSettings from '@/components/settings/LLMEngineSettings.vue'
+import { useExtensionRegistry } from '@/composables/useExtensionRegistry'
 
 const { t } = useI18n()
 const activeTab = ref('general')
+
+// 扩展点：合并插件通过 settings.tab 贡献的设置页签
+// 插件贡献：component_url（面板组件）+ metadata.{title, icon}
+const { listComputed } = useExtensionRegistry()
+const pluginTabs = listComputed('settings.tab')
 
 const componentMap: Record<string, Component> = {
   general: GeneralSettings,
@@ -54,7 +60,14 @@ const componentMap: Record<string, Component> = {
   ui: UISettings,
 }
 
-const currentComponent = computed(() => componentMap[activeTab.value] || GeneralSettings)
+const currentComponent = computed(() => {
+  // 插件 tab：组件通过扩展点加载器异步解析（defineAsyncComponent 包装 loader）
+  const plugin = pluginTabs.value.find((p) => p.plugin_id === activeTab.value)
+  if (plugin && plugin.component_loader) {
+    return defineAsyncComponent(plugin.component_loader as () => Promise<Component>)
+  }
+  return componentMap[activeTab.value] || GeneralSettings
+})
 
 const tabs = [
   { key: 'general', label: t('settings.navGeneral'), icon: Setting },
@@ -62,6 +75,12 @@ const tabs = [
   { key: 'engine', label: t('settings.navAiEngine'), icon: Service },
   { key: 'process', label: t('settings.navLogAudit'), icon: Document },
   { key: 'ui', label: t('settings.navAdvanced'), icon: Connection },
+  // 插件贡献的设置页签（动态图标组件）
+  ...pluginTabs.value.map((p) => ({
+    key: p.plugin_id,
+    label: (p.metadata?.title as string) || p.plugin_id,
+    icon: (p.metadata?.icon as string) || Setting,
+  })),
 ]
 </script>
 

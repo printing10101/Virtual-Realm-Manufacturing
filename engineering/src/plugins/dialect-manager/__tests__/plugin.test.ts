@@ -42,6 +42,15 @@ describe('dialect-manager 前端插件', () => {
     expect(commands[0].metadata?.title).toBe('打开方言管理')
   })
 
+  it('注册后贡献出现在 settings.tab 扩展点（含组件 URL）', () => {
+    registerDialectManagerPlugin()
+
+    const tabs = extensionRegistry.list('settings.tab')
+    expect(tabs).toHaveLength(1)
+    expect(tabs[0].component_url).toBe('dialect-manager/DialectSettingsTab.vue')
+    expect(tabs[0].metadata?.title).toBe('方言插件')
+  })
+
   it('重复注册幂等（不产生重复贡献）', () => {
     registerDialectManagerPlugin()
     registerDialectManagerPlugin()
@@ -49,8 +58,10 @@ describe('dialect-manager 前端插件', () => {
 
     const panels = extensionRegistry.list('workspace.panel')
     const commands = extensionRegistry.list('command_palette.command')
+    const tabs = extensionRegistry.list('settings.tab')
     expect(panels).toHaveLength(1)
     expect(commands).toHaveLength(1)
+    expect(tabs).toHaveLength(1)
   })
 
   it('组件加载器解析到真实面板组件', async () => {
@@ -68,9 +79,11 @@ describe('dialect-manager 前端插件', () => {
     registerDialectManagerPlugin()
     expect(extensionRegistry.list('workspace.panel')).toHaveLength(1)
     expect(extensionRegistry.list('command_palette.command')).toHaveLength(1)
+    expect(extensionRegistry.list('settings.tab')).toHaveLength(1)
 
     unregisterDialectManagerPlugin()
     expect(extensionRegistry.list('workspace.panel')).toHaveLength(0)
     expect(extensionRegistry.list('command_palette.command')).toHaveLength(0)
+    expect(extensionRegistry.list('settings.tab')).toHaveLength(0)
   })
 })

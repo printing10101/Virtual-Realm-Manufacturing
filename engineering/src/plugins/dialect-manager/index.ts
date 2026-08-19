@@ -54,6 +54,17 @@ export function registerDialectManagerPlugin(): void {
       icon: 'Cpu',
     },
   })
+
+  // 设置页签贡献：方言插件信息
+  extensionRegistry.register({
+    plugin_id: DIALECT_MANAGER_PLUGIN_ID,
+    extension_point: 'settings.tab',
+    component_url: 'dialect-manager/DialectSettingsTab.vue',
+    metadata: {
+      title: '方言插件',
+      icon: 'Cpu',
+    },
+  })
 }
 
 /**
