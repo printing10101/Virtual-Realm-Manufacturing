@@ -63,78 +63,16 @@
       v-else
       class="card-grid"
     >
-      <div
+      <ProcessRouteCard
         v-for="route in filteredRoutes"
         :key="route.id"
-        class="route-card"
-        @click="openDetail(route)"
-      >
-        <div class="card-header">
-          <span class="card-title">{{ route.name }}</span>
-          <el-tag
-            :type="statusTagType(route.status)"
-            size="small"
-            effect="light"
-            class="status-tag"
-          >
-            {{ route.status }}
-          </el-tag>
-        </div>
-        <p class="card-description">
-          {{ route.description }}
-        </p>
-        <div class="card-meta">
-          <span class="meta-item">
-            <el-icon :size="14"><Operation /></el-icon>
-            {{ route.steps?.length || 0 }}{{ t('processPlanning.routePage.stepCountSuffix') }}
-          </span>
-          <span class="meta-item">
-            <el-icon :size="14"><Document /></el-icon>
-            {{ route.version }}
-          </span>
-          <span class="meta-item">
-            <el-icon :size="14"><Clock /></el-icon>
-            {{ route.updated_at?.split('T')[0] || '-' }}
-          </span>
-        </div>
-        <div
-          class="card-actions"
-          @click.stop
-        >
-          <el-button
-            text
-            type="primary"
-            size="small"
-            @click.stop="handleView(route)"
-          >
-            {{ t('processPlanning.routePage.btnView') }}
-          </el-button>
-          <el-button
-            text
-            type="primary"
-            size="small"
-            @click.stop="handleEdit(route)"
-          >
-            {{ t('processPlanning.routePage.btnEdit') }}
-          </el-button>
-          <el-button
-            text
-            type="primary"
-            size="small"
-            @click.stop="handleCopy(route)"
-          >
-            {{ t('processPlanning.routePage.btnCopy') }}
-          </el-button>
-          <el-button
-            text
-            type="danger"
-            size="small"
-            @click.stop="handleDelete(route)"
-          >
-            {{ t('processPlanning.routePage.btnDelete') }}
-          </el-button>
-        </div>
-      </div>
+        :route="route"
+        @select="openDetail"
+        @view="handleView"
+        @edit="handleEdit"
+        @copy="handleCopy"
+        @delete="handleDelete"
+      />
     </div>
 
     <ProcessRouteDetail
@@ -151,12 +89,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import {
   Plus,
-  Operation,
-  Document,
   Clock,
 } from '@element-plus/icons-vue'
 import ProcessPlanningFilters from '@/components/process_planning/ProcessPlanningFilters.vue'
 import ProcessRouteDetail from '@/components/process_planning/ProcessRouteDetail.vue'
+import ProcessRouteCard from '@/components/process_planning/ProcessRouteCard.vue'
 import http from '@/utils/http'
 import { API_CONFIG } from '@/config/api'
 
@@ -248,22 +185,6 @@ const filteredRoutes = computed(() => {
 })
 
 // ========================= 方法 =========================
-function statusTagType(status: string): 'success' | 'warning' | 'info' {
-  switch (status) {
-    case t('processPlanning.routePage.statusPublished'):
-    case 'published':
-      return 'success'
-    case t('processPlanning.routePage.statusDraft'):
-    case 'draft':
-      return 'warning'
-    case t('processPlanning.routePage.statusArchived'):
-    case 'archived':
-      return 'info'
-    default:
-      return 'info'
-  }
-}
-
 function openDetail(route: ProcessRoute) {
   selectedRoute.value = route
 }
@@ -368,83 +289,6 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
-}
-
-/* 路线卡片 */
-.route-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--transition-normal), border-color var(--transition-normal), transform var(--transition-fast);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.route-card:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--border-medium);
-  transform: translateY(-2px);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.4;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.status-tag {
-  flex-shrink: 0;
-}
-
-.card-description {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
-.card-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-light);
 }
 
 /* 加载与空状态 */
