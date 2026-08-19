@@ -101,6 +101,7 @@ export const navGroups: NavGroup[] = [
       { path: '/toolpath-editor', label: '刀具路径', icon: Operation },
       { path: '/plugin-manager', label: '插件管理', icon: FolderOpened },
       { path: '/plugin-logs', label: '插件日志', icon: Document },
+      { path: '/dialect-manager', label: '后处理器方言', icon: Operation },
     ],
   },
   {

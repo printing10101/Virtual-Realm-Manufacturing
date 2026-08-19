@@ -24,6 +24,7 @@ from fastapi import FastAPI
 from app.api.v1 import (
     collision_check,
     dxf_pipeline as dxf_pipeline_routes,
+    postprocessor_dialects,
     tools,
 )
 from app.api.v1.nl2cad.routes import router as nl2cad_router
@@ -56,3 +57,6 @@ def register(app: FastAPI) -> None:
 
     # === NL-to-CAD 自然语言建模 ===
     app.include_router(nl2cad_router)
+
+    # === 后处理器方言管理（P3）===
+    app.include_router(postprocessor_dialects.router)

@@ -107,6 +107,12 @@ const router = createRouter({
       meta: { title: '插件日志', requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/dialect-manager',
+      name: 'dialect-manager',
+      component: () => import('../views/DialectManager.vue'),
+      meta: { title: '后处理器方言' },
+    },
+    {
       path: '/task-board',
       name: 'task-board',
       component: () => import('../views/TaskBoard.vue'),
