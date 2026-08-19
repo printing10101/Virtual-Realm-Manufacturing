@@ -5,7 +5,7 @@
 
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 import numpy as np
 
 
@@ -65,13 +65,13 @@ class TaskInput:
 
     task_description: str
     input_data: Any
-    context: Optional[Dict[str, Any]] = None
-    task_category: Optional[TaskCategory] = None
-    data_type: Optional[DataType] = None
+    context: dict[str, Any] | None = None
+    task_category: TaskCategory | None = None
+    data_type: DataType | None = None
     precision_requirement: float = 0.9
     time_sensitivity: float = 0.5
     max_latency_ms: int = 1000
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -89,14 +89,14 @@ class RoutingDecision:
     """
 
     selected_engine: EngineType
-    selected_model: Optional[str] = None
+    selected_model: str | None = None
     confidence: float = 0.0
     reasoning: str = ""
-    decision_factors: Optional[Dict[str, float]] = None
-    alternatives: Optional[List[Dict[str, Any]]] = None
-    timestamp: Optional[float] = None
+    decision_factors: dict[str, float] | None = None
+    alternatives: list[dict[str, Any]] | None = None
+    timestamp: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转为可序列化字典（枚举值转为字符串）。"""
         return {
             "selected_engine": self.selected_engine.value,
@@ -126,14 +126,14 @@ class InferenceResult:
 
     prediction: Any
     confidence: float = 0.0
-    engine_used: Optional[EngineType] = None
-    model_used: Optional[str] = None
+    engine_used: EngineType | None = None
+    model_used: str | None = None
     processing_time_ms: float = 0.0
-    metadata: Optional[Dict[str, Any]] = None
-    evidence: Optional[List[Dict[str, Any]]] = None
-    uncertainty: Optional[Dict[str, float]] = None
+    metadata: dict[str, Any] | None = None
+    evidence: list[dict[str, Any]] | None = None
+    uncertainty: dict[str, float] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转为可序列化字典。"""
         return {
             "prediction": self.prediction,
@@ -163,13 +163,13 @@ class FusionResult:
 
     final_prediction: Any
     confidence: float = 0.0
-    contributing_engines: List[Dict[str, Any]] = field(default_factory=list)
+    contributing_engines: list[dict[str, Any]] = field(default_factory=list)
     fusion_method: str = "dempster_shafer"
-    reasoning_path: Optional[List[str]] = None
-    explainability_report: Optional[str] = None
-    quality_metrics: Optional[Dict[str, float]] = None
+    reasoning_path: list[str] | None = None
+    explainability_report: str | None = None
+    quality_metrics: dict[str, float] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转为可序列化字典。"""
         return {
             "final_prediction": self.final_prediction,
@@ -199,12 +199,12 @@ class ModelConfig:
 
     model_type: ModelType
     model_name: str
-    model_path: Optional[str] = None
-    hyperparameters: Optional[Dict[str, Any]] = None
+    model_path: str | None = None
+    hyperparameters: dict[str, Any] | None = None
     device: str = "cpu"
     batch_size: int = 32
     version: str = "1.0.0"
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -221,8 +221,8 @@ class PreprocessingResult:
     """
 
     features: np.ndarray
-    feature_names: Optional[List[str]] = None
+    feature_names: list[str] | None = None
     normalization_method: str = "z_score"
     outliers_detected: int = 0
     missing_values_filled: int = 0
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None

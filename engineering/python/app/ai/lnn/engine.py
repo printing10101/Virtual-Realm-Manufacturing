@@ -21,7 +21,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 
 from app.ai.lnn.fusion import DempsterShaferFusion
@@ -80,13 +80,13 @@ class HybridInferenceEngine(_EngineRegistryMixin, _EngineInferenceMixin):
         self._enable_parallel_execution = enable_parallel_execution
         self._cache_size = cache_size
         self._device = device
-        self._custom_models: Dict[str, Dict[str, Any]] = {}
-        self._lnn_predictors: Dict[str, Any] = {}
+        self._custom_models: dict[str, dict[str, Any]] = {}
+        self._lnn_predictors: dict[str, Any] = {}
         # 流式预测器注册表：model_name -> StreamingPredictor
         # 借鉴 lingbot-map GCT 思想，用于长时序加工流推理。
         # 与 _lnn_predictors 分离以保持单次推理路径完全不受影响。
-        self._streaming_predictors: Dict[str, Any] = {}
-        self._engine_stats: Dict[str, Any] = {
+        self._streaming_predictors: dict[str, Any] = {}
+        self._engine_stats: dict[str, Any] = {
             "total_inferences": 0,
             "successful_inferences": 0,
             "fallback_invocations": 0,
@@ -166,7 +166,7 @@ class HybridInferenceEngine(_EngineRegistryMixin, _EngineInferenceMixin):
     # 统计与诊断
     # ------------------------------------------------------------------
 
-    def get_engine_stats(self) -> Dict[str, Any]:
+    def get_engine_stats(self) -> dict[str, Any]:
         """返回聚合统计，便于 /api/v1/lnn/.../stats 端点暴露。"""
         stats = dict(self._engine_stats)
         stats["router_stats"] = self._router.get_decision_stats()
@@ -178,7 +178,7 @@ class HybridInferenceEngine(_EngineRegistryMixin, _EngineInferenceMixin):
         stats["streaming_available"] = _HAS_STREAMING
         stats["stub_implementation"] = False
         # 聚合每个流式预测器的内部统计（关键帧率、缓存命中率、漂移等）
-        streaming_details: Dict[str, Any] = {}
+        streaming_details: dict[str, Any] = {}
         for name, sp in self._streaming_predictors.items():
             try:
                 streaming_details[name] = sp.get_statistics()

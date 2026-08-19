@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     import torch
@@ -22,7 +22,7 @@ class _ValidationMixin:
     _raw_config: Any
 
 
-    def validate(self, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def validate(self, config: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         验证配置结构和参数合法性
 
@@ -89,7 +89,7 @@ class _ValidationMixin:
             )
             raise ValueError(error_msg)
 
-    def _validate_lnn_section(self, lnn_config: Dict[str, Any]) -> List[str]:
+    def _validate_lnn_section(self, lnn_config: dict[str, Any]) -> list[str]:
         """验证LNN配置节"""
         errors = []
 
@@ -146,7 +146,7 @@ class _ValidationMixin:
 
         return errors
 
-    def _validate_workflow_section(self, workflow_config: Dict[str, Any]) -> List[str]:
+    def _validate_workflow_section(self, workflow_config: dict[str, Any]) -> list[str]:
         """验证工作流配置节"""
         errors = []
 
@@ -162,7 +162,7 @@ class _ValidationMixin:
 
         return errors
 
-    def _validate_environment_section(self, env_config: Dict[str, Any]) -> List[str]:
+    def _validate_environment_section(self, env_config: dict[str, Any]) -> list[str]:
         """验证环境配置节"""
         errors = []
 
@@ -173,7 +173,7 @@ class _ValidationMixin:
 
         return errors
 
-    def _check_lnn_best_practices(self, lnn_config: Dict[str, Any]) -> List[str]:
+    def _check_lnn_best_practices(self, lnn_config: dict[str, Any]) -> list[str]:
         """检查LNN配置最佳实践"""
         warnings = []
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -14,9 +14,9 @@ class PredictionResult:
     value: Any
     confidence: float = 0.0
     inference_time: float = 0.0
-    model_info: Optional[Dict[str, Any]] = field(default_factory=dict)
+    model_info: dict[str, Any] | None = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary"""
         val = self.value
         if isinstance(val, np.ndarray):
@@ -29,7 +29,7 @@ class PredictionResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PredictionResult":
+    def from_dict(cls, data: dict[str, Any]) -> "PredictionResult":
         """Deserialize from dictionary"""
         value = data.get("value")
         if isinstance(value, list):

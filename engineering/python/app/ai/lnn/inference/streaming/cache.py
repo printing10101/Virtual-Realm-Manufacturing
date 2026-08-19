@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     import torch
@@ -33,12 +33,12 @@ class PagedHiddenStateCache:
         self,
         max_pages: int = 320,
         device: str = "auto",
-        predictor_device: Optional[Any] = None,
+        predictor_device: Any | None = None,
     ) -> None:
         self._max_pages = max_pages
         self._device = device
         self._predictor_device = predictor_device
-        self._pages: Dict[int, HiddenStatePage] = {}
+        self._pages: dict[int, HiddenStatePage] = {}
         self._lock = threading.RLock()
         self._eviction_count = 0
 
@@ -65,7 +65,7 @@ class PagedHiddenStateCache:
                 device=device,
             )
 
-    def get(self, frame_id: int) -> Optional[Any]:
+    def get(self, frame_id: int) -> Any | None:
         """读取一帧隐状态。不存在返回 None。"""
         with self._lock:
             page = self._pages.get(frame_id)
@@ -74,14 +74,14 @@ class PagedHiddenStateCache:
             page.touch()
             return page.hidden
 
-    def latest_frame_id(self) -> Optional[int]:
+    def latest_frame_id(self) -> int | None:
         """获取最新关键帧 ID（用于窗口 overlap 传递）。"""
         with self._lock:
             if not self._pages:
                 return None
             return max(self._pages.keys())
 
-    def recent_frames(self, n: int) -> List[int]:
+    def recent_frames(self, n: int) -> list[int]:
         """获取最近 n 个关键帧 ID（按 frame_id 升序）。"""
         with self._lock:
             ids = sorted(self._pages.keys())
@@ -91,7 +91,7 @@ class PagedHiddenStateCache:
         with self._lock:
             self._pages.clear()
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         with self._lock:
             return {
                 "page_count": len(self._pages),

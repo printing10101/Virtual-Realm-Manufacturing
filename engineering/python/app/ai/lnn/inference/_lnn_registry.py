@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import threading
 import time
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 try:
     from app.ai.lnn.models.base_lnn import BaseLNNModel
@@ -84,16 +84,16 @@ class LNNModelRegistry(BaseModelRegistry):
         ),
     }
 
-    MODEL_CLASS_MAP: Dict[str, Type[BaseLNNModel]] = {
+    MODEL_CLASS_MAP: dict[str, type[BaseLNNModel]] = {
         "CFC": CFCModel,
         "LTC": LTCModel,
         "HybridLNN": HybridLNNModel,
     }
 
-    def __init__(self, cache_size: int = 10, model_dir: Optional[str] = None):
+    def __init__(self, cache_size: int = 10, model_dir: str | None = None):
         self.cache_size = cache_size
         self.model_dir = model_dir
-        self.registry: Dict[str, ModelEntry] = {}
+        self.registry: dict[str, ModelEntry] = {}
         self.cache_hits = 0
         self.cache_misses = 0
         self._lock = threading.Lock()  # 保护 registry 字典的线程安全
@@ -112,7 +112,7 @@ class LNNModelRegistry(BaseModelRegistry):
         self,
         model_name: str,
         fuzzy_match: bool = False,
-    ) -> Optional[ModelInfo]:
+    ) -> ModelInfo | None:
         with self._lock:
             if not fuzzy_match:
                 entry = self.registry.get(model_name)
@@ -123,7 +123,7 @@ class LNNModelRegistry(BaseModelRegistry):
                 return self.registry[matches[0]].info
             return None
 
-    def list_models(self, return_objects: bool = False) -> List[Any]:
+    def list_models(self, return_objects: bool = False) -> list[Any]:
         with self._lock:
             if return_objects:
                 return [entry.info for entry in self.registry.values()]
@@ -142,7 +142,7 @@ class LNNModelRegistry(BaseModelRegistry):
         base_model_name: str,
         quantized_model_path: str,
         quantization_type: str = "dynamic",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         with self._lock:
             quantized_name = f"{base_model_name}_int8" if not base_model_name.endswith("_int8") else base_model_name
@@ -191,7 +191,7 @@ class LNNModelRegistry(BaseModelRegistry):
                 raise KeyError(f"Model '{model_name}' not found in registry")
             return entry
 
-    def validate_model(self, model_name: str, model_path: Optional[str] = None) -> Dict[str, Any]:
+    def validate_model(self, model_name: str, model_path: str | None = None) -> dict[str, Any]:
         with self._lock:
             entry = self.registry.get(model_name)
             if not entry:

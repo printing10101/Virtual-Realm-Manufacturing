@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Callable
+from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
 
 import numpy as np
 
@@ -65,7 +66,7 @@ class _IntermediatesMixin:
     # ------------------------------------------------------------------
     # 私有辅助方法
     # ------------------------------------------------------------------
-    def _init_intermediates_dict(self) -> Dict[str, Any]:
+    def _init_intermediates_dict(self) -> dict[str, Any]:
         """返回初始化为空字典结构的 intermediates 容器。
 
         Returns:
@@ -81,7 +82,7 @@ class _IntermediatesMixin:
             "capture_mode": "disabled",
         }
 
-    def _register_hidden_hooks(self, capture_hidden: bool) -> tuple[List[Any], List[np.ndarray], str]:
+    def _register_hidden_hooks(self, capture_hidden: bool) -> tuple[list[Any], list[np.ndarray], str]:
         """在模型 ``ltc_cells`` 上注册 forward hook 以捕获隐状态序列。
 
         Args:
@@ -96,8 +97,8 @@ class _IntermediatesMixin:
         if not (capture_hidden and HAS_TORCH):
             return ([], [], "disabled")
 
-        hook_handles: List[Any] = []
-        captured_hidden: List[np.ndarray] = []
+        hook_handles: list[Any] = []
+        captured_hidden: list[np.ndarray] = []
 
         # 尝试 forward hook 模式：注册到 ltc_cells
         ltc_cells = getattr(self.model, "ltc_cells", None)
@@ -119,7 +120,7 @@ class _IntermediatesMixin:
 
         return (hook_handles, captured_hidden, "hook")
 
-    def _collect_hidden_states(self, captured_hidden: List[np.ndarray], intermediates: Dict[str, Any]) -> None:
+    def _collect_hidden_states(self, captured_hidden: list[np.ndarray], intermediates: dict[str, Any]) -> None:
         """将捕获到的隐状态填充到 intermediates 字典中（原地修改）。
 
         优先使用 hook 模式捕获的多帧序列；若 hook 未捕获到任何数据，
@@ -160,7 +161,7 @@ class _IntermediatesMixin:
                     intermediates["hidden_shape"] = list(hs_seq.shape)
                     intermediates["capture_mode"] = "attribute"
 
-    def _collect_gate_dynamics(self, intermediates: Dict[str, Any]) -> None:
+    def _collect_gate_dynamics(self, intermediates: dict[str, Any]) -> None:
         """从模型配置中读取时间常数并广播为门控值/时间常数序列。
 
         若模型暴露 ``config.time_constant``，则计算 ``τ = 1/dt`` 并按
@@ -217,7 +218,7 @@ class _IntermediatesMixin:
 
     def _build_intermediate_failure_result(
         self,
-        intermediates: Dict[str, Any],
+        intermediates: dict[str, Any],
         error_msg: str,
         start_time: float,
     ) -> "PredictionResult":

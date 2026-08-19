@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from __future__ import annotations
 import logging
-from typing import Any, Optional
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class _EngineRegistryMixin:
         self,
         model_name: str,
         model_instance: Any,
-        model_type: Optional[str] = None,
+        model_type: str | None = None,
     ) -> None:
         """注册一个自定义模型实例，供推理时按名称调用。"""
         if not model_name:
@@ -95,7 +95,7 @@ class _EngineRegistryMixin:
     def build_streaming_predictor(
         self,
         model_name: str,
-        config: Optional[Any] = None,
+        config: Any | None = None,
     ) -> Any:
         """基于已注册的 LNN 预测器构造 :class:`StreamingPredictor` 并注册.
 

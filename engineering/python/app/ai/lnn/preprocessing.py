@@ -6,7 +6,7 @@ and handling for multi-modal inputs (numeric, categorical, text, image).
 """
 
 import numpy as np
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from enum import Enum
 
 from app.ai.lnn.core import PreprocessingResult
@@ -35,7 +35,7 @@ class DataPreprocessor:
         outlier_method: str = "z_score",
         outlier_threshold: float = 3.0,
         missing_strategy: str = "mean",
-        feature_names: Optional[List[str]] = None,
+        feature_names: list[str] | None = None,
     ):
         """
         初始化预处理器
@@ -54,10 +54,10 @@ class DataPreprocessor:
         self.feature_names = feature_names
 
         # 拟合参数
-        self.mean_: Optional[np.ndarray] = None
-        self.std_: Optional[np.ndarray] = None
-        self.min_: Optional[np.ndarray] = None
-        self.max_: Optional[np.ndarray] = None
+        self.mean_: np.ndarray | None = None
+        self.std_: np.ndarray | None = None
+        self.min_: np.ndarray | None = None
+        self.max_: np.ndarray | None = None
         self.is_fitted = False
 
     def fit(self, X: np.ndarray) -> "DataPreprocessor":
@@ -139,7 +139,7 @@ class DataPreprocessor:
         self.fit(X)
         return self.transform(X)
 
-    def _handle_missing(self, X: np.ndarray) -> Tuple[np.ndarray, int]:
+    def _handle_missing(self, X: np.ndarray) -> tuple[np.ndarray, int]:
         missing_mask = np.isnan(X)
         missing_count = int(np.sum(missing_mask))
 
@@ -170,7 +170,7 @@ class DataPreprocessor:
 
         return X, missing_count
 
-    def _handle_outliers(self, X: np.ndarray) -> Tuple[np.ndarray, int]:
+    def _handle_outliers(self, X: np.ndarray) -> tuple[np.ndarray, int]:
         """
         异常值检测与处理（Winsorization）
 
@@ -269,7 +269,7 @@ class DataPreprocessor:
             return X
 
     @staticmethod
-    def extract_numeric_features(data: Dict[str, Any]) -> np.ndarray:
+    def extract_numeric_features(data: dict[str, Any]) -> np.ndarray:
         """
         从字典中提取数值特征
 
@@ -290,8 +290,8 @@ class DataPreprocessor:
 
     @staticmethod
     def encode_categorical(
-        categories: List[str], vocabulary: Optional[List[str]] = None
-    ) -> Tuple[np.ndarray, List[str]]:
+        categories: list[str], vocabulary: list[str] | None = None
+    ) -> tuple[np.ndarray, list[str]]:
         """
         类别特征编码（One-Hot）
 

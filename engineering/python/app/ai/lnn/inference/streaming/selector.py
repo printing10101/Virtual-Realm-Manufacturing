@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Optional, Tuple
+
 
 import numpy as np
 
@@ -34,7 +34,7 @@ class KeyframeSelector:
         self._mode = mode
         self._energy_threshold = energy_threshold
         self._frame_counter = 0
-        self._baseline_energy: Optional[float] = None
+        self._baseline_energy: float | None = None
         self._baseline_ema_alpha = 0.95
         self._lock = threading.Lock()
         # 固定种子保证关键帧判定可复现（学术诚信）
@@ -114,7 +114,7 @@ class KeyframeSelector:
             logger.debug("能量计算失败: %s", exc)
             return 0.0
 
-    def _energy_decision(self, energy: float) -> Tuple[bool, str]:
+    def _energy_decision(self, energy: float) -> tuple[bool, str]:
         """能量突变判定。首帧强制为关键帧以建立基线。"""
         if self._baseline_energy is None:
             return True, "energy_init"

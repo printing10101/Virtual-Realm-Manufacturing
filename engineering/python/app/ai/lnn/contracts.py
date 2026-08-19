@@ -17,7 +17,7 @@ research/ 中的具体实现通过鸭子类型满足这些 Protocol。
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 from typing_extensions import runtime_checkable
 
 
@@ -41,7 +41,7 @@ class LNNConfigProtocol(Protocol):
     batch_size: int
     epochs: int
 
-    def to_dict(self) -> Dict[str, Any]: ...
+    def to_dict(self) -> dict[str, Any]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -58,9 +58,9 @@ class LNNTrainerProtocol(Protocol):
     def train(
         self,
         train_loader: Any,
-        val_loader: Optional[Any] = None,
+        val_loader: Any | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]: ...
+    ) -> dict[str, Any]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -90,12 +90,12 @@ def get_optimal_num_workers(device: DeviceInfo, default: int = 4) -> int:
     raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
-def get_device_status() -> Dict[str, Any]:
+def get_device_status() -> dict[str, Any]:
     """获取设备状态摘要。"""
     raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
 
-def get_available_devices() -> List[DeviceInfo]:
+def get_available_devices() -> list[DeviceInfo]:
     """列出所有可用设备。"""
     raise NotImplementedError("该函数由 research_bridge 延迟导入提供，生产环境不应直接调用")
 
@@ -116,9 +116,9 @@ class ExperimentTrackerProtocol(Protocol):
 
     def start_run(self, run_name: str, **kwargs: Any) -> Any: ...
 
-    def log_params(self, params: Dict[str, Any]) -> None: ...
+    def log_params(self, params: dict[str, Any]) -> None: ...
 
-    def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None) -> None: ...
+    def log_metrics(self, metrics: dict[str, float], step: int | None = None) -> None: ...
 
     def log_model(self, model: Any, artifact_path: str, **kwargs: Any) -> None: ...
 
@@ -134,7 +134,7 @@ class ExperimentTrackerProtocol(Protocol):
 class QuantizerProtocol(Protocol):
     """模型量化器协议。"""
 
-    def quantize(self, model: Any, calibration_data: Optional[Any] = None) -> Any: ...
+    def quantize(self, model: Any, calibration_data: Any | None = None) -> Any: ...
 
     def get_model_size_bytes(self, model: Any) -> int: ...
 

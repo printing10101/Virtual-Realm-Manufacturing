@@ -6,7 +6,8 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 import yaml  # type: ignore[import-untyped]
 
@@ -24,7 +25,7 @@ class _PersistenceMixin:
     config_path: Any
 
 
-    def load(self, config_path: Optional[str] = None) -> None:
+    def load(self, config_path: str | None = None) -> None:
         """
         从YAML文件加载配置
 
@@ -72,7 +73,7 @@ class _PersistenceMixin:
                 f"配置加载失败：解析配置文件时出现异常。错误详情: {e}。可能原因：1) 配置文件格式不正确（非 JSON/YAML 格式）；2) 配置文件内容有误；3) 文件编码不匹配。请检查配置文件语法、内容格式和文件编码。"
             ) from e
 
-    def save(self, output_path: Optional[str] = None) -> None:
+    def save(self, output_path: str | None = None) -> None:
         """
         将配置持久化到文件系统
 
@@ -112,11 +113,11 @@ class _PersistenceMixin:
                 f"配置保存失败：无法将配置写入文件。错误详情: {e}。可能原因：1) 磁盘空间不足；2) 目标目录无写入权限；3) 文件被其他进程占用。请检查磁盘状态和目录权限。"
             ) from e
 
-    def _merge_config(self, loaded_config: Dict[str, Any]) -> None:
+    def _merge_config(self, loaded_config: dict[str, Any]) -> None:
         """合并加载的配置到现有配置"""
         self._raw_config = self._deep_merge(self._raw_config, loaded_config)
 
-    def _deep_merge(self, base: Dict, override: Dict) -> Dict:
+    def _deep_merge(self, base: dict, override: dict) -> dict:
         """深度合并两个字典"""
         result = base.copy()
         for key, value in override.items():

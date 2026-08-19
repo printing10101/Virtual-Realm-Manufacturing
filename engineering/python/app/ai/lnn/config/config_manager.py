@@ -12,7 +12,7 @@ from __future__ import annotations
 import copy
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     import torch
@@ -130,7 +130,7 @@ class YAMLConfigManager(_PersistenceMixin, _ValidationMixin, _ModelsMixin):
 
     VALID_MODEL_TYPES = ["cfc", "ltc", "hybrid_lnn"]
     VALID_ENVIRONMENTS = ["development", "staging", "production", "testing"]
-    def __init__(self, config_path: Optional[str] = None, use_defaults: bool = True):
+    def __init__(self, config_path: str | None = None, use_defaults: bool = True):
         """
         初始化配置管理器
 
@@ -139,9 +139,9 @@ class YAMLConfigManager(_PersistenceMixin, _ValidationMixin, _ModelsMixin):
             use_defaults: 是否使用默认配置作为基础
         """
         self.config_path = config_path
-        self._raw_config: Dict[str, Any] = {}
+        self._raw_config: dict[str, Any] = {}
         self._config: AppConfig = AppConfig()
-        self._last_modified: Optional[datetime] = None
+        self._last_modified: datetime | None = None
         self._cache_enabled = True
         self._is_dirty = False
 
@@ -153,7 +153,7 @@ class YAMLConfigManager(_PersistenceMixin, _ValidationMixin, _ModelsMixin):
 
         self._apply_environment_adaptations()
         self._build_config_object()
-    def get(self, section: str, key: Optional[str] = None, default: Any = None) -> Any:
+    def get(self, section: str, key: str | None = None, default: Any = None) -> Any:
         """
         获取配置值（类型安全）
 
@@ -230,7 +230,7 @@ class YAMLConfigManager(_PersistenceMixin, _ValidationMixin, _ModelsMixin):
         self._is_dirty = True
         self._build_config_object()
         logger.debug("Config updated: %s.%s = %s", section, key, value)
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """将配置转换为字典格式"""
         return copy.deepcopy(self._raw_config)
 

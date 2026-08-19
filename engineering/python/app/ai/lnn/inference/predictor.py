@@ -14,7 +14,7 @@ import os
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Any, Union
 
 import numpy as np
 
@@ -84,15 +84,15 @@ class LNNPredictor(
     def __init__(
         self,
         model,
-        preprocessor: Optional[DataPreprocessor] = None,
-        postprocessor: Optional[ResultPostprocessor] = None,
-        model_name: Optional[str] = None,
+        preprocessor: DataPreprocessor | None = None,
+        postprocessor: ResultPostprocessor | None = None,
+        model_name: str | None = None,
         engine_type: EngineType = EngineType.LNN,
         use_amp: bool = True,
         auto_device: bool = True,
-        material_id: Optional[str] = None,
-        tool_id: Optional[str] = None,
-        machine_id: Optional[str] = None,
+        material_id: str | None = None,
+        tool_id: str | None = None,
+        machine_id: str | None = None,
     ):
         """
         Initialize LNN Predictor
@@ -176,7 +176,7 @@ class LNNPredictor(
             return torch.device("mps")
         return torch.device("cpu")
 
-    def _preprocess(self, data: Any) -> Tuple[np.ndarray, Optional[Dict[str, Any]]]:
+    def _preprocess(self, data: Any) -> tuple[np.ndarray, dict[str, Any] | None]:
         """
         Preprocess input data
 
@@ -195,7 +195,7 @@ class LNNPredictor(
         preprocessed = self.preprocessor.transform(input_array)
         return preprocessed.features, {"input_shape": input_array.shape}
 
-    def _postprocess(self, output: Any, hidden: Optional[Dict[str, Any]] = None) -> Any:
+    def _postprocess(self, output: Any, hidden: dict[str, Any] | None = None) -> Any:
         """
         Postprocess model output
 

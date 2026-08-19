@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.ai.lnn.core import ModelConfig
 
@@ -22,8 +22,8 @@ class ModelInfo:
     name: str
     model_type: str
     model_path: str
-    input_features: List[str]
-    output_features: List[str]
+    input_features: list[str]
+    output_features: list[str]
     version: str = "1.0.0"
 
     def __post_init__(self):
@@ -57,7 +57,7 @@ class ModelInfo:
                 "(e.g. 'cutting_force', 'tool_wear')."
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary"""
         return {
             "name": self.name,
@@ -69,7 +69,7 @@ class ModelInfo:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ModelInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "ModelInfo":
         """Deserialize from dictionary"""
         return cls(
             name=data["name"],
@@ -85,11 +85,11 @@ class ModelInfo:
 class ModelEntry:
     """Model registry entry"""
 
-    config: Optional[ModelConfig] = None
-    info: Optional[ModelInfo] = None
-    model: Optional[BaseLNNModel] = None
+    config: ModelConfig | None = None
+    info: ModelInfo | None = None
+    model: BaseLNNModel | None = None
     is_loaded: bool = False
     last_accessed: float = 0.0
     access_count: int = 0
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 

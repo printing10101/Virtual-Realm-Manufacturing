@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
+from collections.abc import Sequence
 
 from app.ai.lnn.core import FusionResult, InferenceResult
 
@@ -32,7 +33,7 @@ DS_BLEND_WEIGHT = 0.7
 WEIGHTED_BLEND_WEIGHT = 0.3
 
 
-def _to_float_list(value: Any) -> Optional[List[float]]:
+def _to_float_list(value: Any) -> list[float] | None:
     """Best-effort coercion of a prediction to a flat list of floats.
 
     Returns ``None`` if the prediction cannot be interpreted numerically
@@ -44,7 +45,7 @@ def _to_float_list(value: Any) -> Optional[List[float]]:
         if isinstance(value, (int, float)):
             return [float(value)]
         if isinstance(value, (list, tuple)):
-            out: List[float] = []
+            out: list[float] = []
             for v in value:
                 if isinstance(v, (int, float)):
                     out.append(float(v))
@@ -88,7 +89,7 @@ class DempsterShaferFusion:
         self._conflict_threshold = conflict_threshold
         self._min_confidence = min_confidence
         self._enable_conflict_resolution = enable_conflict_resolution
-        self._fusion_stats: Dict[str, Any] = {
+        self._fusion_stats: dict[str, Any] = {
             "total_fusions": 0,
             "fallback_invocations": 0,
             "high_conflict_count": 0,
@@ -96,8 +97,8 @@ class DempsterShaferFusion:
 
     def fuse(
         self,
-        results: List[InferenceResult],
-        weights: Optional[List[float]] = None,
+        results: list[InferenceResult],
+        weights: list[float] | None = None,
     ) -> FusionResult:
         """Fuse multiple engine results into a single :class:`FusionResult`."""
         self._fusion_stats["total_fusions"] += 1
@@ -147,7 +148,7 @@ class DempsterShaferFusion:
         # the high-conflict case.
         weighted_prediction, prediction_kind = self._weighted_prediction(eligible, weights, total_weight)
 
-        contributing_engines: List[Dict[str, Any]] = []
+        contributing_engines: list[dict[str, Any]] = []
         for r, w in zip(eligible, weights):
             contributing_engines.append(
                 {
@@ -162,7 +163,7 @@ class DempsterShaferFusion:
         fused_mass, conflict = self._combine_masses(eligible)
         self._fusion_stats["high_conflict_count"] += 1 if conflict >= self._conflict_threshold else 0
 
-        reasoning_path: List[str] = []
+        reasoning_path: list[str] = []
         explainability: str
         method: str
         if conflict >= self._conflict_threshold and self._enable_conflict_resolution:
@@ -218,7 +219,7 @@ class DempsterShaferFusion:
             },
         )
 
-    def get_fusion_stats(self) -> Dict[str, Any]:
+    def get_fusion_stats(self) -> dict[str, Any]:
         """Return aggregated fusion statistics."""
         stats = dict(self._fusion_stats)
         total = stats.get("total_fusions", 0)
@@ -236,16 +237,16 @@ class DempsterShaferFusion:
         eligible: Sequence[InferenceResult],
         weights: Sequence[float],
         total_weight: float,
-    ) -> Tuple[Any, str]:
+    ) -> tuple[Any, str]:
         """Return ``(fused_prediction, prediction_kind)``.
 
         ``prediction_kind`` is one of ``"numeric"`` / ``"categorical"`` /
         ``"mixed"`` and is exposed in ``quality_metrics`` so callers can tell
         how the prediction was combined.
         """
-        numeric_predictions: List[List[float]] = []
-        numeric_weights: List[float] = []
-        categorical: List[Tuple[Any, float]] = []
+        numeric_predictions: list[list[float]] = []
+        numeric_weights: list[float] = []
+        categorical: list[tuple[Any, float]] = []
 
         for r, w in zip(eligible, weights):
             floats = _to_float_list(r.prediction)
@@ -300,7 +301,7 @@ class DempsterShaferFusion:
     def _combine_masses(
         self,
         eligible: Sequence[InferenceResult],
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Combine per-engine masses via Dempster's rule.
 
         Returns ``(combined_mass, conflict)`` where ``combined_mass`` is the
@@ -361,7 +362,7 @@ class DempsterShaferFusion:
         return agree, float(cumulative_conflict)
 
     @staticmethod
-    def _engine_mass(result: InferenceResult) -> Tuple[float, float, float]:
+    def _engine_mass(result: InferenceResult) -> tuple[float, float, float]:
         """Build a mass function for a single engine result."""
         c = max(0.0, min(1.0, float(result.confidence)))
         agree = c * (1.0 - 0.5 * (1.0 - c))

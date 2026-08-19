@@ -8,7 +8,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
+from collections.abc import Iterator
 
 import numpy as np
 
@@ -60,7 +61,7 @@ class StreamingPredictor:
     def __init__(
         self,
         predictor: LNNPredictor,
-        config: Optional[StreamingConfig] = None,
+        config: StreamingConfig | None = None,
         seed: int = 42,
     ) -> None:
         self._predictor = predictor
@@ -258,10 +259,10 @@ class StreamingPredictor:
 
     def predict_windowed(
         self,
-        data_list: List[Any],
-        window_size: Optional[int] = None,
-        overlap_keyframes: Optional[int] = None,
-    ) -> List[PredictionResult]:
+        data_list: list[Any],
+        window_size: int | None = None,
+        overlap_keyframes: int | None = None,
+    ) -> list[PredictionResult]:
         """窗口化推理（对应 lingbot-map 的 windowed mode）.
 
         将超长序列切分为多个窗口，窗口间通过 ``overlap_keyframes`` 个关键帧
@@ -289,7 +290,7 @@ class StreamingPredictor:
         okf = overlap_keyframes if overlap_keyframes is not None else self._config.overlap_keyframes
         okf = max(0, min(okf, ws - 1))
 
-        results: List[PredictionResult] = []
+        results: list[PredictionResult] = []
         total = len(data_list)
         if total == 0:
             return results
@@ -297,7 +298,7 @@ class StreamingPredictor:
         stride = max(1, ws - okf)
         window_idx = 0
         # 记录上一窗口末尾的关键帧数据，用于本窗口初始化
-        carryover: Optional[List[Any]] = None
+        carryover: list[Any] | None = None
 
         for start in range(0, total, stride):
             end = min(start + ws, total)
@@ -350,10 +351,10 @@ class StreamingPredictor:
                 "total_inference_ms": 0.0,
             }
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """获取流式推理统计信息。"""
         with self._stats_lock:
-            stats: Dict[str, Any] = dict(self._stats)
+            stats: dict[str, Any] = dict(self._stats)
         stats["cache"] = self._cache.stats()
         stats["anchor"] = self._anchor.stats()
         stats["trajectory"] = self._trajectory.stats()

@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import psutil
@@ -36,7 +36,7 @@ class _StatsMixin:
     model_name: Any
     use_amp: Any
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         with self._stats_lock:
             stats = self._stats.copy()
         total = stats["total_inferences"]
@@ -46,7 +46,7 @@ class _StatsMixin:
         stats["current_memory_mb"] = self._get_memory_usage_mb()
         return stats
 
-    def get_performance(self) -> Dict[str, Any]:
+    def get_performance(self) -> dict[str, Any]:
         # 在锁内快照所有需要的字段并完成窗口重置写操作，
         # 锁外完成 sorted 等较重计算以减少锁持有时间。
         with self._stats_lock:
@@ -183,7 +183,7 @@ class _StatsMixin:
         inference_time_ms: float,
         input_shape: tuple,
         success: bool = True,
-        error_msg: Optional[str] = None,
+        error_msg: str | None = None,
     ) -> None:
         """
         持久化推理性能数据到 trace_log.jsonl

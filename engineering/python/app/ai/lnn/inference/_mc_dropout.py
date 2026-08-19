@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, List, Optional, Callable
+from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
 
 import numpy as np
 
@@ -95,7 +96,7 @@ class _MCDropoutMixin:
             model_info={"mc_n_samples": 1, "mc_std": 0.0},
         )
 
-    def _mc_setup_dropout_and_train_mode(self, dropout_override: Optional[float]) -> tuple[Any, Any]:
+    def _mc_setup_dropout_and_train_mode(self, dropout_override: float | None) -> tuple[Any, Any]:
         """配置临时 dropout 并切换模型到训练模式以激活 dropout 层。
 
         Args:
@@ -128,7 +129,7 @@ class _MCDropoutMixin:
 
         return original_dropout, was_training
 
-    def _mc_run_forward_samples(self, features: Any, n_samples: int) -> List[np.ndarray]:
+    def _mc_run_forward_samples(self, features: Any, n_samples: int) -> list[np.ndarray]:
         """执行 ``n_samples`` 次前向传播并收集样本输出。
 
         若模型为 :class:`BaseLNNModel`，调用其 ``predict``；否则使用
@@ -142,7 +143,7 @@ class _MCDropoutMixin:
         Returns:
             样本列表，每个元素为 ``np.ndarray``。
         """
-        samples: List[np.ndarray] = []
+        samples: list[np.ndarray] = []
         for _ in range(n_samples):
             if _HAS_TORCH_MODELS and isinstance(self.model, BaseLNNModel):
                 output = self.model.predict(features)
@@ -200,7 +201,7 @@ class _MCDropoutMixin:
 
     def _mc_compute_statistics(
         self,
-        samples: List[np.ndarray],
+        samples: list[np.ndarray],
         hidden: Any,
         features: Any,
         inference_time: float,
@@ -268,7 +269,7 @@ class _MCDropoutMixin:
         self,
         input_data: Any,
         n_samples: int = 30,
-        dropout_override: Optional[float] = None,
+        dropout_override: float | None = None,
     ) -> "PredictionResult":
         """Monte Carlo Dropout 不确定性量化（Bayesian LNN 近似）。
 

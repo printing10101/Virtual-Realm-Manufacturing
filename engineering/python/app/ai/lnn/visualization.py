@@ -34,7 +34,8 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -69,7 +70,7 @@ class VisualizationConfig:
     所有字段显式给定默认值，避免隐式状态，保证可复现。
     """
 
-    figsize: Tuple[float, float] = (14.0, 9.0)
+    figsize: tuple[float, float] = (14.0, 9.0)
     dpi: int = 120
     keyframe_marker_size: float = 40.0
     keyframe_color: str = "#d62728"
@@ -95,7 +96,7 @@ class VisualizationConfig:
 
 def extract_streaming_metrics(
     results: Sequence[Any],
-) -> Dict[str, np.ndarray]:
+) -> dict[str, np.ndarray]:
     """从 ``PredictionResult`` 列表中提取流式元数据为 numpy 数组.
 
     Parameters
@@ -113,7 +114,7 @@ def extract_streaming_metrics(
         ``trajectory_deviations`` / ``inference_times`` 等数组。
     """
     n = len(results)
-    values: List[float] = []
+    values: list[float] = []
     confidences = np.zeros(n, dtype=np.float64)
     frame_ids = np.arange(1, n + 1, dtype=np.int64)
     is_keyframe = np.zeros(n, dtype=bool)
@@ -168,7 +169,7 @@ class StreamingReportRenderer:
         {'png_path': '...', 'csv_path': '...', 'json_path': '...'}
     """
 
-    def __init__(self, config: Optional[VisualizationConfig] = None) -> None:
+    def __init__(self, config: VisualizationConfig | None = None) -> None:
         self._config = config or VisualizationConfig()
 
     def render(
@@ -177,8 +178,8 @@ class StreamingReportRenderer:
         output_path: str,
         dump_csv: bool = True,
         dump_json: bool = True,
-        model_name: Optional[str] = None,
-    ) -> Dict[str, str]:
+        model_name: str | None = None,
+    ) -> dict[str, str]:
         """渲染完整报告.
 
         Parameters
@@ -201,7 +202,7 @@ class StreamingReportRenderer:
             未产出的字段不包含在返回值中。
         """
         metrics = extract_streaming_metrics(results)
-        outputs: Dict[str, str] = {}
+        outputs: dict[str, str] = {}
 
         # PNG 渲染（matplotlib 不可用时跳过）
         if _HAS_MPL and plt is not None:
@@ -253,8 +254,8 @@ class StreamingReportRenderer:
 
     def _render_figure(
         self,
-        metrics: Dict[str, np.ndarray],
-        model_name: Optional[str],
+        metrics: dict[str, np.ndarray],
+        model_name: str | None,
     ) -> Any:
         """构造 4 子图 matplotlib figure."""
         cfg = self._config
@@ -365,9 +366,9 @@ class StreamingReportRenderer:
 
     def _dump_csv(
         self,
-        metrics: Dict[str, np.ndarray],
+        metrics: dict[str, np.ndarray],
         path: str,
-        model_name: Optional[str],
+        model_name: str | None,
     ) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         n = len(metrics["frame_ids"])
@@ -403,9 +404,9 @@ class StreamingReportRenderer:
 
     def _dump_json(
         self,
-        metrics: Dict[str, np.ndarray],
+        metrics: dict[str, np.ndarray],
         path: str,
-        model_name: Optional[str],
+        model_name: str | None,
     ) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         payload = {
@@ -442,9 +443,9 @@ class StreamingReportRenderer:
 def render_streaming_report(
     results: Sequence[Any],
     output_path: str,
-    config: Optional[VisualizationConfig] = None,
-    model_name: Optional[str] = None,
-) -> Dict[str, str]:
+    config: VisualizationConfig | None = None,
+    model_name: str | None = None,
+) -> dict[str, str]:
     """便捷函数：一步渲染流式推理报告.
 
     Parameters

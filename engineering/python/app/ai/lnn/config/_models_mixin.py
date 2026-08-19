@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from app.ai.lnn.config._schemas import DatasetCacheConfig, ModelConfig
 
@@ -18,7 +19,7 @@ class _ModelsMixin:
     _raw_config: Any
 
 
-    def get_model_config(self, model_name: str) -> Optional[ModelConfig]:
+    def get_model_config(self, model_name: str) -> ModelConfig | None:
         """
         获取指定模型的配置
 
@@ -47,7 +48,7 @@ class _ModelsMixin:
             metadata=model_data.get("metadata"),
         )
 
-    def add_model(self, model_name: str, model_config: Dict[str, Any]) -> None:
+    def add_model(self, model_name: str, model_config: dict[str, Any]) -> None:
         """
         添加新模型配置
 

@@ -5,7 +5,8 @@ from __future__ import annotations
 from __future__ import annotations
 import logging
 import time
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Union
+from collections.abc import Iterator
 import numpy as np
 from app.ai.lnn.core import (
     EngineType,
@@ -45,7 +46,7 @@ class _EngineInferenceMixin:
         self,
         task_description: str,
         input_data: Any,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         precision_requirement: float = 0.9,
         time_sensitivity: float = 0.5,
         max_latency_ms: int = 1000,
@@ -66,7 +67,7 @@ class _EngineInferenceMixin:
         decision = self._router.route(task)
         routing_ms = (time.perf_counter() - start_ts) * 1000.0
 
-        results: List[InferenceResult] = []
+        results: list[InferenceResult] = []
 
         primary = self._run_engine(
             decision.selected_engine,
@@ -109,13 +110,13 @@ class _EngineInferenceMixin:
         return results[0]
     def infer_batch(
         self,
-        tasks: List[Dict[str, Any]],
+        tasks: list[dict[str, Any]],
         batch_size: int = 32,
-    ) -> List[Union[FusionResult, InferenceResult]]:
+    ) -> list[Union[FusionResult, InferenceResult]]:
         """批量推理：当前按顺序执行以保证可观测性。"""
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
-        results: List[Union[FusionResult, InferenceResult]] = []
+        results: list[Union[FusionResult, InferenceResult]] = []
         for task in tasks:
             try:
                 results.append(
@@ -212,10 +213,10 @@ class _EngineInferenceMixin:
     def infer_windowed(
         self,
         model_name: str,
-        data_list: List[Any],
-        window_size: Optional[int] = None,
-        overlap_keyframes: Optional[int] = None,
-    ) -> List[InferenceResult]:
+        data_list: list[Any],
+        window_size: int | None = None,
+        overlap_keyframes: int | None = None,
+    ) -> list[InferenceResult]:
         """对超长加工序列执行窗口化推理.
 
         对应 lingbot-map 的 windowed mode：将序列切分为多个窗口，窗口间
@@ -346,10 +347,10 @@ class _EngineInferenceMixin:
     def _run_engine(
         self,
         engine: EngineType,
-        model_name: Optional[str],
+        model_name: str | None,
         task: TaskInput,
         routing_ms: float,
-    ) -> Optional[InferenceResult]:
+    ) -> InferenceResult | None:
         """根据引擎类型分发到具体执行器，返回 None 表示不可用。"""
         start_ts = time.perf_counter()
         try:
@@ -392,7 +393,7 @@ class _EngineInferenceMixin:
             ],
             uncertainty=uncertainty,
         )
-    def _invoke_lnn(self, model_name: Optional[str], task: TaskInput) -> tuple:
+    def _invoke_lnn(self, model_name: str | None, task: TaskInput) -> tuple:
         """调用 LNN 预测器；若未注册则回退到规则引擎。"""
         predictor = self._lnn_predictors.get(model_name or "")
         if predictor is None:
@@ -494,7 +495,7 @@ class _EngineInferenceMixin:
         }
         uncertainty = {"epistemic": 0.4, "source": "llm_default"}
         return content, confidence, uncertainty, meta
-    def _invoke_hybrid(self, model_name: Optional[str], task: TaskInput) -> tuple:
+    def _invoke_hybrid(self, model_name: str | None, task: TaskInput) -> tuple:
         """混合引擎：先 LNN 再规则融合，给出更稳健的预测。"""
         lnn_value, lnn_conf, lnn_unc, lnn_meta = self._invoke_lnn(model_name, task)
         if lnn_meta.get("fallback"):
@@ -526,7 +527,7 @@ class _EngineInferenceMixin:
             prediction, confidence, uncertainty, meta = (lnn_value, lnn_conf, lnn_unc, lnn_meta)
 
         return prediction, confidence, uncertainty, meta
-    def _lookup_custom_model(self, task_description: str, model_type: Optional[str]) -> Optional[Any]:
+    def _lookup_custom_model(self, task_description: str, model_type: str | None) -> Any | None:
         """根据任务描述和模型类型查找自定义模型实例。"""
         if not self._custom_models:
             return None

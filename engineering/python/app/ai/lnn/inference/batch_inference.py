@@ -6,7 +6,7 @@ dynamic batch sizing, and throughput monitoring.
 """
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 from concurrent.futures import ThreadPoolExecutor, Future
 from queue import PriorityQueue
 import threading
@@ -74,7 +74,7 @@ class BatchInferenceEngine:
 
     def process_batch(
         self,
-        data_list: List[Any],
+        data_list: list[Any],
         priority: int = 0,
     ) -> Future:
         """
@@ -97,7 +97,7 @@ class BatchInferenceEngine:
 
         return future
 
-    def _process_batch_impl(self, data_list: List[Any], task_id: int) -> List[PredictionResult]:
+    def _process_batch_impl(self, data_list: list[Any], task_id: int) -> list[PredictionResult]:
         """Internal batch processing implementation"""
         start_time = time.perf_counter()
         batch_size = self._current_batch_size if self.enable_dynamic_batching else self.initial_batch_size
@@ -179,8 +179,8 @@ class BatchInferenceEngine:
 
     def get_statistics(
         self,
-        time_window_seconds: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        time_window_seconds: int | None = None,
+    ) -> dict[str, Any]:
         """
         Get batch inference statistics
 
@@ -199,7 +199,7 @@ class BatchInferenceEngine:
             - time_window: Time-windowed stats (if requested)
         """
         with self._lock:
-            stats: Dict[str, Any] = self._stats.copy()
+            stats: dict[str, Any] = self._stats.copy()
             stats["queue_length"] = self._task_queue.qsize()
             stats["current_batch_size"] = self._current_batch_size
             stats["average_processing_time_ms"] = (
@@ -212,7 +212,7 @@ class BatchInferenceEngine:
 
         return stats
 
-    def _get_time_window_stats(self, window_seconds: int) -> Dict[str, Any]:
+    def _get_time_window_stats(self, window_seconds: int) -> dict[str, Any]:
         """Get statistics for a specific time window"""
         now = time.time()
         cutoff = now - window_seconds

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -38,7 +38,7 @@ class AnchorContext:
         self._update_rate = update_rate
         self._correction_strength = correction_strength
         self._enabled = enabled
-        self._anchor: Optional[Any] = None
+        self._anchor: Any | None = None
         self._lock = threading.RLock()
         self._update_count = 0
 
@@ -62,7 +62,7 @@ class AnchorContext:
                 self._anchor = self._ema_update(self._anchor, hidden)
             self._update_count += 1
 
-    def correct(self, hidden: Any) -> Tuple[Any, float]:
+    def correct(self, hidden: Any) -> tuple[Any, float]:
         """对隐状态施加锚点漂移修正。
 
         Returns
@@ -82,7 +82,7 @@ class AnchorContext:
             self._anchor = None
             self._update_count = 0
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         with self._lock:
             return {
                 "enabled": self._enabled,

@@ -7,7 +7,7 @@ uncertainty assessment, and visualization interfaces.
 
 import numpy as np
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 from datetime import datetime, timezone
 
 from app.ai.lnn.core import InferenceResult, EngineType
@@ -39,10 +39,10 @@ class ResultPostprocessor:
         self,
         predictions: np.ndarray,
         engine: EngineType = EngineType.LNN,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         processing_time_ms: float = 0.0,
-        input_data: Optional[Any] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        input_data: Any | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> InferenceResult:
         """
         处理推理结果
@@ -113,7 +113,7 @@ class ResultPostprocessor:
         # 最大概率作为置信度
         return np.max(softmax_preds, axis=1)
 
-    def _calculate_uncertainty(self, predictions: np.ndarray) -> Dict[str, float]:
+    def _calculate_uncertainty(self, predictions: np.ndarray) -> dict[str, float]:
         """
         计算不确定性指标
 
@@ -154,7 +154,7 @@ class ResultPostprocessor:
             "confidence_variance": float(np.var(np.max(softmax_preds, axis=1))),
         }
 
-    def _build_evidence(self, predictions: np.ndarray, confidences: np.ndarray) -> List[Dict[str, Any]]:
+    def _build_evidence(self, predictions: np.ndarray, confidences: np.ndarray) -> list[dict[str, Any]]:
         """
         构建支持证据列表
 
@@ -193,7 +193,7 @@ class ResultPostprocessor:
         return evidence
 
     @staticmethod
-    def _get_top_k(scores: np.ndarray, k: int = 3) -> List[Dict[str, Any]]:
+    def _get_top_k(scores: np.ndarray, k: int = 3) -> list[dict[str, Any]]:
         """获取Top-K预测"""
         indices = np.argsort(scores)[::-1][:k]
         return [{"class": int(idx), "score": float(scores[idx])} for idx in indices]
@@ -230,7 +230,7 @@ class ResultPostprocessor:
         xml_parts.append("</InferenceResult>")
         return "\n".join(xml_parts)
 
-    def _dict_to_xml(self, data: Any, parent: str, parts: List[str]) -> None:
+    def _dict_to_xml(self, data: Any, parent: str, parts: list[str]) -> None:
         """递归转换字典为XML"""
         if isinstance(data, dict):
             for key, value in data.items():
@@ -249,7 +249,7 @@ class ResultPostprocessor:
                 else:
                     parts.append(f"<{tag}>{value}</{tag}>")
 
-    def generate_visualization_data(self, result: InferenceResult) -> Dict[str, Any]:
+    def generate_visualization_data(self, result: InferenceResult) -> dict[str, Any]:
         """
         生成可视化数据
 

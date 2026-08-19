@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 @dataclass
 class ModelConfig:
@@ -19,7 +19,7 @@ class ModelConfig:
     num_layers: int = 2
     dropout_rate: float = 0.1
     temporal_horizon: int = 1000
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -40,7 +40,7 @@ class LNNConfig:
     enabled: bool = True
     models_dir: str = "models/lnn"
     default_device: str = "cpu"
-    models: Dict[str, ModelConfig] = field(default_factory=dict)
+    models: dict[str, ModelConfig] = field(default_factory=dict)
     thresholds: ThresholdConfig = field(default_factory=ThresholdConfig)
     cache_size: int = 10
     enable_amp: bool = True
@@ -77,8 +77,8 @@ class EnvironmentConfig:
 
     name: str = "development"
     debug: bool = True
-    device_override: Optional[str] = None
-    models_path_override: Optional[str] = None
+    device_override: str | None = None
+    models_path_override: str | None = None
 
 
 @dataclass

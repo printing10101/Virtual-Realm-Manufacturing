@@ -9,7 +9,7 @@ import time
 import logging
 import threading
 from collections import OrderedDict
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class ModelCache:
         if max_size < 1:
             raise ValueError(f"max_size must be >= 1, got {max_size}")
 
-        self._cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self._max_size = max_size
         self._lock = threading.Lock()
         self._total_requests = 0
@@ -76,7 +76,7 @@ class ModelCache:
         with cls._instance_lock:
             cls._instance = None
 
-    def get(self, model_name: str) -> Optional[Any]:
+    def get(self, model_name: str) -> Any | None:
         """
         Get a cached model instance by name.
 
@@ -159,7 +159,7 @@ class ModelCache:
                 return True
             return False
 
-    def clear(self) -> Tuple[int, int]:
+    def clear(self) -> tuple[int, int]:
         """
         Clear all cached models.
 
@@ -176,7 +176,7 @@ class ModelCache:
             )
             return count, total_memory
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get cache statistics and model information.
 

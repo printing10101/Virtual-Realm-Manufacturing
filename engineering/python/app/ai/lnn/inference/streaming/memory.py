@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections import deque
-from typing import Any, Deque, Dict, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -38,7 +38,7 @@ class TrajectoryMemory:
     ) -> None:
         self._window_size = max(1, window_size)
         self._correction_strength = correction_strength
-        self._trajectory: Deque[Any] = deque(maxlen=self._window_size)
+        self._trajectory: deque[Any] = deque(maxlen=self._window_size)
         self._lock = threading.RLock()
 
     def push(self, prediction: Any) -> None:
@@ -46,7 +46,7 @@ class TrajectoryMemory:
         with self._lock:
             self._trajectory.append(self._to_array(prediction))
 
-    def correct(self, prediction: Any) -> Tuple[Any, float]:
+    def correct(self, prediction: Any) -> tuple[Any, float]:
         """对当前预测施加轨迹一致性约束。
 
         Returns
@@ -73,7 +73,7 @@ class TrajectoryMemory:
         with self._lock:
             self._trajectory.clear()
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         with self._lock:
             return {
                 "window_size": self._window_size,

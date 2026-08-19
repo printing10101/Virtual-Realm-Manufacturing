@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Type
+
 
 logger = logging.getLogger(__name__)
 
 
-def get_torch_model_class(model_type_str: str) -> Optional[Type]:
+def get_torch_model_class(model_type_str: str) -> type | None:
     """Get PyTorch model class by type string.
 
     Args:

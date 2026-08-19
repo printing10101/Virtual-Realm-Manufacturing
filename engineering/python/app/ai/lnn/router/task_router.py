@@ -17,7 +17,7 @@ import logging
 import threading
 import time
 from collections import deque
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 from app.ai.lnn.core import EngineType, RoutingDecision, TaskInput, TaskCategory, DataType
 
@@ -42,7 +42,7 @@ class TaskRouter:
     # rule score is already normalised. Values are derived from the documented
     # strengths of each engine (LNN for fast numeric tasks, LLM for reasoning,
     # RULE for deterministic process rules, HYBRID for multimodal).
-    _CATEGORY_AFFINITY: Dict[TaskCategory, Dict[EngineType, float]] = {
+    _CATEGORY_AFFINITY: dict[TaskCategory, dict[EngineType, float]] = {
         TaskCategory.CLASSIFICATION: {
             EngineType.LNN: 0.55,
             EngineType.HYBRID: 0.25,
@@ -112,15 +112,15 @@ class TaskRouter:
 
         # Online ML signal: rolling success rate per engine. Seeds are small
         # pseudo-counts so a brand-new engine does not get a zero score.
-        self._engine_success: Dict[EngineType, Deque[float]] = {eng: deque(maxlen=history_size) for eng in EngineType}
-        self._engine_priors: Dict[EngineType, float] = {
+        self._engine_success: dict[EngineType, deque[float]] = {eng: deque(maxlen=history_size) for eng in EngineType}
+        self._engine_priors: dict[EngineType, float] = {
             EngineType.LNN: 0.75,
             EngineType.LLM: 0.70,
             EngineType.HYBRID: 0.72,
             EngineType.RULE: 0.90,
         }
 
-        self._decision_history: List[Dict[str, Any]] = []
+        self._decision_history: list[dict[str, Any]] = []
 
         # H8 修复：route() 与 update_outcome() 并发调用时 _decision_history 切片重建
         # 与 _engine_success deque append 非原子，加锁保护。
@@ -154,7 +154,7 @@ class TaskRouter:
         rule_scores = self._rule_scores(task, category)
         ml_scores = self._ml_scores()
 
-        combined: Dict[EngineType, float] = {}
+        combined: dict[EngineType, float] = {}
         for eng in EngineType:
             combined[eng] = self._rule_weight * rule_scores.get(eng, 0.0) + self._ml_weight * ml_scores.get(eng, 0.0)
 
@@ -167,7 +167,7 @@ class TaskRouter:
         below_threshold = confidence < self._confidence_threshold
         reasoning = self._build_reasoning(selected_engine, category, rule_scores, ml_scores, below_threshold)
 
-        alternatives: Optional[List[Dict[str, Any]]] = None
+        alternatives: list[dict[str, Any]] | None = None
         if self._enable_fallback:
             ranked = sorted(combined.items(), key=lambda kv: kv[1], reverse=True)
             alternatives = [
@@ -219,7 +219,7 @@ class TaskRouter:
         self,
         engine: EngineType,
         success: bool,
-        confidence: Optional[float] = None,
+        confidence: float | None = None,
     ) -> None:
         """Feed back an observed outcome to update the online ML score.
 
@@ -239,7 +239,7 @@ class TaskRouter:
         with self._lock:
             self._engine_success[engine].append((1.0 if success else 0.0) * weight)
 
-    def get_decision_stats(self) -> Dict[str, Any]:
+    def get_decision_stats(self) -> dict[str, Any]:
         """Return aggregated statistics over the decision history."""
         total = len(self._decision_history)
         if total == 0:
@@ -250,7 +250,7 @@ class TaskRouter:
                 "ml_engine_rates": {eng.value: self._ml_score(eng) for eng in EngineType},
             }
 
-        engine_counts: Dict[str, int] = {}
+        engine_counts: dict[str, int] = {}
         confidence_sum = 0.0
         for entry in self._decision_history:
             engine = entry["selected_engine"]
@@ -278,7 +278,7 @@ class TaskRouter:
         self,
         task: TaskInput,
         category: TaskCategory,
-    ) -> Dict[EngineType, float]:
+    ) -> dict[EngineType, float]:
         """Compute rule-based per-engine scores in [0, 1]."""
         base = dict(self._CATEGORY_AFFINITY.get(category, self._default_affinity()))
 
@@ -308,7 +308,7 @@ class TaskRouter:
             total = sum(base.values())
         return {eng: base.get(eng, 0.0) / total for eng in EngineType}
 
-    def _ml_scores(self) -> Dict[EngineType, float]:
+    def _ml_scores(self) -> dict[EngineType, float]:
         """Compute the ML-based per-engine scores from rolling success rates."""
         return {eng: self._ml_score(eng) for eng in EngineType}
 
@@ -349,7 +349,7 @@ class TaskRouter:
         return TaskCategory.REGRESSION
 
     @staticmethod
-    def _default_affinity() -> Dict[EngineType, float]:
+    def _default_affinity() -> dict[EngineType, float]:
         return {
             EngineType.LNN: 0.40,
             EngineType.HYBRID: 0.25,
@@ -370,8 +370,8 @@ class TaskRouter:
     def _build_reasoning(
         engine: EngineType,
         category: TaskCategory,
-        rule_scores: Dict[EngineType, float],
-        ml_scores: Dict[EngineType, float],
+        rule_scores: dict[EngineType, float],
+        ml_scores: dict[EngineType, float],
         below_threshold: bool,
     ) -> str:
         parts = [

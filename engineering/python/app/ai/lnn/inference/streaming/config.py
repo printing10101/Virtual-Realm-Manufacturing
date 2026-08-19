@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 @dataclass
 class KeyframeDecision:
     """关键帧判定结果。
@@ -86,7 +86,7 @@ class StreamingConfig:
     anchor_correction_strength: float = 0.1
     trajectory_memory_size: int = 64
     trajectory_correction_strength: float = 0.05
-    window_size: Optional[int] = None
+    window_size: int | None = None
     overlap_keyframes: int = 8
 
     def validate(self) -> None:

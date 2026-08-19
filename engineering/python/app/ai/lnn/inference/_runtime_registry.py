@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import json
 import time
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 try:
     from app.ai.lnn.models.base_lnn import BaseLNNModel
@@ -37,10 +37,10 @@ class ModelRegistry(BaseModelRegistry):
     """
 
     # PyTorch版本模型类映射 (lazy-initialized)
-    _torch_model_class_map: Dict[str, Any] = {}
+    _torch_model_class_map: dict[str, Any] = {}
 
     # 模型类型到类的映射
-    MODEL_CLASS_MAP: Dict[ModelType, Type[BaseLNNModel]] = {
+    MODEL_CLASS_MAP: dict[ModelType, type[BaseLNNModel]] = {
         ModelType.CFC: CFCModel,
         ModelType.LTC: LTCModel,
         ModelType.HYBRID_LNN: HybridLNNModel,
@@ -49,13 +49,13 @@ class ModelRegistry(BaseModelRegistry):
     def __init__(
         self,
         cache_size: int = 10,
-        model_dir: Optional[str] = None,
+        model_dir: str | None = None,
         enable_auto_cache: bool = True,
     ):
         self.cache_size = cache_size
         self.model_dir = model_dir
         self.enable_auto_cache = enable_auto_cache
-        self.registry: Dict[str, ModelEntry] = {}
+        self.registry: dict[str, ModelEntry] = {}
         self.cache_hits = 0
         self.cache_misses = 0
 
@@ -63,9 +63,9 @@ class ModelRegistry(BaseModelRegistry):
         self,
         model_name: str,
         model_type: ModelType,
-        model_path: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        model_path: str | None = None,
+        config: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         if model_name in self.registry:
             raise ValueError(
@@ -163,7 +163,7 @@ class ModelRegistry(BaseModelRegistry):
                 self.registry[name].model = None
                 self.registry[name].is_loaded = False
 
-    def list_models(self) -> List[Dict[str, Any]]:
+    def list_models(self) -> list[dict[str, Any]]:
         models = []
         for name, entry in self.registry.items():
             config = self._require_config(entry)
@@ -178,7 +178,7 @@ class ModelRegistry(BaseModelRegistry):
             )
         return models
 
-    def get_model_info(self, model_name: str) -> Dict[str, Any]:
+    def get_model_info(self, model_name: str) -> dict[str, Any]:
         if model_name not in self.registry:
             raise KeyError(
                 f"模型信息获取失败：模型 '{model_name}' 未找到。可能原因：1) 模型尚未注册；2) 模型名称拼写错误。请调用 GET /api/v1/lnn/models 查看所有已注册的模型列表。"
@@ -212,7 +212,7 @@ class ModelRegistry(BaseModelRegistry):
         for name in list(self.registry.keys()):
             self.unload(name)
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         total_requests = self.cache_hits + self.cache_misses
         hit_rate = self.cache_hits / total_requests if total_requests > 0 else 0.0
         loaded_count = sum(1 for entry in self.registry.values() if entry.is_loaded)
@@ -263,8 +263,8 @@ class ModelRegistry(BaseModelRegistry):
     def register_custom_model(
         self,
         model_name: str,
-        model_class: Type[BaseLNNModel],
-        model_type: Optional[ModelType] = None,
+        model_class: type[BaseLNNModel],
+        model_type: ModelType | None = None,
         **kwargs,
     ) -> str:
         if model_name in self.registry:
@@ -291,8 +291,8 @@ class ModelRegistry(BaseModelRegistry):
         model_name: str,
         model_type: ModelType,
         model_path: str,
-        config: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         if model_name in self.registry:
             raise ValueError(
@@ -327,7 +327,7 @@ class ModelRegistry(BaseModelRegistry):
         quantized_name = get_quantized_model_name(base_model_name)
         return quantized_name in self.registry
 
-    def get_quantized_model_path(self, base_model_name: str) -> Optional[str]:
+    def get_quantized_model_path(self, base_model_name: str) -> str | None:
         quantized_name = get_quantized_model_name(base_model_name)
         entry = self.registry.get(quantized_name)
         if entry and entry.config:

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import time
-from typing import Any, List, Callable
+from typing import Any
+from collections.abc import Callable
 
 import numpy as np
 
@@ -51,9 +52,9 @@ class _BatchMixin:
 
     def predict_batch(
         self,
-        batch_data: List[Any],
+        batch_data: list[Any],
         batch_size: int = 32,
-    ) -> List[PredictionResult]:
+    ) -> list[PredictionResult]:
         """
         Batch prediction with memory control
 
@@ -71,7 +72,7 @@ class _BatchMixin:
             results.extend(batch_results)
         return results
 
-    def _predict_batch_chunk(self, chunk: List[Any]) -> List[PredictionResult]:
+    def _predict_batch_chunk(self, chunk: list[Any]) -> list[PredictionResult]:
         """
         优化的批量预测分块处理
 
