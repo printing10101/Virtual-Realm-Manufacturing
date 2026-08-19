@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, cast
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.engine import Engine
@@ -44,7 +44,10 @@ def get_sync_engine() -> Engine:
     """
     from app.database.sync_session import get_sync_engine as _get
 
-    return _get()
+    engine = _get()
+    if engine is None:
+        raise RuntimeError("同步 Engine 未初始化（get_sync_engine 返回 None）")
+    return engine
 
 
 # ---------------------------------------------------------------------------
@@ -147,11 +150,11 @@ class KnowledgeGraphRepository:
                 )
                 session.add(orm_obj)
             else:
-                existing.node_type = node_type
-                # 合并属性：新值覆盖旧值，保留未指定的字段
-                merged = dict(existing.properties or {})
+                # ORM 经典 Column 风格：cast 解包读取、ignore 赋值
+                existing.node_type = node_type  # type: ignore[assignment]
+                merged = dict(cast(Any, existing.properties) or {})
                 merged.update(props)
-                existing.properties = merged
+                existing.properties = merged  # type: ignore[assignment]
                 orm_obj = existing
             try:
                 session.commit()
@@ -316,10 +319,10 @@ class KnowledgeGraphRepository:
                 )
                 session.add(orm_obj)
             else:
-                existing.confidence = float(confidence)
-                merged = dict(existing.properties or {})
+                existing.confidence = float(confidence)  # type: ignore[assignment]
+                merged = dict(cast(Any, existing.properties) or {})
                 merged.update(props)
-                existing.properties = merged
+                existing.properties = merged  # type: ignore[assignment]
                 orm_obj = existing
             try:
                 session.commit()

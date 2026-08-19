@@ -5,7 +5,17 @@ Provides recommended cutting parameters for different material categories
 and machining operations based on tool diameter.
 """
 
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, NotRequired, Tuple, TypedDict
+
+# 切削参数推荐结果的精确类型（2026-08-19：从 Dict[str, Union[...]] 收紧，
+# 修复 mypy 调用方取值推断为 int|float|list[str] 联合类型的问题）
+class CuttingParamsResult(TypedDict):
+    """get_cutting_params 返回结构。"""
+
+    spindle_speed: int  # RPM
+    feed_rate: float  # mm/min（turning 为 mm/rev）
+    depth_of_cut: float  # mm
+    warnings: NotRequired[List[str]]  # 仅 validate_machine_limits=True 时存在
 
 # Material categories with their machinability properties
 MATERIAL_CATEGORIES = {
@@ -205,7 +215,7 @@ def get_cutting_params(
     tool_diameter: float,
     machine_type: str = "default",
     validate_machine_limits: bool = True,
-) -> Dict[str, Union[int, float, List[str]]]:
+) -> CuttingParamsResult:
     """
     Get recommended cutting parameters for a given material, operation, and tool diameter.
 
@@ -321,7 +331,7 @@ def get_cutting_params(
             )
             depth_of_cut = machine_caps["max_depth_of_cut"]
 
-    result = {
+    result: CuttingParamsResult = {
         "spindle_speed": int(spindle_speed),
         "feed_rate": round(feed_rate, 2),
         "depth_of_cut": round(depth_of_cut, 2),

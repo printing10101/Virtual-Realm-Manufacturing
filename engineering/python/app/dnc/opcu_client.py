@@ -254,6 +254,8 @@ class OPCUAClient:
         if not await self._reconnect_if_needed():
             raise RuntimeError("OPC UA 未连接且无法重新连接")
 
+        # _reconnect_if_needed 成功后 client 必然非 None（不变量断言）
+        assert self.client is not None
         node = self.client.get_node(node_id)
         value = await node.read_value()
         return value
@@ -272,6 +274,7 @@ class OPCUAClient:
         if not await self._reconnect_if_needed():
             raise RuntimeError("OPC UA 未连接且无法重新连接")
 
+        assert self.client is not None
         node = self.client.get_node(node_id)
         await node.write_value(value)
         logger.info("OPC UA 写入: %s = %s", node_id, value)
@@ -299,10 +302,12 @@ class OPCUAClient:
                     # 旧订阅清理异常：记录 debug 日志便于排查，不阻塞新订阅创建
                     logger.debug("OPC UA 旧订阅 delete 失败（重建清理）: %s", del_err)
                 self.subscription = None
+            assert self.client is not None  # subscribe 前已保证连接
             self.handler = OPCUASubscriptionHandler(callback)
-            self.subscription = await self.client.create_subscription(500, self.handler)
+            subscription = await self.client.create_subscription(500, self.handler)
+            self.subscription = subscription
             nodes = [self.client.get_node(nid) for nid in node_ids]
-            await self.subscription.subscribe_data_change(nodes)
+            await subscription.subscribe_data_change(nodes)
             logger.info("OPC UA 已订阅 %s 个节点", len(node_ids))
             return True
 
@@ -420,6 +425,7 @@ class OPCUAClient:
                 program_content = f.read()
 
             # 写入机床 NC 程序存储节点
+            assert self.client is not None  # _reconnect_if_needed 成功后必然已连接
             program_node = self.client.get_node(node_id)
             await program_node.write_value(program_content)
 

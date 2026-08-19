@@ -24,6 +24,7 @@ from app.models.knowledge_graph import (
     Tool,
     ToolSuitableForFeature,
     ToolSuitableForMaterial,
+    _RelationBase,
 )
 
 logger = logging.getLogger(__name__)
@@ -110,7 +111,8 @@ _ENTITY_MODEL_MAP = {
 }
 
 # 关系类型到 Pydantic 模型的映射
-_RELATION_MODEL_MAP = {
+# 显式注解 type[_RelationBase]：各关系子类共享公共基类，mypy 不再报 dict-item 不兼容
+_RELATION_MODEL_MAP: dict[tuple[str, str, str], type[_RelationBase]] = {
     ("SUITABLE_FOR", "Tool", "Material"): ToolSuitableForMaterial,
     ("SUITABLE_FOR", "Tool", "Feature"): ToolSuitableForFeature,
     ("APPLIED_TO", "Process", "Feature"): ProcessAppliedToFeature,
@@ -155,13 +157,13 @@ class ExtractionValidator:
 
         # 1. 结构验证 - 实体
         for entity in entities:
-            result = self._validate_entity(entity)
-            report.entity_results.append(result)
+            entity_result = self._validate_entity(entity)
+            report.entity_results.append(entity_result)
 
         # 2. 结构验证 - 关系
         for relation in relations:
-            result = self._validate_relation(relation, entities)
-            report.relation_results.append(result)
+            relation_result = self._validate_relation(relation, entities)
+            report.relation_results.append(relation_result)
 
         # 3. 一致性检查
         self._check_consistency(entities, relations, report)
@@ -255,7 +257,7 @@ class ExtractionValidator:
                 result.errors.append(f"confidence 必须在 [0, 100] 范围内，当前: {confidence}")
 
         # 使用 Pydantic 关系模型验证
-        entity_type_map = {e["id"]: e.get("entity_type") for e in entities}
+        entity_type_map = {e["id"]: str(e.get("entity_type") or "") for e in entities}
         source_type = entity_type_map.get(source_id, "")
         target_type = entity_type_map.get(target_id, "")
 

@@ -22,6 +22,7 @@ import logging
 import platform
 import sys
 import uuid
+from datetime import datetime
 from app.utils.time import utcnow
 from typing import Any, Optional
 
@@ -204,42 +205,72 @@ def _collect_environment() -> dict[str, str]:
 
 
 def _orm_to_contract(orm: ExperimentSnapshotORM) -> ExperimentSnapshot:
-    """ORM → 契约 dataclass."""
-    try:
-        config = json.loads(orm.config_json) if orm.config_json else {}
-    except json.JSONDecodeError:
-        config = {"_decode_error": True, "raw": orm.config_json}
+    """ORM → 契约 dataclass.
+
+    ORM 用经典 ``Column(...)`` 声明式风格，mypy 会把实例属性推断为
+    ``Column[T]`` 而非 ``T``（SQLAlchemy 1.x 无 Mapped 注解）。
+    这里通过 ``cast`` 显式解包，声明 ORM 边界处的运行时值类型。
+    """
+    from typing import cast
 
     try:
-        dataset_versions = json.loads(orm.dataset_versions_json) if orm.dataset_versions_json else []
+        config = json.loads(cast(str, orm.config_json)) if orm.config_json else {}
+    except json.JSONDecodeError:
+        config = {"_decode_error": True, "raw": cast(str, orm.config_json)}
+
+    try:
+        dataset_versions = (
+            json.loads(cast(str, orm.dataset_versions_json)) if orm.dataset_versions_json else []
+        )
     except json.JSONDecodeError:
         dataset_versions = []
 
     try:
-        metrics = json.loads(orm.metrics_json) if orm.metrics_json else {}
+        metrics = json.loads(cast(str, orm.metrics_json)) if orm.metrics_json else {}
     except json.JSONDecodeError:
         metrics = {}
 
     try:
-        environment = json.loads(orm.environment_json) if orm.environment_json else {}
+        environment = json.loads(cast(str, orm.environment_json)) if orm.environment_json else {}
     except json.JSONDecodeError:
         environment = {}
 
     return ExperimentSnapshot(
-        snapshot_id=orm.id,
-        created_at=orm.created_at,
-        created_by=orm.created_by,
-        git_sha=orm.git_sha,
-        code_dirty=orm.code_dirty,
+        snapshot_id=cast(str, orm.id),
+        created_at=cast(datetime, orm.created_at),
+        created_by=cast(str, orm.created_by),
+        git_sha=cast(str, orm.git_sha),
+        code_dirty=cast(bool, orm.code_dirty),
         config=config,
         dataset_versions=list(dataset_versions),
-        model_uri=orm.model_uri,
+        model_uri=cast(str, orm.model_uri),
         metrics=metrics,
         environment=environment,
-        lineage_record_id=orm.lineage_record_id,
-        mlflow_run_id=orm.mlflow_run_id,
-        notes=orm.notes or "",
+        lineage_record_id=cast(Optional[str], orm.lineage_record_id),
+        mlflow_run_id=cast(Optional[str], orm.mlflow_run_id),
+        notes=cast(str, orm.notes) or "",
     )
+
+
+def _infer_artifact_type(uri: str) -> str:
+    """按 URI scheme 推断 Artifact.type（契约约定）。
+
+    映射：
+    - ``dataset://`` → "dataset"
+    - ``model://`` → "model"
+    - ``report://`` / ``file://...report`` → "report"
+    - ``metrics://`` → "metrics"
+    - 其它 → "file"
+    """
+    if uri.startswith("dataset://"):
+        return "dataset"
+    if uri.startswith("model://"):
+        return "model"
+    if uri.startswith("metrics://"):
+        return "metrics"
+    if uri.startswith("report://") or "report" in uri:
+        return "report"
+    return "file"
 
 
 def _workflow_spec_from_dict(spec_dict: dict[str, Any]) -> WorkflowSpec:
@@ -271,14 +302,22 @@ def _workflow_spec_from_dict(spec_dict: dict[str, Any]) -> WorkflowSpec:
         for n in spec_dict.get("nodes", [])
     ]
     edges = [WorkflowEdge(upstream=e["upstream"], downstream=e["downstream"]) for e in spec_dict.get("edges", [])]
-    # inputs 形如 {"name": {"uri": "...", "mime_type": "...", "metadata": {...}}}
+    # inputs 形如 {"name": {"type": "dataset", "uri": "...", "metadata": {...}}}
+    # 兼容旧格式（含 mime_type 而非 type）：type 缺省时按 URI scheme 推断
     inputs: dict[str, Artifact] = {}
     for name, art_dict in spec_dict.get("inputs", {}).items():
         if isinstance(art_dict, dict):
+            uri = art_dict.get("uri", "")
+            artifact_type = art_dict.get("type") or _infer_artifact_type(uri)
+            metadata = dict(art_dict.get("metadata", {}))
+            # 兼容旧格式：mime_type 并入 metadata（非契约字段，不直接传 Artifact）
+            if "mime_type" in art_dict:
+                metadata.setdefault("mime_type", art_dict["mime_type"])
             inputs[name] = Artifact(
-                uri=art_dict.get("uri", ""),
-                mime_type=art_dict.get("mime_type", "application/octet-stream"),
-                metadata=art_dict.get("metadata", {}),
+                name=name,
+                type=artifact_type,
+                uri=uri,
+                metadata=metadata,
             )
 
     return WorkflowSpec(

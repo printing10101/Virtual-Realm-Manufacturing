@@ -177,17 +177,19 @@ class CronParser:
         result: set = set()
         for part in field_str.split(","):
             if "/" in part:
-                base, step = part.split("/", 1)
-                step = int(step)
-                if base == "*":
+                base_str, step_str = part.split("/", 1)
+                step = int(step_str)
+                if base_str == "*":
                     start = min_val
                 else:
-                    start = int(base)
+                    start = int(base_str)
                 for v in range(start, max_val + 1, step):
                     result.add(v)
             elif "-" in part:
-                start, end = part.split("-", 1)
-                for v in range(int(start), int(end) + 1):
+                start_str, end_str = part.split("-", 1)
+                start = int(start_str)
+                end = int(end_str)
+                for v in range(start, end + 1):
                     result.add(v)
             else:
                 result.add(int(part))
@@ -204,18 +206,20 @@ class CronParser:
         parts = field_str.split(",")
         for part in parts:
             if "/" in part:
-                base, step = part.split("/", 1)
-                step = int(step)
-                if base == "*":
+                base_str, step_str = part.split("/", 1)
+                step = int(step_str)
+                if base_str == "*":
                     start = min_val
                 else:
-                    start = int(base)
+                    start = int(base_str)
                 for v in range(start, max_val + 1, step):
                     if v == value:
                         return True
             elif "-" in part:
-                start, end = part.split("-", 1)
-                if int(start) <= value <= int(end):
+                start_str, end_str = part.split("-", 1)
+                start = int(start_str)
+                end = int(end_str)
+                if start <= value <= end:
                     return True
             else:
                 if int(part) == value:
@@ -271,7 +275,8 @@ class WakeupQueue:
         # 使用统一的连接池管理器（传入 db_path 避免跨测试共享连接池死锁）
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("heartbeat", db_path=self.db_path)
-        self._conn = self._pool.get_connection()
+        # 关闭后置 None（见 close()）；保持 Any 类型避免 mypy union-attr 误报
+        self._conn: Any = self._pool.get_connection()
         self._closed = False  # P3 幂等性标志位
         self._init_schema()
 
@@ -443,7 +448,9 @@ class WakeupQueue:
             last_run: 上次执行时间（可选）
         """
         now = time.time()
-        updates = {"status": status.value, "updated_at": now}
+        # 值类型混合（status 枚举值 str / 时间戳 float / last_run 可能 str），
+        # 显式标注 Any 避免 mypy 收紧为 str|float 后无法赋值 None
+        updates: dict[str, Any] = {"status": status.value, "updated_at": now}
 
         if last_run is not None:
             updates["last_run"] = last_run

@@ -148,10 +148,16 @@ async def get_device_info():
             "gpu_count": current_info.gpu_count,
         },
         "available_devices": [d.to_dict() for d in devices],
-        "torch_cuda_available": torch.cuda.is_available(),
-        "torch_version": torch.__version__,
-        "cuda_version": torch.version.cuda if torch.cuda.is_available() else None,
-        "cudnn_version": torch.backends.cudnn.version() if torch.cuda.is_available() else None,
+        "torch_cuda_available": torch.cuda.is_available(),  # type: ignore[attr-defined]
+        "torch_version": torch.__version__,  # type: ignore[attr-defined]
+        "cuda_version": (
+            torch.version.cuda if torch.cuda.is_available() else None  # type: ignore[attr-defined]
+        ),
+        "cudnn_version": (
+            torch.backends.cudnn.version()  # type: ignore[attr-defined]
+            if torch.cuda.is_available()  # type: ignore[attr-defined]
+            else None
+        ),
     }
 
     return success(data=response_data, message="Device info retrieved successfully")
@@ -184,12 +190,22 @@ async def get_device_status_endpoint():
             gpu_index = device.index if device.index is not None else 0
             response_data["gpu_status"] = {
                 "total_memory_mb": round(
-                    torch.cuda.get_device_properties(gpu_index).total_memory / (1024**2),
+                    torch.cuda.get_device_properties(gpu_index).total_memory  # type: ignore[attr-defined]
+                    / (1024**2),
                     2,
                 ),
-                "allocated_memory_mb": round(torch.cuda.memory_allocated(gpu_index) / (1024**2), 2),
-                "reserved_memory_mb": round(torch.cuda.memory_reserved(gpu_index) / (1024**2), 2),
-                "max_memory_mb": round(torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2),
+                "allocated_memory_mb": round(
+                    torch.cuda.memory_allocated(gpu_index) / (1024**2),  # type: ignore[attr-defined]
+                    2,
+                ),
+                "reserved_memory_mb": round(
+                    torch.cuda.memory_reserved(gpu_index) / (1024**2),  # type: ignore[attr-defined]
+                    2,
+                ),
+                "max_memory_mb": round(
+                    torch.cuda.max_memory_allocated(gpu_index) / (1024**2),  # type: ignore[attr-defined]
+                    2,
+                ),
             }
         except Exception as e:  # noqa: BLE001
             # GPU 状态探测失败（驱动/上下文/线程环境问题）不阻断整个端点，
@@ -211,13 +227,13 @@ async def clear_device_cache():
         )
 
     import torch  # noqa: PLC0415 - 延迟导入（无 torch 环境降级）
-    if not torch.cuda.is_available():
+    if not torch.cuda.is_available():  # type: ignore[attr-defined]
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message="No CUDA device available",
         )
 
-    clear_gpu_memory(torch.device("cuda"))
+    clear_gpu_memory(torch.device("cuda"))  # type: ignore[attr-defined]
 
     return success(
         data={"message": "GPU cache cleared successfully"},

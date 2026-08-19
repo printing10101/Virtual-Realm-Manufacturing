@@ -26,12 +26,18 @@ class RepositoryError(AppException):
 
 
 class RecordNotFoundError(RepositoryError):
-    """数据记录未找到（404）。"""
+    """数据记录未找到（404）。
+
+    ⚠️ 2026-08-19 修复：此前未传 status_code=404，实际继承 RepositoryError
+    默认的 500（与注释声称的 404 不符）。补传 status_code=404 使行为与文档一致。
+    """
 
     def __init__(self, record_id: str, repository_type: str = "generic"):
         super().__init__(
             message=f"Record not found: {record_id}",
             repository_type=repository_type,
+            code=3004,
+            status_code=404,
         )
         self.record_id = record_id
 

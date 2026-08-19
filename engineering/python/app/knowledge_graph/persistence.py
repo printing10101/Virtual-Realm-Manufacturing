@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence, cast
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -134,10 +134,12 @@ class GraphPersistence:
                             )
                         )
                     else:
+                        # ORM 经典 Column 风格：mypy 把属性推断为 Column[T]，
+                        # 运行时是真实值，cast 解包读取、ignore 赋值
                         existing_node.node_type = node_type
-                        merged = dict(existing_node.properties or {})
+                        merged = dict(cast(Any, existing_node.properties) or {})
                         merged.update(properties)
-                        existing_node.properties = merged
+                        existing_node.properties = merged  # type: ignore[assignment]
                     nodes_written += 1
 
                 # --- 关系 ---
@@ -178,10 +180,10 @@ class GraphPersistence:
                             )
                         )
                     else:
-                        existing_edge.confidence = confidence_f
-                        merged = dict(existing_edge.properties or {})
+                        existing_edge.confidence = confidence_f  # type: ignore[assignment]
+                        merged = dict(cast(Any, existing_edge.properties) or {})
                         merged.update(props_for_db)
-                        existing_edge.properties = merged
+                        existing_edge.properties = merged  # type: ignore[assignment]
                     edges_written += 1
 
                 session.commit()
@@ -237,9 +239,9 @@ class GraphPersistence:
             node_rows = self._repo.list_all_nodes(limit=node_limit)
             for orm_node in node_rows:
                 graph.add_node(
-                    node_type=orm_node.node_type,
-                    node_id=orm_node.node_id,
-                    properties=dict(orm_node.properties or {}),
+                    node_type=cast(str, orm_node.node_type),
+                    node_id=cast(str, orm_node.node_id),
+                    properties=dict(cast(Any, orm_node.properties) or {}),
                 )
                 nodes_loaded += 1
 
@@ -247,16 +249,16 @@ class GraphPersistence:
             distinct_types = self._distinct_edge_types(session=session)
             for etype in distinct_types:
                 for orm_edge in self._repo.list_edges_by_type(etype, limit=edge_limit):
-                    props = dict(orm_edge.properties or {})
-                    props.setdefault("confidence", float(orm_edge.confidence))
+                    props = dict(cast(Any, orm_edge.properties) or {})
+                    props.setdefault("confidence", float(cast(float, orm_edge.confidence)))
                     # source / evidence 等附加字段保留
                     # 注意：upsert 流程中若 properties 已包含 confidence，
                     # 不会被覆盖（add_edge 内部会再次校验）
                     try:
                         graph.add_edge(
-                            source_id=orm_edge.source_id,
-                            target_id=orm_edge.target_id,
-                            edge_type=orm_edge.edge_type,
+                            source_id=cast(str, orm_edge.source_id),
+                            target_id=cast(str, orm_edge.target_id),
+                            edge_type=cast(str, orm_edge.edge_type),
                             properties=props,
                         )
                         edges_loaded += 1
@@ -287,7 +289,9 @@ class GraphPersistence:
 
         from app.knowledge_graph.models import KGEdge
 
-        stmt = select(distinct(KGEdge.edge_type)).order_by(KGEdge.edge_type.asc())
+        from sqlalchemy.sql import Select
+
+        stmt: Select[Any] = select(distinct(KGEdge.edge_type)).order_by(KGEdge.edge_type.asc())
         result = session.execute(stmt).scalars().all()
         return list(result)
 
