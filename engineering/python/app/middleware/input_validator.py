@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Optional
+from collections.abc import Sequence
 
 # 允许的根目录白名单（防止路径遍历攻击）
 # 调用方可通过环境变量 LNN_ALLOWED_ROOTS（逗号分隔）扩展；
@@ -36,7 +37,7 @@ MAX_GENERIC_TEXT_LENGTH: int = 4000
 
 
 def _resolve_allowed_roots(
-    extra_roots: Optional[Sequence[str]] = None,
+    extra_roots: Sequence[str] | None = None,
 ) -> list[Path]:
     """合并默认与调用方提供的允许根目录。
 
@@ -158,7 +159,7 @@ def validate_material_name(material: str) -> list[str]:
 def validate_file_path(
     path: str,
     must_exist: bool = True,
-    allowed_roots: Optional[Sequence[str]] = None,
+    allowed_roots: Sequence[str] | None = None,
 ) -> list[str]:
     """校验文件路径，阻止路径遍历攻击。
 

@@ -150,7 +150,7 @@ class ConfigStore(IConfigStore):
     def resolve(
         self,
         spec_name: str,
-        overrides: Optional[dict[str, Any]] = None,
+        overrides: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """合并 spec 默认值 + 绑定 YAML + overrides，返回最终配置。
 
@@ -210,9 +210,9 @@ class ConfigStore(IConfigStore):
         spec_name: str,
         sweep_config: dict[str, Any],
         *,
-        strategy: Optional[str] = None,
-        count: Optional[int] = None,
-        seed: Optional[int] = None,
+        strategy: str | None = None,
+        count: int | None = None,
+        seed: int | None = None,
     ) -> list[dict[str, Any]]:
         """展开超参搜索，返回配置列表（p3-10 完整版）。
 
@@ -370,8 +370,8 @@ class ConfigStore(IConfigStore):
     def _sample_combos(
         all_combos: list[tuple[Any, ...]],
         *,
-        count: Optional[int],
-        seed: Optional[int],
+        count: int | None,
+        seed: int | None,
         strategy: str,
     ) -> list[tuple[Any, ...]]:
         """从全空间组合中采样。
@@ -452,7 +452,7 @@ class ConfigStore(IConfigStore):
 # 全局单例
 # ---------------------------------------------------------------------------
 
-_global_store: Optional[ConfigStore] = None
+_global_store: ConfigStore | None = None
 _global_store_lock = threading.Lock()
 
 

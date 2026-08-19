@@ -50,12 +50,12 @@ class GitCollector:
     def __init__(
         self,
         *,
-        repo_root: Optional[str] = None,
+        repo_root: str | None = None,
         ttl_seconds: float = _DEFAULT_TTL_SECONDS,
     ) -> None:
         self._repo_root = repo_root or os.getcwd()
         self._ttl = max(0.0, ttl_seconds)
-        self._cache: Optional[GitInfo] = None
+        self._cache: GitInfo | None = None
         self._lock = threading.RLock()
 
     # ------------------------------------------------------------------
@@ -113,7 +113,7 @@ class GitCollector:
             is_real=True,
         )
 
-    def _run_git(self, args: list[str]) -> Optional[str]:
+    def _run_git(self, args: list[str]) -> str | None:
         """执行 git 命令，返回 stdout（失败返回 None）.
 
         失败原因可能是：
@@ -146,7 +146,7 @@ class GitCollector:
 
 
 # 单例
-_collector: Optional[GitCollector] = None
+_collector: GitCollector | None = None
 _singleton_lock = threading.Lock()
 
 

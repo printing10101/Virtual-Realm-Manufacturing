@@ -14,7 +14,7 @@ import sqlite3
 import threading
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, List, Optional
+from typing import Any
 from pathlib import Path
 from enum import Enum
 
@@ -43,23 +43,23 @@ class ScheduledTask:
     agent_id: str
     schedule: str
     task_type: str
-    params: Dict[str, Any] = field(default_factory=dict)
-    last_run: Optional[float] = None
-    next_run: Optional[float] = None
+    params: dict[str, Any] = field(default_factory=dict)
+    last_run: float | None = None
+    next_run: float | None = None
     status: ScheduleStatus = ScheduleStatus.PENDING
     retry_count: int = 0
     max_retries: int = 3
-    created_at: Optional[float] = None
-    updated_at: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: float | None = None
+    updated_at: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["status"] = self.status.value
         return d
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ScheduledTask":
+    def from_dict(cls, data: dict[str, Any]) -> "ScheduledTask":
         if "status" in data and isinstance(data["status"], str):
             data["status"] = ScheduleStatus(data["status"])
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
@@ -81,12 +81,12 @@ class CronParser:
 
     # 缓存：键为 (cron_expr, minute_bucket)，值为时间戳列表
     # minute_bucket = int(time.time() // 60)，TTL 自然为 60 秒
-    _CACHE: Dict[tuple, List[float]] = {}
+    _CACHE: dict[tuple, list[float]] = {}
     _CACHE_LOCK = threading.Lock()
     _CACHE_MAX_SIZE = 256  # 防止无界增长（最多 256 个不同的 cron_expr）
 
     @staticmethod
-    def parse(cron_expr: str) -> List[float]:
+    def parse(cron_expr: str) -> list[float]:
         """
         解析cron表达式，返回未来7天内的所有执行时间戳
 
@@ -129,7 +129,7 @@ class CronParser:
         return timestamps
 
     @staticmethod
-    def _compute_timestamps(parts: List[str]) -> List[float]:
+    def _compute_timestamps(parts: list[str]) -> list[float]:
         """实际计算时间戳列表（无缓存）"""
         minute_field, hour_field, day_field, month_field, dow_field = parts
 
@@ -228,7 +228,7 @@ class CronParser:
         return False
 
     @staticmethod
-    def get_next_run(cron_expr: str, after_timestamp: Optional[float] = None) -> Optional[float]:
+    def get_next_run(cron_expr: str, after_timestamp: float | None = None) -> float | None:
         """
         获取下次执行时间戳
 
@@ -258,7 +258,7 @@ class CronParser:
 class WakeupQueue:
     """基于SQLite的唤醒队列"""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         """
         初始化唤醒队列
 
@@ -406,7 +406,7 @@ class WakeupQueue:
         logger.info("Task added to wakeup queue: %s (next_run=%s)", task.task_id, task.next_run)
         return task
 
-    def get_due_tasks(self, current_time: Optional[float] = None) -> List[ScheduledTask]:
+    def get_due_tasks(self, current_time: float | None = None) -> list[ScheduledTask]:
         """
         获取到达执行时间的任务
 
@@ -438,7 +438,7 @@ class WakeupQueue:
     _ALLOWED_COLUMNS = {"status", "last_run", "next_run", "updated_at", "retry_count", "metadata"}
 
     @sqlite_retry()
-    def update_task_status(self, task_id: str, status: ScheduleStatus, last_run: Optional[float] = None) -> None:
+    def update_task_status(self, task_id: str, status: ScheduleStatus, last_run: float | None = None) -> None:
         """
         更新任务状态
 
@@ -473,7 +473,7 @@ class WakeupQueue:
 
         logger.debug("Task %s status updated to %s", task_id, status.value)
 
-    def get_task(self, task_id: str) -> Optional[ScheduledTask]:
+    def get_task(self, task_id: str) -> ScheduledTask | None:
         """获取指定任务"""
         row = self._conn.execute("SELECT * FROM scheduled_tasks WHERE task_id = ?", (task_id,)).fetchone()
 
@@ -528,9 +528,9 @@ class WakeupQueue:
         self,
         task_id: str,
         status: str,
-        duration_ms: Optional[float] = None,
-        error_message: Optional[str] = None,
-        result_summary: Optional[str] = None,
+        duration_ms: float | None = None,
+        error_message: str | None = None,
+        result_summary: str | None = None,
     ) -> None:
         """
         记录任务执行日志
@@ -558,7 +558,7 @@ class WakeupQueue:
         )
         self._conn.commit()
 
-    def get_task_history(self, task_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_task_history(self, task_id: str, limit: int = 50) -> list[dict[str, Any]]:
         """获取任务执行历史"""
         rows = self._conn.execute(
             """SELECT * FROM task_execution_log
@@ -569,8 +569,8 @@ class WakeupQueue:
         return [dict(row) for row in rows]
 
     def list_tasks(
-        self, agent_id: Optional[str] = None, status: Optional[ScheduleStatus] = None
-    ) -> List[ScheduledTask]:
+        self, agent_id: str | None = None, status: ScheduleStatus | None = None
+    ) -> list[ScheduledTask]:
         """列出所有任务，支持过滤"""
         query = "SELECT * FROM scheduled_tasks WHERE 1=1"
         params = []
@@ -614,7 +614,7 @@ class HeartbeatScheduler:
     实现任务合并（coalescing）机制避免并发执行
     """
 
-    def __init__(self, wakeup_queue: Optional[WakeupQueue] = None, heartbeat_interval: int = 60):
+    def __init__(self, wakeup_queue: WakeupQueue | None = None, heartbeat_interval: int = 60):
         """
         初始化心跳调度器
 
@@ -626,7 +626,7 @@ class HeartbeatScheduler:
         self.heartbeat_interval = heartbeat_interval
         self._running = False
         self._stopped = False  # P3 幂等性标志位
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._on_task_trigger = None
         self._execution_stats = {
             "total_triggered": 0,
@@ -743,7 +743,7 @@ class HeartbeatScheduler:
                 self.wakeup_queue.update_task_status(task.task_id, ScheduleStatus.FAILED)
                 self.wakeup_queue.log_execution(task.task_id, "failed", error_message=type(e).__name__)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """获取调度器统计信息"""
         return {
             "running": self._running,
@@ -798,7 +798,7 @@ class _SchedulerHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[HeartbeatScheduler] = None
+        self._instance: HeartbeatScheduler | None = None
 
     def get(self) -> HeartbeatScheduler:
         # 快速路径：已存在则直接返回，避免持锁开销
@@ -811,7 +811,7 @@ class _SchedulerHolder:
 
     def init(
         self,
-        db_path: Optional[str] = None,
+        db_path: str | None = None,
         heartbeat_interval: int = 60,
     ) -> HeartbeatScheduler:
         """强制重新创建实例（用于启动时初始化的场景）。"""
@@ -844,6 +844,6 @@ def get_scheduler() -> HeartbeatScheduler:
     return _holder.get()
 
 
-def init_scheduler(db_path: Optional[str] = None, heartbeat_interval: int = 60) -> HeartbeatScheduler:
+def init_scheduler(db_path: str | None = None, heartbeat_interval: int = 60) -> HeartbeatScheduler:
     """初始化心跳调度器，行为与重构前完全一致。"""
     return _holder.init(db_path=db_path, heartbeat_interval=heartbeat_interval)

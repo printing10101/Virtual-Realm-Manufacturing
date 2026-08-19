@@ -115,10 +115,10 @@ class FlywheelMetricsCollector:
 
     def __init__(
         self,
-        dataset_store: Optional[IDatasetStore] = None,
-        snapshot_store: Optional[ISnapshotStore] = None,
+        dataset_store: IDatasetStore | None = None,
+        snapshot_store: ISnapshotStore | None = None,
         *,
-        feedback_dataset_id: Optional[str] = None,
+        feedback_dataset_id: str | None = None,
         data_source: Any = None,
     ) -> None:
         """初始化采集器.
@@ -134,7 +134,7 @@ class FlywheelMetricsCollector:
         """
         self._dataset_store = dataset_store
         self._snapshot_store = snapshot_store
-        self._feedback_dataset_id: Optional[str] = feedback_dataset_id
+        self._feedback_dataset_id: str | None = feedback_dataset_id
         if data_source is not None:
             logger.warning("data_source 参数已废弃，请通过 dataset_store + snapshot_store 注入")
         self._cache: dict[str, FlywheelMetrics] = {}
@@ -145,15 +145,15 @@ class FlywheelMetricsCollector:
     # ------------------------------------------------------------------
 
     @property
-    def dataset_store(self) -> Optional[IDatasetStore]:
+    def dataset_store(self) -> IDatasetStore | None:
         return self._dataset_store
 
     @property
-    def snapshot_store(self) -> Optional[ISnapshotStore]:
+    def snapshot_store(self) -> ISnapshotStore | None:
         return self._snapshot_store
 
     @property
-    def feedback_dataset_id(self) -> Optional[str]:
+    def feedback_dataset_id(self) -> str | None:
         """当前已注入的 feedback_records 数据集 ID（None 表示尚未注入）."""
         return self._feedback_dataset_id
 
@@ -437,7 +437,7 @@ class FlywheelMetricsCollector:
     # 内部：辅助
     # ------------------------------------------------------------------
 
-    async def _get_latest_snapshot_async(self) -> Optional[Any]:
+    async def _get_latest_snapshot_async(self) -> Any | None:
         """获取最新实验快照（按 created_at 降序的第一个）."""
         if self._snapshot_store is None:
             return None
@@ -617,7 +617,7 @@ class FlywheelMetricsCollector:
 # ---------------------------------------------------------------------------
 
 
-def _parse_iso8601(ts: str) -> Optional[datetime.datetime]:
+def _parse_iso8601(ts: str) -> datetime.datetime | None:
     """解析 ISO8601 时间戳字符串，返回 timezone-aware datetime.
 
     支持的格式：
@@ -692,9 +692,9 @@ def get_flywheel_collector() -> FlywheelMetricsCollector:
 
 def configure_flywheel_collector(
     *,
-    dataset_store: Optional[IDatasetStore] = None,
-    snapshot_store: Optional[ISnapshotStore] = None,
-    feedback_dataset_id: Optional[str] = None,
+    dataset_store: IDatasetStore | None = None,
+    snapshot_store: ISnapshotStore | None = None,
+    feedback_dataset_id: str | None = None,
 ) -> FlywheelMetricsCollector:
     """配置全局飞轮采集器（注入真实数据源）.
 

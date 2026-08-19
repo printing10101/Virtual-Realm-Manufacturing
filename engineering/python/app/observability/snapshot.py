@@ -122,7 +122,7 @@ class SnapshotStore(ISnapshotStore):
                 raise KeyError(f"snapshot 不存在: {snapshot_id}")
             return _orm_to_contract(orm)
 
-    async def list(self, *, filters: Optional[dict[str, Any]] = None) -> list[ExperimentSnapshot]:
+    async def list(self, *, filters: dict[str, Any] | None = None) -> list[ExperimentSnapshot]:
         """列出快照（按 created_at 降序）.
 
         支持的 filters：
@@ -246,8 +246,8 @@ def _orm_to_contract(orm: ExperimentSnapshotORM) -> ExperimentSnapshot:
         model_uri=cast(str, orm.model_uri),
         metrics=metrics,
         environment=environment,
-        lineage_record_id=cast(Optional[str], orm.lineage_record_id),
-        mlflow_run_id=cast(Optional[str], orm.mlflow_run_id),
+        lineage_record_id=cast(str | None, orm.lineage_record_id),
+        mlflow_run_id=cast(str | None, orm.mlflow_run_id),
         notes=cast(str, orm.notes) or "",
     )
 
@@ -336,7 +336,7 @@ def _workflow_spec_from_dict(spec_dict: dict[str, Any]) -> WorkflowSpec:
 # ---------------------------------------------------------------------------
 
 
-_snapshot_store: Optional[SnapshotStore] = None
+_snapshot_store: SnapshotStore | None = None
 
 
 def get_snapshot_store() -> SnapshotStore:

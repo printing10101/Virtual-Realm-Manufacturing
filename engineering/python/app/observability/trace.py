@@ -51,7 +51,7 @@ class TraceSink(ITraceSink):
         self,
         *,
         max_spans: int = _DEFAULT_MAX_SPANS,
-        log_file: Optional[str] = None,
+        log_file: str | None = None,
     ) -> None:
         self._spans: dict[str, TraceSpan] = {}
         self._max_spans = max(100, max_spans)
@@ -67,7 +67,7 @@ class TraceSink(ITraceSink):
     # ITraceSink 实现
     # ------------------------------------------------------------------
 
-    def start_span(self, name: str, parent: Optional[str] = None) -> str:
+    def start_span(self, name: str, parent: str | None = None) -> str:
         """开启一个 span，返回 span_id."""
         span_id = uuid.uuid4().hex
         span = TraceSpan(
@@ -122,12 +122,12 @@ class TraceSink(ITraceSink):
     # 查询 API（非契约部分，便于调试/前端拉取）
     # ------------------------------------------------------------------
 
-    def get_span(self, span_id: str) -> Optional[TraceSpan]:
+    def get_span(self, span_id: str) -> TraceSpan | None:
         """获取 span（不存在返回 None）."""
         with self._lock:
             return self._spans.get(span_id)
 
-    def list_spans(self, *, trace_id: Optional[str] = None, limit: int = 100) -> list[TraceSpan]:
+    def list_spans(self, *, trace_id: str | None = None, limit: int = 100) -> list[TraceSpan]:
         """列出 span（按 start_ts 倒序）."""
         with self._lock:
             spans = list(self._spans.values())
@@ -172,7 +172,7 @@ class MetricSink(IMetricSink):
         self,
         *,
         max_per_name: int = _DEFAULT_MAX_METRICS_PER_NAME,
-        log_file: Optional[str] = None,
+        log_file: str | None = None,
     ) -> None:
         self._series: dict[str, deque[Metric]] = defaultdict(deque)
         self._max_per_name = max(100, max_per_name)
@@ -187,15 +187,15 @@ class MetricSink(IMetricSink):
     # IMetricSink 实现
     # ------------------------------------------------------------------
 
-    def counter(self, name: str, value: float = 1, labels: Optional[dict[str, str]] = None) -> None:
+    def counter(self, name: str, value: float = 1, labels: dict[str, str] | None = None) -> None:
         """递增计数器."""
         self._record(name, value, labels, unit="counter")
 
-    def gauge(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
+    def gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """设置 gauge 当前值."""
         self._record(name, value, labels, unit="gauge")
 
-    def histogram(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
+    def histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """记录 histogram 样本."""
         self._record(name, value, labels, unit="histogram")
 
@@ -206,7 +206,7 @@ class MetricSink(IMetricSink):
     def list_metrics(
         self,
         *,
-        name: Optional[str] = None,
+        name: str | None = None,
         limit: int = 100,
     ) -> list[Metric]:
         """列出 metric（按 timestamp 倒序）."""
@@ -233,7 +233,7 @@ class MetricSink(IMetricSink):
         self,
         name: str,
         value: float,
-        labels: Optional[dict[str, str]],
+        labels: dict[str, str] | None,
         *,
         unit: str,
     ) -> None:
@@ -275,7 +275,7 @@ class LogSink(ILogSink):
         self,
         *,
         max_logs: int = _DEFAULT_MAX_LOGS,
-        log_file: Optional[str] = None,
+        log_file: str | None = None,
     ) -> None:
         self._logs: deque[LogEntry] = deque()
         self._max_logs = max(100, max_logs)
@@ -306,9 +306,9 @@ class LogSink(ILogSink):
     def list_logs(
         self,
         *,
-        level: Optional[LogLevel] = None,
-        logger_name: Optional[str] = None,
-        trace_id: Optional[str] = None,
+        level: LogLevel | None = None,
+        logger_name: str | None = None,
+        trace_id: str | None = None,
         limit: int = 100,
     ) -> list[LogEntry]:
         """列出日志（按 timestamp 倒序）."""
@@ -371,16 +371,16 @@ class CompositeObservabilitySink(ITraceSink, IMetricSink, ILogSink):
 
     def __init__(
         self,
-        trace_sink: Optional[TraceSink] = None,
-        metric_sink: Optional[MetricSink] = None,
-        log_sink: Optional[LogSink] = None,
+        trace_sink: TraceSink | None = None,
+        metric_sink: MetricSink | None = None,
+        log_sink: LogSink | None = None,
     ) -> None:
         self._trace = trace_sink or TraceSink()
         self._metric = metric_sink or MetricSink()
         self._log = log_sink or LogSink()
 
     # ITraceSink
-    def start_span(self, name: str, parent: Optional[str] = None) -> str:
+    def start_span(self, name: str, parent: str | None = None) -> str:
         return self._trace.start_span(name, parent)
 
     def end_span(self, span_id: str, status: str = "ok") -> None:
@@ -393,13 +393,13 @@ class CompositeObservabilitySink(ITraceSink, IMetricSink, ILogSink):
         self._trace.add_event(span_id, name, payload)
 
     # IMetricSink
-    def counter(self, name: str, value: float = 1, labels: Optional[dict[str, str]] = None) -> None:
+    def counter(self, name: str, value: float = 1, labels: dict[str, str] | None = None) -> None:
         self._metric.counter(name, value, labels)
 
-    def gauge(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
+    def gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         self._metric.gauge(name, value, labels)
 
-    def histogram(self, name: str, value: float, labels: Optional[dict[str, str]] = None) -> None:
+    def histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         self._metric.histogram(name, value, labels)
 
     # ILogSink
@@ -499,7 +499,7 @@ def _load_sanitizer():
 # ---------------------------------------------------------------------------
 
 
-_composite_sink: Optional[CompositeObservabilitySink] = None
+_composite_sink: CompositeObservabilitySink | None = None
 _singleton_lock = threading.Lock()
 
 

@@ -24,16 +24,16 @@ class WorkspaceContext:
 
     task_id: str
     task_type: str
-    machine_id: Optional[str] = None
-    material_type: Optional[str] = None
-    model_type: Optional[ModelType] = None
-    model_path: Optional[str] = None
-    dataset_path: Optional[str] = None
-    config_path: Optional[str] = None
-    environment: Dict[str, str] = field(default_factory=dict)
-    workspace_dir: Optional[str] = None
+    machine_id: str | None = None
+    material_type: str | None = None
+    model_type: ModelType | None = None
+    model_path: str | None = None
+    dataset_path: str | None = None
+    config_path: str | None = None
+    environment: dict[str, str] = field(default_factory=dict)
+    workspace_dir: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = {}
         for k, v in self.__dict__.items():
             if isinstance(v, ModelType):
@@ -65,7 +65,7 @@ class ModelSelector:
     }
 
     @classmethod
-    def select_model(cls, task_type: str, metadata: Optional[Dict[str, Any]] = None) -> ModelType:
+    def select_model(cls, task_type: str, metadata: dict[str, Any] | None = None) -> ModelType:
         """
         根据任务类型选择模型
 
@@ -100,7 +100,7 @@ class ModelSelector:
         return str(Path(base_dir) / relative_path)
 
     @classmethod
-    def find_best_model(cls, model_type: ModelType, base_dir: str, machine_id: Optional[str] = None) -> Optional[str]:
+    def find_best_model(cls, model_type: ModelType, base_dir: str, machine_id: str | None = None) -> str | None:
         """
         查找最佳匹配模型文件
 
@@ -152,10 +152,10 @@ class DatasetMatcher:
     def match_dataset(
         cls,
         machine_id: str,
-        material_type: Optional[str] = None,
+        material_type: str | None = None,
         dataset_type: str = "training",
         base_dir: str = "data",
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         匹配数据集
 
@@ -190,7 +190,7 @@ class DatasetMatcher:
         return None
 
     @classmethod
-    def load_dataset_config(cls, machine_id: str, base_dir: str = "data") -> Dict[str, Any]:
+    def load_dataset_config(cls, machine_id: str, base_dir: str = "data") -> dict[str, Any]:
         """
         加载机床数据集配置
 
@@ -221,7 +221,7 @@ class EnvironmentInjector:
     """环境变量与配置注入器"""
 
     @classmethod
-    def load_machine_config(cls, machine_id: str, base_dir: str = "config") -> Dict[str, Any]:
+    def load_machine_config(cls, machine_id: str, base_dir: str = "config") -> dict[str, Any]:
         """
         加载机床配置
 
@@ -251,9 +251,9 @@ class EnvironmentInjector:
     def inject_environment(
         cls,
         workspace_dir: str,
-        machine_config: Dict[str, Any],
+        machine_config: dict[str, Any],
         task_context: WorkspaceContext,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         注入环境变量
 
@@ -296,7 +296,7 @@ class EnvironmentInjector:
 class WorkspaceResolver:
     """工作空间解析器 - 整合模型选择、数据集匹配和环境注入"""
 
-    def __init__(self, base_dir: Optional[str] = None):
+    def __init__(self, base_dir: str | None = None):
         """
         初始化工作空间解析器
 
@@ -314,7 +314,7 @@ class WorkspaceResolver:
         os.makedirs(self.workspace_base, exist_ok=True)
         logger.info("WorkspaceResolver initialized with base: %s", self.workspace_base)
 
-    def resolve(self, task_id: str, task_type: str, metadata: Optional[Dict[str, Any]] = None) -> WorkspaceContext:
+    def resolve(self, task_id: str, task_type: str, metadata: dict[str, Any] | None = None) -> WorkspaceContext:
         """
         解析任务工作空间
 
@@ -428,7 +428,7 @@ class _ResolverHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[WorkspaceResolver] = None
+        self._instance: WorkspaceResolver | None = None
 
     def get(self) -> WorkspaceResolver:
         # 快速路径：已存在则直接返回，避免持锁开销
@@ -441,7 +441,7 @@ class _ResolverHolder:
             self._instance = WorkspaceResolver()
             return self._instance
 
-    def init(self, base_dir: Optional[str] = None) -> WorkspaceResolver:
+    def init(self, base_dir: str | None = None) -> WorkspaceResolver:
         """强制重新创建解析器（用于启动时指定 base_dir 的场景）。"""
         with self._lock:
             self._instance = WorkspaceResolver(base_dir)
@@ -469,7 +469,7 @@ def get_resolver() -> WorkspaceResolver:
     return _holder.get()
 
 
-def init_resolver(base_dir: Optional[str] = None) -> WorkspaceResolver:
+def init_resolver(base_dir: str | None = None) -> WorkspaceResolver:
     """初始化全局工作空间解析器。
 
     行为与重构前完全一致：强制创建新实例（用于启动时指定 base_dir）。

@@ -43,7 +43,8 @@ from __future__ import annotations
 import math
 import random
 import threading
-from typing import Any, Callable, Optional
+from typing import Any, Optional
+from collections.abc import Callable
 
 from app.config.spec import ConfigStore
 from app.config.yaml_loader import flatten_dict
@@ -113,8 +114,8 @@ class BayesianOptimizer:
         spec_name: str,
         sweep_config: dict[str, Any],
         maximize: bool = False,
-        seed: Optional[int] = None,
-        warmup_count: Optional[int] = None,
+        seed: int | None = None,
+        warmup_count: int | None = None,
     ) -> None:
         """初始化贝叶斯优化器。
 
@@ -139,13 +140,13 @@ class BayesianOptimizer:
         self._observations: list[tuple[dict[str, Any], float]] = []
 
         # 全候选空间（lazy 初始化，避免构造时即展开大空间）
-        self._candidate_cache: Optional[list[dict[str, Any]]] = None
+        self._candidate_cache: list[dict[str, Any]] | None = None
 
     # ------------------------------------------------------------------
     # 公开 API
     # ------------------------------------------------------------------
 
-    def warmup(self, count: Optional[int] = None) -> list[dict[str, Any]]:
+    def warmup(self, count: int | None = None) -> list[dict[str, Any]]:
         """返回 warmup 批次（随机采样的初始配置列表）。
 
         调用方应依次评估这些配置，并通过 ``update()`` 反馈结果。
@@ -173,7 +174,7 @@ class BayesianOptimizer:
         with self._lock:
             self._observations.append((flat, float(score)))
 
-    def suggest(self) -> Optional[dict[str, Any]]:
+    def suggest(self) -> dict[str, Any] | None:
         """建议下一个评估配置。
 
         基于已有观测拟合 GP，对未评估的候选点计算 EI，取 argmax。

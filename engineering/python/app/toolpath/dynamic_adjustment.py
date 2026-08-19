@@ -80,7 +80,7 @@ class CurrentParameters:
     feed_rate: float  # mm/rev（每转进给，进给速度 mm/min = feed_rate * spindle_rpm）
     depth_of_cut: float  # mm（轴向切深 ap）
     width_of_cut: float = 0.0  # mm（径向切深 ae，默认 0 表示未指定）
-    spindle_rpm: Optional[float] = None  # RPM（None 时由 cutting_speed 反算）
+    spindle_rpm: float | None = None  # RPM（None 时由 cutting_speed 反算）
     coolant_flow: float = 10.0  # L/min
 
     def to_input_parameters(self, wear: WearState) -> dict[str, Any]:
@@ -145,9 +145,9 @@ class DynamicAdjustmentOrchestrator:
 
     def __init__(
         self,
-        tool_wear_predictor: Optional[ToolWearPredictor] = None,
-        feed_rate_optimizer: Optional[FeedRateOptimizer] = None,
-        toolpath_parser: Optional[ToolpathParser] = None,
+        tool_wear_predictor: ToolWearPredictor | None = None,
+        feed_rate_optimizer: FeedRateOptimizer | None = None,
+        toolpath_parser: ToolpathParser | None = None,
     ) -> None:
         self.wear_predictor = tool_wear_predictor or ToolWearPredictor()
         self.feed_optimizer = feed_rate_optimizer or FeedRateOptimizer()
@@ -162,11 +162,11 @@ class DynamicAdjustmentOrchestrator:
         self,
         wear: WearState,
         current: CurrentParameters,
-        machine_capabilities: Optional[dict[str, float]] = None,
+        machine_capabilities: dict[str, float] | None = None,
         optimization_goal: str = "tool_life",
-        real_time_wear: Optional[float] = None,
-        sensor_features: Optional[dict[str, float]] = None,
-        elapsed_time: Optional[float] = None,
+        real_time_wear: float | None = None,
+        sensor_features: dict[str, float] | None = None,
+        elapsed_time: float | None = None,
     ) -> AdjustmentDecision:
         """根据磨损状态给出参数调整决策。
 
@@ -463,7 +463,7 @@ class DynamicAdjustmentOrchestrator:
             return 0.0
         return (cutting_speed_m_min * 1000.0) / (math.pi * tool_diameter)
 
-    def _get_postprocessor(self, machine_capabilities: Optional[dict[str, float]]) -> Any:
+    def _get_postprocessor(self, machine_capabilities: dict[str, float] | None) -> Any:
         """获取限幅器实例（鸭子类型：仅需 get_spindle_rpm / get_feed_rate）。
 
         优先使用 PostProcessorRegistry 中的 fanuc_0i 后处理器；
@@ -504,7 +504,7 @@ class DynamicAdjustmentOrchestrator:
         return "steel"
 
     @staticmethod
-    def _extract_block_number(line: str) -> Optional[int]:
+    def _extract_block_number(line: str) -> int | None:
         """从 NC 行中提取 N 字段后的行号。"""
         m = re.match(r"^\s*N(\d+)", line, re.IGNORECASE)
         if m:
@@ -537,12 +537,12 @@ class _SimpleLimiter:
         self._max_rpm = float(max_rpm)
         self._max_feed = float(max_feed)
 
-    def get_spindle_rpm(self, requested_rpm: Optional[float] = None) -> float:
+    def get_spindle_rpm(self, requested_rpm: float | None = None) -> float:
         if requested_rpm is None:
             return 0.0
         return max(0.0, min(float(requested_rpm), self._max_rpm))
 
-    def get_feed_rate(self, requested_feed: Optional[float] = None) -> float:
+    def get_feed_rate(self, requested_feed: float | None = None) -> float:
         if requested_feed is None:
             return 0.0
         return max(0.0, min(float(requested_feed), self._max_feed))
@@ -553,7 +553,7 @@ class _SimpleLimiter:
 # =====================================================================
 
 
-_orchestrator: Optional[DynamicAdjustmentOrchestrator] = None
+_orchestrator: DynamicAdjustmentOrchestrator | None = None
 _orchestrator_lock = threading.Lock()
 
 

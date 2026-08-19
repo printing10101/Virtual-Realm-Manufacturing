@@ -107,7 +107,6 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import List, Optional
 
 from app.config.environment import get_lingjing_env, parse_allowed_origins
 
@@ -137,7 +136,7 @@ class CorsConfigError(Exception):
 # ``http`` and the host is fixed to ``localhost``.  Real production
 # deployments are expected to set the ``ALLOWED_ORIGINS`` environment
 # variable to a comma-separated list of explicit production domains.
-PRODUCTION_ORIGINS: List[str] = []
+PRODUCTION_ORIGINS: list[str] = []
 
 #: Matches ``http://localhost`` with an optional port number (e.g. ``:5173``,
 #: ``:8080``).  生产环境仅允许 HTTP 协议访问 localhost，禁止 HTTPS —— 防止
@@ -170,7 +169,7 @@ DEVELOPMENT_ORIGINS = [
 ]
 
 #: No regex needed in development — every allowed origin is enumerated above.
-DEVELOPMENT_ORIGIN_REGEX: Optional[str] = None
+DEVELOPMENT_ORIGIN_REGEX: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -231,7 +230,7 @@ def _is_wildcard_origin(origin: str) -> bool:
     return _WILDCARD_PATTERN.search(origin) is not None
 
 
-def _contains_wildcard(origins: Optional[List[str]]) -> bool:
+def _contains_wildcard(origins: list[str] | None) -> bool:
     """Return ``True`` if any entry in *origins* contains a wildcard."""
     if not origins:
         return False
@@ -244,10 +243,10 @@ def _contains_wildcard(origins: Optional[List[str]]) -> bool:
 
 
 def validate_cors_config(
-    allow_origins: Optional[List[str]],
+    allow_origins: list[str] | None,
     allow_credentials: bool,
     *,
-    origin_regex: Optional[str] = None,
+    origin_regex: str | None = None,
 ) -> None:
     """Validate CORS configuration for security issues.
 
@@ -452,11 +451,11 @@ class CorsSettings:
 
     # -- Public accessors ---------------------------------------------------
 
-    def get_origins(self) -> List[str]:
+    def get_origins(self) -> list[str]:
         """Return the list of explicitly allowed origins."""
         return self._origins
 
-    def get_origin_regex(self) -> Optional[str]:
+    def get_origin_regex(self) -> str | None:
         """Return the origin regex pattern, or ``None``.
 
         The production regex is bounded to ``https?://localhost(:\\d+)?``
@@ -464,11 +463,11 @@ class CorsSettings:
         """
         return self._origin_regex
 
-    def get_methods(self) -> List[str]:
+    def get_methods(self) -> list[str]:
         """Return allowed HTTP methods for CORS."""
         return ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 
-    def get_headers(self) -> List[str]:
+    def get_headers(self) -> list[str]:
         """Return allowed request headers for CORS.
 
         Returns an **explicit allowlist** of common request headers used
@@ -495,7 +494,7 @@ class CorsSettings:
             "X-Requested-With",
         ]
 
-    def get_expose_headers(self) -> List[str]:
+    def get_expose_headers(self) -> list[str]:
         """Return response headers exposed to the client."""
         return [
             "X-Content-Type-Options",
@@ -556,7 +555,7 @@ def get_environment() -> str:
     return _resolve_environment()
 
 
-def is_allowed_origin(origin: str, override_env: Optional[str] = None) -> bool:
+def is_allowed_origin(origin: str, override_env: str | None = None) -> bool:
     """Standalone check whether *origin* is allowed.
 
     Args:
@@ -593,7 +592,7 @@ def is_allowed_origin(origin: str, override_env: Optional[str] = None) -> bool:
     return False
 
 
-def get_cors_origins(override_env: Optional[str] = None) -> list[str]:
+def get_cors_origins(override_env: str | None = None) -> list[str]:
     """Return the allowed origin list for the given (or current) environment.
 
     When ``ALLOWED_ORIGINS`` env var is set it takes precedence over
@@ -610,7 +609,7 @@ def get_cors_origins(override_env: Optional[str] = None) -> list[str]:
     return list(PRODUCTION_ORIGINS)
 
 
-def get_cors_origin_regex(override_env: Optional[str] = None) -> Optional[str]:
+def get_cors_origin_regex(override_env: str | None = None) -> str | None:
     """Return the origin regex for the given (or current) environment.
 
     Returns ``None`` when ``ALLOWED_ORIGINS`` env var is set or when
@@ -626,7 +625,7 @@ def get_cors_origin_regex(override_env: Optional[str] = None) -> Optional[str]:
     return PRODUCTION_ORIGIN_REGEX
 
 
-def get_cors_config(override_env: Optional[str] = None) -> dict:
+def get_cors_config(override_env: str | None = None) -> dict:
     """Return a complete CORS configuration dictionary.
 
     The returned dict can be unpacked directly into

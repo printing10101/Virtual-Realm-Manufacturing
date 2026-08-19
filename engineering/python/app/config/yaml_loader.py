@@ -531,7 +531,7 @@ class YamlLoader:
     def _get_env_value(
         self,
         var_name: str,
-        default: Optional[str],
+        default: str | None,
         context: str,
     ) -> Any:
         """获取环境变量值，进行类型推断。
@@ -574,7 +574,7 @@ class YamlLoader:
 # ---------------------------------------------------------------------------
 
 
-_global_loader: Optional[YamlLoader] = None
+_global_loader: YamlLoader | None = None
 _global_loader_lock = threading.Lock()
 
 

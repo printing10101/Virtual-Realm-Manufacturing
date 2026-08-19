@@ -17,7 +17,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.models.governance import (
     AgentRole,
@@ -58,18 +58,18 @@ class RiskAssessment:
 
     operation_id: str = ""
     operation_type: str = ""
-    operation_category: Optional[OperationCategory] = None
+    operation_category: OperationCategory | None = None
     risk_score: float = 0.0
     risk_level: str = "low"
-    risk_factors: List[RiskFactor] = field(default_factory=list)
+    risk_factors: list[RiskFactor] = field(default_factory=list)
     requires_approval: bool = False
     suggested_strategy: ApprovalStrategy = ApprovalStrategy.AUTO_EXECUTE
     suggested_priority: ApprovalPriority = ApprovalPriority.LOW
-    suggested_approvers: List[str] = field(default_factory=list)
+    suggested_approvers: list[str] = field(default_factory=list)
     resource_sensitivity: ResourceSensitivity = ResourceSensitivity.NORMAL
-    assessment_time: Optional[float] = None
+    assessment_time: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "operation_id": self.operation_id,
             "operation_type": self.operation_type,
@@ -118,9 +118,9 @@ class RiskScorer:
     }
 
     def __init__(self):
-        self._error_rates: Dict[str, float] = {}
-        self._error_count: Dict[str, int] = {}
-        self._total_operations: Dict[str, int] = {}
+        self._error_rates: dict[str, float] = {}
+        self._error_count: dict[str, int] = {}
+        self._total_operations: dict[str, int] = {}
 
     def set_error_rate(self, user_or_agent_id: str, error_rate: float) -> None:
         self._error_rates[user_or_agent_id] = min(error_rate, 1.0)
@@ -145,10 +145,10 @@ class RiskScorer:
         operation_category: OperationCategory,
         sensitivity: ResourceSensitivity = ResourceSensitivity.NORMAL,
         agent_role: AgentRole = AgentRole.ENGINEER,
-        error_rate: Optional[float] = None,
+        error_rate: float | None = None,
         budget_amount: float = 0.0,
         budget_threshold: float = 1000.0,
-        additional_factors: Optional[List[RiskFactor]] = None,
+        additional_factors: list[RiskFactor] | None = None,
     ) -> float:
         base_score = self.OPERATION_BASE_SCORES.get(operation_category, 0.2)
         sensitivity_mult = self.SENSITIVITY_MULTIPLIERS.get(sensitivity, 1.0)
@@ -219,15 +219,15 @@ class HighRiskOperationIdentifier:
         "cost_anomaly",
     }
 
-    def __init__(self, risk_scorer: Optional[RiskScorer] = None):
+    def __init__(self, risk_scorer: RiskScorer | None = None):
         self._risk_scorer = risk_scorer or RiskScorer()
         self._budget_threshold = DEFAULT_BUDGET_THRESHOLD
-        self._sensitive_data_patterns: List[str] = []
+        self._sensitive_data_patterns: list[str] = []
 
     def set_budget_threshold(self, threshold: float) -> None:
         self._budget_threshold = threshold
 
-    def identify_operation_category(self, operation_type: str) -> Optional[OperationCategory]:
+    def identify_operation_category(self, operation_type: str) -> OperationCategory | None:
         if operation_type in self.T_TYPE_OPERATIONS:
             return OperationCategory.T_TYPE
         if operation_type in self.C_TYPE_OPERATIONS:
@@ -256,7 +256,7 @@ class HighRiskOperationIdentifier:
         self,
         operation_id: str,
         operation_type: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         requester_role: AgentRole = AgentRole.ENGINEER,
         budget_amount: float = 0.0,
     ) -> RiskAssessment:
@@ -345,7 +345,7 @@ class HighRiskOperationIdentifier:
 
     def _determine_sensitivity(
         self,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         category: OperationCategory,
     ) -> ResourceSensitivity:
         explicit_sensitivity = context.get("resource_sensitivity")
@@ -413,7 +413,7 @@ class HighRiskOperationIdentifier:
         category: OperationCategory,
         sensitivity: ResourceSensitivity,
         requester_role: AgentRole,
-    ) -> List[str]:
+    ) -> list[str]:
         approvers = []
 
         if category == OperationCategory.T_TYPE:
@@ -440,7 +440,7 @@ class _RiskIdentifierHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[HighRiskOperationIdentifier] = None
+        self._instance: HighRiskOperationIdentifier | None = None
 
     def get(self) -> HighRiskOperationIdentifier:
         # 快速路径：已存在则直接返回，避免持锁开销

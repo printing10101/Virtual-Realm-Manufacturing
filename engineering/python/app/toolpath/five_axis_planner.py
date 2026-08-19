@@ -71,7 +71,7 @@ class FiveAxisParams:
 class FiveAxisToolpathPlanner:
     """五轴刀路规划器"""
 
-    def __init__(self, params: Optional[FiveAxisParams] = None):
+    def __init__(self, params: FiveAxisParams | None = None):
         self.params = params or FiveAxisParams()
 
     def plan_lead_angle_toolpath(
