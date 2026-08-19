@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 class CostDimension(str, Enum):
     """成本统计维度"""
@@ -50,7 +50,7 @@ class CostUnitPrice:
     api_call_per_request: float = 0.001
     data_transfer_per_mb: float = 0.0001
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "gpu_time_per_second": self.gpu_time_per_second,
             "gpu_memory_per_gb_second": self.gpu_memory_per_gb_second,
@@ -62,7 +62,7 @@ class CostUnitPrice:
 class CostEvent:
     """成本事件"""
 
-    event_id: Optional[int] = None
+    event_id: int | None = None
     task_id: str = ""
     agent_id: str = ""
     project_id: str = "default"
@@ -72,12 +72,12 @@ class CostEvent:
     cost_type: str = ""
     resource_value: float = 0.0
     cost_value: float = 0.0
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    recorded_at: Optional[float] = None
+    start_time: float | None = None
+    end_time: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    recorded_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "event_id": self.event_id,
             "task_id": self.task_id,
@@ -112,7 +112,7 @@ class CostSummary:
     total_data_transfer_mb: float = 0.0
     task_count: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "dimension": self.dimension.value,
             "scope_id": self.scope_id,
@@ -132,7 +132,7 @@ class CostSummary:
 class BudgetEvent:
     """预算事件（超限/警告记录）"""
 
-    event_id: Optional[int] = None
+    event_id: int | None = None
     budget_level: str = "global"
     scope_id: str = "default"
     resource_type: str = ""
@@ -140,9 +140,9 @@ class BudgetEvent:
     limit_value: float = 0.0
     usage_ratio: float = 0.0
     status: str = "ok"
-    recorded_at: Optional[float] = None
+    recorded_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "event_id": self.event_id,
             "budget_level": self.budget_level,

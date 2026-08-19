@@ -11,7 +11,8 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List
+from typing import Any
+from collections.abc import Callable
 
 import numpy as np
 
@@ -33,7 +34,7 @@ class PerformanceMetrics:
     total_processed: int = 0
     timestamp: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "latency_ms": self.latency_ms,
             "throughput_per_sec": self.throughput_per_sec,
@@ -60,9 +61,9 @@ class PipelineMonitor:
         self._start_time = time.time()
         self._error_count = 0
         self._processed_count = 0
-        self._alert_callbacks: List[Callable] = []
+        self._alert_callbacks: list[Callable] = []
 
-    def register_alert_callback(self, callback: Callable[[str, Dict[str, Any]], None]):
+    def register_alert_callback(self, callback: Callable[[str, dict[str, Any]], None]):
         """注册报警回调"""
         self._alert_callbacks.append(callback)
 
@@ -139,7 +140,7 @@ class PipelineMonitor:
                     exc_info=True,
                 )
 
-    def _trigger_alert(self, alert_type: str, details: Dict[str, Any]):
+    def _trigger_alert(self, alert_type: str, details: dict[str, Any]):
         logger.warning("[管道监控] 报警: %s - %s", alert_type, details)
         for callback in self._alert_callbacks:
             try:
@@ -147,7 +148,7 @@ class PipelineMonitor:
             except (ValueError, TypeError, KeyError, OSError, RuntimeError) as e:
                 logger.error("报警回调执行失败: %s", e)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """获取统计信息"""
         with self._lock:
             if not self._metrics_history:
@@ -177,7 +178,7 @@ class PipelineMonitor:
                 "memory_mb": self._get_memory_usage(),
             }
 
-    def export_metrics(self) -> Dict[str, Any]:
+    def export_metrics(self) -> dict[str, Any]:
         """导出所有指标"""
         return {
             "config": {

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import List, Optional, Any
+from typing import Any
 
 import numpy as np
 
@@ -257,7 +257,7 @@ class BGEEmbedder:
             logger.info("BGE模型加载完成: %s", self.config.bge_model_name)
         self._is_loaded = True
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """嵌入单文本"""
         self.load_model()
         if self._embedding_service is not None:
@@ -268,7 +268,7 @@ class BGEEmbedder:
             dim = self.config.bge_embedding_dim
             return [0.0] * dim
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """批量嵌入"""
         self.load_model()
         if self._embedding_service is not None:
@@ -304,7 +304,7 @@ class GCodeEmbedder:
         或自定义训练的 embedding 模型），从磁盘加载预训练权重。
     """
 
-    def __init__(self, config: GCodeProcessorConfig, output_dim: Optional[int] = None):
+    def __init__(self, config: GCodeProcessorConfig, output_dim: int | None = None):
         self.config = config
         self.output_dim = output_dim or config.gcode_embedding_dim
         self._vocab_size = 21

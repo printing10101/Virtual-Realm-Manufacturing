@@ -16,7 +16,7 @@ import logging
 import re
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -304,14 +304,14 @@ class ToolStatePreprocessor(BasePreprocessor):
 
     def __init__(self, config: ToolStateProcessorConfig):
         super().__init__(config)
-        self._min_max_params: Dict[str, Tuple[float, float]] = {}
+        self._min_max_params: dict[str, tuple[float, float]] = {}
 
-    def _fit_min_max(self, data: Dict[str, Any]) -> None:
+    def _fit_min_max(self, data: dict[str, Any]) -> None:
         for field in self.config.state_fields:
             if field in data and isinstance(data[field], (int, float)):
                 self._min_max_params[field] = (0.0, max(abs(float(data[field])) * 2, 1.0))
 
-    def _normalize(self, data: Dict[str, Any]) -> np.ndarray:
+    def _normalize(self, data: dict[str, Any]) -> np.ndarray:
         features = []
         for field in self.config.state_fields:
             val = data.get(field, 0.0)
@@ -328,7 +328,7 @@ class ToolStatePreprocessor(BasePreprocessor):
             features.append(np.clip(val, 0.0, 1.0))
         return np.array(features, dtype=np.float32)
 
-    def _detect_anomaly(self, features: np.ndarray) -> Tuple[np.ndarray, int]:
+    def _detect_anomaly(self, features: np.ndarray) -> tuple[np.ndarray, int]:
         method = self.config.anomaly_detection_method
         threshold = self.config.anomaly_threshold
         anomaly_count = 0
@@ -435,7 +435,7 @@ class GCodePreprocessor(BasePreprocessor):
             "M30": "program_end",
         }
 
-    def _parse_instructions(self, gcode: str) -> List[Dict[str, Any]]:
+    def _parse_instructions(self, gcode: str) -> list[dict[str, Any]]:
         instructions = []
         for line_num, line in enumerate(gcode.strip().split("\n"), 1):
             line = line.strip()
@@ -452,9 +452,9 @@ class GCodePreprocessor(BasePreprocessor):
                 )
         return instructions
 
-    def _segment_by_operation(self, instructions: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+    def _segment_by_operation(self, instructions: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
         segments = []
-        current_segment: List[Dict[str, Any]] = []
+        current_segment: list[dict[str, Any]] = []
         current_op = None
 
         for inst in instructions:
@@ -474,7 +474,7 @@ class GCodePreprocessor(BasePreprocessor):
             segments.append(current_segment)
         return segments or [instructions]
 
-    def _encode_instructions(self, instructions: List[Dict[str, Any]]) -> np.ndarray:
+    def _encode_instructions(self, instructions: list[dict[str, Any]]) -> np.ndarray:
         vocab = {
             "G": 0,
             "M": 1,

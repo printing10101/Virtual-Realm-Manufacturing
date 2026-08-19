@@ -9,7 +9,8 @@ from __future__ import annotations
 import logging
 import threading
 from queue import Queue
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
+from collections.abc import Iterator
 
 import numpy as np
 
@@ -26,12 +27,12 @@ class CachedDataset:
     """带缓存的通用数据集"""
 
     def __init__(self, max_cache_size: int = 1000):
-        self._cache: Dict[str, Any] = {}
-        self._cache_keys: List[str] = []
+        self._cache: dict[str, Any] = {}
+        self._cache_keys: list[str] = []
         self._max_cache_size = max_cache_size
         self._lock = threading.Lock()
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         with self._lock:
             return self._cache.get(key)
 
@@ -68,8 +69,8 @@ class ParallelDataLoader:
     ):
         self.config = config
         self.use_multiprocessing = use_multiprocessing
-        self._prefetch_queue: Optional[Queue] = None
-        self._prefetch_thread: Optional[threading.Thread] = None
+        self._prefetch_queue: Queue | None = None
+        self._prefetch_thread: threading.Thread | None = None
         self._stop_prefetch = threading.Event()
         self._num_workers = config.num_worker_processes
 
@@ -121,7 +122,7 @@ class ParallelDataLoader:
     def iter_batches(
         self,
         data: np.ndarray,
-        batch_size: Optional[int] = None,
+        batch_size: int | None = None,
         mode: str = "inference",
     ) -> Iterator[np.ndarray]:
         """迭代批数据"""
@@ -132,7 +133,7 @@ class ParallelDataLoader:
         for i in range(0, n, batch_size):
             yield data[i : i + batch_size]
 
-    def collate_images(self, images: List[np.ndarray]) -> np.ndarray:
+    def collate_images(self, images: list[np.ndarray]) -> np.ndarray:
         """批处理 - 图像数据"""
         batch_size = len(images)
         if images[0].ndim == 3:
@@ -145,7 +146,7 @@ class ParallelDataLoader:
             batch[i] = img
         return batch
 
-    def collate_time_series(self, sequences: List[np.ndarray]) -> np.ndarray:
+    def collate_time_series(self, sequences: list[np.ndarray]) -> np.ndarray:
         """批处理 - 时序数据"""
         batch_size = len(sequences)
         if sequences[0].ndim == 2:
@@ -158,7 +159,7 @@ class ParallelDataLoader:
             batch[i] = seq
         return batch
 
-    def get_config_summary(self) -> Dict[str, Any]:
+    def get_config_summary(self) -> dict[str, Any]:
         return {
             "image_inference_batch": self.config.image_inference,
             "image_training_batch": self.config.image_training,

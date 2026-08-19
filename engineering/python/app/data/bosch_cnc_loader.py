@@ -1,6 +1,6 @@
 """Bosch CNC 数据加载器"""
 
-from typing import Dict, Any, List
+from typing import Any
 from pathlib import Path
 
 
@@ -19,9 +19,9 @@ class BoschCNCDataLoader:
             data_dir: 数据目录路径
         """
         self.data_dir = Path(data_dir)
-        self._data_cache: Dict[str, Any] = {}
+        self._data_cache: dict[str, Any] = {}
 
-    def load_dataset(self, split: str = "train", **kwargs: Any) -> List[Dict[str, Any]]:
+    def load_dataset(self, split: str = "train", **kwargs: Any) -> list[dict[str, Any]]:
         """
         加载数据集
 
@@ -45,7 +45,7 @@ class BoschCNCDataLoader:
             )
         return samples
 
-    def extract_features(self, data: Any) -> Dict[str, float]:
+    def extract_features(self, data: Any) -> dict[str, float]:
         """从单个样本提取特征（振动/切削力时域与频域近似值）。"""
         if isinstance(data, dict):
             force = float(data.get("cutting_force", 500.0))
@@ -61,7 +61,7 @@ class BoschCNCDataLoader:
             "cross_x_energy_ratio": round(wear * 0.01, 6),
         }
 
-    def get_dataset_summary(self) -> Dict[str, Any]:
+    def get_dataset_summary(self) -> dict[str, Any]:
         """返回数据集可用进程/机器/标签概览。"""
         return {
             "available_processes": ["boring", "milling", "turning", "grinding"],
@@ -70,7 +70,7 @@ class BoschCNCDataLoader:
             **self.get_statistics(),
         }
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         获取数据集统计信息
 

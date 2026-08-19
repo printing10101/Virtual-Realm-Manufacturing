@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 from app.models.governance import (
     ApprovalDecision,
     ApprovalDelegation,
@@ -32,14 +33,14 @@ class _ApprovalFlowMixin:
         self,
         task_id: str,
         requester: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         priority: ApprovalPriority = ApprovalPriority.MEDIUM,
-        approvers: Optional[List[str]] = None,
+        approvers: list[str] | None = None,
         required_approvals: int = 1,
         risk_score: float = 0.0,
-        risk_factors: Optional[List[str]] = None,
+        risk_factors: list[str] | None = None,
         suggested_decision: str = "",
-        expires_at: Optional[float] = None,
+        expires_at: float | None = None,
     ) -> ApprovalRequest:
         """创建审批请求"""
         request_id = f"AR-{uuid.uuid4().hex[:12].upper()}"
@@ -83,7 +84,7 @@ class _ApprovalFlowMixin:
             risk_score,
         )
         return request
-    def assign_approver(self, request_id: str, approver_id: str) -> Optional[ApprovalRequest]:
+    def assign_approver(self, request_id: str, approver_id: str) -> ApprovalRequest | None:
         """分配审批人"""
         request = self._get_request(request_id)
         if request is None:
@@ -112,7 +113,7 @@ class _ApprovalFlowMixin:
         approver_id: str,
         decision: str,
         comment: str = "",
-    ) -> Optional[ApprovalRequest]:
+    ) -> ApprovalRequest | None:
         """审批决策"""
         request = self._get_request(request_id)
         if request is None:
@@ -194,7 +195,7 @@ class _ApprovalFlowMixin:
 
         self._save_request(request)
         return request
-    def escalate_request(self, request_id: str, escalator_id: str, reason: str = "") -> Optional[ApprovalRequest]:
+    def escalate_request(self, request_id: str, escalator_id: str, reason: str = "") -> ApprovalRequest | None:
         """升级审批请求"""
         request = self._get_request(request_id)
         if request is None:
@@ -295,7 +296,7 @@ class _ApprovalFlowMixin:
 
         logger.info("Approval delegated: %s → %s (%s)", delegator_id, delegate_id, reason)
         return delegation
-    def get_active_delegation(self, user_id: str) -> Optional[ApprovalDelegation]:
+    def get_active_delegation(self, user_id: str) -> ApprovalDelegation | None:
         """获取用户的活跃委托"""
         now = time.time()
         for delegation in self._load_delegations:
@@ -303,7 +304,7 @@ class _ApprovalFlowMixin:
                 if delegation.end_time is None or delegation.end_time > now:
                     return delegation
         return None
-    def get_delegates_for_user(self, user_id: str) -> List[str]:
+    def get_delegates_for_user(self, user_id: str) -> list[str]:
         """获取用户可以代理的用户列表"""
         now = time.time()
         delegates = []

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 from app.utils.sqlite_retry import sqlite_retry
 
 from app.budget._cost_models import (  # noqa: F401
@@ -51,9 +51,9 @@ class _CostRecordMixin:
         goal_id: str = "",
         provider: str = ProviderType.SYSTEM_INTERNAL.value,
         model: str = "",
-        start_time: Optional[float] = None,
-        end_time: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        start_time: float | None = None,
+        end_time: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CostEvent:
         """记录成本事件"""
         cost_value = self._calculate_cost(cost_type, resource_value)
@@ -116,9 +116,9 @@ class _CostRecordMixin:
         project_id: str = "default",
         model: str = "",
         provider: str = ProviderType.SYSTEM_INTERNAL.value,
-        start_time: Optional[float] = None,
-        end_time: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        start_time: float | None = None,
+        end_time: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CostEvent:
         """记录GPU计算时间成本"""
         return self.record_cost(
@@ -141,7 +141,7 @@ class _CostRecordMixin:
         project_id: str = "default",
         model: str = "",
         provider: str = ProviderType.SYSTEM_INTERNAL.value,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CostEvent:
         """记录GPU内存使用成本（GB-秒）"""
         return self.record_cost(
@@ -154,13 +154,13 @@ class _CostRecordMixin:
             model=model,
             metadata=metadata,
         )
-    def record_gpu_usage(self, task_id: str, gpu_hours: float, agent_id: Optional[str] = None) -> CostEvent:
+    def record_gpu_usage(self, task_id: str, gpu_hours: float, agent_id: str | None = None) -> CostEvent:
         return self.record_gpu_time(
             task_id=task_id,
             gpu_seconds=gpu_hours * 3600.0,
             agent_id=agent_id or "",
         )
-    def record_memory_usage(self, task_id: str, memory_mb: float, agent_id: Optional[str] = None) -> CostEvent:
+    def record_memory_usage(self, task_id: str, memory_mb: float, agent_id: str | None = None) -> CostEvent:
         return self.record_gpu_memory(
             task_id=task_id,
             gb_seconds=memory_mb / 1024.0,
@@ -174,7 +174,7 @@ class _CostRecordMixin:
         project_id: str = "default",
         provider: str = ProviderType.OLLAMA_LOCAL.value,
         model: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CostEvent:
         """记录API调用成本"""
         return self.record_cost(
@@ -194,7 +194,7 @@ class _CostRecordMixin:
         agent_id: str = "",
         project_id: str = "default",
         direction: str = "upload",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CostEvent:
         """记录数据传输成本"""
         meta = metadata or {}

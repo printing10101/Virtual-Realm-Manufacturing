@@ -11,7 +11,8 @@ import logging
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Callable, ClassVar, Dict, List, Optional, cast
+from typing import ClassVar, cast
+from collections.abc import Callable
 
 from app.models.budget import (
     BudgetAlert,
@@ -38,9 +39,9 @@ class BudgetEnforcer(_BudgetPolicyMixin, _BudgetCoreMixin, _BudgetAlertMixin, _B
     # 类变量：``init(db_path)`` 写入此变量，``__init__`` 在无显式参数时读取它。
     # 这样既兼容 ``BaseSingletonService.get_instance()`` 的无参构造，又保留了
     # 原 ``init_budget_enforcer(db_path)`` 接口的「指定路径」能力。
-    _db_path: ClassVar[Optional[str]] = None
+    _db_path: ClassVar[str | None] = None
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         # 优先使用显式传入的 db_path，其次回退到类变量（由 init() 设置），
         # 最后回退到默认路径。保持与重构前 holder 行为一致。
         if db_path is not None:
@@ -58,10 +59,10 @@ class BudgetEnforcer(_BudgetPolicyMixin, _BudgetCoreMixin, _BudgetAlertMixin, _B
         self._manager = get_sqlite_manager()
         self._pool = self._manager.get_pool("budget_enforcer", db_path=self.db_path)
         self._conn = self._pool.get_connection()
-        self._policies: Dict[str, BudgetPolicy] = {}
-        self._alert_callbacks: List[Callable[[BudgetAlert], None]] = []
-        self._task_canceller: Optional[Callable[[str], None]] = None
-        self._agent_suspender: Optional[Callable[[str, str], None]] = None
+        self._policies: dict[str, BudgetPolicy] = {}
+        self._alert_callbacks: list[Callable[[BudgetAlert], None]] = []
+        self._task_canceller: Callable[[str], None] | None = None
+        self._agent_suspender: Callable[[str, str], None] | None = None
         self._init_schema()
         self._load_policies()
         self._load_default_policies()
@@ -186,7 +187,7 @@ class BudgetEnforcer(_BudgetPolicyMixin, _BudgetCoreMixin, _BudgetAlertMixin, _B
     # ------------------------------------------------------------------
 
     @classmethod
-    def init(cls, db_path: Optional[str] = None) -> "BudgetEnforcer":
+    def init(cls, db_path: str | None = None) -> "BudgetEnforcer":
         """强制重新创建单例实例（用于启动时指定 db_path 的场景）。
 
         与 :meth:`get_instance` 的「懒初始化」不同，``init`` 总是创建新实例并
@@ -227,12 +228,12 @@ class _BudgetEnforcerHolder:
     def __init__(self) -> None:
         # 保留原属性名以兼容可能的外部反射访问
         self._lock = threading.Lock()
-        self._instance: Optional[BudgetEnforcer] = None
+        self._instance: BudgetEnforcer | None = None
 
     def get(self) -> BudgetEnforcer:
         return BudgetEnforcer.get_instance()  # type: ignore[return-value]
 
-    def init(self, db_path: Optional[str] = None) -> BudgetEnforcer:
+    def init(self, db_path: str | None = None) -> BudgetEnforcer:
         return BudgetEnforcer.init(db_path)
 
     def reset(self) -> None:
@@ -259,7 +260,7 @@ def get_budget_enforcer() -> BudgetEnforcer:
     return BudgetEnforcer.get_instance()  # type: ignore[return-value]
 
 
-def init_budget_enforcer(db_path: Optional[str] = None) -> BudgetEnforcer:
+def init_budget_enforcer(db_path: str | None = None) -> BudgetEnforcer:
     """初始化预算执行器，行为与重构前完全一致。
 
     内部委托给 :meth:`BudgetEnforcer.init`：强制重新创建单例并指定 db_path。

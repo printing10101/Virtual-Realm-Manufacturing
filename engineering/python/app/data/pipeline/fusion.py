@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -54,15 +54,15 @@ class MultiModalFusion:
             for k in self.weights:
                 self.weights[k] /= total
 
-    def set_weights(self, new_weights: Dict[str, float]):
+    def set_weights(self, new_weights: dict[str, float]):
         """更新融合权重"""
         self.weights.update(new_weights)
         self._normalize_weights()
 
     def fuse(
         self,
-        features: Dict[str, np.ndarray],
-        weights: Optional[Dict[str, float]] = None,
+        features: dict[str, np.ndarray],
+        weights: dict[str, float] | None = None,
     ) -> np.ndarray:
         """
         融合多模态特征
@@ -112,8 +112,8 @@ class MultiModalFusion:
 
     def fuse_batch(
         self,
-        features_dict: Dict[str, List[np.ndarray]],
-        weights: Optional[Dict[str, float]] = None,
+        features_dict: dict[str, list[np.ndarray]],
+        weights: dict[str, float] | None = None,
     ) -> np.ndarray:
         """批量融合"""
         if weights is None:
@@ -157,7 +157,7 @@ class CrossModalAttentionFusion:
         # 改用局部 Generator。注意：权重仍为随机初始化，见类 docstring 警告。
         self._rng = np.random.default_rng(42)
 
-    def _init_weights(self, input_dims: Dict[str, int]):
+    def _init_weights(self, input_dims: dict[str, int]):
         """初始化投影权重（随机占位，未经训练）"""
         d_k = self.target_dim // self.n_heads
         self._projections = {}
@@ -192,8 +192,8 @@ class CrossModalAttentionFusion:
 
     def fuse(
         self,
-        features: Dict[str, np.ndarray],
-        attention_mask: Optional[Dict[str, bool]] = None,
+        features: dict[str, np.ndarray],
+        attention_mask: dict[str, bool] | None = None,
     ) -> np.ndarray:
         """
         交叉模态注意力融合
@@ -249,8 +249,8 @@ class CrossModalAttentionFusion:
 
     def get_attention_weights(
         self,
-        features: Dict[str, np.ndarray],
-    ) -> Dict[str, np.ndarray]:
+        features: dict[str, np.ndarray],
+    ) -> dict[str, np.ndarray]:
         """提取各模态注意力权重"""
         if not self._initialized or not self._projections:
             return {m: np.array([1.0 / len(features)]) for m in features}

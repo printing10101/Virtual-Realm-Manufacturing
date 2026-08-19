@@ -12,7 +12,8 @@ Complete approval lifecycle management:
 import logging
 import threading
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+
+from collections.abc import Callable
 
 from app.models.governance import (
     ApprovalDelegation,
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 class ApprovalWorkflowEngine(_ApprovalFlowMixin, _ApprovalQueryMixin, _ApprovalEmergencyMixin, _ApprovalReportMixin):
     """审批工作流引擎"""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         if db_path is None:
             from app.config import PROJECT_ROOT
 
@@ -44,11 +45,11 @@ class ApprovalWorkflowEngine(_ApprovalFlowMixin, _ApprovalQueryMixin, _ApprovalE
         self._pool = self._manager.get_pool("approval_workflow", db_path=self.db_path)
         self._conn = self._pool.get_connection()
         self._init_schema()
-        self._approver_callbacks: Dict[str, Callable] = {}
-        self._load_delegations: List[ApprovalDelegation] = []
+        self._approver_callbacks: dict[str, Callable] = {}
+        self._load_delegations: list[ApprovalDelegation] = []
         self._consecutive_emergency_count = 0
         self._emergency_threshold = 3
-        self._emergency_audit_callback: Optional[Callable] = None
+        self._emergency_audit_callback: Callable | None = None
 
         logger.info("ApprovalWorkflowEngine initialized at %s", db_path)
 
@@ -164,7 +165,7 @@ class _ApprovalEngineHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[ApprovalWorkflowEngine] = None
+        self._instance: ApprovalWorkflowEngine | None = None
 
     def get(self) -> ApprovalWorkflowEngine:
         # 快速路径：已存在则直接返回，避免持锁开销
@@ -175,7 +176,7 @@ class _ApprovalEngineHolder:
                 self._instance = ApprovalWorkflowEngine()
             return self._instance
 
-    def init(self, db_path: Optional[str] = None) -> ApprovalWorkflowEngine:
+    def init(self, db_path: str | None = None) -> ApprovalWorkflowEngine:
         """强制重新创建实例（用于启动时指定 db_path 的场景）。"""
         with self._lock:
             self._instance = ApprovalWorkflowEngine(db_path)
@@ -198,6 +199,6 @@ def get_approval_engine() -> ApprovalWorkflowEngine:
     return _holder.get()
 
 
-def init_approval_engine(db_path: Optional[str] = None) -> ApprovalWorkflowEngine:
+def init_approval_engine(db_path: str | None = None) -> ApprovalWorkflowEngine:
     """初始化审批工作流引擎，行为与重构前完全一致。"""
     return _holder.init(db_path)

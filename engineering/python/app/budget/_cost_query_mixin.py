@@ -6,7 +6,7 @@ import logging
 import time
 import json
 import sqlite3
-from typing import Any, Dict, List, Optional
+from typing import Any
 from app.budget.sql_safety import validate_cost_dimension_column
 
 from app.budget._cost_models import (  # noqa: F401
@@ -28,7 +28,7 @@ class _CostQueryMixin:
     _conn: Any
 
 
-    def get_task_costs(self, task_id: str) -> List[Dict[str, Any]]:
+    def get_task_costs(self, task_id: str) -> list[dict[str, Any]]:
         """获取任务的所有成本记录"""
         rows = self._conn.execute(
             "SELECT * FROM cost_events WHERE task_id = ? ORDER BY recorded_at ASC",
@@ -46,8 +46,8 @@ class _CostQueryMixin:
         self,
         dimension: CostDimension,
         scope_id: str = "",
-        start_time: Optional[float] = None,
-        end_time: Optional[float] = None,
+        start_time: float | None = None,
+        end_time: float | None = None,
     ) -> CostSummary:
         """获取指定维度的成本汇总"""
         dim_column = {
@@ -108,9 +108,9 @@ class _CostQueryMixin:
     def get_all_summaries(
         self,
         dimension: CostDimension,
-        start_time: Optional[float] = None,
-        end_time: Optional[float] = None,
-    ) -> List[CostSummary]:
+        start_time: float | None = None,
+        end_time: float | None = None,
+    ) -> list[CostSummary]:
         """获取某维度下所有范围的成本汇总"""
         dim_column = {
             CostDimension.AGENT: "agent_id",
@@ -148,7 +148,7 @@ class _CostQueryMixin:
             params,
         ).fetchall()
 
-        summary_map: Dict[str, CostSummary] = {}
+        summary_map: dict[str, CostSummary] = {}
 
         for row in rows:
             sid = row["scope_id"] or "(unknown)"
@@ -174,7 +174,7 @@ class _CostQueryMixin:
                 sm.task_count = row["task_count"]
 
         return sorted(summary_map.values(), key=lambda s: s.total_cost, reverse=True)
-    def get_cost_trend(self, days: int = 30, interval_hours: int = 24) -> List[Dict[str, Any]]:
+    def get_cost_trend(self, days: int = 30, interval_hours: int = 24) -> list[dict[str, Any]]:
         """获取成本趋势数据"""
         cutoff = time.time() - (days * 86400)
 
@@ -192,7 +192,7 @@ class _CostQueryMixin:
             (interval_hours * 3600, interval_hours * 3600, cutoff),
         ).fetchall()
 
-        trend: Dict[int, Dict[str, Any]] = {}
+        trend: dict[int, dict[str, Any]] = {}
         for row in rows:
             bucket = row["bucket"]
             if bucket not in trend:
@@ -219,7 +219,7 @@ class _CostQueryMixin:
                 entry["data_transfer_cost"] = row["total_cost"]
 
         return sorted(trend.values(), key=lambda x: x["timestamp"])
-    def _row_to_cost_dict(self, row: sqlite3.Row) -> Dict[str, Any]:
+    def _row_to_cost_dict(self, row: sqlite3.Row) -> dict[str, Any]:
         d = dict(row)
         if d.get("metadata"):
             try:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 from app.utils.sqlite_retry import sqlite_retry
 
 from app.budget._cost_models import (  # noqa: F401
@@ -51,12 +51,12 @@ class _CostBudgetMixin:
         self._conn.commit()
     def get_budget_events(
         self,
-        budget_level: Optional[str] = None,
-        scope_id: Optional[str] = None,
-        status: Optional[str] = None,
+        budget_level: str | None = None,
+        scope_id: str | None = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """获取预算事件列表"""
         conditions = []
         params = []
@@ -119,7 +119,7 @@ class _CostBudgetMixin:
             old_limit,
             new_limit,
         )
-    def get_budget_adjustments(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_budget_adjustments(self, limit: int = 50) -> list[dict[str, Any]]:
         """获取预算调整历史"""
         rows = self._conn.execute(
             "SELECT * FROM budget_adjustments ORDER BY adjusted_at DESC LIMIT ?",

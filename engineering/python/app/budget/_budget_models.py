@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.models.budget import BudgetLevel, BudgetStatus, ResourceType
 
@@ -18,9 +18,9 @@ class BudgetLimit:
     budget_level: BudgetLevel = BudgetLevel.GLOBAL
     scope_id: str = "default"
     reset_interval: str = "daily"
-    created_at: Optional[float] = None
+    created_at: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "resource_type": self.resource_type.value,
             "limit_value": self.limit_value,
@@ -45,7 +45,7 @@ class BudgetUsage:
     scope_id: str
     last_updated: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "resource_type": self.resource_type.value,
             "current_usage": self.current_usage,
@@ -64,11 +64,11 @@ class BudgetCheckResult:
 
     passed: bool
     status: BudgetStatus
-    usages: List[BudgetUsage] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    blocked_reasons: List[str] = field(default_factory=list)
+    usages: list[BudgetUsage] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    blocked_reasons: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "passed": self.passed,
             "status": self.status.value,

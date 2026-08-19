@@ -23,7 +23,7 @@ from collections import deque
 from datetime import datetime
 
 from app.utils.time import utcnow
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,12 +45,12 @@ def make_lineage_record(
     target: str,
     source_type: str,
     source_ref: str,
-    inputs: Optional[list[str]] = None,
-    outputs: Optional[list[str]] = None,
+    inputs: list[str] | None = None,
+    outputs: list[str] | None = None,
     operation: str = "",
-    metadata: Optional[dict[str, Any]] = None,
-    record_id: Optional[str] = None,
-    timestamp: Optional[datetime] = None,
+    metadata: dict[str, Any] | None = None,
+    record_id: str | None = None,
+    timestamp: datetime | None = None,
 ) -> LineageRecord:
     """构造 LineageRecord，自动生成 record_id 与 timestamp.
 
@@ -283,7 +283,7 @@ def _infer_uri_type(uri: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-_singleton: Optional[LineageStore] = None
+_singleton: LineageStore | None = None
 
 
 def get_lineage_store() -> LineageStore:

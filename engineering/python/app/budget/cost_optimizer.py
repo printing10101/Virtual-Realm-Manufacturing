@@ -10,7 +10,7 @@
 import logging
 import threading
 import time
-from typing import List, Optional
+
 
 from app.models.budget import CostOptimizationSuggestion
 from app.services._shared.service_base import BaseSingletonService
@@ -92,10 +92,10 @@ class CostOptimizer(BaseSingletonService):
     def set_cost_tracker(self, cost_tracker) -> None:
         self._cost_tracker = cost_tracker
 
-    def analyze_model_cost(self) -> List[CostOptimizationSuggestion]:
+    def analyze_model_cost(self) -> list[CostOptimizationSuggestion]:
         from app.budget.cost_tracker import CostDimension, ModelType as CTModelType
 
-        suggestions: List[CostOptimizationSuggestion] = []
+        suggestions: list[CostOptimizationSuggestion] = []
 
         if self._cost_tracker is None:
             return suggestions
@@ -140,8 +140,8 @@ class CostOptimizer(BaseSingletonService):
 
         return suggestions
 
-    def analyze_gpu_utilization(self, gpu_utilization_threshold: float = 0.5) -> List[CostOptimizationSuggestion]:
-        suggestions: List[CostOptimizationSuggestion] = []
+    def analyze_gpu_utilization(self, gpu_utilization_threshold: float = 0.5) -> list[CostOptimizationSuggestion]:
+        suggestions: list[CostOptimizationSuggestion] = []
 
         if self._cost_tracker is None:
             return suggestions
@@ -181,8 +181,8 @@ class CostOptimizer(BaseSingletonService):
 
         return suggestions
 
-    def analyze_training_efficiency(self) -> List[CostOptimizationSuggestion]:
-        suggestions: List[CostOptimizationSuggestion] = []
+    def analyze_training_efficiency(self) -> list[CostOptimizationSuggestion]:
+        suggestions: list[CostOptimizationSuggestion] = []
 
         if self._cost_tracker is None:
             return suggestions
@@ -220,7 +220,7 @@ class CostOptimizer(BaseSingletonService):
 
         return suggestions
 
-    def generate_all_suggestions(self) -> List[CostOptimizationSuggestion]:
+    def generate_all_suggestions(self) -> list[CostOptimizationSuggestion]:
         all_suggestions = []
         all_suggestions.extend(self.analyze_model_cost())
         all_suggestions.extend(self.analyze_gpu_utilization())
@@ -254,7 +254,7 @@ class _CostOptimizerHolder:
     def __init__(self) -> None:
         # 保留原属性名以兼容可能的外部反射访问
         self._lock = threading.Lock()
-        self._instance: Optional[CostOptimizer] = None
+        self._instance: CostOptimizer | None = None
 
     def get(self) -> CostOptimizer:
         return CostOptimizer.get_instance()  # type: ignore[return-value]

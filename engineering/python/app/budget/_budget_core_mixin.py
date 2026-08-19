@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 from app.budget.models import EnforcementAction, EnforcementResult
 from app.models.budget import (
     BudgetCheckResult,
@@ -42,7 +43,7 @@ class _BudgetCoreMixin:
         new_limit: float,
         reason: str = "",
         adjusted_by: str = "admin",
-    ) -> Optional[BudgetPolicy]:
+    ) -> BudgetPolicy | None:
         key = self._policy_key(level.value, scope_id, resource_type.value)
         old_policy = self._policies.get(key)
 

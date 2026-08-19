@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 from app.models.governance import (
     ApprovalRequest,
     ApprovalStatus,
@@ -20,7 +21,7 @@ class _ApprovalQueryMixin:
     _conn: Any
 
 
-    def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
+    def get_request(self, request_id: str) -> ApprovalRequest | None:
         """获取审批请求"""
         return self._get_request(request_id)
     def get_requests_by_status(
@@ -28,7 +29,7 @@ class _ApprovalQueryMixin:
         status: ApprovalStatus,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[ApprovalRequest]:
+    ) -> list[ApprovalRequest]:
         """按状态获取审批请求列表"""
         rows = self._conn.execute(
             """SELECT * FROM approval_requests
@@ -43,7 +44,7 @@ class _ApprovalQueryMixin:
         approver_id: str,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[ApprovalRequest]:
+    ) -> list[ApprovalRequest]:
         """获取分配给审批人的请求"""
         rows = self._conn.execute(
             """SELECT * FROM approval_requests
@@ -59,7 +60,7 @@ class _ApprovalQueryMixin:
         requester: str,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[ApprovalRequest]:
+    ) -> list[ApprovalRequest]:
         """获取请求人发起的审批"""
         rows = self._conn.execute(
             """SELECT * FROM approval_requests
@@ -69,6 +70,6 @@ class _ApprovalQueryMixin:
             (requester, limit, offset),
         ).fetchall()
         return [self._row_to_request(row) for row in rows]
-    def get_pending_requests(self, limit: int = 100) -> List[ApprovalRequest]:
+    def get_pending_requests(self, limit: int = 100) -> list[ApprovalRequest]:
         """获取待处理审批请求"""
         return self.get_requests_by_status(ApprovalStatus.PENDING, limit)

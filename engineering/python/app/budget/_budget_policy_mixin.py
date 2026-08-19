@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import List, Optional, Any
+from typing import Any
 from app.models.budget import (
     BudgetLevel,
     BudgetPeriod,
@@ -91,12 +91,12 @@ class _BudgetPolicyMixin:
             policy.limit,
             policy.period.value,
         )
-    def get_policy(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> Optional[BudgetPolicy]:
+    def get_policy(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> BudgetPolicy | None:
         key = self._policy_key(level.value, scope_id, resource_type.value)
         return self._policies.get(key)
     def get_all_policies(
-        self, level: Optional[BudgetLevel] = None, scope_id: Optional[str] = None
-    ) -> List[BudgetPolicy]:
+        self, level: BudgetLevel | None = None, scope_id: str | None = None
+    ) -> list[BudgetPolicy]:
         result = []
         for policy in self._policies.values():
             if level and policy.level != level:

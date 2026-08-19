@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 from app.models.budget import (
     BudgetAlert,
     BudgetCheckResult,
@@ -78,11 +79,11 @@ class _BudgetAlertMixin:
         return alert
     def get_alerts(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         unread_only: bool = False,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         conditions = []
         params = []
 

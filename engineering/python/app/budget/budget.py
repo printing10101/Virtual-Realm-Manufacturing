@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
-from typing import Optional
+
 from pathlib import Path
 
 from app.models.budget import (  # noqa: F401
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 class BudgetManager(_BudgetConfigMixin, _BudgetCheckMixin):
     """预算管理器"""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         """
         初始化预算管理器
 
@@ -127,7 +127,7 @@ class _BudgetManagerHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[BudgetManager] = None
+        self._instance: BudgetManager | None = None
 
     def get(self) -> BudgetManager:
         # 快速路径：已存在则直接返回，避免持锁开销
@@ -138,7 +138,7 @@ class _BudgetManagerHolder:
                 self._instance = BudgetManager()
             return self._instance
 
-    def init(self, db_path: Optional[str] = None) -> BudgetManager:
+    def init(self, db_path: str | None = None) -> BudgetManager:
         """强制重新创建实例（用于启动时指定 db_path 的场景）。"""
         with self._lock:
             self._instance = BudgetManager(db_path)
@@ -161,6 +161,6 @@ def get_budget_manager() -> BudgetManager:
     return _holder.get()
 
 
-def init_budget_manager(db_path: Optional[str] = None) -> BudgetManager:
+def init_budget_manager(db_path: str | None = None) -> BudgetManager:
     """初始化预算管理器，行为与重构前完全一致。"""
     return _holder.init(db_path)

@@ -6,7 +6,7 @@ import logging
 import time
 import uuid
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 from app.models.governance import (
     ApprovalDecision,
     ApprovalPriority,
@@ -26,8 +26,8 @@ class _ApprovalReportMixin:
 
     def generate_governance_report(
         self,
-        period_start: Optional[float] = None,
-        period_end: Optional[float] = None,
+        period_start: float | None = None,
+        period_end: float | None = None,
     ) -> GovernanceReport:
         """生成治理报告"""
         now = time.time()
@@ -100,8 +100,8 @@ class _ApprovalReportMixin:
         return report
     def export_audit_log(
         self,
-        start_time: Optional[float] = None,
-        end_time: Optional[float] = None,
+        start_time: float | None = None,
+        end_time: float | None = None,
         format: str = "json",
     ) -> str:
         """导出审计日志"""
@@ -139,7 +139,7 @@ class _ApprovalReportMixin:
             return "\n".join(lines)
         else:
             raise ValueError(f"Unsupported export format: {format}")
-    def _log_audit(self, request_id: str, action: str, actor_id: str, details: Dict[str, Any]) -> None:
+    def _log_audit(self, request_id: str, action: str, actor_id: str, details: dict[str, Any]) -> None:
         """记录不可变审计日志"""
         self._conn.execute(
             """INSERT INTO audit_log (request_id, action, actor_id, details, timestamp)
@@ -153,7 +153,7 @@ class _ApprovalReportMixin:
             ),
         )
         self._conn.commit()
-    def _get_risk_trend(self, start: float, end: float) -> List[Dict[str, Any]]:
+    def _get_risk_trend(self, start: float, end: float) -> list[dict[str, Any]]:
         """获取风险趋势数据"""
         days = max(1, int((end - start) / (24 * 3600)))
         step = (end - start) / max(days, 1)
@@ -215,7 +215,7 @@ class _ApprovalReportMixin:
             ),
         )
         self._conn.commit()
-    def _get_request(self, request_id: str) -> Optional[ApprovalRequest]:
+    def _get_request(self, request_id: str) -> ApprovalRequest | None:
         """从数据库获取审批请求"""
         row = self._conn.execute("SELECT * FROM approval_requests WHERE request_id = ?", (request_id,)).fetchone()
         if row is None:

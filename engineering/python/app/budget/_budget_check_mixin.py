@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.budget._budget_models import BudgetCheckResult, BudgetLimit, BudgetUsage
 from app.models.budget import BudgetLevel, BudgetStatus, ResourceType
@@ -20,7 +20,7 @@ class _BudgetCheckMixin:
     tracker: Any
 
 
-    def check_budget(self, agent_id: str, resource_types: Optional[List[ResourceType]] = None) -> BudgetCheckResult:
+    def check_budget(self, agent_id: str, resource_types: list[ResourceType] | None = None) -> BudgetCheckResult:
         """
         执行预算检查
 
@@ -116,7 +116,7 @@ class _BudgetCheckMixin:
             blocked_reasons=blocked_reasons,
         )
 
-    def _get_budget_limit(self, resource_type: ResourceType, agent_id: str) -> Optional[BudgetLimit]:
+    def _get_budget_limit(self, resource_type: ResourceType, agent_id: str) -> BudgetLimit | None:
         """获取预算限制（按代理级、项目级、全局级优先级）"""
         with self._lock:
             for level, scope in [
@@ -170,8 +170,8 @@ class _BudgetCheckMixin:
         agent_id: str,
         notification_type: str,
         message: str,
-        resource_type: Optional[str] = None,
-        usage_ratio: Optional[float] = None,
+        resource_type: str | None = None,
+        usage_ratio: float | None = None,
     ) -> None:
         """记录预算通知"""
         try:
@@ -186,7 +186,7 @@ class _BudgetCheckMixin:
         except (OSError, IOError, sqlite3.Error):
             logger.warning("Failed to record budget notification", exc_info=True)
 
-    def get_agent_budget_status(self, agent_id: str) -> Dict[str, Any]:
+    def get_agent_budget_status(self, agent_id: str) -> dict[str, Any]:
         """获取代理预算状态概览"""
         result = self.check_budget(agent_id)
         return result.to_dict()
@@ -218,7 +218,7 @@ class _BudgetCheckMixin:
         except (RuntimeError, ValueError, TypeError, AttributeError, OSError):
             logger.error("Failed to suspend agent tasks", exc_info=True)
 
-    def get_notifications(self, agent_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_notifications(self, agent_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         """获取预算通知列表"""
         with self._lock:
             if agent_id:

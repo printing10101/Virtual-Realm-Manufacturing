@@ -8,7 +8,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+
 
 from app.models.budget import BudgetAlert, BudgetCheckResult
 
@@ -28,11 +28,11 @@ class EnforcementAction(str, Enum):
 class EnforcementResult:
     """强制执行结果"""
 
-    actions_taken: List[EnforcementAction] = field(default_factory=list)
-    check_result: Optional[BudgetCheckResult] = None
-    alerts_generated: List[BudgetAlert] = field(default_factory=list)
-    cancelled_tasks: List[str] = field(default_factory=list)
-    suspended_agents: List[str] = field(default_factory=list)
+    actions_taken: list[EnforcementAction] = field(default_factory=list)
+    check_result: BudgetCheckResult | None = None
+    alerts_generated: list[BudgetAlert] = field(default_factory=list)
+    cancelled_tasks: list[str] = field(default_factory=list)
+    suspended_agents: list[str] = field(default_factory=list)
     notifications_sent: bool = False
 
 

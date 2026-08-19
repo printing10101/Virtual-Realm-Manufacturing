@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Dict, Any
+from typing import Any
 
 from app.budget._cost_models import (  # noqa: F401
     CostDimension,
@@ -54,6 +54,6 @@ class _CostPriceMixin:
         self._conn.commit()
         setattr(self._unit_prices, key, value)
         logger.info("Unit price updated: %s = %f", key, value)
-    def get_unit_prices(self) -> Dict[str, float]:
+    def get_unit_prices(self) -> dict[str, float]:
         """获取所有单价"""
         return self._unit_prices.to_dict()

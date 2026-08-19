@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -62,7 +62,7 @@ class SlidingWindowProcessor:
     def resample(
         self,
         data: np.ndarray,
-        target_rate: Optional[float] = None,
+        target_rate: float | None = None,
     ) -> np.ndarray:
         """
         重采样数据到目标采样率
@@ -93,7 +93,7 @@ class SlidingWindowProcessor:
     def apply(
         self,
         data: np.ndarray,
-        window_size: Optional[int] = None,
+        window_size: int | None = None,
     ) -> np.ndarray:
         """
         应用滑动窗口分割
@@ -151,8 +151,8 @@ class SlidingWindowProcessor:
     def get_window_indices(
         self,
         n_samples: int,
-        window_size: Optional[int] = None,
-    ) -> List[Tuple[int, int]]:
+        window_size: int | None = None,
+    ) -> list[tuple[int, int]]:
         """
         获取窗口索引范围，不实际分割数据
 
@@ -177,7 +177,7 @@ class SlidingWindowProcessor:
 
         return indices
 
-    def get_config_summary(self) -> Dict[str, Any]:
+    def get_config_summary(self) -> dict[str, Any]:
         """获取配置摘要"""
         return {
             "window_size": self.config.window_size,

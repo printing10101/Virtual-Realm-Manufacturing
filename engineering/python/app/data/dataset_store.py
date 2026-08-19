@@ -32,7 +32,8 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional, cast
+from typing import Any, cast
+from collections.abc import AsyncIterator
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,7 +73,7 @@ def _compute_content_hash(records: list[dict[str, Any]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _storage_path_for_hash(content_hash: str, base_dir: Optional[Path] = None) -> Path:
+def _storage_path_for_hash(content_hash: str, base_dir: Path | None = None) -> Path:
     """根据 content_hash 计算分片存储路径."""
     root = base_dir if base_dir is not None else _get_base_dir()
     return root / content_hash[:2] / content_hash[2:4] / f"{content_hash}.jsonl"
@@ -172,7 +173,7 @@ def _version_orm_to_contract(orm: DatasetVersionORM, schema: DatasetSchema) -> D
     )
 
 
-def _bump_patch_version(latest_version: Optional[str]) -> str:
+def _bump_patch_version(latest_version: str | None) -> str:
     """基于 latest_version 递增 patch 段，返回新 semver.
 
     latest_version=None 时返回 "0.0.1"。
@@ -236,8 +237,8 @@ class DatasetStore(IDatasetStore):
         dataset_id: str,
         records: list[dict[str, Any]],
         *,
-        version: Optional[str] = None,
-        lineage: Optional[LineageRecord] = None,
+        version: str | None = None,
+        lineage: LineageRecord | None = None,
     ) -> DatasetVersionContract:
         """提交一个不可变版本（PUBLISHED）。"""
         if not dataset_id:
@@ -273,7 +274,7 @@ class DatasetStore(IDatasetStore):
             storage_uri = _storage_uri_for_hash(content_hash)
 
             # lineage 关联（若调用方提供）
-            lineage_id: Optional[str] = None
+            lineage_id: str | None = None
             if lineage is not None:
                 lineage_id = lineage.record_id
 
@@ -306,7 +307,7 @@ class DatasetStore(IDatasetStore):
             schema = _schema_from_json(str(dataset.schema_json))
             return _version_orm_to_contract(orm, schema)
 
-    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersionContract:
+    async def get_version(self, dataset_id: str, version: str | None = None) -> DatasetVersionContract:
         """获取版本。version=None 返回最新 published 版本。"""
         async with await self._get_session() as session:
             ds_orm = await session.execute(select(DatasetORM).where(DatasetORM.id == dataset_id))
@@ -345,7 +346,7 @@ class DatasetStore(IDatasetStore):
     async def read(
         self,
         dataset_id: str,
-        version: Optional[str] = None,
+        version: str | None = None,
         *,
         batch_size: int = 1000,
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -419,8 +420,8 @@ class DatasetStore(IDatasetStore):
     async def list_datasets(
         self,
         *,
-        owner_id: Optional[str] = None,
-        status: Optional[DatasetStatus] = None,
+        owner_id: str | None = None,
+        status: DatasetStatus | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -510,7 +511,7 @@ class DatasetStore(IDatasetStore):
 # ---------------------------------------------------------------------------
 
 
-_singleton: Optional[DatasetStore] = None
+_singleton: DatasetStore | None = None
 
 
 def get_dataset_store() -> DatasetStore:

@@ -10,7 +10,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
@@ -22,10 +22,10 @@ class ImageProcessorConfig:
     image_size: int = 256
     cnn_feature_dim: int = 512
     normalize_range: tuple = (0.0, 1.0)
-    supported_bit_depths: List[int] = field(default_factory=lambda: [8, 16])
+    supported_bit_depths: list[int] = field(default_factory=lambda: [8, 16])
     pretrained_model: str = "resnet50"
-    mean: List[float] = field(default_factory=lambda: [0.485, 0.456, 0.406])
-    std: List[float] = field(default_factory=lambda: [0.229, 0.224, 0.225])
+    mean: list[float] = field(default_factory=lambda: [0.485, 0.456, 0.406])
+    std: list[float] = field(default_factory=lambda: [0.229, 0.224, 0.225])
 
 
 @dataclass
@@ -37,7 +37,7 @@ class TimeSeriesProcessorConfig:
     sample_rate_max: float = 10000.0
     denoising_algorithm: str = "butterworth"
     ts_feature_count: int = 24
-    denoise_params: Dict[str, Any] = field(
+    denoise_params: dict[str, Any] = field(
         default_factory=lambda: {
             "order": 4,
             "cutoff_ratio": 0.1,
@@ -62,7 +62,7 @@ class ToolStateProcessorConfig:
     encoding_method: str = "one_hot"
     anomaly_detection_method: str = "iqr"
     anomaly_threshold: float = 3.0
-    state_fields: List[str] = field(
+    state_fields: list[str] = field(
         default_factory=lambda: [
             "wear_level",
             "cutting_time",
@@ -82,7 +82,7 @@ class GCodeProcessorConfig:
     gcode_embedding_dim: int = 256
     max_instructions_per_segment: int = 500
     segment_by_operation: bool = True
-    supported_controllers: List[str] = field(
+    supported_controllers: list[str] = field(
         default_factory=lambda: [
             "fanuc",
             "siemens",
@@ -109,7 +109,7 @@ class FusionConfig:
     target_dim: int = 512
     attention_heads: int = 8
     dropout: float = 0.1
-    modality_weights: Dict[str, float] = field(
+    modality_weights: dict[str, float] = field(
         default_factory=lambda: {
             "image": 0.25,
             "time_series": 0.25,
@@ -148,7 +148,7 @@ class PipelineConfig:
     cache_ttl_seconds: int = 3600
     log_level: str = "INFO"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         result = {}
         for key, value in self.__dict__.items():
             if isinstance(value, (int, float, str, bool, list, dict, tuple)):
@@ -170,7 +170,7 @@ def _parse_memory_to_bytes(mem_str: str) -> int:
     return 8 * 1024**3
 
 
-def _env_override(config_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _env_override(config_dict: dict[str, Any]) -> dict[str, Any]:
     """环境变量注入覆盖配置"""
     env_map = {
         "PIPELINE_IMAGE_SIZE": ("image", "image_size", int),

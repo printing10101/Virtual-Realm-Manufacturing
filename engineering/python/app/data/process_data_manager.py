@@ -10,7 +10,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +227,7 @@ class ProcessPlanningDataManager:
             entry = ProcessRuleEntry.from_dict(item)
             self._process_rules[entry.id] = entry
 
-    def get_material_by_name(self, name: str) -> Optional[MaterialEntry]:
+    def get_material_by_name(self, name: str) -> MaterialEntry | None:
         """按材料名称查询材料属性。
 
         Args:
@@ -295,7 +295,7 @@ class ProcessPlanningDataManager:
                 results.append(param)
         return results
 
-    def get_material_by_id(self, material_id: str) -> Optional[MaterialEntry]:
+    def get_material_by_id(self, material_id: str) -> MaterialEntry | None:
         """按ID查询材料。
 
         Args:
@@ -306,7 +306,7 @@ class ProcessPlanningDataManager:
         """
         return self._materials.get(material_id)
 
-    def get_tool_by_id(self, tool_id: str) -> Optional[ToolEntry]:
+    def get_tool_by_id(self, tool_id: str) -> ToolEntry | None:
         """按ID查询刀具。
 
         Args:
@@ -349,7 +349,7 @@ class ProcessPlanningDataManager:
         """
         return list(self._process_rules.values())
 
-    def get_process_rule_by_id(self, rule_id: str) -> Optional[ProcessRuleEntry]:
+    def get_process_rule_by_id(self, rule_id: str) -> ProcessRuleEntry | None:
         """按ID查询工艺规则。
 
         Args:

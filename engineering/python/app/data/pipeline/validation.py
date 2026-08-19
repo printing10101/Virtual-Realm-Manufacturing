@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -35,7 +35,7 @@ class DataValidator:
 
     def __init__(self, config: PipelineConfig):
         self.config = config
-        self.validation_history: List[Dict[str, Any]] = []
+        self.validation_history: list[dict[str, Any]] = []
 
     def validate_completeness(self, data: ProcessedData) -> DataQualityMetrics:
         """
@@ -165,9 +165,9 @@ class QualityChecker:
 
     def check_all(
         self,
-        processed_data: Dict[str, ProcessedData],
-        expected_dims: Dict[str, int],
-    ) -> Dict[str, DataQualityMetrics]:
+        processed_data: dict[str, ProcessedData],
+        expected_dims: dict[str, int],
+    ) -> dict[str, DataQualityMetrics]:
         """
         对所有预处理数据进行质量检查
 
@@ -198,7 +198,7 @@ class QualityChecker:
         self,
         data: Any,
         source_type: DataSourceType,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         边缘情况检查
 

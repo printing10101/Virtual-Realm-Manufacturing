@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 
@@ -39,7 +39,7 @@ class RawInput:
     data: Any = None
     source_id: str = ""
     timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class ImageInput(RawInput):
@@ -51,7 +51,7 @@ class ImageInput(RawInput):
         bit_depth: int = 8,
         channels: int = 3,
         source_id: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ):
         super().__init__(
             source_type=DataSourceType.IMAGE,
@@ -72,9 +72,9 @@ class TimeSeriesInput(RawInput):
         data: np.ndarray,
         sample_rate: float = 1000.0,
         channels: int = 1,
-        channel_names: Optional[List[str]] = None,
+        channel_names: list[str] | None = None,
         source_id: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ):
         super().__init__(
             source_type=DataSourceType.TIME_SERIES,
@@ -93,10 +93,10 @@ class TextInput(RawInput):
 
     def __init__(
         self,
-        data: Union[str, Dict[str, Any]],
+        data: Union[str, dict[str, Any]],
         text_format: str = "json",
         source_id: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ):
         super().__init__(
             source_type=DataSourceType.TEXT,
@@ -113,10 +113,10 @@ class ToolStateInput(RawInput):
 
     def __init__(
         self,
-        data: Dict[str, Any],
-        state_fields: Optional[List[str]] = None,
+        data: dict[str, Any],
+        state_fields: list[str] | None = None,
         source_id: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ):
         super().__init__(
             source_type=DataSourceType.TOOL_STATE,
@@ -136,7 +136,7 @@ class GCodeInput(RawInput):
         data: str,
         controller_type: str = "fanuc",
         source_id: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ):
         super().__init__(
             source_type=DataSourceType.GCODE,
@@ -155,12 +155,12 @@ class ProcessedData:
     source_type: DataSourceType
     original_data: Any
     processed_data: np.ndarray
-    features: Optional[np.ndarray] = None
+    features: np.ndarray | None = None
     feature_dim: int = 0
     processing_time_ms: float = 0.0
     quality_score: float = 1.0
     anomaly_count: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -171,10 +171,10 @@ class DataQualityMetrics:
     consistency: float = 1.0
     outlier_ratio: float = 0.0
     missing_ratio: float = 0.0
-    feature_dim_expected: Optional[int] = None
-    feature_dim_actual: Optional[int] = None
-    value_range: Optional[tuple] = None
-    validation_errors: List[str] = field(default_factory=list)
+    feature_dim_expected: int | None = None
+    feature_dim_actual: int | None = None
+    value_range: tuple | None = None
+    validation_errors: list[str] = field(default_factory=list)
 
     @property
     def is_valid(self) -> bool:
@@ -194,13 +194,13 @@ class PipelineResult:
     """管道最终输出结果"""
 
     fused_features: np.ndarray
-    individual_features: Dict[str, np.ndarray]
-    quality_metrics: Dict[str, DataQualityMetrics]
+    individual_features: dict[str, np.ndarray]
+    quality_metrics: dict[str, DataQualityMetrics]
     total_processing_time_ms: float
-    stage_timings: Dict[str, float]
-    fusion_weights: Dict[str, float]
-    error_log: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    stage_timings: dict[str, float]
+    fusion_weights: dict[str, float]
+    error_log: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def success(self) -> bool:

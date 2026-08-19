@@ -7,7 +7,7 @@ Supports precise measurement of GPU time, GPU memory, API calls, and data transf
 
 import logging
 import threading
-from typing import Optional
+
 from pathlib import Path
 
 from app.utils.utils import get_output_dir
@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 class MultiDimensionCostTracker(_CostPriceMixin, _CostRecordMixin, _CostQueryMixin, _CostBudgetMixin):
     """多维度成本追踪器"""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         if db_path is None:
             db_path = str(get_output_dir("data") / "cost_tracking.db")
 
@@ -196,7 +196,7 @@ class _CostTrackerHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[MultiDimensionCostTracker] = None
+        self._instance: MultiDimensionCostTracker | None = None
 
     def get(self) -> MultiDimensionCostTracker:
         # 快速路径：已存在则直接返回，避免持锁开销
@@ -207,7 +207,7 @@ class _CostTrackerHolder:
                 self._instance = MultiDimensionCostTracker()
             return self._instance
 
-    def init(self, db_path: Optional[str] = None) -> MultiDimensionCostTracker:
+    def init(self, db_path: str | None = None) -> MultiDimensionCostTracker:
         """强制重新创建实例（用于启动时指定 db_path 的场景）。"""
         with self._lock:
             self._instance = MultiDimensionCostTracker(db_path)
@@ -230,6 +230,6 @@ def get_cost_tracker() -> MultiDimensionCostTracker:
     return _holder.get()
 
 
-def init_cost_tracker(db_path: Optional[str] = None) -> MultiDimensionCostTracker:
+def init_cost_tracker(db_path: str | None = None) -> MultiDimensionCostTracker:
     """初始化成本追踪器，行为与重构前完全一致。"""
     return _holder.init(db_path)

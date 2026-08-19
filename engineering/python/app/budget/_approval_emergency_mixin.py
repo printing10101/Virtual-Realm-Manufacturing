@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Any, Callable, Dict
+from typing import Any
+from collections.abc import Callable
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class _ApprovalEmergencyMixin:
         operator_id: str,
         reason: str,
         emergency_type: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """记录紧急操作"""
         now = time.time()
         emergency_id = f"EMG-{uuid.uuid4().hex[:8].upper()}"

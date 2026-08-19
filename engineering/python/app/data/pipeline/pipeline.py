@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_pipeline(
-    config_path: Optional[str] = None,
+    config_path: str | None = None,
     device: str = "cpu",
 ) -> DataPipeline:
     """
@@ -79,8 +79,8 @@ class DataPipeline:
     def __init__(self, config: PipelineConfig, device: str = "cpu"):
         self.config = config
         self.device = device
-        self._preprocessors: Dict[DataSourceType, Any] = {}
-        self._feature_extractors: Dict[DataSourceType, Any] = {}
+        self._preprocessors: dict[DataSourceType, Any] = {}
+        self._feature_extractors: dict[DataSourceType, Any] = {}
         self._fusion: Any = None
         self._quality_checker: Any = None
         self._validator: Any = None
@@ -148,7 +148,7 @@ class DataPipeline:
 
         return result
 
-    def extract_features(self, processed: ProcessedData) -> Optional[np.ndarray]:
+    def extract_features(self, processed: ProcessedData) -> np.ndarray | None:
         """从预处理数据提取特征"""
         extractor = self._feature_extractors.get(processed.source_type)
         if extractor is None:
@@ -157,8 +157,8 @@ class DataPipeline:
 
     def process(
         self,
-        inputs: Dict[str, RawInput],
-        expected_dims: Optional[Dict[str, int]] = None,
+        inputs: dict[str, RawInput],
+        expected_dims: dict[str, int] | None = None,
     ) -> PipelineResult:
         """
         处理多源输入，执行完整管道流程
@@ -171,11 +171,11 @@ class DataPipeline:
             融合后的最终结果
         """
         t_start = time.perf_counter()
-        stage_timings: Dict[str, float] = {}
+        stage_timings: dict[str, float] = {}
 
-        processed_data: Dict[str, ProcessedData] = {}
-        features: Dict[str, np.ndarray] = {}
-        error_log: List[str] = []
+        processed_data: dict[str, ProcessedData] = {}
+        features: dict[str, np.ndarray] = {}
+        error_log: list[str] = []
 
         expected = expected_dims or self._get_expected_dims()
 
@@ -231,7 +231,7 @@ class DataPipeline:
 
         return result
 
-    def _get_expected_dims(self) -> Dict[str, int]:
+    def _get_expected_dims(self) -> dict[str, int]:
         """获取预处理器输出的期望维度"""
         ws = self.config.time_series.window_size
         ss = self.config.image.image_size
@@ -245,8 +245,8 @@ class DataPipeline:
 
     def process_batch(
         self,
-        batch_inputs: List[Dict[str, RawInput]],
-    ) -> List[PipelineResult]:
+        batch_inputs: list[dict[str, RawInput]],
+    ) -> list[PipelineResult]:
         """批量处理多个样本"""
         results = []
         for inputs in batch_inputs:
@@ -261,7 +261,7 @@ class DataPipeline:
         """获取监控器"""
         return self._monitor
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """获取管道统计"""
         return {
             "initialized": self._initialized,
