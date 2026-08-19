@@ -24,7 +24,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -65,7 +65,7 @@ class UpsertDatasetReadmeRequest(BaseModel):
 
     readme_md: str = Field(..., min_length=1, max_length=200000, description="markdown README 内容")
     updated_by: str = Field(..., min_length=1, max_length=128, description="最后更新者（user_id 或 plugin_id）")
-    version: Optional[str] = Field(
+    version: str | None = Field(
         None,
         description="版本号（如 1.0.0），不传则更新数据集级 README",
     )
@@ -101,24 +101,24 @@ class RegisterModelRequest(BaseModel):
 class UpdateModelRequest(BaseModel):
     """更新模型卡片请求体（部分更新，仅非 None 字段被写入）."""
 
-    readme_md: Optional[str] = Field(None, min_length=1, max_length=200000, description="markdown README")
-    tags: Optional[list[str]] = Field(None, description="标签数组")
-    status: Optional[str] = Field(
+    readme_md: str | None = Field(None, min_length=1, max_length=200000, description="markdown README")
+    tags: list[str] | None = Field(None, description="标签数组")
+    status: str | None = Field(
         None,
         description=f"目标状态（{ModelArtifactStatus.all()}，受状态机约束）",
     )
-    metrics: Optional[dict[str, Any]] = Field(
+    metrics: dict[str, Any] | None = Field(
         None, description="覆盖当前指标快照（不会追加到 history，请用 POST /metrics 追加）"
     )
-    framework: Optional[str] = Field(None, min_length=1, max_length=64, description="框架版本")
-    storage_uri: Optional[str] = Field(None, min_length=1, max_length=512, description="模型文件存储位置")
+    framework: str | None = Field(None, min_length=1, max_length=64, description="框架版本")
+    storage_uri: str | None = Field(None, min_length=1, max_length=512, description="模型文件存储位置")
 
 
 class AppendModelMetricsRequest(BaseModel):
     """追加模型指标记录请求体."""
 
     metrics: dict[str, Any] = Field(..., description="指标字典（如 {'accuracy': 0.95, 'loss': 0.05}）")
-    timestamp: Optional[str] = Field(
+    timestamp: str | None = Field(
         None,
         description="自定义时间戳（ISO8601），不传则使用服务器当前时间",
     )
@@ -243,7 +243,7 @@ async def upsert_dataset_readme(
 @router.get("/datasets/{dataset_id}/lineage")
 async def get_dataset_lineage(
     dataset_id: str,
-    version: Optional[str] = Query(
+    version: str | None = Query(
         None,
         description="版本号（如 1.0.0），不传则使用最新 published 版本",
     ),
@@ -345,16 +345,16 @@ async def get_dataset_metrics(dataset_id: str):
 
 @router.get("/models")
 async def list_models(
-    owner_id: Optional[str] = Query(None, description="按所有者过滤"),
-    model_type: Optional[str] = Query(
+    owner_id: str | None = Query(None, description="按所有者过滤"),
+    model_type: str | None = Query(
         None,
         description=f"按模型类型过滤（{ModelArtifactType.all()}）",
     ),
-    status: Optional[str] = Query(
+    status: str | None = Query(
         None,
         description=f"按状态过滤（{ModelArtifactStatus.all()}）",
     ),
-    tag: Optional[str] = Query(None, description="按标签过滤（精确匹配）"),
+    tag: str | None = Query(None, description="按标签过滤（精确匹配）"),
     limit: int = Query(100, ge=1, le=1000, description="每页数量（1-1000）"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):
@@ -618,7 +618,7 @@ async def append_model_metrics(
     from datetime import datetime
 
     # 解析可选 timestamp
-    timestamp: Optional[datetime] = None
+    timestamp: datetime | None = None
     if request.timestamp:
         try:
             timestamp = datetime.fromisoformat(request.timestamp)

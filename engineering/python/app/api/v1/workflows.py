@@ -21,7 +21,7 @@
 import asyncio
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -97,16 +97,16 @@ class RunRequestModel(BaseModel):
     """提交工作流请求体。"""
 
     spec: WorkflowSpecModel
-    inputs: Optional[dict[str, ArtifactModel]] = None  # 覆盖 spec.inputs
-    owner_id: Optional[str] = None
+    inputs: dict[str, ArtifactModel] | None = None  # 覆盖 spec.inputs
+    owner_id: str | None = None
 
 
 class ResumeRequestModel(BaseModel):
     """断点续跑请求体。"""
 
     spec: WorkflowSpecModel
-    inputs: Optional[dict[str, ArtifactModel]] = None
-    owner_id: Optional[str] = None
+    inputs: dict[str, ArtifactModel] | None = None
+    owner_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +196,7 @@ async def run_workflow(request: RunRequestModel):
     except ValueError as e:
         return error(code=ErrorCode.INVALID_REQUEST, message=f"Spec 构造失败: {e}")
 
-    inputs: Optional[dict[str, Artifact]] = None
+    inputs: dict[str, Artifact] | None = None
     if request.inputs:
         inputs = {k: _artifact_from_model(v) for k, v in request.inputs.items()}
 
@@ -229,7 +229,7 @@ async def resume_workflow(workflow_run_id: str, request: ResumeRequestModel):
     except ValueError as e:
         return error(code=ErrorCode.INVALID_REQUEST, message=f"Spec 构造失败: {e}")
 
-    inputs: Optional[dict[str, Artifact]] = None
+    inputs: dict[str, Artifact] | None = None
     if request.inputs:
         inputs = {k: _artifact_from_model(v) for k, v in request.inputs.items()}
 
@@ -341,8 +341,8 @@ async def stream_workflow_events(workflow_run_id: str):
 
 @router.get("")
 async def list_workflows(
-    status_filter: Optional[str] = Query(None, alias="status"),
-    owner_id: Optional[str] = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
+    owner_id: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):

@@ -6,7 +6,7 @@ Endpoints for cost tracking, budget enforcement, alerts, and optimization sugges
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
+
 import logging
 
 from app.dependencies import get_budget_enforcer, get_cost_optimizer
@@ -108,8 +108,8 @@ class ResetBudgetPeriodRequest(BaseModel):
 async def get_cost_summary(
     dimension: str = Query("agent", description="汇总维度: agent/project/goal/task/provider/model"),
     scope_id: str = Query("", description="范围ID"),
-    start_time: Optional[float] = Query(None, description="起始Unix时间戳"),
-    end_time: Optional[float] = Query(None, description="结束Unix时间戳"),
+    start_time: float | None = Query(None, description="起始Unix时间戳"),
+    end_time: float | None = Query(None, description="结束Unix时间戳"),
 ):
     try:
         dim = CostDimension(dimension)
@@ -181,8 +181,8 @@ async def set_unit_price(payload: SetUnitPriceRequest):
 
 @router.get("/policies")
 async def get_budget_policies(
-    level: Optional[str] = Query(None, description="预算层级"),
-    scope_id: Optional[str] = Query(None, description="范围ID"),
+    level: str | None = Query(None, description="预算层级"),
+    scope_id: str | None = Query(None, description="范围ID"),
 ):
     enforcer = get_budget_enforcer()
 
@@ -325,7 +325,7 @@ async def reset_budget_period(payload: ResetBudgetPeriodRequest):
 
 @router.get("/alerts")
 async def get_budget_alerts(
-    status: Optional[str] = Query(None, description="筛选状态: warning/exceeded"),
+    status: str | None = Query(None, description="筛选状态: warning/exceeded"),
     unread_only: bool = Query(False, description="仅未读"),
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),

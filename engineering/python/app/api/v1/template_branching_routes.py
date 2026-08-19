@@ -6,7 +6,7 @@ branch manager by using ``app.dependency_overrides[get_branch_manager]``.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -28,7 +28,7 @@ router = APIRouter(
 
 class CreateBranchRequest(BaseModel):
     name: str
-    base_branch: Optional[str] = None
+    base_branch: str | None = None
     data: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -59,7 +59,7 @@ async def create_branch(
 
 @router.get("/")
 async def list_branches(
-    type_filter: Optional[str] = None,
+    type_filter: str | None = None,
     manager: TemplateBranchManager = Depends(get_branch_manager),
 ):
     branches = manager.list_branches(type_filter=type_filter)

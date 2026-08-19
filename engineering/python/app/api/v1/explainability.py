@@ -27,7 +27,7 @@
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -63,28 +63,28 @@ class GenerateHiddenStateRequest(BaseModel):
     """生成隐状态投影解释请求体."""
 
     model_uri: str = Field(..., min_length=1, max_length=256, description="模型 URI")
-    source_snapshot_id: Optional[str] = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
+    source_snapshot_id: str | None = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
     projection_method: str = Field(
         default=ProjectionMethod.PCA,
         description=f"降维方法（{ProjectionMethod.all()}，默认 pca）",
     )
     projection_dim: int = Field(default=2, ge=2, le=3, description="投影维度（2 或 3，默认 2）")
     max_frames: int = Field(default=1000, ge=1, le=10000, description="最大帧数（超过则均匀采样）")
-    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
+    created_by: str | None = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 class GenerateGateDynamicsRequest(BaseModel):
     """生成门控动力学解释请求体."""
 
     model_uri: str = Field(..., min_length=1, max_length=256, description="模型 URI")
-    source_snapshot_id: Optional[str] = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
+    source_snapshot_id: str | None = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
     anomaly_sigma: float = Field(
         default=2.0,
         ge=1.0,
         le=5.0,
         description="异常检测阈值（门控值超过 mean ± sigma*std 的帧，默认 2.0）",
     )
-    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
+    created_by: str | None = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 class GenerateCounterfactualRequest(BaseModel):
@@ -93,7 +93,7 @@ class GenerateCounterfactualRequest(BaseModel):
     model_uri: str = Field(..., min_length=1, max_length=256, description="模型 URI")
     base_input: dict[str, float] = Field(..., description="基准输入（特征名 → 值），至少 1 个特征")
     perturbed_feature: str = Field(..., min_length=1, max_length=64, description="被扰动的特征名")
-    perturbation_range: Optional[list[float]] = Field(
+    perturbation_range: list[float] | None = Field(
         default=None,
         description="扰动值序列（如为空则按 perturbation_step 生成）",
     )
@@ -103,8 +103,8 @@ class GenerateCounterfactualRequest(BaseModel):
         le=0.5,
         description="扰动步长（相对基准值的比例，默认 0.05 即 5%）",
     )
-    source_snapshot_id: Optional[str] = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
-    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
+    source_snapshot_id: str | None = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
+    created_by: str | None = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 class GenerateConfidenceRequest(BaseModel):
@@ -113,8 +113,8 @@ class GenerateConfidenceRequest(BaseModel):
     model_uri: str = Field(..., min_length=1, max_length=256, description="模型 URI")
     input_data: dict[str, Any] = Field(..., description="输入数据（特征名 → 值）")
     sample_count: int = Field(default=30, ge=5, le=200, description="MC dropout 采样次数（默认 30）")
-    source_snapshot_id: Optional[str] = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
-    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
+    source_snapshot_id: str | None = Field(default=None, max_length=64, description="关联实验快照 ID（可选）")
+    created_by: str | None = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 class CompareExplanationsRequest(BaseModel):
@@ -126,7 +126,7 @@ class CompareExplanationsRequest(BaseModel):
         default=ComparisonType.SAME_MODEL_DIFF_INPUT,
         description=f"对比类型（{ComparisonType.all()}，默认 same_model_diff_input）",
     )
-    created_by: Optional[str] = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
+    created_by: str | None = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
 # ---------------------------------------------------------------------------
@@ -386,11 +386,11 @@ async def generate_confidence_explanation(request: GenerateConfidenceRequest):
 
 @router.get("/")
 async def list_explanations(
-    explanation_type: Optional[str] = Query(
+    explanation_type: str | None = Query(
         None,
         description=f"按解释类型过滤（{ExplanationType.all()}）",
     ),
-    model_uri: Optional[str] = Query(None, description="按模型 URI 过滤"),
+    model_uri: str | None = Query(None, description="按模型 URI 过滤"),
     limit: int = Query(50, ge=1, le=500, description="每页数量（1-500，默认 50）"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):

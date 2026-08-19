@@ -5,7 +5,7 @@
 """
 
 from datetime import date
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -21,13 +21,13 @@ from app.services import production_service
 
 
 class WorkOrderUpdate(BaseModel):
-    product_name: Optional[str] = None
-    planned_qty: Optional[int] = None
-    completed_qty: Optional[int] = None
-    status: Optional[str] = None
-    priority: Optional[str] = None
-    start_date: Optional[date] = None
-    due_date: Optional[date] = None
+    product_name: str | None = None
+    planned_qty: int | None = None
+    completed_qty: int | None = None
+    status: str | None = None
+    priority: str | None = None
+    start_date: date | None = None
+    due_date: date | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -54,10 +54,10 @@ async def get_dashboard():
 
 @router.get("/records/")
 async def list_production_records(
-    date_from: Optional[date] = Query(None, description="起始日期"),
-    date_to: Optional[date] = Query(None, description="结束日期"),
-    line_name: Optional[str] = Query(None, description="产线名称"),
-    shift: Optional[str] = Query(None, description="班次"),
+    date_from: date | None = Query(None, description="起始日期"),
+    date_to: date | None = Query(None, description="结束日期"),
+    line_name: str | None = Query(None, description="产线名称"),
+    shift: str | None = Query(None, description="班次"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
@@ -79,8 +79,8 @@ async def list_production_records(
 
 @router.get("/work-orders/")
 async def list_work_orders(
-    status: Optional[str] = Query(None),
-    priority: Optional[str] = Query(None),
+    status: str | None = Query(None),
+    priority: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):

@@ -15,7 +15,7 @@
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, Field
@@ -49,8 +49,8 @@ class ExplainProcessRequest(BaseModel):
     user_question: str = Field(default="", description="用户上下文问题")
     material: str = Field(default="", description="工件材料")
     blank_size: str = Field(default="", description="毛坯尺寸描述")
-    feature_count: Optional[int] = Field(default=None, ge=0, description="加工特征数（None 自动推断）")
-    session_id: Optional[str] = Field(default=None, description="会话 ID（None 新建）")
+    feature_count: int | None = Field(default=None, ge=0, description="加工特征数（None 自动推断）")
+    session_id: str | None = Field(default=None, description="会话 ID（None 新建）")
 
 
 class ExplainNCRequest(BaseModel):
@@ -59,14 +59,14 @@ class ExplainNCRequest(BaseModel):
     nc_code: str = Field(..., min_length=1, description="NC/G 代码文本")
     controller_type: str = Field(default="fanuc", description="控制器类型（fanuc/siemens/heidenhain 等）")
     user_question: str = Field(default="", description="用户上下文问题")
-    session_id: Optional[str] = Field(default=None, description="会话 ID（None 新建）")
+    session_id: str | None = Field(default=None, description="会话 ID（None 新建）")
 
 
 class ChatRequest(BaseModel):
     """多轮对话请求。"""
 
     message: str = Field(..., min_length=1, description="用户消息")
-    session_id: Optional[str] = Field(default=None, description="会话 ID（None 新建）")
+    session_id: str | None = Field(default=None, description="会话 ID（None 新建）")
 
 
 # =====================================================================

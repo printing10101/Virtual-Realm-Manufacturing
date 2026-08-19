@@ -29,7 +29,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -114,7 +114,7 @@ class RLActRequestModel(BaseModel):
         default=OptimizationTarget.BALANCE,
         description=f"优化目标（{OptimizationTarget.all()}，默认 balance）",
     )
-    safety_constraints: Optional[SafetyConstraintsModel] = Field(
+    safety_constraints: SafetyConstraintsModel | None = Field(
         default=None,
         description="安全约束规格（为空则使用默认值）",
     )
@@ -138,7 +138,7 @@ class TrainingStartRequestModel(BaseModel):
         le=1_000_000,
         description="最大训练步数（1000 ~ 1000000，默认 100000）",
     )
-    seed: Optional[int] = Field(
+    seed: int | None = Field(
         default=None,
         ge=0,
         le=2**31 - 1,
@@ -225,7 +225,7 @@ def _handle_service_exception(e: Exception, *, action: str):
 @router.get("/versions")
 async def list_versions(
     active_only: bool = Query(False, description="为 true 时仅返回当前激活版本"),
-    algorithm: Optional[str] = Query(
+    algorithm: str | None = Query(
         None,
         description=f"按策略算法过滤（{PolicyAlgorithm.all()}）",
     ),

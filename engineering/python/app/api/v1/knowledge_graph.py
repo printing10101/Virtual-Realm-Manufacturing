@@ -27,7 +27,7 @@
 import logging
 import re
 import threading
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -46,7 +46,7 @@ router = APIRouter(prefix="/knowledge-graph", tags=["knowledge-graph"])
 # ---------------------------------------------------------------------------
 
 
-_query_api_singleton: Optional[KnowledgeGraphQueryAPI] = None
+_query_api_singleton: KnowledgeGraphQueryAPI | None = None
 _query_api_lock = threading.Lock()
 _warmup_started = False
 _warmup_lock = threading.Lock()
@@ -206,8 +206,8 @@ def get_node(node_id: str) -> dict[str, Any]:
 
 @router.get("/nodes", dependencies=[Depends(require_permission("kg:read"))])
 def list_nodes(
-    type: Optional[str] = Query(None, description="节点类型，如 material / tool"),
-    pattern: Optional[str] = Query(None, description="ID 通配符（%/_)"),
+    type: str | None = Query(None, description="节点类型，如 material / tool"),
+    pattern: str | None = Query(None, description="ID 通配符（%/_)"),
     limit: int = Query(200, ge=1, le=2000),
 ) -> dict[str, Any]:
     """列出/搜索节点。"""
@@ -228,9 +228,9 @@ def list_nodes(
 
 @router.get("/edges", dependencies=[Depends(require_permission("kg:read"))])
 def list_edges(
-    edge_type: Optional[str] = Query(None, description="关系类型，如 SUITABLE_FOR"),
-    source_id: Optional[str] = Query(None, description="源节点 ID"),
-    target_id: Optional[str] = Query(None, description="目标节点 ID"),
+    edge_type: str | None = Query(None, description="关系类型，如 SUITABLE_FOR"),
+    source_id: str | None = Query(None, description="源节点 ID"),
+    target_id: str | None = Query(None, description="目标节点 ID"),
     min_confidence: float = Query(0.0, ge=0.0, le=1.0),
     max_confidence: float = Query(1.0, ge=0.0, le=1.0),
     limit: int = Query(200, ge=1, le=5000),

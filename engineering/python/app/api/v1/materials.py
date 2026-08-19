@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -41,26 +41,26 @@ class MaterialCreate(BaseModel):
 
 
 class MaterialUpdate(BaseModel):
-    code: Optional[str] = Field(None, max_length=64, description="物料编码")
-    name: Optional[str] = Field(None, max_length=128, description="名称")
-    spec: Optional[str] = Field(None, max_length=256, description="规格")
-    category: Optional[str] = Field(None, max_length=32, description="分类")
-    quantity: Optional[int] = Field(None, ge=0, description="库存数量")
-    safe_quantity: Optional[int] = Field(None, ge=0, description="安全库存")
-    status: Optional[str] = Field(None, max_length=16, description="状态")
-    location: Optional[str] = Field(None, max_length=64, description="库位")
-    unit: Optional[str] = Field(None, max_length=16, description="单位")
-    supplier: Optional[str] = Field(None, max_length=128, description="供应商")
+    code: str | None = Field(None, max_length=64, description="物料编码")
+    name: str | None = Field(None, max_length=128, description="名称")
+    spec: str | None = Field(None, max_length=256, description="规格")
+    category: str | None = Field(None, max_length=32, description="分类")
+    quantity: int | None = Field(None, ge=0, description="库存数量")
+    safe_quantity: int | None = Field(None, ge=0, description="安全库存")
+    status: str | None = Field(None, max_length=16, description="状态")
+    location: str | None = Field(None, max_length=64, description="库位")
+    unit: str | None = Field(None, max_length=16, description="单位")
+    supplier: str | None = Field(None, max_length=128, description="供应商")
 
 
 class StockInRequest(BaseModel):
     quantity: int = Field(..., gt=0, le=100000, description="入库数量")
-    remark: Optional[str] = Field(None, max_length=200, description="入库备注")
+    remark: str | None = Field(None, max_length=200, description="入库备注")
 
 
 class PurchaseRequest(BaseModel):
     quantity: int = Field(..., gt=0, le=100000, description="采购数量")
-    supplier: Optional[str] = Field(None, max_length=128, description="供应商")
+    supplier: str | None = Field(None, max_length=128, description="供应商")
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +70,9 @@ class PurchaseRequest(BaseModel):
 
 @router.get("/")
 async def list_materials(
-    category: Optional[str] = Query(None, description="按分类筛选"),
-    status: Optional[str] = Query(None, description="按状态筛选"),
-    keyword: Optional[str] = Query(None, description="搜索名称或编码"),
+    category: str | None = Query(None, description="按分类筛选"),
+    status: str | None = Query(None, description="按状态筛选"),
+    keyword: str | None = Query(None, description="搜索名称或编码"),
     page: int = Query(1, ge=1, le=500, description="页码（从 1 开始）"),
     page_size: int = Query(50, ge=1, le=100, description="每页条数（最大 500）"),
 ):

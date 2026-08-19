@@ -9,7 +9,7 @@ import time
 import uuid
 import logging
 import threading
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -58,10 +58,10 @@ class GoalCreateRequest(BaseModel):
         default="not_started",
         description="目标状态: not_started/in_progress/completed/cancelled",
     )
-    id: Optional[str] = Field(default=None, description="目标ID（不传则自动生成）")
+    id: str | None = Field(default=None, description="目标ID（不传则自动生成）")
     name: str = Field(default="", description="目标名称")
     description: str = Field(default="", description="目标描述")
-    parent_id: Optional[str] = Field(default=None, description="父目标ID（非 mission 必填）")
+    parent_id: str | None = Field(default=None, description="父目标ID（非 mission 必填）")
 
 
 class _AlignmentCheckerHolder:
@@ -74,7 +74,7 @@ class _AlignmentCheckerHolder:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._instance: Optional[GoalAlignmentChecker] = None
+        self._instance: GoalAlignmentChecker | None = None
 
     def get(self) -> GoalAlignmentChecker:
         """获取（或懒创建）单例实例。"""
@@ -106,7 +106,7 @@ def get_alignment_checker() -> GoalAlignmentChecker:
     return _holder.get()
 
 
-def set_alignment_checker(checker: Optional[GoalAlignmentChecker]) -> None:
+def set_alignment_checker(checker: GoalAlignmentChecker | None) -> None:
     """显式注入 :class:`GoalAlignmentChecker` 实例（用于测试或启动期初始化）。
 
     传入 ``None`` 等价于 :func:`reset_alignment_checker`。
@@ -132,7 +132,7 @@ async def get_goal_tree():
 
 @router.get("/goals")
 async def list_goals(
-    level: Optional[str] = Query(None, description="Filter by level: mission/strategic_goal/project/task"),
+    level: str | None = Query(None, description="Filter by level: mission/strategic_goal/project/task"),
 ):
     store = get_goal_chain_store()
     lvl = GoalLevel(level) if level else None

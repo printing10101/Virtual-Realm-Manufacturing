@@ -6,7 +6,7 @@ task board, and checkout queue processing.
 """
 
 import logging
-from typing import Optional, Union
+from typing import Union
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, Field
@@ -50,9 +50,9 @@ class RegisterTaskRequest(BaseModel):
     description: str = Field(default="", description="任务描述")
     task_type: str = Field(default="execution", description="任务类型")
     status: str = Field(default="pending", description="任务状态")
-    assigned_to: Optional[str] = Field(default=None, description="指派给")
-    parent_goal_id: Optional[str] = Field(default=None, description="父目标 ID")
-    project_id: Optional[str] = Field(default=None, description="项目 ID")
+    assigned_to: str | None = Field(default=None, description="指派给")
+    parent_goal_id: str | None = Field(default=None, description="父目标 ID")
+    project_id: str | None = Field(default=None, description="项目 ID")
     required_gpu_memory: float = Field(default=0.0, description="所需 GPU 显存")
     blockers: Union[list[str], str] = Field(default_factory=list, description="阻塞依赖（列表或 JSON 字符串）")
     priority: int = Field(default=3, ge=1, le=5, description="优先级 1-5")

@@ -8,7 +8,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import StreamingResponse
@@ -54,7 +54,7 @@ router = APIRouter()
 _active_batch_tasks: set[asyncio.Task] = set()
 
 
-def _validate_predict_request(body: LNNPredictRequest, model_info) -> Optional[dict]:
+def _validate_predict_request(body: LNNPredictRequest, model_info) -> dict | None:
     """校验 predict 请求参数；返回错误响应或 None。
 
     检查项：input_data 非空、元素为数值类型、维度与模型期望一致或为其整数倍。
@@ -304,7 +304,7 @@ async def predict_lnn(request: Request, body: LNNPredictRequest):
 async def batch_inference(
     request: Request,
     body: LNNBatchInferenceRequest,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """异步启动批量推理,立即返回 job_id。"""
     try:
@@ -402,7 +402,7 @@ def _get_hybrid_engine():
 
 def _build_streaming_predictor(
     model_name: str,
-    config: Optional[LNNStreamingConfig],
+    config: LNNStreamingConfig | None,
 ):
     """从 model_cache 获取 LNNPredictor 并构建 StreamingPredictor。
 
@@ -471,7 +471,7 @@ def _inference_result_to_dict(result) -> dict:
     }
 
 
-def _validate_streaming_frames(frames: list) -> Optional[str]:
+def _validate_streaming_frames(frames: list) -> str | None:
     """校验流式推理的帧序列数据，返回错误消息或 None。
 
     Args:

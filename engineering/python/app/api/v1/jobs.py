@@ -7,7 +7,7 @@ and real-time SSE event streaming.
 
 import asyncio
 import logging
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -38,8 +38,8 @@ class CreateJobRequest(BaseModel):
 
     task_type: str = Field(..., description="任务类型（lnn_training/lnn_inference/data_processing 等）")
     params: dict = Field(default_factory=dict, description="任务参数")
-    name: Optional[str] = Field(None, max_length=128, description="任务名称（并入 params.name）")
-    idempotency_key: Optional[str] = Field(None, max_length=128, description="幂等键")
+    name: str | None = Field(None, max_length=128, description="任务名称（并入 params.name）")
+    idempotency_key: str | None = Field(None, max_length=128, description="幂等键")
 
 
 @router.post("", dependencies=[Depends(require_permission("job:manage"))])
@@ -168,9 +168,9 @@ async def delete_job(job_id: str):
 
 @router.get("")
 async def list_jobs(
-    task_type: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-    owner_id: Optional[str] = Query(None),
+    task_type: str | None = Query(None),
+    status: str | None = Query(None),
+    owner_id: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):

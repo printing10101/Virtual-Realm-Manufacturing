@@ -7,7 +7,7 @@ version management, and skill marketplace operations.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -36,7 +36,7 @@ class SkillContentRequest(BaseModel):
     skill_id: str = Field(..., description="技能唯一标识符")
     content: str = Field(..., description="技能 Markdown 完整内容")
     level: str = Field(default="project", description="技能层级: global/project/agent")
-    sub_id: Optional[str] = Field(default=None, description="项目ID或代理ID")
+    sub_id: str | None = Field(default=None, description="项目ID或代理ID")
 
 
 class SkillExportRequest(BaseModel):
@@ -44,9 +44,9 @@ class SkillExportRequest(BaseModel):
 
 
 class SkillImportRequest(BaseModel):
-    skill_package: Dict[str, Any] = Field(..., description="技能包数据")
+    skill_package: dict[str, Any] = Field(..., description="技能包数据")
     level: str = Field(default="project", description="导入层级")
-    sub_id: Optional[str] = Field(default=None, description="项目ID或代理ID")
+    sub_id: str | None = Field(default=None, description="项目ID或代理ID")
 
 
 class SkillRatingRequest(BaseModel):
@@ -62,7 +62,7 @@ class SkillPublishRequest(BaseModel):
 class SkillDownloadRequest(BaseModel):
     skill_id: str = Field(..., description="技能ID")
     target_level: str = Field(default="project", description="目标层级")
-    target_sub_id: Optional[str] = Field(default=None, description="目标项目/代理ID")
+    target_sub_id: str | None = Field(default=None, description="目标项目/代理ID")
 
 
 class SkillMarketplaceRateRequest(BaseModel):
@@ -86,10 +86,10 @@ def _parse_level(level_str: str) -> SkillLevel:
 
 @router.get("")
 async def list_skills(
-    level: Optional[str] = Query(None, description="按层级筛选: global/project/agent"),
-    project_id: Optional[str] = Query(None, description="项目ID"),
-    agent_id: Optional[str] = Query(None, description="代理ID"),
-    task_type: Optional[str] = Query(None, description="任务类型"),
+    level: str | None = Query(None, description="按层级筛选: global/project/agent"),
+    project_id: str | None = Query(None, description="项目ID"),
+    agent_id: str | None = Query(None, description="代理ID"),
+    task_type: str | None = Query(None, description="任务类型"),
 ):
     try:
         loader = get_skill_loader()
@@ -262,7 +262,7 @@ async def get_skill(skill_id: str):
 
 
 @router.post("/reload", dependencies=[Depends(require_permission("skills:write"))])
-async def reload_skills(skill_id: Optional[str] = None):
+async def reload_skills(skill_id: str | None = None):
     try:
         loader = get_skill_loader()
         result = loader.hot_reload(skill_id)
@@ -372,9 +372,9 @@ async def rate_skill(request: SkillRatingRequest):
 @router.post("/inject", dependencies=[Depends(require_permission("skills:write"))])
 async def inject_skills_endpoint(
     task_type: str = Query(..., description="任务类型"),
-    project_id: Optional[str] = Query(None, description="项目ID"),
-    agent_id: Optional[str] = Query(None, description="代理ID"),
-    available_context: Optional[List[str]] = Query(None, description="可用上下文键列表"),
+    project_id: str | None = Query(None, description="项目ID"),
+    agent_id: str | None = Query(None, description="代理ID"),
+    available_context: list[str] | None = Query(None, description="可用上下文键列表"),
 ):
     try:
         ctx_set = set(available_context) if available_context else set()
@@ -397,7 +397,7 @@ async def inject_skills_endpoint(
 
 
 @router.get("/marketplace/list")
-async def marketplace_list(tag: Optional[str] = Query(None, description="按标签筛选")):
+async def marketplace_list(tag: str | None = Query(None, description="按标签筛选")):
     try:
         marketplace = get_marketplace()
         items = marketplace.list_available(tag)

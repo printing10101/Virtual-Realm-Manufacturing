@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
@@ -87,11 +87,11 @@ def _dialect_market_entry(dialect_id: str) -> dict:
     }
 
 
-def _scan_dialect_plugins() -> List[dict]:
+def _scan_dialect_plugins() -> list[dict]:
     """扫描本地方言插件目录，返回方言插件市场条目。"""
     if not _DIALECT_PLUGIN_DIR.is_dir():
         return []
-    entries: List[dict] = []
+    entries: list[dict] = []
     for child in sorted(_DIALECT_PLUGIN_DIR.iterdir()):
         if not child.is_dir() or child.name.startswith("_"):
             continue
@@ -103,8 +103,8 @@ def _scan_dialect_plugins() -> List[dict]:
 
 @router.get("/marketplace")
 def list_marketplace_plugins(
-    query: Optional[str] = Query(None, description="Search query"),
-    plugin_type: Optional[str] = Query(None, description="Filter by type"),
+    query: str | None = Query(None, description="Search query"),
+    plugin_type: str | None = Query(None, description="Filter by type"),
     page: int = Query(1, ge=1, le=500),
     page_size: int = Query(20, ge=1, le=100),
 ):
@@ -123,13 +123,13 @@ def list_marketplace_plugins(
         logger.error("[plugins.marketplace] error_id=%s: %s", safe["error_id"], e, exc_info=True)
         installed = []
 
-    installed_map: Dict[str, dict] = {}
+    installed_map: dict[str, dict] = {}
     for p in installed:
         d = p.to_dict()
         d["installed"] = True
         installed_map[d["id"]] = d
 
-    entries: List[dict] = []
+    entries: list[dict] = []
 
     # 1. 已注册插件（真实）
     entries.extend(sorted(installed_map.values(), key=lambda x: x["id"]))
@@ -206,9 +206,9 @@ def install_marketplace_plugin(plugin_id: str):
 
 @router.get("")
 def list_installed_plugins(
-    status: Optional[str] = Query(None, description="Filter by status"),
-    plugin_type: Optional[str] = Query(None, description="Filter by type"),
-    capability: Optional[str] = Query(None, description="Filter by capability"),
+    status: str | None = Query(None, description="Filter by status"),
+    plugin_type: str | None = Query(None, description="Filter by type"),
+    capability: str | None = Query(None, description="Filter by capability"),
 ):
     try:
         manager = get_plugin_manager()
@@ -354,7 +354,7 @@ def uninstall_plugin(plugin_id: str):
 @router.put("/{plugin_id}/config")
 def update_plugin_config(
     plugin_id: str,
-    config: Dict[str, Any],
+    config: dict[str, Any],
     _perm: None = Depends(require_permission("plugin:config:update")),
 ):
     # 修复 [B22]：原端点无认证 + 弱验证，任意未登录调用方可修改任意插件配置。
@@ -406,7 +406,7 @@ def get_plugin_dependencies(plugin_id: str):
 @router.get("/{plugin_id}/logs")
 def get_plugin_logs(
     plugin_id: str,
-    level: Optional[str] = Query(None, description="Filter by log level"),
+    level: str | None = Query(None, description="Filter by log level"),
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
@@ -442,9 +442,9 @@ def get_plugin_capabilities(plugin_id: str):
 def update_capability_grant(
     plugin_id: str,
     capability: str,
-    file_rules: Optional[List[Dict]] = None,
-    network_rules: Optional[List[Dict]] = None,
-    gpu_limits: Optional[Dict] = None,
+    file_rules: list[dict] | None = None,
+    network_rules: list[dict] | None = None,
+    gpu_limits: dict | None = None,
     _perm: None = Depends(require_permission("plugin:capability:manage")),
 ):
     # 修复 [B21]：原端点无认证，任意未登录调用方可修改插件能力授权规则。
@@ -527,7 +527,7 @@ def stop_worker(plugin_id: str):
 
 
 @router.get("/health")
-def health_check(plugin_id: Optional[str] = None):
+def health_check(plugin_id: str | None = None):
     try:
         worker_mgr = PluginWorkerManager.get_instance()
         results = worker_mgr.health_check(plugin_id)

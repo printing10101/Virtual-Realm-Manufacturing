@@ -6,7 +6,7 @@ Endpoints for approval workflow, risk assessment, emergency override, and govern
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
+
 import logging
 import re
 import time
@@ -38,8 +38,8 @@ router = APIRouter(
 
 @router.get("/approval-requests")
 async def list_approval_requests(
-    status: Optional[str] = Query(None, description="筛选状态: pending/under_review/approved/rejected/escalated"),
-    requester: Optional[str] = Query(None, description="请求人"),
+    status: str | None = Query(None, description="筛选状态: pending/under_review/approved/rejected/escalated"),
+    requester: str | None = Query(None, description="请求人"),
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10000),
 ):
@@ -136,7 +136,7 @@ async def create_approval_request(data: CreateApprovalRequest):
 class AssignApproverRequest(BaseModel):
     """指派审批人请求模型。"""
 
-    approver_id: Optional[str] = Field(default=None, description="审批人 ID")
+    approver_id: str | None = Field(default=None, description="审批人 ID")
 
 
 @router.post("/approval-requests/{request_id}/assign", dependencies=[Depends(require_permission("governance:write"))])
@@ -255,7 +255,7 @@ async def get_approval_dashboard():
 class AssessRiskRequest(BaseModel):
     """风险评估请求模型。"""
 
-    operation_id: Optional[str] = Field(default=None, description="操作 ID（None 自动生成）")
+    operation_id: str | None = Field(default=None, description="操作 ID（None 自动生成）")
     # P2-批次2 修复：operation_type 添加正则约束，防止空字符串/注入特殊字符。
     # 使用 pattern 而非 Literal，因为 risk_identifier 基于关键字子串匹配。
     operation_type: str = Field(
@@ -350,7 +350,7 @@ async def emergency_override(request: EmergencyOverrideRequest):
 class CompleteRetroactiveRequest(BaseModel):
     """完成事后审批请求模型。"""
 
-    emergency_id: Optional[str] = Field(default=None, description="紧急操作 ID")
+    emergency_id: str | None = Field(default=None, description="紧急操作 ID")
 
 
 @router.post("/emergency-retroactive-approval", dependencies=[Depends(require_permission("governance:write"))])
@@ -434,8 +434,8 @@ async def get_governance_report(
 @router.get("/audit-log/export")
 async def export_audit_log(
     format: str = Query("json", description="导出格式: json/csv"),
-    start_time: Optional[float] = Query(None, description="起始时间"),
-    end_time: Optional[float] = Query(None, description="结束时间"),
+    start_time: float | None = Query(None, description="起始时间"),
+    end_time: float | None = Query(None, description="结束时间"),
 ):
     engine = get_approval_engine()
 

@@ -23,7 +23,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -83,7 +83,7 @@ class WorldModelPredictRequest(BaseModel):
         max_length=256,
         description="世界模型 URI",
     )
-    unified_state: Optional[dict[str, Any]] = Field(
+    unified_state: dict[str, Any] | None = Field(
         default=None,
         description=(
             "ADR-020 思路 1 融合模式可选输入。包含几何特征（ADR-007）与"

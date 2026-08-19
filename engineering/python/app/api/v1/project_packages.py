@@ -33,7 +33,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from typing import Optional
+
 
 from app.utils.time import utcnow
 
@@ -571,12 +571,12 @@ async def preview_import(
 
 @router.get("/exports")
 async def list_exports(
-    project_id: Optional[str] = Query(None, description="按项目 ID 过滤"),
-    status: Optional[str] = Query(
+    project_id: str | None = Query(None, description="按项目 ID 过滤"),
+    status: str | None = Query(
         None,
         description=f"按状态过滤（{PackageTaskStatus.all()}）",
     ),
-    exported_by: Optional[str] = Query(None, description="按导出者过滤"),
+    exported_by: str | None = Query(None, description="按导出者过滤"),
     limit: int = Query(50, ge=1, le=500, description="每页数量（1-500，默认 50）"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):
@@ -724,12 +724,12 @@ async def delete_export(export_id: str):
 
 @router.get("/imports")
 async def list_imports(
-    target_project_id: Optional[str] = Query(None, description="按目标项目 ID 过滤"),
-    status: Optional[str] = Query(
+    target_project_id: str | None = Query(None, description="按目标项目 ID 过滤"),
+    status: str | None = Query(
         None,
         description=f"按状态过滤（{PackageTaskStatus.all()}）",
     ),
-    imported_by: Optional[str] = Query(None, description="按导入者过滤"),
+    imported_by: str | None = Query(None, description="按导入者过滤"),
     limit: int = Query(50, ge=1, le=500, description="每页数量（1-500，默认 50）"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):

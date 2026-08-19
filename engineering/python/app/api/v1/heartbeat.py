@@ -6,7 +6,7 @@ and execution monitoring.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -37,8 +37,8 @@ class CreateScheduledTaskRequest(BaseModel):
         description="任务类型（lnn_inference/lnn_training/lnn_analysis）",
         min_length=1,
     )
-    params: Dict[str, Any] = Field(default={}, description="任务参数")
-    metadata: Dict[str, Any] = Field(default={}, description="任务元数据")
+    params: dict[str, Any] = Field(default={}, description="任务参数")
+    metadata: dict[str, Any] = Field(default={}, description="任务元数据")
     max_retries: int = Field(default=3, description="最大重试次数", ge=0, le=10)
 
 
@@ -50,12 +50,12 @@ class TaskResponse(BaseModel):
     schedule: str
     task_type: str
     status: str
-    last_run: Optional[float] = None
-    next_run: Optional[float] = None
+    last_run: float | None = None
+    next_run: float | None = None
     retry_count: int = 0
     max_retries: int = 3
-    params: Dict[str, Any] = {}
-    metadata: Dict[str, Any] = {}
+    params: dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class BudgetCheckResponse(BaseModel):
@@ -63,9 +63,9 @@ class BudgetCheckResponse(BaseModel):
 
     passed: bool
     status: str
-    usages: List[Dict[str, Any]] = []
-    warnings: List[str] = []
-    blocked_reasons: List[str] = []
+    usages: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    blocked_reasons: list[str] = []
 
 
 class ExecutionResultResponse(BaseModel):
@@ -74,9 +74,9 @@ class ExecutionResultResponse(BaseModel):
     task_id: str
     status: str
     duration_ms: float
-    result_data: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
-    resource_usage: Dict[str, Any] = {}
+    result_data: dict[str, Any] | None = None
+    error_message: str | None = None
+    resource_usage: dict[str, Any] = {}
 
 
 @router.post("/tasks", response_model=TaskResponse, dependencies=[Depends(require_permission("heartbeat:write"))])
@@ -144,8 +144,8 @@ async def get_scheduled_task(task_id: str):
     )
 
 
-@router.get("/tasks", response_model=List[TaskResponse])
-async def list_scheduled_tasks(agent_id: Optional[str] = None, status: Optional[str] = None):
+@router.get("/tasks", response_model=list[TaskResponse])
+async def list_scheduled_tasks(agent_id: str | None = None, status: str | None = None):
     """列出所有调度任务"""
     from app.dependencies import get_scheduler
     from app.heartbeat.heartbeat import ScheduleStatus
@@ -264,7 +264,7 @@ async def check_budget(agent_id: str):
 
 
 @router.get("/budget/notifications")
-async def get_budget_notifications(agent_id: Optional[str] = None, limit: int = Query(50, ge=1, le=100)):
+async def get_budget_notifications(agent_id: str | None = None, limit: int = Query(50, ge=1, le=100)):
     """获取预算通知"""
     budget_manager = get_budget_manager()
     notifications = budget_manager.get_notifications(agent_id, limit)

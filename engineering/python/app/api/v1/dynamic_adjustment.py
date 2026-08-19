@@ -18,7 +18,7 @@
 # 解析失败（PydanticUndefinedAnnotation: name 'X' is not defined），详见运维手册。
 
 import logging
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -67,17 +67,17 @@ class CurrentParametersRequest(BaseModel):
     feed_rate: float = Field(..., gt=0.0, description="每转进给 (mm/rev)")
     depth_of_cut: float = Field(..., gt=0.0, description="轴向切深 ap (mm)")
     width_of_cut: float = Field(default=0.0, ge=0.0, description="径向切深 ae (mm)")
-    spindle_rpm: Optional[float] = Field(default=None, ge=0.0, description="主轴转速 (RPM, None 时由切削速度反算)")
+    spindle_rpm: float | None = Field(default=None, ge=0.0, description="主轴转速 (RPM, None 时由切削速度反算)")
     coolant_flow: float = Field(default=10.0, ge=0.0, description="冷却液流量 (L/min)")
 
 
 class MachineCapabilities(BaseModel):
     """机床能力上限。"""
 
-    max_spindle_speed: Optional[float] = Field(default=None, ge=0.0, description="最大主轴转速 (RPM)")
-    max_feed_rate: Optional[float] = Field(default=None, ge=0.0, description="最大进给速度 (mm/min)")
-    max_power: Optional[float] = Field(default=None, ge=0.0, description="最大功率 (kW)")
-    max_torque: Optional[float] = Field(default=None, ge=0.0, description="最大扭矩 (N·m)")
+    max_spindle_speed: float | None = Field(default=None, ge=0.0, description="最大主轴转速 (RPM)")
+    max_feed_rate: float | None = Field(default=None, ge=0.0, description="最大进给速度 (mm/min)")
+    max_power: float | None = Field(default=None, ge=0.0, description="最大功率 (kW)")
+    max_torque: float | None = Field(default=None, ge=0.0, description="最大扭矩 (N·m)")
 
 
 class CalibrationInput(BaseModel):
@@ -102,14 +102,14 @@ class DecideRequest(BaseModel):
 
     wear: WearStateRequest
     current: CurrentParametersRequest
-    machine_capabilities: Optional[MachineCapabilities] = Field(
+    machine_capabilities: MachineCapabilities | None = Field(
         default=None, description="机床能力上限（None 使用默认）"
     )
     optimization_goal: str = Field(
         default="tool_life",
         description="优化目标：efficiency / tool_life / surface_finish",
     )
-    calibration: Optional[CalibrationInput] = Field(
+    calibration: CalibrationInput | None = Field(
         default=None,
         description=("可选实时校正入参。提供时启用 EWMA 校正闭环，用校正后磨损值驱动决策；未提供时走原始磨损值路径"),
     )
@@ -158,11 +158,11 @@ class ClosedLoopRequest(BaseModel):
     wear: WearStateRequest
     current: CurrentParametersRequest
     nc_code: str = Field(..., min_length=1, description="待改写的 NC/G 代码文本")
-    machine_capabilities: Optional[MachineCapabilities] = Field(default=None)
+    machine_capabilities: MachineCapabilities | None = Field(default=None)
     optimization_goal: str = Field(default="tool_life")
     controller_type: str = Field(default="fanuc")
     apply_to_motion_only: bool = Field(default=True)
-    calibration: Optional[CalibrationInput] = Field(
+    calibration: CalibrationInput | None = Field(
         default=None,
         description=("可选实时校正入参。提供时启用 EWMA 校正闭环，用校正后磨损值驱动决策与 NC 改写"),
     )
@@ -212,8 +212,8 @@ def _to_current_params(req: CurrentParametersRequest) -> CurrentParameters:
 
 
 def _machine_caps_to_dict(
-    caps: Optional[MachineCapabilities],
-) -> Optional[dict[str, float]]:
+    caps: MachineCapabilities | None,
+) -> dict[str, float] | None:
     if caps is None:
         return None
     result: dict[str, float] = {}

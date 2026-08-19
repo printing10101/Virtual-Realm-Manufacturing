@@ -13,7 +13,8 @@ import asyncio
 import functools
 import logging
 from pathlib import Path
-from typing import Any, Callable, Coroutine
+from typing import Any
+from collections.abc import Callable, Coroutine
 
 from fastapi.responses import FileResponse, JSONResponse
 

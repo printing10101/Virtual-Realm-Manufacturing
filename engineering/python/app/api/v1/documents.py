@@ -4,7 +4,7 @@
 提供文档的 CRUD、分类统计、关键词搜索及演示数据填充功能。
 """
 
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -24,19 +24,19 @@ class DocumentCreate(BaseModel):
     category: str
     version: str = "v1.0"
     author: str
-    content: Optional[str] = None
+    content: str | None = None
     tags: list[str] = []
     status: str = "待审核"
 
 
 class DocumentUpdate(BaseModel):
-    title: Optional[str] = None
-    category: Optional[str] = None
-    version: Optional[str] = None
-    author: Optional[str] = None
-    content: Optional[str] = None
-    tags: Optional[list[str]] = None
-    status: Optional[str] = None
+    title: str | None = None
+    category: str | None = None
+    version: str | None = None
+    author: str | None = None
+    content: str | None = None
+    tags: list[str] | None = None
+    status: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -52,9 +52,9 @@ router = APIRouter(
 
 @router.get("/")
 async def list_documents(
-    category: Optional[str] = Query(None, description="分类筛选"),
-    status: Optional[str] = Query(None, description="状态筛选"),
-    keyword: Optional[str] = Query(None, description="关键词搜索"),
+    category: str | None = Query(None, description="分类筛选"),
+    status: str | None = Query(None, description="状态筛选"),
+    keyword: str | None = Query(None, description="关键词搜索"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):

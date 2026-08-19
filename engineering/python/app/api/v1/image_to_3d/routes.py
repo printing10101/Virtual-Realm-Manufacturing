@@ -6,7 +6,7 @@ import asyncio
 import logging
 import uuid
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -164,7 +164,7 @@ async def get_precision_info() -> dict[str, Any]:
 )
 async def create_task(
     request: Request,
-    files: List[UploadFile] = File(..., description="多角度照片（手机拍摄）"),
+    files: list[UploadFile] = File(..., description="多角度照片（手机拍摄）"),
     calibration_anchor_distance: float | None = Form(
         default=None,
         description="标定块在无量纲坐标系下距离（可选）",

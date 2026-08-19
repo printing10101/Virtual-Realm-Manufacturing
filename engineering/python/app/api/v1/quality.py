@@ -5,7 +5,7 @@
 """
 
 from datetime import datetime
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -20,13 +20,13 @@ class QualityRecordCreate(BaseModel):
     inspection_type: str
     result: str
     inspector: str
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class QualityAnomalyCreate(BaseModel):
     record_id: str
     anomaly_type: str
-    description: Optional[str] = None
+    description: str | None = None
     severity: str
 
 
@@ -39,18 +39,18 @@ router = APIRouter(prefix="/api/v1/quality", tags=["Quality"])
 
 @router.get("/")
 async def list_quality_records(
-    inspection_type: Optional[str] = Query(None, description="检验类型"),
-    result: Optional[str] = Query(None, description="检验结果"),
-    date_from: Optional[str] = Query(None, description="起始日期 YYYY-MM-DD"),
-    date_to: Optional[str] = Query(None, description="结束日期 YYYY-MM-DD"),
+    inspection_type: str | None = Query(None, description="检验类型"),
+    result: str | None = Query(None, description="检验结果"),
+    date_from: str | None = Query(None, description="起始日期 YYYY-MM-DD"),
+    date_to: str | None = Query(None, description="结束日期 YYYY-MM-DD"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     """获取质量检验记录列表，支持按类型、结果、日期范围筛选。"""
     # 日期解析保留在路由层：原实现在此处返回 ErrorCode.INVALID_REQUEST，
     # 该枚举值为预存不一致（response.py 未定义），按"API 行为完全不变"约束保持原样。
-    dt_from: Optional[datetime] = None
-    dt_to: Optional[datetime] = None
+    dt_from: datetime | None = None
+    dt_to: datetime | None = None
     if date_from:
         try:
             dt_from = datetime.strptime(date_from, "%Y-%m-%d")
@@ -111,8 +111,8 @@ async def get_quality_stats():
 
 @router.get("/anomalies/")
 async def list_anomalies(
-    anomaly_type: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
+    anomaly_type: str | None = Query(None),
+    status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):

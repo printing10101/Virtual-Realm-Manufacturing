@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -146,9 +146,9 @@ async def publish_template(request: PublishRequestModel):
 
 @router.get("")
 async def list_templates(
-    category: Optional[str] = Query(None, description="分类过滤"),
-    tag: Optional[str] = Query(None, description="标签过滤（精确匹配）"),
-    author: Optional[str] = Query(None, description="作者过滤"),
+    category: str | None = Query(None, description="分类过滤"),
+    tag: str | None = Query(None, description="标签过滤（精确匹配）"),
+    author: str | None = Query(None, description="作者过滤"),
     limit: int = Query(50, ge=1, le=100, description="每页数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
     sort_by: str = Query(
@@ -233,7 +233,7 @@ async def market_stats():
 @router.get("/{template_id}")
 async def get_template(
     template_id: str,
-    version: Optional[str] = Query(None, description="版本号（None 表示最新版本）"),
+    version: str | None = Query(None, description="版本号（None 表示最新版本）"),
 ):
     """获取模板详情（含指定版本的 manifest + spec）."""
     service = get_workflow_template_service()
@@ -280,7 +280,7 @@ async def list_versions(template_id: str):
 @router.get("/{template_id}/download")
 async def download_template(
     template_id: str,
-    version: Optional[str] = Query(None, description="版本号（None 表示最新版本）"),
+    version: str | None = Query(None, description="版本号（None 表示最新版本）"),
 ):
     """下载模板（自增下载计数，返回完整 manifest + spec）."""
     service = get_workflow_template_service()

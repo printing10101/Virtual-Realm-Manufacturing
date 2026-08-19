@@ -5,7 +5,7 @@ import time
 import asyncio
 import uuid
 import logging
-from typing import Callable
+from collections.abc import Callable
 from datetime import timezone
 
 

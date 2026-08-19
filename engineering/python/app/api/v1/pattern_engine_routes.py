@@ -1,7 +1,7 @@
 """Pattern Engine API Routes."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -23,14 +23,14 @@ router = APIRouter(
 class ExecutionRecordRequest(BaseModel):
     task_id: str = Field(..., description="Task ID")
     branch_id: str = Field(..., description="Branch ID")
-    elements: Dict[str, Any] = Field(default_factory=dict, description="Execution elements")
-    conditions: Dict[str, Any] = Field(default_factory=dict, description="Execution conditions")
-    metrics: Dict[str, Any] = Field(default_factory=dict, description="Execution metrics")
+    elements: dict[str, Any] = Field(default_factory=dict, description="Execution elements")
+    conditions: dict[str, Any] = Field(default_factory=dict, description="Execution conditions")
+    metrics: dict[str, Any] = Field(default_factory=dict, description="Execution metrics")
 
 
 @router.get("")
 def list_patterns(
-    pattern_type: Optional[str] = None,
+    pattern_type: str | None = None,
 ):
     """List all discovered patterns."""
     engine = get_pattern_engine()

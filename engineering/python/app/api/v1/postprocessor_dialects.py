@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ router = APIRouter(
 )
 
 # 内置方言（引擎自带，非声明镜像）
-BUILTIN_DIALECTS: List[Dict[str, Any]] = [
+BUILTIN_DIALECTS: list[dict[str, Any]] = [
     {
         "id": "fanuc_0i",
         "name": "Fanuc 0i-MF",
@@ -85,7 +85,7 @@ def _default_plugin_root() -> Path:
 
 def _declaration_to_dict(
     decl: DialectDeclaration, source: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """声明 → 公开字典。"""
     return {
         "id": decl.id,
@@ -102,7 +102,7 @@ def _declaration_to_dict(
 
 
 @router.get("")
-def list_dialects() -> Dict[str, Any]:
+def list_dialects() -> dict[str, Any]:
     """列出所有方言（内置 + 声明镜像）。
 
     内置方言来自引擎（fanuc/siemens/heidenhain/xmachine）；
@@ -113,7 +113,7 @@ def list_dialects() -> Dict[str, Any]:
     found = registry.discover()
     registry.compile_all()
 
-    entries: List[Dict[str, Any]] = list(BUILTIN_DIALECTS)
+    entries: list[dict[str, Any]] = list(BUILTIN_DIALECTS)
     for dialect_id in found:
         decl = registry.get_declaration(dialect_id)
         if decl is not None:
@@ -133,7 +133,7 @@ def list_dialects() -> Dict[str, Any]:
 
 
 @router.get("/{dialect_id}")
-def get_dialect_detail(dialect_id: str) -> Dict[str, Any]:
+def get_dialect_detail(dialect_id: str) -> dict[str, Any]:
     """方言详情：声明 + 模板方法列表 + 编译状态。"""
     # 内置方言
     for entry in BUILTIN_DIALECTS:
@@ -174,7 +174,7 @@ class TemplateReadRequest(BaseModel):
 
 
 @router.post("/template")
-def read_template(req: TemplateReadRequest) -> Dict[str, Any]:
+def read_template(req: TemplateReadRequest) -> dict[str, Any]:
     """读取方言模板文件内容（工艺员编辑模板用）。"""
     if req.method not in ALLOWED_TEMPLATE_METHODS:
         return error(
@@ -225,7 +225,7 @@ class PreviewRequest(BaseModel):
 
 
 @router.post("/preview", dependencies=[Depends(require_permission("postprocessor:read"))])
-def preview_dialect(req: PreviewRequest) -> Dict[str, Any]:
+def preview_dialect(req: PreviewRequest) -> dict[str, Any]:
     """NC 输出预览：给定样例刀路输入，渲染方言完整 NC 输出。
 
     样例序列与 golden 测试的标准序列一致（header → 换刀 → 补偿 → 冷却 →
@@ -330,7 +330,7 @@ def _validate_dialect_id(dialect_id: str, plugin_root: Path) -> None:
 
 
 @router.post("", dependencies=[Depends(require_permission("plugin:config:update"))])
-def create_dialect(req: CreateDialectRequest) -> Dict[str, Any]:
+def create_dialect(req: CreateDialectRequest) -> dict[str, Any]:
     """新建声明式方言：创建目录 + dialect.yaml + 骨架模板。
 
     骨架模板从继承基类的默认实现生成（header/footer 等），工艺员随后在
@@ -490,7 +490,7 @@ def _parametrize_footer(footer_lines: list) -> str:
 
 
 @router.put("/{dialect_id}/template", dependencies=[Depends(require_permission("plugin:config:update"))])
-def save_template(dialect_id: str, req: SaveTemplateRequest) -> Dict[str, Any]:
+def save_template(dialect_id: str, req: SaveTemplateRequest) -> dict[str, Any]:
     """保存方言模板内容（写回模板文件）。
 
     安全约束：
@@ -544,7 +544,7 @@ def save_template(dialect_id: str, req: SaveTemplateRequest) -> Dict[str, Any]:
 
 
 @router.delete("/{dialect_id}", dependencies=[Depends(require_permission("plugin:config:update"))])
-def delete_dialect(dialect_id: str) -> Dict[str, Any]:
+def delete_dialect(dialect_id: str) -> dict[str, Any]:
     """删除声明式方言（仅限 postprocessor-plugins/ 下的非内置方言）。"""
     plugin_root = _default_plugin_root()
     try:
@@ -585,11 +585,11 @@ class SaveParamsRequest(BaseModel):
     """保存方言参数请求。"""
 
     dialect_id: str = Field(..., description="方言 id")
-    params: Dict[str, Any] = Field(default_factory=dict, description="方言自己的参数（覆盖继承值）")
+    params: dict[str, Any] = Field(default_factory=dict, description="方言自己的参数（覆盖继承值）")
 
 
 @router.get("/{dialect_id}/params")
-def get_dialect_params(dialect_id: str) -> Dict[str, Any]:
+def get_dialect_params(dialect_id: str) -> dict[str, Any]:
     """读取方言参数：有效配置（继承链合并）+ 方言自己的参数。
 
     有效配置 = base（postprocessor_config.yaml 的 base 段）深合并方言 params，
@@ -642,7 +642,7 @@ def get_dialect_params(dialect_id: str) -> Dict[str, Any]:
     "/{dialect_id}/params",
     dependencies=[Depends(require_permission("plugin:config:update"))],
 )
-def save_dialect_params(dialect_id: str, req: SaveParamsRequest) -> Dict[str, Any]:
+def save_dialect_params(dialect_id: str, req: SaveParamsRequest) -> dict[str, Any]:
     """保存方言参数：写回 dialect.yaml 的 params 段。
 
     只写方言自己的 params 层（覆盖继承值），base 配置不被修改。

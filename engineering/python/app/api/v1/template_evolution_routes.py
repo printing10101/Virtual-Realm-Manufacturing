@@ -1,7 +1,7 @@
 """Template Evolution API Routes."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -20,13 +20,13 @@ router = APIRouter(
 
 
 class MetricsUpdateRequest(BaseModel):
-    metrics: Dict[str, Any] = Field(..., description="Metrics data")
+    metrics: dict[str, Any] = Field(..., description="Metrics data")
 
 
 class CreateSuggestionRequest(BaseModel):
     trigger_type: str = Field(..., description="Trigger type")
-    evidence: Dict[str, Any] = Field(..., description="Evidence data")
-    proposed_change: Dict[str, Any] = Field(..., description="Proposed change")
+    evidence: dict[str, Any] = Field(..., description="Evidence data")
+    proposed_change: dict[str, Any] = Field(..., description="Proposed change")
 
 
 class ApplySuggestionRequest(BaseModel):
@@ -35,7 +35,7 @@ class ApplySuggestionRequest(BaseModel):
 
 
 @router.get("/suggestions")
-def list_suggestions(status_filter: Optional[str] = None):
+def list_suggestions(status_filter: str | None = None):
     """List evolution suggestions."""
     engine = get_evolution_engine()
     suggestions = engine.list_suggestions(status_filter=status_filter)
@@ -86,7 +86,7 @@ def evaluate_triggers():
 
 
 @router.get("/history")
-def get_history(branch_id: Optional[str] = None):
+def get_history(branch_id: str | None = None):
     """Get evolution history."""
     engine = get_evolution_engine()
     history = engine.get_evolution_history(branch_id=branch_id)

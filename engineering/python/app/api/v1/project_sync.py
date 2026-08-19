@@ -30,7 +30,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -209,10 +209,10 @@ async def create_project(request: CreateProjectRequest):
 
 @router.get("/projects")
 async def list_projects(
-    status_filter: Optional[str] = Query(
+    status_filter: str | None = Query(
         None, alias="status", description="按状态过滤（clean/dirty/ahead/behind/conflict/error）"
     ),
-    author: Optional[str] = Query(None, description="按作者过滤"),
+    author: str | None = Query(None, description="按作者过滤"),
     limit: int = Query(50, ge=1, le=200, description="每页数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):
@@ -417,7 +417,7 @@ async def add_resource_ref(project_id: str, request: AddResourceRequest):
 @router.get("/projects/{project_id}/resources")
 async def list_resource_refs(
     project_id: str,
-    resource_type: Optional[str] = Query(
+    resource_type: str | None = Query(
         None, description="按资源类型过滤（dataset/model/workflow/config/snapshot/template）"
     ),
 ):
@@ -464,7 +464,7 @@ async def remove_resource_ref(
 @router.get("/projects/{project_id}/records")
 async def list_sync_records(
     project_id: str,
-    direction: Optional[str] = Query(None, description="按同步方向过滤（init/commit/push/pull/clone）"),
+    direction: str | None = Query(None, description="按同步方向过滤（init/commit/push/pull/clone）"),
     limit: int = Query(50, ge=1, le=200, description="每页数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
 ):

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, Query
@@ -85,8 +85,8 @@ class CommitVersionRequest(BaseModel):
     """
 
     records: list[dict[str, Any]] = Field(default_factory=list)
-    version: Optional[str] = None  # None 自动递增 patch
-    lineage: Optional["LineageModel"] = None
+    version: str | None = None  # None 自动递增 patch
+    lineage: "LineageModel" | None = None
 
 
 class LineageModel(BaseModel):
@@ -174,14 +174,14 @@ def _lineage_to_dict(rec: LineageRecord) -> dict[str, Any]:
 
 @router.get("")
 async def list_datasets(
-    owner_id: Optional[str] = Query(None, description="按 owner 过滤"),
-    status: Optional[str] = Query(None, description="按状态过滤: draft/published/deprecated/archived"),
+    owner_id: str | None = Query(None, description="按 owner 过滤"),
+    status: str | None = Query(None, description="按状态过滤: draft/published/deprecated/archived"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
     """列出数据集（按 created_at 倒序）。"""
     store = get_dataset_store()
-    status_enum: Optional[DatasetStatus] = None
+    status_enum: DatasetStatus | None = None
     if status is not None:
         try:
             status_enum = DatasetStatus(status)
@@ -259,7 +259,7 @@ async def commit_version(dataset_id: str, req: CommitVersionRequest):
     - version=None 自动递增 patch
     """
     store = get_dataset_store()
-    lineage_rec: Optional[LineageRecord] = None
+    lineage_rec: LineageRecord | None = None
     if req.lineage is not None:
         try:
             lineage_rec = _lineage_from_model(req.lineage)
@@ -288,7 +288,7 @@ async def commit_version(dataset_id: str, req: CommitVersionRequest):
 @router.get("/{dataset_id}/read")
 async def read_dataset(
     dataset_id: str,
-    version: Optional[str] = Query(None, description="版本号，None 取最新"),
+    version: str | None = Query(None, description="版本号，None 取最新"),
     batch_size: int = Query(1000, ge=1, le=10000),
 ):
     """读取数据集版本内容（流式 JSONL）.

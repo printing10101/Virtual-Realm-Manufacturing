@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -40,12 +40,12 @@ class SSEConnectionManager:
     """
 
     def __init__(self, timeout_seconds: int = 1800):
-        self._clients: Dict[str, Dict[str, SSEClient]] = {}
+        self._clients: dict[str, dict[str, SSEClient]] = {}
         self._timeout = timeout_seconds
         # [H4] asyncio.Lock 懒初始化：模块级 sse_manager 实例化时创建 Lock 会
         # 绑定到导入时的事件循环，多事件循环场景下抛 RuntimeError。
-        self._lock: Optional[asyncio.Lock] = None
-        self._cancel_events: Dict[str, asyncio.Event] = {}
+        self._lock: asyncio.Lock | None = None
+        self._cancel_events: dict[str, asyncio.Event] = {}
 
     def _get_lock(self) -> asyncio.Lock:
         """懒初始化 SSE 管理器锁，绑定到首次调用的事件循环。"""
@@ -133,7 +133,7 @@ class SSEConnectionManager:
                 self._cancel_events[task_id].set()
                 logger.info("Cancel signal sent for task %s", task_id)
 
-    def get_cancel_event(self, task_id: str) -> Optional[asyncio.Event]:
+    def get_cancel_event(self, task_id: str) -> asyncio.Event | None:
         """Get the cancellation event for a task."""
         return self._cancel_events.get(task_id)
 
@@ -188,7 +188,7 @@ class TrainingProgressCallback:
         self._total_epochs = total_epochs
         self._start_time = time.time()
 
-    def __call__(self, epoch: int, loss: float, metrics: Optional[dict] = None, **kwargs):
+    def __call__(self, epoch: int, loss: float, metrics: dict | None = None, **kwargs):
         """Called after each training epoch."""
         progress = round((epoch / self._total_epochs) * 100, 1) if self._total_epochs > 0 else 0.0
 
@@ -218,7 +218,7 @@ class TrainingProgressCallback:
 
         broadcast_task.add_done_callback(_on_broadcast_done)
 
-    async def send_complete(self, status: str, final_loss: float, training_time: Optional[float] = None):
+    async def send_complete(self, status: str, final_loss: float, training_time: float | None = None):
         """Send training completion event."""
         if training_time is None:
             training_time = time.time() - self._start_time
@@ -232,7 +232,7 @@ class TrainingProgressCallback:
 
         await self._manager.broadcast(self._task_id, "complete", data)
 
-    async def send_error(self, code: str, message: str, details: Optional[dict] = None):
+    async def send_error(self, code: str, message: str, details: dict | None = None):
         """Send training error event."""
         data = {
             "code": code,

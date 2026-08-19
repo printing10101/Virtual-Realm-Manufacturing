@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -36,34 +36,34 @@ class ToolCreate(BaseModel):
         description="刀具类型: end_mill/ball_mill/drill/reamer/tap/insert/grooving/threading",
     )
     diameter: float = Field(..., gt=0, description="刀具直径 (mm)")
-    length: Optional[float] = Field(None, gt=0, description="刀具长度 (mm)")
-    flute_count: Optional[int] = Field(2, ge=1, description="刃数")
-    material: Optional[str] = Field(None, max_length=32, description="刀具材料: carbide/hss/ceramic/cbn/diamond")
-    coating: Optional[str] = Field(None, max_length=32, description="涂层类型: TiN/TiAlN/AlCrN/DLC/None")
-    max_rpm: Optional[float] = Field(None, gt=0, description="最大允许转速 (RPM)")
-    max_feed: Optional[float] = Field(None, gt=0, description="最大允许进给 (mm/min)")
-    vendor: Optional[str] = Field(None, max_length=128, description="供应商")
-    cost: Optional[float] = Field(None, ge=0, description="采购成本")
-    notes: Optional[str] = Field(None, description="备注")
+    length: float | None = Field(None, gt=0, description="刀具长度 (mm)")
+    flute_count: int | None = Field(2, ge=1, description="刃数")
+    material: str | None = Field(None, max_length=32, description="刀具材料: carbide/hss/ceramic/cbn/diamond")
+    coating: str | None = Field(None, max_length=32, description="涂层类型: TiN/TiAlN/AlCrN/DLC/None")
+    max_rpm: float | None = Field(None, gt=0, description="最大允许转速 (RPM)")
+    max_feed: float | None = Field(None, gt=0, description="最大允许进给 (mm/min)")
+    vendor: str | None = Field(None, max_length=128, description="供应商")
+    cost: float | None = Field(None, ge=0, description="采购成本")
+    notes: str | None = Field(None, description="备注")
 
 
 class ToolUpdate(BaseModel):
-    code: Optional[str] = Field(None, max_length=32, description="刀具编码")
-    name: Optional[str] = Field(None, max_length=128, description="刀具名称")
-    type: Optional[str] = Field(None, max_length=32, description="刀具类型")
-    diameter: Optional[float] = Field(None, gt=0, description="刀具直径 (mm)")
-    length: Optional[float] = Field(None, gt=0, description="刀具长度 (mm)")
-    flute_count: Optional[int] = Field(None, ge=1, description="刃数")
-    material: Optional[str] = Field(None, max_length=32, description="刀具材料")
-    coating: Optional[str] = Field(None, max_length=32, description="涂层类型")
-    max_rpm: Optional[float] = Field(None, gt=0, description="最大允许转速 (RPM)")
-    max_feed: Optional[float] = Field(None, gt=0, description="最大允许进给 (mm/min)")
-    usage_time: Optional[float] = Field(None, ge=0, description="累计使用时间 (分钟)")
-    wear_amount: Optional[float] = Field(None, ge=0, description="磨损量 (mm)")
-    status: Optional[str] = Field(None, max_length=16, description="刀具状态: active/worn/broken/maintenance")
-    vendor: Optional[str] = Field(None, max_length=128, description="供应商")
-    cost: Optional[float] = Field(None, ge=0, description="采购成本")
-    notes: Optional[str] = Field(None, description="备注")
+    code: str | None = Field(None, max_length=32, description="刀具编码")
+    name: str | None = Field(None, max_length=128, description="刀具名称")
+    type: str | None = Field(None, max_length=32, description="刀具类型")
+    diameter: float | None = Field(None, gt=0, description="刀具直径 (mm)")
+    length: float | None = Field(None, gt=0, description="刀具长度 (mm)")
+    flute_count: int | None = Field(None, ge=1, description="刃数")
+    material: str | None = Field(None, max_length=32, description="刀具材料")
+    coating: str | None = Field(None, max_length=32, description="涂层类型")
+    max_rpm: float | None = Field(None, gt=0, description="最大允许转速 (RPM)")
+    max_feed: float | None = Field(None, gt=0, description="最大允许进给 (mm/min)")
+    usage_time: float | None = Field(None, ge=0, description="累计使用时间 (分钟)")
+    wear_amount: float | None = Field(None, ge=0, description="磨损量 (mm)")
+    status: str | None = Field(None, max_length=16, description="刀具状态: active/worn/broken/maintenance")
+    vendor: str | None = Field(None, max_length=128, description="供应商")
+    cost: float | None = Field(None, ge=0, description="采购成本")
+    notes: str | None = Field(None, description="备注")
 
 
 class ToolWearUpdate(BaseModel):
@@ -81,9 +81,9 @@ class ToolWearUpdate(BaseModel):
 
 @router.get("/")
 async def list_tools(
-    type: Optional[str] = Query(None, description="按刀具类型筛选"),
-    status: Optional[str] = Query(None, description="按状态筛选"),
-    keyword: Optional[str] = Query(None, description="搜索名称或编码"),
+    type: str | None = Query(None, description="按刀具类型筛选"),
+    status: str | None = Query(None, description="按状态筛选"),
+    keyword: str | None = Query(None, description="搜索名称或编码"),
 ):
     """获取刀具列表，支持类型、状态筛选和关键词搜索。"""
     try:

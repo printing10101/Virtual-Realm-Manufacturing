@@ -4,7 +4,7 @@
 提供工艺路线的 CRUD（含工序步骤）、状态筛选及演示数据填充功能。
 """
 
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -25,24 +25,24 @@ class ProcessStepCreate(BaseModel):
     name: str
     work_center: str
     hours: int
-    equipment: Optional[str] = None
-    tooling: Optional[str] = None
+    equipment: str | None = None
+    tooling: str | None = None
 
 
 class ProcessRouteCreate(BaseModel):
     name: str
     part_type: str
     status: str = "草稿"
-    description: Optional[str] = None
+    description: str | None = None
     steps: list[ProcessStepCreate] = []
 
 
 class ProcessRouteUpdate(BaseModel):
-    name: Optional[str] = None
-    part_type: Optional[str] = None
-    status: Optional[str] = None
-    description: Optional[str] = None
-    steps: Optional[list[ProcessStepCreate]] = None
+    name: str | None = None
+    part_type: str | None = None
+    status: str | None = None
+    description: str | None = None
+    steps: list[ProcessStepCreate] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -58,8 +58,8 @@ router = APIRouter(
 
 @router.get("/")
 async def list_process_routes(
-    status: Optional[str] = Query(None, description="状态筛选"),
-    part_type: Optional[str] = Query(None, description="零件类型筛选"),
+    status: str | None = Query(None, description="状态筛选"),
+    part_type: str | None = Query(None, description="零件类型筛选"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):

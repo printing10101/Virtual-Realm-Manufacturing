@@ -5,7 +5,7 @@ V3.0 split: 从 ``routes.py`` 提取，保持文件聚焦。
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -25,15 +25,15 @@ class TaskCreateRequest(BaseModel):
     本模块会自动从上游任务读取对应路径 + 上下文，调用方可不显式提供这些字段。
     """
 
-    source_gcode_generation_task_id: Optional[str] = Field(
+    source_gcode_generation_task_id: str | None = Field(
         default=None,
         description="上游 gcode_generation 任务 ID（可选）",
     )
-    source_gcode_report_path: Optional[str] = Field(
+    source_gcode_report_path: str | None = Field(
         default=None,
         description="阶段 6 G 代码报告 JSON 路径",
     )
-    source_gcode_file_path: Optional[str] = Field(
+    source_gcode_file_path: str | None = Field(
         default=None,
         description="阶段 6 生成的 G 代码文件路径",
     )
@@ -41,19 +41,19 @@ class TaskCreateRequest(BaseModel):
         default="fanuc",
         description="控制器类型（fanuc / siemens / heidenhain / haas / okuma / mazak / ...）",
     )
-    material_name: Optional[str] = Field(
+    material_name: str | None = Field(
         default=None,
         description="材料名称（默认从上游 ChatterReport 推断）",
     )
-    safety_z_mm: Optional[float] = Field(
+    safety_z_mm: float | None = Field(
         default=None,
         description="安全 Z 平面高度（默认从上游 G 代码报告推断）",
     )
-    stock_top_z_mm: Optional[float] = Field(
+    stock_top_z_mm: float | None = Field(
         default=None,
         description="毛坯顶面 Z 高度（默认从上游 G 代码报告推断）",
     )
-    cam_backend: Optional[str] = Field(
+    cam_backend: str | None = Field(
         default=None,
         description="CAM 后端名称（默认自动检测或使用 PyCAM）",
     )
@@ -105,7 +105,7 @@ class FeatureValidationResultResponse(BaseModel):
     feature_type: str
     gcode_segment_ids: list[str]
     nc_file: list[str]
-    internal_error_info: Optional[dict[str, Any]] = None
+    internal_error_info: dict[str, Any] | None = None
     out_of_gouge: bool = True
     gouge_details: list[dict[str, Any]] = Field(default_factory=list)
     out_of_collision: bool = True
@@ -117,7 +117,7 @@ class FeatureValidationResultResponse(BaseModel):
     safety_z_ok: bool = True
     safety_z_details: list[dict[str, Any]] = Field(default_factory=list)
     review_status: str = "pending"
-    corrected_params: Optional[dict[str, Any]] = None
+    corrected_params: dict[str, Any] | None = None
     review_notes: str = ""
     reviewer: str = ""
 
@@ -141,7 +141,7 @@ class ReviewRequest(BaseModel):
         ...,
         description="审核结果：confirmed / rejected / edited / reviewed",
     )
-    corrected_params: Optional[dict[str, Any]] = Field(
+    corrected_params: dict[str, Any] | None = Field(
         default=None,
         description="修正后的参数（review_status=edited 时需提供）",
     )
@@ -153,7 +153,7 @@ class ReviewResponse(BaseModel):
 
     feature_id: str
     review_status: str
-    corrected_params: Optional[dict[str, Any]] = None
+    corrected_params: dict[str, Any] | None = None
     message: str
 
 
@@ -162,6 +162,6 @@ class ConfirmTaskResponse(BaseModel):
 
     task_id: str
     status: str
-    cam_report_path: Optional[str] = None
-    internal_report_path: Optional[str] = None
+    cam_report_path: str | None = None
+    internal_report_path: str | None = None
     message: str

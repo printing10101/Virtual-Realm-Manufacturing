@@ -3,7 +3,7 @@
 import logging
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -41,12 +41,12 @@ class ExportRequest(BaseModel):
 
 
 class ImportRequest(BaseModel):
-    template_data: Dict[str, Any] = Field(..., description="Template data to import")
-    target_branch: Optional[str] = Field(default=None, description="Target branch name")
+    template_data: dict[str, Any] = Field(..., description="Template data to import")
+    target_branch: str | None = Field(default=None, description="Target branch name")
     adapt_params: bool = Field(default=True, description="Auto-adapt parameters")
 
 
-_marketplace_data: Dict[str, Any] = {
+_marketplace_data: dict[str, Any] = {
     "templates": [],
     "subscriptions": [],
     "downloads": {},
@@ -229,7 +229,7 @@ def sync_changes(branch_id: str):
     )
 
 
-def _adapt_parameters(params: Dict[str, Any]) -> Dict[str, Any]:
+def _adapt_parameters(params: dict[str, Any]) -> dict[str, Any]:
     """Adapt template parameters for target environment."""
     adapted = params.copy()
     if "learning_rate" in adapted:

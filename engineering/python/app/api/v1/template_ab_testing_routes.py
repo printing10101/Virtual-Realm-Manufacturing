@@ -1,7 +1,7 @@
 """A/B Testing API Routes."""
 
 import logging
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -78,7 +78,7 @@ def assign_branch(req: AssignBranchRequest):
 
 
 @router.get("")
-def list_experiments(status: Optional[str] = None):
+def list_experiments(status: str | None = None):
     """List experiments."""
     framework = get_ab_testing()
     exps = framework.list_experiments(status_filter=status)

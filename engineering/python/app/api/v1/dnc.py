@@ -15,7 +15,7 @@ Example::
 
 import asyncio
 import logging
-from typing import Optional
+
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -60,9 +60,9 @@ class MachineConnectRequest(BaseModel):
     machine_id: str = Field(..., description="机床唯一标识", examples=["CNC-001"])
     protocol: ProtocolType = Field(..., description="通信协议", examples=["opcua"])
     endpoint: str = Field(..., description="连接端点", examples=["opc.tcp://192.168.1.100:4840"])
-    username: Optional[str] = Field(None, description="认证用户名")
-    password: Optional[str] = Field(None, description="认证密码")
-    device_name: Optional[str] = Field("Device", description="MTConnect 设备名称")
+    username: str | None = Field(None, description="认证用户名")
+    password: str | None = Field(None, description="认证密码")
+    device_name: str | None = Field("Device", description="MTConnect 设备名称")
 
 
 class NCSendRequest(BaseModel):
@@ -76,7 +76,7 @@ class NCSendRequest(BaseModel):
 
     machine_id: str = Field(..., description="目标机床 ID", examples=["CNC-001"])
     program_path: str = Field(..., description="本地 NC 程序文件路径", examples=["/path/to/program.nc"])
-    program_name: Optional[str] = Field(None, description="机床端存储的程序名（默认使用文件名）")
+    program_name: str | None = Field(None, description="机床端存储的程序名（默认使用文件名）")
 
 
 # ── API 路由 ──────────────────────────────────────────────────
@@ -178,7 +178,7 @@ async def get_machine_alarms(machine_id: str):
 # 全局统一适配器注册表（machine_id -> UnifiedDNCAdapter）
 _unified_adapters: dict[str, UnifiedDNCAdapter] = {}
 # [A-H2] 懒初始化的 asyncio.Lock，避免在模块导入时绑定事件循环
-_unified_adapters_lock: Optional[asyncio.Lock] = None
+_unified_adapters_lock: asyncio.Lock | None = None
 
 
 def _get_unified_adapters_lock() -> asyncio.Lock:
@@ -198,8 +198,8 @@ class AutoConnectRequest(BaseModel):
         description="候选端点列表，按优先级排序",
         examples=[["http://192.168.1.100:5000", "opc.tcp://192.168.1.100:4840"]],
     )
-    username: Optional[str] = Field(None, description="OPC UA 用户名")
-    password: Optional[str] = Field(None, description="OPC UA 密码")
+    username: str | None = Field(None, description="OPC UA 用户名")
+    password: str | None = Field(None, description="OPC UA 密码")
     timeout: float = Field(5.0, gt=0, le=30, description="单端点连接超时")
 
 

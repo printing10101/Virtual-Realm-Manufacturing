@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -52,8 +52,8 @@ class AgentStateSaveRequest(BaseModel):
     等内部字段由服务端管理，不接受客户端传入。
     """
 
-    current_task_id: Optional[str] = Field(None, description="当前任务ID")
-    status: Optional[AgentStatus] = Field(None, description="Agent 状态")
+    current_task_id: str | None = Field(None, description="当前任务ID")
+    status: AgentStatus | None = Field(None, description="Agent 状态")
     metadata: dict[str, Any] = Field(default_factory=dict, description="元数据")
 
 
@@ -74,11 +74,11 @@ class CheckpointSaveRequest(BaseModel):
 
     epoch: int = Field(0, ge=0, description="训练轮次")
     step: int = Field(0, ge=0, description="训练步数")
-    best_metric: Optional[float] = Field(None, description="最佳指标值")
+    best_metric: float | None = Field(None, description="最佳指标值")
     best_metric_name: str = Field("loss", description="最佳指标名称")
     state_dict_path: str = Field("", description="状态字典存储路径")
     optimizer_state_path: str = Field("", description="优化器状态存储路径")
-    rng_state: Optional[dict[str, Any]] = Field(None, description="随机数生成器状态")
+    rng_state: dict[str, Any] | None = Field(None, description="随机数生成器状态")
     checkpoint_type: CheckpointType = Field(CheckpointType.MANUAL, description="检查点类型")
     metrics: dict[str, Any] = Field(default_factory=dict, description="指标字典")
     metadata: dict[str, Any] = Field(default_factory=dict, description="元数据")
@@ -127,8 +127,8 @@ class _AgentStateHolder:
         import threading
 
         self._lock = threading.Lock()
-        self._persistence: Optional[StatePersistenceManager] = None
-        self._recovery: Optional[StateRecoveryManager] = None
+        self._persistence: StatePersistenceManager | None = None
+        self._recovery: StateRecoveryManager | None = None
 
     def set_persistence(self, manager: StatePersistenceManager) -> None:
         """Set the persistence manager and (re)build the recovery manager."""
@@ -136,11 +136,11 @@ class _AgentStateHolder:
             self._persistence = manager
             self._recovery = StateRecoveryManager(manager)
 
-    def get_persistence(self) -> Optional[StatePersistenceManager]:
+    def get_persistence(self) -> StatePersistenceManager | None:
         with self._lock:
             return self._persistence
 
-    def get_recovery(self) -> Optional[StateRecoveryManager]:
+    def get_recovery(self) -> StateRecoveryManager | None:
         with self._lock:
             return self._recovery
 
@@ -210,7 +210,7 @@ def set_persistence_manager(manager: StatePersistenceManager):
     },
 )
 async def list_agents(
-    status: Optional[str] = Query(None, description="Filter by agent status"),
+    status: str | None = Query(None, description="Filter by agent status"),
     persistence: StatePersistenceManager = Depends(get_persistence),
     _user: dict = Depends(get_current_user),
 ):

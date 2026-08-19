@@ -8,7 +8,8 @@
 import time
 import asyncio
 import logging
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 import numpy as np
 
@@ -33,13 +34,13 @@ from app.ai.lnn.inference.registry import get_torch_model_class
 _HAS_TRAINING_STACK = False
 LNNConfig: Any = None
 LNNTrainer: Any = None
-mlflow_start_run: Optional[Callable[..., Any]] = None
-mlflow_log_params: Optional[Callable[..., Any]] = None
-mlflow_log_metrics: Optional[Callable[..., Any]] = None
-mlflow_log_model: Optional[Callable[..., Any]] = None
-detect_device: Optional[Callable[..., Any]] = None
-get_optimal_batch_size: Optional[Callable[..., Any]] = None
-get_optimal_num_workers: Optional[Callable[..., Any]] = None
+mlflow_start_run: Callable[..., Any] | None = None
+mlflow_log_params: Callable[..., Any] | None = None
+mlflow_log_metrics: Callable[..., Any] | None = None
+mlflow_log_model: Callable[..., Any] | None = None
+detect_device: Callable[..., Any] | None = None
+get_optimal_batch_size: Callable[..., Any] | None = None
+get_optimal_num_workers: Callable[..., Any] | None = None
 
 
 def _lazy_init_training_stack() -> bool:

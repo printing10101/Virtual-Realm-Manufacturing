@@ -15,7 +15,7 @@
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -109,9 +109,9 @@ def _snapshot_summary(snap: Any) -> dict[str, Any]:
 
 @router.get("")
 async def list_snapshots(
-    created_by: Optional[str] = Query(None, description="按创建者过滤"),
-    git_sha: Optional[str] = Query(None, description="按 git SHA 过滤"),
-    model_uri: Optional[str] = Query(None, description="按模型 URI 过滤（精确匹配）"),
+    created_by: str | None = Query(None, description="按创建者过滤"),
+    git_sha: str | None = Query(None, description="按 git SHA 过滤"),
+    model_uri: str | None = Query(None, description="按模型 URI 过滤（精确匹配）"),
     detail: bool = Query(False, description="true 返回完整字段，false 返回摘要"),
 ):
     """列出实验快照（按 created_at 倒序）。"""

@@ -14,7 +14,7 @@ Endpoints:
 """
 
 import logging
-from typing import Optional
+
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -48,11 +48,11 @@ class EquipmentUpdateRequest(BaseModel):
     所有字段可选，至少传一个。
     """
 
-    status: Optional[str] = Field(None, description="设备状态: 运行中/待机/维护中/故障")
-    temperature: Optional[float] = Field(None, description="温度")
-    vibration: Optional[float] = Field(None, description="振动")
-    rpm: Optional[float] = Field(None, description="转速")
-    power: Optional[float] = Field(None, description="功率")
+    status: str | None = Field(None, description="设备状态: 运行中/待机/维护中/故障")
+    temperature: float | None = Field(None, description="温度")
+    vibration: float | None = Field(None, description="振动")
+    rpm: float | None = Field(None, description="转速")
+    power: float | None = Field(None, description="功率")
 
 
 class AlarmStatusUpdateRequest(BaseModel):
@@ -71,12 +71,12 @@ class MaintenancePlanUpdateRequest(BaseModel):
     所有字段可选，至少传一个。
     """
 
-    title: Optional[str] = Field(None, description="计划标题")
-    type: Optional[str] = Field(None, description="计划类型")
-    frequency: Optional[str] = Field(None, description="维护频率")
-    last_date: Optional[str] = Field(None, description="上次维护日期")
-    next_date: Optional[str] = Field(None, description="下次维护日期")
-    status: Optional[str] = Field(None, description="计划状态")
+    title: str | None = Field(None, description="计划标题")
+    type: str | None = Field(None, description="计划类型")
+    frequency: str | None = Field(None, description="维护频率")
+    last_date: str | None = Field(None, description="上次维护日期")
+    next_date: str | None = Field(None, description="下次维护日期")
+    status: str | None = Field(None, description="计划状态")
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +86,7 @@ class MaintenancePlanUpdateRequest(BaseModel):
 
 @router.get("")
 async def list_equipment(
-    status: Optional[str] = Query(None, description="按状态过滤: 运行中/待机/维护中/故障"),
+    status: str | None = Query(None, description="按状态过滤: 运行中/待机/维护中/故障"),
     page: int = Query(1, ge=1, le=500, description="页码（从 1 开始）"),
     page_size: int = Query(50, ge=1, le=100, description="每页条数（最大 500）"),
 ):
@@ -151,9 +151,9 @@ async def update_equipment(equipment_id: str, body: EquipmentUpdateRequest):
 
 @router.get("/alarms/")
 async def list_alarms(
-    equipment_id: Optional[str] = Query(None, description="按设备ID过滤"),
-    status: Optional[str] = Query(None, description="按状态过滤: 未处理/已确认/已解决"),
-    severity: Optional[str] = Query(None, description="按严重程度过滤: 紧急/警告/提示"),
+    equipment_id: str | None = Query(None, description="按设备ID过滤"),
+    status: str | None = Query(None, description="按状态过滤: 未处理/已确认/已解决"),
+    severity: str | None = Query(None, description="按严重程度过滤: 紧急/警告/提示"),
     page: int = Query(1, ge=1, le=500, description="页码（从 1 开始）"),
     page_size: int = Query(50, ge=1, le=100, description="每页条数（最大 500）"),
 ):
@@ -197,8 +197,8 @@ async def update_alarm_status(alarm_id: str, body: AlarmStatusUpdateRequest):
 
 @router.get("/maintenance/")
 async def list_maintenance_plans(
-    equipment_id: Optional[str] = Query(None, description="按设备ID过滤"),
-    status: Optional[str] = Query(None, description="按状态过滤"),
+    equipment_id: str | None = Query(None, description="按设备ID过滤"),
+    status: str | None = Query(None, description="按状态过滤"),
     page: int = Query(1, ge=1, le=500, description="页码（从 1 开始）"),
     page_size: int = Query(50, ge=1, le=100, description="每页条数（最大 500）"),
 ):

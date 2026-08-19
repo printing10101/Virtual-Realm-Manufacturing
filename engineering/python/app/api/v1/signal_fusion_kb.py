@@ -18,7 +18,7 @@
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, Field
@@ -61,10 +61,10 @@ class SignalSampleRequest(BaseModel):
     )
     process_context: dict[str, Any] = Field(default_factory=dict, description="工艺上下文")
     machine_id: str = Field(default="", description="机床 ID")
-    tool_id: Optional[int] = Field(default=None, description="刀具 ID")
+    tool_id: int | None = Field(default=None, description="刀具 ID")
     material: str = Field(default="", description="工件材料")
     label: str = Field(default="", description="可选标签")
-    sample_id: Optional[str] = Field(default=None, description="自定义样本 ID")
+    sample_id: str | None = Field(default=None, description="自定义样本 ID")
     metadata: dict[str, Any] = Field(default_factory=dict, description="额外元数据")
 
 
@@ -78,10 +78,10 @@ class RetrieveRequest(BaseModel):
     """相似样本检索请求。"""
 
     features: list[float] = Field(..., min_length=1, description="9 维查询特征")
-    signal_type: Optional[str] = Field(default=None, description="信号类型过滤")
-    machine_id: Optional[str] = Field(default=None, description="机床 ID 过滤")
-    material: Optional[str] = Field(default=None, description="材料过滤")
-    tool_id: Optional[int] = Field(default=None, description="刀具 ID 过滤")
+    signal_type: str | None = Field(default=None, description="信号类型过滤")
+    machine_id: str | None = Field(default=None, description="机床 ID 过滤")
+    material: str | None = Field(default=None, description="材料过滤")
+    tool_id: int | None = Field(default=None, description="刀具 ID 过滤")
     top_k: int = Field(default=10, ge=1, le=100, description="返回前 K 个")
 
 
@@ -100,7 +100,7 @@ class FuseRequest(BaseModel):
         default="weighted",
         description="融合策略: weighted 或 attention",
     )
-    weights: Optional[dict[str, float]] = Field(
+    weights: dict[str, float] | None = Field(
         default=None,
         description="自定义权重（仅 weighted 策略）",
     )

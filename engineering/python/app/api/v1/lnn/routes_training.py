@@ -10,7 +10,8 @@ routes_quantization 子路由模块复用（用于给 asyncio.create_task 添加
 import asyncio
 import logging
 import uuid
-from typing import Optional, Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 import numpy as np
 
@@ -35,7 +36,7 @@ from app.api.v1.sse import sse_manager
 
 # P0#3 解耦: 通过 research_bridge 延迟导入。
 _HAS_DEVICE_MANAGER = False
-detect_device: Optional[Callable[..., Any]] = None
+detect_device: Callable[..., Any] | None = None
 
 
 def _lazy_init_device_manager() -> bool:
@@ -364,7 +365,7 @@ async def dry_run_training(request: LNNTrainDryRunRequest):
 async def train_lnn(
     request: Request,
     body: LNNTrainRequest,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """异步启动 LNN 训练,立即返回 job_id。"""
     try:

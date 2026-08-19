@@ -11,7 +11,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -83,9 +83,9 @@ def _validate_dxf_path(user_path: str) -> Path:
 
 class DxfProcessRequest(BaseModel):
     dxf_path: str
-    output_dir: Optional[str] = None
-    postprocessor: Optional[str] = "fanuc_0i"
-    user_id: Optional[str] = None
+    output_dir: str | None = None
+    postprocessor: str | None = "fanuc_0i"
+    user_id: str | None = None
 
     @field_validator("dxf_path")
     @classmethod
@@ -97,9 +97,9 @@ class DxfProcessRequest(BaseModel):
 
 class DxfBatchRequest(BaseModel):
     dxf_paths: list[str] = Field(..., min_length=1, max_length=20)
-    output_dir: Optional[str] = None
-    postprocessor: Optional[str] = "fanuc_0i"
-    user_id: Optional[str] = None
+    output_dir: str | None = None
+    postprocessor: str | None = "fanuc_0i"
+    user_id: str | None = None
 
     @field_validator("dxf_paths")
     @classmethod
@@ -114,7 +114,7 @@ class DxfE2EFixtureRequest(BaseModel):
     fixtures_dir: str = "data/test_fixtures"
     output_dir: str = "data/outputs/e2e"
     postprocessor: str = "fanuc_0i"
-    user_id: Optional[str] = "e2e_runner"
+    user_id: str | None = "e2e_runner"
 
 
 # ---------------------------------------------------------------------------
