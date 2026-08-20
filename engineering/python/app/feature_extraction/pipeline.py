@@ -39,6 +39,12 @@ from typing import Any
 import numpy as np
 
 from app.config import FeatureExtractionConfig
+from app.feature_extraction._review_state_machine import (
+    STATUS_REVIEWED,
+    STATUS_SUCCEEDED,
+    FeatureReviewStateMachine,
+    ReviewStateMachineError,
+)
 from app.feature_extraction.cylinder_extractor import CylinderExtractor
 from app.feature_extraction.feature_store import (
     ExtractedFeature,
@@ -424,20 +430,13 @@ class FeatureExtractionPipeline:
         if task is None:
             raise FeatureReviewError(f"任务不存在: {task_id}")
 
-        if task.status != FeatureExtractionTaskStatus.FEATURES_EXTRACTED.value:
-            raise FeatureReviewError(
-                f"任务状态 {task.status} 不允许审核，"
-                f"仅 {FeatureExtractionTaskStatus.FEATURES_EXTRACTED.value} 状态可审核"
-            )
-
-        # 校验 action
-        valid_actions = {
-            FeatureReviewStatus.CONFIRMED.value,
-            FeatureReviewStatus.REJECTED.value,
-            FeatureReviewStatus.EDITED.value,
-        }
-        if action not in valid_actions:
-            raise FeatureReviewError(f"非法 action: {action}，应为 {valid_actions}")
+        # 状态机校验：任务是否可审核 + action 是否合法
+        # （FeatureReviewStateMachine 白盒逻辑，与既有行为逐字节一致）
+        try:
+            FeatureReviewStateMachine.assert_reviewable(task.status)
+            FeatureReviewStateMachine.assert_valid_action(action)
+        except ReviewStateMachineError as e:
+            raise FeatureReviewError(str(e)) from e
 
         # 查找特征
         target_feature: ExtractedFeature | None = None
@@ -491,26 +490,18 @@ class FeatureExtractionPipeline:
         if task.status != FeatureExtractionTaskStatus.FEATURES_EXTRACTED.value:
             return False
 
-        if not task.features:
-            # 空特征列表，直接置为 REVIEWED
-            self._store.update(
-                task_id,
-                status=FeatureExtractionTaskStatus.REVIEWED.value,
-            )
-            return True
-
-        pending_actions = {
-            FeatureReviewStatus.PENDING.value,
-        }
-        all_reviewed = all(f.review_status not in pending_actions for f in task.features)
+        review_statuses = [f.review_status for f in task.features]
+        all_reviewed = FeatureReviewStateMachine.all_features_reviewed(review_statuses)
         if all_reviewed:
+            # 状态机决定下一状态（空特征 / 有特征统一转移 REVIEWED）
             self._store.update(
                 task_id,
-                status=FeatureExtractionTaskStatus.REVIEWED.value,
+                status=STATUS_REVIEWED,
             )
             logger.info(
-                "任务 %s 所有特征审核完毕，状态置为 REVIEWED",
+                "任务 %s 所有特征审核完毕，状态置为 %s",
                 task_id,
+                STATUS_REVIEWED,
             )
         return all_reviewed
 
@@ -539,14 +530,12 @@ class FeatureExtractionPipeline:
         if task is None:
             raise FeatureReviewError(f"任务不存在: {task_id}")
 
-        # 允许 REVIEWED 和 FEATURES_EXTRACTED 状态导出
-        # （FEATURES_EXTRACTED 时导出当前已审核的部分，便于增量工作）
-        allowed_states = {
-            FeatureExtractionTaskStatus.FEATURES_EXTRACTED.value,
-            FeatureExtractionTaskStatus.REVIEWED.value,
-        }
-        if task.status not in allowed_states:
-            raise FeatureReviewError(f"任务状态 {task.status} 不允许导出，仅 {allowed_states} 状态可导出")
+        # 状态机校验：是否允许导出（FEATURES_EXTRACTED / REVIEWED）
+        # （允许 FEATURES_EXTRACTED 导出，便于增量工作）
+        try:
+            FeatureReviewStateMachine.assert_exportable(task.status)
+        except ReviewStateMachineError as e:
+            raise FeatureReviewError(str(e)) from e
 
         # 筛选已确认特征（confirmed + edited）
         confirmed_features = [
@@ -596,10 +585,10 @@ class FeatureExtractionPipeline:
             encoding="utf-8",
         )
 
-        # 状态置为 SUCCEEDED
+        # 状态置为 SUCCEEDED（由状态机决定）
         self._store.update(
             task_id,
-            status=FeatureExtractionTaskStatus.SUCCEEDED.value,
+            status=STATUS_SUCCEEDED,
             exported_features_path=str(output_path),
         )
         logger.info(

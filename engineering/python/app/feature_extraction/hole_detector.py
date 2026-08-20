@@ -56,6 +56,10 @@ from typing import Any
 import numpy as np
 
 from app.config import FeatureExtractionConfig
+from app.feature_extraction._feature_classifier import (
+    FEATURE_HOLE,
+    classify_hole_or_boss_deep,
+)
 from app.feature_extraction.feature_store import (
     ExtractedFeature,
     FeatureReviewStatus,
@@ -397,14 +401,18 @@ class HoleDetector:
         center_zone_z = plane_z[center_zone_mask]
         offset = float(np.mean(center_zone_z) - reference_z)
 
-        # 判定阈值：用 RANSAC 阈值
+        # 判定阈值：用 RANSAC 阈值（×2，与既有行为一致）
         threshold = self._cfg.plane_ransac_threshold_mm * 2.0
 
-        if offset < -threshold:
-            return FeatureType.HOLE, offset
-        if offset > threshold:
-            return FeatureType.BOSS, offset
-        return FeatureType.HOLE, offset
+        # 分类判定委托给纯 Python 白盒逻辑（_feature_classifier），
+        # 与既有 HOLE/BOSS 判定规则逐字节一致（防回归）。
+        feature_type_str, offset_v = classify_hole_or_boss_deep(
+            offset,
+            threshold,
+            default_type=FEATURE_HOLE,
+        )
+        ftype = FeatureType.HOLE if feature_type_str == FEATURE_HOLE else FeatureType.BOSS
+        return ftype, offset_v
 
 
 # =============================================================================
