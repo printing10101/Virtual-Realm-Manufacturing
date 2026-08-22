@@ -497,7 +497,7 @@ def create_llm_client() -> BaseLLMClient:
     环境变量：
         LLM_PROVIDER: ollama / cloud（默认 ollama）
         OLLAMA_BASE_URL: Ollama 服务地址（默认 http://localhost:11434）
-        OLLAMA_MODEL: Ollama 模型名（默认 qwen2.5:7b）
+        OLLAMA_MODEL: Ollama 模型名（默认 qwen3.5:35b-128k）
         CLOUD_API_KEY: 云服务 API Key
         CLOUD_BASE_URL: 云服务 Base URL
         CLOUD_MODEL: 云服务模型名
@@ -520,7 +520,7 @@ def create_llm_client() -> BaseLLMClient:
         )
     else:
         base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-        model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+        model = os.environ.get("OLLAMA_MODEL", "qwen3.5:35b-128k")
         return OllamaClient(
             base_url=base_url,
             model=model,

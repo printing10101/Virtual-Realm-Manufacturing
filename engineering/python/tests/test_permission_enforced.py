@@ -424,7 +424,7 @@ class TestOtherConfigsSmoke:
 
     def test_model_router_defaults(self, monkeypatch):
         cfg = ModelRouterSettings()
-        assert cfg.local_model == "qwen2.5:7b"
+        assert cfg.local_model == "qwen3.5:35b-128k"
         assert cfg.fallback_threshold == 3
         assert cfg.local_timeout == 30
 

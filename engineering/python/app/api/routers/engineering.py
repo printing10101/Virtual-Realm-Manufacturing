@@ -26,6 +26,9 @@ from app.api.v1 import (
     dxf_pipeline as dxf_pipeline_routes,
     postprocessor_dialects,
     tools,
+    experience_routes,
+    monitor_ws,
+    optimizer_routes,
 )
 from app.api.v1.nl2cad.routes import router as nl2cad_router
 from app.projects import project_api as project_routes
@@ -60,3 +63,8 @@ def register(app: FastAPI) -> None:
 
     # === 后处理器方言管理（P3）===
     app.include_router(postprocessor_dialects.router)
+
+    # === 数据飞轮 / 参数优化 / 实时监控（功能缺口接线）===
+    app.include_router(experience_routes.router)
+    app.include_router(optimizer_routes.router)
+    app.include_router(monitor_ws.router)

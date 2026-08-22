@@ -1,78 +1,90 @@
+<!--
+  ApprovalStatsCards - 审批统计卡片
+  兼容层：直接使用通用 StatsCards 组件
+  
+  ## 注意
+  此文件为兼容层，实际实现已迁移到 @/components/base/StatsCards.vue
+-->
 <template>
-  <el-row :gutter="16" class="stats-row">
-    <el-col :span="6">
-      <el-card shadow="hover" class="stat-card stat-pending">
-        <div class="stat-value">{{ counts.pending }}</div>
-        <div class="stat-label">{{ t('approvalDashboard.statPending') }}</div>
-      </el-card>
-    </el-col>
-    <el-col :span="6">
-      <el-card shadow="hover" class="stat-card stat-review">
-        <div class="stat-value">{{ counts.under_review }}</div>
-        <div class="stat-label">{{ t('approvalDashboard.statUnderReview') }}</div>
-      </el-card>
-    </el-col>
-    <el-col :span="6">
-      <el-card shadow="hover" class="stat-card stat-approved">
-        <div class="stat-value">{{ counts.approved }}</div>
-        <div class="stat-label">{{ t('approvalDashboard.statApproved') }}</div>
-      </el-card>
-    </el-col>
-    <el-col :span="6">
-      <el-card shadow="hover" class="stat-card stat-rejected">
-        <div class="stat-value">{{ counts.rejected }}</div>
-        <div class="stat-label">{{ t('approvalDashboard.statRejected') }}</div>
-      </el-card>
-    </el-col>
-  </el-row>
+  <StatsCards
+    :cards="stats"
+    :auto-wrap="true"
+    :size="size"
+  />
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { Component } from 'vue'
+import { Check, Clock, Warning, CircleClose } from '@element-plus/icons-vue'
+import StatsCards from './base/StatsCards.vue'
+
+interface Props {
+  counts: {
+    pending: number
+    under_review: number
+    approved: number
+    rejected: number
+  }
+  size?: 'small' | 'default' | 'large'
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  size: 'default',
+})
 
 const { t } = useI18n()
 
-interface ApprovalCounts {
-  pending: number
-  under_review: number
-  approved: number
-  rejected: number
-}
-
-defineProps<{
-  counts: ApprovalCounts
-}>()
-</script>
-
-<style scoped>
-.stats-row {
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  text-align: center;
-  padding: 16px 0;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--text-tertiary);
-}
-
-.stat-pending .stat-value { color: var(--warning); }
-.stat-review .stat-value { color: var(--info); }
-.stat-approved .stat-value { color: var(--success); }
-.stat-rejected .stat-value { color: var(--error); }
-
-@media (max-width: 768px) {
-  .stats-row .el-col {
-    margin-bottom: 12px;
+/** 定义图标映射 */
+function getIconForType(type: string): Component | undefined {
+  switch (type) {
+    case 'pending':
+      return Clock
+    case 'under_review':
+      return Clock
+    case 'approved':
+      return Check
+    case 'rejected':
+      return CircleClose
+    default:
+      return undefined
   }
 }
-</style>
+
+/** 统计卡片列表 */
+const stats = computed(() => [
+  {
+    label: t('approvalDashboard.statPending'),
+    value: props.counts.pending,
+    icon: getIconForType('pending'),
+    type: 'warning' as const,
+    subLabel: `等待审批 ${props.counts.pending} 个`,
+  },
+  {
+    label: t('approvalDashboard.statUnderReview'),
+    value: props.counts.under_review,
+    icon: getIconForType('under_review'),
+    type: 'info' as const,
+    subLabel: `审核中 ${props.counts.under_review} 个`,
+  },
+  {
+    label: t('approvalDashboard.statApproved'),
+    value: props.counts.approved,
+    icon: getIconForType('approved'),
+    type: 'success' as const,
+    subLabel: `已批准 ${props.counts.approved} 个`,
+  },
+  {
+    label: t('approvalDashboard.statRejected'),
+    value: props.counts.rejected,
+    icon: getIconForType('rejected'),
+    type: 'danger' as const,
+    subLabel: `已拒绝 ${props.counts.rejected} 个`,
+  },
+])
+
+defineEmits<{
+  (e: 'card-click', card: { type: string }): void
+}>()
+</script>

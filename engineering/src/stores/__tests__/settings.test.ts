@@ -20,7 +20,7 @@ describe('useSettingsStore', () => {
     it('无 localStorage 时使用默认设置', () => {
       const store = useSettingsStore()
       expect(store.settings.aiMode).toBe('local')
-      expect(store.settings.localModel).toBe('qwen2.5:7b')
+      expect(store.settings.localModel).toBe('qwen3.5:35b-128k')
       expect(store.settings.device).toBe('cpu')
       expect(store.settings.offlineMode).toBe(false)
       expect(store.settings.hardwareTier).toBe('standard')

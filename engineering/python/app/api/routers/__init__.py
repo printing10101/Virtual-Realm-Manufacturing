@@ -112,3 +112,8 @@ def register_all_domain_routers(
     # 返回各阶段模块的导入可用状态字典，供 router_registry 写入全局变量
     flags = adr_pipeline.register(app)
     return flags
+
+from app.api.routers._route_registry import (
+    RouterSpec, validate_specs, register_routers, is_duplicate_registration, group_by_domain,
+)
+

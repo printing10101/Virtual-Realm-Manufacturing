@@ -38,7 +38,7 @@ const mockResetSettings = vi.hoisted(() => vi.fn())
 const mockStore = vi.hoisted(() => ({
   settings: {
     aiMode: 'local',
-    localModel: 'qwen2.5:7b',
+    localModel: 'qwen3.5:35b-128k',
     device: 'cpu',
     hardwareTier: 'standard',
     lightweightMode: false,

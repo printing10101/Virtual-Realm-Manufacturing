@@ -21,7 +21,7 @@
         update_count=3,
         insight_count=2,
         rule_count=4,
-        llm_model="qwen2.5:14b",
+        llm_model="qwen3.5:35b-128k",
     )
 """
 
@@ -83,7 +83,7 @@ class DreamingAuditRecorder:
             update_count: 过时更新的条目数。
             insight_count: 浮现的洞察数。
             rule_count: 合成的规则草稿数。
-            llm_model: 使用的 LLM 模型名（如 "qwen2.5:14b"）。None 表示
+            llm_model: 使用的 LLM 模型名（如 "qwen3.5:35b-128k"）。None 表示
                 规则统计降级模式。
             lookback_days: 回溯天数。
             session_count: 输入 Session 数。

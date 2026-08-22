@@ -105,4 +105,8 @@ __all__ = [
     "WorldModelVersionORM",
     "RLAgentPolicyVersionORM",
     "RLAgentTrainingRunORM",
+    "CuttingExperienceRecord"
 ]
+
+from app.database.models.cutting_experience import CuttingExperienceRecord
+

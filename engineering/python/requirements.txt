@@ -13,7 +13,7 @@
 #   export PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 
 # Core Framework
-fastapi==0.115.0         # Web 框架：API 服务与依赖注入
+fastapi==0.115.9         # Web 框架：API 服务与依赖注入；放宽至 0.115.9 以兼容 chromadb 1.0.0 的约束
 uvicorn[standard]==0.32.0  # ASGI 服务器（与根目录保持一致）
 pydantic==2.9.2          # 数据模型与配置解析
 pydantic-settings==2.5.2  # 配置管理（Settings 模型依赖）
@@ -86,8 +86,8 @@ bcrypt==4.2.1            # 密码哈希（4.x 原生 API）
 RestrictedPython==8.0    # 安全沙箱执行（Skill 动态代码编译，生产强制依赖）
 
 # LangChain Ecosystem
-langchain==0.3.14        # LangChain 核心（RAG / Agent 依赖）
-langchain-core==0.3.29   # LangChain 核心库
+langchain>=0.3.14,<0.4        # LangChain 核心（RAG / Agent 依赖）；放宽以兼容 numpy>=2
+langchain-core>=0.3.29,<0.4   # LangChain 核心库；放宽以兼容 numpy>=2
 
 # Protocol Buffers
 protobuf==5.29.3         # Protocol Buffers（gRPC / 模型序列化依赖）

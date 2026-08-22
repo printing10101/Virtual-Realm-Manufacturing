@@ -132,11 +132,32 @@
           console.error('[diag]', stage, err);
         }
 
+        // 已知良性浏览器警告（不影响应用运行，不得当作致命错误）：
+        // - "ResizeObserver loop completed with undelivered notifications"：
+        //   布局震荡时由浏览器语义触发，Vue 应用照常运行，3s 挂载计时若因此
+        //   误报会把正常界面覆盖成"致命错误"诊断页。必须过滤。
+        var BENIGN_ERROR_PATTERNS = [
+          /ResizeObserver loop (completed|limit exceeded)/i,
+          /ResizeObserver had to recalc/i,
+        ];
+        function isBenignError(msg) {
+          if (!msg) return false;
+          for (var i = 0; i < BENIGN_ERROR_PATTERNS.length; i++) {
+            if (BENIGN_ERROR_PATTERNS[i].test(msg)) return true;
+          }
+          return false;
+        }
+
         // 监听运行时错误
         window.addEventListener('error', function (e) {
           // 资源加载错误：e.target 为元素，message 为 ""
           if (e.message || (e.error && e.error.message)) {
-            pushError('window.error', e.error || (e.message + ' @ ' + e.filename + ':' + e.lineno + ':' + e.colno));
+            var m = e.error || (e.message + ' @ ' + e.filename + ':' + e.lineno + ':' + e.colno);
+            // 过滤良性警告：不写入 errors，避免启动超时误判为致命失败
+            var msgStr = (typeof m === 'string') ? m : (m && m.message ? m.message : String(m));
+            if (!isBenignError(msgStr)) {
+              pushError('window.error', m);
+            }
           } else if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
             pushError('resource-load', 'Failed to load ' + e.target.tagName + ': ' + (e.target.src || e.target.href));
           }

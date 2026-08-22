@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Dataset API - 数据集 / 版本 / 血缘 REST 接口.
 
 对应 ADR-005 阶段 2 / core-contracts-design.md 第 4 章。
@@ -19,19 +21,18 @@
     dataset:manage  —— 废弃版本
 """
 
-from __future__ import annotations
-
 import json
 import logging
 from typing import Any
-from urllib.parse import unquote
+from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.v1.auth import get_current_user
 from app.auth.permissions import require_permission
-from app.core.response import ErrorCode, error, success
+from app.core.response import success
 from app.contracts.dataset import DatasetSchema, DatasetStatus, LineageRecord
 from app.dependencies import get_dataset_store
 from app.data.lineage_store import get_lineage_store, make_lineage_record
@@ -46,21 +47,12 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
-# Pydantic 请求 / 响应模型
-# ---------------------------------------------------------------------------
-
-
-class SchemaFieldModel(BaseModel):
-    type: str
-    required: bool = False
-    description: str = ""
-
-
 class DatasetSchemaModel(BaseModel):
-    """DatasetSchema 的 API 入参模型。"""
+    """DatasetSchema 的 Pydantic 模型版本（用于 API JSON 传输）。"""
 
-    fields: dict[str, SchemaFieldModel] = Field(default_factory=dict)
+    model_config = ConfigDict(populate_by_name=True)
+
+    fields: dict[str, dict[str, Any]]
     primary_key: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -86,7 +78,11 @@ class CommitVersionRequest(BaseModel):
 
     records: list[dict[str, Any]] = Field(default_factory=list)
     version: str | None = None  # None 自动递增 patch
-    lineage: "LineageModel" | None = None
+    # `from __future__ import annotations` 已启用，注解为惰性字符串。
+    # 勿手写引号字符串 + `|`（如 "LineageModel" | None），Pydantic v2 会在
+    # 模型定义时对 str|None 立即求值，报 unsupported operand for |: str/None。
+    # 无引号写法由 model_rebuild()（本文件末尾）在 LineageModel 定义后解析。
+    lineage: LineageModel | None = None
 
 
 class LineageModel(BaseModel):
@@ -112,14 +108,7 @@ CommitVersionRequest.model_rebuild()
 
 def _schema_from_model(m: DatasetSchemaModel) -> DatasetSchema:
     return DatasetSchema(
-        fields={
-            name: {
-                "type": f.type,
-                "required": f.required,
-                "description": f.description,
-            }
-            for name, f in m.fields.items()
-        },
+        fields=m.fields,
         primary_key=list(m.primary_key),
         metadata=dict(m.metadata),
     )
@@ -168,236 +157,221 @@ def _lineage_to_dict(rec: LineageRecord) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 端点实现
+# API 端点
 # ---------------------------------------------------------------------------
 
 
 @router.get("")
 async def list_datasets(
-    owner_id: str | None = Query(None, description="按 owner 过滤"),
-    status: str | None = Query(None, description="按状态过滤: draft/published/deprecated/archived"),
-    limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0),
-):
-    """列出数据集（按 created_at 倒序）。"""
-    store = get_dataset_store()
-    status_enum: DatasetStatus | None = None
-    if status is not None:
-        try:
-            status_enum = DatasetStatus(status)
-        except ValueError as e:
-            return error(
-                code=ErrorCode.INVALID_REQUEST,
-                message=f"非法 status: {status}",
-                detail=str(e),
-            )
-    try:
-        items = await store.list_datasets(owner_id=owner_id, status=status_enum, limit=limit, offset=offset)
-    except ValueError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
-    return success(data={"items": items, "limit": limit, "offset": offset})
-
-
-@router.post(
-    "",
-    dependencies=[Depends(require_permission("dataset:write"))],
-)
-async def create_dataset(req: CreateDatasetRequest):
-    """创建数据集（初始 DRAFT，无版本）。"""
-    try:
-        schema = _schema_from_model(req.dataset_schema)
-    except ValueError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=f"Schema 构造失败: {e}")
-
-    store = get_dataset_store()
-    try:
-        dataset_id = await store.create(
-            name=req.name,
-            schema=schema,
-            owner_id=req.owner_id,
-            description=req.description,
-        )
-    except ValueError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
-
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    dataset_type: str | None = Query(None),
+    owner_id: str | None = Query(None),
+) -> dict:
+    """List datasets with pagination."""
+    dataset_store = get_dataset_store()
+    datasets, total = await dataset_store.list_datasets(
+        page=page,
+        page_size=page_size,
+        dataset_type=dataset_type,
+        owner_id=owner_id,
+    )
     return success(
-        data={"dataset_id": dataset_id, "status": "draft"},
-        message="数据集已创建",
+        {
+            "items": [
+                {
+                    "id": ds.id,
+                    "name": ds.name,
+                    "description": ds.description,
+                    "type": ds.type,
+                    "owner_id": ds.owner_id,
+                    "version_count": ds.version_count,
+                    "created_at": ds.created_at.isoformat() if ds.created_at else None,
+                }
+                for ds in datasets
+            ],
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": (total + page_size - 1) // page_size,
+        }
+    )
+
+
+@router.get("/metrics")
+async def get_metrics() -> dict:
+    """Get global dataset metrics."""
+    dataset_store = get_dataset_store()
+    metrics = await dataset_store.get_metrics()
+    return success(metrics)
+
+
+@router.post("")
+async def create_dataset(
+    req: CreateDatasetRequest,
+    user=Depends(get_current_user),
+) -> dict:
+    """Create a dataset."""
+    dataset_store = get_dataset_store()
+    dataset = await dataset_store.create_dataset(
+        name=req.name,
+        description=req.description,
+        schema=_schema_from_model(req.dataset_schema),
+        owner_id=user.id,
+    )
+    return success(
+        {
+            "id": dataset.id,
+            "name": dataset.name,
+            "description": dataset.description,
+            "owner_id": dataset.owner_id,
+            "created_at": dataset.created_at.isoformat() if dataset.created_at else None,
+        }
     )
 
 
 @router.get("/{dataset_id}")
-async def get_dataset(dataset_id: str):
-    """获取数据集详情（含 schema 与版本概要）。"""
-    store = get_dataset_store()
-    try:
-        detail = await store.get_dataset(dataset_id)
-    except ValueError as e:
-        return error(code=ErrorCode.NOT_FOUND, message=str(e))
-    return success(data=detail)
+async def get_dataset(
+    dataset_id: str,
+) -> dict:
+    """Get dataset details."""
+    dataset_store = get_dataset_store()
+    ds, versions = await dataset_store.get_dataset(dataset_id)
+    return success(
+        {
+            "id": ds.id,
+            "name": ds.name,
+            "description": ds.description,
+            "type": ds.type,
+            "owner_id": ds.owner_id,
+            "schema": ds.schema.to_dict(),
+            "version_count": ds.version_count,
+            "created_at": ds.created_at.isoformat() if ds.created_at else None,
+            "versions": [_version_to_dict(v) for v in versions],
+        }
+    )
 
 
 @router.get("/{dataset_id}/versions")
-async def list_versions(dataset_id: str):
-    """列出数据集的所有版本（按创建时间倒序）。"""
-    store = get_dataset_store()
-    try:
-        versions = await store.list_versions(dataset_id)
-    except ValueError as e:
-        return error(code=ErrorCode.NOT_FOUND, message=str(e))
-    return success(data={"items": [_version_to_dict(v) for v in versions]})
-
-
-@router.post(
-    "/{dataset_id}/commit",
-    dependencies=[Depends(require_permission("dataset:write"))],
-)
-async def commit_version(dataset_id: str, req: CommitVersionRequest):
-    """提交一个不可变版本。
-
-    - records 为空且 dataset_id 为 lake 适配器时，自动从 lake 加载
-    - version=None 自动递增 patch
-    """
-    store = get_dataset_store()
-    lineage_rec: LineageRecord | None = None
-    if req.lineage is not None:
-        try:
-            lineage_rec = _lineage_from_model(req.lineage)
-        except ValueError as e:
-            return error(
-                code=ErrorCode.INVALID_REQUEST,
-                message=f"Lineage 构造失败: {e}",
-            )
-
-    try:
-        version = await store.commit_version(
-            dataset_id,
-            req.records,
-            version=req.version,
-            lineage=lineage_rec,
-        )
-    except ValueError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
-
+async def list_versions(
+    dataset_id: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> dict:
+    """List all versions."""
+    dataset_store = get_dataset_store()
+    versions, total = await dataset_store.list_versions(dataset_id, page, page_size)
     return success(
-        data=_version_to_dict(version),
-        message=f"版本 {version.version} 已提交",
+        {
+            "items": [_version_to_dict(v) for v in versions],
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": (total + page_size - 1) // page_size,
+        }
     )
 
 
-@router.get("/{dataset_id}/read")
-async def read_dataset(
+@router.get("/{dataset_id}/versions/{version}")
+async def get_version_detail(
     dataset_id: str,
-    version: str | None = Query(None, description="版本号，None 取最新"),
-    batch_size: int = Query(1000, ge=1, le=10000),
-):
-    """读取数据集版本内容（流式 JSONL）.
+    version: str,
+) -> dict:
+    """Get specific version details."""
+    dataset_store = get_dataset_store()
+    ver = await dataset_store.get_version(dataset_id, version)
+    return success(_version_to_dict(ver))
 
-    返回 ``StreamingResponse``，每行一个 JSON 对象，每 batch 之间 flush。
-    """
-    store = get_dataset_store()
 
-    async def _stream():
-        try:
-            async for batch in store.read(dataset_id, version, batch_size=batch_size):
-                for record in batch:
-                    yield json.dumps(record, ensure_ascii=False, default=str) + "\n"
-        except ValueError as e:
-            # 流式响应中错误以 JSON 行形式给出
-            yield json.dumps({"error": "INVALID_REQUEST", "message": str(e)}, ensure_ascii=False) + "\n"
-        except FileNotFoundError as e:
-            yield json.dumps({"error": "FILE_NOT_FOUND", "message": str(e)}, ensure_ascii=False) + "\n"
+@router.post("/{dataset_id}/commit")
+async def commit_version(
+    dataset_id: str,
+    req: CommitVersionRequest,
+    user=Depends(get_current_user),
+) -> dict:
+    """Commit a new version."""
+    dataset_store = get_dataset_store()
+    if req.lineage:
+        lineage = _lineage_from_model(req.lineage)
+    else:
+        lineage = None
+
+    ver = await dataset_store.commit_version(
+        dataset_id=dataset_id,
+        records=req.records,
+        version=req.version,
+        lineage=lineage,
+        committed_by=user.id,
+    )
+    return success(_version_to_dict(ver))
+
+
+@router.get("/{dataset_id}/versions/{version}/read", response_class=StreamingResponse)
+async def read_version(
+    dataset_id: str,
+    version: str,
+) -> StreamingResponse:
+    """Stream version contents as JSONL."""
+    dataset_store = get_dataset_store()
+
+    async def iterable() -> AsyncGenerator[str, None]:
+        async for record in dataset_store.read_version(dataset_id, version):
+            yield json.dumps(record, ensure_ascii=False) + "\n"
 
     return StreamingResponse(
-        _stream(),
+        iterable(),
         media_type="application/x-ndjson",
-        headers={"Cache-Control": "no-cache"},
+        headers={
+            "Content-Disposition": f'attachment; filename="{dataset_id}_{version}.jsonl"'
+        },
     )
 
 
-@router.post(
-    "/{dataset_id}/deprecate",
-    dependencies=[Depends(require_permission("dataset:manage"))],
-)
-async def deprecate_version(dataset_id: str, version: str = Query(..., description="要废弃的版本号")):
-    """废弃某版本（不可逆，但内容仍可读）。"""
-    store = get_dataset_store()
-    try:
-        await store.deprecate(dataset_id, version)
-    except ValueError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
-    return success(
-        data={"dataset_id": dataset_id, "version": version, "status": "deprecated"},
-        message=f"版本 {version} 已废弃",
-    )
+@router.post("/{dataset_id}/deprecate")
+async def deprecate_version(
+    dataset_id: str,
+    version: str = Query(None),
+) -> dict:
+    """Deprecate a version."""
+    dataset_store = get_dataset_store()
+    await dataset_store.deprecate_version(dataset_id=dataset_id, version=version)
+    return success({"message": f"Version {version} deprecated"})
 
 
-# ---------------------------------------------------------------------------
-# 血缘端点（路径独立，避免与 /datasets/{id} 冲突）
-# ---------------------------------------------------------------------------
-
-
-@router.post(
-    "/lineage",
-    dependencies=[Depends(require_permission("dataset:write"))],
-)
-async def record_lineage(req: LineageModel):
-    """记录一条血缘。"""
-    try:
-        rec = _lineage_from_model(req)
-    except ValueError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
-
+@router.post("/lineage")
+async def record_lineage(
+    req: LineageModel,
+    user=Depends(get_current_user),
+) -> dict:
+    """Record lineage."""
     lineage_store = get_lineage_store()
-    record_id = await lineage_store.record(rec)
-    return success(
-        data={"record_id": record_id},
-        message="血缘已记录",
+    record = make_lineage_record(
+        target=req.target,
+        source_type=req.source_type,
+        source_ref=req.source_ref,
+        inputs=list(req.inputs),
+        outputs=list(req.outputs),
+        operation=req.operation,
+        metadata=dict(req.metadata),
     )
+    await lineage_store.record_lineage(record)
+    return success({"record_id": record.record_id, "target": record.target})
 
 
-@router.get("/lineage/{target_uri:path}")
-async def get_lineage(
+@router.get("/lineage/{target_uri}")
+async def query_lineage(
     target_uri: str,
-    direction: str = Query("upstream", description="upstream 或 downstream"),
-    depth: int = Query(10, ge=1, le=50),
-):
-    """查询血缘图（target_uri 通过 path 参数传入，自动 URL 解码）。
-
-    返回可视化数据：nodes / edges / records。
-    """
-    target = unquote(target_uri)
-    if direction not in {"upstream", "downstream", "visualize"}:
-        return error(
-            code=ErrorCode.INVALID_REQUEST,
-            message=f"direction 必须为 upstream/downstream/visualize: {direction}",
-        )
-
+    direction: str = Query("both", regex="^(upstream|downstream|both)$"),
+) -> dict:
+    """Query lineage graph."""
     lineage_store = get_lineage_store()
-    try:
-        if direction == "upstream":
-            records = await lineage_store.get_upstream(target, depth=depth)
-            return success(
-                data={
-                    "target": target,
-                    "direction": "upstream",
-                    "records": [_lineage_to_dict(r) for r in records],
-                }
-            )
-        if direction == "downstream":
-            records = await lineage_store.get_downstream(target, depth=depth)
-            return success(
-                data={
-                    "target": target,
-                    "direction": "downstream",
-                    "records": [_lineage_to_dict(r) for r in records],
-                }
-            )
-        # visualize
-        graph = await lineage_store.visualize(target)
-        return success(data={"target": target, "graph": graph})
-    except ValueError as e:
-        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
-
-
-__all__ = ["router"]
+    upstream, downstream = await lineage_store.query_lineage(
+        target_uri=target_uri, direction=direction
+    )
+    return success(
+        {
+            "target": target_uri,
+            "upstream": [_lineage_to_dict(r) for r in upstream],
+            "downstream": [_lineage_to_dict(r) for r in downstream],
+        }
+    )

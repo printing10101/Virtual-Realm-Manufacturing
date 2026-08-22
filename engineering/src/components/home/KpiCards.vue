@@ -1,37 +1,27 @@
+<!--
+  KpiCards - KPI 统计卡片
+  兼容层：基于通用 StatsCards + 趋势箭头支持
+  
+  ## 特性
+  - 支持趋势箭头（↑/↓）
+  - 支持自定义颜色和背景
+  - 基于通用 StatsCards 组件实现
+-->
 <template>
-  <div class="stats-row">
-    <div
-      v-for="kpi in kpiCards"
-      :key="kpi.title"
-      class="stat-card"
-    >
-      <div
-        class="stat-card__icon"
-        :style="{ background: kpi.iconBg }"
-      >
-        <el-icon
-          :size="24"
-          :style="{ color: kpi.color }"
-        >
-          <component :is="kpi.icon" />
-        </el-icon>
-      </div>
-      <div class="stat-card__content">
-        <span class="stat-card__label">{{ kpi.title }}</span>
-        <span class="stat-card__value">{{ kpi.value }}</span>
-        <span
-          class="stat-card__trend"
-          :class="kpi.isPositive ? 'stat-card__trend--up' : 'stat-card__trend--down'"
-        >
-          {{ kpi.isPositive ? '↑' : '↓' }} {{ kpi.change }}
-        </span>
-      </div>
-    </div>
-  </div>
+  <StatsCards
+    :cards="kpiCards"
+    :auto-wrap="true"
+    :size="size"
+  />
 </template>
 
-<script lang="ts">
-export interface KpiCard {
+<script lang="ts" setup>
+import { computed } from 'vue'
+import type { Component } from 'vue'
+import StatsCards from '@/components/base/StatsCards.vue'
+
+/** 兼容旧的接口 */
+export interface KPICard {
   title: string
   value: string
   change: string
@@ -40,80 +30,34 @@ export interface KpiCard {
   color: string
   iconBg: string
 }
-</script>
 
-<script setup lang="ts">
-defineProps<{
-  kpiCards: KpiCard[]
-}>()
+interface Props {
+  kpiCards: KPICard[]
+  size?: 'small' | 'default' | 'large'
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  size: 'default',
+})
+
+/** 转换为通用 StatsCard 格式 */
+const cards = computed(() =>
+  props.kpiCards.map((kpi) => ({
+    label: kpi.title,
+    value: kpi.value,
+    icon: kpi.icon as Component,
+    subLabel: `${kpi.isPositive ? '↑' : '↓'} ${kpi.change}`,
+    type: 'default', // 由自定义样式控制
+    customStyle: {
+      '--stat-card-icon-size': '24px',
+      '--stat-card-icon-bg': kpi.iconBg,
+      '--stat-card-icon-color': kpi.color,
+    },
+  })),
+)
 </script>
 
 <style scoped>
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.stat-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--bg-0);
-  border: 1px solid var(--bg-200);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
-}
-
-.stat-card:hover {
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-
-.stat-card__icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  flex-shrink: 0;
-}
-
-.stat-card__content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.stat-card__label {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stat-card__value {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-}
-
-.stat-card__trend {
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.stat-card__trend--up {
-  color: var(--success);
-}
-
-.stat-card__trend--down {
-  color: var(--error);
-}
+/* 自定义颜色支持 */
+/* 通过 CSS 变量注入，保持兼容性 */
 </style>

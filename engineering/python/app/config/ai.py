@@ -12,7 +12,7 @@ from app.config._utils import _bool_env, _env, _int_env, _path, logger
 class AIConfig:
     mode: str = field(default_factory=lambda: _env("AI_MODE", "local"))
     ollama_base_url: str = field(default_factory=lambda: _env("OLLAMA_BASE_URL", "http://localhost:11434"))
-    ollama_model: str = field(default_factory=lambda: _env("OLLAMA_MODEL", "qwen2.5-coder:7b"))
+    ollama_model: str = field(default_factory=lambda: _env("OLLAMA_MODEL", "qwen3.5:35b-128k"))
     cloud_api_key: str = field(default_factory=lambda: _env("CLOUD_API_KEY", ""))
     cloud_base_url: str = field(default_factory=lambda: _env("CLOUD_BASE_URL", "https://api.openai.com/v1"))
     cloud_model: str = field(default_factory=lambda: _env("CLOUD_MODEL", "gpt-3.5-turbo"))
@@ -37,7 +37,7 @@ class AIConfig:
 
 @dataclass
 class ModelRouterSettings:
-    local_model: str = field(default_factory=lambda: _env("LOCAL_MODEL", "qwen2.5:7b"))
+    local_model: str = field(default_factory=lambda: _env("LOCAL_MODEL", "qwen3.5:35b-128k"))
     cloud_provider: str = field(default_factory=lambda: _env("CLOUD_PROVIDER", "openai"))
     cloud_model: str = field(default_factory=lambda: _env("CLOUD_MODEL_ROUTER", "gpt-4o"))
     fallback_threshold: int = field(default_factory=lambda: _int_env("FALLBACK_THRESHOLD", 3))

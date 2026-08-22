@@ -107,7 +107,7 @@ def _default_provider_templates() -> list[ProviderConfig]:
             name="Ollama (本地)",
             provider_type=ProviderType.OLLAMA,
             base_url=_provider_base_url("ollama"),
-            default_model="qwen2.5-coder:7b",
+            default_model="qwen3.5:35b-128k",
             enabled=False,
             priority=10,
             capabilities=[ProviderCapability.CHAT, ProviderCapability.STREAMING],

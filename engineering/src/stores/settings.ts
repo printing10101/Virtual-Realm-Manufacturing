@@ -81,7 +81,7 @@ function loadSettings(): AppSettings {
 function getDefaultSettings(): AppSettings {
   return {
     aiMode: 'local',
-    localModel: 'qwen2.5:7b',
+    localModel: 'qwen3.5:35b-128k',
     device: 'cpu',
     offlineMode: false,
     logSettings: getDefaultLogSettings(),

@@ -40,3 +40,9 @@ __all__ = [
     "DialectRegistry",
     "load_dialects",
 ]
+
+from app.postprocessor.dialect._lifecycle import (
+    DialectLifecycleStage, can_transition, assert_transition_allowed,
+    next_stage_after_success, next_stage_after_failure, can_discover, is_terminal,
+)
+

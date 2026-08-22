@@ -1,0 +1,8 @@
+<application xmlns="urn:schemas-microsoft-com:taskbarlink">
+  <taskbarLaunch>
+    <executable>%USERPROFILE%\Desktop\灵境制造（上线版）\灵境制造.bat</executable>
+  </taskbarLaunch>
+  <info title="灵境制造" desc="AI 驱动的制造智能桌面应用">
+    <icon>%USERPROFILE%\Desktop\灵境制造（上线版）\favicon.ico</icon>
+  </info>
+</application>

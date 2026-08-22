@@ -187,7 +187,7 @@ async def system_health(config: AppConfig = Depends(get_config)):
                 "name": "AI 模型文件",
                 "status": "error",
                 "version": "0",
-                "details": {"models": [], "suggestion": "run: ollama pull qwen2.5:7b"},
+                "details": {"models": [], "suggestion": "run: ollama pull qwen3.5:35b-128k"},
             }
         )
     else:

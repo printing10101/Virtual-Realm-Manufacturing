@@ -19,6 +19,11 @@ from app.postprocessor.dialect.declaration import (
     DialectDeclarationError,
 )
 from app.postprocessor.registry import PostProcessorRegistry
+from app.postprocessor.dialect._lifecycle import (
+    DialectLifecycleStage,
+    next_stage_after_failure,
+    next_stage_after_success,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +57,7 @@ class DialectRegistry:
         self._declarations: dict[str, DialectDeclaration] = {}
         self._compiled_classes: dict[str, type[BasePostProcessor]] = {}
         self._compile_errors: dict[str, str] = {}
+        self._stages: dict[str, DialectLifecycleStage] = {}
 
     # ------------------------------------------------------------------
     # 发现 / 编译 / 注册
@@ -85,6 +91,7 @@ class DialectRegistry:
                 self._compile_errors[item.name] = str(e)
                 continue
             self._declarations[declaration.id] = declaration
+            self._stages[declaration.id] = DialectLifecycleStage.DISCOVERED
             found.append(declaration.id)
             logger.info("发现方言: %s v%s (extends=%s)", declaration.id, declaration.version, declaration.extends)
 
@@ -102,9 +109,15 @@ class DialectRegistry:
         for dialect_id, declaration in self._declarations.items():
             try:
                 self._compiled_classes[dialect_id] = self.compiler.compile(declaration)
+                self._stages[dialect_id] = next_stage_after_success(
+                    self._stages.get(dialect_id, DialectLifecycleStage.DISCOVERED), "compile"
+                )
             except DialectCompileError as e:
                 logger.error("方言编译失败: %s", e)
                 self._compile_errors[dialect_id] = str(e)
+                self._stages[dialect_id] = next_stage_after_failure(
+                    self._stages.get(dialect_id, DialectLifecycleStage.DISCOVERED)
+                )
                 raise
         return dict(self._compiled_classes)
 
@@ -133,6 +146,9 @@ class DialectRegistry:
         for dialect_id, cls in self._compiled_classes.items():
             # 方言注册优先：覆盖同 id 的内置注册（register 允许覆盖）
             registry.register(dialect_id, cls)
+            self._stages[dialect_id] = next_stage_after_success(
+                self._stages.get(dialect_id, DialectLifecycleStage.COMPILED), "register"
+            )
             count += 1
             logger.info("方言已注册到 PostProcessorRegistry: %s -> %s", dialect_id, cls.__name__)
         return count
@@ -147,6 +163,28 @@ class DialectRegistry:
 
     def get_declaration(self, dialect_id: str) -> DialectDeclaration | None:
         return self._declarations.get(dialect_id)
+
+    def unregister(self, dialect_id: str, target: PostProcessorRegistry | None = None) -> bool:
+        """卸载方言（P4-2 生命周期：REGISTERED → UNREGISTERED）。"""
+        registry = target or PostProcessorRegistry()
+        if hasattr(registry, "unregister"):
+            try:
+                registry.unregister(dialect_id)
+            except Exception as exc:
+                logger.warning("方言卸载失败: %s", exc)
+                return False
+        else:
+            logger.warning("PostProcessorRegistry 不支持 unregister，仅更新状态")
+        self._stages[dialect_id] = next_stage_after_success(
+            self._stages.get(dialect_id, DialectLifecycleStage.REGISTERED), "unregister"
+        )
+        logger.info("方言已卸载: %s", dialect_id)
+        return True
+
+    def lifecycle_status(self, dialect_id: str) -> str:
+        """查询方言生命周期状态（P4-2）。"""
+        stage = self._stages.get(dialect_id)
+        return stage.value if stage else "unknown"
 
     def get_compile_errors(self) -> dict[str, str]:
         """返回 {方言 id/目录名: 错误信息}（含加载与编译失败）。"""

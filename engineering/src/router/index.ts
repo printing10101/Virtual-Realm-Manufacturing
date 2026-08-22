@@ -1,9 +1,9 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes: [
     {
       path: '/',
@@ -33,6 +33,7 @@ const router = createRouter({
       path: '/task-history',
       name: 'task-history',
       component: () => import('../views/TaskHistory.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/rule-editor',
@@ -50,13 +51,13 @@ const router = createRouter({
       path: '/process-planning',
       name: 'process-planning',
       component: () => import('../views/ProcessPlanning.vue'),
-      meta: { title: '工艺规划' },
+      meta: { title: '工艺规划', requiresAuth: true },
     },
     {
       path: '/ux-demo',
       name: 'ux-demo',
       component: () => import('../views/UXDemo.vue'),
-      meta: { title: 'UX功能演示' },
+      meta: { title: 'UX 功能演示', requiresAuth: true },
     },
     {
       path: '/agent-dashboard',
@@ -68,7 +69,7 @@ const router = createRouter({
       path: '/agent-detail/:id',
       name: 'agent-detail',
       component: () => import('../views/AgentDetail.vue'),
-      meta: { title: '代理详情' },
+      meta: { title: '代理详情', requiresAuth: true },
     },
     {
       path: '/branch-manager',
@@ -80,19 +81,19 @@ const router = createRouter({
       path: '/template-detail/:id',
       name: 'template-detail',
       component: () => import('../views/TemplateDetail.vue'),
-      meta: { title: '模板详情' },
+      meta: { title: '模板详情', requiresAuth: true },
     },
     {
       path: '/template-market',
       name: 'template-market',
       component: () => import('../views/TemplateMarket.vue'),
-      meta: { title: '模板市场' },
+      meta: { title: '模板市场', requiresAuth: true },
     },
     {
       path: '/plugin-market',
       name: 'plugin-market',
       component: () => import('../views/PluginMarket.vue'),
-      meta: { title: '插件市场' },
+      meta: { title: '插件市场', requiresAuth: true },
     },
     {
       path: '/plugin-manager',
@@ -110,25 +111,25 @@ const router = createRouter({
       path: '/dialect-manager',
       name: 'dialect-manager',
       component: () => import('../views/DialectManager.vue'),
-      meta: { title: '后处理器方言' },
+      meta: { title: '后处理器方言', requiresAuth: true },
     },
     {
       path: '/task-board',
       name: 'task-board',
       component: () => import('../views/TaskBoard.vue'),
-      meta: { title: '任务看板' },
+      meta: { title: '任务看板', requiresAuth: true },
     },
     {
       path: '/workflow-panel',
       name: 'workflow-panel',
       component: () => import('../views/WorkflowPanel.vue'),
-      meta: { title: '工作流编排' },
+      meta: { title: '工作流编排', requiresAuth: true },
     },
     {
       path: '/snapshot-panel',
       name: 'snapshot-panel',
       component: () => import('../views/SnapshotPanel.vue'),
-      meta: { title: '实验快照' },
+      meta: { title: '实验快照', requiresAuth: true },
     },
     {
       path: '/flywheel-dashboard',
@@ -152,67 +153,55 @@ const router = createRouter({
       path: '/goals',
       name: 'goals',
       component: () => import('../views/Goals.vue'),
-      meta: { title: '目标管理' },
+      meta: { title: '目标管理', requiresAuth: true },
     },
     {
       path: '/simulation',
       name: 'simulation',
       component: () => import('../views/Simulation.vue'),
-      meta: { title: '仿真模拟' },
+      meta: { title: '仿真模拟', requiresAuth: true },
     },
     {
       path: '/equipment-monitor',
       name: 'equipment-monitor',
       component: () => import('../views/EquipmentMonitor.vue'),
-      meta: { title: '设备监控' },
+      meta: { title: '设备监控', requiresAuth: true },
     },
     {
       path: '/quality-inspection',
       name: 'quality-inspection',
       component: () => import('../views/QualityInspection.vue'),
-      meta: { title: '质量检测' },
+      meta: { title: '质量检测', requiresAuth: true },
     },
     {
       path: '/material-management',
       name: 'material-management',
       component: () => import('../views/MaterialManagement.vue'),
-      meta: { title: '物料管理' },
+      meta: { title: '物料管理', requiresAuth: true },
     },
     {
       path: '/production-report',
       name: 'production-report',
       component: () => import('../views/ProductionReport.vue'),
-      meta: { title: '生产报表' },
+      meta: { title: '生产报表', requiresAuth: true },
     },
     {
       path: '/update-center',
       name: 'update-center',
       component: () => import('../views/UpdateCenter.vue'),
-      meta: { title: '更新中心' },
+      meta: { title: '更新中心', requiresAuth: true },
     },
     {
       path: '/nl-modeling',
       name: 'nl-modeling',
       component: () => import('../views/NLModeling.vue'),
-      meta: { title: '自然语言建模' },
+      meta: { title: '自然语言建模', requiresAuth: true },
     },
     {
       path: '/process-understanding',
       name: 'process-understanding',
       component: () => import('../views/ProcessUnderstanding.vue'),
-      meta: { title: '工艺理解' },
-    },
-    {
-      path: '/world-model',
-      name: 'world-model',
-      component: () => import('../views/WorldModel.vue'),
-      meta: { title: '世界模型', requiresAuth: true },
-    },
-    {
-      path: '/rl-agent',
-      name: 'rl-agent',
-      component: () => import('../views/RLAgent.vue'),
-      meta: { title: 'RL 决策', requiresAuth: true },
+      meta: { title: '工艺理解', requiresAuth: true },
     },
     {
       path: '/explainability',

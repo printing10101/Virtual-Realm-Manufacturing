@@ -137,12 +137,8 @@
                 style="width: 200px;"
               >
                 <el-option
-                  label="qwen2.5:7b"
-                  value="qwen2.5:7b"
-                />
-                <el-option
-                  label="qwen2.5:14b"
-                  value="qwen2.5:14b"
+                  label="qwen3.5:35b-128k"
+                  value="qwen3.5:35b-128k"
                 />
               </el-select>
             </el-form-item>

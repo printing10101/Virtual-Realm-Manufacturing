@@ -25,7 +25,7 @@
     doc = extract_document("path/to/document.pdf")
 
     # 2. LLM 抽取
-    client = OllamaClient(base_url="http://localhost:11434", model="qwen2.5:7b")
+    client = OllamaClient(base_url="http://localhost:11434", model="qwen3.5:35b-128k")
     extractor = LLMExtractor(llm_client=client)
     result = await extractor.extract("path/to/document.pdf")
 
