@@ -111,7 +111,7 @@ describe('ApprovalDashboard.vue', () => {
   it('统计卡片显示初始计数 0', async () => {
     const wrapper = mountApprovalDashboard()
     await flushPromises()
-    const values = wrapper.findAll('.stat-value')
+    const values = wrapper.findAll('.stat-card__value')
     expect(values.length).toBe(4)
     values.forEach((v) => {
       expect(v.text()).toBe('0')
@@ -172,47 +172,42 @@ describe('ApprovalDashboard.vue', () => {
   })
 
   it('接口返回审批数据时渲染请求卡片', async () => {
-    httpMock.get.mockImplementation((url: string) => {
-      if (url.includes('approval-dashboard')) {
-        return Promise.resolve({
-          data: {
-            data: {
-              pending: [
-                {
-                  request_id: 'r1',
-                  task_id: 't1',
-                  requester: 'user-a',
-                  requested_at: 1700000000,
-                  priority: 'high',
-                  context: {},
-                  status: 'pending',
-                  assigned_approver: null,
-                  approvers: [],
-                  decisions: [],
-                  required_approvals: 1,
-                  risk_score: 0.2,
-                  risk_factors: [],
-                  suggested_decision: 'approve',
-                  emergency_override: false,
-                  emergency_reason: '',
-                  expires_at: null,
-                  completed_at: null,
-                },
-              ],
-              under_review: [],
-              approved: [],
-              rejected: [],
-              counts: { pending: 1, under_review: 0, approved: 0, rejected: 0 },
+    httpMock.get.mockResolvedValueOnce({
+      data: {
+        data: {
+          pending: [
+            {
+              request_id: 'r1',
+              task_id: 't1',
+              requester: 'user-a',
+              requested_at: 1700000000,
+              priority: 'high',
+              context: {},
+              status: 'pending',
+              assigned_approver: null,
+              approvers: [],
+              decisions: [],
+              required_approvals: 1,
+              risk_score: 0.2,
+              risk_factors: [],
+              suggested_decision: 'approve',
+              emergency_override: false,
+              emergency_reason: '',
+              expires_at: null,
+              completed_at: null,
             },
-          },
-        })
-      }
-      return Promise.resolve({ data: { data: [] } })
+          ],
+          under_review: [],
+          approved: [],
+          rejected: [],
+          counts: { pending: 1, under_review: 0, approved: 0, rejected: 0 },
+        },
+      },
     })
     const wrapper = mountApprovalDashboard()
     await flushPromises()
     // 统计卡片应当显示 pending=1
-    const values = wrapper.findAll('.stat-value')
+    const values = wrapper.findAll('.stat-card__value')
     expect(values[0].text()).toBe('1')
   })
 

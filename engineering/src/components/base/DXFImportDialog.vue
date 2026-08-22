@@ -34,11 +34,11 @@
     </template>
 
     <!-- 自定义导入按钮 -->
-    <template #success-actions="{ import }">
+    <template #success-actions="props">
       <el-button
         type="primary"
         :loading="importing"
-        @click="import"
+        @click="props.import"
       >
         {{ $t('dxfImportDialog.importToProject') }}
       </el-button>

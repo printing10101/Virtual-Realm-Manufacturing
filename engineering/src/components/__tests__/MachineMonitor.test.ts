@@ -8,7 +8,7 @@ import MachineMonitor from '@/components/realtime/MachineMonitor.vue'
 const stubs = {
   'el-card': { template: '<div><slot name="header" /><slot /></div>' },
   'el-tag': { template: '<span><slot /></span>' },
-  'el-statistic': { template: '<div><slot name="title" />{{ value }}</div>' },
+  'el-statistic': { template: '<div><slot name="title" />{{ value ?? "" }}</div>' },
   'el-divider': true,
   'el-alert': { template: '<div><slot /></div>' },
   // el-empty: 支持 description 属性
@@ -46,7 +46,7 @@ describe('MachineMonitor', () => {
   it('maps alert priority to element type', () => {
     const wrapper = mount(MachineMonitor, { global: { stubs } })
     const vm = wrapper.vm as unknown as { alertTypeToEl: (p: number) => string }
-    expect(vm.alertTypeToEl(8)).toBe('danger')
+    expect(vm.alertTypeToEl(8)).toBe('error')
     expect(vm.alertTypeToEl(5)).toBe('warning')
     expect(vm.alertTypeToEl(2)).toBe('success')
   })

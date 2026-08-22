@@ -18,7 +18,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Component } from 'vue'
 import { Check, Clock, Warning, CircleClose } from '@element-plus/icons-vue'
-import StatsCards from './base/StatsCards.vue'
+import StatsCards from '@/components/base/StatsCards.vue'
 
 interface Props {
   counts: {

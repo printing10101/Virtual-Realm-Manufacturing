@@ -126,7 +126,7 @@ describe('defineCrudStore', () => {
     })
     const store = useStore()
     await store.fetchList({ page: 1 })
-    await store.updateItem(1, { name: 'p1-renamed' })
+    await store.updateItem('1', { name: 'p1-renamed' })
     expect(store.items[0].name).toBe('p1-renamed')
   })
 
@@ -140,7 +140,7 @@ describe('defineCrudStore', () => {
     })
     const store = useStore()
     await store.fetchList({ page: 1 })
-    const ok = await store.removeItem(1)
+    const ok = await store.removeItem('1')
     expect(ok).toBe(true)
     expect(store.items).toHaveLength(1)
     expect(store.total).toBe(1)
