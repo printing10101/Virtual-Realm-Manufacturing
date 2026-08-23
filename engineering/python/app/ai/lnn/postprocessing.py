@@ -70,7 +70,9 @@ class ResultPostprocessor:
             result_metadata.update(
                 {
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "input_shape": list(input_data.shape) if input_data is not None and hasattr(input_data, "shape") else None,
+                    "input_shape": list(input_data.shape)
+                    if input_data is not None and hasattr(input_data, "shape")
+                    else None,
                     "prediction_shape": list(predictions.shape),
                 }
             )

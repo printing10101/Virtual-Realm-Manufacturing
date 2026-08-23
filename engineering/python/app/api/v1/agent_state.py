@@ -183,10 +183,10 @@ def get_recovery() -> StateRecoveryManager:
     return recovery
 
 
-
 async def _require_perm(_user: dict, permission: str) -> None:
     """函数体内同步权限校验（替代误用的 FastAPI 依赖工厂调用）。"""
     import os as _os
+
     if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
         return
     username = (_user or {}).get("username", "")

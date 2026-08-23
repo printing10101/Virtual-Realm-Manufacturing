@@ -140,35 +140,6 @@ class BudgetEnforcer(_BudgetPolicyMixin, _BudgetCoreMixin, _BudgetAlertMixin, _B
         """)
         self._conn.commit()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     # H2 bug 修复：删除重复定义的 close 方法。
     # 原代码在第 83-88 行已定义 close（正确：归还连接到池），
     # 此处又定义了 close（错误：直接 close 连接，导致连接池泄漏）。

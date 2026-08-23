@@ -23,7 +23,6 @@ class _BudgetAlertMixin:
     _alert_callbacks: Any
     _conn: Any
 
-
     def _create_alert(
         self,
         level: BudgetLevel,
@@ -77,6 +76,7 @@ class _BudgetAlertMixin:
                 logger.error("Alert callback error", exc_info=True)
 
         return alert
+
     def get_alerts(
         self,
         status: str | None = None,
@@ -104,14 +104,18 @@ class _BudgetAlertMixin:
         ).fetchall()
 
         return [dict(row) for row in rows]
+
     def mark_alert_read(self, alert_id: int) -> None:
         self._conn.execute("UPDATE budget_alerts SET is_read = 1 WHERE id = ?", (alert_id,))
         self._conn.commit()
+
     def mark_all_alerts_read(self) -> None:
         self._conn.execute("UPDATE budget_alerts SET is_read = 1 WHERE is_read = 0")
         self._conn.commit()
+
     def delete_alert(self, alert_id: int) -> None:
         self._conn.execute("DELETE FROM budget_alerts WHERE id = ?", (alert_id,))
         self._conn.commit()
+
     def register_alert_callback(self, callback: Callable[[BudgetAlert], None]) -> None:
         self._alert_callbacks.append(callback)

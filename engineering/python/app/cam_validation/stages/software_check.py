@@ -52,7 +52,6 @@ class SoftwareCheckMixin:
     _store: Any
     _validator: Any
 
-
     """CAM 软件校验阶段 mixin：双层校验的核心执行逻辑。
 
     封装 run_pipeline + _execute_validation + _build_feature_results。

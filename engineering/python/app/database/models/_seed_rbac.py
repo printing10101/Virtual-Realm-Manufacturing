@@ -214,4 +214,3 @@ async def _seed_default_admin_user() -> None:
         pass
     except (OSError, IOError, PermissionError) as e:
         logger.error("[部署可用性] 创建默认 admin 用户失败: %s", e, exc_info=True)
-

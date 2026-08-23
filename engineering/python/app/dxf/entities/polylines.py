@@ -9,6 +9,7 @@ from .common import safe_color
 
 logger = logging.getLogger(__name__)
 
+
 def lwpolyline_to_obj(entity) -> DxfPolyline:
     """将单个 LWPOLYLINE 实体转换为 DxfPolyline。"""
     vertices: list[tuple[float, ...]] = []
@@ -41,6 +42,8 @@ def lwpolyline_to_obj(entity) -> DxfPolyline:
         handle=str(entity.dxf.handle),
         entity_type="LWPOLYLINE",
     )
+
+
 def polyline_to_obj(entity) -> DxfPolyline:
     """将单个 POLYLINE 实体（带 VERTEX 子实体）转换为 DxfPolyline。"""
     vertices: list[tuple[float, ...]] = []

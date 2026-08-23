@@ -45,7 +45,6 @@ class WriterMixin:
     _last_hash: Any
     _log_root: Any
 
-
     """审计日志写入 mixin。
 
     依赖 ``AuditLog`` 实例的以下属性（由 ``AuditLog.__init__`` 初始化）：

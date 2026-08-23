@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 
-
 from app.data.process_data_manager import CuttingParameterEntry, ToolEntry
 
 

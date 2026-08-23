@@ -256,9 +256,7 @@ class MTConnectClient:
 
         return status
 
-    def _find_data_item(
-        self, root: ET.Element, item_type: str, sub_type: str | None, namespaces: dict
-    ) -> Any | None:
+    def _find_data_item(self, root: ET.Element, item_type: str, sub_type: str | None, namespaces: dict) -> Any | None:
         """查找特定类型的数据项"""
         # 简化实现，实际需要根据 MTConnect 标准解析
         for elem in root.iter():

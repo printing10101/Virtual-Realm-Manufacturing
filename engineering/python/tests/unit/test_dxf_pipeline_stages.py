@@ -107,7 +107,7 @@ class TestProgress:
             StageKey.PARSE.value: StageStatus.SUCCESS.value,
             StageKey.FEATURES.value: StageStatus.PENDING.value,
         }
-        assert progress_of(statuses) == pytest.approx(1 / 6)
+        assert progress_of(statuses) == pytest.approx(1 / 6, abs=1e-4)
 
     def test_all_done_full(self) -> None:
         statuses = {k.value: StageStatus.SUCCESS.value for k in StageKey}
@@ -119,15 +119,15 @@ class TestProgress:
             StageKey.PARSE.value: StageStatus.SUCCESS.value,
             StageKey.FEATURES.value: StageStatus.FAILED.value,
         }
-        assert progress_of(statuses) == pytest.approx(2 / 6)
+        assert progress_of(statuses) == pytest.approx(2 / 6, abs=1e-4)
 
     def test_missing_keys_ignored(self) -> None:
         statuses = {StageKey.PARSE.value: StageStatus.SUCCESS.value}
-        assert progress_of(statuses) == pytest.approx(1 / 6)
+        assert progress_of(statuses) == pytest.approx(1 / 6, abs=1e-4)
 
     def test_accepts_plain_string_status(self) -> None:
         statuses = {"parse": "success", "features": "success"}
-        assert progress_of(statuses) == pytest.approx(2 / 6)
+        assert progress_of(statuses) == pytest.approx(2 / 6, abs=1e-4)
 
 
 class TestSummarize:

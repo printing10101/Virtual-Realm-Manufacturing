@@ -9,6 +9,7 @@ PROXIMITY_THRESHOLD = 15.0
 RECTANGLE_ANGLE_TOLERANCE = 2.0
 RECTANGLE_LENGTH_TOLERANCE = 5.0
 
+
 @dataclass
 class HoleFeatureInfo:
     """孔特征信息。
@@ -140,4 +141,3 @@ class FeatureExtractionResult:
             "warnings": self.warnings,
             "errors": self.errors,
         }
-

@@ -219,9 +219,7 @@ def _orm_to_contract(orm: ExperimentSnapshotORM) -> ExperimentSnapshot:
         config = {"_decode_error": True, "raw": cast(str, orm.config_json)}
 
     try:
-        dataset_versions = (
-            json.loads(cast(str, orm.dataset_versions_json)) if orm.dataset_versions_json else []
-        )
+        dataset_versions = json.loads(cast(str, orm.dataset_versions_json)) if orm.dataset_versions_json else []
     except json.JSONDecodeError:
         dataset_versions = []
 

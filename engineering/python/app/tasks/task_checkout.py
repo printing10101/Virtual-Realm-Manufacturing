@@ -9,6 +9,7 @@ from app.tasks.execution_lock import (
     ExecutionLockStore,
     get_execution_lock_store,
 )
+
 # 模型/常量经本模块再导出（dependencies / api 导入方依赖），__all__ 声明避免 ruff F401
 from app.tasks._checkout_models import (
     BUDGET_RETRY_DELAY_MINUTES,
@@ -60,10 +61,6 @@ from app.tasks._task_checkout_queue_mixin import _TaskCheckoutQueueMixin
 logger = logging.getLogger(__name__)
 
 
-
-
-
-
 class TaskCheckoutManager(_TaskCheckoutLocksMixin, _TaskCheckoutQueueMixin, _TaskCheckoutOpsMixin):
     def __init__(self, lock_store: ExecutionLockStore, db_path: str | None = None):
         self._lock_store = lock_store
@@ -85,10 +82,6 @@ class TaskCheckoutManager(_TaskCheckoutLocksMixin, _TaskCheckoutQueueMixin, _Tas
 
     def set_gpu_checker(self, checker: Callable[[float], bool]):
         self._gpu_checker = checker
-
-
-
-
 
     def _row_to_task(self, row) -> TaskRecord:
         import json
@@ -122,25 +115,6 @@ class TaskCheckoutManager(_TaskCheckoutLocksMixin, _TaskCheckoutQueueMixin, _Tas
         import json
 
         return json.dumps(blockers, ensure_ascii=False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class _CheckoutManagerHolder:

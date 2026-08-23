@@ -34,6 +34,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
+from app.parametric_geometry._review_state_machine import (
+    all_features_reviewed,
+    can_execute,
+    can_finalize,
+    can_review,
+    is_valid_review_status,
+    next_status_after_review,
+)
 from app.parametric_geometry.assembly_builder import (
     AssemblyPlan,
     build_assembly_plan,
@@ -212,10 +220,7 @@ class ParametricGeometryPipeline:
         if task is None:
             raise ParametricGeometryError(f"任务不存在: {task_id}")
 
-        if task.status not in (
-            ParametricGeometryTaskStatus.PENDING.value,
-            ParametricGeometryTaskStatus.FAILED.value,
-        ):
+        if not can_execute(task.status):
             raise ParametricGeometryError(f"任务状态不允许执行: {task.status}（仅 pending/failed 可执行）")
 
         # 标记为 RUNNING
@@ -353,12 +358,12 @@ class ParametricGeometryPipeline:
         if task is None:
             raise StepReviewError(f"任务不存在: {task_id}")
 
-        if task.status != ParametricGeometryTaskStatus.STEP_GENERATED.value:
+        if not can_review(task.status):
             raise StepReviewError(f"任务状态不允许审核: {task.status}（仅 step_generated 可审核）")
 
         # 验证 review_status 合法
-        valid_statuses = {s.value for s in StepReviewStatus}
-        if review_status not in valid_statuses:
+        if not is_valid_review_status(review_status):
+            valid_statuses = {s.value for s in StepReviewStatus}
             raise StepReviewError(f"非法 review_status: {review_status}（合法值: {valid_statuses}）")
 
         # 验证 edited 模式必须有 edited_params
@@ -382,8 +387,8 @@ class ParametricGeometryPipeline:
         target.reviewed_at = time.time()
 
         # 检查是否所有特征都已审核（不再有 pending）
-        all_reviewed = all(f.review_status != StepReviewStatus.PENDING.value for f in task.input_features)
-        new_status = ParametricGeometryTaskStatus.REVIEWED.value if all_reviewed else task.status
+        all_reviewed = all_features_reviewed([f.review_status for f in task.input_features])
+        new_status = next_status_after_review(all_reviewed, task.status)
 
         self._store.update(
             task_id,
@@ -424,7 +429,7 @@ class ParametricGeometryPipeline:
         if task is None:
             raise ParametricGeometryError(f"任务不存在: {task_id}")
 
-        if task.status != ParametricGeometryTaskStatus.REVIEWED.value:
+        if not can_finalize(task.status):
             raise ParametricGeometryError(f"任务状态不允许最终化: {task.status}（仅 reviewed 可最终化）")
 
         try:
@@ -693,5 +698,3 @@ class ParametricGeometryPipeline:
                 safe.get("error_id"),
                 safe.get("message"),
             )
-
-

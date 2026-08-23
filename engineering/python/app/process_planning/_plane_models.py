@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+
 @dataclass
 class PlaneFeature:
     """A single plane feature with complete geometric information.
@@ -172,4 +173,3 @@ class PlaneRecognitionResult:
         """
         rate = self.accuracy_metrics.get("overall", 0.0)
         return len(self.errors) == 0 and rate >= 0.99
-

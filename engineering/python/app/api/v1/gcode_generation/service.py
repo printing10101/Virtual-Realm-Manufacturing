@@ -17,20 +17,31 @@ from app.api.v1._shared.task_infra import (
     spawn_background_task as _spawn,
 )
 from app.api.v1.gcode_generation._helpers import (
-    _disclaimer_dict, _get_pipeline, _resolve_upstream_chatter_report, _resolve_upstream_operation_plan,
+    _disclaimer_dict,
+    _get_pipeline,
+    _resolve_upstream_chatter_report,
+    _resolve_upstream_operation_plan,
 )
 from app.api.v1.gcode_generation.schemas import (
-    ReviewRequest, TaskCreateRequest,
+    ReviewRequest,
+    TaskCreateRequest,
 )
 from app.config import config
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 from app.gcode_generation import (
-    GCodeGenerationError, GCodeGenerationPipelineError, GCodeGenerationTaskStatus,
-    GCodeReviewError, GCodeReviewStatus, ReviewError, get_file_extension, get_task_store,
+    GCodeGenerationError,
+    GCodeGenerationPipelineError,
+    GCodeGenerationTaskStatus,
+    GCodeReviewError,
+    GCodeReviewStatus,
+    ReviewError,
+    get_file_extension,
+    get_task_store,
 )
 
 logger = logging.getLogger(__name__)
+
 
 async def get_precision_info() -> dict[str, Any]:
     """查询当前精度档位信息、控制器类型与工业硬门槛（不创建任务）。
@@ -91,6 +102,7 @@ async def get_precision_info() -> dict[str, Any]:
             },
         },
     )
+
 
 async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
     """创建 G 代码生成任务。
@@ -217,6 +229,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
         message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
+
 async def run_task(task_id: str) -> dict[str, Any]:
     """异步触发 G 代码生成流水线执行。
 
@@ -271,6 +284,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
         },
         message="任务已开始执行",
     )
+
 
 async def get_task_status(task_id: str) -> dict[str, Any]:
     """查询任务当前状态、审核进度、G 代码文件路径、精度告知字段。"""
@@ -328,6 +342,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
         },
     )
 
+
 async def list_tasks(
     limit: int = 20,
     status_filter: str = "",
@@ -371,6 +386,7 @@ async def list_tasks(
             "total": len(tasks),
         },
     )
+
 
 async def get_task_result(task_id: str) -> dict[str, Any]:
     """获取任务结果摘要与完整 G 代码段列表（含审核状态）。
@@ -449,6 +465,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
             "gcode_disclaimer": _disclaimer_dict(task=task, gcode_file_exported=gcode_file_exported),
         },
     )
+
 
 async def review_feature(
     task_id: str,
@@ -575,6 +592,7 @@ async def review_feature(
         ),
     )
 
+
 async def confirm_task(
     task_id: str,
     reviewer: str = "engineer",
@@ -687,6 +705,7 @@ async def confirm_task(
         ),
     )
 
+
 async def download_gcode(task_id: str) -> FileResponse | JSONResponse:
     """下载 G 代码文件（供阶段 7 CAM 校验加载）。
 
@@ -726,6 +745,7 @@ async def download_gcode(task_id: str) -> FileResponse | JSONResponse:
         filename=filename,
     )
 
+
 async def download_report(task_id: str) -> FileResponse | JSONResponse:
     """下载审核记录 JSON（供阶段 7 CAM 校验读取）。
 
@@ -762,6 +782,7 @@ async def download_report(task_id: str) -> FileResponse | JSONResponse:
         media_type="application/json",
         filename=f"{task_id}_report.json",
     )
+
 
 async def delete_task(task_id: str) -> dict[str, Any]:
     """取消或删除 G 代码生成任务。

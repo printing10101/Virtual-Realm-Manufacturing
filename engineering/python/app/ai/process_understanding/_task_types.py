@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+
 class TaskType(Enum):
     """任务类型枚举"""
 

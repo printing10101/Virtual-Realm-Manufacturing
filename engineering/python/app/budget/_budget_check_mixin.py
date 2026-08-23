@@ -19,7 +19,6 @@ class _BudgetCheckMixin:
     _lock: Any
     tracker: Any
 
-
     def check_budget(self, agent_id: str, resource_types: list[ResourceType] | None = None) -> BudgetCheckResult:
         """
         执行预算检查

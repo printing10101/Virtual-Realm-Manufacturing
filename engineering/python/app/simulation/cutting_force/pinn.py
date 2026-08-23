@@ -16,7 +16,6 @@ import torch
 import torch.nn as nn
 
 
-
 class ResidualBlock(nn.Module):
     """残差块：x + F(x)。"""
 

@@ -8,17 +8,21 @@ from typing import Any
 from collections.abc import Callable
 
 from app.tasks._checkout_models import (
-    CheckoutFailureReason, CheckoutResult, CheckoutStatus, TaskRecord, TaskStatus,
+    CheckoutFailureReason,
+    CheckoutResult,
+    CheckoutStatus,
+    TaskRecord,
+    TaskStatus,
 )
 from app.tasks.execution_lock import (
-    LockConflictError, LockNotFoundError,
+    LockConflictError,
+    LockNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class _TaskCheckoutOpsMixin:
-
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
     _get_conn: Callable[..., Any]
     _record_failure: Callable[..., Any]
@@ -55,12 +59,14 @@ class _TaskCheckoutOpsMixin:
             ),
         )
         conn.commit()
+
     def get_task(self, task_id: str) -> TaskRecord | None:
         conn = self._get_conn()
         row = conn.execute("SELECT * FROM checkout_tasks WHERE id = ?", (task_id,)).fetchone()
         if row is None:
             return None
         return self._row_to_task(row)
+
     def complete_task(self, task_id: str, agent_id: str) -> CheckoutResult:
         task = self.get_task(task_id)
         if task is None:
@@ -116,6 +122,7 @@ class _TaskCheckoutOpsMixin:
             agent_id=agent_id,
             message="Task completed successfully",
         )
+
     def fail_task(self, task_id: str, agent_id: str, reason: str = "") -> CheckoutResult:
         task = self.get_task(task_id)
         if task is None:
@@ -157,6 +164,7 @@ class _TaskCheckoutOpsMixin:
             agent_id=agent_id,
             message=f"Task marked as failed: {reason}",
         )
+
     def abandon_task(self, task_id: str, agent_id: str) -> CheckoutResult:
         task = self.get_task(task_id)
         if task is None:
@@ -194,6 +202,7 @@ class _TaskCheckoutOpsMixin:
             agent_id=agent_id,
             message="Task abandoned, returned to pending",
         )
+
     def get_task_board(self) -> dict[str, list[dict]]:
         conn = self._get_conn()
         rows = conn.execute("SELECT * FROM checkout_tasks ORDER BY priority ASC, created_at ASC").fetchall()
@@ -223,6 +232,7 @@ class _TaskCheckoutOpsMixin:
                 board["pending"].append(task_dict)
 
         return board
+
     def get_task_checkout_history(self, task_id: str) -> dict[str, Any]:
         task = self.get_task(task_id)
         if task is None:
@@ -252,6 +262,7 @@ class _TaskCheckoutOpsMixin:
             "lock_history": lock_history,
             "failure_history": failure_history,
         }
+
     def get_agent_status(self, agent_id: str) -> dict[str, Any]:
         active_lock = self._lock_store.get_active_lock_by_agent(agent_id)
         pending_count = self._count_tasks_by_agent(agent_id, TaskStatus.PENDING.value)
@@ -266,6 +277,7 @@ class _TaskCheckoutOpsMixin:
             "in_progress_tasks": in_progress_count,
             "completed_tasks": completed_count,
         }
+
     def _count_tasks_by_agent(self, agent_id: str, status: str) -> int:
         conn = self._get_conn()
         row = conn.execute(
@@ -273,8 +285,10 @@ class _TaskCheckoutOpsMixin:
             (agent_id, status),
         ).fetchone()
         return row["cnt"] if row else 0
+
     def get_all_locks(self) -> list[dict]:
         return [lock.to_dict() for lock in self._lock_store.list_all_locks()]
+
     def close(self):
         # 修复：原实现直接调用 self._conn.close() 关闭连接，
         # 但连接是从 SQLiteConnectionPool 借出的——直接 close 会导致：

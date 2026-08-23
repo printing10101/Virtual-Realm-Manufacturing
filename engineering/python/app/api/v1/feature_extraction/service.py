@@ -95,6 +95,7 @@ async def get_precision_info() -> dict[str, Any]:
         message="特征提取精度档位与工业硬门槛信息",
     )
 
+
 async def create_task_from_path(
     body: TaskCreateFromPathRequest,
 ) -> dict[str, Any]:
@@ -180,6 +181,7 @@ async def create_task_from_path(
         },
         message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
+
 
 async def create_task_from_upload(
     request: Request,
@@ -277,6 +279,7 @@ async def create_task_from_upload(
         message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
+
 async def run_task(task_id: str) -> dict[str, Any]:
     """异步触发特征提取任务执行。
 
@@ -326,6 +329,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
         message="任务已开始执行",
     )
 
+
 async def get_task_status(task_id: str) -> dict[str, Any]:
     """查询任务当前状态、各阶段耗时、特征统计、精度告知字段。"""
     store = get_feature_store()
@@ -374,6 +378,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
         },
     )
 
+
 async def list_tasks(limit: int = 20) -> dict[str, Any]:
     """列出最近的特征提取任务（按创建时间倒序）。"""
     if limit < 1 or limit > 100:
@@ -400,6 +405,7 @@ async def list_tasks(limit: int = 20) -> dict[str, Any]:
             "total": len(tasks),
         },
     )
+
 
 async def get_task_result(task_id: str) -> dict[str, Any]:
     """获取任务已提取的完整特征列表。
@@ -470,6 +476,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
             ),
         },
     )
+
 
 async def review_feature(
     task_id: str,
@@ -594,6 +601,7 @@ async def review_feature(
             )
         ),
     )
+
 
 async def export_confirmed_features(task_id: str) -> dict[str, Any]:
     """导出已确认（confirmed + edited）的特征集为 JSON 文件。
@@ -724,6 +732,7 @@ async def export_confirmed_features(task_id: str) -> dict[str, Any]:
         ),
     )
 
+
 async def download_exported_features(task_id: str) -> FileResponse:
     """下载已导出的特征集 JSON 文件。
 
@@ -760,6 +769,7 @@ async def download_exported_features(task_id: str) -> FileResponse:
         media_type="application/json",
         filename=f"confirmed_features_{task_id}.json",
     )
+
 
 async def delete_task(task_id: str) -> dict[str, Any]:
     """删除特征提取任务及其持久化文件。

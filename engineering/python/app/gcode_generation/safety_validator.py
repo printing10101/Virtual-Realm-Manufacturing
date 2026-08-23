@@ -31,19 +31,88 @@ logger = logging.getLogger(__name__)
 DEFAULT_MACHINE_CONFIG: dict[str, Any] = {
     "spindle": {"min_rpm": 50, "max_rpm": 24000},
     "feed": {"min_rate": 10.0, "max_rate": 20000.0},
-    "axis_limits": {"enabled": True, "x_min": -1000.0, "x_max": 1000.0, "y_min": -1000.0, "y_max": 1000.0, "z_min": -500.0, "z_max": 500.0},
+    "axis_limits": {
+        "enabled": True,
+        "x_min": -1000.0,
+        "x_max": 1000.0,
+        "y_min": -1000.0,
+        "y_max": 1000.0,
+        "z_min": -500.0,
+        "z_max": 500.0,
+    },
 }
 
 # ---------------------------------------------------------------------------
 # G/M 代码白名单（按控制器族；未知代码仅告警不阻断）
 # ---------------------------------------------------------------------------
 _BASE_G_CODES = {
-    0, 1, 2, 3, 4, 10, 15, 16, 17, 18, 19, 20, 21, 28, 40, 41, 42, 43, 49,
-    52, 53, 54, 55, 56, 57, 58, 59, 73, 76, 80, 81, 82, 83, 84, 85, 86, 87,
-    88, 89, 90, 91, 94, 95, 98, 99,
+    0,
+    1,
+    2,
+    3,
+    4,
+    10,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    28,
+    40,
+    41,
+    42,
+    43,
+    49,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    73,
+    76,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    94,
+    95,
+    98,
+    99,
 }
 _BASE_M_CODES = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 17, 18, 19, 20, 21, 22, 30, 98, 99,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    13,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    30,
+    98,
+    99,
 }
 # 西门子 / 海德汉等循环指令关键词（不作为未知代码告警）
 _CYCLE_PATTERNS = (
@@ -192,7 +261,9 @@ class SafetyValidator:
         # L1 主轴转速
         rpm = getattr(feat, "spindle_rpm", None)
         if rpm is None or not _finite(rpm):
-            issues.append(SafetyIssue(WARN_NON_FINITE_PARAM, "warning", f"特征 {fid} 主轴转速缺失或非有限值", {"feature_id": fid}))
+            issues.append(
+                SafetyIssue(WARN_NON_FINITE_PARAM, "warning", f"特征 {fid} 主轴转速缺失或非有限值", {"feature_id": fid})
+            )
         elif rpm < self._spindle_min or rpm > self._spindle_max:
             clamped = min(max(rpm, self._spindle_min), self._spindle_max)
             issues.append(
@@ -225,8 +296,7 @@ class SafetyValidator:
                     SafetyIssue(
                         ERR_CUTTING_DEPTH_EXCEEDS_LIMIT,
                         "error",
-                        f"特征 {fid} 实际切深 {axial:.3f}mm 超过极限切深 {limit:.3f}mm，"
-                        "处于颤振不稳定区，禁止导出",
+                        f"特征 {fid} 实际切深 {axial:.3f}mm 超过极限切深 {limit:.3f}mm，处于颤振不稳定区，禁止导出",
                         {"feature_id": fid, "axial_depth_mm": axial, "limit_depth_mm": limit},
                     )
                 )
@@ -334,15 +404,15 @@ class SafetyValidator:
 
         # L6 程序结束
         if not any(re.search(r"\bM(30|02)\b", ln, re.IGNORECASE) for ln in lines):
-            report.issues.append(
-                SafetyIssue(ERR_NO_PROGRAM_END, "error", "G 代码缺少程序结束指令（M30/M02）")
-            )
+            report.issues.append(SafetyIssue(ERR_NO_PROGRAM_END, "error", "G 代码缺少程序结束指令（M30/M02）"))
 
         # L6 程序号（fanuc 系：O 号；heidenhain 不要求）
         if controller.startswith("fanuc") or "siemens" in controller:
             if not any(re.match(r"^\s*O\d{4,5}\b", ln) for ln in lines):
                 report.issues.append(
-                    SafetyIssue(WARN_NO_PROGRAM_NUMBER, "warning", "未检测到程序号（O 号），Fanuc/Siemens 程序建议带程序号")
+                    SafetyIssue(
+                        WARN_NO_PROGRAM_NUMBER, "warning", "未检测到程序号（O 号），Fanuc/Siemens 程序建议带程序号"
+                    )
                 )
 
         # L6 负进给 / 零进给

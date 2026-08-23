@@ -26,7 +26,6 @@ class _TaskPersistenceMixin:
     _get_task_lock: Callable[..., Any]
     _tasks: Any
 
-
     async def _persist_task_to_db(self, record: TaskRecord):
         from app.tasks.task_system import get_sessionmaker  # 惰性导入：使测试 monkeypatch 生效
 
@@ -74,13 +73,13 @@ class _TaskPersistenceMixin:
                     raise
         except (RuntimeError, OSError, SQLAlchemyError) as e:
             logger.error("Failed to persist task %s to DB: %s", record.job_id, e)
+
     async def get_task(self, job_id: str) -> TaskRecord | None:
         async with self._get_task_lock():
             if job_id in self._tasks:
                 return self._tasks[job_id]
 
         from app.tasks.task_system import get_sessionmaker  # 惰性导入：使测试 monkeypatch 生效
-
 
         sessionmaker = get_sessionmaker()
         if sessionmaker is None:
@@ -99,6 +98,7 @@ class _TaskPersistenceMixin:
             logger.error("Failed to load task %s from DB: %s", job_id, e)
 
         return None
+
     async def count_tasks(
         self,
         owner_id: str | None = None,
@@ -142,6 +142,7 @@ class _TaskPersistenceMixin:
                 tasks = list(self._tasks.values())
             filtered = self._filter_tasks(tasks, owner_id, task_type, status, limit=len(tasks), offset=0)
             return len(filtered)
+
     async def list_tasks(
         self,
         owner_id: str | None = None,
@@ -195,6 +196,7 @@ class _TaskPersistenceMixin:
             async with self._get_task_lock():
                 tasks = list(self._tasks.values())
             return self._filter_tasks(tasks, owner_id, task_type, status, limit, offset)
+
     def _filter_tasks(
         self,
         tasks: list[TaskRecord],

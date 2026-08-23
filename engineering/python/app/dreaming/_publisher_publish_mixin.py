@@ -35,7 +35,6 @@ class _PublisherPublishMixin:
     _records: Any
     _validator: Any
 
-
     def publish(
         self,
         rule: RuleDraft,
@@ -148,6 +147,7 @@ class _PublisherPublishMixin:
             validation_result=validation_result,
             audit_entry_seq=audit_seq,
         )
+
     def check_auto_demotion(
         self,
         rule_id: str,

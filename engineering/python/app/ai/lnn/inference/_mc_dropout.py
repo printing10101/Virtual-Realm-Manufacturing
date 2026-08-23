@@ -59,7 +59,6 @@ class _MCDropoutMixin:
     device: Any
     model_name: Any
 
-
     """``predict_mc_dropout`` 的 Mixin，提供 Monte Carlo Dropout 不确定性量化。
 
     本 Mixin 不定义 ``__init__``，所有实例状态由 ``LNNPredictor.__init__``

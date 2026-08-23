@@ -25,6 +25,7 @@ from app.ai.unified_embedding._models import (
     SurfaceRoughnessSpec,
 )
 
+
 class CognitiveToPerceptionRequest:
     """Cognitive layer → Perception layer interface.
 
@@ -254,4 +255,3 @@ class ExecutionToCognitiveResponse:
 
     def validate(self) -> list[str]:
         return self.feedback.validate()
-

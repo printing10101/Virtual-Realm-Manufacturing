@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 
-
-
 class PublicationStage(str, Enum):
     """规则灰度发布阶段。
 
@@ -54,9 +52,9 @@ class PublicationStage(str, Enum):
             return None
         return _STAGE_ORDER[idx - 1]
 
+
 @dataclass
 class PublicationRecord:
-
     """单条规则的灰度发布记录。
 
     记录规则在哪个灰度阶段、何时进入、效果指标快照。
@@ -108,6 +106,7 @@ class PublicationRecord:
             auto_rollback_triggered=bool(data.get("auto_rollback_triggered", False)),
         )
 
+
 @dataclass
 class PublicationResult:
     """灰度发布操作结果。
@@ -157,4 +156,3 @@ _STAGE_TRAFFIC_PERCENTAGE: dict[PublicationStage, float] = {
     PublicationStage.FULL: 1.00,
     PublicationStage.DEPRECATED: 0.0,
 }
-

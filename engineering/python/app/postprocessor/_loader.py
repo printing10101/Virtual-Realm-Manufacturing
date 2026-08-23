@@ -31,6 +31,8 @@ from app.postprocessor._limiter import ConfigLimiter  # noqa: E402
 
 class ConfigLoadError(Exception):
     """配置加载异常。"""
+
+
 def _deep_merge(base: dict, override: dict) -> dict:
     """深度合并两个字典，override中的值覆盖base中的同名键。
 
@@ -51,6 +53,8 @@ def _deep_merge(base: dict, override: dict) -> dict:
         else:
             result[key] = copy.deepcopy(value)
     return result
+
+
 class ConfigLoader:
     """CNC后处理器配置加载器。
 
@@ -269,6 +273,8 @@ class ConfigLoader:
         """
         self.clear_cache()
         return self.load(config_path=config_path, use_cache=False)
+
+
 def create_limiter(config: dict) -> ConfigLimiter:
     """从配置字典创建限幅器实例。
 
@@ -279,6 +285,7 @@ def create_limiter(config: dict) -> ConfigLimiter:
         ConfigLimiter 实例
     """
     return ConfigLimiter(config)
+
 
 # --- 常量（自 config_loader 迁移） ---
 CONTROLLER_FULL_ID_MAP = {

@@ -19,7 +19,6 @@ class _TaskStatsMixin:
     _max_concurrent: Any
     _tasks: Any
 
-
     def get_stats(self) -> dict[str, Any]:
         total = len(self._tasks)
         active = sum(1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING)
@@ -36,5 +35,6 @@ class _TaskStatsMixin:
             "max_concurrent": self._max_concurrent,
             "available_slots": self._max_concurrent - active,
         }
+
     async def get_task_progress_from_redis(self, job_id: str) -> dict[str, Any]:
         return await get_task_progress(job_id)

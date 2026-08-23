@@ -360,14 +360,17 @@ __all__ = [
     "MachiningAnomaly",
     "CuttingExperience",
     "ExperienceQuery",
-    "ExperienceStats"
+    "ExperienceStats",
 ]
 
 __version__ = "1.0.0"
 CONTRACTS_VERSION = "1.0.0"  # 契约版本号，用于 OpenAPI info.version 与 adapter 兼容性校验
 
 from app.contracts.cutting_experience import (
-    CuttingParameters, CuttingResults, MachiningAnomaly, CuttingExperience,
-    ExperienceQuery, ExperienceStats,
+    CuttingParameters,
+    CuttingResults,
+    MachiningAnomaly,
+    CuttingExperience,
+    ExperienceQuery,
+    ExperienceStats,
 )
-

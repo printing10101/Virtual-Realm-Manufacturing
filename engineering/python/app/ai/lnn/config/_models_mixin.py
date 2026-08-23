@@ -18,7 +18,6 @@ class _ModelsMixin:
     _is_dirty: Any
     _raw_config: Any
 
-
     def get_model_config(self, model_name: str) -> ModelConfig | None:
         """
         获取指定模型的配置

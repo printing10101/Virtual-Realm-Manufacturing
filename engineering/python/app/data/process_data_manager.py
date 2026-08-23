@@ -190,9 +190,45 @@ class ProcessPlanningDataManager:
             self._materials[entry.id] = entry
 
     def _load_tools(self) -> None:
-        raw_data = self._load_json_optional("tools.json")
-        if not raw_data:
+        """加载刀具库。
+
+        与材料一致，刀具数据统一存放于 ``app/database/data/tools.json``（新版格式），
+        由 ``app.database.tools.ToolDatabase`` 消费。此处直接委派新版数据库层读取，
+        并将新版 ``type``/``subtype`` 映射为旧 ``ToolEntry.series`` / ``diameter_mm`` /
+        ``application`` 形态，避免旧解析器因缺 ``series`` 等字段将所有刀具跳过。
+        """
+        try:
+            from app.database.tools import ToolDatabase
+        except ImportError:
+            self._load_tools_from_raw(self._load_json_optional("tools.json"))
             return
+        try:
+            new_tools = ToolDatabase().list_all()
+        except Exception as e:  # pragma: no cover - 兜底
+            logger.warning("新版刀具库加载失败，回退 JSON 解析: %s", e)
+            self._load_tools_from_raw(self._load_json_optional("tools.json"))
+            return
+        seen: set[str] = set()
+        for t in new_tools:
+            series = self._tool_series_for_type(t.type)
+            diameter = self._tool_nominal_diameter(t.diameter_range)
+            # 同名/同系列且同直径的刀具去重，避免重复条目干扰精确匹配
+            key = (series, round(diameter, 3))
+            if key in seen:
+                continue
+            seen.add(key)
+            entry = ToolEntry(
+                id=t.id,
+                series=series,
+                name=t.name,
+                diameter_mm=diameter,
+                material=t.material,
+                application=self._tool_application_for_type(t.type),
+                description=f"type={t.type}, subtype={t.subtype}",
+            )
+            self._tools[entry.id] = entry
+
+    def _load_tools_from_raw(self, raw_data: list[dict[str, Any]]) -> None:
         for item in raw_data:
             try:
                 entry = ToolEntry.from_dict(item)
@@ -200,6 +236,43 @@ class ProcessPlanningDataManager:
                 logger.warning("跳过不兼容的刀具条目 %s: %s", item.get("id", "?"), e)
                 continue
             self._tools[entry.id] = entry
+
+    @staticmethod
+    def _tool_series_for_type(tool_type: str) -> str:
+        """新版刀具 type → 旧 series 映射（与 process_map 对齐）。"""
+        return {
+            "endmill": "endmill",
+            "drill": "twist_drill",
+            "facemill": "face_mill",
+            "center_drill": "center_drill",
+            "tap": "tap",
+            "turning": "turning",
+            "chamfer": "chamfer",
+            "engraving": "endmill",
+        }.get(tool_type, tool_type)
+
+    @staticmethod
+    def _tool_nominal_diameter(diameter_range: list[float]) -> float:
+        """按直径区间取标称直径：优先上限，其次区间中点。"""
+        if not diameter_range:
+            return 0.0
+        upper = diameter_range[-1]
+        lower = diameter_range[0]
+        if upper and lower:
+            return round((lower + upper) / 2.0, 3)
+        return float(upper or lower or 0.0)
+
+    @staticmethod
+    def _tool_application_for_type(tool_type: str) -> str:
+        return {
+            "endmill": "型腔/轮廓加工",
+            "drill": "钻孔",
+            "facemill": "平面加工",
+            "center_drill": "打中心孔定位",
+            "tap": "攻丝",
+            "turning": "车削",
+            "chamfer": "倒角",
+        }.get(tool_type, "通用加工")
 
     def _load_json_optional(self, filename: str) -> list[dict[str, Any]]:
         """容错加载：文件缺失或格式不兼容时记录 warning 并返回空列表。

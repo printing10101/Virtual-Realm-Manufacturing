@@ -22,7 +22,6 @@ class _BudgetPolicyMixin:
     _conn: Any
     _policies: Any
 
-
     def _load_policies(self) -> None:
         rows = self._conn.execute("SELECT * FROM budget_policies ORDER BY level, scope_id").fetchall()
 
@@ -45,14 +44,17 @@ class _BudgetPolicyMixin:
             )
 
         logger.info("Loaded %d budget policies", len(self._policies))
+
     def _load_default_policies(self) -> None:
         for policy in DEFAULT_GLOBAL_BUDGETS:
             key = self._policy_key(policy.level.value, policy.scope_id, policy.resource_type.value)
             if key not in self._policies:
                 self.set_policy(policy)
+
     @staticmethod
     def _policy_key(level: str, scope_id: str, resource_type: str) -> str:
         return f"{level}:{scope_id}:{resource_type}"
+
     def set_policy(self, policy: BudgetPolicy) -> None:
         now = time.time()
         if policy.created_at is None:
@@ -91,12 +93,12 @@ class _BudgetPolicyMixin:
             policy.limit,
             policy.period.value,
         )
+
     def get_policy(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> BudgetPolicy | None:
         key = self._policy_key(level.value, scope_id, resource_type.value)
         return self._policies.get(key)
-    def get_all_policies(
-        self, level: BudgetLevel | None = None, scope_id: str | None = None
-    ) -> list[BudgetPolicy]:
+
+    def get_all_policies(self, level: BudgetLevel | None = None, scope_id: str | None = None) -> list[BudgetPolicy]:
         result = []
         for policy in self._policies.values():
             if level and policy.level != level:

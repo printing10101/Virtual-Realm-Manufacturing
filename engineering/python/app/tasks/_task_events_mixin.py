@@ -7,8 +7,6 @@ import json
 from typing import Any
 
 
-
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,12 +16,12 @@ class _TaskEventsMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _subscribers: Any
 
-
     def subscribe(self, job_id: str) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue(maxsize=100)
         if job_id in self._subscribers:
             self._subscribers[job_id].append(q)
         return q
+
     def unsubscribe(self, job_id: str, queue: asyncio.Queue):
         if job_id in self._subscribers:
             try:
@@ -36,6 +34,7 @@ class _TaskEventsMixin:
                     remove_err,
                     exc_info=True,
                 )
+
     async def _broadcast_event(self, job_id: str, event_type: str, data: dict[str, Any]):
         event = f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 

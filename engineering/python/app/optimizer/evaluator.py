@@ -74,10 +74,7 @@ def evaluate_recommendation(
     result_ok = result == "ok"
     cycle_ok = cycle_time_s is not None and cycle_time_s <= cycle_threshold
     wear_ok = tool_wear_percent is not None and tool_wear_percent <= wear_threshold
-    roughness_ok = (
-        surface_roughness_ra is not None
-        and surface_roughness_ra <= roughness_threshold
-    )
+    roughness_ok = surface_roughness_ra is not None and surface_roughness_ra <= roughness_threshold
 
     # 得分：结果判定权重最高（0.5），其余各 0.1667
     score = 0.0

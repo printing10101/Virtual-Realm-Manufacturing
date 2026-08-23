@@ -46,5 +46,3 @@ def get_quantized_model_name(model_name: str) -> str:
     if not is_quantized_model(model_name):
         return f"{model_name}_int8"
     return model_name
-
-

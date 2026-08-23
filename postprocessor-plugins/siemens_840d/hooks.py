@@ -106,7 +106,7 @@ class Siemens840DHeaderHooks:
     def format_header(self) -> str:
         """Siemens 840D 程序头：TRAFO 关闭 + 绝对编程 + 米制。"""
         return (
-            "%_N_%s_MPF\n"
+            "%%_N_%s_MPF\n"
             ":PATH=/_N_MPF_DIR\n"
             "G90 G71 G94\n"
             "G17\n"

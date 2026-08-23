@@ -77,16 +77,20 @@ class TestCreateCuttingExperience:
         assert created["machine_id"] == "VM-001"
         assert "created_at" in created
 
-        fetched = await repo.get_cutting_experience(uuid.UUID(rec.id.hex))
-        # get_cutting_experience 用主键（str）查询
-        fetched_by_pk = await repo.get_cutting_experience(rec.id)
-        assert fetched_by_pk is not None
+        # 查询时使用数据库存储的 ID 格式（exp_{hex}）
+        # _id_or_new 会将 UUID 转为 exp_{hex} 格式
+        hex_id = rec.id.hex.replace("-", "")
+        pk = f"exp_{hex_id}"
+        fetched_by_pk = await repo.get_cutting_experience(pk)
+        assert fetched_by_pk is not None, f"Cannot fetch record with ID: {pk}"
         assert fetched_by_pk["tool_id"] == "T-12"
         assert fetched_by_pk["parameters"]["spindle_rpm"] == 8000
 
     @pytest.mark.asyncio
     async def test_get_missing_returns_none(self, patch_sessionmaker) -> None:
-        assert await repo.get_cutting_experience(uuid.uuid4()) is None
+        # 使用字符串形式 ID（与数据库一致）
+        fake_id = str(uuid.uuid4())
+        assert await repo.get_cutting_experience(fake_id) is None
 
     @pytest.mark.asyncio
     async def test_create_many(self, patch_sessionmaker) -> None:
@@ -211,7 +215,10 @@ class TestDeleteCuttingExperience:
     async def test_delete_existing(self, patch_sessionmaker) -> None:
         rec = _make_record()
         created = await repo.create_cutting_experience(rec)
-        assert await repo.delete_cutting_experience(rec.id) is True
+        # 删除时使用数据库存储的 ID 格式（exp_{hex}）
+        hex_id = rec.id.hex.replace("-", "")
+        pk = f"exp_{hex_id}"
+        assert await repo.delete_cutting_experience(pk) is True
         assert await repo.get_cutting_experience(rec.id) is None
 
     @pytest.mark.asyncio

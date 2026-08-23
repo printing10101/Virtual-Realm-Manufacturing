@@ -34,7 +34,6 @@ class _DetectMixin:
     consecutive_anomaly_threshold: Any
     production_error_rate_threshold: Any
 
-
     def _get_publisher(self) -> ProgressivePublisher:
         if self._publisher is None:
             self._publisher = ProgressivePublisher()

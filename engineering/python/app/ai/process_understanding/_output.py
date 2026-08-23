@@ -7,6 +7,7 @@ from typing import Any
 
 from app.ai.process_understanding.task_classifier import TaskType
 
+
 @dataclass
 class ProcessUnderstandingOutput:
     """工艺理解模块统一输出格式"""

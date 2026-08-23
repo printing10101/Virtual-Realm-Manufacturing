@@ -22,7 +22,6 @@ class _StagesMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _data_valid: Any
 
-
     def _validate_input(self, part_description: dict[str, Any]) -> PipelineStage:
         """验证输入数据的完整性和格式。
 
@@ -304,4 +303,3 @@ class _StagesMixin:
                 "duration_ms": 0.0,
                 "error_message": f"仿真服务调用失败: {type(e).__name__}",
             }
-

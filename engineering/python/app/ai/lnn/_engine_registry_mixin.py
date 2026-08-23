@@ -22,13 +22,11 @@ except ImportError:  # pragma: no cover
 DEFAULT_PRIOR_CONFIDENCE = 0.6
 
 
-
 class _EngineRegistryMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
     _custom_models: Any
     _lnn_predictors: Any
     _streaming_predictors: Any
-
 
     def register_custom_model(
         self,
@@ -48,12 +46,14 @@ class _EngineRegistryMixin:
             model_name,
             model_type,
         )
+
     def register_lnn_predictor(self, model_name: str, predictor: Any) -> None:
         """注册一个已实例化的 :class:`LNNPredictor`，供 LNN 引擎调用。"""
         if not model_name:
             raise ValueError("model_name must be a non-empty string")
         self._lnn_predictors[model_name] = predictor
         logger.info("HybridInferenceEngine: 注册 LNN 预测器 %r", model_name)
+
     def register_streaming_predictor(
         self,
         model_name: str,
@@ -92,6 +92,7 @@ class _EngineRegistryMixin:
             model_name,
             type(streaming_predictor).__name__,
         )
+
     def build_streaming_predictor(
         self,
         model_name: str,

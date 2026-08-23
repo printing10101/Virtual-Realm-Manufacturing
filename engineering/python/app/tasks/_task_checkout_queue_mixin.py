@@ -10,8 +10,13 @@ from collections.abc import Callable
 
 from app.tasks._checkout_models import (
     MAX_RETRY_COUNT,
-    CheckoutFailureReason, CheckoutPriority, CheckoutQueueEntry,
-    CheckoutRequest, CheckoutResult, CheckoutStatus, TaskStatus,
+    CheckoutFailureReason,
+    CheckoutPriority,
+    CheckoutQueueEntry,
+    CheckoutRequest,
+    CheckoutResult,
+    CheckoutStatus,
+    TaskStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,7 +29,6 @@ class _TaskCheckoutQueueMixin:
     fail_task: Callable[..., Any]
     get_task: Callable[..., Any]
     _queue_lock: Any
-
 
     def enqueue_checkout(self, request: CheckoutRequest) -> CheckoutQueueEntry:
         with self._queue_lock:
@@ -58,6 +62,7 @@ class _TaskCheckoutQueueMixin:
             priority=request.priority,
             created_at=now,
         )
+
     def process_queue(self, max_batch: int = 10) -> list[CheckoutResult]:
         with self._queue_lock:
             conn = self._get_conn()
@@ -150,6 +155,7 @@ class _TaskCheckoutQueueMixin:
 
             conn.commit()
             return results
+
     def get_queue_status(self) -> list[dict]:
         conn = self._get_conn()
         rows = conn.execute("SELECT * FROM checkout_queue ORDER BY priority ASC, created_at ASC").fetchall()
@@ -167,6 +173,7 @@ class _TaskCheckoutQueueMixin:
             }
             for row in rows
         ]
+
     def _get_unresolved_blockers(self, blockers: list[str]) -> list[str]:
         unresolved = []
         for blocker_id in blockers:

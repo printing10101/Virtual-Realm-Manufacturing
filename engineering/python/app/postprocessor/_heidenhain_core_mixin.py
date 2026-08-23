@@ -41,6 +41,7 @@ class _HeidenhainCoreMixin:
             "",
         ]
         return "\n".join(lines)
+
     def format_tool_change(
         self,
         tool_id: int,

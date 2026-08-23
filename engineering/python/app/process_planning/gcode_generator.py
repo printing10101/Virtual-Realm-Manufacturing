@@ -45,7 +45,6 @@ from app.process_planning._validation import (  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
-
 class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
     """G代码生成器。
 
@@ -81,6 +80,7 @@ class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
         self._registry = PostProcessorRegistry()
         self._five_axis_planner = FiveAxisToolpathPlanner()
         self._config_limiter = ConfigLimiter(machine_config) if machine_config else None
+
     def generate(
         self,
         operation_plan: OperationPlan,
@@ -361,5 +361,3 @@ class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
             },
             checkpoints=checkpoints,
         )
-
-

@@ -119,4 +119,3 @@ class ResourceTracker:
                 self._data_transfer_today = 0.0
                 self._last_reset = now
                 logger.info("Daily resource counters reset")
-

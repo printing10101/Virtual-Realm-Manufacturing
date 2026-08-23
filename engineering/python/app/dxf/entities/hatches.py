@@ -9,6 +9,7 @@ from .common import safe_color
 
 logger = logging.getLogger(__name__)
 
+
 def hatch_to_obj(entity) -> DxfHatch:
     """将单个 HATCH 实体转换为 DxfHatch。"""
     pattern_name = str(getattr(entity.dxf, "pattern_name", "") or "")

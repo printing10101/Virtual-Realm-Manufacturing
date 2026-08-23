@@ -54,6 +54,7 @@ class _TaskRecoveryMixin:
 
         except (RuntimeError, OSError, SQLAlchemyError) as e:
             logger.error("Task recovery failed: %s", e)
+
     async def requeue_orphan_tasks(
         self,
         *,

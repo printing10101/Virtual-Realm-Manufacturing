@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 from app.chatter_prediction._types import (
     ChatterPredictionTaskStatus,
     ChatterReviewStatus,  # noqa: F401 - re-export（pipeline/__init__ 依赖旧导入路径）
-    PredictionMethod,     # noqa: F401 - re-export（__init__ 依赖旧导入路径）
+    PredictionMethod,  # noqa: F401 - re-export（__init__ 依赖旧导入路径）
     FeatureChatterResult,  # re-export：同上（predictor_adapter 依赖旧导入路径）
 )
 

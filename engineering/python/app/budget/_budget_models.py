@@ -7,6 +7,7 @@ from typing import Any
 
 from app.models.budget import BudgetLevel, BudgetStatus, ResourceType
 
+
 @dataclass
 class BudgetLimit:
     """预算限制配置"""
@@ -76,4 +77,3 @@ class BudgetCheckResult:
             "warnings": self.warnings,
             "blocked_reasons": self.blocked_reasons,
         }
-

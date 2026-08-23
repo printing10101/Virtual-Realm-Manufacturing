@@ -6,9 +6,9 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
+
 @dataclass
 class OutcomeSample:
-
     """单次规则触发的效果观测样本。
 
     Attributes:

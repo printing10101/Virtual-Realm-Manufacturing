@@ -138,9 +138,7 @@ class DialectRegistry:
         # 确保已编译
         uncompile = [i for i in self._declarations if i not in self._compiled_classes]
         if uncompile:
-            raise DialectCompileError(
-                f"存在未编译的方言声明: {uncompile}。建议操作：先调用 compile_all()。"
-            )
+            raise DialectCompileError(f"存在未编译的方言声明: {uncompile}。建议操作：先调用 compile_all()。")
 
         count = 0
         for dialect_id, cls in self._compiled_classes.items():

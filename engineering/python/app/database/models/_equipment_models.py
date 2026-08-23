@@ -17,6 +17,7 @@ from sqlalchemy.orm import relationship
 
 from app.database.models.machining_record import Base
 
+
 class Equipment(Base):
     """设备监控模型。"""
 
@@ -216,5 +217,3 @@ class MaintenancePlan(Base):
 # ---------------------------------------------------------------------------
 # Quality Inspection Models (quality_records / quality_anomalies)
 # ---------------------------------------------------------------------------
-
-

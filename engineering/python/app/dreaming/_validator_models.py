@@ -39,7 +39,6 @@ REQUIRED_HARD_CONSTRAINTS = {
 
 @dataclass
 class ValidationTestCase:
-
     """沙箱验证测试用例。
 
     记录每个测试用例的名称、输入、预期输出、实际输出、是否通过。
@@ -92,4 +91,3 @@ class ValidationResult:
             "validated_at": self.validated_at,
             "validator_version": self.validator_version,
         }
-

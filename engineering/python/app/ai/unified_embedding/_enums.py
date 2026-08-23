@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 
+
 class LayerType(str, Enum):
     COGNITIVE = "cognitive"
     PERCEPTION = "perception"
@@ -92,5 +93,3 @@ class AdjustmentPriority(str, Enum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
-
-

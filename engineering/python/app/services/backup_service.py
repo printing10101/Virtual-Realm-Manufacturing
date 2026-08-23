@@ -136,12 +136,14 @@ class BackupService:
             dst = dest_dir / src.name
             try:
                 self._backup_single(src, dst)
-                manifest.files.append({
-                    "name": src.name,
-                    "source": str(src),
-                    "sha256": _compute_sha256(dst),
-                    "size_bytes": dst.stat().st_size,
-                })
+                manifest.files.append(
+                    {
+                        "name": src.name,
+                        "source": str(src),
+                        "sha256": _compute_sha256(dst),
+                        "size_bytes": dst.stat().st_size,
+                    }
+                )
                 logger.info("备份成功: %s -> %s", src, dst)
             except (sqlite3.Error, OSError) as exc:
                 # 单个库失败不阻断整体备份
@@ -197,12 +199,14 @@ class BackupService:
                     continue
                 except (json.JSONDecodeError, OSError):
                     pass
-            backups.append({
-                "backup_id": d.name,
-                "backup_dir": str(d),
-                "created_at": None,
-                "files": [],
-            })
+            backups.append(
+                {
+                    "backup_id": d.name,
+                    "backup_dir": str(d),
+                    "created_at": None,
+                    "files": [],
+                }
+            )
         return backups
 
     def prune_backups(self, keep: int = 7) -> int:
@@ -211,6 +215,7 @@ class BackupService:
         removed = 0
         for b in backups[keep:]:
             import shutil
+
             shutil.rmtree(b["backup_dir"], ignore_errors=True)
             removed += 1
             logger.info("清理旧备份: %s", b["backup_id"])
@@ -224,9 +229,7 @@ class BackupService:
         """
         src_dir = self.backup_dir / backup_id
         if not src_dir.exists():
-            raise FileNotFoundError(
-                f"[恢复失败] 备份 {backup_id} 不存在。建议操作：先调用 list 确认备份 ID。"
-            )
+            raise FileNotFoundError(f"[恢复失败] 备份 {backup_id} 不存在。建议操作：先调用 list 确认备份 ID。")
         target = Path(target_dir).expanduser()
         target.mkdir(parents=True, exist_ok=True)
         restored: list[str] = []
@@ -239,6 +242,7 @@ class BackupService:
                 skipped.append(f.name)
                 continue
             import shutil
+
             shutil.copy2(f, dst)
             restored.append(f.name)
         return {"restored": restored, "skipped": skipped}

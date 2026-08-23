@@ -27,7 +27,6 @@ class _ExecuteMixin:
     _rollback_history: Any
     cooldown_hours: Any
 
-
     def rollback_rule(
         self,
         rule_id: str,

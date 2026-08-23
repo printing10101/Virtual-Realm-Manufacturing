@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class _AlignMixin:
-
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
     compute_preservation_loss: Callable[..., Any]
     compute_similarity_matrix: Callable[..., Any]

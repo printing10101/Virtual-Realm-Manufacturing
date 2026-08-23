@@ -185,13 +185,20 @@ class CuttingExperienceRecord(Base):  # type: ignore[misc, valid-type]
     @classmethod
     def from_contract(cls, record: Any) -> "CuttingExperienceRecord":
         """从 CuttingExperience 契约对象构建 ORM 实例。"""
+        from datetime import datetime
+
         params = record.parameters.model_dump() if hasattr(record.parameters, "model_dump") else dict(record.parameters)
         results = record.results.model_dump() if hasattr(record.results, "model_dump") else dict(record.results)
-        anomalies = (
-            [a.model_dump() for a in record.anomalies]
-            if record.anomalies
-            else []
-        )
+
+        # 序列化 anomalies 并处理 datetime 字段
+        anomalies = []
+        if record.anomalies:
+            for a in record.anomalies:
+                dump = a.model_dump() if hasattr(a, "model_dump") else dict(a)
+                # 将 occurred_at 从 datetime 转为 ISO 字符串（SQLite JSON 兼容）
+                if "occurred_at" in dump and isinstance(dump["occurred_at"], datetime):
+                    dump["occurred_at"] = dump["occurred_at"].isoformat()
+                anomalies.append(dump)
         # results_extra = results 中未扁平化的附加字段；当前所有结果字段均
         # 已扁平建列，因此仅保留原样以便未来扩展（不影响查询）。
         results_extra = {k: v for k, v in results.items() if k not in _FLAT_RESULT_KEYS}
@@ -204,14 +211,10 @@ class CuttingExperienceRecord(Base):  # type: ignore[misc, valid-type]
             tool_id=record.tool_id,
             material=record.material,
             machining_type=(
-                record.machining_type.value
-                if hasattr(record.machining_type, "value")
-                else str(record.machining_type)
+                record.machining_type.value if hasattr(record.machining_type, "value") else str(record.machining_type)
             ),
             result=(
-                record.results.result.value
-                if hasattr(record.results.result, "value")
-                else str(record.results.result)
+                record.results.result.value if hasattr(record.results.result, "value") else str(record.results.result)
             ),
             cycle_time_s=record.results.cycle_time_s,
             surface_roughness_ra=record.results.surface_roughness_ra,

@@ -28,6 +28,8 @@ from .context import AnchorContext
 from .memory import TrajectoryMemory
 
 logger = logging.getLogger(__name__)
+
+
 class StreamingPredictor:
     """流式长时序推理编排器（融合 lingbot-map GCT 五项核心思想）.
 
@@ -218,16 +220,16 @@ class StreamingPredictor:
         # 注入流式元数据
         if base_result.model_info is not None:
             base_result.model_info.update(
-            {
-                "is_keyframe": kf_decision.is_keyframe,
-                "keyframe_reason": kf_decision.reason,
-                "frame_energy": kf_decision.energy,
-                "frame_id": frame_id,
-                "anchor_drift": anchor_drift,
-                "trajectory_deviation": trajectory_deviation,
-                "streaming_mode": True,
-            }
-        )
+                {
+                    "is_keyframe": kf_decision.is_keyframe,
+                    "keyframe_reason": kf_decision.reason,
+                    "frame_energy": kf_decision.energy,
+                    "frame_id": frame_id,
+                    "anchor_drift": anchor_drift,
+                    "trajectory_deviation": trajectory_deviation,
+                    "streaming_mode": True,
+                }
+            )
         return base_result
 
     # ------------------------------------------------------------------

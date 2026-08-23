@@ -24,7 +24,6 @@ class _PersistenceMixin:
     _raw_config: Any
     config_path: Any
 
-
     def load(self, config_path: str | None = None) -> None:
         """
         从YAML文件加载配置

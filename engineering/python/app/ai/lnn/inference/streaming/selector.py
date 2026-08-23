@@ -11,6 +11,8 @@ import numpy as np
 from .config import KeyframeDecision
 
 logger = logging.getLogger(__name__)
+
+
 class KeyframeSelector:
     """关键帧选择器（对应 lingbot-map 的 keyframe_interval 策略）.
 

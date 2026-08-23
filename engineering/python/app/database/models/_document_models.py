@@ -16,6 +16,7 @@ from sqlalchemy import (
 
 from app.database.models.machining_record import Base
 
+
 class Document(Base):
     __tablename__ = "documents"
 
@@ -54,4 +55,3 @@ class Document(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
-

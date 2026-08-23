@@ -95,15 +95,14 @@ class MTConnectExperienceBridge:
 
         Returns:
             转换后的契约对象；数据不完整（如无转速）时返回 None。
+            注意：计数器由调用方在调用后根据返回值增减。
         """
         if sample is None or sample.is_empty():
-            self._discarded += 1
             return None
 
         spindle_rpm = sample.spindle_speed or 0.0
         if spindle_rpm < _MIN_SPINDLE_RPM:
             # 停机/未启动样本不落库
-            self._discarded += 1
             return None
 
         # 参数（MTConnect 无切深，置默认 0 表示未知，由 Pydantic gt 校验排除）
@@ -112,7 +111,6 @@ class MTConnectExperienceBridge:
         # 可用时构造（feed_mm_per_rev = feedrate ÷ spindle_rpm），否则丢弃。
         feed_mm_per_rev = (sample.feedrate or 0.0) / spindle_rpm
         if feed_mm_per_rev <= 0:
-            self._discarded += 1
             return None
 
         parameters = CuttingParameters(
@@ -161,6 +159,7 @@ class MTConnectExperienceBridge:
         """
         exp = self.sample_to_experience(sample)
         if exp is None:
+            self._discarded += 1
             return False
         try:
             await create_cutting_experience(exp)

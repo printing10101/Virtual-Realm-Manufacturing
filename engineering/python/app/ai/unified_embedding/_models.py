@@ -18,6 +18,7 @@ from app.ai.unified_embedding._enums import (
     SurfaceFinishGrade,
 )
 
+
 @dataclass
 class DimensionalTolerance:
     nominal_mm: float
@@ -284,4 +285,3 @@ class FeedbackSignal:
         if not (0.0 <= self.overall_confidence <= 1.0):
             errors.append(f"overall_confidence must be in [0.0, 1.0], got {self.overall_confidence}")
         return errors
-

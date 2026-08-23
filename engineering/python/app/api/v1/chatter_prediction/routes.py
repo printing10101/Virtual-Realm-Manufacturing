@@ -45,7 +45,6 @@ logger = logging.getLogger(__name__)
 _background_tasks: set = set()
 
 
-
 router = APIRouter(
     prefix="/api/v1/chatter_prediction",
     tags=["Chatter Prediction (Engineer-Assisted LTC Integration)"],
@@ -241,6 +240,8 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     避免误删下游链路已引用的资源。
     """
     return await delete_task_service(task_id)
+
+
 from .service import (  # noqa: E402
     get_precision_info as get_precision_info_service,
     create_task as create_task_service,

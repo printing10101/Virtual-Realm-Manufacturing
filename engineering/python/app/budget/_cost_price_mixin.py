@@ -25,7 +25,6 @@ class _CostPriceMixin:
     _conn: Any
     _unit_prices: Any
 
-
     def _load_unit_prices(self) -> None:
         """加载单价配置"""
         defaults = {
@@ -45,6 +44,7 @@ class _CostPriceMixin:
                 )
 
         self._conn.commit()
+
     def set_unit_price(self, key: str, value: float) -> None:
         """设置单价"""
         self._conn.execute(
@@ -54,6 +54,7 @@ class _CostPriceMixin:
         self._conn.commit()
         setattr(self._unit_prices, key, value)
         logger.info("Unit price updated: %s = %f", key, value)
+
     def get_unit_prices(self) -> dict[str, float]:
         """获取所有单价"""
         return self._unit_prices.to_dict()

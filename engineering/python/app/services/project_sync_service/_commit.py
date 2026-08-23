@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 class _CommitMixin:
-
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
     _get_session: Callable[..., Any]
     _get_project_lock: Callable[..., Any]

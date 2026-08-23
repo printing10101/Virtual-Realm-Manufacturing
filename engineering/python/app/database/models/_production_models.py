@@ -18,6 +18,7 @@ from sqlalchemy import (
 
 from app.database.models.machining_record import Base
 
+
 class ProductionRecord(Base):
     __tablename__ = "production_records"
 
@@ -153,5 +154,3 @@ class ProcessStep(Base):
 # ---------------------------------------------------------------------------
 # Document Model (documents)
 # ---------------------------------------------------------------------------
-
-

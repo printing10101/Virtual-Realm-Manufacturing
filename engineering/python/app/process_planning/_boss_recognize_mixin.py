@@ -13,7 +13,6 @@ class _BossRecognizeMixin:
     COAXIAL_THRESHOLD: Any
     MIN_BOSS_DIAMETER: Any
 
-
     def recognize_from_part_description(
         self,
         part_description: dict[str, Any],
@@ -292,4 +291,3 @@ class _BossRecognizeMixin:
                 merged.append(b1)
 
         return merged
-

@@ -289,9 +289,7 @@ class DataPreprocessor:
         return np.array(features)
 
     @staticmethod
-    def encode_categorical(
-        categories: list[str], vocabulary: list[str] | None = None
-    ) -> tuple[np.ndarray, list[str]]:
+    def encode_categorical(categories: list[str], vocabulary: list[str] | None = None) -> tuple[np.ndarray, list[str]]:
         """
         类别特征编码（One-Hot）
 

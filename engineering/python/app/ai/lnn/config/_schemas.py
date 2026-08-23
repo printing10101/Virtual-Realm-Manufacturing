@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+
 @dataclass
 class ModelConfig:
     """单个LNN模型的配置"""

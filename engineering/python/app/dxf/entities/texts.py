@@ -9,6 +9,7 @@ from .common import safe_color
 
 logger = logging.getLogger(__name__)
 
+
 def text_to_obj(entity) -> DxfText:
     """将单个 TEXT 实体转换为 DxfText。"""
     return DxfText(
@@ -25,6 +26,8 @@ def text_to_obj(entity) -> DxfText:
         handle=str(entity.dxf.handle),
         entity_type="TEXT",
     )
+
+
 def mtext_to_obj(entity) -> DxfText:
     """将单个 MTEXT 实体转换为 DxfText。"""
     raw_text = entity.plain_text() if hasattr(entity, "plain_text") else str(entity.dxf.text)

@@ -47,7 +47,7 @@ from app.postprocessor._loader import (  # noqa: E402
 )
 
 __all__ = [
-        "CONTROLLER_FULL_ID_MAP",
+    "CONTROLLER_FULL_ID_MAP",
     "CONTROLLER_ID_TO_FULL",
     "COORD_SYSTEMS",
     "REQUIRED_BASE_KEYS",
@@ -67,7 +67,7 @@ __all__ = [
     "VALID_RETRACT_MODES",
     "VALID_RETRACT_TYPES",
     "VALID_SHIFT_AXES",
-    "VALID_SPINDLE_DIRECTIONS",  
+    "VALID_SPINDLE_DIRECTIONS",
     "ConfigLoadError",
     "ConfigValidationError",
     "ConfigValidator",
@@ -79,35 +79,3 @@ __all__ = [
 ]
 
 # （控制器映射常量已迁至 _loader.py，经 __all__ 再导出）
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

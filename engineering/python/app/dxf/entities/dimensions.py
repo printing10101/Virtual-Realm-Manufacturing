@@ -10,6 +10,7 @@ from .common import safe_color
 
 logger = logging.getLogger(__name__)
 
+
 def dimension_to_obj(entity) -> DxfDimension | None:
     """提取单个尺寸标注实体的完整信息。
 
@@ -46,6 +47,8 @@ def dimension_to_obj(entity) -> DxfDimension | None:
         handle=str(entity.dxf.handle),
         associated_entities=associated,
     )
+
+
 def get_dimension_type(entity) -> str:
     """根据DXF组码70判断标注类型。"""
     dimtype_map = {
@@ -74,6 +77,8 @@ def get_dimension_type(entity) -> str:
             exc_info=True,
         )
         return "UNKNOWN"
+
+
 def get_dimension_measurement(entity) -> float:
     """安全获取标注的测量值。"""
     try:
@@ -101,6 +106,8 @@ def get_dimension_measurement(entity) -> float:
                 exc_info=True,
             )
         return 0.0
+
+
 def get_dimension_text(entity) -> str:
     """安全获取标注文本。"""
     try:
@@ -126,6 +133,8 @@ def get_dimension_text(entity) -> str:
             exc_info=True,
         )
         return ""
+
+
 def get_dimension_position(entity) -> tuple[float, float, float]:
     """安全获取标注文本位置。"""
     try:

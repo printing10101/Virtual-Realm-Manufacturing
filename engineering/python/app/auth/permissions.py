@@ -261,6 +261,7 @@ def require_permission(permission: str):
     async def checker(request: Request):
         # 权限强制检查关闭时放行（与 UnifiedAuthMiddleware 语义一致）：
         import os as _os
+
         if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
             return
         if not hasattr(request.state, "username") or not request.state.username:
@@ -285,6 +286,7 @@ def require_any_permission(*permissions: str):
     async def checker(request: Request):
         # 权限强制检查关闭时放行（与 UnifiedAuthMiddleware 语义一致）：
         import os as _os
+
         if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
             return
         if not hasattr(request.state, "username") or not request.state.username:
@@ -309,6 +311,7 @@ def require_all_permissions(*permissions: str):
     async def checker(request: Request):
         # 权限强制检查关闭时放行（与 UnifiedAuthMiddleware 语义一致）：
         import os as _os
+
         if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
             return
         if not hasattr(request.state, "username") or not request.state.username:
@@ -372,6 +375,7 @@ def require_role(*roles: str):
     async def role_checker(request: Request):
         # 权限强制检查关闭时放行（与 UnifiedAuthMiddleware 语义一致）：
         import os as _os
+
         if _os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in ("0", "false", "no", "off"):
             return
         if not hasattr(request.state, "username") or not request.state.username:

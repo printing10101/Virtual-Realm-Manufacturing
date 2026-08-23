@@ -19,7 +19,6 @@ class _MatchingMixin:
     HOLE_PROCESS_TEMPLATES: Any
     _data: Any
 
-
     def match_tool_for_hole(
         self,
         material_id: str,
@@ -210,4 +209,3 @@ class _MatchingMixin:
             }
             for t in sorted(tools, key=lambda t: t.diameter_mm)
         ]
-

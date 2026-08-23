@@ -24,6 +24,7 @@ _rag_engine_instance = None
 
 _rag_engine_lock = threading.Lock()
 
+
 def _get_rag_engine():
     """懒加载 RagRetrievalEngine 单例。
 
@@ -49,6 +50,7 @@ def _get_rag_engine():
         logger.info("RagRetrievalEngine singleton initialized (signal_fusion_kb injected)")
     return _rag_engine_instance
 
+
 def _get_evaluator(use_rag_engine: bool = False):
     """构建 RetrievalEvaluator 实例。
 
@@ -72,6 +74,7 @@ def _get_evaluator(use_rag_engine: bool = False):
         rag_engine=rag_engine,
     )
 
+
 def _raise_internal(
     exc: BaseException,
     *,
@@ -87,6 +90,7 @@ def _raise_internal(
     if "detail" in safe:
         detail = f"{safe['message']} ({safe['detail']})"
     raise HTTPException(status_code=status_code, detail=detail, headers=headers)
+
 
 def _get_process_index():
     """懒加载工艺四元组索引单例。
@@ -109,6 +113,7 @@ def _get_process_index():
         except (ValueError, KeyError, RuntimeError) as e:
             logger.warning("注入默认工艺四元组失败: %s", e)
     return index
+
 
 async def query_knowledge(
     q: str = Query(..., description="查询文本"),
@@ -186,12 +191,14 @@ async def query_knowledge(
         # 捕获 RAG 查询相关异常：embedding 生成、向量检索、ChromaDB 操作
         _raise_internal(e, context="rag.query", fallback="知识库查询失败")
 
+
 async def get_stats():
     try:
         return kb.get_stats()
     except (ValueError, TypeError, RuntimeError, OSError) as e:
         # 捕获知识库状态查询异常：ChromaDB 计数、集合访问
         _raise_internal(e, context="rag.stats", fallback="获取知识库状态失败")
+
 
 async def add_knowledge(request: dict[str, Any]):
     try:
@@ -207,6 +214,7 @@ async def add_knowledge(request: dict[str, Any]):
         # 捕获知识库写入异常：embedding 推理、ChromaDB 写入
         _raise_internal(e, context="rag.add", fallback="添加知识失败")
 
+
 async def delete_knowledge(doc_id: str):
     try:
         deleted = kb.delete(doc_id)
@@ -219,6 +227,7 @@ async def delete_knowledge(doc_id: str):
         # 捕获知识库删除异常：ChromaDB 删除操作、文档查找
         _raise_internal(e, context="rag.delete", fallback="删除知识失败")
 
+
 async def list_documents(limit: int = Query(50, ge=1, le=500)):
     try:
         return {"documents": kb.list_documents(limit=limit)}
@@ -226,6 +235,7 @@ async def list_documents(limit: int = Query(50, ge=1, le=500)):
         # 捕获知识库列表查询异常：ChromaDB 集合访问、文档计数
         logger.exception("Failed to list documents")
         _raise_internal(e, context="rag.list", fallback="获取文档列表失败")
+
 
 async def load_default_knowledge():
     try:
@@ -236,6 +246,7 @@ async def load_default_knowledge():
         logger.exception("Failed to load default knowledge")
         _raise_internal(e, context="rag.load_default", fallback="加载默认知识失败")
 
+
 async def load_rag_json():
     try:
         stats = kb.load_rag_json_knowledge()
@@ -244,6 +255,7 @@ async def load_rag_json():
         # 捕获 JSON 知识加载异常：JSON 解析、文件读取、ChromaDB 写入
         logger.exception("Failed to load RAG JSON knowledge")
         _raise_internal(e, context="rag.load_json", fallback="加载JSON知识失败")
+
 
 async def search_by_source(
     source: str = Query(..., description="知识来源"),
@@ -258,6 +270,7 @@ async def search_by_source(
         logger.exception("Failed to search by source")
         _raise_internal(e, context="rag.search", fallback="搜索失败")
 
+
 async def delete_by_source(source: str):
     try:
         count = kb.delete_by_source(source)
@@ -266,6 +279,7 @@ async def delete_by_source(source: str):
         # 捕获按来源删除异常：ChromaDB where 过滤、批量删除
         logger.exception("Failed to delete by source")
         _raise_internal(e, context="rag.delete_by_source", fallback="删除失败")
+
 
 async def import_document(
     file: UploadFile = File(...),
@@ -329,6 +343,7 @@ async def import_document(
         logger.exception("Failed to import document")
         _raise_internal(e, context="rag.import", fallback="文档导入失败")
 
+
 async def export_backup(backup_dir: str = Query("./backups/rag")):
     try:
         vs = get_vector_store()
@@ -338,6 +353,7 @@ async def export_backup(backup_dir: str = Query("./backups/rag")):
         # 捕获备份导出异常：目录创建、文件写入、ChromaDB 导出
         logger.exception("Failed to export backup")
         _raise_internal(e, context="rag.backup_export", fallback="备份导出失败")
+
 
 async def import_backup(backup_dir: str = Query(..., description="备份目录路径")):
     try:
@@ -353,6 +369,7 @@ async def import_backup(backup_dir: str = Query(..., description="备份目录�
         logger.exception("Failed to import backup")
         _raise_internal(e, context="rag.backup_import", fallback="备份导入失败")
 
+
 async def optimize_index():
     try:
         vs = get_vector_store()
@@ -362,6 +379,7 @@ async def optimize_index():
         # 捕获索引优化异常：ChromaDB compaction、磁盘 IO
         logger.exception("Failed to optimize index")
         _raise_internal(e, context="rag.optimize", fallback="索引优化失败")
+
 
 async def cleanup_orphaned():
     try:
@@ -379,6 +397,7 @@ async def cleanup_orphaned():
         logger.exception("Failed to cleanup orphaned documents")
         _raise_internal(e, context="rag.cleanup", fallback="清理失败")
 
+
 async def get_enhancement_status():
     """获取 RAG 增强模块的实时状态与性能指标。
 
@@ -393,6 +412,7 @@ async def get_enhancement_status():
         logger.exception("Failed to get enhancement status")
         _raise_internal(e, context="rag.v2.enhancement_status", fallback="获取增强状态失败")
 
+
 async def get_cache_stats():
     """获取检索结果 LRU 缓存的命中统计。
 
@@ -404,6 +424,7 @@ async def get_cache_stats():
     except (RuntimeError, AttributeError) as e:
         logger.exception("Failed to get cache stats")
         _raise_internal(e, context="rag.v2.cache_stats", fallback="获取缓存统计失败")
+
 
 async def clear_cache():
     """清空检索结果 LRU 缓存。
@@ -417,6 +438,7 @@ async def clear_cache():
     except (RuntimeError, AttributeError) as e:
         logger.exception("Failed to clear cache")
         _raise_internal(e, context="rag.v2.cache_clear", fallback="清空缓存失败")
+
 
 async def retrieve_from_signal_fusion(
     payload: dict = Body(...),
@@ -459,6 +481,7 @@ async def retrieve_from_signal_fusion(
             fallback="信号融合检索失败",
         )
 
+
 def run_evaluation(
     top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
     category: str | None = Query(None, description="仅评估指定类别"),
@@ -485,6 +508,7 @@ def run_evaluation(
     except (RuntimeError, OSError, ValueError) as e:
         logger.exception("Evaluation failed")
         _raise_internal(e, context="rag.v2.evaluation", fallback="评估运行失败")
+
 
 def run_ablation_study(
     top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
@@ -517,6 +541,7 @@ def run_ablation_study(
         logger.exception("Ablation study failed")
         _raise_internal(e, context="rag.v2.ablation", fallback="消融研究运行失败")
 
+
 def generate_comparison_report(
     top_k: int = Query(3, ge=1, le=10, description="每条查询返回的文档数"),
     category: str | None = Query(None, description="仅评估指定类别"),
@@ -548,6 +573,7 @@ def generate_comparison_report(
     except (RuntimeError, OSError, ValueError) as e:
         logger.exception("Comparison report generation failed")
         _raise_internal(e, context="rag.v2.comparison", fallback="对比报告生成失败")
+
 
 async def recommend_process(request: dict[str, Any]):
     """根据加工特征推荐工艺方案（CAMWorks TechDB 式自动决策）。
@@ -588,6 +614,7 @@ async def recommend_process(request: dict[str, Any]):
         logger.exception("Failed to recommend process")
         _raise_internal(e, context="rag.process.recommend", fallback="工艺推荐失败")
 
+
 async def find_similar_quadruples(request: dict[str, Any]):
     """查找相似工艺记录（3 层匹配：精确 / 同特征 / 材料迁移）。
 
@@ -624,6 +651,7 @@ async def find_similar_quadruples(request: dict[str, Any]):
     except (ValueError, TypeError, RuntimeError) as e:
         logger.exception("Failed to find similar quadruples")
         _raise_internal(e, context="rag.process.similar", fallback="相似工艺查询失败")
+
 
 async def add_process_quadruple(request: dict[str, Any]):
     """添加工艺四元组到索引。
@@ -674,6 +702,7 @@ async def add_process_quadruple(request: dict[str, Any]):
         logger.exception("Failed to add process quadruple")
         _raise_internal(e, context="rag.process.add", fallback="添加工艺四元组失败")
 
+
 async def list_features():
     """列出所有已建模的特征类型。"""
     try:
@@ -683,6 +712,7 @@ async def list_features():
     except (RuntimeError, OSError) as e:
         logger.exception("Failed to list features")
         _raise_internal(e, context="rag.process.features", fallback="获取特征列表失败")
+
 
 async def get_processes_for_feature(feature: str):
     """获取指定特征对应的所有工艺方法。"""
@@ -698,6 +728,7 @@ async def get_processes_for_feature(feature: str):
         logger.exception("Failed to get processes for feature")
         _raise_internal(e, context="rag.process.processes", fallback="获取工艺方法列表失败")
 
+
 async def get_process_stats():
     """获取工艺四元组索引统计信息。"""
     try:
@@ -706,6 +737,7 @@ async def get_process_stats():
     except (RuntimeError, OSError) as e:
         logger.exception("Failed to get process stats")
         _raise_internal(e, context="rag.process.stats", fallback="获取工艺索引统计失败")
+
 
 async def seed_default_process_knowledge():
     """注入默认工艺知识库（覆盖常见特征的典型工艺方案）。
@@ -731,6 +763,7 @@ async def seed_default_process_knowledge():
         logger.exception("Failed to seed default process knowledge")
         _raise_internal(e, context="rag.process.seed", fallback="注入默认知识失败")
 
+
 async def flush_process_index():
     """强制将工艺四元组索引落盘。"""
     try:
@@ -740,6 +773,7 @@ async def flush_process_index():
     except (RuntimeError, OSError) as e:
         logger.exception("Failed to flush process index")
         _raise_internal(e, context="rag.process.flush", fallback="落盘失败")
+
 
 async def get_related_documents(request: dict[str, Any]):
     """集成点 4：通过 chunk_ids + EntityIndex 反向查询原始文档。

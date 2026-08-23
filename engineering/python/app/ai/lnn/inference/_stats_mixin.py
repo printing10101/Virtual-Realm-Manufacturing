@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 class _StatsMixin:
-
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
     _max_recent_times: Any
     _stats: Any

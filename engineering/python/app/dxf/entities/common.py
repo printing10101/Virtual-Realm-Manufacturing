@@ -6,6 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def safe_color(entity) -> int:
     """安全获取实体颜色索引。"""
     try:

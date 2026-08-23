@@ -138,6 +138,7 @@ class ProcessUnderstandingEngine(_HandlersMixin):
         )
 
         return output
+
     def get_stats(self) -> dict[str, Any]:
         """获取引擎整体性能统计。"""
         return {

@@ -8,6 +8,7 @@ from unittest.mock import patch
 os.environ.setdefault("LNN_PERMISSION_ENFORCED", "false")
 
 import pytest
+import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
@@ -21,7 +22,7 @@ def app() -> FastAPI:
     return application
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app: FastAPI):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

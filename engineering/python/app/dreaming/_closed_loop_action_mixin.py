@@ -19,7 +19,6 @@ class _ClosedLoopActionMixin:
     _get_rollback_manager: Callable[..., Any]
     _record_decision_to_audit: Callable[..., Any]
 
-
     def apply_decision(self, decision: ClosedLoopDecision) -> bool:
         """应用闭环决策。
 
@@ -44,6 +43,7 @@ class _ClosedLoopActionMixin:
 
         logger.warning("ClosedLoop: 未知 action=%s", decision.action)
         return False
+
     def _apply_promote(self, decision: ClosedLoopDecision) -> bool:
         """执行晋级决策。"""
         publisher = self._get_publisher()
@@ -87,6 +87,7 @@ class _ClosedLoopActionMixin:
                 exc_info=True,
             )
             return False
+
     def _apply_demote(self, decision: ClosedLoopDecision) -> bool:
         """执行降级决策。"""
         publisher = self._get_publisher()
@@ -125,6 +126,7 @@ class _ClosedLoopActionMixin:
                 exc_info=True,
             )
             return False
+
     def _apply_rollback(self, decision: ClosedLoopDecision) -> bool:
         """执行回滚决策（硬约束违反）。"""
         rollback_mgr = self._get_rollback_manager()
@@ -152,6 +154,7 @@ class _ClosedLoopActionMixin:
                 exc_info=True,
             )
             return False
+
     def _get_next_stage(self, rule_id: str) -> str | None:
         """获取规则的下一晋级阶段。"""
         publisher = self._get_publisher()
@@ -169,6 +172,7 @@ class _ClosedLoopActionMixin:
         except Exception as e:
             logger.debug("ClosedLoop: get_next_stage 失败：%s", e)
             return None
+
     def _get_previous_stage(self, rule_id: str) -> str | None:
         """获取规则的降级目标阶段。"""
         publisher = self._get_publisher()

@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+
 @dataclass
 class PredictionResult:
     """Prediction result dataclass with serialization support"""
@@ -41,4 +42,3 @@ class PredictionResult:
             inference_time=data.get("inference_time", 0.0),
             model_info=data.get("model_info", {}),
         )
-

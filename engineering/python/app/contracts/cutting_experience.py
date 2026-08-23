@@ -71,9 +71,7 @@ class CuttingParameters(BaseModel):
     depth_of_cut_mm: float = Field(gt=0, description="切深 (mm)")
     feed_mm_per_rev: float = Field(gt=0, description="每转进给 (mm/rev)")
     spindle_rpm: float = Field(gt=0, description="主轴转速 (RPM)")
-    cutting_speed_m_min: float | None = Field(
-        default=None, gt=0, description="切削速度 (m/min)，可推导但允许显式给定"
-    )
+    cutting_speed_m_min: float | None = Field(default=None, gt=0, description="切削速度 (m/min)，可推导但允许显式给定")
     stepover_mm: float | None = Field(default=None, gt=0, description="步距 (mm)")
     coolant: CoolantMode = Field(default=CoolantMode.FLOOD, description="冷却液模式")
 
@@ -84,15 +82,9 @@ class CuttingResults(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     cycle_time_s: float = Field(gt=0, description="实际加工节拍 (s)")
-    surface_roughness_ra: float | None = Field(
-        default=None, ge=0, description="表面粗糙度 Ra (μm)"
-    )
-    tool_wear_percent: float | None = Field(
-        default=None, ge=0, le=100, description="刀具磨损百分比 (0-100)"
-    )
-    dimensional_error_mm: float | None = Field(
-        default=None, ge=0, description="尺寸误差绝对值 (mm)"
-    )
+    surface_roughness_ra: float | None = Field(default=None, ge=0, description="表面粗糙度 Ra (μm)")
+    tool_wear_percent: float | None = Field(default=None, ge=0, le=100, description="刀具磨损百分比 (0-100)")
+    dimensional_error_mm: float | None = Field(default=None, ge=0, description="尺寸误差绝对值 (mm)")
     result: MachiningResult = Field(default=MachiningResult.OK, description="加工结果")
 
 
@@ -111,9 +103,7 @@ class MachiningAnomaly(BaseModel):
     message: str = Field(default="", description="异常描述")
     measured_value: float | None = Field(default=None, description="实测值（如振动 mm/s）")
     threshold_value: float | None = Field(default=None, description="触发阈值")
-    occurred_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="发生时间"
-    )
+    occurred_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="发生时间")
 
 
 # ---------------------------------------------------------------------------
@@ -144,16 +134,10 @@ class CuttingExperience(BaseModel):
     tags: dict[str, Any] = Field(default_factory=dict, description="自由扩展元数据")
 
     operator: str | None = Field(default=None, max_length=64, description="操作员")
-    source: str = Field(
-        default="manual", max_length=32, description="数据来源：manual/mtconnect/api"
-    )
+    source: str = Field(default="manual", max_length=32, description="数据来源：manual/mtconnect/api")
 
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="创建时间"
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="更新时间"
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="创建时间")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="更新时间")
 
 
 # ---------------------------------------------------------------------------

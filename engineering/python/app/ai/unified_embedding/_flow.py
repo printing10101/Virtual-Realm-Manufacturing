@@ -18,6 +18,7 @@ from app.ai.unified_embedding._protocols import (
     PerceptionToExecutionRequest,
 )
 
+
 class MachiningProcessFlow:
     """Orchestrates the three-layer machining process flow with validation at each step."""
 

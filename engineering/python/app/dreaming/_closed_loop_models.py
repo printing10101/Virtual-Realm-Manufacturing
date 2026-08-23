@@ -106,6 +106,7 @@ def record_rule_outcome(
         source=source,
     )
 
+
 # 闭环默认参数（从 closed_loop 移入，mixin 与门面共用）
 DEFAULT_ROUTER_CONFIDENCE_THRESHOLD = 0.7
 DEFAULT_FUSION_MIN_CONFIDENCE = 0.3

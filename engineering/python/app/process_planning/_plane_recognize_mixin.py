@@ -12,7 +12,6 @@ class _PlaneRecognizeMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     MIN_PLANE_AREA: Any
 
-
     def recognize_from_part_description(
         self,
         part_description: dict[str, Any],
@@ -280,4 +279,3 @@ class _PlaneRecognizeMixin:
         length = max(xs) - min(xs)
         width = max(ys) - min(ys)
         return length, width
-

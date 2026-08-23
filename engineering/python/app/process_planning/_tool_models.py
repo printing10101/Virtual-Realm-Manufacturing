@@ -7,6 +7,7 @@ from typing import Any
 
 from app.data.process_data_manager import CuttingParameterEntry, ToolEntry
 
+
 @dataclass
 class MatchedTool:
     """匹配的刀具推荐结果。
@@ -90,4 +91,3 @@ class HoleProcessPlan:
             "tools": [t.to_dict() for t in self.tools],
             "estimated_time_min": round(self.estimated_time_min, 2),
         }
-

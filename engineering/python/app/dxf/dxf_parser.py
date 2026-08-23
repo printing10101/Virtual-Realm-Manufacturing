@@ -283,7 +283,6 @@ class DxfParser:
         """提取所有LINE实体。"""
         self._extract_entities(modelspace, "LINE", line_to_obj, result.lines, result)
 
-
     def _extract_circles(self, modelspace, result: DxfParseResult) -> None:
         """提取所有CIRCLE实体。"""
         self._extract_entities(
@@ -294,11 +293,9 @@ class DxfParser:
             result,
         )
 
-
     def _extract_arcs(self, modelspace, result: DxfParseResult) -> None:
         """提取所有ARC实体。"""
         self._extract_entities(modelspace, "ARC", arc_to_obj, result.arcs, result)
-
 
     def _extract_texts(self, modelspace, result: DxfParseResult) -> None:
         """提取所有TEXT和MTEXT实体。"""
@@ -321,8 +318,6 @@ class DxfParser:
             warn_on_fail=True,
         )
 
-
-
     def _extract_dimensions(self, modelspace, result: DxfParseResult) -> None:
         """提取所有DIMENSION实体。
 
@@ -336,12 +331,6 @@ class DxfParser:
             result.dimensions,
             result,
         )
-
-
-
-
-
-
 
     def _extract_polylines(self, modelspace, result: DxfParseResult) -> None:
         """提取所有 POLYLINE 和 LWPOLYLINE 实体。
@@ -368,8 +357,6 @@ class DxfParser:
             query_warn=False,
         )
 
-
-
     def _extract_hatches(self, modelspace, result: DxfParseResult) -> None:
         """提取所有 HATCH 实体（填充图案）。
 
@@ -387,7 +374,6 @@ class DxfParser:
             result,
         )
 
-
     def _extract_inserts(self, modelspace, result: DxfParseResult) -> None:
         """提取所有 INSERT 实体（Block 引用）。
 
@@ -401,7 +387,6 @@ class DxfParser:
             result.inserts,
             result,
         )
-
 
     def _extract_splines(self, modelspace, result: DxfParseResult) -> None:
         """提取所有 SPLINE 实体（样条曲线）。
@@ -418,5 +403,3 @@ class DxfParser:
             result.splines,
             result,
         )
-
-

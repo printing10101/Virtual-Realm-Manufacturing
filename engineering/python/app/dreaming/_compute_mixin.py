@@ -7,7 +7,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from collections.abc import Callable
 
-from app.dreaming._metrics_models import CONFIDENT_HIGH_SAMPLES, CONFIDENT_MID_SAMPLES, EffectivenessMetrics, OutcomeSample
+from app.dreaming._metrics_models import (
+    CONFIDENT_HIGH_SAMPLES,
+    CONFIDENT_MID_SAMPLES,
+    EffectivenessMetrics,
+    OutcomeSample,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +24,6 @@ class _ComputeMixin:
     _samples: Any
     min_sample_size: Any
     window_days: Any
-
 
     def collect_metrics(
         self,
@@ -192,4 +196,3 @@ class _ComputeMixin:
 # -----------------------------------------------------------------------------
 # 便捷函数
 # -----------------------------------------------------------------------------
-

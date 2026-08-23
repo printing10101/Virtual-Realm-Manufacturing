@@ -129,30 +129,6 @@ class ApprovalWorkflowEngine(_ApprovalFlowMixin, _ApprovalQueryMixin, _ApprovalE
         """)
         self._conn.commit()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def close(self) -> None:
         """关闭数据库连接"""
         if self._conn:

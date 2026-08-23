@@ -24,13 +24,15 @@ class _BudgetActionMixin:
     _conn: Any
     _cost_tracker_ref: Any
 
-
     def set_task_canceller(self, canceller: Callable[[str], None]) -> None:
         self._task_canceller = canceller
+
     def set_agent_suspender(self, suspender: Callable[[str, str], None]) -> None:
         self._agent_suspender = suspender
+
     def set_cost_tracker(self, cost_tracker) -> None:
         self._cost_tracker_ref = cost_tracker
+
     def _cancel_pending_tasks(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> list[str]:
         cancelled = []
         if self._task_canceller is not None:
@@ -44,6 +46,7 @@ class _BudgetActionMixin:
             except (RuntimeError, ValueError, OSError):
                 logger.error("Task cancellation error", exc_info=True)
         return cancelled
+
     def _log_enforcement(
         self,
         result: EnforcementResult,
@@ -73,11 +76,13 @@ class _BudgetActionMixin:
             ),
         )
         self._conn.commit()
+
     def get_enforcement_log(self, limit: int = 100) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             "SELECT * FROM enforcement_log ORDER BY executed_at DESC LIMIT ?", (limit,)
         ).fetchall()
         return [dict(row) for row in rows]
+
     def get_reset_log(self, limit: int = 100) -> list[dict[str, Any]]:
         rows = self._conn.execute("SELECT * FROM budget_reset_log ORDER BY reset_at DESC LIMIT ?", (limit,)).fetchall()
         return [dict(row) for row in rows]

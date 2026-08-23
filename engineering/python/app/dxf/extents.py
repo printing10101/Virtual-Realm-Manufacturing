@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.dxf._entities import DxfParseResult
 
+
 def compute_extents(result: DxfParseResult) -> None:
     """计算图形范围。"""
     min_x = min_y = float("inf")

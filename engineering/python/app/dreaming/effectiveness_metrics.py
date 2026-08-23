@@ -113,6 +113,8 @@ class EffectivenessMetricsCollector(_SamplesMixin, _ComputeMixin):
     # ------------------------------------------------------------------
     # 样本持久化
     # ------------------------------------------------------------------
+
+
 def collect_rule_metrics(
     rule_id: str,
     window_days: int = DEFAULT_METRICS_WINDOW_DAYS,

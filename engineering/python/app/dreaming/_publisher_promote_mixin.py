@@ -31,7 +31,6 @@ class _PublisherPromoteMixin:
     _records: Any
     _validator: Any
 
-
     def promote(
         self,
         rule_id: str,
@@ -166,6 +165,7 @@ class _PublisherPromoteMixin:
                     self._save_record(rec)
 
         return result
+
     def _check_promotion_thresholds(self, metrics: dict[str, Any]) -> tuple[bool, str | None]:
         """检查指标是否达到晋级阈值。
 

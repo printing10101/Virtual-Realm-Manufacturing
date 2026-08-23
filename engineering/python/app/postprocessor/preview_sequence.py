@@ -14,9 +14,7 @@ from __future__ import annotations
 from app.postprocessor.base import BasePostProcessor
 
 
-def build_standard_program(
-    processor: BasePostProcessor, program_number: int = 1000
-) -> str:
+def build_standard_program(processor: BasePostProcessor, program_number: int = 1000) -> str:
     """用一套确定性加工序列生成完整 NC 程序文本。
 
     坐标统一控制在 ±50mm 内：XM100 桌面五轴机行程仅 ±50mm，需兼容所有控制器。
@@ -29,9 +27,7 @@ def build_standard_program(
         processor.format_coolant("on"),
         processor.format_rapid_move(0.0, 0.0, 30.0),
         processor.format_linear_move(10.0, 20.0, 25.0, feed=500.0),
-        processor.format_arc(
-            (10.0, 20.0, 25.0), (20.0, 30.0, 25.0), (15.0, 25.0, 25.0), clockwise=True
-        ),
+        processor.format_arc((10.0, 20.0, 25.0), (20.0, 30.0, 25.0), (15.0, 25.0, 25.0), clockwise=True),
         processor.format_cycle_drill(x=20.0, y=30.0, z=25.0, depth=8.0, dwell=0.5),
         processor.format_coolant("off"),
         processor.format_footer(),

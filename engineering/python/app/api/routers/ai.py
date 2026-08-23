@@ -32,6 +32,7 @@ from app.api.v1 import (
     signal_fusion_kb as signal_fusion_kb_routes,
     wear_prediction,
 )
+
 # V2.7.0 子路由拆分后，LNN 主路由聚合器（health/models/predict/train/tasks 等
 # 60+ 端点）位于 app.api.v1.lnn.routes；lnn_uncertain.py 是独立的不确定性端点。
 # 修复：二者都注册，避免聚合器路由从未挂载（重构遗漏）。

@@ -48,7 +48,6 @@ class SkillDiscoveryMixin:
     _compile_code: Callable[..., Any]
     _resolve_safe_subpath: Callable[..., str]
 
-
     # 类型提示：声明 mixin 依赖的方法/属性（由其他 mixin 或宿主类提供）
     skills_base: str
     registry: SkillRegistry

@@ -79,8 +79,6 @@ REQUIRED_GCODE_REPORT_FIELDS: frozenset[str] = frozenset(
 
 @dataclass
 class GCodeLoadResult:
-
-
     """阶段 6 G 代码加载结果。
 
     封装从阶段 6 report.json + G 代码文件加载的全部上下文，

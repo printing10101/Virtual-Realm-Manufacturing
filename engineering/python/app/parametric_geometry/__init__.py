@@ -72,9 +72,17 @@ __all__ = [
 ]
 
 from app.parametric_geometry._review_state_machine import (
-    ST_PENDING, ST_RUNNING, ST_STEP_GENERATED, ST_REVIEWED,
-    ST_SUCCEEDED, ST_FAILED, ST_CANCELLED,
-    can_execute, can_review, can_finalize, all_features_reviewed,
-    next_status_after_review, is_terminal,
+    ST_PENDING,
+    ST_RUNNING,
+    ST_STEP_GENERATED,
+    ST_REVIEWED,
+    ST_SUCCEEDED,
+    ST_FAILED,
+    ST_CANCELLED,
+    can_execute,
+    can_review,
+    can_finalize,
+    all_features_reviewed,
+    next_status_after_review,
+    is_terminal,
 )
-

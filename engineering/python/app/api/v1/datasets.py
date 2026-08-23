@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Dataset API - 数据集 / 版本 / 血缘 REST 接口.
 
 对应 ADR-005 阶段 2 / core-contracts-design.md 第 4 章。
@@ -20,6 +18,8 @@ from __future__ import annotations
     dataset:write   —— 创建 / 提交版本 / 记录血缘
     dataset:manage  —— 废弃版本
 """
+
+from __future__ import annotations
 
 import json
 import logging
@@ -321,9 +321,7 @@ async def read_version(
     return StreamingResponse(
         iterable(),
         media_type="application/x-ndjson",
-        headers={
-            "Content-Disposition": f'attachment; filename="{dataset_id}_{version}.jsonl"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="{dataset_id}_{version}.jsonl"'},
     )
 
 
@@ -365,9 +363,7 @@ async def query_lineage(
 ) -> dict:
     """Query lineage graph."""
     lineage_store = get_lineage_store()
-    upstream, downstream = await lineage_store.query_lineage(
-        target_uri=target_uri, direction=direction
-    )
+    upstream, downstream = await lineage_store.query_lineage(target_uri=target_uri, direction=direction)
     return success(
         {
             "target": target_uri,

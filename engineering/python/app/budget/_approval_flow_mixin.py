@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 class _ApprovalFlowMixin:
-
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
     _get_request: Callable[..., Any]
     _log_audit: Callable[..., Any]
@@ -84,6 +83,7 @@ class _ApprovalFlowMixin:
             risk_score,
         )
         return request
+
     def assign_approver(self, request_id: str, approver_id: str) -> ApprovalRequest | None:
         """分配审批人"""
         request = self._get_request(request_id)
@@ -107,6 +107,7 @@ class _ApprovalFlowMixin:
         )
 
         return request
+
     def make_decision(
         self,
         request_id: str,
@@ -195,6 +196,7 @@ class _ApprovalFlowMixin:
 
         self._save_request(request)
         return request
+
     def escalate_request(self, request_id: str, escalator_id: str, reason: str = "") -> ApprovalRequest | None:
         """升级审批请求"""
         request = self._get_request(request_id)
@@ -216,6 +218,7 @@ class _ApprovalFlowMixin:
         )
 
         return request
+
     def handle_timeout(self) -> int:
         now = time.time()
         rows = self._conn.execute(
@@ -255,6 +258,7 @@ class _ApprovalFlowMixin:
         if handled_count > 0:
             logger.info("Timeout handling: %d requests escalated", handled_count)
         return handled_count
+
     def delegate_approval(
         self,
         delegator_id: str,
@@ -296,6 +300,7 @@ class _ApprovalFlowMixin:
 
         logger.info("Approval delegated: %s → %s (%s)", delegator_id, delegate_id, reason)
         return delegation
+
     def get_active_delegation(self, user_id: str) -> ApprovalDelegation | None:
         """获取用户的活跃委托"""
         now = time.time()
@@ -304,6 +309,7 @@ class _ApprovalFlowMixin:
                 if delegation.end_time is None or delegation.end_time > now:
                     return delegation
         return None
+
     def get_delegates_for_user(self, user_id: str) -> list[str]:
         """获取用户可以代理的用户列表"""
         now = time.time()
@@ -313,6 +319,7 @@ class _ApprovalFlowMixin:
                 if delegation.end_time is None or delegation.end_time > now:
                     delegates.append(delegation.delegator_id)
         return delegates
+
     def complete_retroactive_approval(self, emergency_id: str) -> bool:
         """完成事后审批"""
         self._conn.execute(

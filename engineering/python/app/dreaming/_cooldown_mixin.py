@@ -18,7 +18,6 @@ class _CooldownMixin:
     _rollback_history: Any
     history_dir: Any
 
-
     def _history_file(self) -> Path:
         return self.history_dir / "rollback_history.json"
 

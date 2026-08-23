@@ -54,9 +54,7 @@ class FeatureReviewStateMachine:
     # 允许审核的任务状态集合
     REVIEWABLE_STATES = frozenset({STATUS_FEATURES_EXTRACTED})
     # 审核动作集合
-    VALID_ACTIONS = frozenset(
-        {ACTION_CONFIRMED, ACTION_REJECTED, ACTION_EDITED}
-    )
+    VALID_ACTIONS = frozenset({ACTION_CONFIRMED, ACTION_REJECTED, ACTION_EDITED})
     # 未决审核状态（单条特征）
     _PENDING_FEATURE_STATUS = frozenset({"pending"})
     # 允许导出的任务状态
@@ -83,8 +81,7 @@ class FeatureReviewStateMachine:
         """
         if not FeatureReviewStateMachine.can_review(task_status):
             raise ReviewStateMachineError(
-                f"任务状态 {task_status} 不允许审核，"
-                f"仅 {FeatureReviewStateMachine.reviewable_state_hint()} 状态可审核"
+                f"任务状态 {task_status} 不允许审核，仅 {FeatureReviewStateMachine.reviewable_state_hint()} 状态可审核"
             )
 
     @staticmethod
@@ -142,8 +139,7 @@ class FeatureReviewStateMachine:
         """校验任务可导出，否则抛 ReviewStateMachineError。"""
         if not FeatureReviewStateMachine.can_export(task_status):
             raise ReviewStateMachineError(
-                f"任务状态 {task_status} 不允许导出，"
-                f"仅 {FeatureReviewStateMachine.exportable_state_hint()} 状态可导出"
+                f"任务状态 {task_status} 不允许导出，仅 {FeatureReviewStateMachine.exportable_state_hint()} 状态可导出"
             )
 
     @staticmethod

@@ -21,7 +21,6 @@ class _ValidationMixin:
     VALID_MODEL_TYPES: Any
     _raw_config: Any
 
-
     def validate(self, config: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         验证配置结构和参数合法性

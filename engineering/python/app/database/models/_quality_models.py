@@ -15,6 +15,7 @@ from sqlalchemy import (
 
 from app.database.models.machining_record import Base
 
+
 class QualityRecord(Base):
     __tablename__ = "quality_records"
 
@@ -70,5 +71,3 @@ class QualityAnomaly(Base):
 # ---------------------------------------------------------------------------
 # Production Models (production_records / work_orders)
 # ---------------------------------------------------------------------------
-
-

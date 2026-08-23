@@ -18,7 +18,6 @@ class _InsightsMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _get_llm_router: Callable[..., Any]
 
-
     def _prepare_session_summaries(self, sessions: list[ProjectSession]) -> str:
         """将 Session 列表准备为 LLM 输入文本。"""
         lines = []

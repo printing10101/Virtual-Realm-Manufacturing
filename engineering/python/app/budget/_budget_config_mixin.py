@@ -18,7 +18,6 @@ class _BudgetConfigMixin:
     _conn: Any
     _lock: Any
 
-
     def _load_default_budgets(self) -> None:
         """加载默认预算配置"""
         defaults = [

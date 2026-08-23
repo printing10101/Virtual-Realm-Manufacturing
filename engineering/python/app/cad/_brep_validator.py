@@ -477,9 +477,7 @@ def validate_exported_model(
         except Exception as e:  # noqa: BLE001
             logger.error("STEP 回读失败 %s: %s", path, e)
             report = BrepValidationReport(is_valid=False)
-            report.issues.append(
-                BrepIssue(ERR_INVALID_SHAPE, "error", f"STEP 文件回读失败，文件可能损坏或不完整: {e}")
-            )
+            report.issues.append(BrepIssue(ERR_INVALID_SHAPE, "error", f"STEP 文件回读失败，文件可能损坏或不完整: {e}"))
             return report
         return validate_brep(_to_shape(shape), **kwargs)
 
@@ -521,9 +519,7 @@ def sanitize_dimensions(params: dict[str, Any]) -> dict[str, Any]:
 
     # 体积下限兜底：三轴等比缩放（目标取 10× 下限，留足数值余量避免边界误判）
     try:
-        product = (
-            float(dims.get("length", 50)) * float(dims.get("width", 30)) * float(dims.get("height", 20))
-        )
+        product = float(dims.get("length", 50)) * float(dims.get("width", 30)) * float(dims.get("height", 20))
     except (TypeError, ValueError):
         product = 0.0
     if product < DEFAULT_MIN_VOLUME:

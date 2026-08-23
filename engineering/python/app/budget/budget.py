@@ -102,6 +102,7 @@ class BudgetManager(_BudgetConfigMixin, _BudgetCheckMixin):
             );
         """)
             self._conn.commit()
+
     def close(self) -> None:
         """关闭数据库连接，归还连接到连接池
 
@@ -122,6 +123,8 @@ class BudgetManager(_BudgetConfigMixin, _BudgetCheckMixin):
         except (sqlite3.ProgrammingError, AttributeError) as e:
             # 析构时数据库连接已关闭或对象处于无效状态属于正常 GC 路径
             logger.debug("Cleanup during deallocation skipped: %s", e)
+
+
 class _BudgetManagerHolder:
     """Thread-safe lazy holder for the :class:`BudgetManager` singleton."""
 

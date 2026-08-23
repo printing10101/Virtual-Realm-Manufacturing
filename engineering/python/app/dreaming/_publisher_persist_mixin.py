@@ -29,7 +29,6 @@ class _PublisherPersistMixin:
     _records: Any
     state_dir: Any
 
-
     def _load_state(self) -> None:
         """启动时加载所有灰度发布记录。"""
         try:
@@ -43,6 +42,7 @@ class _PublisherPersistMixin:
                     logger.warning("加载灰度状态文件失败 %s: %s", state_file, e)
         except OSError as e:
             logger.warning("扫描灰度状态目录失败：%s", e)
+
     def _save_record(self, record: PublicationRecord) -> None:
         """持久化单条灰度记录。"""
         try:
@@ -51,21 +51,26 @@ class _PublisherPersistMixin:
                 json.dump(record.to_dict(), f, ensure_ascii=False, indent=2)
         except OSError as e:
             logger.warning("灰度状态持久化失败 rule_id=%s: %s", record.rule_id, e)
+
     def _get_or_create_record(self, rule_id: str) -> PublicationRecord:
         """获取或创建灰度记录。调用方须持有 _lock。"""
         if rule_id not in self._records:
             self._records[rule_id] = PublicationRecord(rule_id=rule_id)
         return self._records[rule_id]
+
     def _state_file(self, rule_id: str) -> Path:
         return self.state_dir / f"{rule_id}.json"
+
     def get_record(self, rule_id: str) -> PublicationRecord | None:
         """查询规则的灰度发布记录。"""
         with self._lock:
             return self._records.get(rule_id)
+
     def list_publications(self) -> list[PublicationRecord]:
         """列出所有灰度发布中的规则。"""
         with self._lock:
             return list(self._records.values())
+
     def update_metrics(
         self,
         rule_id: str,
@@ -95,6 +100,7 @@ class _PublisherPersistMixin:
             )
             self._save_record(record)
             return True
+
     def _update_stage_only(
         self,
         rule_id: str,

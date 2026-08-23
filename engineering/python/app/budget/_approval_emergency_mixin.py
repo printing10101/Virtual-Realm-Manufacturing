@@ -20,7 +20,6 @@ class _ApprovalEmergencyMixin:
     _consecutive_emergency_count: Any
     _emergency_threshold: Any
 
-
     def record_emergency_operation(
         self,
         request_id: str,
@@ -85,9 +84,11 @@ class _ApprovalEmergencyMixin:
             "retroactive_approval_required": True,
             "deadline": now + 24 * 3600,
         }
+
     def set_emergency_audit_callback(self, callback: Callable) -> None:
         """设置紧急操作审计回调"""
         self._emergency_audit_callback = callback
+
     def reset_consecutive_emergency_count(self) -> None:
         """重置连续紧急操作计数"""
         self._consecutive_emergency_count = 0

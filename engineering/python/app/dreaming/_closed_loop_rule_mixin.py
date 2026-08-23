@@ -32,7 +32,6 @@ class _ClosedLoopRuleMixin:
     _window_size: Any
     _windows: Any
 
-
     def evaluate_rule(self, rule_id: str) -> ClosedLoopDecision:
         """评估指定规则，返回决策建议。
 
@@ -119,6 +118,7 @@ class _ClosedLoopRuleMixin:
             decision.reason = f"融合置信度 {fused_confidence:.3f} 与冲突 {conflict:.3f} 均在容忍区间，保持现状"
 
         return decision
+
     def _fuse_rule_evidence(self, samples: list[RuleOutcomeRecord]) -> tuple:
         """将规则样本融合为单一置信度。
 
@@ -198,6 +198,7 @@ class _ClosedLoopRuleMixin:
                 total_weight += w
             fused = weighted_sum / total_weight if total_weight > 0 else 0.0
             return (fused, 0.0, fused)
+
     def _apply_hrc52_penalty(self, rule_id: str, confidence: float) -> float:
         """对 HRC52 pending_calibration 规则强制降低置信度。
 

@@ -56,7 +56,6 @@ APPLIED_RULES_DIR = "python/outputs/dreaming/applied_rules"
 
 @dataclass
 class ApplyResult:
-
     """规则应用结果。
 
     Attributes:

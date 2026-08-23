@@ -22,6 +22,7 @@ from app.config.limits import DEFAULT_SQLITE_LOCK_TIMEOUT_SEC
 
 logger = logging.getLogger(__name__)
 
+
 class ProviderRegistry:
     """LLM Provider 注册表。
 

@@ -14,7 +14,6 @@ class _FeatureCodeMixin:
     _config_limiter: Any
     _five_axis_planner: Any
 
-
     def _generate_feature_code(
         self,
         op: Operation,

@@ -9,10 +9,18 @@ from typing import Any
 from collections.abc import Callable
 
 from app.tasks._checkout_models import (
-    CONFLICT_RETRY_DELAY_MINUTES, GPU_RETRY_DELAY_MINUTES, AgentMode, CheckoutFailureReason, CheckoutRequest, CheckoutResult, CheckoutStatus, TaskStatus,
+    CONFLICT_RETRY_DELAY_MINUTES,
+    GPU_RETRY_DELAY_MINUTES,
+    AgentMode,
+    CheckoutFailureReason,
+    CheckoutRequest,
+    CheckoutResult,
+    CheckoutStatus,
+    TaskStatus,
 )
 from app.tasks.execution_lock import (
-    LockConflictError, LockNotFoundError,
+    LockConflictError,
+    LockNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,10 +36,10 @@ class _TaskCheckoutLocksMixin:
     _conn: Any
     _lock_store: Any
 
-
     def _get_conn(self) -> sqlite3.Connection:
         """获取数据库连接（从连接池）"""
         return self._conn
+
     def _ensure_tables(self):
         conn = self._get_conn()
         conn.execute("""
@@ -76,9 +84,11 @@ class _TaskCheckoutLocksMixin:
             )
         """)
         conn.commit()
+
     def checkout_task(self, request: CheckoutRequest) -> CheckoutResult:
         with self._checkout_lock:
             return self._perform_checkout(request)
+
     def _perform_checkout(self, request: CheckoutRequest) -> CheckoutResult:
         task = self.get_task(request.task_id)
         if task is None:
@@ -231,6 +241,7 @@ class _TaskCheckoutLocksMixin:
             checked_out_at=now_iso,
             expires_at=expires_iso,
         )
+
     def force_release_lock(self, task_id: str, admin_id: str = "admin") -> CheckoutResult:
         try:
             lock = self._lock_store.force_release(task_id, admin_id)
@@ -271,6 +282,7 @@ class _TaskCheckoutLocksMixin:
                 message="锁不存在或已过期，无法强制释放",
                 failure_reason=CheckoutFailureReason.LOCK_EXISTS,
             )
+
     def cleanup_expired_locks(self) -> list[dict]:
         expired = self._lock_store.cleanup_expired_locks()
 
@@ -297,6 +309,7 @@ class _TaskCheckoutLocksMixin:
                 )
 
         return [e.to_dict() for e in expired]
+
     def _record_failure(self, task_id: str, agent_id: str, reason, message: str = ""):
         reason_str = reason.value if isinstance(reason, CheckoutFailureReason) else reason
         conn = self._get_conn()
@@ -306,6 +319,7 @@ class _TaskCheckoutLocksMixin:
             (task_id, agent_id, reason_str, message, datetime.now(timezone.utc).isoformat()),
         )
         conn.commit()
+
     def _checkout_fail(
         self,
         request: CheckoutRequest,

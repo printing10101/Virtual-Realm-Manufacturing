@@ -24,6 +24,7 @@ RISK_DIMS: int = 32
 RESERVED_OFFSET: int = 384
 RESERVED_DIMS: int = 128
 
+
 class SemanticAxis:
     """Base class for a semantic axis in the embedding space."""
 
@@ -418,5 +419,3 @@ class RiskAxis(SemanticAxis):
         vector[16:24] = np.clip(thermal_risk, 0.0, 1.0)
         vector[24:32] = np.clip(quality_risk, 0.0, 1.0)
         return vector
-
-

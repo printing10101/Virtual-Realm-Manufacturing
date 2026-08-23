@@ -27,7 +27,6 @@ class _CostQueryMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _conn: Any
 
-
     def get_task_costs(self, task_id: str) -> list[dict[str, Any]]:
         """获取任务的所有成本记录"""
         rows = self._conn.execute(
@@ -35,6 +34,7 @@ class _CostQueryMixin:
             (task_id,),
         ).fetchall()
         return [self._row_to_cost_dict(row) for row in rows]
+
     def get_task_total_cost(self, task_id: str) -> float:
         """获取任务总成本"""
         row = self._conn.execute(
@@ -42,6 +42,7 @@ class _CostQueryMixin:
             (task_id,),
         ).fetchone()
         return row["total"] if row else 0.0
+
     def get_cost_summary(
         self,
         dimension: CostDimension,
@@ -105,6 +106,7 @@ class _CostQueryMixin:
                 summary.task_count = row["task_count"]
 
         return summary
+
     def get_all_summaries(
         self,
         dimension: CostDimension,
@@ -174,6 +176,7 @@ class _CostQueryMixin:
                 sm.task_count = row["task_count"]
 
         return sorted(summary_map.values(), key=lambda s: s.total_cost, reverse=True)
+
     def get_cost_trend(self, days: int = 30, interval_hours: int = 24) -> list[dict[str, Any]]:
         """获取成本趋势数据"""
         cutoff = time.time() - (days * 86400)
@@ -219,6 +222,7 @@ class _CostQueryMixin:
                 entry["data_transfer_cost"] = row["total_cost"]
 
         return sorted(trend.values(), key=lambda x: x["timestamp"])
+
     def _row_to_cost_dict(self, row: sqlite3.Row) -> dict[str, Any]:
         d = dict(row)
         if d.get("metadata"):

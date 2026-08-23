@@ -23,6 +23,7 @@ def get_torch_model_class(model_type_str: str) -> type | None:
         _init_torch_model_map()
     return ModelRegistry._torch_model_class_map.get(model_type_str)
 
+
 def _init_torch_model_map() -> None:
     """Initialize the PyTorch model class map lazily."""
     from app.ai.lnn.inference._runtime_registry import ModelRegistry

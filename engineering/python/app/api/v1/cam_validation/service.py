@@ -17,20 +17,30 @@ from app.api.v1._shared.task_infra import (
     spawn_background_task as _spawn,
 )
 from app.api.v1.cam_validation._helpers import (
-    _disclaimer_dict, _get_pipeline, _resolve_upstream_gcode_calibrated,
+    _disclaimer_dict,
+    _get_pipeline,
+    _resolve_upstream_gcode_calibrated,
 )
 from app.api.v1.cam_validation._schemas import (
-    ReviewRequest, TaskCreateRequest,
+    ReviewRequest,
+    TaskCreateRequest,
 )
 from app.cam_validation import (
-    CamReviewStatus, CamValidationError, CamValidationPipelineError, CamValidationTaskStatus,
-    ReviewError, VALID_CAM_BACKENDS, get_task_store, is_valid_cam_backend,
+    CamReviewStatus,
+    CamValidationError,
+    CamValidationPipelineError,
+    CamValidationTaskStatus,
+    ReviewError,
+    VALID_CAM_BACKENDS,
+    get_task_store,
+    is_valid_cam_backend,
 )
 from app.config import config
 from app.core.response import ErrorCode, error, success
 from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
+
 
 async def get_precision_info() -> dict[str, Any]:
     """查询当前精度档位信息、可用 CAM 后端与工业硬门槛（不创建任务）。
@@ -104,6 +114,7 @@ async def get_precision_info() -> dict[str, Any]:
             },
         },
     )
+
 
 async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
     """创建 CAM 校验任务。
@@ -221,6 +232,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
         message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
+
 async def run_task(task_id: str) -> dict[str, Any]:
     """异步触发 CAM 校验流水线执行。
 
@@ -276,6 +288,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
         },
         message="任务已开始执行",
     )
+
 
 async def get_task_status(task_id: str) -> dict[str, Any]:
     """查询任务当前状态、审核进度、CAM 校验统计、导出产物路径。"""
@@ -340,6 +353,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
         },
     )
 
+
 async def list_tasks(
     limit: int = 20,
     status_filter: str = "",
@@ -385,6 +399,7 @@ async def list_tasks(
             "total": len(tasks),
         },
     )
+
 
 async def get_task_result(task_id: str) -> dict[str, Any]:
     """获取任务结果摘要与完整特征校验结果列表（含审核状态）。
@@ -470,6 +485,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
             "cam_disclaimer": _disclaimer_dict(task=task, cam_report_exported=cam_report_exported),
         },
     )
+
 
 async def review_feature(
     task_id: str,
@@ -601,6 +617,7 @@ async def review_feature(
         ),
     )
 
+
 async def confirm_task(
     task_id: str,
     reviewer: str = "engineer",
@@ -704,6 +721,7 @@ async def confirm_task(
         ),
     )
 
+
 async def download_cam_report(task_id: str) -> FileResponse | JSONResponse:
     """下载 CAM 校验报告 JSON（链路最终产物，供审计追溯）。
 
@@ -746,6 +764,7 @@ async def download_cam_report(task_id: str) -> FileResponse | JSONResponse:
         filename=f"{task_id}_cam_report.json",
     )
 
+
 async def download_internal_report(task_id: str) -> FileResponse | JSONResponse:
     """下载内部预校验详细报告 JSON（供前端可视化）。
 
@@ -785,6 +804,7 @@ async def download_internal_report(task_id: str) -> FileResponse | JSONResponse:
         media_type="application/json",
         filename=f"{task_id}_internal_report.json",
     )
+
 
 async def delete_task(task_id: str) -> dict[str, Any]:
     """取消或删除 CAM 校验任务。

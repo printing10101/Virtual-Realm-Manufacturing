@@ -9,6 +9,7 @@ from .common import safe_color
 
 logger = logging.getLogger(__name__)
 
+
 def arc_to_obj(entity) -> DxfArc:
     """将单个 ARC 实体转换为 DxfArc。"""
     return DxfArc(

@@ -67,8 +67,12 @@ __all__ = [
 ]
 
 from app.dxf._pipeline_stages import (
-    STAGES, StageKey, StageStatus,
-    stage_name, stage_failure_is_fatal, should_abort_after,
-    progress_of, summarize_pipeline,
+    STAGES,
+    StageKey,
+    StageStatus,
+    stage_name,
+    stage_failure_is_fatal,
+    should_abort_after,
+    progress_of,
+    summarize_pipeline,
 )
-

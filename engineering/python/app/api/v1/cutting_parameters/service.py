@@ -37,6 +37,7 @@ from app.api.v1.cutting_parameters._helpers import (
 
 logger = logging.getLogger(__name__)
 
+
 async def get_precision_info() -> dict[str, Any]:
     """查询当前精度档位信息、材料列表与工业硬门槛（不创建任务）。
 
@@ -110,6 +111,7 @@ async def get_precision_info() -> dict[str, Any]:
         },
         message="切削参数推荐精度档位与工业硬门槛信息",
     )
+
 
 async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
     """创建切削参数推荐任务。
@@ -239,6 +241,7 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
         message=(f"任务已创建 task_id={task.task_id}，请调用 POST /tasks/{task.task_id}/run 触发执行"),
     )
 
+
 async def run_task(task_id: str) -> dict[str, Any]:
     """异步触发切削参数推荐流水线执行。
 
@@ -287,6 +290,7 @@ async def run_task(task_id: str) -> dict[str, Any]:
         message="任务已开始执行",
     )
 
+
 async def get_task_status(task_id: str) -> dict[str, Any]:
     """查询任务当前状态、审核进度、ChatterParams 路径、精度告知字段。"""
     store = get_task_store()
@@ -334,6 +338,7 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
         },
     )
 
+
 async def list_tasks(limit: int = 20) -> dict[str, Any]:
     """列出最近的切削参数任务（按创建时间倒序）。"""
     if limit < 1 or limit > 100:
@@ -364,6 +369,7 @@ async def list_tasks(limit: int = 20) -> dict[str, Any]:
             "total": len(tasks),
         },
     )
+
 
 async def get_task_result(task_id: str) -> dict[str, Any]:
     """获取任务结果摘要与完整推荐参数列表（含审核状态）。
@@ -443,6 +449,7 @@ async def get_task_result(task_id: str) -> dict[str, Any]:
             "cutting_disclaimer": _disclaimer_dict(task=task, chatter_params_ready=chatter_params_ready),
         },
     )
+
 
 async def review_params(
     task_id: str,
@@ -566,6 +573,7 @@ async def review_params(
         ),
     )
 
+
 async def export_chatter_params(task_id: str) -> dict[str, Any]:
     """导出 ChatterParams JSON 文件供阶段 5 颤振预测使用。
 
@@ -648,6 +656,7 @@ async def export_chatter_params(task_id: str) -> dict[str, Any]:
         ),
     )
 
+
 async def download_chatter_params(task_id: str) -> FileResponse:
     """下载 ChatterParams JSON 文件（供阶段 5 颤振预测读取）。
 
@@ -694,6 +703,7 @@ async def download_chatter_params(task_id: str) -> FileResponse:
         media_type="application/json",
         filename=f"{task_id}_chatter_params.json",
     )
+
 
 async def delete_task(task_id: str) -> dict[str, Any]:
     """取消或删除切削参数推荐任务。

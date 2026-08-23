@@ -5,7 +5,12 @@ from __future__ import annotations
 import math
 
 from app.dxf.dxf_parser import DxfLine, DxfParseResult
-from app.dxf._dxf_feature_models import RECTANGLE_ANGLE_TOLERANCE, RECTANGLE_LENGTH_TOLERANCE, FeatureExtractionResult, PlaneFeatureInfo
+from app.dxf._dxf_feature_models import (
+    RECTANGLE_ANGLE_TOLERANCE,
+    RECTANGLE_LENGTH_TOLERANCE,
+    FeatureExtractionResult,
+    PlaneFeatureInfo,
+)
 
 
 class _PlaneMixin:

@@ -16,6 +16,8 @@ except ImportError:
 from .config import HiddenStatePage
 
 logger = logging.getLogger(__name__)
+
+
 class PagedHiddenStateCache:
     """分页隐状态缓存（对应 lingbot-map 的 paged KV cache）.
 

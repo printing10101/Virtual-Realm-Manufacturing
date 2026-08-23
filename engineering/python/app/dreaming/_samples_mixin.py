@@ -19,7 +19,6 @@ class _SamplesMixin:
     _samples: Any
     samples_dir: Any
 
-
     def _samples_file(self, rule_id: str) -> Path:
         return self.samples_dir / f"{rule_id}.json"
 

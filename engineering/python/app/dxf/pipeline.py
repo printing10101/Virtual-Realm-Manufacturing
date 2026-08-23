@@ -30,6 +30,10 @@ from pathlib import Path
 from typing import Any
 
 from app.core.safe_errors import safe_error_message
+from app.dxf._pipeline_stages import (
+    StageKey,
+    stage_name,
+)
 from app.dxf.exceptions import DxfError
 from app.dxf.dxf_parser import DxfParser, DxfParseResult
 from app.dxf.feature_extractor import (
@@ -188,7 +192,7 @@ class DxfProcessPipeline:
             parse_result = self._dxf_parser.parse(file_path)
             status = "success" if parse_result.success else "failed"
             stage1 = DxfPipelineStage(
-                name="DXF解析",
+                name=stage_name(StageKey.PARSE),
                 status=status,
                 duration_ms=(time.time() - stage1_start) * 1000,
                 input_summary=f"文件: {Path(file_path).name}",
@@ -210,7 +214,7 @@ class DxfProcessPipeline:
                 generic_message="DXF解析阶段失败",
             )
             stage1 = DxfPipelineStage(
-                name="DXF解析",
+                name=stage_name(StageKey.PARSE),
                 status="failed",
                 duration_ms=(time.time() - stage1_start) * 1000,
                 errors=[err_msg],
@@ -235,7 +239,7 @@ class DxfProcessPipeline:
             feature_result = self._feature_extractor.extract(parse_result)
             status = "success" if feature_result.success else "failed"
             stage2 = DxfPipelineStage(
-                name="特征提取",
+                name=stage_name(StageKey.FEATURES),
                 status=status,
                 duration_ms=(time.time() - stage2_start) * 1000,
                 input_summary=f"实体: {parse_result.total_entities}个",
@@ -257,7 +261,7 @@ class DxfProcessPipeline:
                 generic_message="特征提取阶段失败",
             )
             stage2 = DxfPipelineStage(
-                name="特征提取",
+                name=stage_name(StageKey.FEATURES),
                 status="failed",
                 duration_ms=(time.time() - stage2_start) * 1000,
                 errors=[err_msg],
@@ -277,7 +281,7 @@ class DxfProcessPipeline:
             model_result = self._model_converter.convert(feature_result)
             status = "success" if model_result.success else "failed"
             stage3 = DxfPipelineStage(
-                name="3D模型转换",
+                name=stage_name(StageKey.MODEL_CONVERT),
                 status=status,
                 duration_ms=(time.time() - stage3_start) * 1000,
                 input_summary=(
@@ -305,7 +309,7 @@ class DxfProcessPipeline:
             logger.warning("3D模型转换失败，流水线将降级继续: error_id=%s", error_id)
             model_result = None
             stage3 = DxfPipelineStage(
-                name="3D模型转换",
+                name=stage_name(StageKey.MODEL_CONVERT),
                 status="failed",
                 duration_ms=(time.time() - stage3_start) * 1000,
                 errors=[err_msg],
@@ -321,7 +325,7 @@ class DxfProcessPipeline:
         try:
             part_description = self._build_part_description(feature_result, material, part_type)
             stage4 = DxfPipelineStage(
-                name="数据组装",
+                name=stage_name(StageKey.DATA_ASSEMBLY),
                 status="success",
                 duration_ms=(time.time() - stage4_start) * 1000,
                 output_summary=(
@@ -336,7 +340,7 @@ class DxfProcessPipeline:
                 generic_message="数据组装阶段失败",
             )
             stage4 = DxfPipelineStage(
-                name="数据组装",
+                name=stage_name(StageKey.DATA_ASSEMBLY),
                 status="failed",
                 duration_ms=(time.time() - stage4_start) * 1000,
                 errors=[err_msg],
@@ -488,5 +492,3 @@ def run_dxf_pipeline(
         material=material,
         controller_type=controller,
     )
-
-

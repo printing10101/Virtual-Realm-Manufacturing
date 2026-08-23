@@ -41,10 +41,7 @@ async def logs_query(
             status_code=400,
             content={
                 "code": 1002,
-                "message": (
-                    f"[参数错误] 无效的日志缓冲类型 '{buffer_type}'。"
-                    "建议操作：[使用 request 或 system_event]"
-                ),
+                "message": (f"[参数错误] 无效的日志缓冲类型 '{buffer_type}'。建议操作：[使用 request 或 system_event]"),
                 "request_id": get_request_id(),
             },
         )

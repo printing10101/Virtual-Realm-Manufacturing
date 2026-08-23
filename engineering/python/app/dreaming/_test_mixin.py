@@ -200,4 +200,3 @@ class _TestMixin:
                     return True
             return False
         return "delete" in str(action).lower()
-

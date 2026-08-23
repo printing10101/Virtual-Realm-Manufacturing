@@ -70,8 +70,6 @@ _UNATTRIBUTED_WARNING_PREFIX: str = (
 
 @dataclass
 class InternalValidationReport:
-
-
     """InternalValidator 单次校验聚合报告。
 
     封装 CollisionDetector 原始输出 + 特征归因后的 FeatureValidationResult

@@ -64,6 +64,7 @@ class _HeidenhainCyclesMixin:
                 f"{self._next_block()}  CYCL CALL",
             ]
         return "\n".join(lines)
+
     def format_cycle_tapping(
         self,
         x: float,
@@ -322,4 +323,3 @@ class _HeidenhainCyclesMixin:
             f"{self._next_block()}  CYCL CALL",
         ]
         return "\n".join(lines)
-

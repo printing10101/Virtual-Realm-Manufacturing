@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
+
 @dataclass
 class RuleCondition:
     """规则条件项"""
@@ -151,4 +152,3 @@ class RuleGroup:
             created_at=d.get("created_at"),
             updated_at=d.get("updated_at"),
         )
-

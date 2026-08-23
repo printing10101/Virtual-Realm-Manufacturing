@@ -355,6 +355,8 @@ class ProcessPlanningPipeline(_StagesMixin):
         result.summary = " | ".join(summary_parts)
 
         return result
+
+
 def plan_process(
     feature: str = "pocket_cavity",
     material: str = "45steel",

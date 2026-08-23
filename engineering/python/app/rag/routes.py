@@ -60,12 +60,6 @@ _rag_engine_instance = None
 _rag_engine_lock = threading.Lock()
 
 
-
-
-
-
-
-
 @router.get("/query", dependencies=[Depends(get_current_user)])
 async def query_knowledge(
     q: str = Query(..., description="查询文本"),
@@ -308,8 +302,6 @@ def generate_comparison_report(
 # ===========================================================================
 # 落地竞品分析识别的核心补强点：Feature → Process → Tool → Parameter 四元组建模。
 # 通过 chunk_ids 字段与 EntityIndex 互查，实现 quadruple → 原始文档溯源。
-
-
 
 
 @router.post("/process/recommend", dependencies=[Depends(require_permission("rag:write"))])

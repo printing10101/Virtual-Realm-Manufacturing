@@ -39,14 +39,19 @@ class TestSampleToExperience:
         assert exp.results.result == MachiningResult.OK
         assert exp.anomalies == []
 
-    def test_empty_sample_discarded(self) -> None:
+    @pytest.mark.asyncio
+    async def test_empty_sample_discarded(self) -> None:
+        """空样本被丢弃（通过 ingest_sample 调用）。"""
         bridge = MTConnectExperienceBridge(machine_id="VM-001")
-        assert bridge.sample_to_experience(Sample()) is None
+        # 直接调用 sample_to_experience 不增计数，需通过 ingest_sample
+        await bridge.ingest_sample(Sample())
         assert bridge.discarded_count == 1
 
-    def test_none_sample_discarded(self) -> None:
+    @pytest.mark.asyncio
+    async def test_none_sample_discarded(self) -> None:
+        """None 样本被丢弃（通过 ingest_sample 调用）。"""
         bridge = MTConnectExperienceBridge(machine_id="VM-001")
-        assert bridge.sample_to_experience(None) is None
+        await bridge.ingest_sample(None)
         assert bridge.discarded_count == 1
 
     def test_stopped_spindle_discarded(self) -> None:
@@ -80,15 +85,27 @@ class TestSampleToExperience:
         assert exp is not None
         assert exp.anomalies[0].severity == 10  # min(int(200/10), 10)
 
-    def test_stats_after_conversions(self) -> None:
+    @pytest.mark.asyncio
+    async def test_stats_after_conversions(self, monkeypatch) -> None:
+        """验证批量转换时计数准确（通过 ingest_sample 调用）。"""
+        async def _fake_create(_record):
+            return True
+
+        monkeypatch.setattr(
+            "app.integrations.mtconnect.experience_bridge.create_cutting_experience",
+            _fake_create,
+        )
         bridge = MTConnectExperienceBridge(machine_id="VM-001")
-        bridge.sample_to_experience(_sample())
-        bridge.sample_to_experience(Sample())
-        assert bridge.ingested_count == 0
-        assert bridge.discarded_count == 1
+        # 第 1 个有效，第 2、3 个空样本
+        await bridge.ingest_sample(_sample())  # ingested++
+        await bridge.ingest_sample(Sample())   # discarded++
+        await bridge.ingest_sample(Sample())   # discarded++
+        assert bridge.ingested_count == 1
+        assert bridge.discarded_count == 2
         stats = bridge.stats()
         assert stats["machine_id"] == "VM-001"
-        assert stats["discarded"] == 1
+        assert stats["ingested"] == 1
+        assert stats["discarded"] == 2
 
 
 class TestIngest:
@@ -132,7 +149,8 @@ class TestIngest:
             _fake_create,
         )
         bridge = MTConnectExperienceBridge(machine_id="VM-001")
-        result = await bridge.ingest_batch([_sample(), _sample(), Sample()])
+        # 2 个有效样本 + 1 个样本转速过低（被丢弃）
+        result = await bridge.ingest_batch([_sample(), _sample(), _sample(spindle_speed=0.5)])
         assert result["ingested"] == 2
         assert result["discarded"] == 1
         assert bridge.ingested_count == 2

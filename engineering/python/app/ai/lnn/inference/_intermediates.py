@@ -56,7 +56,6 @@ class _IntermediatesMixin:
     device: Any
     model_name: Any
 
-
     """``predict_with_intermediates`` 的 Mixin，提供非侵入式中间状态捕获。
 
     本 Mixin 不定义 ``__init__``，所有实例状态由 ``LNNPredictor.__init__``

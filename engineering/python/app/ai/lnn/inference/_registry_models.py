@@ -15,6 +15,7 @@ except ImportError:
     BaseLNNModel = None
     _HAS_TORCH_MODELS = False
 
+
 @dataclass
 class ModelInfo:
     """Model information dataclass with validation"""
@@ -92,4 +93,3 @@ class ModelEntry:
     last_accessed: float = 0.0
     access_count: int = 0
     metadata: dict[str, Any] | None = None
-

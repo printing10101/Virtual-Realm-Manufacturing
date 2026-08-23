@@ -117,6 +117,8 @@ class RuleValidator(_ChecksMixin, _TestMixin):
     # ------------------------------------------------------------------
     # 阶段 1：硬约束校验
     # ------------------------------------------------------------------
+
+
 def validate_rule(rule: RuleDraft) -> ValidationResult:
     """便捷函数：验证规则草稿。
 

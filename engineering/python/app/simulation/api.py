@@ -816,6 +816,7 @@ async def fem_solve(
         logger.error("[simulation.fem_solve] error_id=%s: %s", safe["error_id"], e, exc_info=True)
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"])
 
+
 # =============================================================================
 # 仿真工厂闭环（Phase 3b 升级：① SUPCON Factory Agent 思路 API 化）
 # =============================================================================

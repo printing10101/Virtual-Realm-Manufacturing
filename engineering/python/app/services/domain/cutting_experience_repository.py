@@ -106,9 +106,7 @@ async def list_cutting_experiences(query: ExperienceQuery) -> dict:
         {"records": [...], "total": int, "limit": int, "offset": int}
     """
     sessionmaker = _get_session()
-    stmt = select(CuttingExperienceRecord).order_by(
-        CuttingExperienceRecord.created_at.desc()
-    )
+    stmt = select(CuttingExperienceRecord).order_by(CuttingExperienceRecord.created_at.desc())
     if query.machine_id:
         stmt = stmt.where(CuttingExperienceRecord.machine_id == query.machine_id)
     if query.tool_id:
@@ -116,9 +114,7 @@ async def list_cutting_experiences(query: ExperienceQuery) -> dict:
     if query.material:
         stmt = stmt.where(CuttingExperienceRecord.material == query.material)
     if query.machining_type:
-        stmt = stmt.where(
-            CuttingExperienceRecord.machining_type == query.machining_type.value
-        )
+        stmt = stmt.where(CuttingExperienceRecord.machining_type == query.machining_type.value)
     if query.result:
         stmt = stmt.where(CuttingExperienceRecord.result == query.result.value)
     if query.has_anomaly is not None:
@@ -135,15 +131,7 @@ async def list_cutting_experiences(query: ExperienceQuery) -> dict:
 
     async with sessionmaker() as session:
         total = (await session.execute(count_stmt)).scalar_one()
-        rows = (
-            (
-                await session.execute(
-                    stmt.limit(query.limit).offset(query.offset)
-                )
-            )
-            .scalars()
-            .all()
-        )
+        rows = (await session.execute(stmt.limit(query.limit).offset(query.offset))).scalars().all()
         records = [row.to_contract_dict() for row in rows]
         return {
             "records": records,
@@ -153,15 +141,20 @@ async def list_cutting_experiences(query: ExperienceQuery) -> dict:
         }
 
 
-async def get_cutting_experience(record_id: UUID) -> dict | None:
+async def get_cutting_experience(record_id: UUID | str) -> dict | None:
     """按 ID 获取单条记录。
+
+    Args:
+        record_id: 记录 ID，支持 UUID 对象或字符串形式。
 
     Returns:
         记录 dict；不存在返回 None。
     """
     sessionmaker = _get_session()
+    # SQLite 需要字符串形式的 ID
+    pk = str(record_id) if not isinstance(record_id, str) else record_id
     async with sessionmaker() as session:
-        row = await session.get(CuttingExperienceRecord, record_id)
+        row = await session.get(CuttingExperienceRecord, pk)
         return row.to_contract_dict() if row else None
 
 
@@ -215,15 +208,20 @@ async def aggregate_experience_stats(query: ExperienceQuery) -> ExperienceStats:
 # ---------------------------------------------------------------------------
 
 
-async def delete_cutting_experience(record_id: UUID) -> bool:
+async def delete_cutting_experience(record_id: UUID | str) -> bool:
     """删除一条记录（管理用途，正常飞轮流程不调用）。
+
+    Args:
+        record_id: 记录 ID，支持 UUID 对象或字符串形式。
 
     Returns:
         True 删除成功；False 记录不存在。
     """
     sessionmaker = _get_session()
+    # SQLite 需要字符串形式的 ID
+    pk = str(record_id) if not isinstance(record_id, str) else record_id
     async with sessionmaker() as session:
-        row = await session.get(CuttingExperienceRecord, record_id)
+        row = await session.get(CuttingExperienceRecord, pk)
         if row is None:
             return False
         await session.delete(row)

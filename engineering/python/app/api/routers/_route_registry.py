@@ -75,10 +75,7 @@ def validate_specs(specs: list[RouterSpec]) -> list[str]:
 
         prefix = spec.prefix
         if prefix and prefix in seen_prefixes:
-            problems.append(
-                f"[{spec.name}] 路由前缀冲突: {prefix} "
-                f"已被 {seen_prefixes[prefix]} 注册"
-            )
+            problems.append(f"[{spec.name}] 路由前缀冲突: {prefix} 已被 {seen_prefixes[prefix]} 注册")
         if prefix:
             seen_prefixes[prefix] = spec.name
 

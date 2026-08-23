@@ -31,9 +31,7 @@ except ImportError:  # pragma: no cover
 DEFAULT_PRIOR_CONFIDENCE = 0.6
 
 
-
 class _EngineInferenceMixin:
-
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
     _custom_models: Any
     _engine_stats: Any
@@ -108,6 +106,7 @@ class _EngineInferenceMixin:
             return self._fusion.fuse(results)
 
         return results[0]
+
     def infer_batch(
         self,
         tasks: list[dict[str, Any]],
@@ -150,6 +149,7 @@ class _EngineInferenceMixin:
                     )
                 )
         return results
+
     def infer_stream(
         self,
         model_name: str,
@@ -210,6 +210,7 @@ class _EngineInferenceMixin:
             self._engine_stats["streaming_frames_processed"] += 1
             self._engine_stats["successful_inferences"] += 1
             yield self._streaming_result_to_inference(pr, model_name)
+
     def infer_windowed(
         self,
         model_name: str,
@@ -276,6 +277,7 @@ class _EngineInferenceMixin:
         self._engine_stats["streaming_frames_processed"] += len(pr_list)
         self._engine_stats["successful_inferences"] += len(pr_list)
         return [self._streaming_result_to_inference(pr, model_name) for pr in pr_list]
+
     def reset_streaming(self, model_name: str) -> None:
         """重置指定流式预测器的状态（新工序/新工件开始时调用）.
 
@@ -298,6 +300,7 @@ class _EngineInferenceMixin:
             "HybridInferenceEngine: 已重置流式预测器 %r 的状态",
             model_name,
         )
+
     def _require_streaming_predictor(self, model_name: str) -> Any:
         """获取流式预测器实例，不存在时抛出 ValueError。"""
         if not _HAS_STREAMING:
@@ -311,6 +314,7 @@ class _EngineInferenceMixin:
                 "请先调用 register_streaming_predictor 或 build_streaming_predictor。"
             )
         return sp
+
     def _streaming_result_to_inference(
         self,
         pr: Any,
@@ -344,6 +348,7 @@ class _EngineInferenceMixin:
                 "trajectory_deviation": model_info.get("trajectory_deviation", 0.0),
             },
         )
+
     def _run_engine(
         self,
         engine: EngineType,
@@ -393,6 +398,7 @@ class _EngineInferenceMixin:
             ],
             uncertainty=uncertainty,
         )
+
     def _invoke_lnn(self, model_name: str | None, task: TaskInput) -> tuple:
         """调用 LNN 预测器；若未注册则回退到规则引擎。"""
         predictor = self._lnn_predictors.get(model_name or "")
@@ -433,6 +439,7 @@ class _EngineInferenceMixin:
             "source": "lnn_predictor",
         }
         return value, confidence, uncertainty, meta
+
     def _invoke_rule(self, task: TaskInput, source: str = "rule_engine") -> tuple:
         """规则引擎：基于输入数据的统计特征给出确定性回退预测。
 
@@ -470,6 +477,7 @@ class _EngineInferenceMixin:
             "source": source,
         }
         return prediction, confidence, uncertainty, meta
+
     def _invoke_llm(self, task: TaskInput) -> tuple:
         """LLM 引擎：通过自定义模型注册表调用具备 chat/forward 方法的实例。"""
         instance = self._lookup_custom_model(task.task_description, "llm")
@@ -495,6 +503,7 @@ class _EngineInferenceMixin:
         }
         uncertainty = {"epistemic": 0.4, "source": "llm_default"}
         return content, confidence, uncertainty, meta
+
     def _invoke_hybrid(self, model_name: str | None, task: TaskInput) -> tuple:
         """混合引擎：先 LNN 再规则融合，给出更稳健的预测。"""
         lnn_value, lnn_conf, lnn_unc, lnn_meta = self._invoke_lnn(model_name, task)
@@ -527,6 +536,7 @@ class _EngineInferenceMixin:
             prediction, confidence, uncertainty, meta = (lnn_value, lnn_conf, lnn_unc, lnn_meta)
 
         return prediction, confidence, uncertainty, meta
+
     def _lookup_custom_model(self, task_description: str, model_type: str | None) -> Any | None:
         """根据任务描述和模型类型查找自定义模型实例。"""
         if not self._custom_models:
@@ -541,6 +551,7 @@ class _EngineInferenceMixin:
             if model_type and entry.get("model_type", "").lower() == model_type:
                 return entry.get("instance")
         return None
+
     def _fallback_result(
         self,
         task: TaskInput,

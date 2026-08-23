@@ -195,8 +195,6 @@ class CamValidationPipelineError(CamValidationError):
 
 @dataclass
 class FeatureValidationResult:
-
-
     """单个特征的 CAM 校验结果。
 
     封装两层校验对该特征的结论：

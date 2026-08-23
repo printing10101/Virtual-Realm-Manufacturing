@@ -35,6 +35,7 @@ class _TaskExecutionMixin:
     _persist_task_to_db: Callable[..., Any]
     _broadcast_event: Callable[..., Any]
     _cleanup_task: Callable[..., Any]
+
     async def execute_task(self, job_id: str, executor: Callable):
         async with self._get_semaphore():
             async with self._get_task_lock():
@@ -276,6 +277,7 @@ class _TaskExecutionMixin:
             # 所有重试耗尽后仍然失败（RETRYABLE_EXCEPTIONS 最后一次 raise 后不会到这里，
             # 但为安全起见保留此兜底）
             logger.error("Task %s exhausted all %d retries", job_id, self._max_retries)
+
     def _create_progress_updater(self, job_id: str) -> Callable:
         async def update_progress(percent: float, message: str = "", metrics: dict | None = None):
             async with self._get_task_lock():
@@ -306,11 +308,14 @@ class _TaskExecutionMixin:
             )
 
         return update_progress
+
     def _estimate_wait(self) -> float:
         queued_count = sum(1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED)
         return queued_count * 60.0
+
     def _queue_size(self) -> int:
         return sum(1 for t in self._tasks.values() if t.status == TaskStatus.QUEUED)
+
     def _get_error_suggestion(self, error: Exception) -> str:
         err_msg = str(error).lower()
         if "memory" in err_msg:

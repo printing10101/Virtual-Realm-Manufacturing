@@ -54,9 +54,9 @@ class TestBaseline:
         assert lookup_baseline("AL6061", "edm") is None
 
     def test_normalize_material(self) -> None:
-        assert _normalize_material(" SS304 ") == "ss304"
-        assert _normalize_material("304") == "ss304"
-        assert _normalize_material("钛合金") == "ti6al4v"
+        assert _normalize_material(" SS304 ") == "SS304"
+        assert _normalize_material("304") == "SS304"
+        assert _normalize_material("钛合金") == "Ti6Al4V"
 
     def test_library_add_overrides(self) -> None:
         lib = BaselineLibrary()

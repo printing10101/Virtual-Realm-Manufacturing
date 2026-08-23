@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class _BudgetCoreMixin:
-
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
     _agent_suspender: Any
     _cancel_pending_tasks: Callable[..., Any]
@@ -83,6 +82,7 @@ class _BudgetCoreMixin:
             adjusted_by,
         )
         return self._policies.get(key)
+
     def check_budget(
         self,
         level: BudgetLevel,
@@ -146,6 +146,7 @@ class _BudgetCoreMixin:
             result.passed = True
 
         return result
+
     def check_budget_cascade(
         self,
         agent_id: str,
@@ -180,6 +181,7 @@ class _BudgetCoreMixin:
             limit=0.0,
             checked_at=time.time(),
         )
+
     def record_usage(
         self,
         level: BudgetLevel,
@@ -208,6 +210,7 @@ class _BudgetCoreMixin:
             ),
         )
         self._conn.commit()
+
     def enforce(
         self,
         level: BudgetLevel,
@@ -263,6 +266,7 @@ class _BudgetCoreMixin:
         self._log_enforcement(result, level, scope_id, resource_type)
 
         return result
+
     def enforce_cascade(
         self,
         agent_id: str,
@@ -291,6 +295,7 @@ class _BudgetCoreMixin:
             actions_taken=[EnforcementAction.ALLOW],
             check_result=BudgetCheckResult(passed=True, status=BudgetStatus.OK, checked_at=time.time()),
         )
+
     def reset_period(self, level: BudgetLevel, scope_id: str, resource_type: ResourceType) -> None:
         """手动重置预算周期"""
         policy = self.get_policy(level, scope_id, resource_type)
@@ -339,6 +344,7 @@ class _BudgetCoreMixin:
             resource_type.value,
             old_usage,
         )
+
     def auto_reset_periods(self) -> int:
         """自动检查并重置所有到期周期，返回重置数量"""
         now = time.time()
@@ -385,6 +391,7 @@ class _BudgetCoreMixin:
             logger.info("Auto-reset %d budget periods", reset_count)
 
         return reset_count
+
     def _should_reset(self, policy: BudgetPolicy, now: float) -> bool:
         if policy.last_reset_at is None:
             return False
@@ -404,6 +411,7 @@ class _BudgetCoreMixin:
             return (last_dt.year, last_dt.month) < (now_dt.year, now_dt.month)
 
         return False
+
     def _check_and_reset_period(self, policy: BudgetPolicy) -> None:
         now = time.time()
         if policy.last_reset_at is None:

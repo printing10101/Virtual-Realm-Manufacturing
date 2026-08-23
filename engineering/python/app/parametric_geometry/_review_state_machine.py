@@ -172,10 +172,7 @@ def next_status_after_review(all_reviewed: bool, current: str) -> str:
 def assert_transition_allowed(current: str, target: str) -> None:
     """断言状态流转合法，非法则抛 ValueError（错误消息带当前状态）。"""
     if not can_transition(current, target):
-        raise ValueError(
-            f"非法状态流转: {current} → {target}。"
-            "建议操作：检查任务状态机转移图。"
-        )
+        raise ValueError(f"非法状态流转: {current} → {target}。建议操作：检查任务状态机转移图。")
 
 
 def assert_review_status_valid(status: str) -> None:

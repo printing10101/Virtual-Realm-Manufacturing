@@ -125,7 +125,6 @@ class ChainMixin:
     _archives: Any
     _get_all_log_files: Callable[..., Any]
 
-
     """哈希链算法 mixin。
 
     提供 chain_state.json 的加载/持久化、条目哈希计算与整链完整性校验。

@@ -19,7 +19,6 @@ class _RuleCrudMixin:
     _get_conn: Callable[..., Any]
     _now: Callable[..., Any]
 
-
     def _row_to_rule(self, row: sqlite3.Row) -> ProcessRule:
         conditions = json.loads(row["conditions_json"])
         result = json.loads(row["result_json"])

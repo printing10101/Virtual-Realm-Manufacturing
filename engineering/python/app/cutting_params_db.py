@@ -7,6 +7,7 @@ and machining operations based on tool diameter.
 
 from typing import NotRequired, TypedDict
 
+
 # 切削参数推荐结果的精确类型（2026-08-19：从 Dict[str, Union[...]] 收紧，
 # 修复 mypy 调用方取值推断为 int|float|list[str] 联合类型的问题）
 class CuttingParamsResult(TypedDict):
@@ -16,6 +17,7 @@ class CuttingParamsResult(TypedDict):
     feed_rate: float  # mm/min（turning 为 mm/rev）
     depth_of_cut: float  # mm
     warnings: NotRequired[list[str]]  # 仅 validate_machine_limits=True 时存在
+
 
 # Material categories with their machinability properties
 MATERIAL_CATEGORIES = {

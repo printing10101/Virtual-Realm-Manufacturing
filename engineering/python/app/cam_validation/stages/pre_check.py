@@ -48,7 +48,6 @@ class PreCheckMixin:
     _cfg: Any
     _store: Any
 
-
     """CAM 校验流水线预检查阶段 mixin。
 
     封装任务创建 / 删除 / 查询 + disclaimer / result 构建辅助方法。

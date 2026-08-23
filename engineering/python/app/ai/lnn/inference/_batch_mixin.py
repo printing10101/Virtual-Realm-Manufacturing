@@ -49,7 +49,6 @@ class _BatchMixin:
     model_name: Any
     use_amp: Any
 
-
     def predict_batch(
         self,
         batch_data: list[Any],

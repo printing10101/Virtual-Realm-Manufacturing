@@ -274,13 +274,9 @@ class VoxelCutter(_PyVoxelCutter):
                     if isinstance(first_mesh, trimesh.Trimesh):
                         stock_mesh = first_mesh
                     else:
-                        return self._generate_fallback_result(
-                            task_id, output_dir, segments, start_time, "STL解析失败"
-                        )
+                        return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL解析失败")
                 else:
-                    return self._generate_fallback_result(
-                        task_id, output_dir, segments, start_time, "STL解析失败"
-                    )
+                    return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL解析失败")
         except (OSError, ValueError, TypeError, RuntimeError) as load_err:
             logger.warning("STL文件加载失败: %s", load_err, exc_info=True)
             return self._generate_fallback_result(task_id, output_dir, segments, start_time, "STL文件加载失败")

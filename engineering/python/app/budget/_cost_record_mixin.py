@@ -27,7 +27,6 @@ class _CostRecordMixin:
     _conn: Any
     _unit_prices: Any
 
-
     def _calculate_cost(self, cost_type: str, resource_value: float) -> float:
         """根据资源类型和用量计算成本"""
         prices = self._unit_prices
@@ -40,6 +39,7 @@ class _CostRecordMixin:
         elif cost_type == CostType.DATA_TRANSFER.value:
             return resource_value * prices.data_transfer_per_mb
         return 0.0
+
     @sqlite_retry()
     def record_cost(
         self,
@@ -108,6 +108,7 @@ class _CostRecordMixin:
             cost_value,
         )
         return event
+
     def record_gpu_time(
         self,
         task_id: str,
@@ -133,6 +134,7 @@ class _CostRecordMixin:
             end_time=end_time,
             metadata=metadata,
         )
+
     def record_gpu_memory(
         self,
         task_id: str,
@@ -154,18 +156,21 @@ class _CostRecordMixin:
             model=model,
             metadata=metadata,
         )
+
     def record_gpu_usage(self, task_id: str, gpu_hours: float, agent_id: str | None = None) -> CostEvent:
         return self.record_gpu_time(
             task_id=task_id,
             gpu_seconds=gpu_hours * 3600.0,
             agent_id=agent_id or "",
         )
+
     def record_memory_usage(self, task_id: str, memory_mb: float, agent_id: str | None = None) -> CostEvent:
         return self.record_gpu_memory(
             task_id=task_id,
             gb_seconds=memory_mb / 1024.0,
             agent_id=agent_id or "",
         )
+
     def record_api_call(
         self,
         task_id: str,
@@ -187,6 +192,7 @@ class _CostRecordMixin:
             model=model,
             metadata=metadata,
         )
+
     def record_data_transfer(
         self,
         task_id: str,

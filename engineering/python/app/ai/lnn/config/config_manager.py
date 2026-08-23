@@ -130,6 +130,7 @@ class YAMLConfigManager(_PersistenceMixin, _ValidationMixin, _ModelsMixin):
 
     VALID_MODEL_TYPES = ["cfc", "ltc", "hybrid_lnn"]
     VALID_ENVIRONMENTS = ["development", "staging", "production", "testing"]
+
     def __init__(self, config_path: str | None = None, use_defaults: bool = True):
         """
         初始化配置管理器
@@ -153,6 +154,7 @@ class YAMLConfigManager(_PersistenceMixin, _ValidationMixin, _ModelsMixin):
 
         self._apply_environment_adaptations()
         self._build_config_object()
+
     def get(self, section: str, key: str | None = None, default: Any = None) -> Any:
         """
         获取配置值（类型安全）
@@ -230,6 +232,7 @@ class YAMLConfigManager(_PersistenceMixin, _ValidationMixin, _ModelsMixin):
         self._is_dirty = True
         self._build_config_object()
         logger.debug("Config updated: %s.%s = %s", section, key, value)
+
     def to_dict(self) -> dict[str, Any]:
         """将配置转换为字典格式"""
         return copy.deepcopy(self._raw_config)
@@ -249,6 +252,7 @@ class YAMLConfigManager(_PersistenceMixin, _ValidationMixin, _ModelsMixin):
         self._build_config_object()
         self._is_dirty = True
         logger.info("Configuration reset to defaults")
+
     def _apply_environment_adaptations(self) -> None:
         """根据运行环境自动调整配置"""
         env_name = self._raw_config.get("environment", {}).get("name", "development")

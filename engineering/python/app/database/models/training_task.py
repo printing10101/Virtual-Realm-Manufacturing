@@ -153,7 +153,6 @@ class TrainingTask(Base):
         return f"<TrainingTask(id={self.id}, type={self.task_type}, status={self.status})>"
 
 
-
 async def init_db():
     """创建全部 4 套 SQLAlchemy Base 的表，并种子 RBAC 与默认 admin 用户。
 

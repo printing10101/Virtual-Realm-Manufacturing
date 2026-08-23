@@ -85,14 +85,13 @@ def _storage_uri_for_hash(content_hash: str) -> str:
     return f"file:///{path.as_posix()}"
 
 
-
 def _parse_file_uri(uri: str) -> Path:
     """解析 file:// URI 为本地路径。
 
     Windows 兼容：``file:///C:/x/y`` 的 URI path 段为 ``/C:/x/y``，
     直接 ``Path`` 会解析为 ；需去掉前导斜杠保留盘符。
     """
-    p = uri[len("file://"):]
+    p = uri[len("file://") :]
     if len(p) >= 3 and p[0] == "/" and p[2] == ":":
         p = p[1:]
     return Path(p)

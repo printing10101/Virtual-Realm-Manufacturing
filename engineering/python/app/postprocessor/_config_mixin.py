@@ -231,4 +231,3 @@ class _ConfigMixin:
     def get_subprogram_config(self) -> dict[str, Any]:
         """获取子程序/宏程序配置。"""
         return self.config.get("subprogram", {})
-

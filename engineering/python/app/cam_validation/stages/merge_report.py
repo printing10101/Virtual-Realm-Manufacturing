@@ -58,7 +58,6 @@ class MergeReportMixin:
     _build_result: Callable[..., Any]
     _store: Any
 
-
     """报告合并与导出阶段 mixin：工程师审核 + 确认 + 报告导出。
 
     封装 review_task + confirm_task + _export_cam_report +

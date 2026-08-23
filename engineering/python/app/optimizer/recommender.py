@@ -136,21 +136,13 @@ class ParameterRecommender:
             return self._build_from_stats(stats, material, machining_type, tool_id)
 
         # ---- L0 基线推荐 ----
-        depth, clamped_depth = clamp_to_safe_bounds(
-            entry.depth_of_cut_mm, entry.depth_min, entry.depth_max
-        )
-        feed, clamped_feed = clamp_to_safe_bounds(
-            entry.feed_mm_per_rev, entry.feed_min, entry.feed_max
-        )
-        rpm, clamped_rpm = clamp_to_safe_bounds(
-            entry.spindle_rpm, entry.rpm_min, entry.rpm_max
-        )
+        depth, clamped_depth = clamp_to_safe_bounds(entry.depth_of_cut_mm, entry.depth_min, entry.depth_max)
+        feed, clamped_feed = clamp_to_safe_bounds(entry.feed_mm_per_rev, entry.feed_min, entry.feed_max)
+        rpm, clamped_rpm = clamp_to_safe_bounds(entry.spindle_rpm, entry.rpm_min, entry.rpm_max)
         clamped = clamped_depth or clamped_feed or clamped_rpm
 
         # 按优化目标微调
-        depth, feed, rpm, speed = self._apply_target(
-            depth, feed, rpm, entry.cutting_speed_m_min, target
-        )
+        depth, feed, rpm, speed = self._apply_target(depth, feed, rpm, entry.cutting_speed_m_min, target)
 
         return Recommendation(
             depth_of_cut_mm=depth,
@@ -167,9 +159,7 @@ class ParameterRecommender:
     # 内部
     # ------------------------------------------------------------------
 
-    def _try_stats(
-        self, material: str, machining_type: str, tool_id: str
-    ) -> dict[str, float] | None:
+    def _try_stats(self, material: str, machining_type: str, tool_id: str) -> dict[str, float] | None:
         """尝试获取统计均值（L1）。"""
         if self._stats_callback is None:
             return None

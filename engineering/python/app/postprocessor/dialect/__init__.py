@@ -42,7 +42,11 @@ __all__ = [
 ]
 
 from app.postprocessor.dialect._lifecycle import (
-    DialectLifecycleStage, can_transition, assert_transition_allowed,
-    next_stage_after_success, next_stage_after_failure, can_discover, is_terminal,
+    DialectLifecycleStage,
+    can_transition,
+    assert_transition_allowed,
+    next_stage_after_success,
+    next_stage_after_failure,
+    can_discover,
+    is_terminal,
 )
-

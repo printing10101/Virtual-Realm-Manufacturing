@@ -335,5 +335,4 @@ class LNNPredictor(
             ) from e
 
 
-
 Predictor = LNNPredictor

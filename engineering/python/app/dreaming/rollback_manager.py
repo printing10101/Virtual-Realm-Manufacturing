@@ -109,6 +109,8 @@ class RollbackManager(_CooldownMixin, _DetectMixin, _ExecuteMixin):
         # 回滚历史
         self._rollback_history: list[dict[str, Any]] = []
         self._load_history()
+
+
 # -----------------------------------------------------------------------------
 # 便捷函数
 # -----------------------------------------------------------------------------

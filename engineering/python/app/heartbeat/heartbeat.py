@@ -568,9 +568,7 @@ class WakeupQueue:
 
         return [dict(row) for row in rows]
 
-    def list_tasks(
-        self, agent_id: str | None = None, status: ScheduleStatus | None = None
-    ) -> list[ScheduledTask]:
+    def list_tasks(self, agent_id: str | None = None, status: ScheduleStatus | None = None) -> list[ScheduledTask]:
         """列出所有任务，支持过滤"""
         query = "SELECT * FROM scheduled_tasks WHERE 1=1"
         params = []

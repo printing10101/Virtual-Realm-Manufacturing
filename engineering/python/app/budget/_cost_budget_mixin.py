@@ -25,7 +25,6 @@ class _CostBudgetMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _conn: Any
 
-
     @sqlite_retry()
     def record_budget_event(self, event: BudgetEvent) -> None:
         """记录预算事件（超限/警告）"""
@@ -49,6 +48,7 @@ class _CostBudgetMixin:
             ),
         )
         self._conn.commit()
+
     def get_budget_events(
         self,
         budget_level: str | None = None,
@@ -82,6 +82,7 @@ class _CostBudgetMixin:
         ).fetchall()
 
         return [dict(row) for row in rows]
+
     @sqlite_retry()
     def record_budget_adjustment(
         self,
@@ -119,6 +120,7 @@ class _CostBudgetMixin:
             old_limit,
             new_limit,
         )
+
     def get_budget_adjustments(self, limit: int = 50) -> list[dict[str, Any]]:
         """获取预算调整历史"""
         rows = self._conn.execute(

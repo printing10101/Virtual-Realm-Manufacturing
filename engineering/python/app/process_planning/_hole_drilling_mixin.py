@@ -12,7 +12,6 @@ class _HoleDrillingMixin:
     CONTROLLER_MAP: Any
     _registry: Any
 
-
     def generate_hole_drilling_only(
         self,
         hole_positions: list[dict[str, float]],

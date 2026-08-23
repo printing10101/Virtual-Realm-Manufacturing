@@ -12,7 +12,6 @@ class _RecognizeMixin:
     COAXIAL_THRESHOLD: Any
     STANDARD_DRILL_POINT_ANGLE: Any
 
-
     def recognize_from_part_description(
         self,
         part_description: dict[str, Any],

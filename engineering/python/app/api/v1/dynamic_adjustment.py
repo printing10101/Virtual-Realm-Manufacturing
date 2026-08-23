@@ -102,9 +102,7 @@ class DecideRequest(BaseModel):
 
     wear: WearStateRequest
     current: CurrentParametersRequest
-    machine_capabilities: MachineCapabilities | None = Field(
-        default=None, description="机床能力上限（None 使用默认）"
-    )
+    machine_capabilities: MachineCapabilities | None = Field(default=None, description="机床能力上限（None 使用默认）")
     optimization_goal: str = Field(
         default="tool_life",
         description="优化目标：efficiency / tool_life / surface_finish",

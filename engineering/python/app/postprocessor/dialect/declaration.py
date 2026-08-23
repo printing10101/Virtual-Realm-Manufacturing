@@ -115,9 +115,7 @@ class DialectDeclaration:
             with open(yaml_path, "r", encoding="utf-8") as f:
                 raw = yaml.safe_load(f) or {}
         except yaml.YAMLError as e:
-            raise DialectDeclarationError(
-                f"方言声明 YAML 解析失败: {yaml_path}: {e}"
-            ) from e
+            raise DialectDeclarationError(f"方言声明 YAML 解析失败: {yaml_path}: {e}") from e
         if not isinstance(raw, dict):
             raise DialectDeclarationError(f"方言声明顶层必须是映射: {yaml_path}")
 
@@ -127,9 +125,7 @@ class DialectDeclaration:
         for key in ("id", "name", "version"):
             value = raw.get(key)
             if not value or not isinstance(value, str):
-                raise DialectDeclarationError(
-                    f"方言声明缺少必填字符串字段 '{key}': {yaml_path}"
-                )
+                raise DialectDeclarationError(f"方言声明缺少必填字符串字段 '{key}': {yaml_path}")
 
         # --- extends：可选，但若声明必须在白名单内 ---
         extends = raw.get("extends")
@@ -144,24 +140,17 @@ class DialectDeclaration:
         templates: dict[str, Path] = {}
         raw_templates = raw.get("templates") or {}
         if not isinstance(raw_templates, dict):
-            raise DialectDeclarationError(
-                f"方言 '{raw['id']}' 的 templates 必须是映射: {yaml_path}"
-            )
+            raise DialectDeclarationError(f"方言 '{raw['id']}' 的 templates 必须是映射: {yaml_path}")
         for method, rel_path in raw_templates.items():
             if method not in ALLOWED_TEMPLATE_METHODS:
                 raise DialectDeclarationError(
-                    f"方言 '{raw['id']}' 模板方法 '{method}' 不在白名单内"
-                    f"（可选值: {sorted(ALLOWED_TEMPLATE_METHODS)}）"
+                    f"方言 '{raw['id']}' 模板方法 '{method}' 不在白名单内（可选值: {sorted(ALLOWED_TEMPLATE_METHODS)}）"
                 )
             if not isinstance(rel_path, str) or not rel_path.endswith(".j2"):
-                raise DialectDeclarationError(
-                    f"方言 '{raw['id']}' 模板路径必须是 .j2 文件: {rel_path}"
-                )
+                raise DialectDeclarationError(f"方言 '{raw['id']}' 模板路径必须是 .j2 文件: {rel_path}")
             template_path = base_dir / rel_path
             if not template_path.exists():
-                raise DialectDeclarationError(
-                    f"方言 '{raw['id']}' 模板文件不存在: {template_path}"
-                )
+                raise DialectDeclarationError(f"方言 '{raw['id']}' 模板文件不存在: {template_path}")
             templates[method] = template_path
 
         # --- hooks：可选，格式校验（module.path:ClassName） ---
@@ -175,9 +164,7 @@ class DialectDeclaration:
         # --- params：可选，必须是映射 ---
         params = raw.get("params") or {}
         if not isinstance(params, dict):
-            raise DialectDeclarationError(
-                f"方言 '{raw['id']}' 的 params 必须是映射: {yaml_path}"
-            )
+            raise DialectDeclarationError(f"方言 '{raw['id']}' 的 params 必须是映射: {yaml_path}")
 
         return cls(
             id=raw["id"],

@@ -36,7 +36,6 @@ class ReaderMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _log_root: Any
 
-
     """审计日志查询与导出 mixin。
 
     依赖 ``AuditLog`` 实例的 ``_log_root`` 属性（由 ``AuditLog.__init__`` 初始化）。

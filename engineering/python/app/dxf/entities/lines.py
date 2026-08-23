@@ -9,6 +9,7 @@ from .common import safe_color
 
 logger = logging.getLogger(__name__)
 
+
 def line_to_obj(entity) -> DxfLine:
     """将单个 LINE 实体转换为 DxfLine。"""
     return DxfLine(

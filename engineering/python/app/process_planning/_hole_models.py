@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+
 @dataclass
 class HoleFeature:
     """单个孔特征的完整信息。
@@ -200,4 +201,3 @@ class HoleRecognitionResult:
         """
         rate = self.accuracy_metrics.get("overall", 0.0)
         return len(self.errors) == 0 and rate >= 0.99
-

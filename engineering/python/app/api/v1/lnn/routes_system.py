@@ -186,6 +186,7 @@ async def get_device_status_endpoint():
 
     if device.type == "cuda":
         import torch  # noqa: PLC0415 - 延迟导入（无 torch 环境降级）
+
         try:
             gpu_index = device.index if device.index is not None else 0
             response_data["gpu_status"] = {
@@ -227,6 +228,7 @@ async def clear_device_cache():
         )
 
     import torch  # noqa: PLC0415 - 延迟导入（无 torch 环境降级）
+
     if not torch.cuda.is_available():  # type: ignore[attr-defined]
         return error(
             code=ErrorCode.INVALID_REQUEST,

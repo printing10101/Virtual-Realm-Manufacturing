@@ -15,6 +15,7 @@ from app.dreaming._closed_loop_models import (
 
 logger = logging.getLogger(__name__)
 
+
 class _ClosedLoopPersistenceMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _decision_history: Any
@@ -58,6 +59,7 @@ class _ClosedLoopPersistenceMixin:
             logger.info("ClosedLoop: 状态已保存到 %s", state_file)
         except OSError as e:
             logger.warning("ClosedLoop: 状态保存失败：%s", e)
+
     def load_state(self) -> None:
         """从磁盘恢复窗口与决策历史。"""
         state_file = self._state_dir / "closed_loop_state.json"
@@ -114,6 +116,7 @@ class _ClosedLoopPersistenceMixin:
             )
         except (OSError, json.JSONDecodeError, KeyError) as e:
             logger.warning("ClosedLoop: 状态恢复失败：%s", e)
+
     def _persist_iteration(self, decisions: list[ClosedLoopDecision]) -> None:
         """持久化单次迭代结果到 JSON 文件。"""
         if not decisions:
@@ -135,16 +138,19 @@ class _ClosedLoopPersistenceMixin:
             logger.debug("ClosedLoop: 迭代结果已持久化 %s", output_file)
         except OSError as e:
             logger.warning("ClosedLoop: 迭代结果持久化失败（不影响决策）：%s", e)
+
     def get_decision_history(self, rule_id: str, limit: int = 10) -> list[ClosedLoopDecision]:
         """获取指定规则的决策历史。"""
         with self._lock:
             history = self._decision_history.get(rule_id, [])
             return list(history[-limit:])
+
     def get_window_samples(self, rule_id: str) -> list[RuleOutcomeRecord]:
         """获取指定规则的当前窗口样本。"""
         with self._lock:
             window = self._windows.get(rule_id, deque(maxlen=self._window_size))
             return list(window)
+
     def get_stats(self) -> dict[str, Any]:
         """获取闭环整体统计信息。"""
         with self._lock:

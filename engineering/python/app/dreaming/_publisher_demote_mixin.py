@@ -28,7 +28,6 @@ class _PublisherDemoteMixin:
     _lock: Any
     _records: Any
 
-
     def demote(
         self,
         rule_id: str,
@@ -138,6 +137,7 @@ class _PublisherDemoteMixin:
             traffic_percentage=prev_stage.traffic_percentage,
             operated_at=operated_at,
         )
+
     def _check_demotion_thresholds(self, metrics: dict[str, Any]) -> str | None:
         """检查指标是否触发降级。
 
@@ -159,6 +159,7 @@ class _PublisherDemoteMixin:
         if accuracy < min_acc:
             return f"准确率 {accuracy:.3f} 低于降级阈值 {min_acc}"
         return None
+
     def _rollback_to_deprecated(
         self,
         rule_id: str,

@@ -28,7 +28,6 @@ class _TransferMixin:
     list_rules: Callable[..., Any]
     db_path: Any
 
-
     def export_rules(self, output_path: str) -> dict[str, Any]:
         """导出所有规则和分组到JSON文件"""
         rules = self.list_rules(limit=MAX_EXPORT_LIMIT)

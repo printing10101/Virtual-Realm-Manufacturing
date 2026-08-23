@@ -30,8 +30,6 @@ logger = logging.getLogger(__name__)
 _background_tasks: set = set()
 
 
-
-
 router = APIRouter(
     prefix="/api/v1/parametric_geometry",
     tags=["Parametric Geometry (Engineer-Assisted STEP)"],
@@ -40,12 +38,6 @@ router = APIRouter(
 
 # pipeline 单例（懒加载，避免模块导入期就触发 pythonOCC/FreeCAD 可选依赖加载）
 _pipeline: ParametricGeometryPipeline | None = None
-
-
-
-
-
-
 
 
 # =============================================================================
@@ -234,6 +226,8 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     避免误删下游链路已引用的资源。
     """
     return await delete_task_service(task_id)
+
+
 from .service import (  # noqa: E402
     _disclaimer_dict,  # noqa: F401 - 测试专用 re-export
     _resolve_upstream_calibrated,  # noqa: F401 - 测试专用 re-export

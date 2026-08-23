@@ -5,6 +5,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from typing import Any
+
+
 @dataclass
 class KeyframeDecision:
     """关键帧判定结果。
@@ -22,6 +24,8 @@ class KeyframeDecision:
     is_keyframe: bool
     reason: str
     energy: float = 0.0
+
+
 @dataclass
 class HiddenStatePage:
     """隐状态分页（对应 lingbot-map 的 KV cache page）.
@@ -39,6 +43,8 @@ class HiddenStatePage:
     def touch(self) -> None:
         self.access_count += 1
         self.timestamp = time.time()
+
+
 @dataclass
 class StreamingConfig:
     """流式推理配置。

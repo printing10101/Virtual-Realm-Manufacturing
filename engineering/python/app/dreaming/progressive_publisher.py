@@ -62,18 +62,12 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 
-
-
 # 灰度阶段常量（_STAGE_ORDER / _STAGE_TRAFFIC_PERCENTAGE）已迁至 _publisher_models.py
 
 
 # -----------------------------------------------------------------------------
 # 灰度发布状态
 # -----------------------------------------------------------------------------
-
-
-
-
 
 
 # -----------------------------------------------------------------------------
@@ -101,7 +95,9 @@ DEFAULT_DEMOTION_THRESHOLDS: dict[str, float] = {
 }
 
 
-class ProgressivePublisher(_PublisherPersistMixin, _PublisherPublishMixin, _PublisherPromoteMixin, _PublisherDemoteMixin):
+class ProgressivePublisher(
+    _PublisherPersistMixin, _PublisherPublishMixin, _PublisherPromoteMixin, _PublisherDemoteMixin
+):
     """规则灰度发布管理器。
 
     负责：
@@ -160,28 +156,13 @@ class ProgressivePublisher(_PublisherPersistMixin, _PublisherPublishMixin, _Publ
     # 状态持久化
     # ------------------------------------------------------------------
 
-
-
-
-
     # ------------------------------------------------------------------
     # 公开 API
     # ------------------------------------------------------------------
 
-
-
-
-
-
-
-
     # ------------------------------------------------------------------
     # 内部辅助
     # ------------------------------------------------------------------
-
-
-
-
 
 
 # -----------------------------------------------------------------------------

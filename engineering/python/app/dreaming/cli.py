@@ -44,7 +44,6 @@ logger = logging.getLogger(__name__)
 
 
 class DreamingCLI:
-
     """Dreaming 命令行封装类。
 
     提供 programmatic 调用入口，便于 HeartbeatScheduler 等调度器集成。

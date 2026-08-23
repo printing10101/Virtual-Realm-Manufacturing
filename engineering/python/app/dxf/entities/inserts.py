@@ -8,6 +8,7 @@ from app.dxf._entities import DxfInsert
 
 logger = logging.getLogger(__name__)
 
+
 def insert_to_obj(entity) -> DxfInsert:
     """将单个 INSERT 实体转换为 DxfInsert。"""
     block_name = str(getattr(entity.dxf, "name", "") or "")

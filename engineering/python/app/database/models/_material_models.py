@@ -15,6 +15,7 @@ from sqlalchemy import (
 
 from app.database.models.machining_record import Base
 
+
 class Material(Base):
     """制造物料模型。"""
 
@@ -125,5 +126,3 @@ class Material(Base):
 # ---------------------------------------------------------------------------
 # Equipment Models (equipment / equipment_alarms / maintenance_plans)
 # ---------------------------------------------------------------------------
-
-

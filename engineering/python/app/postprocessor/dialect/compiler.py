@@ -81,6 +81,7 @@ class DialectCompiler:
         # 白名单过滤器：模板只能用这些，不暴露任意 Python 函数
         self._env.filters["fmt"] = _fmt_filter
         self._env.filters["comment"] = _comment_filter
+
     # ------------------------------------------------------------------
     # 编译入口
     # ------------------------------------------------------------------
@@ -102,9 +103,7 @@ class DialectCompiler:
         if not declaration.templates and not declaration.hooks:
             # 纯参数声明：复用基类，但注入 params 合并的 __init__
             cls = self._build_params_class(declaration, base_cls)
-            logger.info(
-                "方言编译完成（纯参数）: %s (extends=%s)", declaration.id, declaration.extends
-            )
+            logger.info("方言编译完成（纯参数）: %s (extends=%s)", declaration.id, declaration.extends)
             return cls
 
         return self._build_template_class(declaration, base_cls)
@@ -163,15 +162,11 @@ class DialectCompiler:
     def _resolve_base(self, declaration: DialectDeclaration) -> type[BasePostProcessor]:
         """解析 extends 基类。"""
         if declaration.extends is None:
-            raise DialectCompileError(
-                f"方言 '{declaration.id}' 未声明 extends；当前版本要求 extends 一个内置方言。"
-            )
+            raise DialectCompileError(f"方言 '{declaration.id}' 未声明 extends；当前版本要求 extends 一个内置方言。")
         classes = _load_builtin_dialect_classes()
         base = classes.get(declaration.extends)
         if base is None:
-            raise DialectCompileError(
-                f"方言 '{declaration.id}' 的 extends='{declaration.extends}' 无法解析。"
-            )
+            raise DialectCompileError(f"方言 '{declaration.id}' 的 extends='{declaration.extends}' 无法解析。")
         return base
 
     def _build_template_class(
@@ -221,9 +216,7 @@ class DialectCompiler:
         )
         return dialect_cls
 
-    def _load_hook_methods(
-        self, declaration: DialectDeclaration
-    ) -> dict[str, Callable[..., Any]]:
+    def _load_hook_methods(self, declaration: DialectDeclaration) -> dict[str, Callable[..., Any]]:
         """加载 hooks entrypoint，提取其 format_* 方法。
 
         hooks 格式：``module.path:ClassName``（如 ``plugins.my_dialect.hooks:MyHooks``）。
@@ -235,8 +228,7 @@ class DialectCompiler:
         module_path, _, class_name = declaration.hooks.partition(":")
         if not module_path or not class_name:
             raise DialectCompileError(
-                f"方言 '{declaration.id}' 的 hooks 格式错误（应为 module.path:ClassName）: "
-                f"{declaration.hooks}"
+                f"方言 '{declaration.id}' 的 hooks 格式错误（应为 module.path:ClassName）: {declaration.hooks}"
             )
         try:
             import importlib
@@ -244,9 +236,7 @@ class DialectCompiler:
             module = importlib.import_module(module_path)
             hook_cls = getattr(module, class_name)
         except (ImportError, AttributeError) as e:
-            raise DialectCompileError(
-                f"方言 '{declaration.id}' 的 hooks 加载失败: {declaration.hooks} ({e})"
-            ) from e
+            raise DialectCompileError(f"方言 '{declaration.id}' 的 hooks 加载失败: {declaration.hooks} ({e})") from e
 
         hook_methods: dict[str, Callable[..., Any]] = {}
         for name, attr in inspect.getmembers(hook_cls, callable):
@@ -254,9 +244,7 @@ class DialectCompiler:
                 # 去绑定：提取原始函数（hooks 方法以方言实例为 self）
                 hook_methods[name] = attr
         if not hook_methods:
-            raise DialectCompileError(
-                f"方言 '{declaration.id}' 的 hooks 类 '{class_name}' 未定义任何 format_* 方法。"
-            )
+            raise DialectCompileError(f"方言 '{declaration.id}' 的 hooks 类 '{class_name}' 未定义任何 format_* 方法。")
         return hook_methods
 
     # ------------------------------------------------------------------
@@ -279,8 +267,7 @@ class DialectCompiler:
 
         if base_method is None:
             raise DialectCompileError(
-                f"方言 '{declaration.id}' 模板方法 '{method_name}' 在基类 "
-                f"'{declaration.extends}' 的 MRO 中不存在。"
+                f"方言 '{declaration.id}' 模板方法 '{method_name}' 在基类 '{declaration.extends}' 的 MRO 中不存在。"
             )
 
         signature = inspect.signature(base_method)
@@ -290,9 +277,7 @@ class DialectCompiler:
             # 绑定参数：self 已由 Python 传入（renderer 是类上的实例方法）
             bound = signature.bind(*args, **kwargs)
             bound.apply_defaults()
-            params = {
-                k: v for k, v in bound.arguments.items() if k != "self"
-            }
+            params = {k: v for k, v in bound.arguments.items() if k != "self"}
             context = _build_template_context(declaration, params, args[0] if args else None)
             try:
                 return template.render(**context)
@@ -303,9 +288,7 @@ class DialectCompiler:
                     method_name,
                     e,
                 )
-                raise DialectCompileError(
-                    f"方言 '{declaration.id}' 模板 '{method_name}' 渲染失败: {e}"
-                ) from e
+                raise DialectCompileError(f"方言 '{declaration.id}' 模板 '{method_name}' 渲染失败: {e}") from e
 
         return renderer
 

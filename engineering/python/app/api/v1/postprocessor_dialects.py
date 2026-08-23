@@ -83,9 +83,7 @@ def _default_plugin_root() -> Path:
     return Path(__file__).resolve().parents[5] / DEFAULT_DIALECT_PLUGIN_DIR
 
 
-def _declaration_to_dict(
-    decl: DialectDeclaration, source: str
-) -> dict[str, Any]:
+def _declaration_to_dict(decl: DialectDeclaration, source: str) -> dict[str, Any]:
     """声明 → 公开字典。"""
     return {
         "id": decl.id,
@@ -158,10 +156,7 @@ def get_dialect_detail(dialect_id: str) -> dict[str, Any]:
             "is_declared": True,
             "compile_ok": dialect_id not in errors,
             "compile_error": errors.get(dialect_id),
-            "templates": {
-                method: str(path.name)
-                for method, path in sorted(decl.templates.items())
-            },
+            "templates": {method: str(path.name) for method, path in sorted(decl.templates.items())},
         }
     )
 
@@ -179,8 +174,7 @@ def read_template(req: TemplateReadRequest) -> dict[str, Any]:
     if req.method not in ALLOWED_TEMPLATE_METHODS:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"模板方法 '{req.method}' 不在白名单内。建议操作：可选值 "
-            f"{sorted(ALLOWED_TEMPLATE_METHODS)}。",
+            message=f"模板方法 '{req.method}' 不在白名单内。建议操作：可选值 {sorted(ALLOWED_TEMPLATE_METHODS)}。",
         )
     registry = DialectRegistry(plugin_root=_default_plugin_root())
     registry.discover()
@@ -194,8 +188,7 @@ def read_template(req: TemplateReadRequest) -> dict[str, Any]:
     if template_path is None:
         return error(
             code=ErrorCode.NOT_FOUND,
-            message=f"方言 '{req.dialect_id}' 未声明模板方法 '{req.method}'"
-            "（该方法继承基类实现）。",
+            message=f"方言 '{req.dialect_id}' 未声明模板方法 '{req.method}'（该方法继承基类实现）。",
         )
     try:
         content = template_path.read_text(encoding="utf-8")
@@ -321,9 +314,7 @@ def _validate_dialect_id(dialect_id: str, plugin_root: Path) -> None:
     import re
 
     if not re.fullmatch(r"[a-z0-9_]{3,64}", dialect_id):
-        raise ValueError(
-            f"方言 id '{dialect_id}' 不合法。建议操作：仅允许小写字母/数字/下划线，3-64 字符。"
-        )
+        raise ValueError(f"方言 id '{dialect_id}' 不合法。建议操作：仅允许小写字母/数字/下划线，3-64 字符。")
     target = plugin_root / dialect_id
     if target.parent != plugin_root:
         raise ValueError("方言目录必须位于插件根目录下。")
@@ -348,8 +339,7 @@ def create_dialect(req: CreateDialectRequest) -> dict[str, Any]:
     if req.extends not in BUILTIN_BASE_DIALECTS:
         return error(
             code=ErrorCode.INVALID_REQUEST,
-            message=f"extends='{req.extends}' 不是受支持的内置方言"
-            f"（可选值: {sorted(BUILTIN_BASE_DIALECTS)}）",
+            message=f"extends='{req.extends}' 不是受支持的内置方言（可选值: {sorted(BUILTIN_BASE_DIALECTS)}）",
         )
 
     target_dir = plugin_root / req.id
@@ -433,12 +423,8 @@ def _write_skeleton_templates(target_dir: Path, extends: str) -> None:
         if in_footer:
             footer_lines.append(line)
 
-    (target_dir / "templates" / "header.j2").write_text(
-        _parametrize_header(header_lines, processor), encoding="utf-8"
-    )
-    (target_dir / "templates" / "footer.j2").write_text(
-        _parametrize_footer(footer_lines), encoding="utf-8"
-    )
+    (target_dir / "templates" / "header.j2").write_text(_parametrize_header(header_lines, processor), encoding="utf-8")
+    (target_dir / "templates" / "footer.j2").write_text(_parametrize_footer(footer_lines), encoding="utf-8")
 
 
 def _parametrize_header(header_lines: list, processor) -> str:
@@ -462,12 +448,10 @@ def _parametrize_header(header_lines: list, processor) -> str:
     for line in header_lines:
         new_line = line
         # 程序号行：O\d{4} 与 (PROGRAM \d+)
-        new_line = re.sub(
-            r"O\d{4}", 'O{{ "%04d" | format(program_number) }}', new_line
-        )
+        new_line = re.sub(r"O\d{4}", 'O{{ "%04d" | format(program_number) }}', new_line)
         new_line = re.sub(
             r"\(PROGRAM \d+",
-            '(PROGRAM {{ program_number }}',
+            "(PROGRAM {{ program_number }}",
             new_line,
         )
         # 日期：用 pp._date_string()（黄金测试固定日期时一致）
@@ -678,7 +662,6 @@ def save_dialect_params(dialect_id: str, req: SaveParamsRequest) -> dict[str, An
         data={"dialect_id": dialect_id, "params": req.params or {}},
         message=f"方言 '{dialect_id}' 参数保存成功",
     )
-
 
 
 __all__ = ["router"]

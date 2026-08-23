@@ -17,6 +17,8 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+
 class AnchorContext:
     """锚点上下文（对应 lingbot-map 的 anchor context）.
 

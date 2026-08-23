@@ -54,7 +54,6 @@ class ArchiverMixin:
     _log_root: Any
     max_entries: Any
 
-
     """审计日志归档与轮转 mixin。
 
     依赖 ``AuditLog`` 实例的以下属性（由 ``AuditLog.__init__`` 初始化）：

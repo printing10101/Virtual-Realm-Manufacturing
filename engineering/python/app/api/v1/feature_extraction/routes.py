@@ -22,7 +22,6 @@ from app.contracts._shared import TaskListResponse
 from app.utils.utils import get_upload_dir
 
 
-
 logger = logging.getLogger(__name__)
 
 # 后台任务引用集合（C5 修复：asyncio.create_task 不保存引用会被 GC 回收）
@@ -256,6 +255,8 @@ async def delete_task(task_id: str) -> dict[str, Any]:
     - 仅清理任务元信息（tasks/{task_id}.json）与内存状态。
     """
     return await delete_task_service(task_id)
+
+
 from .service import (  # noqa: E402
     _disclaimer_dict,  # noqa: F401 - 测试专用 re-export
     _resolve_upstream_calibrated,  # noqa: F401 - 测试专用 re-export

@@ -280,7 +280,9 @@ class AgentOrchestrator:
             logger.warning("Step '%s' failed: %s", step_name, exc)
 
         step_result.completed_at = time.perf_counter()
-        step_result.duration_ms = (step_result.completed_at - (step_result.started_at or step_result.completed_at)) * 1000
+        step_result.duration_ms = (
+            step_result.completed_at - (step_result.started_at or step_result.completed_at)
+        ) * 1000
         return step_result
 
     # -----------------------------------------------------------------------
@@ -500,9 +502,7 @@ class AgentOrchestrator:
         report = validator.validate_gcode_text(gcode, controller_type=controller_type)
         if not report.is_valid:
             first = report.errors[0]
-            raise ValueError(
-                f"安全校验未通过（错误码 {report.error_codes}）：{first.message}"
-            )
+            raise ValueError(f"安全校验未通过（错误码 {report.error_codes}）：{first.message}")
         logger.info(
             "validate_safety 通过 controller=%s warnings=%d",
             controller_type,

@@ -26,6 +26,7 @@ VALID_STATUS_TRANSITIONS = {
 
 RETRYABLE_EXCEPTIONS = (TimeoutError, ConnectionError, OSError)
 
+
 @dataclass
 class TaskRecord:
     job_id: str

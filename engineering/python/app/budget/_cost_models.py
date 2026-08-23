@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+
 class CostDimension(str, Enum):
     """成本统计维度"""
 
@@ -16,6 +17,7 @@ class CostDimension(str, Enum):
     PROVIDER = "provider"
     MODEL = "model"
 
+
 class CostType(str, Enum):
     """成本类型"""
 
@@ -23,6 +25,7 @@ class CostType(str, Enum):
     GPU_MEMORY = "gpu_memory"
     API_CALLS = "api_calls"
     DATA_TRANSFER = "data_transfer"
+
 
 class ProviderType(str, Enum):
     """服务提供商"""
@@ -32,6 +35,7 @@ class ProviderType(str, Enum):
     CUSTOM_EXTERNAL = "custom_external"
     SYSTEM_INTERNAL = "system_internal"
 
+
 class ModelType(str, Enum):
     """模型类型"""
 
@@ -40,6 +44,7 @@ class ModelType(str, Enum):
     HYBRID_LNN = "HybridLNN"
     TRANSFORMER = "Transformer"
     CUSTOM = "Custom"
+
 
 @dataclass
 class CostUnitPrice:
@@ -57,6 +62,7 @@ class CostUnitPrice:
             "api_call_per_request": self.api_call_per_request,
             "data_transfer_per_mb": self.data_transfer_per_mb,
         }
+
 
 @dataclass
 class CostEvent:
@@ -95,6 +101,7 @@ class CostEvent:
             "recorded_at": self.recorded_at,
         }
 
+
 @dataclass
 class CostSummary:
     """成本汇总"""
@@ -127,6 +134,7 @@ class CostSummary:
             "total_data_transfer_mb": round(self.total_data_transfer_mb, 2),
             "task_count": self.task_count,
         }
+
 
 @dataclass
 class BudgetEvent:

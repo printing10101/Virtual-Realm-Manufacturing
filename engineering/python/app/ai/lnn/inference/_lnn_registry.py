@@ -24,6 +24,7 @@ except ImportError:
 from app.ai.lnn.inference._base_registry import BaseModelRegistry
 from app.ai.lnn.inference._registry_models import ModelEntry, ModelInfo
 
+
 class LNNModelRegistry(BaseModelRegistry):
     """
     LNN Model Registry with predefined models and validation support.
@@ -238,4 +239,3 @@ class LNNModelRegistry(BaseModelRegistry):
                 "model_name": model_name,
                 "model_path": path,
             }
-

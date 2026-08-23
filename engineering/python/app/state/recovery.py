@@ -108,9 +108,7 @@ class StateRecoveryManager:
             if task_status is None:
                 task_status_str = ""
             else:
-                task_status_str = (
-                    task_status.value if hasattr(task_status, "value") else str(task_status)
-                )
+                task_status_str = task_status.value if hasattr(task_status, "value") else str(task_status)
             result["task"] = {
                 "task_id": state.current_task_id,
                 "status": task_status_str,

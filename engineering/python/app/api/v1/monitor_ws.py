@@ -42,7 +42,10 @@ async def _ws_permission_check(websocket: WebSocket) -> None:
     import os
 
     if os.environ.get("LNN_PERMISSION_ENFORCED", "true").strip().lower() in (
-        "0", "false", "no", "off",
+        "0",
+        "false",
+        "no",
+        "off",
     ):
         return
     if not hasattr(websocket.state, "username") or not websocket.state.username:
@@ -76,9 +79,7 @@ async def machine_monitor_ws(websocket: WebSocket) -> None:
         while True:
             # 接收订阅/心跳消息（非阻塞）
             try:
-                message = await asyncio.wait_for(
-                    websocket.receive_json(), timeout=0.1
-                )
+                message = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
                 action = message.get("action", "")
                 if action == "subscribe" and message.get("machine_id"):
                     machine_id = str(message["machine_id"])
@@ -100,9 +101,7 @@ async def machine_monitor_ws(websocket: WebSocket) -> None:
 
             # 心跳
             if tick % _HEARTBEAT_INTERVAL_S == 0:
-                await websocket.send_json(
-                    {"event_type": "ping", "timestamp": event.timestamp.isoformat()}
-                )
+                await websocket.send_json({"event_type": "ping", "timestamp": event.timestamp.isoformat()})
 
             await asyncio.sleep(1.0)
 

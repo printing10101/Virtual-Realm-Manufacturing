@@ -229,9 +229,7 @@ class TemplateBranchManager:
                 return []
             return [e.to_dict() for e in branch.commit_log]
 
-    def update_branch_data(
-        self, branch_id: str, data: dict[str, Any], action: str = "update"
-    ) -> TemplateBranch | None:
+    def update_branch_data(self, branch_id: str, data: dict[str, Any], action: str = "update") -> TemplateBranch | None:
         """Update a branch's template data and log the change."""
         with self._lock:
             branch = self._cache.get(branch_id)

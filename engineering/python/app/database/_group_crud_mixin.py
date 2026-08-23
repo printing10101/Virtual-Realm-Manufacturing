@@ -17,7 +17,6 @@ class _GroupCrudMixin:
     _get_conn: Callable[..., Any]
     _now: Callable[..., Any]
 
-
     def _row_to_group(self, row: sqlite3.Row) -> RuleGroup:
         return RuleGroup(
             id=row["id"],

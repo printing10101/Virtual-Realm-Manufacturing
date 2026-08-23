@@ -29,11 +29,11 @@ from enum import Enum
 class DialectLifecycleStage(str, Enum):
     """方言插件生命周期阶段。"""
 
-    DISCOVERED = "discovered"    # 声明已发现/加载
-    COMPILED = "compiled"        # 已编译为方言类
-    REGISTERED = "registered"    # 已注册到 PostProcessorRegistry
+    DISCOVERED = "discovered"  # 声明已发现/加载
+    COMPILED = "compiled"  # 已编译为方言类
+    REGISTERED = "registered"  # 已注册到 PostProcessorRegistry
     UNREGISTERED = "unregistered"  # 已卸载（可重新注册）
-    FAILED = "failed"            # 某阶段失败
+    FAILED = "failed"  # 某阶段失败
 
 
 @dataclass(frozen=True)
@@ -104,10 +104,7 @@ def assert_transition_allowed(
     if not can_transition(current, target):
         cur = DialectLifecycleStage(current)
         tgt = DialectLifecycleStage(target)
-        raise ValueError(
-            f"非法生命周期转移: {cur.value} → {tgt.value}。"
-            "建议操作：检查方言插件生命周期状态机。"
-        )
+        raise ValueError(f"非法生命周期转移: {cur.value} → {tgt.value}。建议操作：检查方言插件生命周期状态机。")
 
 
 def next_stage_after_success(

@@ -18,6 +18,8 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+
 class TrajectoryMemory:
     """轨迹记忆（对应 lingbot-map 的 trajectory memory）.
 

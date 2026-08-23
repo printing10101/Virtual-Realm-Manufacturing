@@ -7,8 +7,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class ConfigValidationError(Exception):
     """配置验证异常。"""
+
+
 class ConfigValidator:
     """配置验证器。
 
@@ -45,8 +48,7 @@ class ConfigValidator:
         if not isinstance(value, expected_type):
             self._add_error(
                 path,
-                f"类型错误: 期望 {getattr(expected_type, '__name__', str(expected_type))}, "
-                f"实际 {type(value).__name__}",
+                f"类型错误: 期望 {getattr(expected_type, '__name__', str(expected_type))}, 实际 {type(value).__name__}",
             )
             return False
         return True
@@ -439,6 +441,7 @@ class ConfigValidator:
                             f"{path}.macro_variables.{var_type}.range",
                             "元素必须为整数",
                         )
+
 
 # --- 常量（自 config_loader 迁移） ---
 REQUIRED_TOP_KEYS = ("base", "controllers")

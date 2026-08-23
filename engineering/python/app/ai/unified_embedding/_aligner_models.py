@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+
 @dataclass
 class TripletLossConfig:
     """Configuration for triplet loss-based cross-modal alignment.
@@ -54,4 +55,3 @@ class AlignerConfig:
     gradient_clip_norm: float = 1.0
     update_interval_steps: int = 100
     compatibility_threshold: float = 0.95
-

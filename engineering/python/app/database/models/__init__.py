@@ -63,6 +63,13 @@ from app.database.models.rl_agent import (
     RLAgentTrainingRunORM,
 )
 
+# 切削实测经验数据（P2-1 数据飞轮）
+from app.database.models.cutting_experience import (
+    Base as CuttingExperienceBase,
+    CuttingExperienceRecord,
+    _new_experience_id,
+)
+
 __all__ = [
     "Base",
     "MachiningRecord",
@@ -105,8 +112,8 @@ __all__ = [
     "WorldModelVersionORM",
     "RLAgentPolicyVersionORM",
     "RLAgentTrainingRunORM",
-    "CuttingExperienceRecord"
+    # 切削实测经验数据（P2-1 数据飞轮）
+    "CuttingExperienceRecord",
+    "CuttingExperienceBase",
+    "_new_experience_id",
 ]
-
-from app.database.models.cutting_experience import CuttingExperienceRecord
-

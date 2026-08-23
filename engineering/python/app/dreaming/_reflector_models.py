@@ -6,9 +6,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
+
 @dataclass
 class InsightItem:
-
     """单条浮现的洞察。"""
 
     category: str  # "pattern" | "anomaly" | "rule_candidate" | "warning"
@@ -82,4 +82,3 @@ class ReflectionResult:
 # ---------------------------------------------------------------------------
 # DreamReflector
 # ---------------------------------------------------------------------------
-

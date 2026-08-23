@@ -119,9 +119,7 @@ def classify_hole_or_boss(
     offset_v = validate_offset(offset)
     threshold_v = validate_threshold(threshold)
     if default_type not in {FEATURE_HOLE, FEATURE_BOSS}:
-        raise FeatureClassificationError(
-            f"default_type 必须为 hole 或 boss，实际 {default_type!r}"
-        )
+        raise FeatureClassificationError(f"default_type 必须为 hole 或 boss，实际 {default_type!r}")
 
     if offset_v < -threshold_v:
         return FEATURE_HOLE
@@ -187,9 +185,7 @@ def validate_feature_params(
         try:
             cleaned["inlier_count"] = int(inliers)
         except (TypeError, ValueError) as e:
-            raise FeatureClassificationError(
-                f"参数 inlier_count 必须为整数，实际 {inliers!r}"
-            ) from e
+            raise FeatureClassificationError(f"参数 inlier_count 必须为整数，实际 {inliers!r}") from e
 
     return cleaned
 

@@ -46,10 +46,7 @@ _SYSTEM_PROMPT = (
     "5. 只输出纯 Python 代码，不要 markdown 代码块标记、不要注释解释。"
 )
 
-_USER_TEMPLATE = (
-    "生成以下零件的 CadQuery 脚本：\n{description}\n"
-    "请只输出 Python 代码。"
-)
+_USER_TEMPLATE = "生成以下零件的 CadQuery 脚本：\n{description}\n请只输出 Python 代码。"
 
 
 class Nl2CadLLMError(Exception):
@@ -81,10 +78,7 @@ class Nl2CadLLMResult:
 def build_user_prompt(description: str, feedback: str | None = None) -> str:
     prompt = _USER_TEMPLATE.format(description=description)
     if feedback:
-        prompt += (
-            "\n\n【上一次生成未通过校验，请修复以下问题后重新生成】\n"
-            f"{feedback}"
-        )
+        prompt += f"\n\n【上一次生成未通过校验，请修复以下问题后重新生成】\n{feedback}"
     return prompt
 
 
@@ -235,8 +229,7 @@ async def generate_cadquery_script(
         )
 
     raise Nl2CadLLMError(
-        f"NL2CAD 连续 {max_attempts} 次生成均未通过校验。"
-        f"最后一次反馈: {feedback_used[-1] if feedback_used else '无'}"
+        f"NL2CAD 连续 {max_attempts} 次生成均未通过校验。最后一次反馈: {feedback_used[-1] if feedback_used else '无'}"
     )
 
 

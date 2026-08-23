@@ -10,6 +10,7 @@ from app.process_planning.hole_recognizer import HoleRecognitionResult
 from app.process_planning.operation_sequencer import OperationPlan
 from app.process_planning.tool_param_matcher import HoleProcessPlan
 
+
 @dataclass
 class PipelineStage:
     """单个流水线阶段的执行记录。
@@ -111,5 +112,3 @@ class PipelineResult:
             }
         )
         return result
-
-

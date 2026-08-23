@@ -73,9 +73,7 @@ def _dialect_market_entry(dialect_id: str) -> dict:
         "name": declaration.name if declaration else _friendly_name(dialect_id),
         "version": declaration.version if declaration else "unknown",
         "author": declaration.author if declaration else "Lingjing",
-        "description": (
-            declaration.description if declaration else f"声明式后处理器方言：{dialect_id}"
-        ),
+        "description": (declaration.description if declaration else f"声明式后处理器方言：{dialect_id}"),
         "plugin_type": "postprocessor",
         "category": "dialect",
         "installed": False,

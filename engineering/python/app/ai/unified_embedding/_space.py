@@ -179,4 +179,3 @@ class EmbeddingSpace:
                 "description": "Future extensions and system optimization",
             },
         }
-

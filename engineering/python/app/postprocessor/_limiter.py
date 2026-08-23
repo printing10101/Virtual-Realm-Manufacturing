@@ -6,6 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class ConfigLimiter:
     """配置参数限幅器。
 

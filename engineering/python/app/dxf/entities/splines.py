@@ -8,6 +8,7 @@ from app.dxf._entities import DxfSpline
 
 logger = logging.getLogger(__name__)
 
+
 def spline_to_obj(entity) -> DxfSpline:
     """将单个 SPLINE 实体转换为 DxfSpline。"""
     # degree —— 显式 None 检查，避免 0 被错误覆盖为 3

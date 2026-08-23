@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 
-
 from app.contracts import ITaskRegistry, WorkflowSpec
 
 

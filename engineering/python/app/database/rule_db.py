@@ -133,6 +133,8 @@ class RuleDatabase(_RuleCrudMixin, _GroupCrudMixin, _TransferMixin):
         from datetime import timezone
 
         return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 class _RuleDbHolder:
     """Thread-safe lazy holder for the :class:`RuleDatabase` singleton."""
 

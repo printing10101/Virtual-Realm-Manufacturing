@@ -20,7 +20,6 @@ class _UpdateMixin:
     enable_llm: Any
     store: Any
 
-
     def _update_stale_entries(self, sessions: list[ProjectSession]) -> UpdateResult:
         """用新 Session 数据修正过时的 memory 条目。
 

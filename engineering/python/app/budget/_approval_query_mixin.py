@@ -20,10 +20,10 @@ class _ApprovalQueryMixin:
     _row_to_request: Callable[..., Any]
     _conn: Any
 
-
     def get_request(self, request_id: str) -> ApprovalRequest | None:
         """获取审批请求"""
         return self._get_request(request_id)
+
     def get_requests_by_status(
         self,
         status: ApprovalStatus,
@@ -39,6 +39,7 @@ class _ApprovalQueryMixin:
             (status.value, limit, offset),
         ).fetchall()
         return [self._row_to_request(row) for row in rows]
+
     def get_requests_by_approver(
         self,
         approver_id: str,
@@ -55,6 +56,7 @@ class _ApprovalQueryMixin:
             (approver_id, f"%{approver_id}%", limit, offset),
         ).fetchall()
         return [self._row_to_request(row) for row in rows]
+
     def get_requests_by_requester(
         self,
         requester: str,
@@ -70,6 +72,7 @@ class _ApprovalQueryMixin:
             (requester, limit, offset),
         ).fetchall()
         return [self._row_to_request(row) for row in rows]
+
     def get_pending_requests(self, limit: int = 100) -> list[ApprovalRequest]:
         """获取待处理审批请求"""
         return self.get_requests_by_status(ApprovalStatus.PENDING, limit)

@@ -615,8 +615,6 @@ def get_agent_audit_log() -> AgentAuditLog:
     return _global_agent_audit_log
 
 
-
-
 async def get_permission_class(method: str, path: str) -> PermissionLevel:
     """Determine the permission class for a given endpoint."""
     key = f"{method} {path}"

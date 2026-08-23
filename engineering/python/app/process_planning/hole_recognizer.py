@@ -69,6 +69,7 @@ class HoleFeatureRecognizer(_RecognizeMixin):
 
     # 共轴判定阈值 (mm) - 两圆柱面轴线距离小于此值视为共轴
     COAXIAL_THRESHOLD = 0.05
+
     def recognize_holes(
         self,
         geometry_data: dict[str, Any],

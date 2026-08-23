@@ -113,7 +113,11 @@ def register_all_domain_routers(
     flags = adr_pipeline.register(app)
     return flags
 
-from app.api.routers._route_registry import (
-    RouterSpec, validate_specs, register_routers, is_duplicate_registration, group_by_domain,
-)
 
+from app.api.routers._route_registry import (
+    RouterSpec,
+    validate_specs,
+    register_routers,
+    is_duplicate_registration,
+    group_by_domain,
+)

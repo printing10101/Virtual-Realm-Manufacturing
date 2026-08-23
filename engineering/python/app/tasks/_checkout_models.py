@@ -139,6 +139,7 @@ class TaskRecord:
             "failure_history": self.failure_history,
         }
 
+
 # 签出重试配置常量（从 task_checkout 移入，mixin 与门面共用）
 MAX_RETRY_COUNT = 5
 BUDGET_RETRY_DELAY_MINUTES = 0

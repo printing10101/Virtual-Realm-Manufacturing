@@ -23,7 +23,6 @@ class _ApprovalReportMixin:
     # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
     _conn: Any
 
-
     def generate_governance_report(
         self,
         period_start: float | None = None,
@@ -98,6 +97,7 @@ class _ApprovalReportMixin:
         report.top_risk_operations = [dict(row) for row in top_risks]
 
         return report
+
     def export_audit_log(
         self,
         start_time: float | None = None,
@@ -139,6 +139,7 @@ class _ApprovalReportMixin:
             return "\n".join(lines)
         else:
             raise ValueError(f"Unsupported export format: {format}")
+
     def _log_audit(self, request_id: str, action: str, actor_id: str, details: dict[str, Any]) -> None:
         """记录不可变审计日志"""
         self._conn.execute(
@@ -153,6 +154,7 @@ class _ApprovalReportMixin:
             ),
         )
         self._conn.commit()
+
     def _get_risk_trend(self, start: float, end: float) -> list[dict[str, Any]]:
         """获取风险趋势数据"""
         days = max(1, int((end - start) / (24 * 3600)))
@@ -180,6 +182,7 @@ class _ApprovalReportMixin:
             )
 
         return trend
+
     def _save_request(self, request: ApprovalRequest) -> None:
         """保存审批请求到数据库"""
         self._conn.execute(
@@ -215,12 +218,14 @@ class _ApprovalReportMixin:
             ),
         )
         self._conn.commit()
+
     def _get_request(self, request_id: str) -> ApprovalRequest | None:
         """从数据库获取审批请求"""
         row = self._conn.execute("SELECT * FROM approval_requests WHERE request_id = ?", (request_id,)).fetchone()
         if row is None:
             return None
         return self._row_to_request(row)
+
     def _row_to_request(self, row) -> ApprovalRequest:
         """将数据库行转换为审批请求对象"""
         decisions_data = json.loads(row["decisions"]) if row["decisions"] else []

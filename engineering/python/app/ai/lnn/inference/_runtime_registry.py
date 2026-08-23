@@ -25,6 +25,7 @@ from app.ai.lnn.core import ModelConfig, ModelType
 from app.ai.lnn.inference._base_registry import BaseModelRegistry, get_quantized_model_name
 from app.ai.lnn.inference._registry_models import ModelEntry
 
+
 class ModelRegistry(BaseModelRegistry):
     """
     模型注册表
@@ -333,4 +334,3 @@ class ModelRegistry(BaseModelRegistry):
         if entry and entry.config:
             return entry.config.model_path
         return None
-

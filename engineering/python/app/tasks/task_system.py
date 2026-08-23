@@ -29,6 +29,7 @@ from app.tasks._task_execution_mixin import _TaskExecutionMixin
 from app.tasks._task_persistence_mixin import _TaskPersistenceMixin
 from app.tasks._task_recovery_mixin import _TaskRecoveryMixin
 from app.tasks._task_stats_mixin import _TaskStatsMixin
+
 # 类型/常量经本模块再导出（contract_adapter / 测试 / 外部导入方依赖），
 # 故显式保留全部导入（F401 为有意再导出）。
 from app.tasks._task_types import (  # noqa: F401
@@ -51,9 +52,9 @@ logger = logging.getLogger(__name__)
 # 可重试的异常类型
 
 
-
-
-class AsyncTaskManager(_TaskExecutionMixin, _TaskPersistenceMixin, _TaskRecoveryMixin, _TaskEventsMixin, _TaskStatsMixin):
+class AsyncTaskManager(
+    _TaskExecutionMixin, _TaskPersistenceMixin, _TaskRecoveryMixin, _TaskEventsMixin, _TaskStatsMixin
+):
     """
     Persistent singleton async task manager.
 
@@ -162,9 +163,6 @@ class AsyncTaskManager(_TaskExecutionMixin, _TaskPersistenceMixin, _TaskRecovery
             len(self._tasks),
         )
 
-
-
-
     async def create_task(
         self,
         task_type: TaskType,
@@ -232,7 +230,6 @@ class AsyncTaskManager(_TaskExecutionMixin, _TaskPersistenceMixin, _TaskRecovery
             logger.info("Task %s created and queued", job_id)
             return record
 
-
     async def cancel_task(self, job_id: str) -> bool:
         async with self._get_task_lock():
             if job_id not in self._tasks:
@@ -291,18 +288,5 @@ class AsyncTaskManager(_TaskExecutionMixin, _TaskPersistenceMixin, _TaskRecovery
 
         logger.debug("Task %s resources cleaned up", job_id)
 
-
-
-
-
-
-
     def register_cancel_hook(self, job_id: str, hook: Callable):
         self._cancel_hooks[job_id] = hook
-
-
-
-
-
-
-

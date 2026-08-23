@@ -305,6 +305,7 @@ class ExecutionEngine:
         """关闭所有资源"""
         self.session_manager.close()
 
+
 class _EngineHolder:
     """Thread-safe lazy holder for the :class:`ExecutionEngine` singleton."""
 
