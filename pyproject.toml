@@ -97,3 +97,9 @@ ignore = [
 "engineering/python/app/pipelines/tests/test_collector.py" = ["E402"]
 "engineering/python/app/simulation/chatter/tests/test_predictor.py" = ["E402"]
 "engineering/python/app/services/tests/test_tdengine_client.py" = ["E402"]
+# E402 追加登记（2026-08-23）：
+#   - routers/__init__.py：底部聚合导入 _route_registry，刻意置于 register 函数之后，
+#     避免模块级循环导入（_route_registry 依赖本模块已注册的域）
+#   - contracts/__init__.py：模块底部聚合 re-export 契约模型（包导出惯例，同 __init__ 一览）
+"engineering/python/app/api/routers/__init__.py" = ["E402"]
+"engineering/python/app/contracts/__init__.py" = ["E402"]

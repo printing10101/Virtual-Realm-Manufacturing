@@ -240,6 +240,8 @@ Content-Type: application/json
 | `GET` | `/api/simulation/auto-diff/{task_id}` | 按 task_id 查询 Auto-Diff 比对结果。 |
 | `POST` | `/api/simulation/check-conflict` | Check tool-slot diameter compatibility. |
 | `POST` | `/api/simulation/export-animation` | Export simulation animation as GIF or MP4. |
+| `POST` | `/api/simulation/factory/closed-loop` | 运行仿真工厂闭环生产（感知→决策→执行→反馈），返回 NLDF 风格 KPI 评分。 |
+| `GET` | `/api/simulation/factory/demo-status` | 返回仿真演示设备清单（Phase 2 demo registry）。 |
 | `POST` | `/api/simulation/fem/solve` | 简化 FEM 求解（简支梁三点弯曲解析解）。 |
 | `GET` | `/api/simulation/history` | Query simulation history records. |
 | `GET` | `/api/simulation/output/{filename}` | Serve simulation output STL file. |
@@ -312,15 +314,17 @@ Content-Type: application/json
 | `GET` | `/api/v1/cutting_parameters/tasks/{task_id}/result` | 获取推荐参数列表 + 审核状态 |
 | `POST` | `/api/v1/cutting_parameters/tasks/{task_id}/review` | 工程师审核单个特征的切削参数 |
 | `POST` | `/api/v1/cutting_parameters/tasks/{task_id}/run` | 异步触发切削参数推荐流水线执行 |
-| `GET` | `/api/v1/datasets` | 列出数据集（按 created_at 倒序）。 |
-| `POST` | `/api/v1/datasets` | 创建数据集（初始 DRAFT，无版本）。 |
-| `POST` | `/api/v1/datasets/lineage` | 记录一条血缘。 |
-| `GET` | `/api/v1/datasets/lineage/{target_uri:path}` | 查询血缘图（target_uri 通过 path 参数传入，自动 URL 解码）。 |
-| `GET` | `/api/v1/datasets/{dataset_id}` | 获取数据集详情（含 schema 与版本概要）。 |
-| `POST` | `/api/v1/datasets/{dataset_id}/commit` | 提交一个不可变版本。 |
-| `POST` | `/api/v1/datasets/{dataset_id}/deprecate` | 废弃某版本（不可逆，但内容仍可读）。 |
-| `GET` | `/api/v1/datasets/{dataset_id}/read` | 读取数据集版本内容（流式 JSONL）. |
-| `GET` | `/api/v1/datasets/{dataset_id}/versions` | 列出数据集的所有版本（按创建时间倒序）。 |
+| `GET` | `/api/v1/datasets` | List datasets with pagination. |
+| `POST` | `/api/v1/datasets` | Create a dataset. |
+| `POST` | `/api/v1/datasets/lineage` | Record lineage. |
+| `GET` | `/api/v1/datasets/lineage/{target_uri}` | Query lineage graph. |
+| `GET` | `/api/v1/datasets/metrics` | Get global dataset metrics. |
+| `GET` | `/api/v1/datasets/{dataset_id}` | Get dataset details. |
+| `POST` | `/api/v1/datasets/{dataset_id}/commit` | Commit a new version. |
+| `POST` | `/api/v1/datasets/{dataset_id}/deprecate` | Deprecate a version. |
+| `GET` | `/api/v1/datasets/{dataset_id}/versions` | List all versions. |
+| `GET` | `/api/v1/datasets/{dataset_id}/versions/{version}` | Get specific version details. |
+| `GET` | `/api/v1/datasets/{dataset_id}/versions/{version}/read` | Stream version contents as JSONL. |
 | `GET` | `/api/v1/dnc/machines` | 列出已连接机床 |
 | `POST` | `/api/v1/dnc/machines` | 添加机床连接 |
 | `DELETE` | `/api/v1/dnc/machines/{machine_id}` | 移除机床连接 |
@@ -541,6 +545,15 @@ Content-Type: application/json
 | `POST` | `/api/v1/plugins/{plugin_id}/enable` |  |
 | `GET` | `/api/v1/plugins/{plugin_id}/logs` |  |
 | `POST` | `/api/v1/plugins/{plugin_id}/reload` |  |
+| `GET` | `/api/v1/postprocessor/dialects` | 列出所有方言（内置 + 声明镜像）。 |
+| `POST` | `/api/v1/postprocessor/dialects` | 新建声明式方言：创建目录 + dialect.yaml + 骨架模板。 |
+| `POST` | `/api/v1/postprocessor/dialects/preview` | NC 输出预览：给定样例刀路输入，渲染方言完整 NC 输出。 |
+| `POST` | `/api/v1/postprocessor/dialects/template` | 读取方言模板文件内容（工艺员编辑模板用）。 |
+| `DELETE` | `/api/v1/postprocessor/dialects/{dialect_id}` | 删除声明式方言（仅限 postprocessor-plugins/ 下的非内置方言）。 |
+| `GET` | `/api/v1/postprocessor/dialects/{dialect_id}` | 方言详情：声明 + 模板方法列表 + 编译状态。 |
+| `GET` | `/api/v1/postprocessor/dialects/{dialect_id}/params` | 读取方言参数：有效配置（继承链合并）+ 方言自己的参数。 |
+| `PUT` | `/api/v1/postprocessor/dialects/{dialect_id}/params` | 保存方言参数：写回 dialect.yaml 的 params 段。 |
+| `PUT` | `/api/v1/postprocessor/dialects/{dialect_id}/template` | 保存方言模板内容（写回模板文件）。 |
 | `POST` | `/api/v1/process-explainer/chat` | 多轮对话：基于会话历史的上下文追问。 |
 | `POST` | `/api/v1/process-explainer/cleanup` | 清理过期会话（默认 7 天前的会话）。 |
 | `POST` | `/api/v1/process-explainer/explain-nc` | 解释 NC / G 代码（结合 ToolpathParser 结构化解析）。 |
@@ -650,7 +663,11 @@ Content-Type: application/json
 | `POST` | `/api/v1/snapshots` | 创建实验快照（自动采集 git_sha 与环境信息）。 |
 | `GET` | `/api/v1/snapshots/{snapshot_id}` | 获取快照详情（含完整 config / metrics / environment）. |
 | `POST` | `/api/v1/snapshots/{snapshot_id}/reproduce` | 根据快照一键复现：重建 WorkflowSpec 并启动新工作流运行。 |
+| `POST` | `/api/v1/system/backup` | 创建一次桌面 SQLite 数据全量备份。 |
+| `POST` | `/api/v1/system/backup/{backup_id}/restore` | 将指定备份恢复到目标目录（不覆盖同名文件）。 |
+| `GET` | `/api/v1/system/backups` | 列出历史备份（按时间倒序）。 |
 | `GET` | `/api/v1/system/status` | 系统状态：版本、运行时长、核心组件健康（真实查询）。 |
+| `GET` | `/api/v1/system/update-check` | 检查 GitHub Releases 最新版本 |
 | `GET` | `/api/v1/system/version` |  |
 | `GET` | `/api/v1/task-checkout/agents/{agent_id}/status` |  |
 | `GET` | `/api/v1/task-checkout/board` |  |
@@ -727,6 +744,7 @@ Content-Type: application/json
 | `GET` | `/api/v1/users/me/permissions` |  |
 | `PUT` | `/api/v1/users/{username}/role` |  |
 | `PUT` | `/api/v1/users/{username}/status` |  |
+| `GET` | `/api/v1/version` | 兼容端点：GET /api/v1/version（旧版顶层版本接口）。 |
 | `POST` | `/api/v1/wear/calibrate` |  |
 | `POST` | `/api/v1/wear/calibrate-realtime` |  |
 | `POST` | `/api/v1/wear/compensation` |  |
@@ -789,6 +807,37 @@ Content-Type: application/json
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | `POST` | `/execute` | 工艺参数下发（T类，paper_only默认） |
+
+### /experience
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/experience` | 分页查询切削实测记录。 |
+
+### /experience/batch
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/experience/batch` | 批量采集（MTConnect 管道 / CSV 导入）。 |
+
+### /experience/capture
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/experience/capture` | 单条切削实测采集。 |
+
+### /experience/stats
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/experience/stats` | 聚合统计（节拍/粗糙度/磨损均值、合格率、异常率）。 |
+
+### /experience/{record_id}
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `DELETE` | `/experience/{record_id}` | 删除记录（管理用途）。 |
+| `GET` | `/experience/{record_id}` | 单条详情。 |
 
 ### /explain
 
@@ -863,6 +912,30 @@ Content-Type: application/json
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | `GET` | `/models/{name}/info` | 模型详细信息（R类） |
+
+### /optimizer/baselines
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/optimizer/baselines` | 列出基线参数库（L0 经验表），支持按材料/加工类型过滤。 |
+
+### /optimizer/compare
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/optimizer/compare` | A/B 两组结果对比。 |
+
+### /optimizer/evaluate
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/optimizer/evaluate` | 评估单条实测结果。 |
+
+### /optimizer/recommend
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/optimizer/recommend` | 推荐切削参数（分层策略 + 物理安全钳制）。 |
 
 ### /pipeline/execute
 
@@ -958,7 +1031,7 @@ LNN（Liquid Neural Network）模型管理接口，支持模型预测、训练�
 | 参数名 | 类型 | 默认值 | 必填 | 说明 |
 |--------|------|--------|------|------|
 | `body` | `LNNBatchInferenceRequest` | `-` | 是 |  |
-| `idempotency_key` | `Optional[str]` | `Header(...)` | 否 |  |
+| `idempotency_key` | `str | None` | `Header(...)` | 否 |  |
 
 **响应：**
 
@@ -1247,7 +1320,7 @@ LNN（Liquid Neural Network）模型管理接口，支持模型预测、训练�
 | 参数名 | 类型 | 默认值 | 必填 | 说明 |
 |--------|------|--------|------|------|
 | `body` | `LNNTrainRequest` | `-` | 是 |  |
-| `idempotency_key` | `Optional[str]` | `Header(...)` | 否 |  |
+| `idempotency_key` | `str | None` | `Header(...)` | 否 |  |
 
 **响应：**
 
@@ -1528,8 +1601,8 @@ API 请求和响应使用的 Pydantic 模型定义。
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `current_task_id` | `Optional[str]` | 否 | `None` | 当前任务ID | - |
-| `status` | `Optional[AgentStatus]` | 否 | `None` | Agent 状态 | - |
+| `current_task_id` | `str | None` | 否 | `None` | 当前任务ID | - |
+| `status` | `AgentStatus | None` | 否 | `None` | Agent 状态 | - |
 | `metadata` | `dict[str, Any]` | 是 | `-` | 元数据 | - |
 
 ### `CheckpointSaveRequest`
@@ -1543,11 +1616,11 @@ checkpoint_id / created_at / file_size_bytes 由服务端管理，
 |--------|------|------|--------|------|------|
 | `epoch` | `int` | 否 | `0` | 训练轮次 | ≥ 0 |
 | `step` | `int` | 否 | `0` | 训练步数 | ≥ 0 |
-| `best_metric` | `Optional[float]` | 否 | `None` | 最佳指标值 | - |
+| `best_metric` | `float | None` | 否 | `None` | 最佳指标值 | - |
 | `best_metric_name` | `str` | 否 | `'loss'` | 最佳指标名称 | - |
 | `state_dict_path` | `str` | 否 | `''` | 状态字典存储路径 | - |
 | `optimizer_state_path` | `str` | 否 | `''` | 优化器状态存储路径 | - |
-| `rng_state` | `Optional[dict[str, Any]]` | 否 | `None` | 随机数生成器状态 | - |
+| `rng_state` | `dict[str, Any] | None` | 否 | `None` | 随机数生成器状态 | - |
 | `checkpoint_type` | `CheckpointType` | 是 | `-` | 检查点类型 | - |
 | `metrics` | `dict[str, Any]` | 是 | `-` | 指标字典 | - |
 | `metadata` | `dict[str, Any]` | 是 | `-` | 元数据 | - |
@@ -1737,21 +1810,13 @@ refresh_token 端点会在函数体内显式校验非空。
 | `scope_id` | `str` | 否 | `'default'` | 范围ID | - |
 | `resource_type` | `str` | 是 | `-` | 资源类型 | - |
 
-### `SchemaFieldModel`
-
-| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
-|--------|------|------|--------|------|------|
-| `type` | `str` | 是 | `-` |  | - |
-| `required` | `bool` | 否 | `False` |  | - |
-| `description` | `str` | 否 | `''` |  | - |
-
 ### `DatasetSchemaModel`
 
-DatasetSchema 的 API 入参模型。
+DatasetSchema 的 Pydantic 模型版本（用于 API JSON 传输）。
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `fields` | `dict[str, SchemaFieldModel]` | 是 | `-` |  | - |
+| `fields` | `dict[str, dict[str, Any]]` | 是 | `-` |  | - |
 | `primary_key` | `list[str]` | 是 | `-` |  | - |
 | `metadata` | `dict[str, Any]` | 是 | `-` |  | - |
 
@@ -1763,7 +1828,7 @@ DatasetSchema 的 API 入参模型。
 |--------|------|------|--------|------|------|
 | `name` | `str` | 是 | `-` |  | - |
 | `description` | `str` | 否 | `''` |  | - |
-| `schema` | `DatasetSchemaModel` | 是 | `-` |  | - |
+| `dataset_schema` | `DatasetSchemaModel` | 是 | `-` |  | 别名: schema |
 | `owner_id` | `str` | 是 | `-` |  | - |
 
 ### `CommitVersionRequest`
@@ -1776,8 +1841,8 @@ records 为空且 dataset_id 是 TrainingDataLake 适配器时，
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `records` | `list[dict[str, Any]]` | 是 | `-` |  | - |
-| `version` | `Optional[str]` | 否 | `None` |  | - |
-| `lineage` | `Optional[LineageModel]` | 否 | `None` |  | - |
+| `version` | `str | None` | 否 | `None` |  | - |
+| `lineage` | `LineageModel | None` | 否 | `None` |  | - |
 
 ### `LineageModel`
 
@@ -1810,9 +1875,9 @@ Attributes:
 | `machine_id` | `str` | 是 | `-` | 机床唯一标识 | - |
 | `protocol` | `ProtocolType` | 是 | `-` | 通信协议 | - |
 | `endpoint` | `str` | 是 | `-` | 连接端点 | - |
-| `username` | `Optional[str]` | 否 | `None` | 认证用户名 | - |
-| `password` | `Optional[str]` | 否 | `None` | 认证密码 | - |
-| `device_name` | `Optional[str]` | 否 | `'Device'` | MTConnect 设备名称 | - |
+| `username` | `str | None` | 否 | `None` | 认证用户名 | - |
+| `password` | `str | None` | 否 | `None` | 认证密码 | - |
+| `device_name` | `str | None` | 否 | `'Device'` | MTConnect 设备名称 | - |
 
 ### `NCSendRequest`
 
@@ -1827,7 +1892,7 @@ Attributes:
 |--------|------|------|--------|------|------|
 | `machine_id` | `str` | 是 | `-` | 目标机床 ID | - |
 | `program_path` | `str` | 是 | `-` | 本地 NC 程序文件路径 | - |
-| `program_name` | `Optional[str]` | 否 | `None` | 机床端存储的程序名（默认使用文件名） | - |
+| `program_name` | `str | None` | 否 | `None` | 机床端存储的程序名（默认使用文件名） | - |
 
 ### `AutoConnectRequest`
 
@@ -1837,8 +1902,8 @@ Attributes:
 |--------|------|------|--------|------|------|
 | `machine_id` | `str` | 是 | `-` | 机床唯一标识 | - |
 | `endpoints` | `list[str]` | 是 | `-` | 候选端点列表，按优先级排序 | - |
-| `username` | `Optional[str]` | 否 | `None` | OPC UA 用户名 | - |
-| `password` | `Optional[str]` | 否 | `None` | OPC UA 密码 | - |
+| `username` | `str | None` | 否 | `None` | OPC UA 用户名 | - |
+| `password` | `str | None` | 否 | `None` | OPC UA 密码 | - |
 | `timeout` | `float` | 否 | `5.0` | 单端点连接超时 | > 0; ≤ 30 |
 
 ### `DiscoverRequest`
@@ -1858,7 +1923,7 @@ Attributes:
 | `category` | `str` | 是 | `-` |  | - |
 | `version` | `str` | 否 | `'v1.0'` |  | - |
 | `author` | `str` | 是 | `-` |  | - |
-| `content` | `Optional[str]` | 否 | `None` |  | - |
+| `content` | `str | None` | 否 | `None` |  | - |
 | `tags` | `list[str]` | 否 | `[]` |  | - |
 | `status` | `str` | 否 | `'待审核'` |  | - |
 
@@ -1866,31 +1931,31 @@ Attributes:
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `title` | `Optional[str]` | 否 | `None` |  | - |
-| `category` | `Optional[str]` | 否 | `None` |  | - |
-| `version` | `Optional[str]` | 否 | `None` |  | - |
-| `author` | `Optional[str]` | 否 | `None` |  | - |
-| `content` | `Optional[str]` | 否 | `None` |  | - |
-| `tags` | `Optional[list[str]]` | 否 | `None` |  | - |
-| `status` | `Optional[str]` | 否 | `None` |  | - |
+| `title` | `str | None` | 否 | `None` |  | - |
+| `category` | `str | None` | 否 | `None` |  | - |
+| `version` | `str | None` | 否 | `None` |  | - |
+| `author` | `str | None` | 否 | `None` |  | - |
+| `content` | `str | None` | 否 | `None` |  | - |
+| `tags` | `list[str] | None` | 否 | `None` |  | - |
+| `status` | `str | None` | 否 | `None` |  | - |
 
 ### `DxfProcessRequest`
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `dxf_path` | `str` | 是 | `-` |  | - |
-| `output_dir` | `Optional[str]` | 否 | `None` |  | - |
-| `postprocessor` | `Optional[str]` | 否 | `'fanuc_0i'` |  | - |
-| `user_id` | `Optional[str]` | 否 | `None` |  | - |
+| `output_dir` | `str | None` | 否 | `None` |  | - |
+| `postprocessor` | `str | None` | 否 | `'fanuc_0i'` |  | - |
+| `user_id` | `str | None` | 否 | `None` |  | - |
 
 ### `DxfBatchRequest`
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `dxf_paths` | `list[str]` | 是 | `-` |  | 最小长度: 1; 最大长度: 20 |
-| `output_dir` | `Optional[str]` | 否 | `None` |  | - |
-| `postprocessor` | `Optional[str]` | 否 | `'fanuc_0i'` |  | - |
-| `user_id` | `Optional[str]` | 否 | `None` |  | - |
+| `output_dir` | `str | None` | 否 | `None` |  | - |
+| `postprocessor` | `str | None` | 否 | `'fanuc_0i'` |  | - |
+| `user_id` | `str | None` | 否 | `None` |  | - |
 
 ### `DxfE2EFixtureRequest`
 
@@ -1899,7 +1964,7 @@ Attributes:
 | `fixtures_dir` | `str` | 否 | `'data/test_fixtures'` |  | - |
 | `output_dir` | `str` | 否 | `'data/outputs/e2e'` |  | - |
 | `postprocessor` | `str` | 否 | `'fanuc_0i'` |  | - |
-| `user_id` | `Optional[str]` | 否 | `'e2e_runner'` |  | - |
+| `user_id` | `str | None` | 否 | `'e2e_runner'` |  | - |
 
 ### `WearStateRequest`
 
@@ -1926,7 +1991,7 @@ Attributes:
 | `feed_rate` | `float` | 是 | `-` | 每转进给 (mm/rev) | > 0.0 |
 | `depth_of_cut` | `float` | 是 | `-` | 轴向切深 ap (mm) | > 0.0 |
 | `width_of_cut` | `float` | 否 | `0.0` | 径向切深 ae (mm) | ≥ 0.0 |
-| `spindle_rpm` | `Optional[float]` | 否 | `None` | 主轴转速 (RPM, None 时由切削速度反算) | ≥ 0.0 |
+| `spindle_rpm` | `float | None` | 否 | `None` | 主轴转速 (RPM, None 时由切削速度反算) | ≥ 0.0 |
 | `coolant_flow` | `float` | 否 | `10.0` | 冷却液流量 (L/min) | ≥ 0.0 |
 
 ### `MachineCapabilities`
@@ -1935,10 +2000,10 @@ Attributes:
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `max_spindle_speed` | `Optional[float]` | 否 | `None` | 最大主轴转速 (RPM) | ≥ 0.0 |
-| `max_feed_rate` | `Optional[float]` | 否 | `None` | 最大进给速度 (mm/min) | ≥ 0.0 |
-| `max_power` | `Optional[float]` | 否 | `None` | 最大功率 (kW) | ≥ 0.0 |
-| `max_torque` | `Optional[float]` | 否 | `None` | 最大扭矩 (N·m) | ≥ 0.0 |
+| `max_spindle_speed` | `float | None` | 否 | `None` | 最大主轴转速 (RPM) | ≥ 0.0 |
+| `max_feed_rate` | `float | None` | 否 | `None` | 最大进给速度 (mm/min) | ≥ 0.0 |
+| `max_power` | `float | None` | 否 | `None` | 最大功率 (kW) | ≥ 0.0 |
+| `max_torque` | `float | None` | 否 | `None` | 最大扭矩 (N·m) | ≥ 0.0 |
 
 ### `CalibrationInput`
 
@@ -1961,9 +2026,9 @@ schema 与 SignalFusionKnowledgeBase.SignalSample.sensor_features 完全兼容�
 |--------|------|------|--------|------|------|
 | `wear` | `WearStateRequest` | 是 | `-` |  | - |
 | `current` | `CurrentParametersRequest` | 是 | `-` |  | - |
-| `machine_capabilities` | `Optional[MachineCapabilities]` | 否 | `None` | 机床能力上限（None 使用默认） | - |
+| `machine_capabilities` | `MachineCapabilities | None` | 否 | `None` | 机床能力上限（None 使用默认） | - |
 | `optimization_goal` | `str` | 否 | `'tool_life'` | 优化目标：efficiency / tool_life / surface_finish | - |
-| `calibration` | `Optional[CalibrationInput]` | 否 | `None` | 可选实时校正入参。提供时启用 EWMA 校正闭环，用校正后磨损值驱动决策；未提供时走原始磨损值路径 | - |
+| `calibration` | `CalibrationInput | None` | 否 | `None` | 可选实时校正入参。提供时启用 EWMA 校正闭环，用校正后磨损值驱动决策；未提供时走原始磨损值路径 | - |
 
 ### `AdjustmentDecisionInput`
 
@@ -2007,11 +2072,11 @@ NC 代码改写请求。
 | `wear` | `WearStateRequest` | 是 | `-` |  | - |
 | `current` | `CurrentParametersRequest` | 是 | `-` |  | - |
 | `nc_code` | `str` | 是 | `-` | 待改写的 NC/G 代码文本 | 最小长度: 1 |
-| `machine_capabilities` | `Optional[MachineCapabilities]` | 否 | `None` |  | - |
+| `machine_capabilities` | `MachineCapabilities | None` | 否 | `None` |  | - |
 | `optimization_goal` | `str` | 否 | `'tool_life'` |  | - |
 | `controller_type` | `str` | 否 | `'fanuc'` |  | - |
 | `apply_to_motion_only` | `bool` | 否 | `True` |  | - |
-| `calibration` | `Optional[CalibrationInput]` | 否 | `None` | 可选实时校正入参。提供时启用 EWMA 校正闭环，用校正后磨损值驱动决策与 NC 改写 | - |
+| `calibration` | `CalibrationInput | None` | 否 | `None` | 可选实时校正入参。提供时启用 EWMA 校正闭环，用校正后磨损值驱动决策与 NC 改写 | - |
 
 ### `CalibrateWearRequest`
 
@@ -2033,11 +2098,11 @@ NC 代码改写请求。
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `status` | `Optional[str]` | 否 | `None` | 设备状态: 运行中/待机/维护中/故障 | - |
-| `temperature` | `Optional[float]` | 否 | `None` | 温度 | - |
-| `vibration` | `Optional[float]` | 否 | `None` | 振动 | - |
-| `rpm` | `Optional[float]` | 否 | `None` | 转速 | - |
-| `power` | `Optional[float]` | 否 | `None` | 功率 | - |
+| `status` | `str | None` | 否 | `None` | 设备状态: 运行中/待机/维护中/故障 | - |
+| `temperature` | `float | None` | 否 | `None` | 温度 | - |
+| `vibration` | `float | None` | 否 | `None` | 振动 | - |
+| `rpm` | `float | None` | 否 | `None` | 转速 | - |
+| `power` | `float | None` | 否 | `None` | 功率 | - |
 
 ### `AlarmStatusUpdateRequest`
 
@@ -2058,12 +2123,12 @@ status 必须为 ``_ALARM_VALID_STATUSES`` 之一（service 层二次校验）�
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `title` | `Optional[str]` | 否 | `None` | 计划标题 | - |
-| `type` | `Optional[str]` | 否 | `None` | 计划类型 | - |
-| `frequency` | `Optional[str]` | 否 | `None` | 维护频率 | - |
-| `last_date` | `Optional[str]` | 否 | `None` | 上次维护日期 | - |
-| `next_date` | `Optional[str]` | 否 | `None` | 下次维护日期 | - |
-| `status` | `Optional[str]` | 否 | `None` | 计划状态 | - |
+| `title` | `str | None` | 否 | `None` | 计划标题 | - |
+| `type` | `str | None` | 否 | `None` | 计划类型 | - |
+| `frequency` | `str | None` | 否 | `None` | 维护频率 | - |
+| `last_date` | `str | None` | 否 | `None` | 上次维护日期 | - |
+| `next_date` | `str | None` | 否 | `None` | 下次维护日期 | - |
+| `status` | `str | None` | 否 | `None` | 计划状态 | - |
 
 ### `GenerateHiddenStateRequest`
 
@@ -2072,11 +2137,11 @@ status 必须为 ``_ALARM_VALID_STATUSES`` 之一（service 层二次校验）�
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `model_uri` | `str` | 是 | `-` | 模型 URI | 最小长度: 1; 最大长度: 256 |
-| `source_snapshot_id` | `Optional[str]` | 否 | `None` | 关联实验快照 ID（可选） | 最大长度: 64 |
+| `source_snapshot_id` | `str | None` | 否 | `None` | 关联实验快照 ID（可选） | 最大长度: 64 |
 | `projection_method` | `str` | 是 | `-` |  | - |
 | `projection_dim` | `int` | 否 | `2` | 投影维度（2 或 3，默认 2） | ≥ 2; ≤ 3 |
 | `max_frames` | `int` | 否 | `1000` | 最大帧数（超过则均匀采样） | ≥ 1; ≤ 10000 |
-| `created_by` | `Optional[str]` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
+| `created_by` | `str | None` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
 
 ### `GenerateGateDynamicsRequest`
 
@@ -2085,9 +2150,9 @@ status 必须为 ``_ALARM_VALID_STATUSES`` 之一（service 层二次校验）�
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `model_uri` | `str` | 是 | `-` | 模型 URI | 最小长度: 1; 最大长度: 256 |
-| `source_snapshot_id` | `Optional[str]` | 否 | `None` | 关联实验快照 ID（可选） | 最大长度: 64 |
+| `source_snapshot_id` | `str | None` | 否 | `None` | 关联实验快照 ID（可选） | 最大长度: 64 |
 | `anomaly_sigma` | `float` | 否 | `2.0` | 异常检测阈值（门控值超过 mean ± sigma*std 的帧，默认 2.0） | ≥ 1.0; ≤ 5.0 |
-| `created_by` | `Optional[str]` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
+| `created_by` | `str | None` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
 
 ### `GenerateCounterfactualRequest`
 
@@ -2098,10 +2163,10 @@ status 必须为 ``_ALARM_VALID_STATUSES`` 之一（service 层二次校验）�
 | `model_uri` | `str` | 是 | `-` | 模型 URI | 最小长度: 1; 最大长度: 256 |
 | `base_input` | `dict[str, float]` | 是 | `-` | 基准输入（特征名 → 值），至少 1 个特征 | - |
 | `perturbed_feature` | `str` | 是 | `-` | 被扰动的特征名 | 最小长度: 1; 最大长度: 64 |
-| `perturbation_range` | `Optional[list[float]]` | 否 | `None` | 扰动值序列（如为空则按 perturbation_step 生成） | - |
+| `perturbation_range` | `list[float] | None` | 否 | `None` | 扰动值序列（如为空则按 perturbation_step 生成） | - |
 | `perturbation_step` | `float` | 否 | `0.05` | 扰动步长（相对基准值的比例，默认 0.05 即 5%） | ≥ 0.01; ≤ 0.5 |
-| `source_snapshot_id` | `Optional[str]` | 否 | `None` | 关联实验快照 ID（可选） | 最大长度: 64 |
-| `created_by` | `Optional[str]` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
+| `source_snapshot_id` | `str | None` | 否 | `None` | 关联实验快照 ID（可选） | 最大长度: 64 |
+| `created_by` | `str | None` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
 
 ### `GenerateConfidenceRequest`
 
@@ -2112,8 +2177,8 @@ status 必须为 ``_ALARM_VALID_STATUSES`` 之一（service 层二次校验）�
 | `model_uri` | `str` | 是 | `-` | 模型 URI | 最小长度: 1; 最大长度: 256 |
 | `input_data` | `dict[str, Any]` | 是 | `-` | 输入数据（特征名 → 值） | - |
 | `sample_count` | `int` | 否 | `30` | MC dropout 采样次数（默认 30） | ≥ 5; ≤ 200 |
-| `source_snapshot_id` | `Optional[str]` | 否 | `None` | 关联实验快照 ID（可选） | 最大长度: 64 |
-| `created_by` | `Optional[str]` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
+| `source_snapshot_id` | `str | None` | 否 | `None` | 关联实验快照 ID（可选） | 最大长度: 64 |
+| `created_by` | `str | None` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
 
 ### `CompareExplanationsRequest`
 
@@ -2124,7 +2189,7 @@ status 必须为 ``_ALARM_VALID_STATUSES`` 之一（service 层二次校验）�
 | `base_explanation_id` | `str` | 是 | `-` | 基准解释记录 ID | 最小长度: 1; 最大长度: 64 |
 | `compared_explanation_id` | `str` | 是 | `-` | 对比解释记录 ID | 最小长度: 1; 最大长度: 64 |
 | `comparison_type` | `str` | 是 | `-` |  | - |
-| `created_by` | `Optional[str]` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
+| `created_by` | `str | None` | 否 | `None` | 创建者（user_id 或 plugin_id） | 最大长度: 128 |
 
 ### `MetricDefinition`
 
@@ -2186,10 +2251,10 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 |--------|------|------|--------|------|------|
 | `level` | `str` | 否 | `'task'` | 目标层级: mission/strategic_goal/project/task | - |
 | `status` | `str` | 否 | `'not_started'` | 目标状态: not_started/in_progress/completed/cancelled | - |
-| `id` | `Optional[str]` | 否 | `None` | 目标ID（不传则自动生成） | - |
+| `id` | `str | None` | 否 | `None` | 目标ID（不传则自动生成） | - |
 | `name` | `str` | 否 | `''` | 目标名称 | - |
 | `description` | `str` | 否 | `''` | 目标描述 | - |
-| `parent_id` | `Optional[str]` | 否 | `None` | 父目标ID（非 mission 必填） | - |
+| `parent_id` | `str | None` | 否 | `None` | 父目标ID（非 mission 必填） | - |
 
 ### `CreateApprovalRequest`
 
@@ -2209,7 +2274,7 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `approver_id` | `Optional[str]` | 否 | `None` | 审批人 ID | - |
+| `approver_id` | `str | None` | 否 | `None` | 审批人 ID | - |
 
 ### `MakeDecisionRequest`
 
@@ -2236,7 +2301,7 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `operation_id` | `Optional[str]` | 否 | `None` | 操作 ID（None 自动生成） | - |
+| `operation_id` | `str | None` | 否 | `None` | 操作 ID（None 自动生成） | - |
 | `operation_type` | `str` | 是 | `-` | 操作类型（仅允许字母、数字、下划线、连字符） | 最小长度: 1; 最大长度: 100; 正则: `^[A-Za-z0-9_-]+$` |
 | `context` | `dict` | 是 | `-` | 上下文 | - |
 | `requester_role` | `str` | 否 | `'engineer'` | 请求人角色 | - |
@@ -2260,7 +2325,7 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `emergency_id` | `Optional[str]` | 否 | `None` | 紧急操作 ID | - |
+| `emergency_id` | `str | None` | 否 | `None` | 紧急操作 ID | - |
 
 ### `CreateDelegationRequest`
 
@@ -2284,8 +2349,8 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 | `agent_id` | `str` | 是 | `-` | 执行代理ID | 最小长度: 1 |
 | `schedule` | `str` | 是 | `-` | Cron表达式（分 时 日 月 星期） | 最小长度: 1 |
 | `task_type` | `str` | 是 | `-` | 任务类型（lnn_inference/lnn_training/lnn_analysis） | 最小长度: 1 |
-| `params` | `Dict[str, Any]` | 是 | `-` | 任务参数 | - |
-| `metadata` | `Dict[str, Any]` | 是 | `-` | 任务元数据 | - |
+| `params` | `dict[str, Any]` | 是 | `-` | 任务参数 | - |
+| `metadata` | `dict[str, Any]` | 是 | `-` | 任务元数据 | - |
 | `max_retries` | `int` | 否 | `3` | 最大重试次数 | ≥ 0; ≤ 10 |
 
 ### `TaskResponse`
@@ -2299,12 +2364,12 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 | `schedule` | `str` | 是 | `-` |  | - |
 | `task_type` | `str` | 是 | `-` |  | - |
 | `status` | `str` | 是 | `-` |  | - |
-| `last_run` | `Optional[float]` | 否 | `None` |  | - |
-| `next_run` | `Optional[float]` | 否 | `None` |  | - |
+| `last_run` | `float | None` | 否 | `None` |  | - |
+| `next_run` | `float | None` | 否 | `None` |  | - |
 | `retry_count` | `int` | 否 | `0` |  | - |
 | `max_retries` | `int` | 否 | `3` |  | - |
-| `params` | `Dict[str, Any]` | 否 | `{}` |  | - |
-| `metadata` | `Dict[str, Any]` | 否 | `{}` |  | - |
+| `params` | `dict[str, Any]` | 否 | `{}` |  | - |
+| `metadata` | `dict[str, Any]` | 否 | `{}` |  | - |
 
 ### `BudgetCheckResponse`
 
@@ -2314,9 +2379,9 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 |--------|------|------|--------|------|------|
 | `passed` | `bool` | 是 | `-` |  | - |
 | `status` | `str` | 是 | `-` |  | - |
-| `usages` | `List[Dict[str, Any]]` | 否 | `[]` |  | - |
-| `warnings` | `List[str]` | 否 | `[]` |  | - |
-| `blocked_reasons` | `List[str]` | 否 | `[]` |  | - |
+| `usages` | `list[dict[str, Any]]` | 否 | `[]` |  | - |
+| `warnings` | `list[str]` | 否 | `[]` |  | - |
+| `blocked_reasons` | `list[str]` | 否 | `[]` |  | - |
 
 ### `ExecutionResultResponse`
 
@@ -2327,9 +2392,9 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 | `task_id` | `str` | 是 | `-` |  | - |
 | `status` | `str` | 是 | `-` |  | - |
 | `duration_ms` | `float` | 是 | `-` |  | - |
-| `result_data` | `Optional[Dict[str, Any]]` | 否 | `None` |  | - |
-| `error_message` | `Optional[str]` | 否 | `None` |  | - |
-| `resource_usage` | `Dict[str, Any]` | 否 | `{}` |  | - |
+| `result_data` | `dict[str, Any] | None` | 否 | `None` |  | - |
+| `error_message` | `str | None` | 否 | `None` |  | - |
+| `resource_usage` | `dict[str, Any]` | 否 | `{}` |  | - |
 
 ### `CreateJobRequest`
 
@@ -2339,8 +2404,8 @@ level/status 在端点内会再做枚举校验（GoalLevel / GoalStatus），
 |--------|------|------|--------|------|------|
 | `task_type` | `str` | 是 | `-` | 任务类型（lnn_training/lnn_inference/data_processing 等） | - |
 | `params` | `dict` | 是 | `-` | 任务参数 | - |
-| `name` | `Optional[str]` | 否 | `None` | 任务名称（并入 params.name） | 最大长度: 128 |
-| `idempotency_key` | `Optional[str]` | 否 | `None` | 幂等键 | 最大长度: 128 |
+| `name` | `str | None` | 否 | `None` | 任务名称（并入 params.name） | 最大长度: 128 |
+| `idempotency_key` | `str | None` | 否 | `None` | 幂等键 | 最大长度: 128 |
 
 ### `GraphQueryRequest`
 
@@ -2421,30 +2486,61 @@ Provider 调用测试请求体。
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `code` | `Optional[str]` | 否 | `None` | 物料编码 | 最大长度: 64 |
-| `name` | `Optional[str]` | 否 | `None` | 名称 | 最大长度: 128 |
-| `spec` | `Optional[str]` | 否 | `None` | 规格 | 最大长度: 256 |
-| `category` | `Optional[str]` | 否 | `None` | 分类 | 最大长度: 32 |
-| `quantity` | `Optional[int]` | 否 | `None` | 库存数量 | ≥ 0 |
-| `safe_quantity` | `Optional[int]` | 否 | `None` | 安全库存 | ≥ 0 |
-| `status` | `Optional[str]` | 否 | `None` | 状态 | 最大长度: 16 |
-| `location` | `Optional[str]` | 否 | `None` | 库位 | 最大长度: 64 |
-| `unit` | `Optional[str]` | 否 | `None` | 单位 | 最大长度: 16 |
-| `supplier` | `Optional[str]` | 否 | `None` | 供应商 | 最大长度: 128 |
+| `code` | `str | None` | 否 | `None` | 物料编码 | 最大长度: 64 |
+| `name` | `str | None` | 否 | `None` | 名称 | 最大长度: 128 |
+| `spec` | `str | None` | 否 | `None` | 规格 | 最大长度: 256 |
+| `category` | `str | None` | 否 | `None` | 分类 | 最大长度: 32 |
+| `quantity` | `int | None` | 否 | `None` | 库存数量 | ≥ 0 |
+| `safe_quantity` | `int | None` | 否 | `None` | 安全库存 | ≥ 0 |
+| `status` | `str | None` | 否 | `None` | 状态 | 最大长度: 16 |
+| `location` | `str | None` | 否 | `None` | 库位 | 最大长度: 64 |
+| `unit` | `str | None` | 否 | `None` | 单位 | 最大长度: 16 |
+| `supplier` | `str | None` | 否 | `None` | 供应商 | 最大长度: 128 |
 
 ### `StockInRequest`
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `quantity` | `int` | 是 | `-` | 入库数量 | > 0; ≤ 100000 |
-| `remark` | `Optional[str]` | 否 | `None` | 入库备注 | 最大长度: 200 |
+| `remark` | `str | None` | 否 | `None` | 入库备注 | 最大长度: 200 |
 
 ### `PurchaseRequest`
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `quantity` | `int` | 是 | `-` | 采购数量 | > 0; ≤ 100000 |
-| `supplier` | `Optional[str]` | 否 | `None` | 供应商 | 最大长度: 128 |
+| `supplier` | `str | None` | 否 | `None` | 供应商 | 最大长度: 128 |
+
+### `RecommendRequest`
+
+参数推荐请求。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
+|--------|------|------|--------|------|------|
+| `material` | `str` | 是 | `-` |  | 最小长度: 1; 最大长度: 64 |
+| `machining_type` | `str` | 否 | `'milling'` |  | 最大长度: 32 |
+| `tool_id` | `str` | 否 | `''` |  | 最大长度: 64 |
+| `target` | `OptimizationTarget` | 是 | `-` |  | - |
+
+### `EvaluateRequest`
+
+实测结果评估请求。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
+|--------|------|------|--------|------|------|
+| `cycle_time_s` | `float | None` | 否 | `None` |  | > 0 |
+| `tool_wear_percent` | `float | None` | 否 | `None` |  | ≥ 0; ≤ 100 |
+| `surface_roughness_ra` | `float | None` | 否 | `None` |  | ≥ 0 |
+| `result` | `str` | 否 | `'ok'` |  | 正则: `^(ok|rework|scrap)$` |
+
+### `CompareRequest`
+
+A/B 对比请求。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
+|--------|------|------|--------|------|------|
+| `a_results` | `list[dict]` | 是 | `-` |  | 最小长度: 1 |
+| `b_results` | `list[dict]` | 是 | `-` |  | 最小长度: 1 |
 
 ### `ExecutionRecordRequest`
 
@@ -2452,9 +2548,61 @@ Provider 调用测试请求体。
 |--------|------|------|--------|------|------|
 | `task_id` | `str` | 是 | `-` | Task ID | - |
 | `branch_id` | `str` | 是 | `-` | Branch ID | - |
-| `elements` | `Dict[str, Any]` | 是 | `-` | Execution elements | - |
-| `conditions` | `Dict[str, Any]` | 是 | `-` | Execution conditions | - |
-| `metrics` | `Dict[str, Any]` | 是 | `-` | Execution metrics | - |
+| `elements` | `dict[str, Any]` | 是 | `-` | Execution elements | - |
+| `conditions` | `dict[str, Any]` | 是 | `-` | Execution conditions | - |
+| `metrics` | `dict[str, Any]` | 是 | `-` | Execution metrics | - |
+
+### `TemplateReadRequest`
+
+读取模板内容请求。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
+|--------|------|------|--------|------|------|
+| `dialect_id` | `str` | 是 | `-` | 方言 id | - |
+| `method` | `str` | 是 | `-` | 模板方法名（如 format_header） | - |
+
+### `PreviewRequest`
+
+NC 输出预览请求。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
+|--------|------|------|--------|------|------|
+| `dialect_id` | `str` | 是 | `-` | 方言 id（声明镜像或内置） | - |
+| `program_number` | `int` | 否 | `1000` | 程序号 | ≥ 1; ≤ 9999 |
+| `safe_z_height` | `float` | 否 | `80.0` | 安全高度 | > 0 |
+| `decimal_places` | `int` | 否 | `3` | 小数位数 | ≥ 0; ≤ 6 |
+
+### `CreateDialectRequest`
+
+新建方言请求。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
+|--------|------|------|--------|------|------|
+| `id` | `str` | 是 | `-` | 方言 id（小写字母/数字/下划线） | 正则: `^[a-z0-9_]{3,64}$` |
+| `name` | `str` | 是 | `-` | 可读名称 | 最小长度: 1; 最大长度: 120 |
+| `extends` | `str` | 是 | `-` | 继承的基类方言 id（如 fanuc_0i） | - |
+| `description` | `str` | 否 | `''` | 描述 | 最大长度: 500 |
+| `author` | `str` | 否 | `''` | 作者 | 最大长度: 120 |
+
+### `SaveTemplateRequest`
+
+保存模板内容请求。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
+|--------|------|------|--------|------|------|
+| `dialect_id` | `str` | 是 | `-` | 方言 id | - |
+| `method` | `str` | 是 | `-` | 模板方法名（如 format_header） | - |
+| `content` | `str` | 是 | `-` | 模板内容（Jinja2） | - |
+| `max_length` | `int` | 是 | `-` | 模板最大字节数（防超大文件） | - |
+
+### `SaveParamsRequest`
+
+保存方言参数请求。
+
+| 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
+|--------|------|------|--------|------|------|
+| `dialect_id` | `str` | 是 | `-` | 方言 id | - |
+| `params` | `dict[str, Any]` | 是 | `-` | 方言自己的参数（覆盖继承值） | - |
 
 ### `ExplainProcessRequest`
 
@@ -2466,8 +2614,8 @@ Provider 调用测试请求体。
 | `user_question` | `str` | 否 | `''` | 用户上下文问题 | - |
 | `material` | `str` | 否 | `''` | 工件材料 | - |
 | `blank_size` | `str` | 否 | `''` | 毛坯尺寸描述 | - |
-| `feature_count` | `Optional[int]` | 否 | `None` | 加工特征数（None 自动推断） | ≥ 0 |
-| `session_id` | `Optional[str]` | 否 | `None` | 会话 ID（None 新建） | - |
+| `feature_count` | `int | None` | 否 | `None` | 加工特征数（None 自动推断） | ≥ 0 |
+| `session_id` | `str | None` | 否 | `None` | 会话 ID（None 新建） | - |
 
 ### `ExplainNCRequest`
 
@@ -2478,7 +2626,7 @@ NC 代码解释请求。
 | `nc_code` | `str` | 是 | `-` | NC/G 代码文本 | 最小长度: 1 |
 | `controller_type` | `str` | 否 | `'fanuc'` | 控制器类型（fanuc/siemens/heidenhain 等） | - |
 | `user_question` | `str` | 否 | `''` | 用户上下文问题 | - |
-| `session_id` | `Optional[str]` | 否 | `None` | 会话 ID（None 新建） | - |
+| `session_id` | `str | None` | 否 | `None` | 会话 ID（None 新建） | - |
 
 ### `ChatRequest`
 
@@ -2487,7 +2635,7 @@ NC 代码解释请求。
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `message` | `str` | 是 | `-` | 用户消息 | 最小长度: 1 |
-| `session_id` | `Optional[str]` | 否 | `None` | 会话 ID（None 新建） | - |
+| `session_id` | `str | None` | 否 | `None` | 会话 ID（None 新建） | - |
 
 ### `ProcessStepCreate`
 
@@ -2497,8 +2645,8 @@ NC 代码解释请求。
 | `name` | `str` | 是 | `-` |  | - |
 | `work_center` | `str` | 是 | `-` |  | - |
 | `hours` | `int` | 是 | `-` |  | - |
-| `equipment` | `Optional[str]` | 否 | `None` |  | - |
-| `tooling` | `Optional[str]` | 否 | `None` |  | - |
+| `equipment` | `str | None` | 否 | `None` |  | - |
+| `tooling` | `str | None` | 否 | `None` |  | - |
 
 ### `ProcessRouteCreate`
 
@@ -2507,30 +2655,30 @@ NC 代码解释请求。
 | `name` | `str` | 是 | `-` |  | - |
 | `part_type` | `str` | 是 | `-` |  | - |
 | `status` | `str` | 否 | `'草稿'` |  | - |
-| `description` | `Optional[str]` | 否 | `None` |  | - |
+| `description` | `str | None` | 否 | `None` |  | - |
 | `steps` | `list[ProcessStepCreate]` | 否 | `[]` |  | - |
 
 ### `ProcessRouteUpdate`
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `name` | `Optional[str]` | 否 | `None` |  | - |
-| `part_type` | `Optional[str]` | 否 | `None` |  | - |
-| `status` | `Optional[str]` | 否 | `None` |  | - |
-| `description` | `Optional[str]` | 否 | `None` |  | - |
-| `steps` | `Optional[list[ProcessStepCreate]]` | 否 | `None` |  | - |
+| `name` | `str | None` | 否 | `None` |  | - |
+| `part_type` | `str | None` | 否 | `None` |  | - |
+| `status` | `str | None` | 否 | `None` |  | - |
+| `description` | `str | None` | 否 | `None` |  | - |
+| `steps` | `list[ProcessStepCreate] | None` | 否 | `None` |  | - |
 
 ### `WorkOrderUpdate`
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `product_name` | `Optional[str]` | 否 | `None` |  | - |
-| `planned_qty` | `Optional[int]` | 否 | `None` |  | - |
-| `completed_qty` | `Optional[int]` | 否 | `None` |  | - |
-| `status` | `Optional[str]` | 否 | `None` |  | - |
-| `priority` | `Optional[str]` | 否 | `None` |  | - |
-| `start_date` | `Optional[date]` | 否 | `None` |  | - |
-| `due_date` | `Optional[date]` | 否 | `None` |  | - |
+| `product_name` | `str | None` | 否 | `None` |  | - |
+| `planned_qty` | `int | None` | 否 | `None` |  | - |
+| `completed_qty` | `int | None` | 否 | `None` |  | - |
+| `status` | `str | None` | 否 | `None` |  | - |
+| `priority` | `str | None` | 否 | `None` |  | - |
+| `start_date` | `date | None` | 否 | `None` |  | - |
+| `due_date` | `date | None` | 否 | `None` |  | - |
 
 ### `ExportProjectRequest`
 
@@ -2605,7 +2753,7 @@ NC 代码解释请求。
 | `inspection_type` | `str` | 是 | `-` |  | - |
 | `result` | `str` | 是 | `-` |  | - |
 | `inspector` | `str` | 是 | `-` |  | - |
-| `notes` | `Optional[str]` | 否 | `None` |  | - |
+| `notes` | `str | None` | 否 | `None` |  | - |
 
 ### `QualityAnomalyCreate`
 
@@ -2613,7 +2761,7 @@ NC 代码解释请求。
 |--------|------|------|--------|------|------|
 | `record_id` | `str` | 是 | `-` |  | - |
 | `anomaly_type` | `str` | 是 | `-` |  | - |
-| `description` | `Optional[str]` | 否 | `None` |  | - |
+| `description` | `str | None` | 否 | `None` |  | - |
 | `severity` | `str` | 是 | `-` |  | - |
 
 ### `UpsertDatasetReadmeRequest`
@@ -2624,7 +2772,7 @@ NC 代码解释请求。
 |--------|------|------|--------|------|------|
 | `readme_md` | `str` | 是 | `-` | markdown README 内容 | 最小长度: 1; 最大长度: 200000 |
 | `updated_by` | `str` | 是 | `-` | 最后更新者（user_id 或 plugin_id） | 最小长度: 1; 最大长度: 128 |
-| `version` | `Optional[str]` | 否 | `None` | 版本号（如 1.0.0），不传则更新数据集级 README | - |
+| `version` | `str | None` | 否 | `None` | 版本号（如 1.0.0），不传则更新数据集级 README | - |
 
 ### `RegisterModelRequest`
 
@@ -2650,12 +2798,12 @@ NC 代码解释请求。
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `readme_md` | `Optional[str]` | 否 | `None` | markdown README | 最小长度: 1; 最大长度: 200000 |
-| `tags` | `Optional[list[str]]` | 否 | `None` | 标签数组 | - |
-| `status` | `Optional[str]` | 否 | `None` |  | - |
-| `metrics` | `Optional[dict[str, Any]]` | 否 | `None` | 覆盖当前指标快照（不会追加到 history，请用 POST /metrics 追加） | - |
-| `framework` | `Optional[str]` | 否 | `None` | 框架版本 | 最小长度: 1; 最大长度: 64 |
-| `storage_uri` | `Optional[str]` | 否 | `None` | 模型文件存储位置 | 最小长度: 1; 最大长度: 512 |
+| `readme_md` | `str | None` | 否 | `None` | markdown README | 最小长度: 1; 最大长度: 200000 |
+| `tags` | `list[str] | None` | 否 | `None` | 标签数组 | - |
+| `status` | `str | None` | 否 | `None` |  | - |
+| `metrics` | `dict[str, Any] | None` | 否 | `None` | 覆盖当前指标快照（不会追加到 history，请用 POST /metrics 追加） | - |
+| `framework` | `str | None` | 否 | `None` | 框架版本 | 最小长度: 1; 最大长度: 64 |
+| `storage_uri` | `str | None` | 否 | `None` | 模型文件存储位置 | 最小长度: 1; 最大长度: 512 |
 
 ### `AppendModelMetricsRequest`
 
@@ -2664,7 +2812,7 @@ NC 代码解释请求。
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `metrics` | `dict[str, Any]` | 是 | `-` | 指标字典（如 {'accuracy': 0.95, 'loss': 0.05}） | - |
-| `timestamp` | `Optional[str]` | 否 | `None` | 自定义时间戳（ISO8601），不传则使用服务器当前时间 | - |
+| `timestamp` | `str | None` | 否 | `None` | 自定义时间戳（ISO8601），不传则使用服务器当前时间 | - |
 
 ### `SafetyConstraintsModel`
 
@@ -2688,7 +2836,7 @@ RL 决策请求体.
 | `current_state` | `dict[str, float]` | 是 | `-` | 当前加工状态（字段名见 StateField，至少包含全部 8 个状态字段） | - |
 | `candidate_actions` | `list[dict[str, float]]` | 是 | `-` | 候选动作集（至少 1 个，每个动作含 4 个 delta 字段） | 最小长度: 1 |
 | `optimization_target` | `str` | 是 | `-` |  | - |
-| `safety_constraints` | `Optional[SafetyConstraintsModel]` | 否 | `None` | 安全约束规格（为空则使用默认值） | - |
+| `safety_constraints` | `SafetyConstraintsModel | None` | 否 | `None` | 安全约束规格（为空则使用默认值） | - |
 | `model_uri` | `str` | 否 | `'model://rl_agent/1.0.0'` | RL 策略模型 URI | 最小长度: 1; 最大长度: 256 |
 
 ### `TrainingStartRequestModel`
@@ -2700,7 +2848,7 @@ RL 决策请求体.
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `max_steps` | `int` | 否 | `100000` | 最大训练步数（1000 ~ 1000000，默认 100000） | ≥ 1000; ≤ 1000000 |
-| `seed` | `Optional[int]` | 否 | `None` | 随机种子（为空则使用训练器默认 42） | ≥ 0 |
+| `seed` | `int | None` | 否 | `None` | 随机种子（为空则使用训练器默认 42） | ≥ 0 |
 | `algorithm` | `str` | 是 | `-` |  | - |
 | `optimization_target` | `str` | 是 | `-` |  | - |
 
@@ -2716,10 +2864,10 @@ RL 决策请求体.
 | `sensor_features` | `dict[str, float]` | 是 | `-` | 传感器读数（与 ToolWearPredictor 对齐） | - |
 | `process_context` | `dict[str, Any]` | 是 | `-` | 工艺上下文 | - |
 | `machine_id` | `str` | 否 | `''` | 机床 ID | - |
-| `tool_id` | `Optional[int]` | 否 | `None` | 刀具 ID | - |
+| `tool_id` | `int | None` | 否 | `None` | 刀具 ID | - |
 | `material` | `str` | 否 | `''` | 工件材料 | - |
 | `label` | `str` | 否 | `''` | 可选标签 | - |
-| `sample_id` | `Optional[str]` | 否 | `None` | 自定义样本 ID | - |
+| `sample_id` | `str | None` | 否 | `None` | 自定义样本 ID | - |
 | `metadata` | `dict[str, Any]` | 是 | `-` | 额外元数据 | - |
 
 ### `BatchSamplesRequest`
@@ -2737,10 +2885,10 @@ RL 决策请求体.
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `features` | `list[float]` | 是 | `-` | 9 维查询特征 | 最小长度: 1 |
-| `signal_type` | `Optional[str]` | 否 | `None` | 信号类型过滤 | - |
-| `machine_id` | `Optional[str]` | 否 | `None` | 机床 ID 过滤 | - |
-| `material` | `Optional[str]` | 否 | `None` | 材料过滤 | - |
-| `tool_id` | `Optional[int]` | 否 | `None` | 刀具 ID 过滤 | - |
+| `signal_type` | `str | None` | 否 | `None` | 信号类型过滤 | - |
+| `machine_id` | `str | None` | 否 | `None` | 机床 ID 过滤 | - |
+| `material` | `str | None` | 否 | `None` | 材料过滤 | - |
+| `tool_id` | `int | None` | 否 | `None` | 刀具 ID 过滤 | - |
 | `top_k` | `int` | 否 | `10` | 返回前 K 个 | ≥ 1; ≤ 100 |
 
 ### `FuseRequest`
@@ -2752,7 +2900,7 @@ RL 决策请求体.
 | `sample_ids` | `list[str]` | 是 | `-` | 参与融合的样本 ID 列表（与 samples 二选一） | - |
 | `samples` | `list[SignalSampleRequest]` | 是 | `-` | 直接传入样本数据（与 sample_ids 二选一） | - |
 | `strategy` | `str` | 否 | `'weighted'` | 融合策略: weighted 或 attention | - |
-| `weights` | `Optional[dict[str, float]]` | 否 | `None` | 自定义权重（仅 weighted 策略） | - |
+| `weights` | `dict[str, float] | None` | 否 | `None` | 自定义权重（仅 weighted 策略） | - |
 
 ### `CorrelateWearRequest`
 
@@ -2780,7 +2928,7 @@ RL 决策请求体.
 | `skill_id` | `str` | 是 | `-` | 技能唯一标识符 | - |
 | `content` | `str` | 是 | `-` | 技能 Markdown 完整内容 | - |
 | `level` | `str` | 否 | `'project'` | 技能层级: global/project/agent | - |
-| `sub_id` | `Optional[str]` | 否 | `None` | 项目ID或代理ID | - |
+| `sub_id` | `str | None` | 否 | `None` | 项目ID或代理ID | - |
 
 ### `SkillExportRequest`
 
@@ -2792,9 +2940,9 @@ RL 决策请求体.
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `skill_package` | `Dict[str, Any]` | 是 | `-` | 技能包数据 | - |
+| `skill_package` | `dict[str, Any]` | 是 | `-` | 技能包数据 | - |
 | `level` | `str` | 否 | `'project'` | 导入层级 | - |
-| `sub_id` | `Optional[str]` | 否 | `None` | 项目ID或代理ID | - |
+| `sub_id` | `str | None` | 否 | `None` | 项目ID或代理ID | - |
 
 ### `SkillRatingRequest`
 
@@ -2816,7 +2964,7 @@ RL 决策请求体.
 |--------|------|------|--------|------|------|
 | `skill_id` | `str` | 是 | `-` | 技能ID | - |
 | `target_level` | `str` | 否 | `'project'` | 目标层级 | - |
-| `target_sub_id` | `Optional[str]` | 否 | `None` | 目标项目/代理ID | - |
+| `target_sub_id` | `str | None` | 否 | `None` | 目标项目/代理ID | - |
 
 ### `SkillMarketplaceRateRequest`
 
@@ -2853,9 +3001,9 @@ config 中可包含 ``workflow_spec`` 字段（dict 形式的 WorkflowSpec），
 | `description` | `str` | 否 | `''` | 任务描述 | - |
 | `task_type` | `str` | 否 | `'execution'` | 任务类型 | - |
 | `status` | `str` | 否 | `'pending'` | 任务状态 | - |
-| `assigned_to` | `Optional[str]` | 否 | `None` | 指派给 | - |
-| `parent_goal_id` | `Optional[str]` | 否 | `None` | 父目标 ID | - |
-| `project_id` | `Optional[str]` | 否 | `None` | 项目 ID | - |
+| `assigned_to` | `str | None` | 否 | `None` | 指派给 | - |
+| `parent_goal_id` | `str | None` | 否 | `None` | 父目标 ID | - |
+| `project_id` | `str | None` | 否 | `None` | 项目 ID | - |
 | `required_gpu_memory` | `float` | 否 | `0.0` | 所需 GPU 显存 | - |
 | `blockers` | `Union[list[str], str]` | 是 | `-` | 阻塞依赖（列表或 JSON 字符串） | - |
 | `priority` | `int` | 否 | `3` | 优先级 1-5 | ≥ 1; ≤ 5 |
@@ -2948,7 +3096,7 @@ config 中可包含 ``workflow_spec`` 字段（dict 形式的 WorkflowSpec），
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `name` | `str` | 是 | `-` |  | - |
-| `base_branch` | `Optional[str]` | 否 | `None` |  | - |
+| `base_branch` | `str | None` | 否 | `None` |  | - |
 | `data` | `dict[str, Any]` | 是 | `-` |  | - |
 | `metadata` | `dict[str, Any]` | 是 | `-` |  | - |
 
@@ -2970,15 +3118,15 @@ config 中可包含 ``workflow_spec`` 字段（dict 形式的 WorkflowSpec），
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `metrics` | `Dict[str, Any]` | 是 | `-` | Metrics data | - |
+| `metrics` | `dict[str, Any]` | 是 | `-` | Metrics data | - |
 
 ### `CreateSuggestionRequest`
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `trigger_type` | `str` | 是 | `-` | Trigger type | - |
-| `evidence` | `Dict[str, Any]` | 是 | `-` | Evidence data | - |
-| `proposed_change` | `Dict[str, Any]` | 是 | `-` | Proposed change | - |
+| `evidence` | `dict[str, Any]` | 是 | `-` | Evidence data | - |
+| `proposed_change` | `dict[str, Any]` | 是 | `-` | Proposed change | - |
 
 ### `ApplySuggestionRequest`
 
@@ -3014,8 +3162,8 @@ config 中可包含 ``workflow_spec`` 字段（dict 形式的 WorkflowSpec），
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `template_data` | `Dict[str, Any]` | 是 | `-` | Template data to import | - |
-| `target_branch` | `Optional[str]` | 否 | `None` | Target branch name | - |
+| `template_data` | `dict[str, Any]` | 是 | `-` | Template data to import | - |
+| `target_branch` | `str | None` | 否 | `None` | Target branch name | - |
 | `adapt_params` | `bool` | 否 | `True` | Auto-adapt parameters | - |
 
 ### `CreateNotificationRequest`
@@ -3023,7 +3171,7 @@ config 中可包含 ``workflow_spec`` 字段（dict 形式的 WorkflowSpec），
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `project_id` | `str` | 是 | `-` | Project ID | - |
-| `suggestion` | `Dict[str, Any]` | 是 | `-` | Suggestion data | - |
+| `suggestion` | `dict[str, Any]` | 是 | `-` | Suggestion data | - |
 | `priority` | `str` | 否 | `'optional'` | Priority: optional/recommended/critical | - |
 
 ### `ScanUpdatesRequest`
@@ -3031,7 +3179,7 @@ config 中可包含 ``workflow_spec`` 字段（dict 形式的 WorkflowSpec），
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `project_id` | `str` | 是 | `-` | Project ID | - |
-| `suggestions` | `List[Dict[str, Any]]` | 是 | `-` | List of suggestions to check | - |
+| `suggestions` | `list[dict[str, Any]]` | 是 | `-` | List of suggestions to check | - |
 
 ### `ToolCreate`
 
@@ -3041,36 +3189,36 @@ config 中可包含 ``workflow_spec`` 字段（dict 形式的 WorkflowSpec），
 | `name` | `str` | 是 | `-` | 刀具名称 | 最小长度: 1; 最大长度: 128 |
 | `type` | `str` | 是 | `-` | 刀具类型: end_mill/ball_mill/drill/reamer/tap/insert/grooving/threading | 最大长度: 32 |
 | `diameter` | `float` | 是 | `-` | 刀具直径 (mm) | > 0 |
-| `length` | `Optional[float]` | 否 | `None` | 刀具长度 (mm) | > 0 |
-| `flute_count` | `Optional[int]` | 否 | `2` | 刃数 | ≥ 1 |
-| `material` | `Optional[str]` | 否 | `None` | 刀具材料: carbide/hss/ceramic/cbn/diamond | 最大长度: 32 |
-| `coating` | `Optional[str]` | 否 | `None` | 涂层类型: TiN/TiAlN/AlCrN/DLC/None | 最大长度: 32 |
-| `max_rpm` | `Optional[float]` | 否 | `None` | 最大允许转速 (RPM) | > 0 |
-| `max_feed` | `Optional[float]` | 否 | `None` | 最大允许进给 (mm/min) | > 0 |
-| `vendor` | `Optional[str]` | 否 | `None` | 供应商 | 最大长度: 128 |
-| `cost` | `Optional[float]` | 否 | `None` | 采购成本 | ≥ 0 |
-| `notes` | `Optional[str]` | 否 | `None` | 备注 | - |
+| `length` | `float | None` | 否 | `None` | 刀具长度 (mm) | > 0 |
+| `flute_count` | `int | None` | 否 | `2` | 刃数 | ≥ 1 |
+| `material` | `str | None` | 否 | `None` | 刀具材料: carbide/hss/ceramic/cbn/diamond | 最大长度: 32 |
+| `coating` | `str | None` | 否 | `None` | 涂层类型: TiN/TiAlN/AlCrN/DLC/None | 最大长度: 32 |
+| `max_rpm` | `float | None` | 否 | `None` | 最大允许转速 (RPM) | > 0 |
+| `max_feed` | `float | None` | 否 | `None` | 最大允许进给 (mm/min) | > 0 |
+| `vendor` | `str | None` | 否 | `None` | 供应商 | 最大长度: 128 |
+| `cost` | `float | None` | 否 | `None` | 采购成本 | ≥ 0 |
+| `notes` | `str | None` | 否 | `None` | 备注 | - |
 
 ### `ToolUpdate`
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `code` | `Optional[str]` | 否 | `None` | 刀具编码 | 最大长度: 32 |
-| `name` | `Optional[str]` | 否 | `None` | 刀具名称 | 最大长度: 128 |
-| `type` | `Optional[str]` | 否 | `None` | 刀具类型 | 最大长度: 32 |
-| `diameter` | `Optional[float]` | 否 | `None` | 刀具直径 (mm) | > 0 |
-| `length` | `Optional[float]` | 否 | `None` | 刀具长度 (mm) | > 0 |
-| `flute_count` | `Optional[int]` | 否 | `None` | 刃数 | ≥ 1 |
-| `material` | `Optional[str]` | 否 | `None` | 刀具材料 | 最大长度: 32 |
-| `coating` | `Optional[str]` | 否 | `None` | 涂层类型 | 最大长度: 32 |
-| `max_rpm` | `Optional[float]` | 否 | `None` | 最大允许转速 (RPM) | > 0 |
-| `max_feed` | `Optional[float]` | 否 | `None` | 最大允许进给 (mm/min) | > 0 |
-| `usage_time` | `Optional[float]` | 否 | `None` | 累计使用时间 (分钟) | ≥ 0 |
-| `wear_amount` | `Optional[float]` | 否 | `None` | 磨损量 (mm) | ≥ 0 |
-| `status` | `Optional[str]` | 否 | `None` | 刀具状态: active/worn/broken/maintenance | 最大长度: 16 |
-| `vendor` | `Optional[str]` | 否 | `None` | 供应商 | 最大长度: 128 |
-| `cost` | `Optional[float]` | 否 | `None` | 采购成本 | ≥ 0 |
-| `notes` | `Optional[str]` | 否 | `None` | 备注 | - |
+| `code` | `str | None` | 否 | `None` | 刀具编码 | 最大长度: 32 |
+| `name` | `str | None` | 否 | `None` | 刀具名称 | 最大长度: 128 |
+| `type` | `str | None` | 否 | `None` | 刀具类型 | 最大长度: 32 |
+| `diameter` | `float | None` | 否 | `None` | 刀具直径 (mm) | > 0 |
+| `length` | `float | None` | 否 | `None` | 刀具长度 (mm) | > 0 |
+| `flute_count` | `int | None` | 否 | `None` | 刃数 | ≥ 1 |
+| `material` | `str | None` | 否 | `None` | 刀具材料 | 最大长度: 32 |
+| `coating` | `str | None` | 否 | `None` | 涂层类型 | 最大长度: 32 |
+| `max_rpm` | `float | None` | 否 | `None` | 最大允许转速 (RPM) | > 0 |
+| `max_feed` | `float | None` | 否 | `None` | 最大允许进给 (mm/min) | > 0 |
+| `usage_time` | `float | None` | 否 | `None` | 累计使用时间 (分钟) | ≥ 0 |
+| `wear_amount` | `float | None` | 否 | `None` | 磨损量 (mm) | ≥ 0 |
+| `status` | `str | None` | 否 | `None` | 刀具状态: active/worn/broken/maintenance | 最大长度: 16 |
+| `vendor` | `str | None` | 否 | `None` | 供应商 | 最大长度: 128 |
+| `cost` | `float | None` | 否 | `None` | 采购成本 | ≥ 0 |
+| `notes` | `str | None` | 否 | `None` | 备注 | - |
 
 ### `ToolWearUpdate`
 
@@ -3205,8 +3353,8 @@ WorkflowSpec 的 API 入参模型。
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `spec` | `WorkflowSpecModel` | 是 | `-` |  | - |
-| `inputs` | `Optional[dict[str, ArtifactModel]]` | 否 | `None` |  | - |
-| `owner_id` | `Optional[str]` | 否 | `None` |  | - |
+| `inputs` | `dict[str, ArtifactModel] | None` | 否 | `None` |  | - |
+| `owner_id` | `str | None` | 否 | `None` |  | - |
 
 ### `ResumeRequestModel`
 
@@ -3215,8 +3363,8 @@ WorkflowSpec 的 API 入参模型。
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `spec` | `WorkflowSpecModel` | 是 | `-` |  | - |
-| `inputs` | `Optional[dict[str, ArtifactModel]]` | 否 | `None` |  | - |
-| `owner_id` | `Optional[str]` | 否 | `None` |  | - |
+| `inputs` | `dict[str, ArtifactModel] | None` | 否 | `None` |  | - |
+| `owner_id` | `str | None` | 否 | `None` |  | - |
 
 ### `WorkflowSpecModel`
 
@@ -3269,7 +3417,7 @@ version / description / author / license / spec 等字段。
 | `candidate_action` | `dict[str, float]` | 是 | `-` | 候选切削参数调整量（字段名见 ActionField，4 个 delta 字段） | - |
 | `horizon` | `int` | 是 | `-` |  | - |
 | `model_uri` | `str` | 否 | `'model://world_model/1.0.0'` | 世界模型 URI | 最小长度: 1; 最大长度: 256 |
-| `unified_state` | `Optional[dict[str, Any]]` | 否 | `None` | ADR-020 思路 1 融合模式可选输入。包含几何特征（ADR-007）与动力学状态（ADR-013）的统一状态字典。提供时走融合路径（GeometryEncoder/DynamicsEncoder/FusionLayer）。为 None 时走原始 state_dim 字段拼接路径（向后兼容）。需配合环境变量 WORLD_MODEL_USE_FUSION=true 使用 | - |
+| `unified_state` | `dict[str, Any] | None` | 否 | `None` | ADR-020 思路 1 融合模式可选输入。包含几何特征（ADR-007）与动力学状态（ADR-013）的统一状态字典。提供时走融合路径（GeometryEncoder/DynamicsEncoder/FusionLayer）。为 None 时走原始 state_dim 字段拼接路径（向后兼容）。需配合环境变量 WORLD_MODEL_USE_FUSION=true 使用 | - |
 
 ### `TaskCreateRequest`
 
@@ -3283,14 +3431,14 @@ version / description / author / license / spec 等字段。
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `source_gcode_generation_task_id` | `Optional[str]` | 否 | `None` | 上游 gcode_generation 任务 ID（可选） | - |
-| `source_gcode_report_path` | `Optional[str]` | 否 | `None` | 阶段 6 G 代码报告 JSON 路径 | - |
-| `source_gcode_file_path` | `Optional[str]` | 否 | `None` | 阶段 6 生成的 G 代码文件路径 | - |
+| `source_gcode_generation_task_id` | `str | None` | 否 | `None` | 上游 gcode_generation 任务 ID（可选） | - |
+| `source_gcode_report_path` | `str | None` | 否 | `None` | 阶段 6 G 代码报告 JSON 路径 | - |
+| `source_gcode_file_path` | `str | None` | 否 | `None` | 阶段 6 生成的 G 代码文件路径 | - |
 | `controller_type` | `str` | 否 | `'fanuc'` | 控制器类型（fanuc / siemens / heidenhain / haas / okuma / mazak / ...） | - |
-| `material_name` | `Optional[str]` | 否 | `None` | 材料名称（默认从上游 ChatterReport 推断） | - |
-| `safety_z_mm` | `Optional[float]` | 否 | `None` | 安全 Z 平面高度（默认从上游 G 代码报告推断） | - |
-| `stock_top_z_mm` | `Optional[float]` | 否 | `None` | 毛坯顶面 Z 高度（默认从上游 G 代码报告推断） | - |
-| `cam_backend` | `Optional[str]` | 否 | `None` | CAM 后端名称（默认自动检测或使用 PyCAM） | - |
+| `material_name` | `str | None` | 否 | `None` | 材料名称（默认从上游 ChatterReport 推断） | - |
+| `safety_z_mm` | `float | None` | 否 | `None` | 安全 Z 平面高度（默认从上游 G 代码报告推断） | - |
+| `stock_top_z_mm` | `float | None` | 否 | `None` | 毛坯顶面 Z 高度（默认从上游 G 代码报告推断） | - |
+| `cam_backend` | `str | None` | 否 | `None` | CAM 后端名称（默认自动检测或使用 PyCAM） | - |
 
 ### `TaskCreateResponse`
 
@@ -3338,7 +3486,7 @@ version / description / author / license / spec 等字段。
 | `feature_type` | `str` | 是 | `-` |  | - |
 | `gcode_segment_ids` | `list[str]` | 是 | `-` |  | - |
 | `nc_file` | `list[str]` | 是 | `-` |  | - |
-| `internal_error_info` | `Optional[dict[str, Any]]` | 否 | `None` |  | - |
+| `internal_error_info` | `dict[str, Any] | None` | 否 | `None` |  | - |
 | `out_of_gouge` | `bool` | 否 | `True` |  | - |
 | `gouge_details` | `list[dict[str, Any]]` | 是 | `-` |  | - |
 | `out_of_collision` | `bool` | 否 | `True` |  | - |
@@ -3350,7 +3498,7 @@ version / description / author / license / spec 等字段。
 | `safety_z_ok` | `bool` | 否 | `True` |  | - |
 | `safety_z_details` | `list[dict[str, Any]]` | 是 | `-` |  | - |
 | `review_status` | `str` | 否 | `'pending'` |  | - |
-| `corrected_params` | `Optional[dict[str, Any]]` | 否 | `None` |  | - |
+| `corrected_params` | `dict[str, Any] | None` | 否 | `None` |  | - |
 | `review_notes` | `str` | 否 | `''` |  | - |
 | `reviewer` | `str` | 否 | `''` |  | - |
 
@@ -3375,7 +3523,7 @@ version / description / author / license / spec 等字段。
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
 | `review_status` | `str` | 是 | `-` | 审核结果：confirmed / rejected / edited / reviewed | - |
-| `corrected_params` | `Optional[dict[str, Any]]` | 否 | `None` | 修正后的参数（review_status=edited 时需提供） | - |
+| `corrected_params` | `dict[str, Any] | None` | 否 | `None` | 修正后的参数（review_status=edited 时需提供） | - |
 | `notes` | `str` | 否 | `''` | 审核批注 | - |
 
 ### `ReviewResponse`
@@ -3386,7 +3534,7 @@ version / description / author / license / spec 等字段。
 |--------|------|------|--------|------|------|
 | `feature_id` | `str` | 是 | `-` |  | - |
 | `review_status` | `str` | 是 | `-` |  | - |
-| `corrected_params` | `Optional[dict[str, Any]]` | 否 | `None` |  | - |
+| `corrected_params` | `dict[str, Any] | None` | 否 | `None` |  | - |
 | `message` | `str` | 是 | `-` |  | - |
 
 ### `ConfirmTaskResponse`
@@ -3397,8 +3545,8 @@ version / description / author / license / spec 等字段。
 |--------|------|------|--------|------|------|
 | `task_id` | `str` | 是 | `-` |  | - |
 | `status` | `str` | 是 | `-` |  | - |
-| `cam_report_path` | `Optional[str]` | 否 | `None` |  | - |
-| `internal_report_path` | `Optional[str]` | 否 | `None` |  | - |
+| `cam_report_path` | `str | None` | 否 | `None` |  | - |
+| `internal_report_path` | `str | None` | 否 | `None` |  | - |
 | `message` | `str` | 是 | `-` |  | - |
 
 ### `TaskCreateRequest`
@@ -4634,36 +4782,6 @@ FEM 求解请求体（标准简支梁三点弯曲场景）。
 | `beam_width` | `float` | 否 | `20.0` | 试件宽度（mm） | > 0; ≤ 1000 |
 | `beam_height` | `float` | 否 | `20.0` | 试件高度（mm） | > 0; ≤ 1000 |
 | `load_force` | `float` | 否 | `5000.0` | 集中载荷（N） | > 0; ≤ 1000000000.0 |
-| `tool_diameter` | `float` | 否 | `20.0` | Tool diameter in mm. | ≥ 0.5; ≤ 300.0 |
-| `slot_width` | `float` | 否 | `10.0` | Slot width in mm. | ≥ 0.1; ≤ 500.0 |
-| `material` | `str` | 否 | `'45 steel'` | Workpiece material. | - |
-| `operation` | `str` | 否 | `'slot milling'` | Machining operation type. | - |
-| `nc_code` | `str` | 否 | `''` | G-code text content for toolpath visualization. | - |
-| `format` | `str` | 否 | `'gif'` | Output format: gif or mp4. | 正则: `^(gif|mp4)$` |
-| `voxel_size` | `float` | 否 | `1.0` | Voxel resolution in mm. | ≥ 0.1; ≤ 10.0 |
-| `tool_diameter` | `float` | 否 | `10.0` | Tool diameter in mm. | ≥ 0.5; ≤ 300.0 |
-| `tool_length` | `float` | 否 | `50.0` | Tool cutting length in mm. | ≥ 1.0; ≤ 500.0 |
-| `tool_type` | `str` | 否 | `'flat'` | Tool type. | 正则: `^(flat|ball|drill)$` |
-| `design_stl_path` | `str` | 是 | `-` | 设计模型 STL 路径（须位于允许目录内）。 | - |
-| `actual_stl_path` | `str` | 是 | `-` | 仿真结果 STL 路径（须位于允许目录内）。 | - |
-| `voxel_size` | `float` | 否 | `0.5` | 体素分辨率（mm），越小越精确但越慢。 | ≥ 0.1; ≤ 5.0 |
-| `export_diff_stl` | `bool` | 否 | `True` | 是否导出偏差可视化 STL。 | - |
-| `gouge_warn_ratio` | `float | None` | 否 | `None` | 过切告警阈值（体积占比），留空使用默认 0.0001。 | ≥ 0.0; ≤ 1.0 |
-| `gouge_reject_ratio` | `float | None` | 否 | `None` | 过切拒收阈值（体积占比），留空使用默认 0.001。 | ≥ 0.0; ≤ 1.0 |
-| `leftover_warn_ratio` | `float | None` | 否 | `None` | 残料告警阈值（体积占比），留空使用默认 0.01。 | ≥ 0.0; ≤ 1.0 |
-| `leftover_reject_ratio` | `float | None` | 否 | `None` | 残料拒收阈值（体积占比），留空使用默认 0.05。 | ≥ 0.0; ≤ 1.0 |
-| `material` | `str` | 否 | `'steel45'` | 材料名称 | 最大长度: 64 |
-| `elastic_modulus` | `float` | 否 | `210.0` | 弹性模量（GPa） | > 0; ≤ 1000 |
-| `poisson_ratio` | `float` | 否 | `0.3` | 泊松比 | > 0; < 0.5 |
-| `density` | `float` | 否 | `7850.0` | 密度（kg/m3） | > 0 |
-| `yield_strength` | `float` | 否 | `355.0` | 屈服强度（MPa） | > 0; ≤ 100000 |
-| `mesh_type` | `str` | 否 | `'tetrahedral'` | 网格类型 | 最大长度: 32 |
-| `element_size` | `float` | 否 | `2.0` | 网格尺寸（mm） | > 0; ≤ 100 |
-| `adaptive_refinement` | `bool` | 否 | `True` | 是否启用自适应细化 | - |
-| `beam_length` | `float` | 否 | `100.0` | 试件长度（mm） | > 0; ≤ 10000 |
-| `beam_width` | `float` | 否 | `20.0` | 试件宽度（mm） | > 0; ≤ 1000 |
-| `beam_height` | `float` | 否 | `20.0` | 试件高度（mm） | > 0; ≤ 1000 |
-| `load_force` | `float` | 否 | `5000.0` | 集中载荷（N） | > 0; ≤ 1000000000.0 |
 
 ### `SLDRequest`
 
@@ -4677,8 +4795,8 @@ FEM 求解请求体（标准简支梁三点弯曲场景）。
 | `speed_max` | `float` | 否 | `10000.0` | 终止转速 rpm | > 0 |
 | `num_points` | `int` | 否 | `100` | 每叶点数 | ≥ 20; ≤ 500 |
 | `num_lobes` | `int` | 否 | `5` | 叶图数 | ≥ 1; ≤ 10 |
-| `custom_modal` | `Optional[dict]` | 否 | `None` | 自定义模态参数，覆盖机床默认值。字段：stiffness_z, damping_ratio, natural_freq, modal_mass | - |
-| `actual_axial_depth` | `Optional[float]` | 否 | `None` | 实际加工轴向切深 (mm)，用于精确计算不稳定转速区间 | > 0 |
+| `custom_modal` | `dict | None` | 否 | `None` | 自定义模态参数，覆盖机床默认值。字段：stiffness_z, damping_ratio, natural_freq, modal_mass | - |
+| `actual_axial_depth` | `float | None` | 否 | `None` | 实际加工轴向切深 (mm)，用于精确计算不稳定转速区间 | > 0 |
 
 ### `ModalIdentificationRequest`
 
@@ -4700,7 +4818,7 @@ FEM 求解请求体（标准简支梁三点弯曲场景）。
 | `spindle_rpm` | `float` | 是 | `-` | 主轴转速 rpm | > 0 |
 | `machine_id` | `str` | 否 | `'vmc_850'` |  | - |
 | `tool_id` | `str` | 否 | `'endmill_d10'` |  | - |
-| `axial_depth` | `Optional[float]` | 否 | `None` | 实际轴向切深 mm，用于判定稳定性 | > 0 |
+| `axial_depth` | `float | None` | 否 | `None` | 实际轴向切深 mm，用于判定稳定性 | > 0 |
 
 ### `AdaptiveSolveSegmentRequest`
 
@@ -4721,12 +4839,12 @@ FEM 求解请求体（标准简支梁三点弯曲场景）。
 | `max_feed` | `float` | 是 | `-` | 机床最大进给 mm/min | > 0 |
 | `min_feed` | `float` | 否 | `100.0` | 机床最小进给 mm/min | > 0 |
 | `spindle_rpm` | `float` | 否 | `6000.0` | 主轴转速 rpm | > 0 |
-| `stability_limit_ap` | `Optional[float]` | 否 | `None` | 稳定性叶图极限切深 mm（可选约束） | > 0 |
-| `kc1_1` | `Optional[float]` | 否 | `None` | 比切削力 N/mm²（覆盖材料库） | > 0 |
-| `mc` | `Optional[float]` | 否 | `None` | 切削力指数（覆盖材料库） | > 0 |
+| `stability_limit_ap` | `float | None` | 否 | `None` | 稳定性叶图极限切深 mm（可选约束） | > 0 |
+| `kc1_1` | `float | None` | 否 | `None` | 比切削力 N/mm²（覆盖材料库） | > 0 |
+| `mc` | `float | None` | 否 | `None` | 切削力指数（覆盖材料库） | > 0 |
 | `safety_margin` | `float` | 否 | `0.85` | 安全裕度 (0,1] | > 0; ≤ 1.0 |
-| `material_remainder_mm` | `Optional[float]` | 否 | `None` | 该段剩余材料厚度 mm（可选约束） | > 0 |
-| `force_override_n` | `Optional[float]` | 否 | `None` | 该段目标力覆盖 N（可选） | > 0 |
+| `material_remainder_mm` | `float | None` | 否 | `None` | 该段剩余材料厚度 mm（可选约束） | > 0 |
+| `force_override_n` | `float | None` | 否 | `None` | 该段目标力覆盖 N（可选） | > 0 |
 
 ### `KienzleComputeRequest`
 
@@ -4737,8 +4855,8 @@ Kienzle 正向切削力计算请求。
 | `material` | `str` | 否 | `'45steel'` |  | - |
 | `width` | `float` | 否 | `10.0` | 切削宽度 b mm | > 0 |
 | `chip_thickness` | `float` | 否 | `0.1` | 未变形切屑厚度 h mm | > 0 |
-| `kc1_1` | `Optional[float]` | 否 | `None` |  | > 0 |
-| `mc` | `Optional[float]` | 否 | `None` |  | > 0 |
+| `kc1_1` | `float | None` | 否 | `None` |  | > 0 |
+| `mc` | `float | None` | 否 | `None` |  | > 0 |
 
 ### `ProjectMetadataRequest`
 
@@ -4796,7 +4914,7 @@ Kienzle 正向切削力计算请求。
 | `parameter` | `str` | 是 | `-` |  | - |
 | `operator` | `str` | 是 | `-` |  | - |
 | `value` | `str` | 是 | `-` |  | - |
-| `unit` | `Optional[str]` | 否 | `None` |  | - |
+| `unit` | `str | None` | 否 | `None` |  | - |
 
 ### `ResultItem`
 
@@ -4805,7 +4923,7 @@ Kienzle 正向切削力计算请求。
 | `parameter` | `str` | 是 | `-` |  | - |
 | `operator` | `str` | 是 | `-` |  | - |
 | `value` | `str` | 是 | `-` |  | - |
-| `unit` | `Optional[str]` | 否 | `None` |  | - |
+| `unit` | `str | None` | 否 | `None` |  | - |
 
 ### `RuleCreateRequest`
 
@@ -4813,8 +4931,8 @@ Kienzle 正向切削力计算请求。
 |--------|------|------|--------|------|------|
 | `name` | `str` | 是 | `-` |  | - |
 | `description` | `str` | 否 | `''` |  | - |
-| `group_id` | `Optional[int]` | 否 | `None` |  | - |
-| `conditions` | `List[ConditionItem]` | 是 | `-` |  | - |
+| `group_id` | `int | None` | 否 | `None` |  | - |
+| `conditions` | `list[ConditionItem]` | 是 | `-` |  | - |
 | `logic_operator` | `str` | 否 | `'AND'` |  | - |
 | `result` | `ResultItem` | 是 | `-` |  | - |
 | `status` | `str` | 否 | `'active'` |  | - |
@@ -4824,14 +4942,14 @@ Kienzle 正向切削力计算请求。
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `name` | `Optional[str]` | 否 | `None` |  | - |
-| `description` | `Optional[str]` | 否 | `None` |  | - |
-| `group_id` | `Optional[int]` | 否 | `None` |  | - |
-| `conditions` | `Optional[List[ConditionItem]]` | 否 | `None` |  | - |
-| `logic_operator` | `Optional[str]` | 否 | `None` |  | - |
-| `result` | `Optional[ResultItem]` | 否 | `None` |  | - |
-| `status` | `Optional[str]` | 否 | `None` |  | - |
-| `priority` | `Optional[int]` | 否 | `None` |  | - |
+| `name` | `str | None` | 否 | `None` |  | - |
+| `description` | `str | None` | 否 | `None` |  | - |
+| `group_id` | `int | None` | 否 | `None` |  | - |
+| `conditions` | `list[ConditionItem] | None` | 否 | `None` |  | - |
+| `logic_operator` | `str | None` | 否 | `None` |  | - |
+| `result` | `ResultItem | None` | 否 | `None` |  | - |
+| `status` | `str | None` | 否 | `None` |  | - |
+| `priority` | `int | None` | 否 | `None` |  | - |
 
 ### `GroupCreateRequest`
 
@@ -4844,8 +4962,8 @@ Kienzle 正向切削力计算请求。
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 | 约束 |
 |--------|------|------|--------|------|------|
-| `name` | `Optional[str]` | 否 | `None` |  | - |
-| `description` | `Optional[str]` | 否 | `None` |  | - |
+| `name` | `str | None` | 否 | `None` |  | - |
+| `description` | `str | None` | 否 | `None` |  | - |
 
 
 ---

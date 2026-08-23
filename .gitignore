@@ -389,6 +389,10 @@ mypy_gg*.txt
 /engineering/python/data/chroma_db/
 /engineering/python/.lnn_*
 /engineering/python/_probe_*.py
+/engineering/python/_e2e_*.py
+
+# 运行时桥接数据（usage_logs/error_samples 等动态产物，不入库）
+/engineering/python/data/bridge/
 
 # mypy 缓存异常膨胀目录（2026-08-18 清理：Temp/ 曾达 25.5GB、Temp2/ 221MB；
 # 由 MYPY_CACHE_DIR 指向该处生成，应统一改用 .mypy_cache）
