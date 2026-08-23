@@ -23,13 +23,13 @@
     @import="handleImportToProject"
   >
     <!-- 预览插槽：DXF 预览 -->
-    <template #preview="{ parseResult, featureResult }">
+    <template #preview="{ parseResult }">
       <div class="dxf-preview">
         <DxfParseStats
-          :parse-result="parseResult"
+          :parse-result="parseResult as DxfParseResponse"
           :features-count="featuresCount"
         />
-        <DxfPreview :parse-result="parseResult" />
+        <DxfPreview :parse-result="parseResult as DxfParseResponse" />
       </div>
     </template>
 
@@ -53,7 +53,8 @@
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
-import { useDxfImportStore, type ImportResult } from '@/stores/dxfImport'
+import { useDxfImportStore } from '@/stores/dxfImport'
+import type { DxfParseResponse } from '@/types'
 import BaseImportDialog from './BaseImportDialog.vue'
 import DxfParseStats from '../dxf_import/DxfParseStats.vue'
 import DxfPreview from '../dxf_import/DxfPreview.vue'
@@ -84,17 +85,17 @@ async function handleFileSelected(file: File) {
 }
 
 /** 导入成功处理 */
-function handleImportSuccess(parseResult: ImportResult) {
+function handleImportSuccess(_parseResult: unknown) {
   // 保留通用处理，可在扩展中继续处理
 }
 
 /** 导入错误处理 */
-function handleImportError(error: Error) {
+function handleImportError(_error: Error) {
   // 保留通用处理，可在扩展中继续处理
 }
 
 /** 导入到工程 */
-async function handleImportToProject(parseResult: ImportResult) {
+async function handleImportToProject(_parseResult: unknown) {
   importing.value = true
   try {
     const { useProjectStore } = await import('@/stores/project')

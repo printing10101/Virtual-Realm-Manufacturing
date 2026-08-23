@@ -60,7 +60,7 @@ import { useTasksStore } from '@/stores/tasks'
 import WelcomeBanner from '@/components/home/WelcomeBanner.vue'
 import TimeRangeFilter from '@/components/home/TimeRangeFilter.vue'
 import KpiCards from '@/components/home/KpiCards.vue'
-import type { KpiCard } from '@/components/home/KpiCards.vue'
+import type { KPICard } from '@/components/home/KpiCards.vue'
 import ProductionProgressTable from '@/components/home/ProductionProgressTable.vue'
 import type { WorkOrder } from '@/components/home/ProductionProgressTable.vue'
 import RealTimeAlerts from '@/components/home/RealTimeAlerts.vue'
@@ -257,7 +257,7 @@ const activeRange = ref('today')
 // KPI Cards — 从生产仪表板 API 获取真实数据
 // ---------------------------------------------------------------------------
 
-const kpiCards = computed<KpiCard[]>(() => {
+const kpiCards = computed<KPICard[]>(() => {
   const tasks = displayTasks.value
   const stats = tasksStore.stats
   const pd = productionData.value

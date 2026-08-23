@@ -216,7 +216,7 @@ interface StatsCard {
   label: string
   value: string | number
   icon: Component
-  type: string
+  type: 'primary' | 'success' | 'danger' | 'warning' | 'info' | 'default'
 }
 
 // ========================= 状态 =========================

@@ -9,7 +9,7 @@
 -->
 <template>
   <StatsCards
-    :cards="kpiCards"
+    :cards="cards"
     :auto-wrap="true"
     :size="size"
   />
@@ -47,7 +47,7 @@ const cards = computed(() =>
     value: kpi.value,
     icon: kpi.icon as Component,
     subLabel: `${kpi.isPositive ? '↑' : '↓'} ${kpi.change}`,
-    type: 'default', // 由自定义样式控制
+    type: 'default' as const, // 由自定义样式控制
     customStyle: {
       '--stat-card-icon-size': '24px',
       '--stat-card-icon-bg': kpi.iconBg,

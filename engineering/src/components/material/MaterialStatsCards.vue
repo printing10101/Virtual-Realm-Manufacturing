@@ -14,10 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import type { Component } from 'vue'
-import { Box, Warning, Document, FolderAdded } from '@element-plus/icons-vue'
 import StatsCards from '@/components/base/StatsCards.vue'
 
 export interface MaterialStatsCard {
@@ -33,9 +30,7 @@ interface Props {
   size?: 'small' | 'default' | 'large'
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   size: 'default',
 })
-
-const { t } = useI18n()
 </script>

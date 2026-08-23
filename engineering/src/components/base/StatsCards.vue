@@ -126,7 +126,7 @@ const emit = defineEmits<{
 }>()
 
 /** 使用 Composable 获取处理后的数据 */
-const { formatValue, colorType, size: getComponentSize } = useStatsCards(
+const { formatValue, size: getComponentSize } = useStatsCards(
   props.cards,
   { autoWrap: props.autoWrap, size: props.size },
 )

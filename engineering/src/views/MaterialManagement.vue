@@ -181,10 +181,10 @@ const statsSummary = ref<StatsSummary>({ total: 0, low_stock: 0, out_of_stock: 0
 // ========================= 计算属性 =========================
 const statsCards = computed(() => {
   return [
-    { label: t('materialManagement.statTotal'), value: statsSummary.value.total, icon: Box as Component, type: 'default' },
-    { label: t('materialManagement.statLowStock'), value: statsSummary.value.low_stock, icon: Warning as Component, type: 'warning' },
-    { label: t('materialManagement.statOutOfStock'), value: statsSummary.value.out_of_stock, icon: CircleClose as Component, type: 'danger' },
-    { label: t('materialManagement.statPurchasing'), value: Math.min(statsSummary.value.out_of_stock + statsSummary.value.low_stock, 8), icon: ShoppingCart as Component, type: 'info' },
+    { label: t('materialManagement.statTotal'), value: statsSummary.value.total, icon: Box as Component, type: 'default' as const },
+    { label: t('materialManagement.statLowStock'), value: statsSummary.value.low_stock, icon: Warning as Component, type: 'warning' as const },
+    { label: t('materialManagement.statOutOfStock'), value: statsSummary.value.out_of_stock, icon: CircleClose as Component, type: 'danger' as const },
+    { label: t('materialManagement.statPurchasing'), value: Math.min(statsSummary.value.out_of_stock + statsSummary.value.low_stock, 8), icon: ShoppingCart as Component, type: 'info' as const },
   ]
 })
 

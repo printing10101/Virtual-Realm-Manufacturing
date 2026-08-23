@@ -171,8 +171,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { FolderOpened } from '@element-plus/icons-vue'
+import type { UploadFile } from 'element-plus'
 
 interface Props {
   /** 对话框是否可见 */
@@ -234,9 +234,6 @@ const emit = defineEmits<{
   (e: 'import', parseResult: unknown): void
 }>()
 
-const { t } = useI18n()
-
-/** 内部状态 */
 const internalVisible = ref(props.modelValue ?? false)
 const selectedFile = ref<File | null>(null)
 const parseResult = ref<unknown>(null)
@@ -270,6 +267,9 @@ const progress = computed(() => {
   return 0
 })
 
+/** 解析错误详情（用于结果区域副标题） */
+const parseError = computed(() => errors.value[errors.value.length - 1] ?? props.errorMessage)
+
 /** 监听外部 visible */
 watch(
   () => props.modelValue,
@@ -279,7 +279,9 @@ watch(
 )
 
 /** 处理文件选择 */
-function handleFileChange(file: File) {
+function handleFileChange(uploadFile: UploadFile) {
+  const file = uploadFile.raw
+  if (!file) return
   // 文件验证
   if (props.maxFileSize && file.size > props.maxFileSize) {
     errors.value.push(`文件大小超过 ${props.maxFileSize / 1024 / 1024}MB`)
@@ -307,7 +309,6 @@ async function handleFileSelected(file: File) {
 
 /** 开始导入流程 */
 async function startImportProcess(file: File) {
-  isSelecting.value = false
   isError.value = false
   isSuccess.value = false
 
@@ -318,7 +319,7 @@ async function startImportProcess(file: File) {
       const uploadData = await uploadFile(file)
       // 2. 解析文件
       isParsing.value = true
-      const result = await parseResult(uploadData)
+      const result = await parseUploadedFile(uploadData)
       // 3. 结果处理
       parseResult.value = result
       featureResult.value = result
@@ -350,7 +351,7 @@ async function uploadFile(file: File): Promise<{ file_id: string; file_name: str
 }
 
 /** 解析文件 */
-async function parseResult(uploadData: { file_id: string; file_name: string }): Promise<unknown> {
+async function parseUploadedFile(uploadData: { file_id: string; file_name: string }): Promise<unknown> {
   // 模拟解析，实际实现需要根据后端 API
   return {
     file_name: uploadData.file_name,

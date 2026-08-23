@@ -1,11 +1,10 @@
 /**
  * useStatsCards composable 测试
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 import StatsCards from '@/components/base/StatsCards.vue'
-import { useStatsCards, StatsCardItem, type CardSize } from '@/composables/headless/useStatsCards'
+import { useStatsCards, StatsCardItem } from '@/composables/headless/useStatsCards'
 
 describe('useStatsCards', () => {
   describe('formatValue', () => {
