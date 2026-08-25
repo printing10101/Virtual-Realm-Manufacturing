@@ -499,3 +499,88 @@ class TestRegisterValueErrorFallback:
         assert body["code"] == 1009
         # 内部错误细节已脱敏（safe_error_message 兜底），仅断言消息非空
         assert body["message"]
+
+
+# ---------------------------------------------------------------------------
+# 访客模式登录端点（/api/v1/auth/guest）
+# ---------------------------------------------------------------------------
+
+
+class TestGuestLoginEndpoint:
+    """/api/v1/auth/guest 端点行为。"""
+
+    def test_guest_login_returns_temp_token(self, client, monkeypatch):
+        """开启访客模式时返回临时 access token 且不签发 refresh token。"""
+        from app.config import config
+
+        monkeypatch.setattr(config.security, "guest_enabled", True)
+        response = client.post("/api/v1/auth/guest")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["code"] == 0
+        assert body["message"] == "访客登录成功"
+        data = body["data"]
+        assert "access_token" in data
+        assert "refresh_token" not in data
+        assert data["token_type"] == "bearer"
+        assert data["user"]["is_guest"] is True
+        assert data["user"]["role"] == "guest"
+        assert data["user"]["username"].startswith("guest_")
+
+    def test_guest_login_when_disabled_returns_403(self, client, monkeypatch):
+        """关闭访客模式时返回 403。"""
+        from app.config import config
+
+        monkeypatch.setattr(config.security, "guest_enabled", False)
+        response = client.post("/api/v1/auth/guest")
+        assert response.status_code == 403
+        body = response.json()
+        assert body["code"] == 1003
+        assert "访客模式已关闭" in body["message"]
+
+    def test_guest_token_can_call_me(self, client, monkeypatch):
+        """访客 token 可用于 /api/v1/auth/me 返回临时身份。"""
+        from app.config import config
+
+        monkeypatch.setattr(config.security, "guest_enabled", True)
+        guest_resp = client.post("/api/v1/auth/guest")
+        access_token = guest_resp.json()["data"]["access_token"]
+        response = client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["code"] == 0
+        assert body["data"]["is_guest"] is True
+        assert body["data"]["role"] == "guest"
+        assert body["data"]["username"].startswith("guest_")
+
+
+class TestGuestGetCurrentUser:
+    """get_current_user 对访客 token 的支持。"""
+
+    def test_guest_token_resolves_via_get_current_user(self, monkeypatch):
+        """访客 token 通过 get_current_user 解析为 guest 身份，无需落用户存储。"""
+        from app.config import config
+
+        monkeypatch.setattr(config.security, "guest_enabled", True)
+        app = FastAPI()
+        app.include_router(auth_router)
+
+        @app.get("/whoami")
+        async def whoami(user: dict = Depends(get_current_user)):
+            return {"username": user["username"], "role": user["role"], "is_guest": user.get("is_guest", False)}
+
+        with TestClient(app) as c:
+            guest_resp = c.post("/api/v1/auth/guest")
+            access_token = guest_resp.json()["data"]["access_token"]
+            response = c.get(
+                "/whoami",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["is_guest"] is True
+        assert body["role"] == "guest"
+        assert body["username"].startswith("guest_")

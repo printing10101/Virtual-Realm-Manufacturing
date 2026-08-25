@@ -230,6 +230,62 @@ class _MillisecondFormatter(logging.Formatter):
         return ct.strftime("%Y-%m-%d %H:%M:%S") + f".{int(record.msecs):03d}"
 
 
+class _AsyncConsoleHandler(logging.StreamHandler):
+    """控制台日志处理器：把 ``sys.stdout`` 写入委托给后台守护线程。
+
+    背景：桌面 sidecar（Tauri 以 stdio 管道捕获后端输出）以及本仓库系统级
+    E2E 测试（``subprocess`` 的 ``stdout=PIPE``）下，``sys.stdout`` 是管道。
+    若上游未及时排空，管道缓冲区（Windows 匿名管道默认仅 4KB）会写满，
+    同步 ``StreamHandler.emit`` 的 ``stream.write`` 会**永久阻塞主线程**，
+    导致 FastAPI 启动 / 请求处理卡死（栈：main.py:317 的 ``logger.info``
+    卡在 ``logging/__init__.py`` 的 ``emit``）。
+
+    本 handler 保持 ``logging.StreamHandler`` 形态（兼容既有测试对
+    root.handlers 中 StreamHandler 的断言），但 ``emit`` 只把格式化后的消息
+    放入内存队列，由后台守护线程负责实际写 ``sys.stdout`` 并 flush：
+    - 主线程永不因 stdout 阻塞；
+    - 管道写满时仅后台线程阻塞（守护线程，进程退出即回收，无泄漏）；
+    - 写失败（管道关闭 / 流被替换）时丢弃该条，日志系统自身不受影响。
+    """
+
+    def __init__(self, stream: TextIO | None = None):
+        super().__init__(stream)
+        self._queue: _queue_mod.Queue[str | None] = _queue_mod.Queue()
+        self._writer_thread = threading.Thread(
+            target=self._writer,
+            name="console-log-writer",
+            daemon=True,
+        )
+        self._writer_thread.start()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            self._queue.put(msg + self.terminator)
+        except Exception:  # noqa: BLE001
+            # 格式化 / 入队失败不能反噬日志系统本身；
+            # 仅在有活动异常时才调用 handleError（Python 3.14 无活动异常时会崩溃）。
+            if sys.exc_info()[0] is not None:
+                self.handleError(record)
+
+    def _writer(self) -> None:
+        while True:
+            item = self._queue.get()
+            if item is None:
+                return
+            try:
+                if self._stream is not None:
+                    self._stream.write(item)
+                    self._stream.flush()
+            except Exception:  # noqa: BLE001
+                # 写失败（如管道关闭 / 流被替换）时丢弃该条，继续消费队列
+                pass
+
+    def close(self) -> None:
+        self._queue.put(None)
+        super().close()
+
+
 class _DailySizeRotatingHandler(logging.Handler):
     def __init__(
         self,
@@ -360,7 +416,12 @@ class _DailySizeRotatingHandler(logging.Handler):
                 if self._stream is None:
                     # 流未打开（打开失败时 _open_stream 置 None 并 raise）时降级，
                     # 避免 None.write 崩溃导致日志系统自身不可用。
-                    self.handleError(record)
+                    # 仅在存在活动异常时才调用 handleError：Python 3.14 的
+                    # handleError 在无活动异常（sys.exc_info()[0] is None）时会因
+                    # exc.__traceback__ 为 None 抛出 AttributeError，进而崩溃日志
+                    # monitor 线程，导致后端静默启动失败。
+                    if sys.exc_info()[0] is not None:
+                        self.handleError(record)
                     return
                 self._stream.write(msg)
                 self._stream.flush()
@@ -413,7 +474,10 @@ def configure_logging(
     sensitive_filter = SensitiveDataFilter()
     request_id_filter = RequestIdFilter()
 
-    console_handler = logging.StreamHandler(sys.stdout)
+    # 控制台输出：使用异步 handler，避免 stdout 为管道且写满时阻塞主线程
+    # （桌面 sidecar / E2E 测试的 stdout=PIPE 场景下会永久死锁，详见
+    # _AsyncConsoleHandler 类注释）。
+    console_handler = _AsyncConsoleHandler(sys.stdout)
     console_handler.setLevel(level)
     console_handler.setFormatter(formatter)
     console_handler.addFilter(sensitive_filter)

@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import platform
+import os
 import shutil
 import subprocess
 import sys
@@ -182,6 +182,55 @@ def main() -> int:
             log("ERROR: 依赖安装失败")
             return r.returncode
 
+    # 3.5 site-packages 瘦身（2026-08-24 打包修复）：
+    # 目标：把运行时从 ~2.2GB / 6.1 万文件 压到 ~1.76GB / 4.1 万文件，
+    # 以适配 32 位 makensis（无 LARGEADDRESSAWARE，2GB 地址空间上限）
+    # 与 Tauri 资源枚举耗时。三类可安全裁剪内容：
+    #   a) >240 字符超长路径文件（Windows MAX_PATH 限制，NSIS 无法读取）：
+    #      多来自 torch 的 licenses/third_party 嵌套许可证树，无法被 Python 导入。
+    #   b) kubernetes / kubernetes_asyncio（≈76MB）：chromadb 仅在其分布式
+    #      segment_directory 顶层 import（config.py 中以字符串默认值懒加载，
+    #      桌面单机 LocalSegment 从不实例化），删除不影响 import chromadb。
+    #   c) __pycache__ / *.pyc（≈373MB / 19803 文件）：Python 会在首次导入时
+    #      按需重新生成字节码缓存，删除安全。
+    if sys.platform == "win32":
+        removed = 0
+        for root, _dirs, files in os.walk(sp_dst):
+            for name in files:
+                p = Path(root) / name
+                if len(str(p)) > 240:
+                    try:
+                        p.unlink()
+                        removed += 1
+                    except OSError:
+                        pass
+        if removed:
+            log(f"清理 {removed} 个超长路径文件（Windows MAX_PATH，多来自 torch 许可证树）")
+
+        for name in list(sp_dst.glob("kubernetes*")):
+            shutil.rmtree(name, ignore_errors=True)
+            log(f"移除 {name.name}（chromadb 分布式专用，桌面单机无需）")
+
+        pyc_n = 0
+        for root, dirs, _files in os.walk(sp_dst, topdown=True):
+            for d in list(dirs):
+                if d == "__pycache__":
+                    p = Path(root) / d
+                    try:
+                        shutil.rmtree(p)
+                        dirs.remove(d)
+                    except OSError:
+                        pass
+            for f in os.listdir(root):
+                if f.endswith(".pyc"):
+                    try:
+                        os.unlink(Path(root) / f)
+                        pyc_n += 1
+                    except OSError:
+                        pass
+        if pyc_n:
+            log(f"清理 {pyc_n} 个 .pyc 字节码缓存（__pycache__ 目录一并移除，首次导入按需重建）")
+
     # 4. 后端代码
     log("复制后端代码...")
     clear_dir(backend_dst)
@@ -197,9 +246,17 @@ def main() -> int:
             shutil.copy2(s, backend_dst / f)
 
     # 5. 元信息 + 验证
+    # 注意：python 字段必须是「运行时自带解释器」的版本，而非构建宿主解释器版本。
+    # 2026-08-24 修复：此前用 platform.python_version()（宿主 3.11）写入元信息，
+    # 而运行时实为 python-build-standalone 3.12，误导排障。
+    probe = subprocess.run(
+        [str(py_exe), "-c", "import platform; print(platform.python_version())"],
+        capture_output=True, text=True, timeout=30,
+    )
+    runtime_version = probe.stdout.strip() if probe.returncode == 0 else "unknown"
     info = {
         "schema": 1,
-        "python": platform.python_version(),
+        "python": runtime_version,
         "python_exe": "runtime/python.exe" if sys.platform == "win32" else "runtime/bin/python3",
         "backend_dir": "backend",
         "backend_entry": "backend/start_server.py",

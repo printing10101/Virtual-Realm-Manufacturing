@@ -1,4 +1,4 @@
-﻿"""
+"""
 Test RBAC Permission Check Core Logic
 
 Tests for:
@@ -490,6 +490,58 @@ class TestGetUserPermissions:
 
             perms = await get_user_permissions("ghost_user")
             assert perms == set()
+
+    @pytest.mark.asyncio
+    async def test_get_user_permissions_guest_has_full_permissions(self):
+        """访客（guest_ 前缀、不落用户存储）默认拥有全部功能权限。"""
+        from app.auth.permissions import get_user_permissions
+        from app.database.models._presets import PRESET_PERMISSIONS
+
+        with patch("app.dependencies.get_user_store") as mock_store:
+            mock_store.return_value.get_user.return_value = None
+
+            perms = await get_user_permissions("guest_abcd1234")
+            assert perms == {p["code"] for p in PRESET_PERMISSIONS}
+            assert "process:read" in perms
+            assert "simulation:run" in perms
+
+    @pytest.mark.asyncio
+    async def test_get_user_permissions_registered_user_has_full_permissions(self):
+        """自助注册用户（默认角色 user，DB 无此角色）默认拥有全部功能权限。"""
+        from app.auth.permissions import get_user_permissions
+        from app.database.models._presets import PRESET_PERMISSIONS
+
+        with patch("app.dependencies.get_user_store") as mock_store:
+            mock_user = MagicMock()
+            mock_user.role = "user"
+            mock_store.return_value.get_user.return_value = mock_user
+
+            perms = await get_user_permissions("alice")
+            assert perms == {p["code"] for p in PRESET_PERMISSIONS}
+
+    @pytest.mark.asyncio
+    async def test_check_user_has_permission_guest_granted(self):
+        """访客可通过任意 require_permission 校验（process:read 等）。"""
+        from app.auth.permissions import check_user_has_permission
+
+        with patch("app.dependencies.get_user_store") as mock_store:
+            mock_store.return_value.get_user.return_value = None
+
+            assert await check_user_has_permission("guest_abcd1234", "process:read") is True
+            assert await check_user_has_permission("guest_abcd1234", "simulation:run") is True
+            assert await check_user_has_permission("guest_abcd1234", "lnn:read") is True
+
+    @pytest.mark.asyncio
+    async def test_check_user_has_permission_registered_user_granted(self):
+        """自助注册用户（role=user）可通过 require_permission 校验。"""
+        from app.auth.permissions import check_user_has_permission
+
+        with patch("app.dependencies.get_user_store") as mock_store:
+            mock_user = MagicMock()
+            mock_user.role = "user"
+            mock_store.return_value.get_user.return_value = mock_user
+
+            assert await check_user_has_permission("alice", "process:read") is True
 
 
 class TestPydanticSchemas:

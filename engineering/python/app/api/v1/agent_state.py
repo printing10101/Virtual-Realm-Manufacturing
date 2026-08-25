@@ -203,7 +203,7 @@ def set_persistence_manager(manager: StatePersistenceManager):
 
 @router.get(
     "/",
-    response_model=SuccessResponse[dict[str, Any]],
+    response_model=SuccessResponse[list[Any]],
     responses={
         403: {"model": ErrorResponse},
         500: {"model": ErrorResponse},
@@ -361,7 +361,7 @@ async def save_checkpoint(
 
 @router.get(
     "/{agent_id}/checkpoints",
-    response_model=SuccessResponse[dict[str, Any]],
+    response_model=SuccessResponse[list[Any]],
     responses={
         403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
@@ -629,7 +629,7 @@ async def rollback_state(
 
 @router.get(
     "/{agent_id}/history",
-    response_model=SuccessResponse[dict[str, Any]],
+    response_model=SuccessResponse[list[Any]],
     responses={
         403: {"model": ErrorResponse},
         500: {"model": ErrorResponse},

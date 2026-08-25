@@ -52,7 +52,6 @@ from .service import (
 )
 
 from app.auth.permissions import require_permission
-from app.contracts._shared import TaskListResponse
 
 
 logger = logging.getLogger(__name__)
@@ -140,7 +139,6 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
 
 @router.get(
     "/tasks",
-    response_model=TaskListResponse,
     summary="列出最近任务",
 )
 async def list_tasks(

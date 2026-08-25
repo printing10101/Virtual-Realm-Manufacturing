@@ -1,7 +1,8 @@
 """Tests for /api/v1/auth/register endpoint.
 
 覆盖范围：
-- 邀请码环境变量未配置 / 邀请码错误：HTTP 403
+- 开放注册（LNN_REGISTRATION_CODE 为空）：任意用户可直接注册，HTTP 200
+- 邀请码模式（LNN_REGISTRATION_CODE 非空）：邀请码缺失/错误 → HTTP 403
 - 用户名冲突：HTTP 409
 - 注册成功：HTTP 200，标准化 JSON 响应
 - IP 速率限制：60 分钟内第 6 次请求触发 HTTP 429 且响应头包含 Retry-After
@@ -110,34 +111,36 @@ def reset_rate_limiter() -> Generator[None, None, None]:
 # ---------------------------------------------------------------------------
 
 
-class TestRegisterEnvCodeMissing:
-    """邀请码环境变量未配置时的注册行为。"""
+class TestRegisterOpenRegistration:
+    """开放注册模式（LNN_REGISTRATION_CODE 为空）下的注册行为。
 
-    def test_returns_403_when_env_var_not_set(self, client, monkeypatch):
-        """未配置 LNN_REGISTRATION_CODE 时直接拒绝，返回 403。"""
-        # 注册功能开关读的是启动时加载的 config 单例（B39 设计），
-        # 直接置空 config.security.registration_code 模拟功能关闭
+    修复（2026-08-23）：LNN_REGISTRATION_CODE 为空字符串的语义由
+    "注册功能已关闭" 改为 "开放注册"，即任意用户可直接自助注册。
+    """
+
+    def test_open_registration_succeeds_without_invite_code(self, client, monkeypatch):
+        """未配置邀请码（空字符串）时，任意用户可直接注册，返回 200。"""
         monkeypatch.setattr(config.security, "registration_code", "")
         response = client.post(
             "/api/v1/auth/register",
-            json={"username": "alice", "password": "Passw0rd!", "invite_code": "ANY"},
+            json={"username": "alice", "password": "Passw0rd!"},
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
         body = response.json()
-        assert body["code"] == 1003
-        assert "注册功能已关闭" in body["message"]
+        assert body["message"] == "注册成功"
+        assert body["data"]["username"] == "alice"
+        assert body["data"]["is_guest"] is False
 
-    def test_returns_403_when_env_var_is_empty(self, client, monkeypatch):
-        """LNN_REGISTRATION_CODE 设置为空字符串视为已关闭。"""
+    def test_open_registration_ignores_invite_code(self, client, monkeypatch):
+        """开放注册模式下即使携带 invite_code 也不校验，直接放行。"""
         monkeypatch.setattr(config.security, "registration_code", "")
         response = client.post(
             "/api/v1/auth/register",
-            json={"username": "alice", "password": "Passw0rd!", "invite_code": "ANY"},
+            json={"username": "bob", "password": "Passw0rd!", "invite_code": "ANY"},
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
         body = response.json()
-        assert body["code"] == 1003
-        assert "注册功能已关闭" in body["message"]
+        assert body["message"] == "注册成功"
 
 
 class TestRegisterInvalidInviteCode:
@@ -271,12 +274,14 @@ class TestResponseFormat:
 
     def test_403_response_uses_code_and_message(self, client, monkeypatch):
         """403 响应必须包含 code 和 message 字段。"""
-        # 注册功能开关读的是启动时加载的 config 单例（B39 设计），
-        # 直接置空 config.security.registration_code 模拟功能关闭
-        monkeypatch.setattr(config.security, "registration_code", "")
+        monkeypatch.setenv("LNN_REGISTRATION_CODE", "SECRET-1234")
         response = client.post(
             "/api/v1/auth/register",
-            json={"username": "alice", "password": "Passw0rd!"},
+            json={
+                "username": "alice",
+                "password": "Passw0rd!",
+                "invite_code": "WRONG",
+            },
         )
         body = response.json()
         assert "code" in body

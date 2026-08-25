@@ -6,9 +6,12 @@ Ollama 默认端口 11434，API 端点 /api/chat 和 /api/tags。
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 import time
+
+import aiohttp
 
 from app.ai.llm.provider_base import (
     LLMProvider,
@@ -16,6 +19,11 @@ from app.ai.llm.provider_base import (
     ProviderError,
     ProviderStatus,
     ProviderType,
+)
+from app.core.exceptions import (
+    LLMException,
+    LLMProviderException,
+    LLMTimeoutException,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +48,12 @@ class OllamaProvider(LLMProvider):
         try:
             response = await self._http_get(f"{self.config.base_url}/api/tags")
             return response.status_code == 200
+        except asyncio.TimeoutError as e:
+            logger.debug("Ollama detect timeout: %s", e)
+            return False
+        except aiohttp.ClientConnectionError as e:
+            logger.debug("Ollama detect connection failed: %s", e)
+            return False
         except Exception as e:
             logger.debug("Ollama detect failed: %s", e)
             return False
@@ -52,6 +66,15 @@ class OllamaProvider(LLMProvider):
                 self._update_status(ProviderStatus.ONLINE)
             else:
                 self._update_status(ProviderStatus.OFFLINE)
+        except asyncio.TimeoutError as e:
+            logger.debug("Ollama health check timeout: %s", e)
+            self._update_status(ProviderStatus.OFFLINE)
+        except aiohttp.ClientConnectionError as e:
+            logger.debug("Ollama health check connection failed: %s", e)
+            self._update_status(ProviderStatus.OFFLINE)
+        except aiohttp.ClientResponseError as e:
+            logger.debug("Ollama health check HTTP error: %s", e)
+            self._update_status(ProviderStatus.OFFLINE)
         except Exception as e:
             logger.debug("Ollama health check failed: %s", e)
             self._update_status(ProviderStatus.OFFLINE)

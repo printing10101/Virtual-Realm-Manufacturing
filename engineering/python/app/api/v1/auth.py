@@ -1,6 +1,8 @@
 import hmac
 import uuid
+import secrets
 import logging
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -132,31 +134,27 @@ async def register(request: Request, body: UserCreate, config: AppConfig = Depen
     """注册新用户。
 
     安全控制（按执行顺序）：
-    1. 邀请码环境变量检查：当 ``LNN_REGISTRATION_CODE`` 未设置或为空时，
-       视为注册功能已关闭，直接返回 403。
-    2. 邀请码验证：请求体中的 ``invite_code`` 必须与环境变量值完全匹配
-       （使用 ``hmac.compare_digest`` 防止时序攻击）。
+    1. 邀请码环境变量检查：当 ``LNN_REGISTRATION_CODE`` 为空时视为**开放注册**，
+       任意用户可直接注册；设置非空值时进入邀请码模式。
+    2. 邀请码验证（仅邀请码模式）：请求体中的 ``invite_code`` 必须与环境变量值
+       完全匹配（使用 ``hmac.compare_digest`` 防止时序攻击）。
     3. 速率限制（slowapi）：同一 IP 在 1 小时内最多允许 3 次注册尝试；超限返回 429，
        响应头携带 ``Retry-After`` 字段，由 slowapi 中间件统一处理。
     4. 用户名唯一性检查：用户名已存在时返回 409。
     """
-    # 1) 邀请码环境变量检查：未配置时注册功能视为已关闭
+    # 1) 邀请码环境变量检查：未配置时视为开放注册，跳过邀请码校验
     # 修复 [B39]：通过 config.security.registration_code 统一读取，
     # 避免在业务代码中直接调用 os.environ.get() 绕过配置审计
     reg_code = config.security.registration_code
-    if not reg_code:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"code": 1003, "message": "注册功能已关闭", "request_id": _get_request_id()},
-        )
 
-    # 2) 邀请码验证（防时序攻击）
-    invite_code = body.invite_code or ""
-    if not invite_code or not hmac.compare_digest(invite_code, reg_code):
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"code": 1003, "message": "无效的邀请码", "request_id": _get_request_id()},
-        )
+    # 2) 邀请码验证（仅在配置了邀请码时执行）
+    if reg_code:
+        invite_code = body.invite_code or ""
+        if not invite_code or not hmac.compare_digest(invite_code, reg_code):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"code": 1003, "message": "无效的邀请码", "request_id": _get_request_id()},
+            )
 
     # 3) 速率限制由 slowapi @limiter.limit("3/hour") 装饰器统一处理
 
@@ -216,6 +214,58 @@ async def register(request: Request, body: UserCreate, config: AppConfig = Depen
                 "error_id": safe["error_id"],
             },
         )
+
+
+@router.post("/guest", response_model=dict)
+@limiter.limit("10/minute")
+async def guest_login(request: Request, config: AppConfig = Depends(get_config)):
+    """访客模式登录：无需注册即可获得临时访问身份。
+
+    安全控制：
+    1. 开关检查：``LNN_GUEST_ENABLED`` 关闭时返回 403。
+    2. 速率限制（slowapi）：同一 IP 每分钟最多 10 次访客登录。
+    3. 临时身份：每次访客登录生成唯一 ``guest_<随机串>`` 标识，
+       令牌仅含访问令牌（不签发 refresh token），有效期由
+       ``LNN_GUEST_EXPIRE_HOURS`` 控制（默认 24 小时）。
+    4. 审计：访客登录写入哈希链审计日志，便于追溯。
+    """
+    # 1) 访客模式开关检查
+    if not config.security.guest_enabled:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"code": 1003, "message": "访客模式已关闭", "request_id": _get_request_id()},
+        )
+
+    # 2) 生成唯一访客身份（sub 即令牌身份标识，用于登出/审计追溯）
+    guest_id = f"guest_{secrets.token_hex(4)}"
+    jti = str(uuid.uuid4())
+    expires = timedelta(hours=max(1, config.security.guest_expire_hours))
+    access_token = create_access_token(
+        {"sub": guest_id, "role": "guest", "is_guest": True, "jti": jti},
+        expires_delta=expires,
+    )
+
+    logger.info("Guest session created: %s", guest_id)
+    _audit_auth_event(
+        "auth_guest_login",
+        OperationStatus.SUCCESS,
+        guest_id,
+        request,
+        role="guest",
+    )
+    return {
+        "code": 0,
+        "message": "访客登录成功",
+        "data": {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": UserResponse(
+                username=guest_id,
+                role="guest",
+                is_guest=True,
+            ).model_dump(),
+        },
+    }
 
 
 @router.post("/login", response_model=dict)
@@ -381,8 +431,20 @@ async def logout(request: Request, body: TokenRequest):
 
 @router.get("/me", response_model=dict)
 async def get_me(current_user: dict = Depends(get_current_user)):
+    username = current_user["username"]
+    # 访客：临时身份不落用户存储，直接从 current_user 返回
+    if current_user.get("is_guest"):
+        return {
+            "code": 0,
+            "message": "OK",
+            "data": UserResponse(
+                username=username,
+                role=current_user.get("role", "guest"),
+                is_guest=True,
+            ).model_dump(),
+        }
     store = get_user_store()
-    user = store.get_user(current_user["username"])
+    user = store.get_user(username)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
     return {

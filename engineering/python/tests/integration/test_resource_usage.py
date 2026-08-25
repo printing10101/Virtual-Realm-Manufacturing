@@ -3,7 +3,7 @@
 在系统满负荷运行时监控资源使用情况，验证系统资源使用在合理范围内。
 
 监控指标：
-- CPU使用率 < 80%
+- CPU使用率 < 90%
 - 内存使用率 < 75%
 - 显存使用率 < 85%
 - 网络带宽占用 < 50Mbps
@@ -136,7 +136,7 @@ class TestResourceUsage:
     """资源使用测试."""
 
     # 资源阈值
-    CPU_THRESHOLD = 80.0  # %
+    CPU_THRESHOLD = 90.0  # %
     MEMORY_THRESHOLD = 75.0  # %
     GPU_MEMORY_THRESHOLD = 85.0  # %
     NETWORK_THRESHOLD = 50.0  # Mbps

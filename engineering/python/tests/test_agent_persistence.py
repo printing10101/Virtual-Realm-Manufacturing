@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for Agent State Persistence & Session Recovery System
 
 Covers:
@@ -41,6 +41,7 @@ from app.state.state_persistence import (
     StateMigrationEngine,
     MEMORY_PRUNING_THRESHOLD,
 )
+from app.state.recovery import create_state_persistence
 
 
 class TestAgentStateModel:
@@ -655,3 +656,80 @@ def asyncio_wait(seconds: float):
     import asyncio
 
     return asyncio.sleep(seconds)
+
+
+class TestDbTierSqlite:
+    """SQLite DB 持久化回归测试。
+
+    复现并验证 P0 修复：``_save_db`` 原先固定使用 PostgreSQL 方言的
+    ``to_timestamp()`` / ``NOW()``，在 SQLite 下抛 ``no such function``
+    导致状态持久化静默失败（API 返回成功但 DB 无数据）。
+    修复后按方言生成 SQL，SQLite 直接写入 epoch 浮点值。
+    """
+
+    @pytest_asyncio.fixture
+    async def sqlite_mgr(self, tmp_path):
+        db_path = tmp_path / "agent_state_test.db"
+        mgr = await create_state_persistence(
+            db_url=f"sqlite:///{db_path.as_posix()}",
+            checkpoint_dir=str(tmp_path / "ckpts"),
+        )
+        yield mgr
+        await mgr.shutdown()
+
+    @pytest.mark.asyncio
+    async def test_sqlite_save_load_roundtrip(self, sqlite_mgr):
+        state = AgentState(
+            agent_id="sqlite_agent",
+            status=AgentStatus.BUSY,
+            current_task_id="task_1",
+        )
+        state.session_context.task_description = "SQLite 持久化任务"
+        await sqlite_mgr.save_state(state, trigger="test")
+
+        # 绕过内存层与 Redis，强制从 DB 读取（验证数据确实落库）
+        sqlite_mgr._active_states.clear()
+        sqlite_mgr._redis = None
+        loaded = await sqlite_mgr.load_state("sqlite_agent")
+        assert loaded is not None
+        assert loaded.agent_id == "sqlite_agent"
+        assert loaded.status == AgentStatus.BUSY
+        assert loaded.current_task_id == "task_1"
+        assert loaded.session_context.task_description == "SQLite 持久化任务"
+        assert isinstance(loaded.last_heartbeat, float)
+
+    @pytest.mark.asyncio
+    async def test_sqlite_update_path(self, sqlite_mgr):
+        state = AgentState(agent_id="sqlite_upd", current_task_id="t1")
+        await sqlite_mgr.save_state(state, trigger="test")
+        # 触发 UPDATE 分支
+        state2 = AgentState(
+            agent_id="sqlite_upd",
+            current_task_id="t2",
+            status=AgentStatus.BUSY,
+        )
+        state2.session_context.task_description = "updated"
+        await sqlite_mgr.save_state(state2, trigger="test")
+
+        sqlite_mgr._active_states.clear()
+        sqlite_mgr._redis = None
+        loaded = await sqlite_mgr.load_state("sqlite_upd")
+        assert loaded is not None
+        assert loaded.current_task_id == "t2"
+        assert loaded.status == AgentStatus.BUSY
+        assert loaded.session_context.task_description == "updated"
+
+    @pytest.mark.asyncio
+    async def test_sqlite_missing_agent_returns_none(self, sqlite_mgr):
+        sqlite_mgr._active_states.clear()
+        sqlite_mgr._redis = None
+        assert await sqlite_mgr.load_state("ghost_sqlite") is None
+
+    @pytest.mark.asyncio
+    async def test_sqlite_delete_state(self, sqlite_mgr):
+        state = AgentState(agent_id="sqlite_del")
+        await sqlite_mgr.save_state(state, trigger="test")
+        await sqlite_mgr.delete_state("sqlite_del")
+        sqlite_mgr._active_states.clear()
+        sqlite_mgr._redis = None
+        assert await sqlite_mgr.load_state("sqlite_del") is None

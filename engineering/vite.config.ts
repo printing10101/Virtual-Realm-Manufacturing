@@ -45,6 +45,12 @@ export default defineConfig({
         target: 'http://localhost:8765',
         changeOrigin: true,
       },
+      // 后端 agent_state 路由挂载在 /agents（无 /api 前缀），
+      // 浏览器 dev/preview 模式必须单独代理，否则请求被 SPA fallback 吞掉。
+      '/agents': {
+        target: 'http://localhost:8765',
+        changeOrigin: true,
+      },
     },
   },
   preview: {
@@ -53,6 +59,11 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
+        target: 'http://localhost:8765',
+        changeOrigin: true,
+      },
+      // 同 server：浏览器模式下代理 /agents 到后端
+      '/agents': {
         target: 'http://localhost:8765',
         changeOrigin: true,
       },

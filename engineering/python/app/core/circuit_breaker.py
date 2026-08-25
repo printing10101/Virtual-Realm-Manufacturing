@@ -3,14 +3,19 @@
 
 提供服务健康检查、自动熔断、半开状态探测等机制，防止级联故障。
 """
+from __future__ import annotations
 
 import time
 import threading
+from contextlib import contextmanager
 from enum import Enum
 from typing import Callable, Any, Optional
+
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from . import exceptions
 from .exceptions import CircuitBreakerOpenException, CircuitBreakerHalfOpenException
 
 
@@ -151,7 +156,7 @@ class CircuitBreaker:
             current_state = self.state
             
             if current_state == CircuitState.OPEN:
-                raise exceptions.CircuitBreakerOpenException(
+                raise CircuitBreakerOpenException(  # type: ignore[call-arg]
                     service=self.name,
                     opened_at=self._opened_at.isoformat() if self._opened_at else None,
                 )
@@ -243,20 +248,17 @@ class CircuitBreakerRegistry:
         return {name: breaker.get_status() for name, breaker in self._breakers.items()}
 
 
+
 # ========================================
 # 快捷上下文管理器
 # ========================================
 
-from typing import ContextManager
-from contextlib import contextmanager
 
-
-@contextmanager
 def circuit_breaker_context(
     name: str,
     config: Optional[CircuitBreakerConfig] = None,
     fallback: Optional[Callable[[Exception], Any]] = None,
-) -> ContextManager[CircuitBreaker]:
+) -> AbstractContextManager[CircuitBreaker]:
     """
     熔断器上下文管理器
     
