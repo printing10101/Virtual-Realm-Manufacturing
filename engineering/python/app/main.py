@@ -294,6 +294,28 @@ async def startup_event():
         )
     logger.info("[startup] Plugin system step done")
 
+    # --- Step 6: Agent 状态持久化（/agents 端点依赖）---
+    # 修复：set_persistence_manager 此前全仓库无调用点，导致 agent_state API
+    # 一律返回 503 "State persistence not initialized"。现于启动时创建
+    # StatePersistenceManager 并注入；失败仅告警（不影响核心图纸/工艺/NC 链路）。
+    logger.info("[startup] Initializing agent state persistence ...")
+    try:
+        from app.state.recovery import create_state_persistence as _create_state_persistence
+        from app.api.v1.agent_state import set_persistence_manager as _set_persistence_manager
+
+        _persistence = await _create_state_persistence(
+            db_url=config.database.db_url,
+        )
+        _set_persistence_manager(_persistence)
+        logger.info("[startup] Agent state persistence initialized")
+    except Exception as state_err:
+        logger.error(
+            "[startup] Agent 状态持久化初始化失败，/agents 端点将返回 503: %s",
+            state_err,
+            exc_info=True,
+        )
+    logger.info("[startup] Agent state persistence step done")
+
     ring_log.append(
         "system_event",
         level="INFO",

@@ -275,35 +275,7 @@ class MTConnectStreamServer:
 
         Returns list of AlertEvents if any thresholds are exceeded.
         """
-        alerts = []
-
-        # Spindle overload detection (>80% load)
-        if sample.spindle_load is not None and sample.spindle_load > 80.0:
-            alerts.append(
-                AlertEvent(
-                    event_type="alert",
-                    alert_type="spindle_overload",
-                    message=f"Spindle load {sample.spindle_load:.1f}% exceeds threshold",
-                    threshold_value=80.0,
-                    actual_value=sample.spindle_load,
-                    priority=6,
-                )
-            )
-
-        # Feed rate anomaly (unusual patterns)
-        if sample.feedrate is not None and sample.feedrate < 0.1:  # Near-zero feed rate
-            alerts.append(
-                AlertEvent(
-                    event_type="alert",
-                    alert_type="feed_anomaly",
-                    message=f"Feed rate {sample.feedrate:.2f} mm/min below operational range",
-                    threshold_value=0.1,
-                    actual_value=sample.feedrate,
-                    priority=4,
-                )
-            )
-
-        return alerts
+        return check_alerts(sample)
 
     async def __aenter__(self) -> "MTConnectStreamServer":
         """Context manager entry."""
@@ -322,6 +294,45 @@ class MTConnectStreamServer:
             "active_consumers": len(self._consumers),
             "active_subscribers": self._subscriber_count,
         }
+
+
+def check_alerts(sample: Sample) -> list[AlertEvent]:
+    """Check sample for alert conditions.
+
+    模块级纯函数，供 :class:`MTConnectStreamServer` 与 WebSocket 监控端点
+    （``monitor_ws``）复用同一套告警规则，避免规则漂移。
+
+    Returns list of AlertEvents if any thresholds are exceeded.
+    """
+    alerts = []
+
+    # Spindle overload detection (>80% load)
+    if sample.spindle_load is not None and sample.spindle_load > 80.0:
+        alerts.append(
+            AlertEvent(
+                event_type="alert",
+                alert_type="spindle_overload",
+                message=f"Spindle load {sample.spindle_load:.1f}% exceeds threshold",
+                threshold_value=80.0,
+                actual_value=sample.spindle_load,
+                priority=6,
+            )
+        )
+
+    # Feed rate anomaly (unusual patterns)
+    if sample.feedrate is not None and sample.feedrate < 0.1:  # Near-zero feed rate
+        alerts.append(
+            AlertEvent(
+                event_type="alert",
+                alert_type="feed_anomaly",
+                message=f"Feed rate {sample.feedrate:.2f} mm/min below operational range",
+                threshold_value=0.1,
+                actual_value=sample.feedrate,
+                priority=4,
+            )
+        )
+
+    return alerts
 
 
 class WebSocketAlertHandler:

@@ -31,6 +31,7 @@ class UserResponse(BaseModel):
     role: str = "user"
     created_at: str = ""
     last_login: str | None = None
+    is_guest: bool = False
 
 
 class UserRecord:

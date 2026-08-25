@@ -59,6 +59,14 @@ def get_current_user(request: Request) -> dict[str, Any]:
     if not username:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token载荷无效")
 
+    # 访客 token：访客不落用户存储，直接从 JWT 载荷返回临时身份
+    if payload.get("is_guest"):
+        return {
+            "username": username,
+            "role": payload.get("role", "guest"),
+            "is_guest": True,
+        }
+
     store = get_user_store()
     user = store.get_user(username)
     if user is None or not user.is_active:

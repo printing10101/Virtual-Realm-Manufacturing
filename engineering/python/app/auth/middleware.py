@@ -656,6 +656,11 @@ class UnifiedAuthMiddleware:
         # request.state.username 无人写入导致 require_permission 保护的端点永远 401。
         # 此处显式将 JWT payload 的用户名写入 scope state（starlette Request.state 读取该处）。
         scope.setdefault("state", {})["username"] = payload.get("sub", "") or ""
+        # 2026-08-23 注册/访客功能：同时写入角色与访客标记，供 require_role /
+        # require_permission 校验读取（此前 request.state.user_role 从未被写入，
+        # 导致 require_role 端点触发 AttributeError → 500）。
+        scope["state"]["user_role"] = payload.get("role", "user") or "user"
+        scope["state"]["is_guest"] = bool(payload.get("is_guest", False))
         return None
 
     async def _check_agent_auth(

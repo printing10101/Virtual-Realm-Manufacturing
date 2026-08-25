@@ -165,31 +165,19 @@ def _lineage_to_dict(rec: LineageRecord) -> dict[str, Any]:
 async def list_datasets(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    dataset_type: str | None = Query(None),
     owner_id: str | None = Query(None),
 ) -> dict:
     """List datasets with pagination."""
     dataset_store = get_dataset_store()
-    datasets, total = await dataset_store.list_datasets(
-        page=page,
-        page_size=page_size,
-        dataset_type=dataset_type,
+    items = await dataset_store.list_datasets(
         owner_id=owner_id,
+        limit=page_size,
+        offset=(page - 1) * page_size,
     )
+    total = await dataset_store.count_datasets(owner_id=owner_id)
     return success(
         {
-            "items": [
-                {
-                    "id": ds.id,
-                    "name": ds.name,
-                    "description": ds.description,
-                    "type": ds.type,
-                    "owner_id": ds.owner_id,
-                    "version_count": ds.version_count,
-                    "created_at": ds.created_at.isoformat() if ds.created_at else None,
-                }
-                for ds in datasets
-            ],
+            "items": items,
             "page": page,
             "page_size": page_size,
             "total": total,
@@ -213,19 +201,18 @@ async def create_dataset(
 ) -> dict:
     """Create a dataset."""
     dataset_store = get_dataset_store()
-    dataset = await dataset_store.create_dataset(
+    dataset_id = await dataset_store.create(
         name=req.name,
-        description=req.description,
         schema=_schema_from_model(req.dataset_schema),
-        owner_id=user.id,
+        owner_id=user["username"],
+        description=req.description,
     )
     return success(
         {
-            "id": dataset.id,
-            "name": dataset.name,
-            "description": dataset.description,
-            "owner_id": dataset.owner_id,
-            "created_at": dataset.created_at.isoformat() if dataset.created_at else None,
+            "id": dataset_id,
+            "name": req.name,
+            "description": req.description,
+            "owner_id": user["username"],
         }
     )
 
@@ -236,20 +223,8 @@ async def get_dataset(
 ) -> dict:
     """Get dataset details."""
     dataset_store = get_dataset_store()
-    ds, versions = await dataset_store.get_dataset(dataset_id)
-    return success(
-        {
-            "id": ds.id,
-            "name": ds.name,
-            "description": ds.description,
-            "type": ds.type,
-            "owner_id": ds.owner_id,
-            "schema": ds.schema.to_dict(),
-            "version_count": ds.version_count,
-            "created_at": ds.created_at.isoformat() if ds.created_at else None,
-            "versions": [_version_to_dict(v) for v in versions],
-        }
-    )
+    ds = await dataset_store.get_dataset(dataset_id)
+    return success(ds)
 
 
 @router.get("/{dataset_id}/versions")
@@ -260,10 +235,13 @@ async def list_versions(
 ) -> dict:
     """List all versions."""
     dataset_store = get_dataset_store()
-    versions, total = await dataset_store.list_versions(dataset_id, page, page_size)
+    versions = await dataset_store.list_versions(dataset_id)
+    total = len(versions)
+    start = (page - 1) * page_size
+    items = [_version_to_dict(v) for v in versions[start : start + page_size]]
     return success(
         {
-            "items": [_version_to_dict(v) for v in versions],
+            "items": items,
             "page": page,
             "page_size": page_size,
             "total": total,
@@ -301,7 +279,6 @@ async def commit_version(
         records=req.records,
         version=req.version,
         lineage=lineage,
-        committed_by=user.id,
     )
     return success(_version_to_dict(ver))
 
@@ -315,8 +292,9 @@ async def read_version(
     dataset_store = get_dataset_store()
 
     async def iterable() -> AsyncGenerator[str, None]:
-        async for record in dataset_store.read_version(dataset_id, version):
-            yield json.dumps(record, ensure_ascii=False) + "\n"
+        async for batch in dataset_store.read(dataset_id, version):
+            for record in batch:
+                yield json.dumps(record, ensure_ascii=False) + "\n"
 
     return StreamingResponse(
         iterable(),
@@ -332,7 +310,7 @@ async def deprecate_version(
 ) -> dict:
     """Deprecate a version."""
     dataset_store = get_dataset_store()
-    await dataset_store.deprecate_version(dataset_id=dataset_id, version=version)
+    await dataset_store.deprecate(dataset_id=dataset_id, version=version)
     return success({"message": f"Version {version} deprecated"})
 
 
@@ -352,7 +330,7 @@ async def record_lineage(
         operation=req.operation,
         metadata=dict(req.metadata),
     )
-    await lineage_store.record_lineage(record)
+    await lineage_store.record(record)
     return success({"record_id": record.record_id, "target": record.target})
 
 
@@ -363,7 +341,12 @@ async def query_lineage(
 ) -> dict:
     """Query lineage graph."""
     lineage_store = get_lineage_store()
-    upstream, downstream = await lineage_store.query_lineage(target_uri=target_uri, direction=direction)
+    upstream: list[LineageRecord] = []
+    downstream: list[LineageRecord] = []
+    if direction in ("upstream", "both"):
+        upstream = await lineage_store.get_upstream(target_uri=target_uri)
+    if direction in ("downstream", "both"):
+        downstream = await lineage_store.get_downstream(target_uri=target_uri)
     return success(
         {
             "target": target_uri,

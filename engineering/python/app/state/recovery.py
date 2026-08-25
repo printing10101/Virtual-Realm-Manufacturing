@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sqlite3
 from typing import Any
 from collections.abc import Callable
 
@@ -310,28 +311,47 @@ async def create_state_persistence(
             async def session_factory():
                 return sessionmaker()
 
+            # 方言适配：PostgreSQL 使用 JSONB/TIMESTAMPTZ/NOW()，
+            # SQLite 使用 TEXT/TIMESTAMP/CURRENT_TIMESTAMP（原实现固定用
+            # PG 方言 DDL，SQLite 下 CREATE TABLE 报 "near '('" 语法错误，
+            # 且该异常未被 except 元组捕获导致持久化初始化整体失败）。
+            if async_url.startswith("sqlite"):
+                _agent_states_ddl = """CREATE TABLE IF NOT EXISTS agent_states (
+                    agent_id VARCHAR(128) PRIMARY KEY,
+                    current_task_id VARCHAR(128),
+                    session_context TEXT DEFAULT '{}',
+                    memory_json TEXT DEFAULT '[]',
+                    checkpoint_json TEXT DEFAULT NULL,
+                    last_heartbeat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status VARCHAR(32) DEFAULT 'idle',
+                    checkpoints_history_json TEXT DEFAULT '[]',
+                    state_version TEXT DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    metadata_json TEXT DEFAULT '{}',
+                    compressed BOOLEAN DEFAULT FALSE
+                )"""
+            else:
+                _agent_states_ddl = """CREATE TABLE IF NOT EXISTS agent_states (
+                    agent_id VARCHAR(128) PRIMARY KEY,
+                    current_task_id VARCHAR(128),
+                    session_context JSONB DEFAULT '{}',
+                    memory_json JSONB DEFAULT '[]',
+                    checkpoint_json JSONB DEFAULT NULL,
+                    last_heartbeat TIMESTAMPTZ DEFAULT NOW(),
+                    status VARCHAR(32) DEFAULT 'idle',
+                    checkpoints_history_json JSONB DEFAULT '[]',
+                    state_version JSONB DEFAULT '{}',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    metadata_json JSONB DEFAULT '{}',
+                    compressed BOOLEAN DEFAULT FALSE
+                )"""
+
             async with engine.begin() as conn:
                 import sqlalchemy as sa
 
-                await conn.execute(
-                    sa.text(
-                        """CREATE TABLE IF NOT EXISTS agent_states (
-                            agent_id VARCHAR(128) PRIMARY KEY,
-                            current_task_id VARCHAR(128),
-                            session_context JSONB DEFAULT '{}',
-                            memory_json JSONB DEFAULT '[]',
-                            checkpoint_json JSONB DEFAULT NULL,
-                            last_heartbeat TIMESTAMPTZ DEFAULT NOW(),
-                            status VARCHAR(32) DEFAULT 'idle',
-                            checkpoints_history_json JSONB DEFAULT '[]',
-                            state_version JSONB DEFAULT '{}',
-                            created_at TIMESTAMPTZ DEFAULT NOW(),
-                            updated_at TIMESTAMPTZ DEFAULT NOW(),
-                            metadata_json JSONB DEFAULT '{}',
-                            compressed BOOLEAN DEFAULT FALSE
-                        )"""
-                    )
-                )
+                await conn.execute(sa.text(_agent_states_ddl))
                 await conn.execute(
                     sa.text("CREATE INDEX IF NOT EXISTS idx_agent_states_status ON agent_states (status)")
                 )
@@ -339,7 +359,7 @@ async def create_state_persistence(
                     sa.text("CREATE INDEX IF NOT EXISTS idx_agent_states_heartbeat ON agent_states (last_heartbeat)")
                 )
             db_session_factory = session_factory
-        except (ImportError, OSError, RuntimeError, ValueError, TypeError) as e:
+        except (ImportError, OSError, RuntimeError, ValueError, TypeError, sqlite3.Error) as e:
             # 异步数据库初始化失败，尝试回退到同步引擎
             logger.warning("Async DB initialization failed, falling back to sync: %s", e)
             try:
@@ -373,7 +393,7 @@ async def create_state_persistence(
 
                 def db_session_factory():
                     return Session(sync_engine)
-            except (ImportError, OSError, RuntimeError, ValueError, TypeError) as e2:
+            except (ImportError, OSError, RuntimeError, ValueError, TypeError, sqlite3.Error) as e2:
                 # 同步回退也失败，禁用数据库持久化
                 logger.error("Sync DB fallback also failed: %s", e2, exc_info=True)
                 db_session_factory = None

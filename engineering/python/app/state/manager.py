@@ -18,6 +18,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from pathlib import Path
 from typing import Any
 from collections.abc import Callable
@@ -170,6 +171,19 @@ class StatePersistenceManager:
             compressed = self._compressor.should_compress(state.session_context)
             import sqlalchemy as sa
 
+            # 方言适配（P0 修复）：PostgreSQL 用 to_timestamp()/NOW() 转换时间戳，
+            # SQLite 无这两个函数，直接用 epoch 浮点值（列类型 TIMESTAMP 亦接受数值），
+            # 与 _load_db 的 hasattr(row.x, "timestamp") 读取分支对称。
+            is_sqlite = False
+            try:
+                dialect = getattr(getattr(session, "bind", None), "dialect", None)
+                is_sqlite = bool(dialect is not None and dialect.name == "sqlite")
+            except Exception:
+                pass
+            hb_expr = ":hb" if is_sqlite else "to_timestamp(:hb)"
+            now_expr = ":hb_now" if is_sqlite else "NOW()"
+            hb_now = time.time()
+
             result = await session.execute(
                 sa.text("SELECT 1 FROM agent_states WHERE agent_id = :agent_id"),
                 {"agent_id": state.agent_id},
@@ -179,15 +193,15 @@ class StatePersistenceManager:
             if exists:
                 await session.execute(
                     sa.text(
-                        """UPDATE agent_states SET
+                        f"""UPDATE agent_states SET
                             current_task_id = :task_id,
                             session_context = :session_ctx,
                             memory_json = :memory,
                             checkpoint_json = :checkpoint,
-                            last_heartbeat = to_timestamp(:hb),
+                            last_heartbeat = {hb_expr},
                             status = :status,
                             state_version = :sv,
-                            updated_at = NOW(),
+                            updated_at = {now_expr},
                             metadata_json = :meta,
                             compressed = :compressed
                         WHERE agent_id = :agent_id"""
@@ -201,6 +215,7 @@ class StatePersistenceManager:
                         if state.checkpoint
                         else None,
                         "hb": state.last_heartbeat,
+                        "hb_now": hb_now,
                         "status": state.status.value,
                         "sv": json.dumps(state.state_version.to_dict(), ensure_ascii=False),
                         "meta": json.dumps(state.metadata, ensure_ascii=False),
@@ -210,14 +225,14 @@ class StatePersistenceManager:
             else:
                 await session.execute(
                     sa.text(
-                        """INSERT INTO agent_states
+                        f"""INSERT INTO agent_states
                             (agent_id, current_task_id, session_context, memory_json, checkpoint_json,
                              last_heartbeat, status, checkpoints_history_json, state_version,
                              created_at, updated_at, metadata_json, compressed)
                         VALUES
                             (:agent_id, :task_id, :session_ctx, :memory, :checkpoint,
-                             to_timestamp(:hb), :status, :chk_hist, :sv,
-                             NOW(), NOW(), :meta, :compressed)"""
+                             {hb_expr}, :status, :chk_hist, :sv,
+                             {now_expr}, {now_expr}, :meta, :compressed)"""
                     ),
                     {
                         "agent_id": state.agent_id,
@@ -228,6 +243,7 @@ class StatePersistenceManager:
                         if state.checkpoint
                         else None,
                         "hb": state.last_heartbeat,
+                        "hb_now": hb_now,
                         "status": state.status.value,
                         "chk_hist": json.dumps(
                             [c.to_dict() for c in state.checkpoints_history],

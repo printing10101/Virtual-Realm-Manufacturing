@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import Any, cast
 from collections.abc import AsyncIterator
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.dataset import (
@@ -464,6 +464,53 @@ class DatasetStore(IDatasetStore):
                     }
                 )
             return items
+
+    async def count_datasets(
+        self,
+        *,
+        owner_id: str | None = None,
+        status: DatasetStatus | None = None,
+    ) -> int:
+        """统计数据集数量（与 list_datasets 同一组过滤条件）。"""
+        async with await self._get_session() as session:
+            stmt = select(func.count()).select_from(DatasetORM)
+            if owner_id is not None:
+                stmt = stmt.where(DatasetORM.owner_id == owner_id)
+            if status is not None:
+                stmt = stmt.where(DatasetORM.status == status.value)
+            result = await session.execute(stmt)
+            return int(result.scalar_one())
+
+    async def get_metrics(self) -> dict[str, Any]:
+        """全局数据集指标：总数 / 按状态分布 / 版本数 / 总行数 / 总大小。"""
+        async with await self._get_session() as session:
+            total_datasets = (
+                await session.execute(select(func.count()).select_from(DatasetORM))
+            ).scalar_one()
+            status_rows = await session.execute(
+                select(DatasetORM.status, func.count()).group_by(DatasetORM.status)
+            )
+            datasets_by_status = {str(row[0]): int(row[1]) for row in status_rows.all()}
+            total_versions = (
+                await session.execute(select(func.count()).select_from(DatasetVersionORM))
+            ).scalar_one()
+            total_rows = (
+                await session.execute(
+                    select(func.coalesce(func.sum(DatasetVersionORM.row_count), 0))
+                )
+            ).scalar_one()
+            total_bytes = (
+                await session.execute(
+                    select(func.coalesce(func.sum(DatasetVersionORM.size_bytes), 0))
+                )
+            ).scalar_one()
+            return {
+                "total_datasets": int(total_datasets),
+                "datasets_by_status": datasets_by_status,
+                "total_versions": int(total_versions),
+                "total_rows": int(total_rows),
+                "total_size_bytes": int(total_bytes),
+            }
 
     async def get_dataset(self, dataset_id: str) -> dict[str, Any]:
         """获取单个数据集详情（含 schema 与版本列表概要）."""

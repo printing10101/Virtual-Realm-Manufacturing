@@ -66,8 +66,15 @@ class SecurityConfig:
     jwt_secret: str = field(default_factory=lambda: _env("LNN_JWT_SECRET", ""))
     # 修复 [B39]：注册邀请码统一在 config 中声明，避免在 auth.py 中
     # 直接读取 os.environ.get("LNN_REGISTRATION_CODE") 绕过配置审计。
-    # 当该字段为空字符串时，注册功能视为已关闭（返回 403）。
+    # 语义：当该字段为空字符串时视为开放注册（任意用户可自助注册）；
+    # 设置非空值时注册必须携带匹配的邀请码（invite_code）。
     registration_code: str = field(default_factory=lambda: _env("LNN_REGISTRATION_CODE", ""))
+    # 访客模式开关：开启后允许通过 /api/v1/auth/guest 获得临时访客身份，
+    # 访客可访问全部非管理员功能（与普通注册用户一致）。
+    guest_enabled: bool = field(default_factory=lambda: _bool_env("LNN_GUEST_ENABLED", True))
+    # 访客访问令牌有效期（小时）：访客不签发 refresh token，会话较短，
+    # 到期后需重新进入访客模式；登出或超时后 token 即失效。
+    guest_expire_hours: int = field(default_factory=lambda: _int_env("LNN_GUEST_EXPIRE_HOURS", 24))
 
     def __post_init__(self) -> None:
         """启动时安全审计：检测到权限检查被显式关闭时输出 WARNING。"""
