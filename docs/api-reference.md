@@ -256,6 +256,7 @@ Content-Type: application/json
 |------|------|------|
 | `GET` | `/api/v1/activity/brief` | 首页活动简报：今日生产 / 任务 / 告警 / 质量统计（真实聚合）。 |
 | `POST` | `/api/v1/admin/shutdown` | 触发后端优雅关闭（由 Tauri Rust 端调用）。 |
+| `POST` | `/api/v1/auth/guest` | 访客模式登录：无需注册即可获得临时访问身份。 |
 | `POST` | `/api/v1/auth/login` |  |
 | `POST` | `/api/v1/auth/logout` |  |
 | `GET` | `/api/v1/auth/me` |  |
