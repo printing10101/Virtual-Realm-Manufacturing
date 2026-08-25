@@ -143,7 +143,7 @@ describe('Home.vue', () => {
     await flushPromises()
     // 应当调用告警接口与生产仪表板接口
     expect(httpMock.get).toHaveBeenCalledWith('/api/v1/equipment/alarms/')
-    expect(httpMock.get).toHaveBeenCalledWith('/api/v1/production/dashboard')
+    expect(httpMock.get).toHaveBeenCalledWith('/api/v1/production/dashboard/')
   })
 
   it('快捷操作按钮点击触发路由跳转', async () => {

@@ -6,7 +6,7 @@ export interface QualityStats { total: number; passed: number; failed: number; [
 export interface Inspection { id: string; status: string; result: string; created_at: string; [key: string]: unknown }
 
 export async function fetchQualityStats(): Promise<QualityStats> {
-  const res = await http.get(API_CONFIG.QUALITY + '/stats/summary')
+  const res = await http.get(API_CONFIG.QUALITY + '/stats/')
   return res.data.data
 }
 export async function fetchInspections(params?: Record<string, unknown>): Promise<Inspection[]> {

@@ -249,4 +249,102 @@ describe('useAuthStore', () => {
       expect(stored.username).toBe('test')
     })
   })
+
+  describe('isGuest', () => {
+    it('is_guest 为 true 时返回 true', () => {
+      const store = useAuthStore()
+      store.$patch({ user: { id: 'g1', username: 'guest_abcd', role: 'guest', permissions: [], is_guest: true } })
+      expect(store.isGuest).toBe(true)
+    })
+
+    it('guest 角色时返回 true', () => {
+      const store = useAuthStore()
+      store.$patch({ user: { id: 'g1', username: 'guest_abcd', role: 'guest', permissions: [] } })
+      expect(store.isGuest).toBe(true)
+    })
+
+    it('普通用户返回 false', () => {
+      const store = useAuthStore()
+      store.$patch({ user: { id: 'u1', username: 'op', role: 'operator', permissions: [] } })
+      expect(store.isGuest).toBe(false)
+    })
+  })
+
+  describe('register', () => {
+    it('后端返回非 0 code 时返回错误信息', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 1, message: '用户名已存在' } })
+      const store = useAuthStore()
+      const result = await store.register('user1', 'pass1234')
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('用户名已存在')
+      expect(store.token).toBeNull()
+    })
+
+    it('注册成功后自动登录并保存会话', async () => {
+      (http.post as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ data: { code: 0, data: { username: 'newbie' } } })
+        .mockResolvedValueOnce({
+          data: {
+            code: 0,
+            data: {
+              access_token: 'new_token',
+              user: { username: 'newbie', role: 'user', permissions: [] },
+            },
+          },
+        })
+      const store = useAuthStore()
+      const result = await store.register('newbie', 'pass1234')
+      expect(result.success).toBe(true)
+      expect(store.token).toBe('new_token')
+      expect(store.user?.username).toBe('newbie')
+      expect(sessionStorage.getItem('auth_token')).toBe('new_token')
+    })
+
+    it('网络异常时返回错误信息', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
+      const store = useAuthStore()
+      const result = await store.register('u', 'pass1234')
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('网络错误')
+    })
+  })
+
+  describe('guestLogin', () => {
+    it('访客登录成功时保存会话并标记 is_guest', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          code: 0,
+          data: {
+            access_token: 'guest_token',
+            user: { username: 'guest_abcd', role: 'guest', is_guest: true },
+          },
+        },
+      })
+      const store = useAuthStore()
+      const result = await store.guestLogin()
+      expect(result.success).toBe(true)
+      expect(store.token).toBe('guest_token')
+      expect(store.userRole).toBe('guest')
+      expect(store.isGuest).toBe(true)
+      expect(store.user?.is_guest).toBe(true)
+      expect(sessionStorage.getItem('auth_token')).toBe('guest_token')
+    })
+
+    it('访客模式关闭时返回错误信息', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { code: 1003, message: '访客模式已关闭' } })
+      const store = useAuthStore()
+      const result = await store.guestLogin()
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('访客模式已关闭')
+      expect(store.token).toBeNull()
+    })
+
+    it('网络异常时返回错误信息', async () => {
+      (http.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('网络错误'))
+      const store = useAuthStore()
+      const result = await store.guestLogin()
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('网络错误')
+    })
+  })
 })

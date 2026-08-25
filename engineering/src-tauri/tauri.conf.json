@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "echo skip-vite-build",
+    "beforeBuildCommand": "if exist package.json (npm run build) else (cd .. && npm run build)",
     "frontendDist": "../dist"
   },
   "app": {
@@ -42,7 +42,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis", "dmg", "appimage", "deb"],
+    "targets": ["nsis", "dmg", "appimage", "deb"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -66,7 +66,7 @@
         "displayLanguageSelector": true,
         "installerIcon": "icons/icon.ico",
         "installMode": "perMachine",
-        "compression": "lzma"
+        "compression": "zlib"
       },
       "webviewInstallMode": {
         "type": "embedBootstrapper"

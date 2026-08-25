@@ -19,12 +19,14 @@
           <span>{{ $t('splashScreen.statusInit') }}</span>
         </div>
         <AppLayout
-          v-else
+          v-else-if="!isStandaloneRoute"
           :project-name="projectStore.projectName"
           :is-modified="projectStore.isModified"
           @file-command="fileDialogsRef?.handleFileCommand"
           @refresh="fileDialogsRef?.handleRefresh"
         />
+        <!-- 独立全屏页面（登录页等）：不套 AppLayout 侧边栏/头部 -->
+        <router-view v-else />
 
         <!-- 工程文件对话框（新建/打开/另存为/未保存确认） -->
         <AppFileDialogs ref="fileDialogsRef" />
@@ -52,6 +54,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, inject, ref, watch, type Ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useVersionStore } from '@/stores/version'
 import { useProjectStore } from '@/stores/project'
@@ -71,6 +74,10 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 const authStore = useAuthStore()
 const { t } = useI18n()
+const route = useRoute()
+
+// 独立全屏页面（不套 AppLayout 侧边栏/头部）：登录页
+const isStandaloneRoute = computed(() => route.name === 'login')
 
 const elLocaleRef = inject<Ref<typeof zhCn>>('locale', ref(zhCn))
 const elLocale = computed(() => elLocaleRef.value)
@@ -199,11 +206,12 @@ onMounted(async () => {
   })
   versionStore.checkConsistency()
 
-  // [U-P0-1] 首次启动引导：检查 localStorage 标记，未完成时延迟启动 Tour
+  // [U-P0-1] 首次启动引导：检查 localStorage 标记，未完成且已登录时延迟启动 Tour
   // 延迟 800ms 确保主布局 DOM 渲染完成，Tour 才能正确定位目标元素
+  // 未登录时不启动（避免引导遮罩覆盖登录页）
   try {
     const completed = localStorage.getItem(TOUR_COMPLETED_KEY)
-    if (completed !== 'true') {
+    if (authStore.isAuthenticated && completed !== 'true') {
       setTimeout(() => {
         tourRef.value?.start()
       }, 800)

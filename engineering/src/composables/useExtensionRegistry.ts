@@ -16,7 +16,7 @@
 
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import http from '@/utils/http'
-import { API_CONFIG, buildApiPath } from '@/config/api'
+import { API_CONFIG } from '@/config/api'
 import type {
   ExtensionPointContribution,
   BuiltinExtensionPoint,
@@ -353,7 +353,7 @@ async function syncFromBackend(): Promise<void> {
 
   try {
     const res = await http.get<ApiEnvelope<ListPluginsResponse>>(
-      buildApiPath(API_CONFIG.PLUGINS, ''),
+      API_CONFIG.PLUGINS,
     )
     const data = res.data.data
     const manifests: PluginManifest[] = []

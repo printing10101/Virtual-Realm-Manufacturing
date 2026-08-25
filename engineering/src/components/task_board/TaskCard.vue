@@ -39,7 +39,7 @@ function truncate(s: string, len: number): string {
 }
 
 function avatarColor(id: string): string {
-  const colors = ['#409EFF','#67C23A','#E6A23C','#F56C6C','#909399','#B37FEB']
+  const colors = ['#007AFF','#34C759','#FF9500','#FF3B30','#8F8670','#B37FEB']
   let hash = 0; for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
 }
@@ -48,9 +48,9 @@ function avatarColor(id: string): string {
 <style scoped>
 .task-card { padding: 12px; margin-bottom: 8px; border: 1px solid var(--el-border-color-lighter); border-radius: var(--radius-sm); cursor: pointer; background: var(--el-bg-color); transition: all 0.2s; }
 .task-card:hover { border-color: var(--accent-primary); background: var(--accent-light); }
-.task-card.priority-high { border-left: 3px solid #F56C6C; }
-.task-card.priority-medium { border-left: 3px solid #E6A23C; }
-.task-card.priority-low { border-left: 3px solid #409EFF; }
+.task-card.priority-high { border-left: 3px solid #FF3B30; }
+.task-card.priority-medium { border-left: 3px solid #FF9500; }
+.task-card.priority-low { border-left: 3px solid #007AFF; }
 .task-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .task-type-tag { font-size: 11px; padding: 2px 6px; border-radius: var(--radius-xs); background: var(--el-fill-color-darker); color: var(--el-text-color-secondary); }
 .task-date { font-size: 11px; color: var(--el-text-color-placeholder); }

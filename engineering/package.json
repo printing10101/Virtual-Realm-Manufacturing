@@ -11,7 +11,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "runtime:build": "python python/scripts/build_desktop_runtime.py",
-    "app:build": "npm run runtime:build && npm run build && npm run tauri:build",
+    "app:build": "npm run runtime:build && npm run tauri:build",
     "test": "vitest run",
     "test:run": "vitest run",
     "test:watch": "vitest",

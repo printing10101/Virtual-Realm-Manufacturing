@@ -36,7 +36,19 @@ function renderFatalError(stage: string, err: unknown) {
   target.appendChild(wrapper.firstElementChild as HTMLElement)
 }
 
+// 已知非致命告警：ResizeObserver loop 属于浏览器无害警告，不应触发致命错误页
+const NON_FATAL_PATTERNS = [/resizeobserver loop/i]
+
+function isNonFatalError(msg: string): boolean {
+  return NON_FATAL_PATTERNS.some((re) => re.test(msg))
+}
+
 window.addEventListener('error', (e) => {
+  const msg = e.error instanceof Error ? e.error.message : String(e.message ?? '')
+  if (isNonFatalError(msg)) {
+    console.warn('[main] 忽略非致命错误:', msg)
+    return
+  }
   renderFatalError('window.error', e.error ?? `${e.message} @ ${e.filename}:${e.lineno}:${e.colno}`)
 })
 window.addEventListener('unhandledrejection', (e) => {
@@ -53,6 +65,9 @@ import router from './router'
 import { i18n, setLocale, type SupportedLocale } from './i18n'
 import { setHttpReady } from './utils/http'
 import { registerDialectManagerPlugin } from './plugins/dialect-manager'
+// Element Plus 基础样式必须先于主题覆盖层加载，否则组件（按钮/表单/弹窗等）会缺失底座样式
+import 'element-plus/dist/index.css'
+// Apple 风格米白主题覆盖层（加载顺序在后 → 覆盖 EP 默认样式）
 import './assets/styles/theme.css'
 
 function getLocale(): string {

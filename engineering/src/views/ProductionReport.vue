@@ -236,7 +236,7 @@ function cancelPendingRequests() {
 async function fetchDashboard(signal?: AbortSignal) {
   dashboardLoading.value = true
   try {
-    const res = await http.get(API_CONFIG.PRODUCTION + '/dashboard', { signal })
+    const res = await http.get(API_CONFIG.PRODUCTION + '/dashboard/', { signal })
     dashboardData.value = res.data?.data ?? null
   } catch (error) {
     if ((error as { name?: string })?.name === 'AbortError') return
@@ -270,7 +270,7 @@ async function fetchStats(days: number, signal?: AbortSignal) {
 async function fetchRecords(signal?: AbortSignal) {
   recordsLoading.value = true
   try {
-    const res = await http.get(API_CONFIG.PRODUCTION + '/records', { params: { limit: 20 }, signal })
+    const res = await http.get(API_CONFIG.PRODUCTION + '/records/', { params: { limit: 20 }, signal })
     productionRecords.value = res.data?.data ?? []
   } catch (error) {
     if ((error as { name?: string })?.name === 'AbortError') return
@@ -283,7 +283,7 @@ async function fetchRecords(signal?: AbortSignal) {
 async function fetchWorkOrders(signal?: AbortSignal) {
   workOrdersLoading.value = true
   try {
-    const res = await http.get(API_CONFIG.PRODUCTION + '/work-orders', { params: { limit: 10 }, signal })
+    const res = await http.get(API_CONFIG.PRODUCTION + '/work-orders/', { params: { limit: 10 }, signal })
     workOrders.value = res.data?.data ?? []
   } catch (error) {
     if ((error as { name?: string })?.name === 'AbortError') return

@@ -55,6 +55,7 @@ declare module 'vue' {
     DxfParseStats: typeof import('./components/dxf_import/DxfParseStats.vue')['default']
     DxfPreview: typeof import('./components/dxf_import/DxfPreview.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
+    ElAvatar: typeof import('element-plus/es')['ElAvatar']
     ElBadge: typeof import('element-plus/es')['ElBadge']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElButtonGroup: typeof import('element-plus/es')['ElButtonGroup']

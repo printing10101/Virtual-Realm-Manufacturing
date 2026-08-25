@@ -12,6 +12,12 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/Login.vue'),
+      meta: { public: true, title: '登录' },
+    },
+    {
       path: '/workspace',
       name: 'workspace',
       component: () => import('../views/Workspace.vue'),
@@ -231,7 +237,7 @@ router.beforeEach((to, _from, next) => {
   // 所有非公开路由默认要求认证
   if (!authStore.isAuthenticated) {
     ElMessage.warning('请先登录后再访问该页面')
-    next('/')
+    next('/login')
     return
   }
 

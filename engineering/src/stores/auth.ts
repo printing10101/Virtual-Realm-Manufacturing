@@ -3,11 +3,11 @@ import { ref, computed } from 'vue'
 import http from '@/utils/http'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 
-export type UserRole = 'admin' | 'operator' | 'viewer'
+export type UserRole = 'admin' | 'operator' | 'viewer' | 'guest'
 
 // P1 安全修复：role 字段白名单。后端响应若被中间人篡改或 JWT 解码异常，
 // 未知 role 必须降级为 'viewer'，避免绕过 isAdmin() 等权限判断造成权限提升。
-const ALLOWED_ROLES: ReadonlySet<UserRole> = new Set(['admin', 'operator', 'viewer'])
+const ALLOWED_ROLES: ReadonlySet<UserRole> = new Set(['admin', 'operator', 'viewer', 'guest'])
 
 function normalizeRole(role: unknown): UserRole {
   return ALLOWED_ROLES.has(role as UserRole) ? (role as UserRole) : 'viewer'
@@ -35,6 +35,7 @@ interface UserInfo {
   username: string
   role: UserRole
   permissions: string[]
+  is_guest?: boolean
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -49,6 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   const userRole = computed(() => user.value?.role ?? 'viewer')
   const permissions = computed(() => user.value?.permissions ?? [])
+  const isGuest = computed(() => !!user.value?.is_guest || userRole.value === 'guest')
 
   function isAdmin() {
     return userRole.value === 'admin'
@@ -58,29 +60,67 @@ export const useAuthStore = defineStore('auth', () => {
     return permissions.value.includes(perm)
   }
 
+  // 统一处理登录/注册/访客登录成功后的会话写入（token + 用户信息）
+  function _setSession(data: Record<string, any>, fallbackUsername?: string) {
+    token.value = data.access_token
+    // 安全修复：token 写入 sessionStorage 而非 localStorage，降低 XSS 凭证窃取风险
+    sessionStorage.setItem('auth_token', data.access_token)
+    const userInfo: UserInfo = {
+      id: data.user?.username ?? fallbackUsername ?? '',
+      username: data.user?.username ?? fallbackUsername ?? '',
+      // P1 安全修复：白名单校验后端返回的 role，未知值降级为 'viewer' 防权限提升
+      role: normalizeRole(data.user?.role),
+      permissions: data.user?.permissions ?? [],
+      is_guest: !!data.user?.is_guest,
+    }
+    user.value = userInfo
+    sessionStorage.setItem('auth_user', JSON.stringify(userInfo))
+  }
+
   async function login(username: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
       const res = await http.post(buildApiPath(API_CONFIG.AUTH, '/login'), { username, password })
       const data = res.data
       if (data.code === 0 && data.data) {
-        token.value = data.data.access_token
-        // 安全修复：token 写入 sessionStorage 而非 localStorage，降低 XSS 凭证窃取风险
-        sessionStorage.setItem('auth_token', data.data.access_token)
-        const userInfo: UserInfo = {
-          id: data.data.user?.username ?? '',
-          username: data.data.user?.username ?? username,
-          // P1 安全修复：白名单校验后端返回的 role，未知值降级为 'viewer' 防权限提升
-          role: normalizeRole(data.data.user?.role),
-          permissions: data.data.user?.permissions ?? [],
-        }
-        user.value = userInfo
-        sessionStorage.setItem('auth_user', JSON.stringify(userInfo))
+        _setSession(data.data, username)
         return { success: true }
       }
       return { success: false, error: data.message || '登录失败' }
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
         || (err instanceof Error ? err.message : '网络错误，登录失败')
+      return { success: false, error: msg }
+    }
+  }
+
+  async function register(username: string, password: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await http.post(buildApiPath(API_CONFIG.AUTH, '/register'), { username, password })
+      const data = res.data
+      if (data.code === 0 && data.data) {
+        // 注册成功后自动登录，提供无缝体验
+        return await login(username, password)
+      }
+      return { success: false, error: data.message || '注册失败' }
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || (err instanceof Error ? err.message : '网络错误，注册失败')
+      return { success: false, error: msg }
+    }
+  }
+
+  async function guestLogin(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await http.post(buildApiPath(API_CONFIG.AUTH, '/guest'))
+      const data = res.data
+      if (data.code === 0 && data.data) {
+        _setSession(data.data)
+        return { success: true }
+      }
+      return { success: false, error: data.message || '访客登录失败' }
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || (err instanceof Error ? err.message : '网络错误，访客登录失败')
       return { success: false, error: msg }
     }
   }
@@ -111,9 +151,12 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     userRole,
     permissions,
+    isGuest,
     isAdmin,
     hasPermission,
     login,
+    register,
+    guestLogin,
     logout,
     setUser,
     setToken,

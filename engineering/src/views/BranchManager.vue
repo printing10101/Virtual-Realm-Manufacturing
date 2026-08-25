@@ -47,8 +47,8 @@ async function fetchBranches() {
   loading.value = true
   try {
     const url = typeFilter.value
-      ? buildApiPath(API_CONFIG.V1, `/templates/branches?type=${typeFilter.value}`)
-      : buildApiPath(API_CONFIG.V1, '/templates/branches')
+      ? buildApiPath(API_CONFIG.V1, `/templates/branches/?type=${typeFilter.value}`)
+      : buildApiPath(API_CONFIG.V1, '/templates/branches/')
     const res = await http.get(url)
     if (res.data.code === 'SUCCESS') branches.value = res.data.data
   } catch (e: unknown) {
@@ -69,7 +69,7 @@ async function createBranch() {
     data = {}
   }
   try {
-    await http.post(`${API_CONFIG.V1}/templates/branches`, {
+    await http.post(`${API_CONFIG.V1}/templates/branches/`, {
       name: createForm.value.name,
       base_branch: createForm.value.base_branch || null,
       data,

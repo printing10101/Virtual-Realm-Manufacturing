@@ -161,7 +161,7 @@ onMounted(async () => {
     agentStore.fetchAgents(),
     tasksStore.fetchTasks(),
     http.get(API_CONFIG.EQUIPMENT + '/alarms/'),
-    http.get(API_CONFIG.PRODUCTION + '/dashboard'),
+    http.get(API_CONFIG.PRODUCTION + '/dashboard/'),
     http.get(API_CONFIG.PRODUCTION + '/stats', { params: { days: 1 } }),
   ])
 

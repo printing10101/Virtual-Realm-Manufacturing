@@ -145,23 +145,68 @@
           effect="plain"
         >{{ t('appLayout.unsaved') }}</el-tag>
       </span>
+      <el-dropdown
+        trigger="click"
+        placement="bottom-end"
+        @command="handleUserCommand"
+      >
+        <button
+          class="header-btn user-btn"
+          data-testid="header-user-menu"
+        >
+          <el-avatar
+            :size="24"
+            class="user-avatar"
+          >
+            {{ avatarText }}
+          </el-avatar>
+          <span class="user-name">{{ authStore.user?.username || t('appLayout.guest') }}</span>
+          <el-icon :size="12">
+            <ArrowDown />
+          </el-icon>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item
+              disabled
+              class="user-info-item"
+            >
+              <span class="user-role-tag">{{ roleLabel }}</span>
+            </el-dropdown-item>
+            <el-dropdown-item
+              divided
+              command="logout"
+            >
+              <el-icon :size="16">
+                <SwitchButton />
+              </el-icon>{{ t('appLayout.logout') }}
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import {
   Search, Refresh, Bell, Folder, DocumentAdd, FolderOpened,
   Document, CopyDocument, Download, Upload, DocumentCopy,
+  SwitchButton, ArrowDown,
 } from '@element-plus/icons-vue'
 import BackendStatusIndicator from '@/components/BackendStatusIndicator.vue'
+import { useAuthStore } from '@/stores/auth'
 import http from '@/utils/http'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 import { extractErrorMessage } from '@/utils/error-handler'
 
 const { t } = useI18n()
+const router = useRouter()
+const authStore = useAuthStore()
 
 const emit = defineEmits<{
   (e: 'file-command', cmd: string): void
@@ -172,6 +217,37 @@ defineProps<{
   projectName?: string
   isModified?: boolean
 }>()
+
+const avatarText = computed(() => (authStore.user?.username || '?').slice(0, 1).toUpperCase())
+
+const roleLabel = computed(() => {
+  const map: Record<string, string> = {
+    admin: '管理员',
+    operator: '操作员',
+    viewer: '访客',
+    guest: '游客',
+  }
+  return map[authStore.userRole] || authStore.userRole
+})
+
+async function handleUserCommand(cmd: string) {
+  if (cmd !== 'logout') return
+  try {
+    await ElMessageBox.confirm(
+      t('appLayout.logoutConfirm'),
+      t('appLayout.logoutTitle'),
+      {
+        confirmButtonText: t('appLayout.logout'),
+        cancelButtonText: t('common.cancel'),
+        type: 'warning',
+      },
+    )
+    authStore.logout()
+    router.replace('/login')
+  } catch {
+    // 用户取消退出
+  }
+}
 
 const notifications = ref<Array<{ id: number; text: string; time: string; type: string; read: boolean }>>([])
 
@@ -334,6 +410,42 @@ function handleFileCommand(cmd: string) {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-left: 4px;
+}
+
+/* ===== User Menu ===== */
+.user-btn {
+  gap: 6px;
+  width: auto;
+  padding: 0 8px;
+}
+
+.user-avatar {
+  background-color: var(--accent-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.user-name {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-info-item {
+  cursor: default;
+}
+
+.user-role-tag {
+  font-size: 0.75rem;
+  color: var(--accent-primary);
+  padding: 2px 8px;
+  background-color: var(--accent-bg, rgba(0, 122, 255, 0.08));
+  border-radius: var(--radius-sm);
 }
 
 /* ===== Notification Dropdown ===== */

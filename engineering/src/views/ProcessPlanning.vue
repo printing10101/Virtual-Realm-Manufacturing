@@ -111,6 +111,7 @@ interface ProcessStep {
 interface ProcessRoute {
   id: number
   name: string
+  part_type: string
   description: string
   status: string
   version: string
@@ -149,8 +150,9 @@ async function fetchRoutes() {
     if (searchKeyword.value.trim()) {
       params.keyword = searchKeyword.value.trim()
     }
-    const res = await http.get(API_CONFIG.PROCESS_ROUTES, { params })
-    routeList.value = res.data.data || []
+    const res = await http.get(API_CONFIG.PROCESS_ROUTES + '/', { params })
+    const data = res.data?.data
+    routeList.value = Array.isArray(data) ? data : (data?.routes ?? [])
   } catch {
     loadError.value = true
     routeList.value = []
@@ -195,8 +197,9 @@ function closeDetail() {
 
 async function handleCreate() {
   try {
-    const res = await http.post(API_CONFIG.PROCESS_ROUTES, {
+    const res = await http.post(API_CONFIG.PROCESS_ROUTES + '/', {
       name: t('processPlanning.routePage.defaultRouteName'),
+      part_type: '',
       description: '',
       status: t('processPlanning.routePage.statusDraft'),
       steps: [],
@@ -230,8 +233,9 @@ async function handleEdit(route: ProcessRoute) {
 
 async function handleCopy(route: ProcessRoute) {
   try {
-    const res = await http.post(API_CONFIG.PROCESS_ROUTES, {
+    const res = await http.post(API_CONFIG.PROCESS_ROUTES + '/', {
       name: `${route.name}${t('processPlanning.routePage.copySuffix')}`,
+      part_type: route.part_type,
       description: route.description,
       status: t('processPlanning.routePage.statusDraft'),
       version: route.version,

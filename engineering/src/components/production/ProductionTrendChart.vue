@@ -146,12 +146,12 @@ function renderChart() {
   const isBar = props.chartType === 'bar'
   const series = isBar
     ? [
-        { name: t('productionReport.colPlanOutput'), type: 'bar', barGap: '10%', data: planOutputs, itemStyle: { color: '#909399' } },
-        { name: t('productionReport.colActualOutput'), type: 'bar', data: actualOutputs, itemStyle: { color: '#409eff' } },
+        { name: t('productionReport.colPlanOutput'), type: 'bar', barGap: '10%', data: planOutputs, itemStyle: { color: '#a69c84' } },
+        { name: t('productionReport.colActualOutput'), type: 'bar', data: actualOutputs, itemStyle: { color: '#007aff' } },
       ]
     : [
-        { name: t('productionReport.colPlanOutput'), type: 'line', smooth: true, data: planOutputs, itemStyle: { color: '#909399' } },
-        { name: t('productionReport.colActualOutput'), type: 'line', smooth: true, data: actualOutputs, itemStyle: { color: '#409eff' } },
+        { name: t('productionReport.colPlanOutput'), type: 'line', smooth: true, data: planOutputs, itemStyle: { color: '#a69c84' } },
+        { name: t('productionReport.colActualOutput'), type: 'line', smooth: true, data: actualOutputs, itemStyle: { color: '#007aff' } },
       ]
 
   chartInstance.setOption({
@@ -165,8 +165,8 @@ function renderChart() {
     ],
     series: [
       ...series,
-      { name: t('productionReport.colYieldRate'), type: 'line', smooth: true, yAxisIndex: 1, data: yieldRates, itemStyle: { color: '#67c23a' } },
-      { name: t('productionReport.colUtilization'), type: 'line', smooth: true, yAxisIndex: 1, data: utilizations, itemStyle: { color: '#e6a23c' } },
+      { name: t('productionReport.colYieldRate'), type: 'line', smooth: true, yAxisIndex: 1, data: yieldRates, itemStyle: { color: '#34c759' } },
+      { name: t('productionReport.colUtilization'), type: 'line', smooth: true, yAxisIndex: 1, data: utilizations, itemStyle: { color: '#ff9500' } },
     ],
   })
 }

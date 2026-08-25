@@ -94,6 +94,7 @@ interface ProcessStep {
 interface ProcessRouteCardItem {
   id: number
   name: string
+  part_type: string
   description: string
   status: string
   version: string
