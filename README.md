@@ -89,3 +89,9 @@ docker compose --profile full up -d
 ## 🤝 参与贡献
 
 见 [贡献指南](CONTRIBUTING.md)。版本一致性由 `scripts/version_sync.py` 保障（CI 门禁）。
+
+## Datasets
+
+大型数据集不随仓库分发（减小体积）：
+- `research/datasets/uniwear/uniwear/nuaa_orthogonal_bundle_high_resolution.csv`（56MB）与 `phm2010_bundle_high_resolution.csv`（12MB）已移出版本库，PHM2010 为公开数据集可从官方渠道获取；uniwear 数据请参考论文说明或联系作者。
+- 其余小型数据与实验代码仍在库内。
