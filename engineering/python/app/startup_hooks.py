@@ -22,8 +22,9 @@ import subprocess
 import sys
 
 # Alembic 迁移日志截断长度（防止 stdout/stderr 过长污染日志）
-ALEMBIC_STDOUT_LOG_LIMIT: int = 200
-ALEMBIC_STDERR_LOG_LIMIT: int = 500
+# P5-2 优化：从 200/500 增加到 5000，避免长迁移输出被截断，便于诊断问题
+ALEMBIC_STDOUT_LOG_LIMIT: int = 5000
+ALEMBIC_STDERR_LOG_LIMIT: int = 5000
 ALEMBIC_TIMEOUT_SEC: int = 120
 
 

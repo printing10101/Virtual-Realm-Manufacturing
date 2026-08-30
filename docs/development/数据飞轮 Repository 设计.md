@@ -27,7 +27,7 @@
 - 删除操作（`delete_cutting_experience`）
 
 **❌ 不包含**：
-- API 层（/api/cutting/experience，P2-3）
+- API 层（/api/v1/experience，P2-3，见 `app/api/v1/cutting_experience/routes.py`）
 - 数据飞轮训练 pipeline（P3-P5）
 - 传感器接入层（MTConnect）
 

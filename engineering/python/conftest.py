@@ -61,5 +61,9 @@ _PYTHON_ROOT = Path(__file__).parent.resolve()
 if str(_PYTHON_ROOT) not in sys.path:
     sys.path.insert(0, str(_PYTHON_ROOT))
 
-# 显式忽略 app/ 目录的测试收集（双重防护：与 pytest.ini norecursedirs 配合）
+# 显式忽略 app/ 目录的测试收集（双重防护：与 pytest.ini norecursedirs 配合）。
+# 背景：曾为支持 tests/api 集成测试临时注释，但 pytest.ini 的 norecursedirs
+# 已含 app，API 测试并不依赖收集 app/**/tests；且该防护是 E-P0-3 防复发
+# 机制的一部分（防止 pytest 9.x 跨目录调用时误扫 app 内嵌测试触发
+# torch 导入 STATUS_HEAP_CORRUPTION），必须保留。
 collect_ignore = ["app"]

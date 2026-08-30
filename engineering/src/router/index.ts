@@ -138,6 +138,12 @@ const router = createRouter({
       meta: { title: '实验快照', requiresAuth: true },
     },
     {
+      path: '/cutting-experience',
+      name: 'cutting-experience',
+      component: () => import('../components/experience/CuttingExperienceDashboard.vue'),
+      meta: { title: '切削实测数据', requiresAuth: true },
+    },
+    {
       path: '/flywheel-dashboard',
       name: 'flywheel-dashboard',
       component: () => import('../components/FlywheelDashboard.vue'),

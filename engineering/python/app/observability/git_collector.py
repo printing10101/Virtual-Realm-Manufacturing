@@ -26,6 +26,8 @@ import threading
 import time
 from dataclasses import dataclass
 
+from app.config.limits import GIT_COMMAND_TIMEOUT_SEC
+
 logger = logging.getLogger(__name__)
 
 
@@ -126,7 +128,7 @@ class GitCollector:
                 cwd=self._repo_root,
                 capture_output=True,
                 text=True,
-                timeout=5.0,
+                timeout=GIT_COMMAND_TIMEOUT_SEC,
                 # 避免在 Windows 弹出新窗口
                 shell=False,
             )

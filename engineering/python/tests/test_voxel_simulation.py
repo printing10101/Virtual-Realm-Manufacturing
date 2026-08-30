@@ -426,6 +426,8 @@ G00 Z80."""
             assert len(result.task_id) > 0
 
     def test_fallback_result_stl_url(self):
+        # 降级结果需 trimesh 生成默认毛坯盒 STL（缺失时 stock_box=None、产物为空）
+        pytest.importorskip("trimesh", reason="trimesh未安装，跳过降级 STL 产物测试")
         cutter = VoxelCutter(voxel_size=2.0)
         tool = ToolModel(diameter=10.0, tool_type="flat")
 

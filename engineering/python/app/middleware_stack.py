@@ -70,7 +70,10 @@ def register_middleware_stack(
             state_file_path,
         )
     else:
-        logger.info("IdleAutoShutdownMiddleware disabled (LNN_IDLE_AUTO_SHUTDOWN=false)")
+        logger.warning(
+            "IdleAutoShutdownMiddleware disabled (LNN_IDLE_AUTO_SHUTDOWN=false, desktop mode)",
+            exc_info=False,
+        )
 
     # 2. UnifiedAuthMiddleware（鉴权，CORS 内层）
     app.add_middleware(
@@ -112,7 +115,10 @@ def register_middleware_stack(
         app.add_exception_handler(RateLimitExceeded, rate_limit_handler)  # type: ignore[arg-type]
         logger.info("Rate limiting enabled (default: 100 req/min per IP, per-endpoint overrides apply)")
     else:
-        logger.info("Rate limiting is disabled via config")
+        logger.warning(
+            "Rate limiting disabled via config (SECURITY: LLM/Jobs endpoints unprotected)",
+            exc_info=False,
+        )
 
     # P1-12 修复：/api/metrics 暴露运行时指标，三层鉴权全部放行，
     # 此处增加 IP 白名单作为终端防护。实现已迁移至 middleware.metrics_middleware。

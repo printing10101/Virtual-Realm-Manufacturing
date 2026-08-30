@@ -77,8 +77,11 @@ class _RedisHolder:
 
             config = RedisConfig()
             if not config.enabled:
-                # 桌面模式：使用内存缓存替代 Redis
-                logger.info("REDIS_URL not configured, using in-memory cache (desktop mode)")
+                # Redis 为可选依赖，桌面模式默认降级到内存缓存
+                logger.warning(
+                    "REDIS_URL not configured, using in-memory cache (desktop mode / Redis disabled)",
+                    exc_info=False,
+                )
                 try:
                     cache = await init_memory_cache()
                     with self._init_lock:

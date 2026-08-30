@@ -30,12 +30,13 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 import uuid
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
+
+from app.config.limits import DEFAULT_THREAD_JOIN_TIMEOUT_SEC
 
 logger = logging.getLogger(__name__)
 
@@ -382,7 +383,7 @@ class MockMTConnectAgent:
         self._server.server_close()
         self._server = None
         if self._thread is not None:
-            self._thread.join(timeout=5.0)
+            self._thread.join(timeout=DEFAULT_THREAD_JOIN_TIMEOUT_SEC)
             self._thread = None
         logger.info("MockMTConnectAgent stopped")
 

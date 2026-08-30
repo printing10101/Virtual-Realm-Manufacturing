@@ -26,10 +26,10 @@ from app.api.v1 import (
     dxf_pipeline as dxf_pipeline_routes,
     postprocessor_dialects,
     tools,
-    experience_routes,
     monitor_ws,
     optimizer_routes,
 )
+from app.api.v1.cutting_experience.routes import router as cutting_experience_router
 from app.api.v1.nl2cad.routes import router as nl2cad_router
 from app.projects import project_api as project_routes
 from app.rules import router as rules_router
@@ -65,6 +65,7 @@ def register(app: FastAPI) -> None:
     app.include_router(postprocessor_dialects.router)
 
     # === 数据飞轮 / 参数优化 / 实时监控（功能缺口接线）===
-    app.include_router(experience_routes.router)
+    # P2-3：cutting_experience 统一采集 API（RBAC + 统一异常体系，前缀 /api/v1/experience）
+    app.include_router(cutting_experience_router)
     app.include_router(optimizer_routes.router)
     app.include_router(monitor_ws.router)

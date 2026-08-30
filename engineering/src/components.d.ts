@@ -44,6 +44,7 @@ declare module 'vue' {
     CostDistributionChart: typeof import('./components/cost/CostDistributionChart.vue')['default']
     CostSuggestions: typeof import('./components/cost/CostSuggestions.vue')['default']
     CostTrendChart: typeof import('./components/cost/CostTrendChart.vue')['default']
+    CuttingExperienceDashboard: typeof import('./components/experience/CuttingExperienceDashboard.vue')['default']
     DecisionActions: typeof import('./components/Copilot/DecisionActions.vue')['default']
     DependencyTree: typeof import('./components/plugin/DependencyTree.vue')['default']
     DependencyTreeNode: typeof import('./components/plugin/DependencyTreeNode.vue')['default']

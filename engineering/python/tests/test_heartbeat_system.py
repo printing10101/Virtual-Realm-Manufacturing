@@ -13,6 +13,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.budget.budget import (  # noqa: E402
@@ -36,6 +38,11 @@ from app.heartbeat.heartbeat import (  # noqa: E402
     ScheduledTask,
     WakeupQueue,
 )
+
+# pytest-asyncio 默认 strict 模式：本文件 8 个 async 测试需显式标记才会被
+# 事件循环驱动（否则报 "async def functions are not natively supported"）。
+# 本文件不参与 CI 单元门禁（CI 仅跑 tests/unit/），此前从未在本仓库配置下运行过。
+pytestmark = pytest.mark.asyncio
 
 logging.basicConfig(
     level=logging.INFO,
@@ -537,20 +544,22 @@ async def test_4_orphaned_task_recovery():
     engine = ExecutionEngine()
     engine.session_manager = session_mgr
 
-    from app.heartbeat.heartbeat import _scheduler as global_scheduler
-
-    orig_scheduler = global_scheduler
+    # 引擎在 recover_orphaned_tasks 内部执行
+    # ``from app.dependencies import get_scheduler``（函数内导入，调用时解析），
+    # 因此替换点为 ``app.dependencies.get_scheduler``；旧的
+    # ``heartbeat_module._scheduler`` 全局符号在调度器单例Holder化重构后已不存在。
+    import app.dependencies as dependencies_module
 
     test_scheduler_instance = HeartbeatScheduler(
         wakeup_queue=queue, heartbeat_interval=60
     )
-    import app.heartbeat.heartbeat as heartbeat_module
 
-    heartbeat_module._scheduler = test_scheduler_instance
-
-    recovered = await engine.recover_orphaned_tasks()
-
-    heartbeat_module._scheduler = orig_scheduler
+    original_get_scheduler = dependencies_module.get_scheduler
+    dependencies_module.get_scheduler = lambda: test_scheduler_instance
+    try:
+        recovered = await engine.recover_orphaned_tasks()
+    finally:
+        dependencies_module.get_scheduler = original_get_scheduler
 
     recovered_task = queue.get_task(task_id)
     recorder.record(
@@ -629,7 +638,7 @@ async def test_5_cost_record_validation():
         f"查询到{len(costs_1)}条成本记录",
         f"records_count={len(costs_1)}",
         "PASS" if len(costs_1) == 2 else "FAIL",
-        f"costs={[c['resource_type'] for c in costs_1]}",
+        f"costs={[c['cost_type'] for c in costs_1]}",
     )
 
     recorder.record(
@@ -638,20 +647,21 @@ async def test_5_cost_record_validation():
         f"查询到{len(costs_2)}条成本记录",
         f"records_count={len(costs_2)}",
         "PASS" if len(costs_2) == 2 else "FAIL",
-        f"costs={[c['resource_type'] for c in costs_2]}",
+        f"costs={[c['cost_type'] for c in costs_2]}",
     )
 
     if costs_1:
         for cost in costs_1:
-            if "timestamp" in cost and cost["timestamp"] is not None:
-                time_diff = abs(time.time() - cost["timestamp"])
+            # cost_events 表的时间戳列名为 recorded_at（见 cost_tracker._init_schema）
+            if "recorded_at" in cost and cost["recorded_at"] is not None:
+                time_diff = abs(time.time() - cost["recorded_at"])
                 recorder.record(
                     "测试5: 成本记录验证",
-                    f"步骤5: 验证成本记录时间戳({cost['resource_type']})",
+                    f"步骤5: 验证成本记录时间戳({cost['cost_type']})",
                     "时间戳与实际执行时间相符（偏差<60秒）",
                     f"time_diff={time_diff:.2f}秒",
                     "PASS" if time_diff < 60 else "FAIL",
-                    f"timestamp={cost['timestamp']}, current_time={time.time()}",
+                    f"recorded_at={cost['recorded_at']}, current_time={time.time()}",
                 )
 
     cost_tracker.close()

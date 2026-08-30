@@ -488,3 +488,18 @@ output/mem-check.txt
 /scripts/fea_verify/__pycache__/
 /scripts/fea_verify/ccx_2.23_htm.tar.bz2
 data/traces/
+
+# ============================================================
+# 仓库卫生（2026-08-28 清理）：会话产物与一次性工件不入库
+# ============================================================
+# 提交信息草稿（写完即提交，草稿不留仓库）
+/commit_msg*.txt
+# YOLO/Ultralytics 训练验证输出（runs/detect/...）
+/runs/
+# Playwright 测试报告产物
+/playwright-report/
+/test-results/
+# CI 本地产物
+/coverage-unit*.json
+/coverage-unit*.xml
+/coverage-unit-html/

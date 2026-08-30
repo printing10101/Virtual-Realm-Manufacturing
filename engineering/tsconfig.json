@@ -36,7 +36,8 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client", "element-plus/global"]
+    "types": ["vite/client", "element-plus/global"],
+    "skipDefaultLibCheck": true
   },
   "include": [
     "src/**/*.ts",

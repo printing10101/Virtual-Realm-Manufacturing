@@ -46,8 +46,16 @@ class TestErrorCode:
     def test_code_to_numeric_internal_error(self):
         assert code_to_numeric(ErrorCode.INTERNAL_ERROR) == 2001
 
-    def test_code_to_numeric_unknown_returns_2001(self):
-        assert code_to_numeric(ErrorCode.FILE_NOT_FOUND) == 1001
+    def test_code_to_numeric_file_not_found(self):
+        # FILE_NOT_FOUND 已在 _ERROR_CODE_TO_NUMERIC 中注册为独立错误码 1008
+        # （此前误断言为 1001，且测试名"unknown"与用例不符，2026-08-28 修正）
+        assert code_to_numeric(ErrorCode.FILE_NOT_FOUND) == 1008
+
+    def test_code_to_numeric_unmapped_returns_2001_fallback(self):
+        """映射表外的 ErrorCode 成员回落到 2001（.get 默认值兜底分支）。"""
+        from unittest.mock import MagicMock
+
+        assert code_to_numeric(MagicMock(spec=ErrorCode)) == 2001
 
     def test_numeric_to_code(self):
         assert numeric_to_code(0) == ErrorCode.SUCCESS

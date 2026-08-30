@@ -1,7 +1,8 @@
 name: PR 阶段流水线
 
 # 覆盖率阈值统一说明：所有测试类型（单元/集成/前端）的覆盖率阈值
-# 覆盖率阈值与 ci.yml、.coveragerc 保持一致（后端 fail_under = 24%，前端 vitest 65%）。
+# 覆盖率阈值与 ci.yml、.coveragerc 保持一致（后端 fail_under = 24%，前端 vitest 34%，
+# 见 engineering/vitest.config.ts thresholds，2026-08 实测基线）。
 # 理由：2026-08-04 全量 unit 修复后实测后端覆盖率 24.45%，PR 阶段阈值须与 CI 阶段
 # 一致（原 80%→65% 未同步到 ci.yml，导致 PR 永远失败）。后续随测试补全逐步提升，目标 80%。
 

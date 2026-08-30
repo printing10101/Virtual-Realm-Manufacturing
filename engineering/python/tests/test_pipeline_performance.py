@@ -147,6 +147,8 @@ class TestFullPipelinePerformance:
     @pytest.mark.slow
     def test_full_pipeline_latency(self, pipeline):
         """测试全管道处理延迟"""
+        # text 模态走 RAG 嵌入（sentence_transformers，需 torch，重依赖缺失时跳过）
+        pytest.importorskip("sentence_transformers", reason="sentence_transformers 未安装，跳过含 text 模态的管道测试")
         latencies = []
         n_runs = 50
 
@@ -269,6 +271,8 @@ class TestMemoryUsage:
     @pytest.mark.unit
     def test_result_size_bounded(self, pipeline):
         """测试结果大小有界"""
+        # text 模态走 RAG 嵌入（sentence_transformers，需 torch，重依赖缺失时跳过）
+        pytest.importorskip("sentence_transformers", reason="sentence_transformers 未安装，跳过含 text 模态的管道测试")
         inputs = {
             "image": ImageInput(
                 data=np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8),

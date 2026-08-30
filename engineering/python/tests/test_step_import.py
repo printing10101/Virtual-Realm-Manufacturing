@@ -568,11 +568,19 @@ class TestStepImportAPI:
         assert len(stl_response.content) > 0
 
     def test_output_file_not_found(self, client):
-        """T44: 请求不存在的输出文件。"""
+        """T44: 请求不存在的输出文件。
+
+        端点契约已随统一异常体系演进：文件缺失返回 HTTP 404 +
+        统一错误体 code=1001（见 app/step_import/api.py get_output_file
+        与 core/exception_handlers._STARLETTE_HTTP_TO_CODE），
+        旧的"HTTP 200 + body code!=0"信封契约已废弃。
+        """
         response = client.get("/api/import/step/output/nonexistent_12345.stl")
-        assert response.status_code == 200
+        assert response.status_code == 404
         data = response.json()
-        assert data["code"] != 0
+        # 本文件 client 为裸 FastAPI app（未注册统一异常处理器），
+        # 404 体为 Starlette 默认 {"detail": ...} 形状
+        assert "detail" in data
 
     def test_cache_stats_endpoint(self, client):
         """T45: 缓存统计端点。"""

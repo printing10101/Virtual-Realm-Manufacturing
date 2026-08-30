@@ -162,10 +162,7 @@ class CrossModalAttentionFusion:
         d_k = self.target_dim // self.n_heads
         self._projections = {}
         for modality, in_dim in input_dims.items():
-            proj_k = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
-            proj_v = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
-            proj_q = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
-            self._projections[modality] = (proj_q, proj_k, proj_v)
+            self._projections[modality] = self._make_projection(in_dim, d_k)
 
         self._output_proj = self._rng.standard_normal((self.n_heads * d_k, self.target_dim)) / np.sqrt(
             self.n_heads * d_k
@@ -174,6 +171,33 @@ class CrossModalAttentionFusion:
         logger.warning(
             "CrossModalAttentionFusion 使用随机占位权重（未经训练），融合结果不具备物理意义，禁止用于生产或学术论文实验"
         )
+
+    def _make_projection(self, in_dim: int, d_k: int) -> tuple:
+        """为单个模态生成 (q, k, v) 随机投影矩阵。"""
+        proj_k = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
+        proj_v = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
+        proj_q = self._rng.standard_normal((in_dim, d_k)) / np.sqrt(in_dim)
+        return (proj_q, proj_k, proj_v)
+
+    def _ensure_projections(self, features: dict[str, np.ndarray]) -> None:
+        """确保所有模态都有投影矩阵；惰性补齐后续调用新增的模态。
+
+        此前投影矩阵仅在首次 ``fuse`` 调用时按当次模态集合初始化，管道以
+        可变模态组合复用同一融合器时（如先 image+text、后追加 tool_state），
+        新模态会触发 ``KeyError``。随机占位权重的补齐语义与 ``_init_weights``
+        一致（未经训练，见类 docstring 警告）。
+        """
+        if not self._initialized:
+            input_dims = {m: f.size for m, f in features.items()}
+            self._init_weights(input_dims)
+            return
+
+        d_k = self.target_dim // self.n_heads
+        for modality, feat in features.items():
+            if modality not in self._projections:
+                in_dim = feat.flatten().size
+                self._projections[modality] = self._make_projection(in_dim, d_k)
+                logger.info("CrossModalAttentionFusion 惰性补齐新模态投影: %s (dim=%d)", modality, in_dim)
 
     def _attention(self, q: np.ndarray, k: np.ndarray, v: np.ndarray) -> np.ndarray:
         """缩放点积注意力"""
@@ -205,9 +229,7 @@ class CrossModalAttentionFusion:
         Returns:
             融合后的特征向量 (target_dim,)
         """
-        if not self._initialized:
-            input_dims = {m: f.size for m, f in features.items()}
-            self._init_weights(input_dims)
+        self._ensure_projections(features)
 
         modalities = list(features.keys())
 
@@ -254,6 +276,9 @@ class CrossModalAttentionFusion:
         """提取各模态注意力权重"""
         if not self._initialized or not self._projections:
             return {m: np.array([1.0 / len(features)]) for m in features}
+
+        # 与 fuse() 对齐：惰性补齐后续调用新增的模态，避免 KeyError
+        self._ensure_projections(features)
 
         attn_weights = {}
         for modality, feat in features.items():

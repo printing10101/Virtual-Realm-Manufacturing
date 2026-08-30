@@ -10,8 +10,12 @@
 ## 1. 概述
 
 **任务名称**: 数据采集 API  
-**文件位置**: `app/api/v1/experience_routes.py` (159 行)  
+**文件位置**: `app/api/v1/cutting_experience/routes.py`（P2-3，统一异常体系重构后）  
 **功能定位**: 数据飞轮闭环的关键环节——采集 → 存储 → 分析 → 优化 → 再采集
+
+> 2026-08-28 变更：原 `experience_routes.py`（前缀 `/api/cutting/experience`，无权限控制）
+> 已由本模块替代并删除。统一前缀 `/api/v1/experience`（与前端 `@/api/cuttingExperience`
+> 对齐），错误处理接入 `app.core.exceptions` 分级异常（503→2002 / 404→3002 / 422→1002）。
 
 ### 1.1 设计目标
 
@@ -169,16 +173,17 @@
 
 ### 3.1 路由注册
 
-文件：`app/api/v1/experience_routes.py` (159 行)
+文件：`app/api/v1/cutting_experience/routes.py`
 
 **Router 定义**:
 ```python
-router = APIRouter(prefix="/experience", tags=["cutting-experience"])
+router = APIRouter(prefix="/api/v1/experience", tags=["cutting-experience"])
 ```
 
-**注册位置**: `app/api/routers/engineering.py` 行 68
+**注册位置**: `app/api/routers/engineering.py`（工程域聚合器）
 ```python
-app.include_router(experience_routes.router)
+from app.api.v1.cutting_experience.routes import router as cutting_experience_router
+app.include_router(cutting_experience_router)
 ```
 
 最终完整路径：`/api/v1/experience/*`
@@ -340,7 +345,7 @@ fetch('/api/v1/experience/stats?machine_id=VM-001')
 ### 6.1 静态检查
 
 ```bash
-$ ruff check app/api/v1/experience_routes.py
+$ ruff check app/api/v1/cutting_experience/routes.py
 # ✅ 目标：0 违规
 ```
 

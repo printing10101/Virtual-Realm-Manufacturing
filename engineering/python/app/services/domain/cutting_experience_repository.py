@@ -145,14 +145,13 @@ async def get_cutting_experience(record_id: UUID | str) -> dict | None:
     """按 ID 获取单条记录。
 
     Args:
-        record_id: 记录 ID，支持 UUID 对象或字符串形式。
+        record_id: 记录 ID，支持 UUID 对象、UUID 字符串或 ORM 主键（``exp_`` 前缀）。
 
     Returns:
         记录 dict；不存在返回 None。
     """
     sessionmaker = _get_session()
-    # SQLite 需要字符串形式的 ID
-    pk = str(record_id) if not isinstance(record_id, str) else record_id
+    pk = _normalize_pk(record_id)
     async with sessionmaker() as session:
         row = await session.get(CuttingExperienceRecord, pk)
         return row.to_contract_dict() if row else None
@@ -212,14 +211,13 @@ async def delete_cutting_experience(record_id: UUID | str) -> bool:
     """删除一条记录（管理用途，正常飞轮流程不调用）。
 
     Args:
-        record_id: 记录 ID，支持 UUID 对象或字符串形式。
+        record_id: 记录 ID，支持 UUID 对象、UUID 字符串或 ORM 主键（``exp_`` 前缀）。
 
     Returns:
         True 删除成功；False 记录不存在。
     """
     sessionmaker = _get_session()
-    # SQLite 需要字符串形式的 ID
-    pk = str(record_id) if not isinstance(record_id, str) else record_id
+    pk = _normalize_pk(record_id)
     async with sessionmaker() as session:
         row = await session.get(CuttingExperienceRecord, pk)
         if row is None:
@@ -228,3 +226,15 @@ async def delete_cutting_experience(record_id: UUID | str) -> bool:
         await session.commit()
         logger.info("cutting_experience deleted: id=%s", record_id)
         return True
+
+
+def _normalize_pk(record_id: UUID | str) -> str:
+    """主键归一化为 ORM 存储形态（``exp_`` 前缀 + UUID hex）。
+
+    与 ``CuttingExperienceRecord._id_or_new`` 保持同一约定：调用方传契约
+    UUID（``550e8400-...``）或 ORM 主键（``exp_550e8400...``）都能命中。
+    """
+    pk = str(record_id)
+    if not pk.startswith("exp_"):
+        pk = f"exp_{pk.replace('-', '')}"
+    return pk

@@ -17,6 +17,7 @@ import os
 import tempfile
 from pathlib import Path
 
+import pytest
 
 from app.benchmarks.performance.thresholds import (
     PERFORMANCE_THRESHOLDS,
@@ -363,6 +364,9 @@ class TestPerformanceBenchmarkRunner:
             assert os.path.isdir(tmp)
 
     def test_runner_run_all(self):
+        # run_all 驱动 lnn_inference 等基准，内部依赖 torch（缺失时 torch=None
+        # 触发 'NoneType' object has no attribute 'from_numpy'）；按 S7 策略显式跳过
+        pytest.importorskip("torch", reason="torch 未安装，跳过性能基准 runner 测试")
         with tempfile.TemporaryDirectory() as tmp:
             runner = PerformanceBenchmarkRunner(
                 history_dir=tmp,
@@ -376,6 +380,7 @@ class TestPerformanceBenchmarkRunner:
             assert len(json_files) >= 1
 
     def test_runner_produces_report_file(self):
+        pytest.importorskip("torch", reason="torch 未安装，跳过性能基准 runner 测试")
         with tempfile.TemporaryDirectory() as tmp:
             runner = PerformanceBenchmarkRunner(
                 history_dir=tmp,
@@ -391,6 +396,7 @@ class TestPerformanceBenchmarkRunner:
 
     def test_regression_matches_artificial_degradation(self):
         """模拟性能退化：引入延迟后应检测到回归"""
+        pytest.importorskip("torch", reason="torch 未安装，跳过性能基准 runner 测试")
 
         with tempfile.TemporaryDirectory() as tmp:
             # First run

@@ -2156,8 +2156,103 @@ export default {
     confirmReproduce: "确定从该快照复现实验？将启动新的工作流运行。",
     warning: "警告",
   },
-  // 数据飞轮看板（FlywheelDashboard.vue）相关国际化键
-  flywheel: {
+
+// ============================================================================
+// 切削实测数据采集 (CuttingExperienceDashboard)
+// ============================================================================
+experience: {
+  // 页面头部
+  pageTitle: "切削实测数据",
+  pageSubtitle: "数据飞轮闭环 · 采集 → 存储 → 分析 → 优化 → 再采集",
+  
+  // 统计卡片
+  stats: {
+    totalRecords: "总记录数",
+    avgCycleTime: "平均节拍",
+    avgRoughness: "平均粗糙度",
+    avgToolWear: "平均磨损",
+    okRate: "合格率",
+    anomalyRate: "异常率",
+    machineId: "机床 ID",
+    toolId: "刀具 ID",
+  },
+  
+  // 单位
+  unit: {
+    records: "条",
+    seconds: "秒",
+  },
+  
+  // 过滤
+  filter: {
+    machineId: "机床 ID",
+    toolId: "刀具 ID",
+    material: "材料",
+    machiningType: "加工类型",
+    result: "结果",
+    hasAnomaly: "有异常",
+  },
+  
+  // 占位符
+  placeholder: {
+    enterMachineId: "请输入机床 ID",
+    enterToolId: "请输入刀具 ID",
+    enterMaterial: "请输入材料",
+    selectType: "选择加工类型",
+    selectResult: "选择结果",
+  },
+  
+  // 按钮
+  btn: {
+    search: "查询",
+    reset: "重置",
+    view: "查看",
+    delete: "删除",
+    refresh: "刷新",
+    importData: "导入数据",
+    submit: "提交",
+    cancel: "取消",
+    confirm: "确认",
+  },
+  
+  // 加工类型中文
+  machiningTypes: {
+    milling: "铣削",
+    turning: "车削",
+    drilling: "钻孔",
+    tapping: "攻丝",
+    boring: "镗孔",
+    grooving: "切槽",
+    threading: "螺纹加工",
+  },
+  
+  // 结果中文
+  results: {
+    ok: "合格",
+    rework: "返工",
+    scrap: "报废",
+  },
+  
+  // 消息
+  msg: {
+    refreshSuccess: "刷新成功",
+    refreshFailed: "刷新失败",
+    deleteSuccess: "删除成功",
+    deleteFailed: "删除失败",
+    importSuccess: "导入成功",
+    importFailed: "导入失败",
+    error: "操作失败，请稍后重试",
+  },
+  
+  // 确认框
+  confirm: {
+    delete: "确定要删除该记录吗？此操作不可恢复。",
+    import: "导入数据将覆盖当前列表，确定继续？",
+  },
+},
+
+// 数据飞轮看板（FlywheelDashboard.vue）相关国际化键
+flywheel: {
     // 页面头部
     pageTitle: "数据飞轮",
     pageSubtitle: "反馈闭环 + 模型热更新 · 5 大指标全部来自真实数据源",

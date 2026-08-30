@@ -94,6 +94,105 @@ export default {
     selectPlaceholder: "Please select",
     inputPlaceholder: "Please input",
   },
+  // ============================================================================
+  // Experience (Data Flywheel)
+  // ============================================================================
+  experience: {
+    // Page Header
+    pageTitle: "Machining Measurements",
+    pageSubtitle: "Data Flywheel · Capture → Store → Analyze → Optimize → Recapture",
+    
+    // Stats Cards
+    stats: {
+      totalRecords: "Total Records",
+      avgCycleTime: "Avg Cycle Time",
+      avgRoughness: "Avg Roughness",
+      avgToolWear: "Avg Tool Wear",
+      okRate: "Yield Rate",
+      anomalyRate: "Anomaly Rate",
+      machineId: "Machine ID",
+      toolId: "Tool ID",
+    },
+    
+    // Units
+    unit: {
+      records: "records",
+      seconds: "seconds",
+    },
+    
+    // Filter
+    filter: {
+      machineId: "Machine ID",
+      toolId: "Tool ID",
+      material: "Material",
+      machiningType: "Machining Type",
+      result: "Result",
+      hasAnomaly: "Has Anomaly",
+    },
+    
+    // Placeholders
+    placeholder: {
+      enterMachineId: "Enter machine ID",
+      enterToolId: "Enter tool ID",
+      enterMaterial: "Enter material",
+      selectType: "Select machining type",
+      selectResult: "Select result",
+    },
+    
+    // Buttons
+    btn: {
+      search: "Search",
+      reset: "Reset",
+      view: "View",
+      delete: "Delete",
+      refresh: "Refresh",
+      importData: "Import Data",
+      submit: "Submit",
+      cancel: "Cancel",
+      confirm: "Confirm",
+    },
+    
+    // Machining Types (English)
+    machiningTypes: {
+      milling: "Milling",
+      turning: "Turning",
+      drilling: "Drilling",
+      tapping: "Tapping",
+      boring: "Boring",
+      grooving: "Grooving",
+      threading: "Threading",
+    },
+    
+    // Results (English)
+    results: {
+      ok: "OK",
+      rework: "Rework",
+      scrap: "Scrap",
+    },
+    
+    // Messages
+    msg: {
+      refreshSuccess: "Refresh successful",
+      refreshFailed: "Refresh failed",
+      deleteSuccess: "Delete successful",
+      deleteFailed: "Delete failed",
+    },
+    
+    // List
+    list: {
+      empty: "No machining measurement records found",
+    },
+    
+    // Anomaly Types
+    anomalyTypes: {
+      chatter: "Chatter",
+      toolWear: "Tool Wear",
+      dimensionalError: "Dimensional Error",
+      surfaceRoughness: "Surface Roughness",
+      temperature: "Temperature",
+      vibration: "Vibration",
+    },
+  },
   app: {
     title: "Lingjing Manufacturing V4",
     defaultProjectName: "Untitled Project",

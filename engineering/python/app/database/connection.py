@@ -227,10 +227,10 @@ async def check_db_health() -> dict:
     if engine is None:
         return {"status": "disabled", "message": "DB_URL not configured"}
     try:
-        # 修复：原实现无超时控制，DB 不可达时会等待 pool_timeout=30s
-        # 或 asyncpg TCP 超时（60-120s），导致健康检查端点长时间卡死，
-        # 负载均衡/容器编排会标记为不健康并重启，形成抖动。
-        # 现限制为 3 秒超时，符合健康检查端点的常规响应要求。
+        # P5-1 优化：健康检查超时从 3s 增加到 5s，避免高负载下误判 unhealthy
+        # 高负载场景下（并发查询多/磁盘 IO 慢），3s 可能不足以完成健康检查，
+        # 导致负载均衡/容器编排误判服务不健康并重启，形成抖动。
+        # 5s 符合健康检查端点的常规响应要求，同时避免长时间卡顿。
         async def _do_health_check() -> dict:
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
@@ -241,9 +241,9 @@ async def check_db_health() -> dict:
                     "checked_out": pool.checkedout() if hasattr(pool, "checkedout") else "N/A",
                 }
 
-        return await asyncio.wait_for(_do_health_check(), timeout=3.0)
+        return await asyncio.wait_for(_do_health_check(), timeout=5.0)
     except asyncio.TimeoutError:
-        logger.warning("数据库健康检查超时（3s）")
+        logger.warning("数据库健康检查超时（5s，可能是高负载或网络延迟）")
         return {"status": "unhealthy", "error": "database: TimeoutError"}
     except Exception as e:
         logger.warning("数据库健康检查失败: %s", e, exc_info=True)

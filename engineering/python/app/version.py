@@ -5,9 +5,13 @@ Loads version from root VERSION file and provides runtime version info.
 Version is sourced from project root VERSION file (single source of truth).
 """
 
+from __future__ import annotations
+
 import logging
 import subprocess
 from pathlib import Path
+
+from app.config.limits import GIT_COMMAND_TIMEOUT_SEC
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +41,7 @@ def _get_commit_hash() -> str | None:
             capture_output=True,
             text=True,
             cwd=_get_project_root(),
-            timeout=5,
+            timeout=GIT_COMMAND_TIMEOUT_SEC,
         )
         if result.returncode == 0:
             return result.stdout.strip()
