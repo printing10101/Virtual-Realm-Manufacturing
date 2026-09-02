@@ -4,14 +4,11 @@ use crate::sidecar::{BackendState, SidecarManager};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime, State};
 
-// ---------------------------------------------------------------------------
 // 健康检查与日志导出相关的数据结构
-// ---------------------------------------------------------------------------
 // 这些结构体与前端 TypeScript 接口对齐：
 //   - HealthItem           <-> src/components/HealthCheck.vue 中的 HealthItem
 //   - InvokeExportLogsResult <-> src/composables/useSettings.ts 中的 InvokeExportLogsResult
 // 字段命名采用 snake_case（serde 默认），与前端 invoke 返回的 JSON 一致。
-// ---------------------------------------------------------------------------
 
 /// 单个健康检查项（与前端 HealthItem 接口对齐）
 #[derive(serde::Serialize)]
@@ -154,9 +151,7 @@ pub fn get_backend_port(state: State<'_, AppState>) -> u16 {
     state.sidecar.state().port
 }
 
-// ---------------------------------------------------------------------------
 // 健康检查与日志导出 IPC 命令实现
-// ---------------------------------------------------------------------------
 // 这 6 个命令对应前端 HealthCheck.vue 与 useSettings.ts 的调用：
 //   - run_health_check        : 全量健康检查（GET /api/v1/health/system）
 //   - run_single_health_check : 单项重试（同端点，按 component 过滤）
@@ -170,7 +165,6 @@ pub fn get_backend_port(state: State<'_, AppState>) -> u16 {
 //   2. details 字段在 HealthItem 中是 String，需要把后端返回的 dict 序列化为
 //      JSON 字符串，前端再展示
 //   3. 所有错误路径均记录日志（log::warn/error），便于 release 模式排查
-// ---------------------------------------------------------------------------
 
 /// 后端 /api/v1/health/system 端点返回的原始结构（用于反序列化）
 #[derive(serde::Deserialize)]
@@ -224,7 +218,10 @@ fn map_backend_item(item: BackendHealthItem) -> HealthItem {
     let (fix_action, fix_description, fix_auto) = match item.component.as_str() {
         "ollama" => (
             Some("restart_ollama".to_string()),
-            Some("请确认 Ollama 服务已安装并启动。可执行 `ollama serve` 或在系统服务中启动 Ollama。".to_string()),
+            Some(
+                "请确认 Ollama 服务已安装并启动。可执行 `ollama serve` 或在系统服务中启动 Ollama。"
+                    .to_string(),
+            ),
             false,
         ),
         "models" => (
@@ -244,7 +241,10 @@ fn map_backend_item(item: BackendHealthItem) -> HealthItem {
         ),
         "postgresql" | "redis" | "tdengine" => (
             Some("start_service".to_string()),
-            Some(format!("请检查 {} 服务是否已启动，并确认连接配置正确。", item.component)),
+            Some(format!(
+                "请检查 {} 服务是否已启动，并确认连接配置正确。",
+                item.component
+            )),
             false,
         ),
         _ => (None, None, false),
@@ -502,7 +502,14 @@ pub async fn export_logs_cmd<R: Runtime>(
         }
     }
 
-    walk_logs(&log_dir, cutoff_ts, &mut matched, &mut file_count, &mut total_size, 0);
+    walk_logs(
+        &log_dir,
+        cutoff_ts,
+        &mut matched,
+        &mut file_count,
+        &mut total_size,
+        0,
+    );
 
     log::info!(
         "[export_logs_cmd] 扫描完成: {} 个文件, {} 字节",
@@ -534,14 +541,17 @@ pub async fn retry_launch_step<R: Runtime>(
     let current = state.sidecar.state().status;
     use crate::sidecar::BackendStatus;
     match current {
-        BackendStatus::Failed | BackendStatus::Crashed | BackendStatus::Stopped | BackendStatus::Idle => {
+        BackendStatus::Failed
+        | BackendStatus::Crashed
+        | BackendStatus::Stopped
+        | BackendStatus::Idle => {
             log::info!("[retry_launch_step] 后端状态为 {:?}，尝试重启", current);
             state.sidecar.restart(&app).await?;
-            Ok(format!("步骤 {step} 已触发后端重启，请等待几秒后重试健康检查"))
+            Ok(format!(
+                "步骤 {step} 已触发后端重启，请等待几秒后重试健康检查"
+            ))
         }
-        BackendStatus::Running => {
-            Ok("后端已在运行，无需重试".to_string())
-        }
+        BackendStatus::Running => Ok("后端已在运行，无需重试".to_string()),
         BackendStatus::Starting | BackendStatus::Stopping => {
             Err(format!("后端正在 {:?}，请稍候", current))
         }

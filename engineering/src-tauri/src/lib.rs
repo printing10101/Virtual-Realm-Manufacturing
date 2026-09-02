@@ -104,7 +104,7 @@ fn diag_log(msg: &str) {
 ///    - 新方案：不删除任何文件，改用新目录
 #[cfg(target_os = "windows")]
 fn cleanup_orphaned_webview2() {
-    // === 第一步：精准终止孤儿 WebView2 进程 ===
+// 第一步：精准终止孤儿 WebView2 进程
     let ps_script = r#"
         $killed = 0
         Get-CimInstance Win32_Process -Filter "name='msedgewebview2.exe'" |
@@ -144,7 +144,7 @@ fn cleanup_orphaned_webview2() {
         }
     }
 
-    // === 第二步：设置 WEBVIEW2_USER_DATA_FOLDER 到可写的临时目录 ===
+// 第二步：设置 WEBVIEW2_USER_DATA_FOLDER 到可写的临时目录
     // 这是核心修复：不再尝试删除可能被锁/权限不足的 EBWebView 目录，
     // 而是让 WebView2 使用一个全新的目录，从根本上避免锁冲突。
     let webview2_dir = std::env::temp_dir().join("lingjing-webview2");
@@ -173,7 +173,7 @@ pub fn run() {
         Err(e) => eprintln!("[WARN] 日志初始化失败 (可能已有其他初始化器): {e}"),
     }
 
-    // === 清理 WebView2 状态 ===
+// 清理 WebView2 状态
     // 1. 精准终止孤儿 WebView2 进程（WMI 匹配 com.lingjing.manufacturing）
     // 2. 设置 WEBVIEW2_USER_DATA_FOLDER 到可写的临时目录
     //

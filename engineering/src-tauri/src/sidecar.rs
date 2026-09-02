@@ -215,7 +215,7 @@ impl SidecarManager {
             .to_string_lossy()
             .to_string();
 
-        // === 核心：直接运行 Python 脚本 ===
+// 核心：直接运行 Python 脚本
         // 嵌入式优先：打包分发时使用 bundle.resources 内的自包含运行时
         // （desktop_runtime/runtime/python.exe + desktop_runtime/backend/start_server.py），
         // 目标机器无需预装 Python；开发模式回退宿主 Python。

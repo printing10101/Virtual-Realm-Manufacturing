@@ -72,9 +72,7 @@ fn is_available() -> bool {
     true
 }
 
-// =============================================================================
 // voxel_cutter 子模块函数
-// =============================================================================
 
 /// 批量应用刀具掩码到体素网格。
 ///
@@ -100,7 +98,7 @@ fn vc_apply_tool_mask(
     padding: f64,
 ) -> PyResult<Py<PyDict>> {
     with_panic_guard(|| {
-        // ---- 1. 校验与提取输入 ----
+        // 1. 校验与提取输入
         let grid_arr: numpy::PyReadwriteArray<'_, bool, numpy::Ix3> =
             grid.extract().map_err(|e: pyo3::PyErr| {
                 PyValueError::new_err(format!("grid must be bool ndarray (nx,ny,nz): {e}"))
@@ -161,21 +159,22 @@ fn vc_apply_tool_mask(
             points_flat.push(row[2]);
         }
 
-        // ---- 2. 释放 GIL，执行核心算法 ----
-        let result: BatchResult = py.allow_threads(|| {
-            apply_tool_mask_batch(
-                &mut voxel_grid,
-                tool_shape,
-                &tool_bits,
-                &points_flat,
-                bbox,
-                voxel_size,
-                padding,
-            )
-        })
-        .map_err(|e| PyRuntimeError::new_err(format!("apply_tool_mask_batch failed: {e}")))?;
+        // 2. 释放 GIL，执行核心算法
+        let result: BatchResult = py
+            .allow_threads(|| {
+                apply_tool_mask_batch(
+                    &mut voxel_grid,
+                    tool_shape,
+                    &tool_bits,
+                    &points_flat,
+                    bbox,
+                    voxel_size,
+                    padding,
+                )
+            })
+            .map_err(|e| PyRuntimeError::new_err(format!("apply_tool_mask_batch failed: {e}")))?;
 
-        // ---- 3. 将结果写回 grid（就地修改）----
+        // 3. 将结果写回 grid（就地修改）
         unsafe {
             let mut g_view = grid_arr.as_array_mut();
             for ((x, y, z), v) in g_view.indexed_iter_mut() {
@@ -183,7 +182,7 @@ fn vc_apply_tool_mask(
             }
         }
 
-        // ---- 4. 返回结果字典 ----
+        // 4. 返回结果字典
         let dict = PyDict::new_bound(py);
         dict.set_item("removed", result.removed as i64)?;
         dict.set_item("skipped", result.skipped as i64)?;
@@ -218,7 +217,10 @@ fn vc_build_tool_mask<'py>(
     voxel_size: f64,
     taper_angle_deg: f64,
     form_profile: Option<&Bound<'_, PyAny>>,
-) -> PyResult<(Bound<'py, numpy::PyArray<bool, numpy::Ix3>>, Bound<'py, PyDict>)> {
+) -> PyResult<(
+    Bound<'py, numpy::PyArray<bool, numpy::Ix3>>,
+    Bound<'py, PyDict>,
+)> {
     with_panic_guard(|| {
         let tt = ToolType::parse(tool_type)
             .map_err(|e| PyValueError::new_err(format!("invalid tool_type: {e}")))?;
@@ -324,7 +326,9 @@ fn vc_benchmark_mask_cut<'py>(
 ) -> PyResult<Bound<'py, PyDict>> {
     with_panic_guard(|| {
         if grid_size == 0 || num_points == 0 {
-            return Err(PyValueError::new_err("grid_size and num_points must be > 0"));
+            return Err(PyValueError::new_err(
+                "grid_size and num_points must be > 0",
+            ));
         }
         // 1. 构建全实心网格
         let shape = VoxelGridShape::new(grid_size, grid_size, grid_size)
@@ -355,18 +359,19 @@ fn vc_benchmark_mask_cut<'py>(
         }
         // 4. 计时
         let start_t = std::time::Instant::now();
-        let result = py.allow_threads(|| {
-            apply_tool_mask_batch(
-                &mut grid,
-                t_shape,
-                &t_bits,
-                &points,
-                [0.0, 0.0, 0.0],
-                voxel_size,
-                0.0,
-            )
-        })
-        .map_err(|e| PyRuntimeError::new_err(format!("apply failed: {e}")))?;
+        let result = py
+            .allow_threads(|| {
+                apply_tool_mask_batch(
+                    &mut grid,
+                    t_shape,
+                    &t_bits,
+                    &points,
+                    [0.0, 0.0, 0.0],
+                    voxel_size,
+                    0.0,
+                )
+            })
+            .map_err(|e| PyRuntimeError::new_err(format!("apply failed: {e}")))?;
         let elapsed = start_t.elapsed();
 
         let dict = PyDict::new_bound(py);
@@ -378,9 +383,7 @@ fn vc_benchmark_mask_cut<'py>(
     })
 }
 
-// =============================================================================
 // 工具函数
-// =============================================================================
 
 /// 提取 `bbox_min` 三元组。
 fn extract_vec3(obj: &Bound<'_, pyo3::PyAny>) -> PyResult<[f64; 3]> {
@@ -406,7 +409,9 @@ fn extract_vec3(obj: &Bound<'_, pyo3::PyAny>) -> PyResult<[f64; 3]> {
             ]);
         }
     }
-    Err(PyValueError::new_err("bbox_min must be a 3-element sequence"))
+    Err(PyValueError::new_err(
+        "bbox_min must be a 3-element sequence",
+    ))
 }
 
 /// 提取成形轮廓（list of (z, r) tuples）。
