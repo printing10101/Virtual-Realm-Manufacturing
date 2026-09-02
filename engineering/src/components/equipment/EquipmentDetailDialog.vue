@@ -80,7 +80,7 @@ const emit = defineEmits<{
   (e: 'update:visible', val: boolean): void
 }>()
 
-// ========================= 状态映射 =========================
+// 状态映射
 const STATUS_TO_TAG_TYPE: Record<string, 'success' | 'info' | 'danger' | 'warning'> = {
   [t('equipmentMonitor.labelStatusRunning')]: 'success',
   [t('equipmentMonitor.labelStatusStandby')]: 'info',

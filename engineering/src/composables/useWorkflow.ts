@@ -20,9 +20,7 @@ import type {
   WorkflowSpec,
 } from '@/contracts/task'
 
-// ---------------------------------------------------------------------------
 // 类型定义
-// ---------------------------------------------------------------------------
 
 /** 工作流运行记录（列表项，对应 WorkflowRun.to_dict()）。 */
 export interface WorkflowRunRecord {
@@ -92,9 +90,7 @@ export interface WorkflowStreamState {
   reset: () => void
 }
 
-// ---------------------------------------------------------------------------
 // REST API 调用（无状态函数）
-// ---------------------------------------------------------------------------
 
 /** 后端统一响应壳：{ code, message, data, request_id }，code !== 0 由 http 拦截器抛错。 */
 interface ApiEnvelope<T> {
@@ -194,9 +190,7 @@ export async function deleteWorkflow(
   return res.data.data
 }
 
-// ---------------------------------------------------------------------------
 // SSE 订阅（基于 EventSource，参考 useEventSource.ts）
-// ---------------------------------------------------------------------------
 
 /** 工作流事件类型全集（与后端 _serialize_event 对齐 + stream_error 本地兜底）。 */
 const WORKFLOW_EVENT_TYPES: readonly WorkflowEventType[] = [
@@ -425,9 +419,7 @@ export function useWorkflowStream(
   }
 }
 
-// ---------------------------------------------------------------------------
 // 工作流管理 composable（聚合列表 + 提交 + 当前运行状态）
-// ---------------------------------------------------------------------------
 
 /**
  * 工作流管理 composable。

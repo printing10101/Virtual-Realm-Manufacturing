@@ -18,9 +18,7 @@
  * 稳定性：Stable v1.0.0，向后兼容扩展，breaking change 需新开 ADR。
  */
 
-// ---------------------------------------------------------------------------
 // 解释类型常量
-// ---------------------------------------------------------------------------
 
 /**
  * 解释类型常量：对应 LTC 网络的 4 个可解释维度。
@@ -80,9 +78,7 @@ export function isExplanationType(value: string): value is ExplanationType {
   return (EXPLANATION_TYPE_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 降维方法常量
-// ---------------------------------------------------------------------------
 
 /**
  * 降维方法常量：将高维隐向量投影到 2D/3D 可视化空间。
@@ -141,9 +137,7 @@ export function isProjectionMethod(value: string): value is ProjectionMethod {
   return (PROJECTION_METHOD_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 对比类型常量
-// ---------------------------------------------------------------------------
 
 /**
  * 解释对比类型常量。
@@ -194,9 +188,7 @@ export function isComparisonType(value: string): value is ComparisonType {
   return (COMPARISON_TYPE_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：解释结果 payload
-// ---------------------------------------------------------------------------
 
 /**
  * 隐状态投影解释结果。
@@ -324,9 +316,7 @@ export type ExplanationPayload =
   | CounterfactualExplanation
   | ConfidenceExplanation
 
-// ---------------------------------------------------------------------------
 // 数据结构：解释记录与对比
-// ---------------------------------------------------------------------------
 
 /** 解释记录附加元数据（如降维方法、采样次数、异常帧数等）。 */
 export type ExplanationMetadata = Record<string, unknown>
@@ -392,9 +382,7 @@ export interface ExplanationComparison {
   created_at: string
 }
 
-// ---------------------------------------------------------------------------
 // API 请求/响应接口（对应后端 8 个端点）
-// ---------------------------------------------------------------------------
 
 /**
  * 端点 1: POST /hidden-state 请求体。
@@ -554,9 +542,7 @@ export interface CompareExplanationsRequest {
 /** 端点 8 响应数据：解释对比记录。 */
 export type CompareExplanationsResponse = ExplanationComparison
 
-// ---------------------------------------------------------------------------
 // 错误码常量（与后端 ExplainabilityError.code 对齐）
-// ---------------------------------------------------------------------------
 
 /** 可解释性错误码常量（与后端 ExplainabilityError 子类的 code 字段对齐）。 */
 export const EXPLAINABILITY_ERROR_CODE = {
@@ -607,9 +593,7 @@ export function isExplainabilityErrorCode(value: string): value is Explainabilit
   return (EXPLAINABILITY_ERROR_CODE_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 服务接口契约
-// ---------------------------------------------------------------------------
 
 /**
  * 可解释性服务接口契约。
@@ -658,9 +642,7 @@ export interface IExplainabilityService {
   ): Promise<CompareExplanationsResponse>
 }
 
-// ---------------------------------------------------------------------------
 // 契约版本
-// ---------------------------------------------------------------------------
 
 /** 可解释性契约版本（与后端对齐）。 */
 export const CONTRACTS_EXPLAINABILITY_VERSION = '1.0.0'

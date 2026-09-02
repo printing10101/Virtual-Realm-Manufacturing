@@ -13,9 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { WorkflowSpec, WorkflowEvent, TaskResult } from '@/contracts/task'
 
-// ---------------------------------------------------------------------------
 // Mock 依赖：http 模块 + EventSource
-// ---------------------------------------------------------------------------
 const mocks = vi.hoisted(() => {
   return {
     http: {
@@ -105,9 +103,7 @@ import {
 } from '../useWorkflow'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 
-// ---------------------------------------------------------------------------
 // 测试数据构造
-// ---------------------------------------------------------------------------
 
 const BASE = API_CONFIG.WORKFLOWS
 
@@ -131,9 +127,7 @@ function envelope<T>(data: T): { data: { data: T } } {
   return { data: { data } }
 }
 
-// ---------------------------------------------------------------------------
 // 测试用例
-// ---------------------------------------------------------------------------
 
 describe('useWorkflow - REST API 无状态函数', () => {
   beforeEach(() => {
@@ -294,9 +288,7 @@ describe('useWorkflow - REST API 无状态函数', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
 // useWorkflowStream SSE 订阅测试
-// ---------------------------------------------------------------------------
 
 describe('useWorkflow - useWorkflowStream SSE 订阅', () => {
   beforeEach(() => {
@@ -627,9 +619,7 @@ describe('useWorkflow - useWorkflowStream SSE 订阅', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
 // useWorkflow 聚合 composable 测试
-// ---------------------------------------------------------------------------
 
 describe('useWorkflow - 聚合 composable', () => {
   beforeEach(() => {
@@ -897,9 +887,7 @@ describe('useWorkflow - 聚合 composable', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
 // 辅助函数
-// ---------------------------------------------------------------------------
 
 /** 触发 MockEventSource 的 onerror 回调 */
 function esSimulateError(es: MockEventSource): void {

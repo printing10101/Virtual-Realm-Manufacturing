@@ -13,9 +13,7 @@ import { API_CONFIG } from '@/config/api'
 
 const BASE = `${API_CONFIG.V1}/experience`
 
-// ---------------------------------------------------------------------------
 // 类型定义（与后端 app/contracts/cutting_experience.py 对齐）
-// ---------------------------------------------------------------------------
 
 export type MachiningType =
   | 'milling'
@@ -105,9 +103,7 @@ export interface ExperienceQueryParams {
   offset?: number
 }
 
-// ---------------------------------------------------------------------------
 // API 函数
-// ---------------------------------------------------------------------------
 
 /** 单条采集（手工录入 / 现场实测） */
 export async function captureExperience(

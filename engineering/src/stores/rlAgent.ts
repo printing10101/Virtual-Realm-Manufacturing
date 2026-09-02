@@ -42,9 +42,7 @@ import {
   isTerminalTrainingStatus,
 } from '@/contracts/rl_agent'
 
-// ---------------------------------------------------------------------------
 // Store 局部类型（派生 / UI 辅助）
-// ---------------------------------------------------------------------------
 
 /** 策略版本列表分页信息。 */
 interface PolicyVersionPaginationState {
@@ -56,14 +54,12 @@ interface PolicyVersionPaginationState {
 /** fetchVersions 入参（与后端 Query 参数对齐）。 */
 interface FetchPolicyVersionsParams extends ListPolicyVersionsParams {}
 
-// ---------------------------------------------------------------------------
 // Store 定义
-// ---------------------------------------------------------------------------
 
 export const useRlAgentStore = defineStore(
   'rlAgent',
   () => {
-    // ===== State：策略版本列表 =====
+// State：策略版本列表
 
     /** RL 策略版本列表（list 端点返回的 items）。 */
     const versions = ref<PolicyVersion[]>([])
@@ -74,22 +70,22 @@ export const useRlAgentStore = defineStore(
       offset: 0,
     })
 
-    // ===== State：当前版本详情 =====
+// State：当前版本详情
 
     /** 当前查看的 RL 策略版本详情。 */
     const currentVersion = ref<PolicyVersion | null>(null)
 
-    // ===== State：最近一次决策结果 =====
+// State：最近一次决策结果
 
     /** 最近一次 RL 决策响应（含推荐动作 + 候选评估 + 策略元信息）。 */
     const lastAction = ref<RLActResponse | null>(null)
 
-    // ===== State：训练状态 =====
+// State：训练状态
 
     /** 当前 RL 训练状态（status / 进度 / 指标 / 时间戳）。 */
     const trainingStatus = ref<TrainingStatusInfo | null>(null)
 
-    // ===== Loading 标志 =====
+// Loading 标志
 
     const versionsLoading = ref(false) // GET /versions
     const versionLoading = ref(false) // GET /versions/{version}
@@ -99,7 +95,7 @@ export const useRlAgentStore = defineStore(
     const stoppingTraining = ref(false) // POST /training/stop
     const error = ref<string | null>(null)
 
-    // ===== Computed =====
+// Computed
 
     /** 是否有 RL 策略版本。 */
     const hasVersions = computed<boolean>(() => versions.value.length > 0)
@@ -166,7 +162,7 @@ export const useRlAgentStore = defineStore(
 
     // unwrap() 已提取到 @/utils/response.ts（消除 6 个 Store 的重复定义）
 
-    // ===== Actions：版本管理 =====
+// Actions：版本管理
 
     /**
      * 列出 RL 策略版本（分页 + algorithm/active 过滤）.
@@ -235,7 +231,7 @@ export const useRlAgentStore = defineStore(
       }
     }
 
-    // ===== Actions：决策推理 =====
+// Actions：决策推理
 
     /**
      * 执行 RL 决策（不走工作流，直接调用服务层）.
@@ -277,7 +273,7 @@ export const useRlAgentStore = defineStore(
       }
     }
 
-    // ===== Actions：训练控制 =====
+// Actions：训练控制
 
     /**
      * 查询当前 RL 训练状态.
@@ -377,7 +373,7 @@ export const useRlAgentStore = defineStore(
       }
     }
 
-    // ===== 清理方法 =====
+// 清理方法
 
     /** 清空当前版本详情。 */
     function clearCurrentVersion(): void {

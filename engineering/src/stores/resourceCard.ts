@@ -51,9 +51,7 @@ import {
   type GetModelCardParams,
 } from '@/contracts/resource_card'
 
-// ---------------------------------------------------------------------------
 // Store 局部类型（派生 / UI 辅助）
-// ---------------------------------------------------------------------------
 
 /** 模型列表分页信息。 */
 interface PaginationState {
@@ -103,14 +101,12 @@ interface FetchModelLineageParams {
   max_nodes_per_layer?: number
 }
 
-// ---------------------------------------------------------------------------
 // Store 定义
-// ---------------------------------------------------------------------------
 
 export const useResourceCardStore = defineStore(
   'resourceCard',
   () => {
-    // ===== State：模型列表 =====
+// State：模型列表
 
     /** 模型列表（list 端点返回的 items）。 */
     const models = ref<ModelArtifact[]>([])
@@ -121,7 +117,7 @@ export const useResourceCardStore = defineStore(
       offset: 0,
     })
 
-    // ===== State：当前数据集卡片 =====
+// State：当前数据集卡片
 
     /** 当前查看的数据集卡片（聚合元数据 + README + lineage 摘要）。 */
     const currentDatasetCard = ref<DatasetCard | null>(null)
@@ -132,7 +128,7 @@ export const useResourceCardStore = defineStore(
     /** 当前数据集指标（版本数 / 总行数 / 总大小）。 */
     const currentDatasetMetrics = ref<DatasetMetricsPayload | null>(null)
 
-    // ===== State：当前模型卡片 =====
+// State：当前模型卡片
 
     /** 当前查看的模型卡片（聚合元数据 + snapshot 数 + lineage 摘要）。 */
     const currentModelCard = ref<ModelCard | null>(null)
@@ -141,7 +137,7 @@ export const useResourceCardStore = defineStore(
     /** 当前模型指标历史（按时间升序）。 */
     const currentModelMetricsHistory = ref<MetricHistoryEntry[]>([])
 
-    // ===== State：最近一次操作响应（用于 UI 提示） =====
+// State：最近一次操作响应（用于 UI 提示）
 
     /** 最近一次注册模型响应。 */
     const lastRegisterResult = ref<ModelArtifact | null>(null)
@@ -154,7 +150,7 @@ export const useResourceCardStore = defineStore(
     /** 最近一次 upsert README 响应。 */
     const lastUpsertReadmeResult = ref<DatasetReadme | null>(null)
 
-    // ===== Loading 标志 =====
+// Loading 标志
 
     const loading = ref(false) // 模型列表
     const datasetCardLoading = ref(false)
@@ -170,7 +166,7 @@ export const useResourceCardStore = defineStore(
     const appendingMetrics = ref(false)
     const error = ref<string | null>(null)
 
-    // ===== Computed =====
+// Computed
 
     /** 是否有模型数据。 */
     const hasModels = computed<boolean>(() => models.value.length > 0)
@@ -221,7 +217,7 @@ export const useResourceCardStore = defineStore(
       }
     }
 
-    // ===== Actions：模型列表 =====
+// Actions：模型列表
 
     /**
      * 分页列出模型产物（支持 owner/type/status/tag/name 过滤）.
@@ -262,7 +258,7 @@ export const useResourceCardStore = defineStore(
       }
     }
 
-    // ===== Actions：数据集卡片 =====
+// Actions：数据集卡片
 
     /**
      * 获取数据集卡片（聚合元数据 + 指标 + README + lineage 摘要）.
@@ -391,7 +387,7 @@ export const useResourceCardStore = defineStore(
       }
     }
 
-    // ===== Actions：模型卡片 CRUD =====
+// Actions：模型卡片 CRUD
 
     /**
      * 注册新模型产物.
@@ -523,7 +519,7 @@ export const useResourceCardStore = defineStore(
       }
     }
 
-    // ===== Actions：模型 lineage 与指标历史 =====
+// Actions：模型 lineage 与指标历史
 
     /**
      * 获取模型 lineage 摘要（按层分组 + 关键路径）.
@@ -621,7 +617,7 @@ export const useResourceCardStore = defineStore(
       }
     }
 
-    // ===== 清理 / 重置 =====
+// 清理 / 重置
 
     /**
      * 清空当前详情相关的本地状态.
@@ -668,7 +664,7 @@ export const useResourceCardStore = defineStore(
       error.value = null
     }
 
-    // ===== 导出 =====
+// 导出
     return {
       // State：模型列表
       models,

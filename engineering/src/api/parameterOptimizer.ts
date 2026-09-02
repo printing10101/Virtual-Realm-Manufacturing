@@ -11,9 +11,7 @@ import { API_CONFIG } from '@/config/api'
 
 const BASE = `${API_CONFIG.V1}/optimizer`
 
-// ---------------------------------------------------------------------------
 // 类型定义（与后端 app/api/v1/optimizer_routes.py 对齐）
-// ---------------------------------------------------------------------------
 
 export type OptimizationTarget = 'balanced' | 'cycle_time' | 'tool_life' | 'surface'
 
@@ -70,9 +68,7 @@ export interface RecommendRequest {
   target?: OptimizationTarget
 }
 
-// ---------------------------------------------------------------------------
 // API 函数
-// ---------------------------------------------------------------------------
 
 /** 参数推荐（分层策略 + 物理安全钳制） */
 export async function recommendParameters(

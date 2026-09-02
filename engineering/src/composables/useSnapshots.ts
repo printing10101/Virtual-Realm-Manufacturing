@@ -15,9 +15,7 @@ import type {
   SnapshotFilters,
 } from '@/contracts/observability'
 
-// ---------------------------------------------------------------------------
 // 类型定义
-// ---------------------------------------------------------------------------
 
 /** 列表项摘要（detail=false 时后端返回的字段集，可能省略 config/environment）。 */
 export type SnapshotSummary = Partial<ExperimentSnapshot> &
@@ -63,9 +61,7 @@ export interface ReproduceSnapshotResponse {
   snapshot_id: string
 }
 
-// ---------------------------------------------------------------------------
 // REST API 调用（无状态函数）
-// ---------------------------------------------------------------------------
 
 /** 后端统一响应壳：{ code, message, data, request_id }，code !== 0 由 http 拦截器抛错。 */
 interface ApiEnvelope<T> {
@@ -126,9 +122,7 @@ export async function reproduceSnapshot(
   return res.data.data
 }
 
-// ---------------------------------------------------------------------------
 // 状态化 composable
-// ---------------------------------------------------------------------------
 
 /**
  * 实验快照管理 composable。

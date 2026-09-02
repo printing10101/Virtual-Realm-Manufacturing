@@ -86,9 +86,7 @@ import SnapshotCreateDialog from '@/components/snapshot/SnapshotCreateDialog.vue
 
 const { t } = useI18n()
 
-// ---------------------------------------------------------------------------
 // useSnapshots composable 接入
-// ---------------------------------------------------------------------------
 const {
   snapshots,
   loading,
@@ -110,9 +108,7 @@ const {
   reproduce,
 } = useSnapshots()
 
-// ---------------------------------------------------------------------------
 // 事件处理
-// ---------------------------------------------------------------------------
 
 async function handleRefresh(): Promise<void> {
   await loadSnapshots()
@@ -169,9 +165,7 @@ async function handleReproduce(): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // 创建快照
-// ---------------------------------------------------------------------------
 
 const createDialogVisible = ref(false)
 
@@ -191,9 +185,7 @@ async function handleCreateConfirm(body: CreateSnapshotRequest): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // 初始化
-// ---------------------------------------------------------------------------
 
 onMounted(() => {
   void loadSnapshots()

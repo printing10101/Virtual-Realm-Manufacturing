@@ -43,9 +43,7 @@ import type {
 // 重新导出类型供本模块类型签名使用（不重复定义）
 export type { StateField, ActionField }
 
-// ---------------------------------------------------------------------------
 // 任务类型常量
-// ---------------------------------------------------------------------------
 
 /**
  * RL agent 决策任务类型常量.
@@ -55,9 +53,7 @@ export type { StateField, ActionField }
  */
 export const RL_ACT_TASK_TYPE = 'rl_act' as const
 
-// ---------------------------------------------------------------------------
 // 优化目标常量
-// ---------------------------------------------------------------------------
 
 /**
  * 优化目标常量.
@@ -109,9 +105,7 @@ export function isOptimizationTarget(value: string): value is OptimizationTarget
   return (OPTIMIZATION_TARGET_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 策略算法常量
-// ---------------------------------------------------------------------------
 
 /**
  * RL 策略算法常量.
@@ -163,9 +157,7 @@ export function isPolicyAlgorithm(value: string): value is PolicyAlgorithm {
   return (POLICY_ALGORITHM_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 训练状态常量
-// ---------------------------------------------------------------------------
 
 /**
  * 训练状态常量.
@@ -243,9 +235,7 @@ export function isTerminalTrainingStatus(value: TrainingStatus): boolean {
   return (TERMINAL_TRAINING_STATUS as readonly TrainingStatus[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 默认模型 URI 与训练参数
-// ---------------------------------------------------------------------------
 
 /** 默认 RL 策略 URI（与后端 `RLActRequest` 默认值对齐）. */
 export const DEFAULT_RL_AGENT_URI = 'model://rl_agent/1.0.0' as const
@@ -259,9 +249,7 @@ export const MIN_MAX_STEPS = 1000 as const
 /** 最大训练步数上限（与后端 Pydantic 校验对齐）. */
 export const MAX_MAX_STEPS = 1_000_000 as const
 
-// ---------------------------------------------------------------------------
 // 安全约束规格
-// ---------------------------------------------------------------------------
 
 /**
  * 安全约束规格（与后端 `SafetyConstraintsSpec` / `SafetyShield` 对齐）.
@@ -289,9 +277,7 @@ export const DEFAULT_SAFETY_CONSTRAINTS: Readonly<SafetyConstraintsSpec> = {
   min_surface_quality: 0.8,
 } as const
 
-// ---------------------------------------------------------------------------
 // 决策请求/响应数据结构
-// ---------------------------------------------------------------------------
 
 /**
  * RL agent 决策请求.
@@ -382,9 +368,7 @@ export interface RLActResponse {
   policy_info: PolicyInfo
 }
 
-// ---------------------------------------------------------------------------
 // 策略版本数据结构
-// ---------------------------------------------------------------------------
 
 /**
  * RL 策略版本记录.
@@ -414,9 +398,7 @@ export interface PolicyVersion {
   is_active: boolean
 }
 
-// ---------------------------------------------------------------------------
 // 训练状态与控制
-// ---------------------------------------------------------------------------
 
 /**
  * 训练指标快照（对应后端 `TrainingMetrics` 的可序列化版本）.
@@ -494,9 +476,7 @@ export interface TrainingStartRequest {
   optimization_target: OptimizationTarget
 }
 
-// ---------------------------------------------------------------------------
 // 列表查询数据结构
-// ---------------------------------------------------------------------------
 
 /** 列出 RL 策略版本的查询参数（GET /versions Query 参数）. */
 export interface ListPolicyVersionsParams {
@@ -522,9 +502,7 @@ export interface ListPolicyVersionsResponse {
   offset: number
 }
 
-// ---------------------------------------------------------------------------
 // 错误码常量
-// ---------------------------------------------------------------------------
 
 /**
  * RL Agent 错误码常量.
@@ -589,9 +567,7 @@ export function isRLAgentErrorCode(value: string): value is RLAgentErrorCode {
   return (RL_AGENT_ERROR_CODE_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 服务接口
-// ---------------------------------------------------------------------------
 
 /**
  * RL Agent 服务接口.
@@ -643,9 +619,7 @@ export interface IRLAgentService {
   stopTraining(): Promise<TrainingStatusInfo>
 }
 
-// ---------------------------------------------------------------------------
 // 契约版本
-// ---------------------------------------------------------------------------
 
 /** RL Agent 契约版本（与后端 Stable v1.0.0 对齐）. */
 export const CONTRACTS_RL_AGENT_VERSION = '1.0.0' as const

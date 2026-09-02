@@ -17,18 +17,14 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import type { WorkflowSpec, TaskStatus } from '@/contracts/task'
 
-// ---------------------------------------------------------------------------
 // Helper: 创建带 __v_isRef 标记的伪 ref 对象（使模板 _unref 能正确解包）
 // 由于 vi.mock 工厂不能引用 import，使用 vi.hoisted 创建 plain object
 // 但需要 __v_isRef 标记让 Vue 模板编译器解包 .value
-// ---------------------------------------------------------------------------
 function pseudoRef<T>(val: T): { value: T; __v_isRef: true; __v_isShallow: false } {
   return { value: val, __v_isRef: true, __v_isShallow: false }
 }
 
-// ---------------------------------------------------------------------------
 // Mock: vue-i18n（useI18n composition API）
-// ---------------------------------------------------------------------------
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
@@ -44,9 +40,7 @@ vi.mock('vue-i18n', () => ({
   }),
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: @element-plus/icons-vue
-// ---------------------------------------------------------------------------
 vi.mock('@element-plus/icons-vue', () => ({
   Refresh: { name: 'Refresh', template: '<i class="icon-refresh" />' },
   Plus: { name: 'Plus', template: '<i class="icon-plus" />' },
@@ -55,9 +49,7 @@ vi.mock('@element-plus/icons-vue', () => ({
   Delete: { name: 'Delete', template: '<i class="icon-delete" />' },
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: element-plus（ElMessage / ElMessageBox）
-// ---------------------------------------------------------------------------
 const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   warning: vi.fn(),
@@ -86,10 +78,8 @@ vi.mock('element-plus', () => ({
   ElPagination: { template: '<div class="el-pagination" />', props: ['currentPage', 'pageSize', 'total', 'layout'] },
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: @/composables/useWorkflow
 // 使用 pseudoRef 创建带 __v_isRef 标记的对象，使模板 _unref 能正确解包
-// ---------------------------------------------------------------------------
 // 构造可控制的 mock stream 与状态
 function createMockStream() {
   return {
@@ -139,9 +129,7 @@ vi.mock('@/composables/useWorkflow', () => ({
 
 import WorkflowPanel from '@/views/WorkflowPanel.vue'
 
-// ---------------------------------------------------------------------------
 // 测试数据
-// ---------------------------------------------------------------------------
 function makeSpec(overrides: Partial<WorkflowSpec> = {}): WorkflowSpec {
   return {
     name: 'test_workflow',
@@ -176,9 +164,7 @@ function makeWorkflowRun(overrides: Record<string, unknown> = {}): Record<string
   }
 }
 
-// ---------------------------------------------------------------------------
 // 测试主体
-// ---------------------------------------------------------------------------
 describe('WorkflowPanel.vue', () => {
   let pinia: ReturnType<typeof createPinia>
   let router: ReturnType<typeof createRouter>
@@ -261,9 +247,7 @@ describe('WorkflowPanel.vue', () => {
   })
 }
 
-  // =========================================================================
-  // 1. 组件挂载与基础渲染
-  // =========================================================================
+// 1. 组件挂载与基础渲染
   describe('基础渲染', () => {
     it('组件能正确挂载', async () => {
       const wrapper = mountPanel()
@@ -311,9 +295,7 @@ describe('WorkflowPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 2. 工作流列表
-  // =========================================================================
+// 2. 工作流列表
   describe('工作流列表', () => {
     it('列表为空时渲染 el-empty', async () => {
       const wrapper = mountPanel()
@@ -378,9 +360,7 @@ describe('WorkflowPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 3. DAG 可视化
-  // =========================================================================
+// 3. DAG 可视化
   describe('DAG 可视化', () => {
     it('未选中工作流时渲染 el-empty', async () => {
       const wrapper = mountPanel()
@@ -465,9 +445,7 @@ describe('WorkflowPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 4. SSE 事件驱动的 UI 更新
-  // =========================================================================
+// 4. SSE 事件驱动的 UI 更新
   describe('SSE 事件 UI', () => {
     it('stream 连接中显示 streamConnected 状态', async () => {
       mockUseWorkflow.workflows.value = [makeWorkflowRun({ id: 'wf_001' })]
@@ -606,9 +584,7 @@ describe('WorkflowPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 5. 当前工作流操作按钮可见性
-  // =========================================================================
+// 5. 当前工作流操作按钮可见性
   describe('操作按钮可见性', () => {
     it('无当前运行时不显示取消/续跑/删除按钮', async () => {
       const wrapper = mountPanel()
@@ -654,9 +630,7 @@ describe('WorkflowPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 6. 提交 / 续跑对话框
-  // =========================================================================
+// 6. 提交 / 续跑对话框
   describe('提交对话框', () => {
     it('点击提交按钮打开对话框（submit 模式）', async () => {
       const wrapper = mountPanel()
@@ -804,9 +778,7 @@ describe('WorkflowPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 7. 取消 / 删除当前工作流
-  // =========================================================================
+// 7. 取消 / 删除当前工作流
   describe('取消 / 删除', () => {
     it('点击取消按钮弹出确认框，确认后调用 cancelCurrent', async () => {
       mockUseWorkflow.workflows.value = [makeWorkflowRun({ id: 'wf_001', status: 'running' })]
@@ -858,9 +830,7 @@ describe('WorkflowPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 8. DAG 状态指示
-  // =========================================================================
+// 8. DAG 状态指示
   describe('DAG 状态指示', () => {
     it('当前选中工作流时显示 DAG 状态标签', async () => {
       mockUseWorkflow.workflows.value = [makeWorkflowRun({ id: 'wf_001', status: 'running' })]
@@ -895,9 +865,7 @@ describe('WorkflowPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 9. 边路径高亮
-  // =========================================================================
+// 9. 边路径高亮
   describe('边高亮', () => {
     it('upstream completed 且 downstream 非 pending 时边带 active 类', async () => {
       mockUseWorkflow.workflows.value = [makeWorkflowRun({ id: 'wf_001' })]

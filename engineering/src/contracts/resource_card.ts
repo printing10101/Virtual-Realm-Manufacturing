@@ -21,9 +21,7 @@
  *   dataset://<dataset_id>/<version>
  */
 
-// ---------------------------------------------------------------------------
 // 模型产物类型常量（与后端 ModelArtifactType 对齐）
-// ---------------------------------------------------------------------------
 
 /** 模型产物类型。决定模型文件的加载方式与框架依赖。 */
 export const MODEL_ARTIFACT_TYPES = {
@@ -55,9 +53,7 @@ export const MODEL_ARTIFACT_TYPE_LABELS: Record<ModelArtifactType, string> = {
   other: '其他格式',
 };
 
-// ---------------------------------------------------------------------------
 // 模型产物状态常量（与后端 ModelArtifactStatus 对齐）
-// ---------------------------------------------------------------------------
 
 /**
  * 模型产物状态机。
@@ -123,9 +119,7 @@ export const VALID_MODEL_STATUS_TRANSITIONS: Record<
   archived: [],
 };
 
-// ---------------------------------------------------------------------------
 // 数据集 README 作用域常量（与后端 DatasetReadmeScope 对齐）
-// ---------------------------------------------------------------------------
 
 /**
  * 数据集 README 作用域。
@@ -154,9 +148,7 @@ export const DATASET_README_SCOPE_LABELS: Record<DatasetReadmeScope, string> = {
   version_level: '版本级',
 };
 
-// ---------------------------------------------------------------------------
 // 工具函数（与后端 _is_valid_semver / DatasetReadmeScope.from_version 对齐）
-// ---------------------------------------------------------------------------
 
 /**
  * 校验 semver 格式：MAJOR.MINOR.PATCH（可选 -prerelease）.
@@ -208,9 +200,7 @@ export function canTransitionTo(
   return VALID_MODEL_STATUS_TRANSITIONS[current].includes(target);
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：模型产物
-// ---------------------------------------------------------------------------
 
 /** 指标历史条目（追加式记录，每项含 timestamp + metrics）。 */
 export interface MetricHistoryEntry {
@@ -259,9 +249,7 @@ export interface ModelArtifact {
   updated_at: string | null;
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：数据集 README
-// ---------------------------------------------------------------------------
 
 /**
  * 数据集 README 契约.
@@ -286,9 +274,7 @@ export interface DatasetReadme {
   updated_at: string | null;
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：血缘摘要
-// ---------------------------------------------------------------------------
 
 /**
  * 血缘摘要契约.
@@ -319,9 +305,7 @@ export interface LineageSummary {
   total_nodes: number;
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：数据集卡片（聚合视图）
-// ---------------------------------------------------------------------------
 
 /**
  * 数据集卡片契约（聚合视图）.
@@ -364,9 +348,7 @@ export interface DatasetCard {
   updated_at: string | null;
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：模型卡片（聚合视图）
-// ---------------------------------------------------------------------------
 
 /**
  * 模型卡片契约（聚合视图）.
@@ -389,9 +371,7 @@ export interface ModelCard {
   latest_snapshot: Record<string, unknown> | null;
 }
 
-// ---------------------------------------------------------------------------
 // 请求 / 响应接口：数据集 README upsert
-// ---------------------------------------------------------------------------
 
 /** 更新数据集 README 请求体（upsert 语义，对应 PUT /datasets/{id}/readme）。 */
 export interface UpsertDatasetReadmeRequest {
@@ -406,9 +386,7 @@ export interface UpsertDatasetReadmeRequest {
 /** upsert README 响应（返回最新 README）。 */
 export interface UpsertDatasetReadmeResponse extends DatasetReadme {}
 
-// ---------------------------------------------------------------------------
 // 请求 / 响应接口：模型产物 CRUD
-// ---------------------------------------------------------------------------
 
 /** 注册新模型产物请求体（对应 POST /models）。 */
 export interface RegisterModelRequest {
@@ -466,9 +444,7 @@ export interface DeleteModelResponse {
   deleted: boolean;
 }
 
-// ---------------------------------------------------------------------------
 // 请求 / 响应接口：模型指标追加
-// ---------------------------------------------------------------------------
 
 /** 追加模型指标记录请求体（对应 POST /models/{id}/metrics）。 */
 export interface AppendModelMetricsRequest {
@@ -481,9 +457,7 @@ export interface AppendModelMetricsRequest {
 /** 追加指标响应（返回更新后的 ModelArtifact，含新的 metrics_history）。 */
 export interface AppendModelMetricsResponse extends ModelArtifact {}
 
-// ---------------------------------------------------------------------------
 // 请求 / 响应接口：模型列表查询
-// ---------------------------------------------------------------------------
 
 /** 列出模型查询参数。 */
 export interface ListModelsParams {
@@ -515,9 +489,7 @@ export interface ListModelsResponse {
   offset: number;
 }
 
-// ---------------------------------------------------------------------------
 // 请求 / 响应接口：卡片聚合查询
-// ---------------------------------------------------------------------------
 
 /** 获取数据集卡片查询参数。 */
 export interface GetDatasetCardParams {
@@ -543,9 +515,7 @@ export interface GetLineageSummaryParams {
   max_nodes_per_layer?: number;
 }
 
-// ---------------------------------------------------------------------------
 // 抽象接口（前端通过 HTTP 调用后端实现）
-// ---------------------------------------------------------------------------
 
 /**
  * 资源卡片聚合服务契约（接口占位，便于插件扩展与测试 mock）.

@@ -68,17 +68,13 @@ import type { AlertItem } from '@/components/home/RealTimeAlerts.vue'
 import QuickActions from '@/components/home/QuickActions.vue'
 import type { QuickAction } from '@/components/home/QuickActions.vue'
 
-// ---------------------------------------------------------------------------
 // Stores
-// ---------------------------------------------------------------------------
 const agentStore = useAgentStore()
 const tasksStore = useTasksStore()
 const router = useRouter()
 const { t } = useI18n()
 
-// ---------------------------------------------------------------------------
 // Computed — 使用 Store 数据
-// ---------------------------------------------------------------------------
 
 const displayTasks = computed(() => tasksStore.tasks)
 
@@ -123,9 +119,7 @@ function handleViewOrderDetail(row: WorkOrder) {
   router.push({ path: '/production-report', query: { order: row.orderNo } })
 }
 
-// ---------------------------------------------------------------------------
 // Greeting & Clock
-// ---------------------------------------------------------------------------
 const now = ref(new Date())
 let timer: ReturnType<typeof setInterval>
 
@@ -243,9 +237,7 @@ const currentDateTime = computed(() => {
   })
 })
 
-// ---------------------------------------------------------------------------
 // Time Range Filter
-// ---------------------------------------------------------------------------
 const timeRanges = computed(() => [
   { key: 'today', label: t('home.rangeToday') },
   { key: 'week', label: t('home.rangeWeek') },
@@ -253,9 +245,7 @@ const timeRanges = computed(() => [
 ])
 const activeRange = ref('today')
 
-// ---------------------------------------------------------------------------
 // KPI Cards — 从生产仪表板 API 获取真实数据
-// ---------------------------------------------------------------------------
 
 const kpiCards = computed<KPICard[]>(() => {
   const tasks = displayTasks.value
@@ -341,9 +331,7 @@ const kpiCards = computed<KPICard[]>(() => {
   ]
 })
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr)
   const diff = Math.floor((Date.now() - date.getTime()) / 1000)
@@ -353,9 +341,7 @@ function formatRelativeTime(dateStr: string): string {
   return t('home.timeDaysAgo', { n: Math.floor(diff / 86400) })
 }
 
-// ---------------------------------------------------------------------------
 // Quick Actions
-// ---------------------------------------------------------------------------
 
 const quickActions = computed<QuickAction[]>(() => [
   { label: t('home.btnNewOrder'), icon: markRaw(Plus), route: '/process-planning' },

@@ -17,9 +17,7 @@
  * 稳定性：Stable v1.0.0，向后兼容扩展，breaking change 需新开 ADR。
  */
 
-// ---------------------------------------------------------------------------
 // 包格式版本常量
-// ---------------------------------------------------------------------------
 
 /**
  * ``.lomo`` 包格式版本常量。
@@ -81,9 +79,7 @@ export function isPackageFormatVersionMajorCompatible(version: string): boolean 
   }
 }
 
-// ---------------------------------------------------------------------------
 // 内容策略常量
-// ---------------------------------------------------------------------------
 
 /**
  * 内容策略常量：决定 ``.lomo`` 包打包资源内容的范围。
@@ -130,9 +126,7 @@ export function isContentPolicy(value: string): value is ContentPolicy {
   return (CONTENT_POLICY_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 冲突策略常量
-// ---------------------------------------------------------------------------
 
 /**
  * 冲突策略常量：导入时目标机器已存在同 URI 资源的处理方式。
@@ -192,9 +186,7 @@ export function isConflictStrategy(value: string): value is ConflictStrategy {
   return (CONFLICT_STRATEGY_VALUES as readonly string[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 包任务状态常量（导出 / 导入共用）
-// ---------------------------------------------------------------------------
 
 /**
  * 包任务状态常量：导出 / 导入任务的异步执行状态。
@@ -261,9 +253,7 @@ export function isTerminalPackageTaskStatus(value: PackageTaskStatus): boolean {
   return (TERMINAL_PACKAGE_TASK_STATUS as readonly PackageTaskStatus[]).includes(value)
 }
 
-// ---------------------------------------------------------------------------
 // 默认值常量
-// ---------------------------------------------------------------------------
 
 /** ``small_files_only`` 策略的默认文件大小阈值（10 MB）。 */
 export const DEFAULT_MAX_FILE_SIZE_BYTES: number = 10 * 1024 * 1024
@@ -284,9 +274,7 @@ export const SOURCE_MACHINE_INFO_DEFAULTS: Readonly<{ hostname: string; app_vers
   platform: 'unknown',
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：包资源条目
-// ---------------------------------------------------------------------------
 
 /**
  * 资源元数据字典（任意键值对，如 row_count / schema / model_type / framework）。
@@ -324,9 +312,7 @@ export function entryHasContent(entry: PackageResourceEntry): boolean {
   return Boolean(entry.content_hash) && entry.size_bytes > 0
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：源机器信息
-// ---------------------------------------------------------------------------
 
 /**
  * 源机器信息契约：导出时记录源机器环境，用于诊断兼容性问题。
@@ -340,9 +326,7 @@ export interface SourceMachineInfo {
   platform: string
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：包项目元数据
-// ---------------------------------------------------------------------------
 
 /**
  * 包项目元数据契约：``manifest.project`` 字段。
@@ -367,9 +351,7 @@ export interface PackageProjectInfo {
   current_commit: string
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：包清单
-// ---------------------------------------------------------------------------
 
 /**
  * 包清单契约：``.lomo`` 包的 ``manifest.json`` 投影。
@@ -398,9 +380,7 @@ export interface PackageManifest {
   checksum: string
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：导出选项
-// ---------------------------------------------------------------------------
 
 /**
  * 导出选项契约：``POST /export`` 请求体的核心字段。
@@ -426,9 +406,7 @@ export interface ExportOptions {
   output_filename: string
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：导入选项
-// ---------------------------------------------------------------------------
 
 /**
  * 导入选项契约：``POST /import`` 请求体的核心字段。
@@ -446,9 +424,7 @@ export interface ImportOptions {
   target_project_name: string
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：导出结果
-// ---------------------------------------------------------------------------
 
 /**
  * 导出结果契约：``ProjectPackageService.export_project()`` 返回值，
@@ -483,9 +459,7 @@ export interface ExportResult {
   completed_at: string
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：导入资源记录 + 导入结果
-// ---------------------------------------------------------------------------
 
 /** 导入动作枚举字面量类型。 */
 export type ImportAction = 'imported' | 'skipped' | 'renamed' | 'failed'
@@ -578,9 +552,7 @@ export function isImportPartialFailure(result: ImportResult): boolean {
   return result.failed_count > 0 && result.status === PACKAGE_TASK_STATUS.COMPLETED
 }
 
-// ---------------------------------------------------------------------------
 // 数据结构：校验结果
-// ---------------------------------------------------------------------------
 
 /**
  * 包校验结果契约：``ProjectPackageService.validate_package()`` 返回值，
@@ -614,9 +586,7 @@ export interface ValidationResult {
   validated_at: string
 }
 
-// ---------------------------------------------------------------------------
 // API 请求 / 响应接口（对接 8 个 REST 端点）
-// ---------------------------------------------------------------------------
 
 /**
  * 导出项目请求体（对应 ``POST /api/v1/project-packages/export``）。
@@ -692,9 +662,7 @@ export interface ValidatePackageResponse extends ValidationResult {}
 /** 预览包响应（对应 ``POST /api/v1/project-packages/preview`` 成功响应的 data 字段）。 */
 export interface PreviewPackageResponse extends PackageManifest {}
 
-// ---------------------------------------------------------------------------
 // 列表端点查询参数 + 响应
-// ---------------------------------------------------------------------------
 
 /** 列出导出记录查询参数（对应 ``GET /api/v1/project-packages/exports``）。 */
 export interface ListExportsParams {
@@ -833,9 +801,7 @@ export interface ListImportsResponse {
   offset: number
 }
 
-// ---------------------------------------------------------------------------
 // 服务接口契约（前端接口占位，通过 Pinia Store 间接调用）
-// ---------------------------------------------------------------------------
 
 /**
  * 项目包服务接口契约：定义导入导出服务的方法签名。

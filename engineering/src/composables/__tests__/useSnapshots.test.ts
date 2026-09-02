@@ -12,9 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ExperimentSnapshot } from '@/contracts/observability'
 
-// ---------------------------------------------------------------------------
 // Mock 依赖：http 模块
-// ---------------------------------------------------------------------------
 const mocks = vi.hoisted(() => {
   return {
     http: {
@@ -40,9 +38,7 @@ import {
 } from '../useSnapshots'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 
-// ---------------------------------------------------------------------------
 // 测试数据构造
-// ---------------------------------------------------------------------------
 
 const BASE = API_CONFIG.SNAPSHOTS
 
@@ -67,9 +63,7 @@ function envelope<T>(data: T): { data: { data: T } } {
   return { data: { data } }
 }
 
-// ---------------------------------------------------------------------------
 // 测试用例
-// ---------------------------------------------------------------------------
 
 describe('useSnapshots - REST API 无状态函数', () => {
   beforeEach(() => {
@@ -80,9 +74,7 @@ describe('useSnapshots - REST API 无状态函数', () => {
     vi.restoreAllMocks()
   })
 
-  // -------------------------------------------------------------------------
-  // listSnapshots
-  // -------------------------------------------------------------------------
+// listSnapshots
   describe('listSnapshots', () => {
     it('GET / 带查询参数返回列表', async () => {
       const params = {
@@ -128,9 +120,7 @@ describe('useSnapshots - REST API 无状态函数', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // getSnapshot
-  // -------------------------------------------------------------------------
+// getSnapshot
   describe('getSnapshot', () => {
     it('GET /{snapshotId} 返回快照详情', async () => {
       const snapId = 'snap-001'
@@ -154,9 +144,7 @@ describe('useSnapshots - REST API 无状态函数', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // createSnapshot
-  // -------------------------------------------------------------------------
+// createSnapshot
   describe('createSnapshot', () => {
     it('POST / 返回 snapshot_id + created_at', async () => {
       const body = {
@@ -195,9 +183,7 @@ describe('useSnapshots - REST API 无状态函数', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // reproduceSnapshot
-  // -------------------------------------------------------------------------
+// reproduceSnapshot
   describe('reproduceSnapshot', () => {
     it('POST /{snapshotId}/reproduce 返回 workflow_run_id', async () => {
       const snapId = 'snap-001'
@@ -221,9 +207,7 @@ describe('useSnapshots - REST API 无状态函数', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
 // useSnapshots 聚合 composable 测试
-// ---------------------------------------------------------------------------
 
 describe('useSnapshots - 聚合 composable', () => {
   beforeEach(() => {
@@ -234,9 +218,7 @@ describe('useSnapshots - 聚合 composable', () => {
     vi.restoreAllMocks()
   })
 
-  // -------------------------------------------------------------------------
-  // loadSnapshots
-  // -------------------------------------------------------------------------
+// loadSnapshots
   describe('loadSnapshots', () => {
     it('调用 listSnapshots 并更新 snapshots 列表', async () => {
       mocks.http.get.mockResolvedValueOnce(
@@ -362,9 +344,7 @@ describe('useSnapshots - 聚合 composable', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // resetFilters
-  // -------------------------------------------------------------------------
+// resetFilters
   describe('resetFilters', () => {
     it('清空所有筛选并回到第 1 页，然后重新加载', async () => {
       mocks.http.get.mockResolvedValueOnce(
@@ -387,9 +367,7 @@ describe('useSnapshots - 聚合 composable', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // selectSnapshot
-  // -------------------------------------------------------------------------
+// selectSnapshot
   describe('selectSnapshot', () => {
     it('调用 getSnapshot 并更新 currentSnapshot', async () => {
       const snap = makeSnapshot({ snapshot_id: 'snap-001' })
@@ -422,9 +400,7 @@ describe('useSnapshots - 聚合 composable', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // clearCurrent
-  // -------------------------------------------------------------------------
+// clearCurrent
   describe('clearCurrent', () => {
     it('清空当前详情', async () => {
       const snap = makeSnapshot({ snapshot_id: 'snap-001' })
@@ -439,9 +415,7 @@ describe('useSnapshots - 聚合 composable', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // submitSnapshot
-  // -------------------------------------------------------------------------
+// submitSnapshot
   describe('submitSnapshot', () => {
     it('调用 createSnapshot 并刷新列表，返回 snapshot_id', async () => {
       mocks.http.post.mockResolvedValueOnce(
@@ -499,9 +473,7 @@ describe('useSnapshots - 聚合 composable', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // reproduce
-  // -------------------------------------------------------------------------
+// reproduce
   describe('reproduce', () => {
     it('调用 reproduceSnapshot 并返回 workflow_run_id', async () => {
       mocks.http.post.mockResolvedValueOnce(
@@ -532,9 +504,7 @@ describe('useSnapshots - 聚合 composable', () => {
     })
   })
 
-  // -------------------------------------------------------------------------
-  // onUnmounted 生命周期
-  // -------------------------------------------------------------------------
+// onUnmounted 生命周期
   describe('onUnmounted 生命周期', () => {
     it('组件卸载时清空 currentSnapshot（通过真实组件挂载验证）', async () => {
       // onUnmounted 只在组件实例作用域生效；effectScope 无 currentInstance，

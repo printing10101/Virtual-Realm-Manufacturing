@@ -107,9 +107,7 @@ import { useDagLayout } from '@/composables/useDagLayout'
 
 const { t } = useI18n()
 
-// ---------------------------------------------------------------------------
 // useWorkflow composable 接入
-// ---------------------------------------------------------------------------
 const {
   workflows,
   loading,
@@ -130,9 +128,7 @@ const {
   validate,
 } = useWorkflow()
 
-// ---------------------------------------------------------------------------
 // 状态枚举
-// ---------------------------------------------------------------------------
 const statusOptions = [
   { value: 'pending', label: t('workflowPanel.statusPending') },
   { value: 'queued', label: t('workflowPanel.statusQueued') },
@@ -143,10 +139,8 @@ const statusOptions = [
   { value: 'skipped', label: t('workflowPanel.statusSkipped') },
 ]
 
-// ---------------------------------------------------------------------------
 // 内置模板（与后端 python/app/workflow/templates/builtin/*.yaml 对应）
 // 提供下拉选择，用户选择后填充 spec 编辑器
-// ---------------------------------------------------------------------------
 const builtinTemplates = ref<Array<{ name: string; version: string; spec: WorkflowSpec }>>([])
 
 const SAMPLE_TOOL_WEAR_SPEC: WorkflowSpec = JSON.parse('{"name": "刀具磨损预测流水线", "version": "1.0.0", "nodes": [{"node_id": "load_dataset", "task_type": "dataset_loader", "params": {"loader_type": "phm2010"}, "inputs": {}, "retry": 0, "timeout_seconds": 600}, {"node_id": "train_model", "task_type": "ltc_trainer", "params": {"model_type": "ltc", "epochs": 50}, "inputs": {"train_split": "${load_dataset.train_split}"}, "retry": 1, "timeout_seconds": 7200}, {"node_id": "evaluate_model", "task_type": "model_evaluator", "params": {"metrics": ["mae", "r2"]}, "inputs": {"test_split": "${load_dataset.test_split}", "trained_model": "${train_model.model_artifact}"}, "retry": 0, "timeout_seconds": 1800}, {"node_id": "generate_report", "task_type": "report_generator", "params": {"template": "tool_wear_evaluation.md"}, "inputs": {"metrics": "${evaluate_model.metrics_artifact}"}, "retry": 0, "timeout_seconds": 600}], "edges": [{"upstream": "load_dataset", "downstream": "train_model"}, {"upstream": "train_model", "downstream": "evaluate_model"}, {"upstream": "evaluate_model", "downstream": "generate_report"}], "inputs": {}, "outputs": {"wear_report": "${generate_report.report_artifact}"}, "metadata": {"max_concurrent": 2, "tags": ["tool_wear", "ltc"]}}')
@@ -157,9 +151,7 @@ function initBuiltinTemplates() {
   ]
 }
 
-// ---------------------------------------------------------------------------
 // 当前选中的工作流 spec（用于 DAG 可视化）
-// ---------------------------------------------------------------------------
 const currentSpec = computed<WorkflowSpec | null>(() => {
   if (!currentRunId.value) return null
   // 优先从列表中取 spec（完整结构），否则从 currentStatus 取
@@ -193,9 +185,7 @@ const streamStatusText = computed(() => {
   return t('workflowPanel.streamIdle')
 })
 
-// ---------------------------------------------------------------------------
 // 节点状态：合并 SSE nodeStatuses + 持久化 node_statuses
-// ---------------------------------------------------------------------------
 const nodeStatusMap = computed<Record<string, TaskStatus>>(() => {
   const map: Record<string, TaskStatus> = {}
   // SSE 节点状态（高优先级）
@@ -213,10 +203,8 @@ const nodeStatusMap = computed<Record<string, TaskStatus>>(() => {
   return map
 })
 
-// ---------------------------------------------------------------------------
 // DAG 分层布局（自实现，避免引入 dagre 依赖）
 // 算法：Kahn 拓扑排序 + 按入度分层
-// ---------------------------------------------------------------------------
 const nodeWidth = 160
 const nodeHeight = 76
 
@@ -224,9 +212,7 @@ const dagLayout = useDagLayout(() => currentSpec.value)
 
 // 子组件已内置 isEdgeActive / getNodeStatus 逻辑
 
-// ---------------------------------------------------------------------------
 // 列表交互
-// ---------------------------------------------------------------------------
 function handleRefresh() {
   loadWorkflows()
   if (currentRunId.value) refreshCurrentStatus()
@@ -289,9 +275,7 @@ async function handleDeleteCurrent() {
   }
 }
 
-// ---------------------------------------------------------------------------
 // 提交 / 续跑对话框
-// ---------------------------------------------------------------------------
 const submitDialogVisible = ref(false)
 const submitMode = ref<'submit' | 'resume'>('submit')
 const submitForm = ref({
@@ -428,9 +412,7 @@ async function handleSubmit() {
   }
 }
 
-// ---------------------------------------------------------------------------
 // 生命周期
-// ---------------------------------------------------------------------------
 onMounted(() => {
   initBuiltinTemplates()
   loadWorkflows()

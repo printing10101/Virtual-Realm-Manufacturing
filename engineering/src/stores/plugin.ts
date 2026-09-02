@@ -62,13 +62,13 @@ export interface PluginDetail {
  * V3.0: 从 Options API 重写为 Composition API，与其余 20 个 Store 风格统一。
  */
 export const usePluginStore = defineStore('plugin', () => {
-  // ===== State =====
+// State
   const plugins = ref<Plugin[]>([])
   const currentPlugin = ref<PluginDetail | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  // ===== Getters =====
+// Getters
   const enabledPlugins = computed(() => plugins.value.filter((p) => p.status === 'enabled'))
   const disabledPlugins = computed(() => plugins.value.filter((p) => p.status === 'disabled'))
   const adapterPlugins = computed(() => plugins.value.filter((p) => p.plugin_type === 'adapter'))
@@ -76,13 +76,13 @@ export const usePluginStore = defineStore('plugin', () => {
   const analyzerPlugins = computed(() => plugins.value.filter((p) => p.plugin_type === 'analyzer'))
   const visualizationPlugins = computed(() => plugins.value.filter((p) => p.plugin_type === 'visualization'))
 
-  // ===== Shared helpers =====
+// Shared helpers
   function setLoading(flag: boolean) {
     loading.value = flag
     if (flag) error.value = null
   }
 
-  // ===== Actions =====
+// Actions
   async function fetchPlugins() {
     setLoading(true)
     try {

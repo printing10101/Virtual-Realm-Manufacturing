@@ -19,9 +19,7 @@ import {
 } from '@/api/cuttingExperience'
 
 export const useExperienceStore = defineStore('experience', () => {
-  // ------------------------------------------------------------------
-  // 状态
-  // ------------------------------------------------------------------
+// 状态
 
   /** 查询结果列表 */
   const records = ref<CuttingExperienceRecord[]>([])
@@ -38,9 +36,7 @@ export const useExperienceStore = defineStore('experience', () => {
   /** 最近错误消息 */
   const errorMessage = ref('')
 
-  // ------------------------------------------------------------------
-  // 动作
-  // ------------------------------------------------------------------
+// 动作
 
   /** 刷新列表（用当前查询条件） */
   async function refreshList(): Promise<void> {

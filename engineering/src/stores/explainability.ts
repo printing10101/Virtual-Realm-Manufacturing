@@ -50,9 +50,7 @@ import {
   type CompareExplanationsResponse,
 } from '@/contracts/explainability'
 
-// ---------------------------------------------------------------------------
 // Store 局部类型（派生 / UI 辅助）
-// ---------------------------------------------------------------------------
 
 /** 解释记录分页信息。 */
 interface ExplanationPaginationState {
@@ -67,14 +65,12 @@ interface FetchExplanationsParams extends ListExplanationsParams {}
 /** fetchExplanation 入参（与后端 Query 参数对齐）。 */
 interface FetchExplanationParams extends GetExplanationParams {}
 
-// ---------------------------------------------------------------------------
 // Store 定义
-// ---------------------------------------------------------------------------
 
 export const useExplainabilityStore = defineStore(
   'explainability',
   () => {
-    // ===== State：解释记录列表 =====
+// State：解释记录列表
 
     /** 解释记录列表（list 端点返回的 items）。 */
     const explanations = ref<ExplanationRecord[]>([])
@@ -85,17 +81,17 @@ export const useExplainabilityStore = defineStore(
       offset: 0,
     })
 
-    // ===== State：当前解释记录详情 =====
+// State：当前解释记录详情
 
     /** 当前查看的解释记录详情（include_payload=true 时含 payload）。 */
     const currentExplanation = ref<ExplanationRecordDetail | null>(null)
 
-    // ===== State：最近一次对比结果 =====
+// State：最近一次对比结果
 
     /** 最近一次对比响应（含 diff_payload_path）。 */
     const lastComparisonResult = ref<ExplanationComparison | null>(null)
 
-    // ===== State：最近一次操作响应（用于 UI 提示） =====
+// State：最近一次操作响应（用于 UI 提示）
 
     /** 最近一次隐状态投影解释响应。 */
     const lastHiddenStateResult = ref<GenerateHiddenStateResponse | null>(null)
@@ -108,7 +104,7 @@ export const useExplainabilityStore = defineStore(
     /** 最近一次删除响应。 */
     const lastDeleteResult = ref<DeleteExplanationResponse | null>(null)
 
-    // ===== Loading 标志 =====
+// Loading 标志
 
     const generatingHiddenState = ref(false) // POST /hidden-state
     const generatingGateDynamics = ref(false) // POST /gate-dynamics
@@ -120,7 +116,7 @@ export const useExplainabilityStore = defineStore(
     const comparing = ref(false) // POST /compare
     const error = ref<string | null>(null)
 
-    // ===== Computed =====
+// Computed
 
     /** 是否有解释记录。 */
     const hasExplanations = computed<boolean>(() => explanations.value.length > 0)
@@ -154,7 +150,7 @@ export const useExplainabilityStore = defineStore(
 
     // unwrap() 已提取到 @/utils/response.ts（消除 6 个 Store 的重复定义）
 
-    // ===== Actions：生成解释 =====
+// Actions：生成解释
 
     /**
      * 生成隐状态投影解释.
@@ -305,7 +301,7 @@ export const useExplainabilityStore = defineStore(
       }
     }
 
-    // ===== Actions：列表查询 =====
+// Actions：列表查询
 
     /**
      * 列出历史解释记录（分页 + 类型/模型过滤）.
@@ -384,7 +380,7 @@ export const useExplainabilityStore = defineStore(
       }
     }
 
-    // ===== Actions：删除 =====
+// Actions：删除
 
     /**
      * 删除解释记录（同时删除 payload 文件）.
@@ -424,7 +420,7 @@ export const useExplainabilityStore = defineStore(
       }
     }
 
-    // ===== Actions：对比 =====
+// Actions：对比
 
     /**
      * 对比两个解释（生成差异 payload）.
@@ -460,7 +456,7 @@ export const useExplainabilityStore = defineStore(
       }
     }
 
-    // ===== 清理方法 =====
+// 清理方法
 
     /** 清空当前解释记录详情。 */
     function clearCurrentExplanation(): void {

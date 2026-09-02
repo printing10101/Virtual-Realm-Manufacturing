@@ -16,9 +16,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import type { ExperimentSnapshot } from '@/contracts/observability'
 
-// ---------------------------------------------------------------------------
 // Mock: vue-i18n（useI18n composition API）
-// ---------------------------------------------------------------------------
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
@@ -34,9 +32,7 @@ vi.mock('vue-i18n', () => ({
   }),
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: @element-plus/icons-vue
-// ---------------------------------------------------------------------------
 vi.mock('@element-plus/icons-vue', () => ({
   Refresh: { name: 'Refresh', template: '<i class="icon-refresh" />' },
   Plus: { name: 'Plus', template: '<i class="icon-plus" />' },
@@ -44,9 +40,7 @@ vi.mock('@element-plus/icons-vue', () => ({
   Close: { name: 'Close', template: '<i class="icon-close" />' },
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: element-plus（ElMessage / ElMessageBox）
-// ---------------------------------------------------------------------------
 const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   warning: vi.fn(),
@@ -61,9 +55,7 @@ vi.mock('element-plus', () => ({
   ElMessageBox: mockElMessageBox,
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: @/composables/useSnapshots
-// ---------------------------------------------------------------------------
 const mockUseSnapshots = vi.hoisted(() => ({
   snapshots: { value: [] as ExperimentSnapshot[] },
   loading: { value: false },
@@ -91,9 +83,7 @@ vi.mock('@/composables/useSnapshots', () => ({
 
 import SnapshotPanel from '@/views/SnapshotPanel.vue'
 
-// ---------------------------------------------------------------------------
 // 测试数据
-// ---------------------------------------------------------------------------
 function makeSnapshot(
   overrides: Partial<ExperimentSnapshot> = {},
 ): ExperimentSnapshot {
@@ -112,9 +102,7 @@ function makeSnapshot(
   }
 }
 
-// ---------------------------------------------------------------------------
 // 测试主体
-// ---------------------------------------------------------------------------
 describe('SnapshotPanel.vue', () => {
   let pinia: ReturnType<typeof createPinia>
   let router: ReturnType<typeof createRouter>
@@ -163,9 +151,7 @@ describe('SnapshotPanel.vue', () => {
     })
   }
 
-  // =========================================================================
-  // 1. 组件挂载与初始化
-  // =========================================================================
+// 1. 组件挂载与初始化
   describe('组件挂载', () => {
     it('组件能正确挂载', async () => {
       const wrapper = mountPanel()
@@ -181,9 +167,7 @@ describe('SnapshotPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 2. 面板行为
-  // =========================================================================
+// 2. 面板行为
   describe('面板行为', () => {
     it('点击刷新调用 loadSnapshots', async () => {
       const wrapper = mountPanel()
@@ -226,9 +210,7 @@ describe('SnapshotPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 3. 创建快照
-  // =========================================================================
+// 3. 创建快照
   describe('创建快照', () => {
     it('提交成功 → ElMessage.success + 关闭对话框 + selectSnapshot', async () => {
       const wrapper = mountPanel()
@@ -272,9 +254,7 @@ describe('SnapshotPanel.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 4. 复现交互
-  // =========================================================================
+// 4. 复现交互
   describe('复现交互', () => {
     it('点击复现 → confirm 确认 → reproduce → ElMessage.success', async () => {
       const wrapper = mountPanel()

@@ -143,9 +143,7 @@ export async function getRoutingStrategies(): Promise<RoutingStrategyInfo[]> {
   return resp.data?.data ?? resp.data
 }
 
-// ------------------------------------------------------------
 // 工具函数
-// ------------------------------------------------------------
 
 function normalizeList(raw: unknown): LLMProvider[] {
   if (Array.isArray(raw)) return raw as LLMProvider[]

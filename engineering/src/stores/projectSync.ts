@@ -51,9 +51,7 @@ import {
   type SyncDirection,
 } from '@/contracts/project_sync'
 
-// ---------------------------------------------------------------------------
 // Store 局部类型（派生 / UI 辅助）
-// ---------------------------------------------------------------------------
 
 /** 项目列表分页信息（从 list 响应派生）。 */
 interface PaginationState {
@@ -92,14 +90,12 @@ interface FetchSyncRecordsParams {
   offset?: number
 }
 
-// ---------------------------------------------------------------------------
 // Store 定义
-// ---------------------------------------------------------------------------
 
 export const useProjectSyncStore = defineStore(
   'projectSync',
   () => {
-    // ===== State =====
+// State
 
     /** 项目列表（list 端点返回的 items）。 */
     const projects = ref<ProjectSyncManifest[]>([])
@@ -139,7 +135,7 @@ export const useProjectSyncStore = defineStore(
     /** 最近一次删除资源引用响应。 */
     const lastRemoveRefResult = ref<RemoveResourceRefResponse | null>(null)
 
-    // ===== Loading 标志 =====
+// Loading 标志
     const loading = ref(false)
     const detailLoading = ref(false)
     const statusLoading = ref(false)
@@ -155,7 +151,7 @@ export const useProjectSyncStore = defineStore(
     const recordsLoading = ref(false)
     const error = ref<string | null>(null)
 
-    // ===== Computed =====
+// Computed
 
     /** 是否有项目数据。 */
     const hasProjects = computed<boolean>(() => projects.value.length > 0)
@@ -231,7 +227,7 @@ export const useProjectSyncStore = defineStore(
       }
     }
 
-    // ===== Actions =====
+// Actions
 
     /**
      * 分页列出项目（支持状态/作者过滤）.
@@ -676,7 +672,7 @@ export const useProjectSyncStore = defineStore(
       }
     }
 
-    // ===== 清理 / 重置 =====
+// 清理 / 重置
 
     /**
      * 清空当前项目详情相关的本地状态.
@@ -722,7 +718,7 @@ export const useProjectSyncStore = defineStore(
       error.value = null
     }
 
-    // ===== 导出 =====
+// 导出
     return {
       // State
       projects,

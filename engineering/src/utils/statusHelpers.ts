@@ -5,9 +5,7 @@
 
 export type TagType = 'success' | 'warning' | 'danger' | 'info' | 'primary'
 
-// ============================================================
 // 任务状态 (Task Status)
-// ============================================================
 export const TASK_STATUS_LABELS: Record<string, string> = {
   queued: '排队中',
   running: '运行中',
@@ -34,9 +32,7 @@ export function getTaskStatusTagType(status: string): TagType {
   return TASK_STATUS_TAG_TYPES[status] || 'info'
 }
 
-// ============================================================
 // 审批状态 (Approval Status)
-// ============================================================
 export const APPROVAL_STATUS_LABELS: Record<string, string> = {
   pending: '待审批',
   under_review: '审核中',
@@ -61,9 +57,7 @@ export function getApprovalStatusTagType(status: string): TagType {
   return APPROVAL_STATUS_TAG_TYPES[status] || 'info'
 }
 
-// ============================================================
 // 目标层级 (Goal Level)
-// ============================================================
 export const GOAL_LEVEL_LABELS: Record<string, string> = {
   mission: '使命',
   strategic_goal: '战略目标',
@@ -110,9 +104,7 @@ export function getGoalStatusTagType(status: string): TagType {
   return GOAL_STATUS_TAG_TYPES[status] || 'info'
 }
 
-// ============================================================
 // 优先级 (Priority)
-// ============================================================
 export const PRIORITY_LABELS: Record<string | number, string> = {
   1: '紧急',
   2: '高',
@@ -143,9 +135,7 @@ export function getPriorityTagType(priority: string | number): TagType {
   return PRIORITY_TAG_TYPES[priority] || 'info'
 }
 
-// ============================================================
 // 分支类型 (Branch Type)
-// ============================================================
 export const BRANCH_TYPE_LABELS: Record<string, string> = {
   main: '主分支',
   industry: '行业',
@@ -172,9 +162,7 @@ export function getBranchTypeTagType(type: string): TagType {
   return BRANCH_TYPE_TAG_TYPES[type] || 'info'
 }
 
-// ============================================================
 // 审计日志模块 (Audit Log Module)
-// ============================================================
 export const AUDIT_MODULE_LABELS: Record<string, string> = {
   lnn_predict: 'LNN预测',
   lnn_train: 'LNN训练',
@@ -187,9 +175,7 @@ export function getAuditModuleName(module: string): string {
   return AUDIT_MODULE_LABELS[module] || module
 }
 
-// ============================================================
 // 审计日志决策 (Audit Log Decision)
-// ============================================================
 export const AUDIT_DECISION_LABELS: Record<string, string> = {
   accept: '接受',
   modify: '修改',
@@ -212,9 +198,7 @@ export function getAuditDecisionTagType(decision: string): TagType {
   return AUDIT_DECISION_TAG_TYPES[decision] || 'info'
 }
 
-// ============================================================
 // 通用状态 (Generic Status)
-// ============================================================
 export const GENERIC_STATUS_LABELS: Record<string, string> = {
   success: '成功',
   failed: '失败',
@@ -237,9 +221,7 @@ export function getGenericStatusTagType(status: string): TagType {
   return GENERIC_STATUS_TAG_TYPES[status] || 'info'
 }
 
-// ============================================================
 // 规则状态 (Rule Status)
-// ============================================================
 export const RULE_STATUS_LABELS: Record<string, string> = {
   active: '启用',
   inactive: '停用',
@@ -260,9 +242,7 @@ export function getRuleStatusTagType(status: string): TagType {
   return RULE_STATUS_TAG_TYPES[status] || 'info'
 }
 
-// ============================================================
 // 置信度 (Confidence)
-// ============================================================
 export const CONFIDENCE_THRESHOLDS = {
   HIGH: 0.8,
   MEDIUM: 0.5,

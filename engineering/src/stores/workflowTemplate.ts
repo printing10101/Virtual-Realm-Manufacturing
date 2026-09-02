@@ -40,9 +40,7 @@ import {
   TEMPLATE_CATEGORY_LABELS,
 } from '@/contracts/workflow_template'
 
-// ---------------------------------------------------------------------------
 // Store 局部类型（派生 / UI 辅助）
-// ---------------------------------------------------------------------------
 
 /** 分页信息（从 list 响应派生）。 */
 interface PaginationState {
@@ -61,14 +59,12 @@ interface FetchTemplatesParams {
   sort_by?: TemplateSortBy
 }
 
-// ---------------------------------------------------------------------------
 // Store 定义
-// ---------------------------------------------------------------------------
 
 export const useWorkflowTemplateStore = defineStore(
   'workflowTemplate',
   () => {
-    // ===== State =====
+// State
 
     /** 模板列表（list 端点返回的 items）。 */
     const templates = ref<WorkflowTemplateSummary[]>([])
@@ -103,7 +99,7 @@ export const useWorkflowTemplateStore = defineStore(
     const unpublishing = ref(false)
     const error = ref<string | null>(null)
 
-    // ===== Computed =====
+// Computed
 
     /** 是否有模板数据。 */
     const hasTemplates = computed<boolean>(() => templates.value.length > 0)
@@ -145,7 +141,7 @@ export const useWorkflowTemplateStore = defineStore(
       avgRating: marketStats.value?.avg_rating ?? 0,
     }))
 
-    // ===== Actions =====
+// Actions
 
     /**
      * 分页列出模板（支持分类/标签/作者过滤，多种排序）.
@@ -442,7 +438,7 @@ export const useWorkflowTemplateStore = defineStore(
       ])
     }
 
-    // ===== Helpers =====
+// Helpers
 
     /**
      * 格式化时间戳为本地时间字符串。

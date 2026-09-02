@@ -120,15 +120,11 @@ import FlywheelMetrics from './flywheel/FlywheelMetrics.vue'
 const { t } = useI18n()
 const store = useFlywheelStore()
 
-// ---------------------------------------------------------------------------
 // 本地状态
-// ---------------------------------------------------------------------------
 const activeTab = ref<'overview' | 'feedback' | 'models' | 'metrics'>('overview')
 const metricsDays = ref<number>(7)
 
-// ---------------------------------------------------------------------------
 // 事件处理
-// ---------------------------------------------------------------------------
 async function handleRefreshAll(): Promise<void> {
   await store.refreshAll(metricsDays.value)
 }
@@ -157,9 +153,7 @@ async function handleResetDeploymentFilters(): Promise<void> {
   await store.fetchDeployments()
 }
 
-// ---------------------------------------------------------------------------
 // 生命周期
-// ---------------------------------------------------------------------------
 onMounted(() => {
   void store.refreshAll(metricsDays.value)
 })

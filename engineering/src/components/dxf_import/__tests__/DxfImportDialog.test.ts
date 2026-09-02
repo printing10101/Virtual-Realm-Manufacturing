@@ -4,18 +4,14 @@ import { shallowMount, VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import DxfImportDialog from '@/components/dxf_import/DxfImportDialog.vue'
 
-// ---------------------------------------------------------------------------
 // Mock: vue-i18n
-// ---------------------------------------------------------------------------
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string) => key,
   }),
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: element-plus（ElMessage）
-// ---------------------------------------------------------------------------
 const mockElMessage = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
@@ -26,9 +22,7 @@ vi.mock('element-plus', () => ({
   ElMessage: mockElMessage,
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: @element-plus/icons-vue
-// ---------------------------------------------------------------------------
 vi.mock('@element-plus/icons-vue', () => ({
   Upload: { name: 'Upload', template: '<i />' },
   Refresh: { name: 'Refresh', template: '<i />' },
@@ -36,9 +30,7 @@ vi.mock('@element-plus/icons-vue', () => ({
   Document: { name: 'Document', template: '<i />' },
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: dynamic import of project store（handleImportToProject 内部动态加载）
-// ---------------------------------------------------------------------------
 const mockProjectStore = vi.hoisted(() => ({
   manifest: {
     resources: [] as Array<Record<string, unknown>>,
@@ -49,9 +41,7 @@ vi.mock('@/stores/project', () => ({
   useProjectStore: () => mockProjectStore,
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: formatters（store 展示用）
-// ---------------------------------------------------------------------------
 vi.mock('@/utils/formatters', () => ({
   formatFileSize: vi.fn((size: number) => `${size} B`),
 }))

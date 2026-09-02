@@ -43,7 +43,7 @@ class MockWebSocket {
     this.onclose?.({} as CloseEvent)
   }
 
-  // ---- 测试辅助：模拟服务端推送 ----
+// 测试辅助：模拟服务端推送
   emitOpen(): void {
     this.onopen?.({} as Event)
   }

@@ -99,7 +99,7 @@ import { API_CONFIG } from '@/config/api'
 
 const { t } = useI18n()
 
-// ========================= 类型定义 =========================
+// 类型定义
 interface ProcessStep {
   name: string
   description: string
@@ -121,7 +121,7 @@ interface ProcessRoute {
   updated_at: string
 }
 
-// ========================= 数据 =========================
+// 数据
 const routeList = ref<ProcessRoute[]>([])
 const loading = ref(false)
 const loadError = ref(false)
@@ -138,7 +138,7 @@ function statusToEnglish(cn: string): string {
   return statusValueMap[cn] || ''
 }
 
-// ========================= API 数据加载 =========================
+// API 数据加载
 async function fetchRoutes() {
   loading.value = true
   loadError.value = false
@@ -161,15 +161,15 @@ async function fetchRoutes() {
   }
 }
 
-// ========================= 筛选状态 =========================
+// 筛选状态
 const searchKeyword = ref('')
 const filterType = ref('all')
 const filterStatus = ref('all')
 
-// ========================= 详情面板 =========================
+// 详情面板
 const selectedRoute = ref<ProcessRoute | null>(null)
 
-// ========================= 计算属性 =========================
+// 计算属性
 const filteredRoutes = computed(() => {
   return routeList.value.filter(route => {
     const keyword = searchKeyword.value.trim().toLowerCase()
@@ -186,7 +186,7 @@ const filteredRoutes = computed(() => {
   })
 })
 
-// ========================= 方法 =========================
+// 方法
 function openDetail(route: ProcessRoute) {
   selectedRoute.value = route
 }
@@ -275,7 +275,7 @@ function handleDelete(route: ProcessRoute) {
   })
 }
 
-// ========================= 生命周期 =========================
+// 生命周期
 onMounted(() => {
   fetchRoutes()
 })

@@ -127,7 +127,7 @@ function onChartTypeChange(value: string | number | boolean | undefined) {
   emit('update:chart-type', String(value || 'bar'))
 }
 
-// ========================= 趋势图表 =========================
+// 趋势图表
 const chartEl = ref<HTMLElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
 

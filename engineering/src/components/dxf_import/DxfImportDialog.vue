@@ -117,7 +117,7 @@ const featuresCount = computed(() => {
   return (f.hole_count ?? 0) + (f.plane_count ?? 0)
 })
 
-// ============= 文件选择 =============
+// 文件选择
 
 async function handleFileSelected(file: File) {
   const ok = await store.importDxfFile(file)
@@ -126,7 +126,7 @@ async function handleFileSelected(file: File) {
   }
 }
 
-// ============= 业务操作 =============
+// 业务操作
 
 function handleRetry() {
   store.reset()

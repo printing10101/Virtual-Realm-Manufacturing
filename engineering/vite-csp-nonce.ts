@@ -24,8 +24,6 @@ export function cspNoncePlugin(): Plugin {
   // 生产模式使用随机 nonce（每次构建唯一）
   const nonce = isDev ? 'dev-nonce-vite-hmr' : crypto.randomBytes(16).toString('base64url')
 
-  console.log(`[csp-nonce] mode=${isDev ? 'dev' : 'prod'} nonce=${nonce.slice(0, 8)}...`)
-
   return {
     name: 'csp-nonce',
     enforce: 'post',

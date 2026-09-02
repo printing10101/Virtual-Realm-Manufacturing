@@ -28,9 +28,7 @@ import {
   type ListWorldModelVersionsResponse,
 } from '@/contracts/world_model'
 
-// ---------------------------------------------------------------------------
 // Store 局部类型（派生 / UI 辅助）
-// ---------------------------------------------------------------------------
 
 /** 版本列表分页信息。 */
 interface WorldModelVersionPaginationState {
@@ -42,14 +40,12 @@ interface WorldModelVersionPaginationState {
 /** fetchVersions 入参（与后端 Query 参数对齐）。 */
 interface FetchWorldModelVersionsParams extends ListWorldModelVersionsParams {}
 
-// ---------------------------------------------------------------------------
 // Store 定义
-// ---------------------------------------------------------------------------
 
 export const useWorldModelStore = defineStore(
   'worldModel',
   () => {
-    // ===== State：版本列表 =====
+// State：版本列表
 
     /** 世界模型版本列表（list 端点返回的 items）。 */
     const versions = ref<WorldModelVersion[]>([])
@@ -60,24 +56,24 @@ export const useWorldModelStore = defineStore(
       offset: 0,
     })
 
-    // ===== State：当前版本详情 =====
+// State：当前版本详情
 
     /** 当前查看的世界模型版本详情。 */
     const currentVersion = ref<WorldModelVersion | null>(null)
 
-    // ===== State：最近一次预测结果 =====
+// State：最近一次预测结果
 
     /** 最近一次世界模型预测响应（含轨迹 / 指标 / 模型信息）。 */
     const lastPrediction = ref<WorldModelPredictResponse | null>(null)
 
-    // ===== Loading 标志 =====
+// Loading 标志
 
     const versionsLoading = ref(false) // GET /versions
     const versionLoading = ref(false) // GET /versions/{version}
     const predicting = ref(false) // POST /predict
     const error = ref<string | null>(null)
 
-    // ===== Computed =====
+// Computed
 
     /** 是否有世界模型版本。 */
     const hasVersions = computed<boolean>(() => versions.value.length > 0)
@@ -121,7 +117,7 @@ export const useWorldModelStore = defineStore(
 
     // unwrap() 已提取到 @/utils/response.ts（消除 6 个 Store 的重复定义）
 
-    // ===== Actions：版本管理 =====
+// Actions：版本管理
 
     /**
      * 列出世界模型版本（分页 + active_only 过滤）.
@@ -189,7 +185,7 @@ export const useWorldModelStore = defineStore(
       }
     }
 
-    // ===== Actions：预测 =====
+// Actions：预测
 
     /**
      * 执行世界模型轨迹预测（不走工作流，直接调用服务层）.
@@ -228,7 +224,7 @@ export const useWorldModelStore = defineStore(
       }
     }
 
-    // ===== 清理方法 =====
+// 清理方法
 
     /** 清空当前版本详情。 */
     function clearCurrentVersion(): void {

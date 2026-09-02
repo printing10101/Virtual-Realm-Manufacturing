@@ -94,9 +94,7 @@ export default {
     selectPlaceholder: "Please select",
     inputPlaceholder: "Please input",
   },
-  // ============================================================================
-  // Experience (Data Flywheel)
-  // ============================================================================
+// Experience (Data Flywheel)
   experience: {
     // Page Header
     pageTitle: "Machining Measurements",
@@ -236,7 +234,7 @@ export default {
     stopped: "Stopped",
     registeredModels: "Registered Models",
     fetchFailed: "Status fetch failed",
-    // === Home.vue added keys ===
+// Home.vue added keys
     pageTitle: "Production Overview",
     greetingOperator: ", Operator",
     rangeToday: "Today",
@@ -435,7 +433,7 @@ export default {
       noGcode: "No G-code to export",
       requestFailed: "Process planning request failed",
     },
-    // === ProcessPlanning.vue Route Management Page additional keys ===
+// ProcessPlanning.vue Route Management Page additional keys
     routePage: {
       pageTitle: "Process Planning",
       pageSubtitle: "Manage and configure manufacturing process routes",
@@ -839,7 +837,7 @@ export default {
     llmLocalProviders: "Local Providers",
     llmCloudProviders: "Cloud Providers",
     llmConfigPath: "Config Storage Path",
-    // === Settings.vue page-level keys ===
+// Settings.vue page-level keys
     pageTitle: "System Settings",
     subtitle: "Manage system configurations, version information and preferences",
     navGeneral: "General Settings",
@@ -2385,7 +2383,7 @@ export default {
     btnUninstallConfirm: "Uninstall",
     btnCancel: "Cancel",
   },
-  // === NLModeling.vue Natural Language Modeling Page ===
+// NLModeling.vue Natural Language Modeling Page
   nlModeling: {
     pageTitle: "Natural Language Modeling",
     pageSubtitle: "Generate 3D part models from natural language descriptions, supporting process planning and NC code generation",
@@ -2407,7 +2405,7 @@ export default {
     msgViewReset: "Model view reset",
     msgComplete: "Process complete!",
   },
-  // === ProductionReport.vue Production Report Page ===
+// ProductionReport.vue Production Report Page
   productionReport: {
     pageTitle: "Production Report",
     pageSubtitle: "View and analyze production data reports",
@@ -2457,7 +2455,7 @@ export default {
     msgExportEmpty: "No data to export",
     msgExportFailed: "Failed to export report",
   },
-  // === ProcessUnderstanding.vue Process Understanding & Q&A Page ===
+// ProcessUnderstanding.vue Process Understanding & Q&A Page
   processUnderstanding: {
     pageTitle: "Process Understanding & Q&A",
     pageSubtitle: "LLM-based process consulting, fault diagnosis, and solution generation",
@@ -2484,7 +2482,7 @@ export default {
     taskTypeChat: "Chitchat",
     taskTypeUnknown: "Unknown",
   },
-  // === QualityInspection.vue Quality Inspection Page ===
+// QualityInspection.vue Quality Inspection Page
   qualityInspection: {
     pageTitle: "Quality Inspection",
     pageSubtitle: "Product quality inspection and analysis management",
@@ -2531,7 +2529,7 @@ export default {
     msgDetailLoadFailed: "Failed to load details",
     msgFormIncomplete: "Please fill in all required fields",
   },
-  // === EquipmentMonitor.vue Equipment Monitor page ===
+// EquipmentMonitor.vue Equipment Monitor page
   equipmentMonitor: {
     pageTitle: "Equipment Monitor",
     pageSubtitle: "Real-time monitoring of equipment running status",
@@ -2585,7 +2583,7 @@ export default {
     msgRepairSuccess: "Repair reported, equipment switched to maintenance",
     msgOpFailed: "Operation failed",
   },
-  // === MaterialManagement.vue Material Management page ===
+// MaterialManagement.vue Material Management page
   materialManagement: {
     pageTitle: "Material Management",
     pageSubtitle: "Manage production materials and inventory",
@@ -2643,7 +2641,7 @@ export default {
     msgQuantityInvalid: "Please enter a valid quantity",
     msgMaterialRequired: "Please select a material",
   },
-  // === PluginLogs.vue Plugin Logs page ===
+// PluginLogs.vue Plugin Logs page
   pluginLogs: {
     pageTitle: "Plugin Logs",
     placeholderSelectPlugin: "Select Plugin",
@@ -2657,7 +2655,7 @@ export default {
     msgNoLogsToExport: "No logs to export",
     msgExported: "{count} logs exported",
   },
-  // === PluginMarket.vue Plugin Market page ===
+// PluginMarket.vue Plugin Market page
   pluginMarket: {
     pageTitle: "Plugin Market",
     placeholderSearch: "Search plugins...",
@@ -2696,7 +2694,7 @@ export default {
     plugin3dMonitor: "3D Monitor",
     plugin3dMonitorDesc: "3D machine tool status monitoring",
   },
-  // === NLInputPanel.vue ===
+// NLInputPanel.vue
   nlInputPanel: {
     welcomeGreeting: "Hello! I am the Lingjing Manufacturing AI Assistant.",
     welcomeHint: "Please describe the part you want to create, e.g.: \"Create a box 50mm long, 30mm wide, 20mm high, with R2 fillets on all four corners\".",
@@ -2746,7 +2744,7 @@ export default {
     featureHole: "Hole",
     featureSlot: "Slot",
   },
-  // === UXDemo.vue UX demo page ===
+// UXDemo.vue UX demo page
   uxDemo: {
     pageTitle: "UX Feature Demo",
     btnStartTour: "Start Tour Guide",
@@ -2806,7 +2804,7 @@ export default {
     msgTourCompleted: "Tour completed!",
     msgTourSkipped: "Tour skipped (from step {step})",
   },
-  // === ExampleGallery.vue ===
+// ExampleGallery.vue
   exampleGallery: {
     placeholderSearch: "Search examples...",
     placeholderCategory: "Category",
@@ -2846,7 +2844,7 @@ export default {
     msgCopyFailed: "Copy failed, please copy manually",
     msgImported: "Example {name} imported to project",
   },
-  // === SplashScreen.vue ===
+// SplashScreen.vue
   splashScreen: {
     appName: "Lingjing Manufacturing",
     appSubtitle: "AI-Powered 3D Modeling & Process Planning System",
@@ -2970,7 +2968,7 @@ export default {
     errorDismissFailed: "Failed to dismiss update:",
     errorPreviewFailed: "Failed to fetch preview data:"
   },
-  // === ProviderFormDialog.vue Provider Form Dialog ===
+// ProviderFormDialog.vue Provider Form Dialog
   providerFormDialog: {
     // Dialog titles
     titleCreate: "Add LLM Provider",
@@ -3024,7 +3022,7 @@ export default {
     ruleNameRequired: "Please enter display name",
     ruleTypeRequired: "Please select type",
   },
-  // === TestDialog.vue Chat Test Dialog ===
+// TestDialog.vue Chat Test Dialog
   testDialog: {
     titleDefault: "Chat Test",
     titleSuffix: "{name} - Chat Test",
@@ -3045,7 +3043,7 @@ export default {
     errorInvokeFailed: "Invocation failed, please check the error prompt in the upper right corner",
     errorTestFailed: "Chat test failed",
   },
-  // === ModelsDialog.vue Model List Dialog ===
+// ModelsDialog.vue Model List Dialog
   modelsDialog: {
     titleDefault: "Model List",
     titleSuffix: "{name} - Available Models",
@@ -3072,7 +3070,7 @@ export default {
     warnClipboardUnavailable: "Clipboard unavailable, please copy manually",
   },
 
-  // === ProviderList.vue Provider List ===
+// ProviderList.vue Provider List
   providerList: {
     emptyTitle: "No Provider Configured",
     emptyDescription: "No LLM Provider is currently configured. Click \"Add Provider\" above to add manually, or use auto-detection to scan locally installed LLM services.",
@@ -3100,7 +3098,7 @@ export default {
     btnDelete: "Delete",
   },
 
-  // === AppLayout.vue Application Layout ===
+// AppLayout.vue Application Layout
   appLayout: {
     brandName: "Lingjing Manufacturing",
     searchPlaceholder: "Search work orders, equipment, materials...",
@@ -3121,7 +3119,7 @@ export default {
     logoutTitle: "Log out",
     guest: "Guest",
   },
-  // === Copilot components (RecommendationCard / DecisionActions / CopilotConfidenceIndicator) ===
+// Copilot components (RecommendationCard / DecisionActions / CopilotConfidenceIndicator)
   copilot: {
     card: {
       title: 'AI Recommendation',
@@ -3147,7 +3145,7 @@ export default {
     },
   },
 
-  // === CommandPalette.vue Command Palette ===
+// CommandPalette.vue Command Palette
   commandPalette: {
     inputPlaceholder: "Enter command name or description...",
     noMatchFound: "No matching commands found",
@@ -3158,7 +3156,7 @@ export default {
     otherCategory: "Other",
     pluginCategory: "Plugins",
   },
-  // === Tour.vue Onboarding Component ===
+// Tour.vue Onboarding Component
   onboardingTour: {
     prev: "Previous",
     next: "Next",
@@ -3184,7 +3182,7 @@ export default {
   recommendationCard: {
     alternativeLabel: "Option {index}",
   },
-  // === DialectManager.vue Postprocessor Dialect Manager ===
+// DialectManager.vue Postprocessor Dialect Manager
   dialectManager: {
     pageTitle: "Postprocessor Dialects",
     pageHint: "Manage machine postprocessor dialects: built-in dialects + local declarative dialect plugins (dialect.yaml + templates). Process engineers can view templates and preview NC output in real time.",

@@ -190,7 +190,7 @@ import QualityRecordsTable from '@/components/quality/QualityRecordsTable.vue'
 
 const { t } = useI18n()
 
-// ========================= 类型定义 =========================
+// 类型定义
 interface InspectionRecord {
   id: string | number
   inspection_no: string
@@ -219,7 +219,7 @@ interface StatsCard {
   type: 'primary' | 'success' | 'danger' | 'warning' | 'info' | 'default'
 }
 
-// ========================= 状态 =========================
+// 状态
 const loading = ref(false)
 const loadError = ref(false)
 const searchKeyword = ref('')
@@ -244,7 +244,7 @@ const detailDialogVisible = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<InspectionRecord | null>(null)
 
-// ========================= 计算属性 =========================
+// 计算属性
 const statsCards = computed<StatsCard[]>(() => {
   return [
     { label: t('qualityInspection.statToday'), value: statsData.value.total, icon: Checked, type: 'default' },
@@ -253,7 +253,7 @@ const statsCards = computed<StatsCard[]>(() => {
   ]
 })
 
-// ========================= 方法 =========================
+// 方法
 function resultTagType(result: string): 'success' | 'danger' | 'warning' {
   const map: Record<string, 'success' | 'danger' | 'warning'> = {
     [t('qualityInspection.filterPass')]: 'success',
@@ -367,7 +367,7 @@ async function handleViewDetail(row: InspectionRecord) {
   }
 }
 
-// ========================= 防抖处理 =========================
+// 防抖处理
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 function debouncedFetchRecords() {
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -376,7 +376,7 @@ function debouncedFetchRecords() {
   }, 300)
 }
 
-// ========================= 生命周期 =========================
+// 生命周期
 onMounted(() => {
   fetchRecords()
   fetchStats()

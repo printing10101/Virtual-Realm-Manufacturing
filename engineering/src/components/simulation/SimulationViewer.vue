@@ -56,9 +56,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 const { t } = useI18n()
 
-// ---------------------------------------------------------------------------
 // Props & Emits
-// ---------------------------------------------------------------------------
 
 interface Props {
   width?: string
@@ -83,15 +81,11 @@ const emit = defineEmits<{
   (e: 'frame-change', frame: number): void
 }>()
 
-// ---------------------------------------------------------------------------
 // Template refs
-// ---------------------------------------------------------------------------
 
 const containerRef = ref<HTMLElement>()
 
-// ---------------------------------------------------------------------------
 // Reactive state
-// ---------------------------------------------------------------------------
 
 const initialized = ref(false)
 const fpsDisplay = ref(0)
@@ -117,18 +111,14 @@ let fpsLastTime = performance.now()
 // Internal frame counter for emit
 let internalFrameCount = 0
 
-// ---------------------------------------------------------------------------
 // Computed
-// ---------------------------------------------------------------------------
 
 const containerStyle = computed(() => ({
   width: props.width,
   height: props.height,
 }))
 
-// ---------------------------------------------------------------------------
 // Scene initialisation
-// ---------------------------------------------------------------------------
 
 /** 从 CSS 变量解析 3D 场景背景色，失败时回退到 prop 默认值 */
 function resolveBgColor(): string {
@@ -209,9 +199,7 @@ function initScene(): void {
   nextTick(() => emit('ready'))
 }
 
-// ---------------------------------------------------------------------------
 // Click handler – raycasts into the scene and emits the hit point
-// ---------------------------------------------------------------------------
 
 function setupClickHandler(
   canvas: HTMLCanvasElement,
@@ -241,9 +229,7 @@ function setupClickHandler(
   // We clean this up in the main dispose function via renderer.domElement removal
 }
 
-// ---------------------------------------------------------------------------
 // Animation loop
-// ---------------------------------------------------------------------------
 
 function startAnimationLoop(): void {
   function animate() {
@@ -271,9 +257,7 @@ function startAnimationLoop(): void {
   animate()
 }
 
-// ---------------------------------------------------------------------------
 // Resize handling
-// ---------------------------------------------------------------------------
 
 function handleResize(): void {
   const container = containerRef.value
@@ -289,9 +273,7 @@ function handleResize(): void {
   renderer.value.setSize(w, h)
 }
 
-// ---------------------------------------------------------------------------
 // Grid / Axes toggling (react to prop changes)
-// ---------------------------------------------------------------------------
 
 watch(
   () => props.showGrid,
@@ -323,9 +305,7 @@ watch(
   },
 )
 
-// ---------------------------------------------------------------------------
 // Background colour toggling
-// ---------------------------------------------------------------------------
 
 watch(
   () => props.backgroundColor,
@@ -336,9 +316,7 @@ watch(
   },
 )
 
-// ---------------------------------------------------------------------------
 // Voxel data loader (placeholder – logs a message)
-// ---------------------------------------------------------------------------
 
 function loadVoxelData(data: unknown): void {
   // 占位实现：体素网格渲染待仿真后端就绪后实现
@@ -346,9 +324,7 @@ function loadVoxelData(data: unknown): void {
   console.warn('[SimulationViewer] loadVoxelData not implemented yet, data ignored:', data)
 }
 
-// ---------------------------------------------------------------------------
 // Lifecycle
-// ---------------------------------------------------------------------------
 
 onMounted(() => {
   nextTick(() => {
@@ -406,9 +382,7 @@ onUnmounted(() => {
   initialized.value = false
 })
 
-// ---------------------------------------------------------------------------
 // Expose public API
-// ---------------------------------------------------------------------------
 
 defineExpose({
   loadVoxelData,

@@ -24,9 +24,7 @@ import type {
   DeploymentRecord,
 } from '@/stores/flywheel'
 
-// ---------------------------------------------------------------------------
 // Mock: vue-i18n（useI18n composition API）
-// ---------------------------------------------------------------------------
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
@@ -42,16 +40,12 @@ vi.mock('vue-i18n', () => ({
   }),
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: @element-plus/icons-vue
-// ---------------------------------------------------------------------------
 vi.mock('@element-plus/icons-vue', () => ({
   Refresh: { name: 'Refresh', template: '<i class="icon-refresh" />' },
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: element-plus（组件存根）
-// ---------------------------------------------------------------------------
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
   ElMessageBox: { confirm: vi.fn(() => Promise.resolve('confirm')) },
@@ -137,11 +131,9 @@ vi.mock('element-plus', () => ({
   },
 }))
 
-// ---------------------------------------------------------------------------
 // Mock: @/stores/flywheel（Pinia store 完整 mock）
-// ---------------------------------------------------------------------------
 const mockFlywheelStore = vi.hoisted(() => ({
-  // ===== State =====
+// State
   status: null as FlywheelStatus | null,
   currentMetrics: null as FlywheelMetricPoint | null,
   historicalMetrics: [] as FlywheelMetricPoint[],
@@ -156,7 +148,7 @@ const mockFlywheelStore = vi.hoisted(() => ({
   deploymentsLoading: false,
   error: null as string | null,
 
-  // ===== Computed（作为 getter，访问时实时计算） =====
+// Computed（作为 getter，访问时实时计算）
   get healthTagType(): 'success' | 'warning' | 'danger' | 'info' {
     const s = this.status?.status
     if (s === 'healthy') return 'success'
@@ -199,7 +191,7 @@ const mockFlywheelStore = vi.hoisted(() => ({
     )
   },
 
-  // ===== Actions =====
+// Actions
   refreshAll: vi.fn(() => Promise.resolve()),
   fetchStatus: vi.fn(() => Promise.resolve()),
   fetchMetrics: vi.fn(() => Promise.resolve()),
@@ -207,7 +199,7 @@ const mockFlywheelStore = vi.hoisted(() => ({
   fetchDefinitions: vi.fn(() => Promise.resolve()),
   fetchDeployments: vi.fn(() => Promise.resolve()),
 
-  // ===== Helpers =====
+// Helpers
   formatTime: (ts: string | null | undefined) =>
     ts ? new Date(ts).toLocaleString('zh-CN') : '-',
   formatPercent: (v: number | null | undefined, d = 1) =>
@@ -222,9 +214,7 @@ vi.mock('@/stores/flywheel', () => ({
 
 import FlywheelDashboard from '@/components/FlywheelDashboard.vue'
 
-// ---------------------------------------------------------------------------
 // 测试数据构造器
-// ---------------------------------------------------------------------------
 function makeStatus(overrides: Partial<FlywheelStatus> = {}): FlywheelStatus {
   return {
     status: 'healthy',
@@ -292,9 +282,7 @@ function makeDefinition(
   }
 }
 
-// ---------------------------------------------------------------------------
 // 测试主体
-// ---------------------------------------------------------------------------
 describe('FlywheelDashboard.vue', () => {
   let pinia: ReturnType<typeof createPinia>
   let router: ReturnType<typeof createRouter>
@@ -344,9 +332,7 @@ describe('FlywheelDashboard.vue', () => {
     })
   }
 
-  // =========================================================================
-  // 1. 组件挂载与基础渲染
-  // =========================================================================
+// 1. 组件挂载与基础渲染
   describe('基础渲染', () => {
     it('组件能正确挂载', async () => {
       const wrapper = mountDashboard()
@@ -421,9 +407,7 @@ describe('FlywheelDashboard.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 2. 错误提示横幅
-  // =========================================================================
+// 2. 错误提示横幅
   describe('错误提示', () => {
     it('store.error 存在时渲染错误提示横幅', async () => {
       mockFlywheelStore.error = '获取飞轮状态失败'
@@ -452,9 +436,7 @@ describe('FlywheelDashboard.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 3. 概览 Tab
-  // =========================================================================
+// 3. 概览 Tab
   describe('概览 Tab', () => {
     it('status 为空且非加载中时渲染空状态', async () => {
       const wrapper = mountDashboard()
@@ -549,9 +531,7 @@ describe('FlywheelDashboard.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 4. 反馈 Tab
-  // =========================================================================
+// 4. 反馈 Tab
   describe('反馈 Tab', () => {
     it('渲染 4 个反馈统计卡片', async () => {
       mockFlywheelStore.status = makeStatus()
@@ -623,9 +603,7 @@ describe('FlywheelDashboard.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 5. 模型热更新 Tab
-  // =========================================================================
+// 5. 模型热更新 Tab
   describe('模型热更新 Tab', () => {
     it('渲染筛选栏（输入框 + 下拉框 + 搜索按钮 + 重置按钮）', async () => {
       const wrapper = mountDashboard()
@@ -773,9 +751,7 @@ describe('FlywheelDashboard.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 6. 指标历史 Tab
-  // =========================================================================
+// 6. 指标历史 Tab
   describe('指标历史 Tab', () => {
     it('渲染天数选择器', async () => {
       const wrapper = mountDashboard()
@@ -865,9 +841,7 @@ describe('FlywheelDashboard.vue', () => {
     })
   })
 
-  // =========================================================================
-  // 7. 顶部交互
-  // =========================================================================
+// 7. 顶部交互
   describe('顶部交互', () => {
     it('点击刷新按钮调用 refreshAll', async () => {
       const wrapper = mountDashboard()

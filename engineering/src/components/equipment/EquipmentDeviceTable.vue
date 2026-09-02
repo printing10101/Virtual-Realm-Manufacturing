@@ -171,11 +171,11 @@ const emit = defineEmits<{
   (e: 'repair', device: Device): void
 }>()
 
-// ========================= 内部筛选状态 =========================
+// 内部筛选状态
 const statusFilter = ref('all')
 const searchKeyword = ref('')
 
-// ========================= 状态映射 =========================
+// 状态映射
 const STATUS_TO_TAG_TYPE: Record<string, 'success' | 'info' | 'danger' | 'warning'> = {
   [t('equipmentMonitor.labelStatusRunning')]: 'success',
   [t('equipmentMonitor.labelStatusStandby')]: 'info',
@@ -183,7 +183,7 @@ const STATUS_TO_TAG_TYPE: Record<string, 'success' | 'info' | 'danger' | 'warnin
   [t('equipmentMonitor.labelStatusMaintenance')]: 'warning',
 }
 
-// ========================= 计算属性 =========================
+// 计算属性
 const filteredDevices = computed(() => {
   return props.devices.filter(d => {
     const keyword = searchKeyword.value.trim().toLowerCase()
@@ -197,7 +197,7 @@ const filteredDevices = computed(() => {
   })
 })
 
-// ========================= 方法 =========================
+// 方法
 function statusTagType(status: string): 'success' | 'info' | 'danger' | 'warning' {
   return STATUS_TO_TAG_TYPE[status] || 'info'
 }

@@ -92,7 +92,6 @@ export interface UseBackendStatusReturn {
   ping: () => Promise<boolean>
 }
 
-// ---------------------------------------------------------------------------
 // 模块级单例状态
 //
 // 设计说明：后端 sidecar 状态是应用级全局状态，应在整个应用生命周期内共享，
@@ -107,7 +106,6 @@ export interface UseBackendStatusReturn {
 //
 // HMR 注意：开发环境热更新时模块状态会被重置，旧监听器可能残留。
 //   这仅影响开发环境，生产构建不会触发 HMR。
-// ---------------------------------------------------------------------------
 let _state: ReturnType<typeof reactive<BackendState>> | null = null
 const _unlisten: Array<() => void> = []
 let _initialized = false

@@ -199,7 +199,6 @@ const handleCloseTab = (tab: Tab) => {
 
 const searchFile = async () => {
   // TODO: 调用文件搜索功能
-  console.log('Search file:', 'Ctrl+P');
 };
 </script>
 

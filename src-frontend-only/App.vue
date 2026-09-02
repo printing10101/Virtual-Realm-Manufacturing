@@ -29,8 +29,6 @@ onMounted(async () => {
   // 模拟加载延迟以确保 UI 渲染
   await new Promise(resolve => setTimeout(resolve, 500));
   appReady.value = true;
-  
-  console.log('[Solo App] Ready for AI-driven frontend development');
 });
 
 </script>

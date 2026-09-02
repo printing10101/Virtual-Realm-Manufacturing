@@ -21,9 +21,7 @@ import type {
 } from '@/types/llmProvider'
 
 export const useLLMProvidersStore = defineStore('llmProviders', () => {
-  // ------------------------------------------------------------------
-  // State
-  // ------------------------------------------------------------------
+// State
   const providers = ref<LLMProvider[]>([])
   const status = ref<RegistryStatus | null>(null)
   const routerStatus = ref<RouterStatus | null>(null)
@@ -37,9 +35,7 @@ export const useLLMProvidersStore = defineStore('llmProviders', () => {
   /** 最近一次探测耗时（ms） */
   const lastDetectDuration = ref<number | null>(null)
 
-  // ------------------------------------------------------------------
-  // Getters
-  // ------------------------------------------------------------------
+// Getters
   const activeProvider = computed(() => providers.value.find((p) => p.is_active) ?? null)
   const enabledProviders = computed(() => providers.value.filter((p) => p.enabled))
   const localProviders = computed(() =>
@@ -51,9 +47,7 @@ export const useLLMProvidersStore = defineStore('llmProviders', () => {
   const hasActiveProvider = computed(() => activeProvider.value !== null)
   const encryptionAvailable = computed(() => status.value?.encryption_available ?? false)
 
-  // ------------------------------------------------------------------
-  // Actions
-  // ------------------------------------------------------------------
+// Actions
 
   /** 加载所有 Provider + 注册表状态 + 路由器状态 */
   async function loadAll(): Promise<void> {
@@ -255,9 +249,7 @@ export const useLLMProvidersStore = defineStore('llmProviders', () => {
     }
   }
 
-  // ------------------------------------------------------------------
-  // Helpers
-  // ------------------------------------------------------------------
+// Helpers
 
   function handleError(e: unknown, fallback: string): void {
     const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail

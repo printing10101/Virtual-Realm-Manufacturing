@@ -22,9 +22,7 @@ import http from '@/utils/http'
 import { extractErrorMessage } from '@/utils/error-handler'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 
-// ---------------------------------------------------------------------------
 // 类型定义（与后端 python/app/api/v1/flywheel.py Pydantic schema 对齐）
-// ---------------------------------------------------------------------------
 
 /** 飞轮健康状态。 */
 export type FlywheelHealthStatus = 'healthy' | 'warning' | 'critical' | 'unknown'
@@ -134,12 +132,10 @@ export interface FeedbackStats {
   healthScore: number
 }
 
-// ---------------------------------------------------------------------------
 // Store 定义
-// ---------------------------------------------------------------------------
 
 export const useFlywheelStore = defineStore('flywheel', () => {
-  // ===== State =====
+// State
   const status = ref<FlywheelStatus | null>(null)
   const currentMetrics = ref<FlywheelMetricPoint | null>(null)
   const historicalMetrics = ref<FlywheelMetricPoint[]>([])
@@ -155,7 +151,7 @@ export const useFlywheelStore = defineStore('flywheel', () => {
   const deploymentsLoading = ref(false)
   const error = ref<string | null>(null)
 
-  // ===== Computed =====
+// Computed
 
   /** 健康状态对应的 Element Plus 标签类型。 */
   const healthTagType = computed<
@@ -209,7 +205,7 @@ export const useFlywheelStore = defineStore('flywheel', () => {
       deploymentsLoading.value,
   )
 
-  // ===== Actions =====
+// Actions
 
   /**
    * 获取飞轮当前状态。

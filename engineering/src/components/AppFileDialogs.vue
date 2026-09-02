@@ -260,13 +260,13 @@ const versionStore = useVersionStore()
 const stepImportStore = useStepImportStore()
 const dxfImportStore = useDxfImportStore()
 
-// ========================= 对话框可见性 =========================
+// 对话框可见性
 const showNewDialog = ref(false)
 const showOpenDialog = ref(false)
 const showSaveAsDialog = ref(false)
 const showUnsavedDialog = ref(false)
 
-// ========================= 表单状态 =========================
+// 表单状态
 const openTab = ref('local')
 const openListLoading = ref(false)
 const selectedSummary = ref<ProjectSummary | null>(null)
@@ -274,7 +274,7 @@ const newForm = reactive({ name: '', author: '', description: '' })
 const saveAsForm = reactive({ outputName: '' })
 const importFileList = ref<UploadUserFile[]>([])
 
-// ========================= 提交状态 =========================
+// 提交状态
 const creating = ref(false)
 const opening = ref(false)
 const saving = ref(false)
@@ -287,7 +287,7 @@ const canOpen = computed(() => {
   return importFileList.value.length > 0
 })
 
-// ========================= 工具函数 =========================
+// 工具函数
 function formatDate(iso: string) {
   if (!iso) return '-'
   const d = new Date(iso)
@@ -304,7 +304,7 @@ function formatSize(bytes: number) {
   return s.toFixed(i > 0 ? 1 : 0) + ' ' + units[i]
 }
 
-// ========================= 命令入口（由 App.vue file-command 驱动） =========================
+// 命令入口（由 App.vue file-command 驱动）
 function handleFileCommand(cmd: string) {
   if (projectStore.isModified && (cmd === 'new' || cmd === 'open')) {
     pendingFileCommand.value = cmd
@@ -353,7 +353,7 @@ function executeCommand(cmd: string) {
   }
 }
 
-// ========================= 新建 =========================
+// 新建
 async function handleCreate() {
   if (!newForm.name.trim()) return
   creating.value = true
@@ -366,7 +366,7 @@ async function handleCreate() {
   if (ok) showNewDialog.value = false
 }
 
-// ========================= 打开 =========================
+// 打开
 async function handleOpenFromList(row: ProjectSummary) {
   const ok = await projectStore.openProject(row.path)
   if (ok) showOpenDialog.value = false
@@ -412,7 +412,7 @@ async function handleDeleteProject(row: ProjectSummary) {
   await projectStore.fetchProjectList()
 }
 
-// ========================= 另存为 =========================
+// 另存为
 async function handleSaveAs() {
   if (!saveAsForm.outputName.trim()) return
   saving.value = true
@@ -421,7 +421,7 @@ async function handleSaveAs() {
   if (ok) showSaveAsDialog.value = false
 }
 
-// ========================= 未保存确认 =========================
+// 未保存确认
 async function saveAndProceed() {
   saving.value = true
   await projectStore.saveProject()
@@ -441,7 +441,7 @@ function cancelProceed() {
   pendingFileCommand.value = ''
 }
 
-// ========================= 刷新（版本检查） =========================
+// 刷新（版本检查）
 function handleRefresh() {
   versionStore.fetchVersionInfo()
   versionStore.checkConsistency()

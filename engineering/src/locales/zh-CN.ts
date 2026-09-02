@@ -141,7 +141,7 @@ export default {
     stopped: "已停止",
     registeredModels: "模型注册数",
     fetchFailed: "状态获取失败",
-    // === Home.vue 追加键 ===
+// Home.vue 追加键
     pageTitle: "生产总览",
     greetingOperator: "，操作员",
     rangeToday: "今日",
@@ -349,7 +349,7 @@ export default {
       noGcode: "暂无可导出的G代码",
       requestFailed: "工艺规划请求失败",
     },
-    // === ProcessPlanning.vue 工艺路线管理页面追加键 ===
+// ProcessPlanning.vue 工艺路线管理页面追加键
     routePage: {
       pageTitle: "工艺规划",
       pageSubtitle: "管理和配置制造工艺路线",
@@ -753,7 +753,7 @@ export default {
     llmLocalProviders: "本地 Provider",
     llmCloudProviders: "云端 Provider",
     llmConfigPath: "配置存储路径",
-    // === Settings.vue 页面级键 ===
+// Settings.vue 页面级键
     pageTitle: "系统设置",
     subtitle: "管理系统配置、版本信息和偏好设置",
     navGeneral: "通用设置",
@@ -2157,9 +2157,7 @@ export default {
     warning: "警告",
   },
 
-// ============================================================================
 // 切削实测数据采集 (CuttingExperienceDashboard)
-// ============================================================================
 experience: {
   // 页面头部
   pageTitle: "切削实测数据",
@@ -2394,7 +2392,7 @@ flywheel: {
     btnUninstallConfirm: "卸载",
     btnCancel: "取消",
   },
-  // === NLModeling.vue 自然语言建模页面 ===
+// NLModeling.vue 自然语言建模页面
   nlModeling: {
     pageTitle: "自然语言建模",
     pageSubtitle: "通过自然语言描述生成3D零件模型，支持工艺规划和NC代码生成",
@@ -2416,7 +2414,7 @@ flywheel: {
     msgViewReset: "模型视图已重置",
     msgComplete: "流程完成！",
   },
-  // === ProductionReport.vue 生产报表页面 ===
+// ProductionReport.vue 生产报表页面
   productionReport: {
     pageTitle: "生产报表",
     pageSubtitle: "查看和分析生产数据报表",
@@ -2466,7 +2464,7 @@ flywheel: {
     msgExportEmpty: "暂无可导出的数据",
     msgExportFailed: "报表导出失败",
   },
-  // === ProcessUnderstanding.vue 工艺理解与知识问答页面 ===
+// ProcessUnderstanding.vue 工艺理解与知识问答页面
   processUnderstanding: {
     pageTitle: "工艺理解与知识问答",
     pageSubtitle: "基于 LLM 的工艺咨询、故障诊断与方案生成",
@@ -2493,7 +2491,7 @@ flywheel: {
     taskTypeChat: "闲聊",
     taskTypeUnknown: "未知",
   },
-  // === QualityInspection.vue 质量检测页面 ===
+// QualityInspection.vue 质量检测页面
   qualityInspection: {
     pageTitle: "质量检测",
     pageSubtitle: "产品质量检测与分析管理",
@@ -2540,7 +2538,7 @@ flywheel: {
     msgDetailLoadFailed: "详情加载失败",
     msgFormIncomplete: "请填写完整信息",
   },
-  // === EquipmentMonitor.vue 设备监控页面 ===
+// EquipmentMonitor.vue 设备监控页面
   equipmentMonitor: {
     pageTitle: "设备监控",
     pageSubtitle: "实时监控设备运行状态",
@@ -2594,7 +2592,7 @@ flywheel: {
     msgRepairSuccess: "报修成功，设备已切换为维护中",
     msgOpFailed: "操作失败",
   },
-  // === MaterialManagement.vue 物料管理页面 ===
+// MaterialManagement.vue 物料管理页面
   materialManagement: {
     pageTitle: "物料管理",
     pageSubtitle: "管理生产物料和库存",
@@ -2652,7 +2650,7 @@ flywheel: {
     msgQuantityInvalid: "请输入有效数量",
     msgMaterialRequired: "请选择物料",
   },
-  // === PluginLogs.vue 插件日志页面 ===
+// PluginLogs.vue 插件日志页面
   pluginLogs: {
     pageTitle: "插件日志",
     placeholderSelectPlugin: "选择插件",
@@ -2666,7 +2664,7 @@ flywheel: {
     msgNoLogsToExport: "暂无日志可导出",
     msgExported: "已导出 {count} 条日志",
   },
-  // === PluginMarket.vue 插件市场页面 ===
+// PluginMarket.vue 插件市场页面
   pluginMarket: {
     pageTitle: "插件市场",
     placeholderSearch: "搜索插件...",
@@ -2705,7 +2703,7 @@ flywheel: {
     plugin3dMonitor: "3D监控",
     plugin3dMonitorDesc: "三维机床状态监控",
   },
-  // === NLInputPanel.vue ===
+// NLInputPanel.vue
   nlInputPanel: {
     welcomeGreeting: "你好！我是灵境制造AI助手。",
     welcomeHint: "请描述你想要创建的零件，例如：“创建一个长50mm、宽30mm、高20mm的长方体，四个角倒圆角R2”。",
@@ -2756,7 +2754,7 @@ flywheel: {
     featureHole: "孔",
     featureSlot: "槽",
   },
-  // === UXDemo.vue UX功能演示页面 ===
+// UXDemo.vue UX功能演示页面
   uxDemo: {
     pageTitle: "UX 功能演示",
     btnStartTour: "启动引导流程",
@@ -2816,7 +2814,7 @@ flywheel: {
     msgTourCompleted: "引导流程已完成！",
     msgTourSkipped: "引导流程已跳过（从第 {step} 步）",
   },
-  // === ExampleGallery.vue ===
+// ExampleGallery.vue
   exampleGallery: {
     placeholderSearch: "搜索示例...",
     placeholderCategory: "分类",
@@ -2856,7 +2854,7 @@ flywheel: {
     msgCopyFailed: "复制失败，请手动复制",
     msgImported: "示例 {name} 已导入到项目",
   },
-  // === SplashScreen.vue ===
+// SplashScreen.vue
   splashScreen: {
     appName: "灵境制造",
     appSubtitle: "AI驱动的3D建模与工艺规划系统",
@@ -2980,7 +2978,7 @@ flywheel: {
     errorDismissFailed: "忽略更新失败:",
     errorPreviewFailed: "获取预览数据失败:"
   },
-  // === ProviderFormDialog.vue Provider 表单对话框 ===
+// ProviderFormDialog.vue Provider 表单对话框
   providerFormDialog: {
     // 对话框标题
     titleCreate: "新增 LLM Provider",
@@ -3034,7 +3032,7 @@ flywheel: {
     ruleNameRequired: "请输入显示名称",
     ruleTypeRequired: "请选择类型",
   },
-  // === TestDialog.vue 调用测试对话框 ===
+// TestDialog.vue 调用测试对话框
   testDialog: {
     titleDefault: "调用测试",
     titleSuffix: "{name} - 调用测试",
@@ -3055,7 +3053,7 @@ flywheel: {
     errorInvokeFailed: "调用失败，请查看右上角错误提示",
     errorTestFailed: "调用测试失败",
   },
-  // === ModelsDialog.vue 模型列表对话框 ===
+// ModelsDialog.vue 模型列表对话框
   modelsDialog: {
     titleDefault: "模型列表",
     titleSuffix: "{name} - 可用模型",
@@ -3082,7 +3080,7 @@ flywheel: {
     warnClipboardUnavailable: "剪贴板不可用，请手动选择复制",
   },
 
-  // === ProviderList.vue Provider列表 ===
+// ProviderList.vue Provider列表
   providerList: {
     emptyTitle: "尚未配置任何 Provider",
     emptyDescription: "当前未配置任何 LLM Provider。可点击上方\"新增 Provider\"手动添加，或使用自动探测扫描本机已安装的 LLM 服务。",
@@ -3110,7 +3108,7 @@ flywheel: {
     btnDelete: "删除",
   },
 
-  // === Copilot 组件（RecommendationCard / DecisionActions / CopilotConfidenceIndicator） ===
+// Copilot 组件（RecommendationCard / DecisionActions / CopilotConfidenceIndicator）
   copilot: {
     card: {
       title: 'AI 推荐',
@@ -3136,7 +3134,7 @@ flywheel: {
     },
   },
 
-  // === CommandPalette.vue 命令面板 ===
+// CommandPalette.vue 命令面板
   commandPalette: {
     inputPlaceholder: "输入命令名称或描述...",
     noMatchFound: "未找到匹配的命令",
@@ -3148,7 +3146,7 @@ flywheel: {
     pluginCategory: "插件",
   },
 
-  // === AppLayout.vue 应用布局 ===
+// AppLayout.vue 应用布局
   appLayout: {
     brandName: "灵境制造",
     searchPlaceholder: "搜索工单、设备、物料...",
@@ -3169,7 +3167,7 @@ flywheel: {
     logoutTitle: "退出登录",
     guest: "访客",
   },
-  // === Tour.vue 引导组件 ===
+// Tour.vue 引导组件
   onboardingTour: {
     prev: "上一步",
     next: "下一步",

@@ -40,9 +40,7 @@ vi.mock('@/utils/error-handler', async () => {
 
 import http from '@/utils/http'
 
-// ---------------------------------------------------------------------------
 // 测试数据构造器
-// ---------------------------------------------------------------------------
 function makeStatus(overrides: Partial<FlywheelStatus> = {}): FlywheelStatus {
   return {
     status: 'healthy',
@@ -89,9 +87,7 @@ describe('useFlywheelStore', () => {
     vi.clearAllMocks()
   })
 
-  // =========================================================================
-  // 1. 初始状态
-  // =========================================================================
+// 1. 初始状态
   describe('initial state', () => {
     it('初始 status 为 null', () => {
       const store = useFlywheelStore()
@@ -143,9 +139,7 @@ describe('useFlywheelStore', () => {
     })
   })
 
-  // =========================================================================
-  // 2. computed
-  // =========================================================================
+// 2. computed
   describe('computed', () => {
     it('healthTagType 在无 status 时返回 info', () => {
       const store = useFlywheelStore()
@@ -242,9 +236,7 @@ describe('useFlywheelStore', () => {
     })
   })
 
-  // =========================================================================
-  // 3. fetchStatus
-  // =========================================================================
+// 3. fetchStatus
   describe('fetchStatus', () => {
     it('成功时保存到 status', async () => {
       const status = makeStatus()
@@ -282,9 +274,7 @@ describe('useFlywheelStore', () => {
     })
   })
 
-  // =========================================================================
-  // 4. fetchMetrics
-  // =========================================================================
+// 4. fetchMetrics
   describe('fetchMetrics', () => {
     it('成功时保存 current 和 historical', async () => {
       const payload = {
@@ -356,9 +346,7 @@ describe('useFlywheelStore', () => {
     })
   })
 
-  // =========================================================================
-  // 5. fetchWeeklyReport
-  // =========================================================================
+// 5. fetchWeeklyReport
   describe('fetchWeeklyReport', () => {
     it('成功时保存到 weeklyReport', async () => {
       const report = {
@@ -391,9 +379,7 @@ describe('useFlywheelStore', () => {
     })
   })
 
-  // =========================================================================
-  // 6. fetchDefinitions
-  // =========================================================================
+// 6. fetchDefinitions
   describe('fetchDefinitions', () => {
     it('成功时保存到 metricDefinitions', async () => {
       const defs = {
@@ -426,9 +412,7 @@ describe('useFlywheelStore', () => {
     })
   })
 
-  // =========================================================================
-  // 7. fetchDeployments
-  // =========================================================================
+// 7. fetchDeployments
   describe('fetchDeployments', () => {
     it('成功时保存到 deployments', async () => {
       const result = {
@@ -480,9 +464,7 @@ describe('useFlywheelStore', () => {
     })
   })
 
-  // =========================================================================
-  // 8. refreshAll
-  // =========================================================================
+// 8. refreshAll
   describe('refreshAll', () => {
     it('调用所有 5 个 fetch 方法', async () => {
       (http.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -517,9 +499,7 @@ describe('useFlywheelStore', () => {
     })
   })
 
-  // =========================================================================
-  // 9. 工具函数
-  // =========================================================================
+// 9. 工具函数
   describe('helpers', () => {
     it('formatTime 处理空值', () => {
       const store = useFlywheelStore()

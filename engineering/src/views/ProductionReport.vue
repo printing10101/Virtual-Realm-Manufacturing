@@ -93,7 +93,7 @@ import ProductionWorkOrdersTable from '@/components/production/ProductionWorkOrd
 
 const { t } = useI18n()
 
-// ========================= 类型定义 =========================
+// 类型定义
 interface SummaryCard {
   label: string
   value: string
@@ -151,7 +151,7 @@ interface WorkOrder {
   created_at: string
 }
 
-// ========================= 状态 =========================
+// 状态
 const loading = ref(false)
 const dashboardLoading = ref(false)
 const statsLoading = ref(false)
@@ -166,7 +166,7 @@ const trendData = ref<TrendRow[]>([])
 const productionRecords = ref<ProductionRecord[]>([])
 const workOrders = ref<WorkOrder[]>([])
 
-// ========================= 辅助方法 =========================
+// 辅助方法
 
 /** 时间范围映射为天数 */
 function timeRangeToDays(range: string): number {
@@ -185,7 +185,7 @@ function customRangeToDays(range: [Date, Date] | null): number | undefined {
   return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 }
 
-// ========================= 计算属性 =========================
+// 计算属性
 const summaryCards = computed<SummaryCard[]>(() => {
   const d = dashboardData.value
   if (!d) return []
@@ -222,7 +222,7 @@ const summaryCards = computed<SummaryCard[]>(() => {
   ]
 })
 
-// ========================= 请求取消控制 =========================
+// 请求取消控制
 let currentAbortController: AbortController | null = null
 
 function cancelPendingRequests() {
@@ -232,7 +232,7 @@ function cancelPendingRequests() {
   }
 }
 
-// ========================= API 调用 =========================
+// API 调用
 async function fetchDashboard(signal?: AbortSignal) {
   dashboardLoading.value = true
   try {
@@ -319,7 +319,7 @@ async function fetchAllData() {
   loading.value = false
 }
 
-// ========================= 方法 =========================
+// 方法
 function handleTimeRangeChange() {
   fetchAllData()
 }
@@ -360,7 +360,7 @@ function handleExport() {
   }
 }
 
-// ========================= 生命周期 =========================
+// 生命周期
 onMounted(() => {
   fetchAllData()
 })

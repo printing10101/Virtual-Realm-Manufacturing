@@ -74,7 +74,7 @@ import EquipmentDetailDialog from '@/components/equipment/EquipmentDetailDialog.
 
 const { t } = useI18n()
 
-// ========================= 类型定义 =========================
+// 类型定义
 interface Device {
   id: number
   name: string
@@ -125,7 +125,7 @@ interface StatsCard {
   type: string
 }
 
-// ========================= 状态 =========================
+// 状态
 const loading = ref(false)
 const refreshing = ref(false)
 
@@ -134,7 +134,7 @@ const stats = ref<EquipmentStats>({ total: 0, running: 0, standby: 0, maintenanc
 const alarms = ref<Alarm[]>([])
 const maintenancePlans = ref<MaintenancePlan[]>([])
 
-// ========================= 计算属性 =========================
+// 计算属性
 const statsCards = computed<StatsCard[]>(() => {
   const s = stats.value
   return [
@@ -145,7 +145,7 @@ const statsCards = computed<StatsCard[]>(() => {
   ]
 })
 
-// ========================= 数据获取 =========================
+// 数据获取
 async function fetchDevices() {
   loading.value = true
   try {
@@ -191,7 +191,7 @@ async function handleRefresh() {
   ElMessage.success(t('equipmentMonitor.msgRefreshed'))
 }
 
-// ========================= 设备参数设置弹窗 =========================
+// 设备参数设置弹窗
 const settingsDialogVisible = ref(false)
 const settingsSubmitting = ref(false)
 const settingsForm = ref({
@@ -251,7 +251,7 @@ async function submitSettings() {
   }
 }
 
-// ========================= 设备详情弹窗 =========================
+// 设备详情弹窗
 const detailDialogVisible = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<Device | null>(null)
@@ -275,7 +275,7 @@ async function handleViewDetail(row: Device) {
   }
 }
 
-// ========================= 停机 / 报修 =========================
+// 停机 / 报修
 async function handleStop(row: Device) {
   try {
     await ElMessageBox.confirm(
@@ -328,7 +328,7 @@ async function handleRepair(row: Device) {
   }
 }
 
-// ========================= 生命周期 =========================
+// 生命周期
 onMounted(() => {
   fetchDevices()
 })

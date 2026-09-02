@@ -17,9 +17,7 @@ vi.mock('@/utils/error-handler', async () => {
 
 import http from '@/utils/http'
 
-// ============================================================
 // XMLHttpRequest Mock
-// ============================================================
 type XhrHandler = {
   onload: (() => void) | null
   onerror: (() => void) | null

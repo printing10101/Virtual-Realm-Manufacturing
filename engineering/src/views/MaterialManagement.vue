@@ -145,7 +145,7 @@ import MaterialListTable from '@/components/material/MaterialListTable.vue'
 
 const { t } = useI18n()
 
-// ========================= 类型定义 =========================
+// 类型定义
 interface Material {
   id: number
   code: string
@@ -168,7 +168,7 @@ interface StatsSummary {
   out_of_stock: number
 }
 
-// ========================= 状态 =========================
+// 状态
 const loading = ref(false)
 const loadError = ref(false)
 const searchKeyword = ref('')
@@ -178,7 +178,7 @@ const categoryFilter = ref('all')
 const materials = ref<Material[]>([])
 const statsSummary = ref<StatsSummary>({ total: 0, low_stock: 0, out_of_stock: 0 })
 
-// ========================= 计算属性 =========================
+// 计算属性
 const statsCards = computed(() => {
   return [
     { label: t('materialManagement.statTotal'), value: statsSummary.value.total, icon: Box as Component, type: 'default' as const },
@@ -188,7 +188,7 @@ const statsCards = computed(() => {
   ]
 })
 
-// ========================= 方法 =========================
+// 方法
 async function fetchMaterials() {
   loading.value = true
   loadError.value = false
@@ -216,7 +216,7 @@ async function fetchMaterials() {
   }
 }
 
-// ========================= 入库登记弹窗 =========================
+// 入库登记弹窗
 const stockInDialogVisible = ref(false)
 const stockInSubmitting = ref(false)
 const preselectedMaterialId = ref<number | ''>('')
@@ -271,7 +271,7 @@ async function submitStockIn(formData: StockInFormData) {
   }
 }
 
-// ========================= 采购申请弹窗 =========================
+// 采购申请弹窗
 const purchaseDialogVisible = ref(false)
 const purchaseSubmitting = ref(false)
 const purchaseMaterialId = ref<number | ''>('')
@@ -324,7 +324,7 @@ async function submitPurchase(formData: PurchaseFormData) {
   }
 }
 
-// ========================= 详情弹窗 =========================
+// 详情弹窗
 const detailDialogVisible = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<Material | null>(null)
@@ -355,7 +355,7 @@ const purchaseMaterialLabel = computed(() => {
   return m ? `${m.code} - ${m.name}` : ''
 })
 
-// ========================= 生命周期 =========================
+// 生命周期
 onMounted(() => {
   fetchMaterials()
 })

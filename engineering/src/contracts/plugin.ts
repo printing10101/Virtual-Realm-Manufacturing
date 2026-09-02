@@ -100,9 +100,7 @@ export type BuiltinCapabilityName =
   | 'compute:gpu'
   | 'network:egress';
 
-// ---------------------------------------------------------------------------
 // 抽象接口
-// ---------------------------------------------------------------------------
 
 /** 扩展点注册表接口（前端 useExtensionRegistry 实现此接口）。 */
 export interface IExtensionRegistry {

@@ -74,12 +74,10 @@ const previewContent = ref('');
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.ctrlKey && e.key === 'k') {
     e.preventDefault();
-    console.log('[Solo Mode] Open AI Chat Panel');
   }
   
   if (e.ctrlKey && e.shiftKey && e.key === 'p') {
     e.preventDefault();
-    console.log('[Solo Mode] Open Command Palette');
   }
 };
 
@@ -90,7 +88,6 @@ const handleSave = async () => {
   // 保存到镜像目录
   try {
     // TODO: 调用文件保存 API
-    console.log('[Solo Mode] File Saved:', currentFile.value);
     await syncWithMainSource(); // 强制同步到主目录
     syncStatus.value = 'synced';
   } catch (error) {
@@ -113,7 +110,6 @@ const handleApplyChanges = async (changes: Array<{ file: string; code: string }>
       currentFileContent.value = code;
       await handleSave();
     }
-    console.log('[Solo Mode] Changes Applied:', changes.length, 'files');
   } catch (error) {
     console.error('[Solo Mode] Apply Changes Error:', error);
   }
@@ -122,7 +118,6 @@ const handleApplyChanges = async (changes: Array<{ file: string; code: string }>
 // 建议 Git 暂存
 const handleSuggestGitStage = async (files: string[]) => {
   await gitStore.stageFiles(files);
-  console.log('[Solo Mode] Git Staged:', files);
 };
 
 // 强制同步

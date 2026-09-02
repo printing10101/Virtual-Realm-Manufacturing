@@ -10,9 +10,7 @@ V3.0 Feature-Sliced Design: 将 views/Workspace.vue 中直接的 http 调用
 import http from '@/utils/http'
 import { API_CONFIG, buildApiPath } from '@/config/api'
 
-// =============================================================================
 // 类型定义
-// =============================================================================
 
 export interface LNNPredictRequest {
   model_name: string
@@ -54,9 +52,7 @@ export interface LNNModel {
   [key: string]: unknown
 }
 
-// =============================================================================
 // API 函数
-// =============================================================================
 
 /** LNN 推理预测 */
 export async function predictLNN(req: LNNPredictRequest): Promise<LNNPredictResponse> {

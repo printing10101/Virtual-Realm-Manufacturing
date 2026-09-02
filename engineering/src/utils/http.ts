@@ -13,9 +13,7 @@ let appInitializing = true
 /** 用于外部设置初始化完成 */
 export function setHttpReady() { appInitializing = false }
 
-// =============================================================================
 // 请求取消支持（AbortController 封装）
-// =============================================================================
 
 /**
  * 创建可取消的请求信号。
@@ -36,9 +34,7 @@ export function createCancelToken() {
   }
 }
 
-// =============================================================================
 // GET 请求自动重试（指数退避）
-// =============================================================================
 
 /** 可重试的 HTTP 状态码 */
 const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504])
@@ -76,21 +72,17 @@ declare module 'axios' {
   }
 }
 
-// =============================================================================
 /** Axios 请求超时时间（毫秒） */
 const DEFAULT_TIMEOUT_MS = 30_000
 
 // Axios 实例
-// =============================================================================
 
 const http = axios.create({
   timeout: DEFAULT_TIMEOUT_MS,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// =============================================================================
 // Tauri 桌面模式：运行时动态 baseURL（端口冲突修复）
-// =============================================================================
 //
 // 背景：本项目所有业务 API 均使用相对路径（如 /api/v1/...）。
 // - 浏览器开发模式：vite dev server 的 proxy 把 /api 转发到后端，相对路径可用。
@@ -175,7 +167,7 @@ http.interceptors.response.use(
     return response
   },
   async (error) => {
-    // ===== GET 自动重试 =====
+// GET 自动重试
     const config = error.config as InternalAxiosRequestConfig | undefined
     if (
       config &&
@@ -192,7 +184,7 @@ http.interceptors.response.use(
       }
     }
 
-    // ===== 错误处理（原有逻辑） =====
+// 错误处理（原有逻辑）
 
     // 初始化阶段静默处理网络/服务器错误，避免批量弹出
     if (appInitializing && (isNetworkError(error) || !error.response || error.response?.status >= 500)) {

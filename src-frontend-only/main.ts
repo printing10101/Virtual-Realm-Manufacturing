@@ -44,13 +44,11 @@ window.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key === 'k') {
     e.preventDefault();
     // TODO: 触发 AI 对话面板切换
-    console.log('[Solo Mode] Open AI Chat Panel');
   }
   
   if (e.ctrlKey && e.shiftKey && e.key === 'P') {
     e.preventDefault();
     // TODO: 触发命令面板
-    console.log('[Solo Mode] Open Command Palette');
   }
 });
 
@@ -60,7 +58,6 @@ app.mount('#app');
 // 注册服务 Worker（可选）
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js')
-    .then(() => console.log('[Solo Mode] Service Worker Registered'))
     .catch((err) => console.error('[Solo Mode] Service Worker Error:', err));
 }
 

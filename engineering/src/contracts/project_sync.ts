@@ -24,9 +24,7 @@
  *   template://<template_id>/<version>
  */
 
-// ---------------------------------------------------------------------------
 // 资源类型常量（与后端 RESOURCE_TYPES 对齐）
-// ---------------------------------------------------------------------------
 
 /** 项目同步支持的资源类型。 */
 export const RESOURCE_TYPES = {
@@ -60,9 +58,7 @@ export const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   template: '工作流模板',
 };
 
-// ---------------------------------------------------------------------------
 // 同步策略常量（与后端 SYNC_STRATEGIES 对齐）
-// ---------------------------------------------------------------------------
 
 /** 资源同步策略。 */
 export const SYNC_STRATEGIES = {
@@ -87,9 +83,7 @@ export const SYNC_STRATEGY_LABELS: Record<SyncStrategy, string> = {
   git_lfs: 'Git LFS（大文件）',
 };
 
-// ---------------------------------------------------------------------------
 // 同步状态常量（与后端 SYNC_STATUS 对齐）
-// ---------------------------------------------------------------------------
 
 /** 项目同步状态机。 */
 export const SYNC_STATUS = {
@@ -133,9 +127,7 @@ export const SYNC_STATUS_TAG_TYPE: Record<SyncStatus, 'success' | 'warning' | 'i
   error: 'danger',
 };
 
-// ---------------------------------------------------------------------------
 // 同步方向常量（与后端 SYNC_DIRECTIONS 对齐）
-// ---------------------------------------------------------------------------
 
 /** 同步方向（用于 SyncRecord.direction 字段）。 */
 export const SYNC_DIRECTIONS = {
@@ -157,9 +149,7 @@ export const SYNC_DIRECTION_LABELS: Record<SyncDirection, string> = {
   clone: '克隆',
 };
 
-// ---------------------------------------------------------------------------
 // 资源类型 → 默认同步策略映射（与后端 DEFAULT_SYNC_STRATEGY 对齐）
-// ---------------------------------------------------------------------------
 
 export const DEFAULT_SYNC_STRATEGY: Record<ResourceType, SyncStrategy> = {
   dataset: SYNC_STRATEGIES.HASH_REFERENCED,
@@ -170,9 +160,7 @@ export const DEFAULT_SYNC_STRATEGY: Record<ResourceType, SyncStrategy> = {
   template: SYNC_STRATEGIES.GIT_TRACKED,
 };
 
-// ---------------------------------------------------------------------------
 // URI 解析工具（与后端 parse_resource_uri / build_resource_uri 对齐）
-// ---------------------------------------------------------------------------
 
 /**
  * 解析资源 URI，返回 [resourceType, path] 元组.
@@ -220,9 +208,7 @@ export function isSyncStatus(value: string): value is SyncStatus {
   return SYNC_STATUS_VALUES.includes(value as SyncStatus);
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：资源引用
-// ---------------------------------------------------------------------------
 
 /** 资源引用附加元数据（文件大小、来源插件 id、自定义标签等）。 */
 export type ResourceRefMetadata = Record<string, unknown>;
@@ -257,9 +243,7 @@ export interface ResourceRefRecord extends ResourceRef {
   updated_at: string;
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：项目同步清单
-// ---------------------------------------------------------------------------
 
 /**
  * 项目同步清单契约：一个可同步项目的元数据 + 当前状态.
@@ -301,9 +285,7 @@ export interface GetProjectResponse extends ProjectSyncManifest {
   sync_records?: SyncRecord[];
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：同步记录
-// ---------------------------------------------------------------------------
 
 /** 同步记录详情。 */
 export interface SyncRecord {
@@ -325,9 +307,7 @@ export interface SyncRecord {
   details: Record<string, unknown>;
 }
 
-// ---------------------------------------------------------------------------
 // 数据接口：项目状态查询
-// ---------------------------------------------------------------------------
 
 /** 项目 Git 状态查询响应（含 ahead/behind 计数与变更文件列表）。 */
 export interface ProjectStatusResponse {
@@ -355,9 +335,7 @@ export interface ChangedFileEntry {
   change_type: string;
 }
 
-// ---------------------------------------------------------------------------
 // 请求 / 响应接口：项目 CRUD
-// ---------------------------------------------------------------------------
 
 /** 创建项目请求体。 */
 export interface CreateProjectRequest {
@@ -432,9 +410,7 @@ export interface DeleteProjectResponse {
   deleted: boolean;
 }
 
-// ---------------------------------------------------------------------------
 // 请求 / 响应接口：资源引用管理
-// ---------------------------------------------------------------------------
 
 /** 添加资源引用请求体。 */
 export interface AddResourceRefRequest {
@@ -469,9 +445,7 @@ export interface RemoveResourceRefResponse {
   deleted: boolean;
 }
 
-// ---------------------------------------------------------------------------
 // 请求 / 响应接口：同步记录查询
-// ---------------------------------------------------------------------------
 
 /** 列出同步记录查询参数。 */
 export interface ListSyncRecordsParams {

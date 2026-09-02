@@ -1,4 +1,4 @@
-// === 全局错误捕获（必须在所有其他代码之前注册） ===
+// 全局错误捕获（必须在所有其他代码之前注册）
 // 用于诊断 Tauri 桌面环境下白屏问题：将任何未捕获的错误渲染到页面，避免白屏无信息。
 
 /**
@@ -55,7 +55,7 @@ window.addEventListener('unhandledrejection', (e) => {
   renderFatalError('unhandledrejection', e.reason)
 })
 
-// === 正常应用启动流程 ===
+// 正常应用启动流程
 import { createApp, ref } from 'vue'
 import { createPinia } from 'pinia'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
@@ -113,7 +113,7 @@ try {
   throw err
 }
 
-// === 启动时序常量 ===
+// 启动时序常量
 /** HTTP 健康检查就绪延迟（毫秒）：等待后端完成初始化后再启用 HTTP 错误弹窗 */
 const HTTP_READY_DELAY_MS = 3_000
 /** 首屏渲染后等待帧数再关闭启动画面，避免短暂白屏 */
@@ -122,7 +122,7 @@ const SPLASHSCREEN_CLOSE_DELAY_MS = 100
 // 初始化阶段完成后启用 HTTP 错误弹窗
 setTimeout(() => setHttpReady(), HTTP_READY_DELAY_MS)
 
-// === Tauri 启动动画收尾 ===
+// Tauri 启动动画收尾
 // Vue 应用挂载完成、首屏渲染就绪后，关闭原生 splashscreen 窗口并显示主窗口。
 // 仅在 Tauri 环境下执行；Web 开发模式下不触发。
 async function closeNativeSplashscreen() {

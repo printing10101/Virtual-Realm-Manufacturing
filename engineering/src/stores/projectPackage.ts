@@ -42,9 +42,7 @@ import {
   type ImportRecordSummary,
 } from '@/contracts/project_package'
 
-// ---------------------------------------------------------------------------
 // Store 局部类型（派生 / UI 辅助）
-// ---------------------------------------------------------------------------
 
 /** 导出记录分页信息。 */
 interface ExportPaginationState {
@@ -66,14 +64,12 @@ interface FetchExportsParams extends ListExportsParams {}
 /** fetchImports 入参（与后端 Query 参数对齐）。 */
 interface FetchImportsParams extends ListImportsParams {}
 
-// ---------------------------------------------------------------------------
 // Store 定义
-// ---------------------------------------------------------------------------
 
 export const useProjectPackageStore = defineStore(
   'projectPackage',
   () => {
-    // ===== State：导出记录列表 =====
+// State：导出记录列表
 
     /** 导出记录列表（list 端点返回的 items）。 */
     const exports = ref<ExportRecordSummary[]>([])
@@ -84,7 +80,7 @@ export const useProjectPackageStore = defineStore(
       offset: 0,
     })
 
-    // ===== State：导入记录列表 =====
+// State：导入记录列表
 
     /** 导入记录列表（list 端点返回的 items）。 */
     const imports = ref<ImportRecordSummary[]>([])
@@ -95,12 +91,12 @@ export const useProjectPackageStore = defineStore(
       offset: 0,
     })
 
-    // ===== State：当前导出记录详情 =====
+// State：当前导出记录详情
 
     /** 当前查看的导出记录详情（含 download_url）。 */
     const currentExport = ref<GetExportResponse | null>(null)
 
-    // ===== State：最近一次操作响应（用于 UI 提示） =====
+// State：最近一次操作响应（用于 UI 提示）
 
     /** 最近一次导出响应（含 export_id / package_path / manifest / download_url）。 */
     const lastExportResult = ref<ExportProjectResponse | null>(null)
@@ -113,7 +109,7 @@ export const useProjectPackageStore = defineStore(
     /** 最近一次删除导出响应。 */
     const lastDeleteResult = ref<DeleteExportResponse | null>(null)
 
-    // ===== Loading 标志 =====
+// Loading 标志
 
     const exporting = ref(false) // POST /export
     const importing = ref(false) // POST /import
@@ -125,7 +121,7 @@ export const useProjectPackageStore = defineStore(
     const deleting = ref(false) // DELETE /exports/{id}
     const error = ref<string | null>(null)
 
-    // ===== Computed =====
+// Computed
 
     /** 是否有导出记录。 */
     const hasExports = computed<boolean>(() => exports.value.length > 0)
@@ -176,7 +172,7 @@ export const useProjectPackageStore = defineStore(
 
     // unwrap() 已提取到 @/utils/response.ts（消除 6 个 Store 的重复定义）
 
-    // ===== Actions：导出 =====
+// Actions：导出
 
     /**
      * 导出项目为 .lomo 包.
@@ -344,7 +340,7 @@ export const useProjectPackageStore = defineStore(
       }
     }
 
-    // ===== Actions：列表查询 =====
+// Actions：列表查询
 
     /**
      * 列出导出记录（分页 + 过滤）.
@@ -461,7 +457,7 @@ export const useProjectPackageStore = defineStore(
       }
     }
 
-    // ===== Actions：删除 + 下载 =====
+// Actions：删除 + 下载
 
     /**
      * 删除导出包文件 + 数据库记录.
@@ -522,7 +518,7 @@ export const useProjectPackageStore = defineStore(
       window.open(url, '_blank')
     }
 
-    // ===== 清理 / 重置 =====
+// 清理 / 重置
 
     /** 清空当前导出记录详情。 */
     function clearCurrentExport(): void {
