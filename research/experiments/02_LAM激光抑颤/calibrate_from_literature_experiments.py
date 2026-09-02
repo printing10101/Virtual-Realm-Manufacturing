@@ -20,6 +20,7 @@
 
 输出：results/calibration/experimental_calibration.json
 """
+
 import json
 import sys
 from pathlib import Path
@@ -46,8 +47,12 @@ KAPPA_EFF_POINTS = [
     (0.40, 500.0, "铣削 Ti-6Al-4V", "Sun et al. (via Rashid 2015)"),
 ]
 
-T_CRITICAL = {"phase_change_2023": 880.0, "phase_change_2015_model": 800.0,
-              "oxidation_2015": 1100.0, "max_avg_safe_2015": 500.0}
+T_CRITICAL = {
+    "phase_change_2023": 880.0,
+    "phase_change_2015_model": 800.0,
+    "oxidation_2015": 1100.0,
+    "max_avg_safe_2015": 500.0,
+}
 ABSORPTIVITY = {"below_90W": 0.35, "above_90W_oxidized": 0.5}
 
 
@@ -58,8 +63,11 @@ def calibrate_xi(points) -> dict:
         xi = dT_c / p_w
         rows.append({"cond": name, "P_W": p_w, "dT_C": dT_c, "xi_C_per_kW": round(xi * 1000, 1), "src": src})
     xis = [r["xi_C_per_kW"] for r in rows]
-    return {"points": rows, "xi_range_C_per_kW": [round(min(xis), 1), round(max(xis), 1)],
-            "xi_median_C_per_kW": round(sorted(xis)[len(xis) // 2], 1)}
+    return {
+        "points": rows,
+        "xi_range_C_per_kW": [round(min(xis), 1), round(max(xis), 1)],
+        "xi_median_C_per_kW": round(sorted(xis)[len(xis) // 2], 1),
+    }
 
 
 def calibrate_kappa_eff(points) -> dict:
@@ -67,31 +75,33 @@ def calibrate_kappa_eff(points) -> dict:
     rows = []
     for frac, dT, cond, src in points:
         ke = frac / dT
-        rows.append({"cond": cond, "force_drop_frac": frac, "dT_C": dT,
-                     "kappa_eff": round(ke, 7), "src": src})
+        rows.append({"cond": cond, "force_drop_frac": frac, "dT_C": dT, "kappa_eff": round(ke, 7), "src": src})
     kes = [r["kappa_eff"] for r in rows]
-    return {"points": rows, "kappa_eff_range": [round(min(kes), 7), round(max(kes), 7)],
-            "kappa_eff_median": round(sorted(kes)[len(kes) // 2], 7)}
+    return {
+        "points": rows,
+        "kappa_eff_range": [round(min(kes), 7), round(max(kes), 7)],
+        "kappa_eff_median": round(sorted(kes)[len(kes) // 2], 7),
+    }
 
 
 def main() -> None:
     xi = calibrate_xi(XI_POINTS)
     ke = calibrate_kappa_eff(KAPPA_EFF_POINTS)
 
-    # 工程功率预算修正：谷 2.0× 需 ΔT=500°C → P_kW = ΔT / xi_C_per_kW
+    # 工程功率预算修正：谷 2.0× 需 ΔT=500°C P_kW = ΔT / xi_C_per_kW
     dT_needed = 500.0
-    p_lo = dT_needed / xi["xi_range_C_per_kW"][1]   # 用最大 xi（最低功率）
+    p_lo = dT_needed / xi["xi_range_C_per_kW"][1]  # 用最大 xi（最低功率）
     p_hi = dT_needed / xi["xi_range_C_per_kW"][0]
     print("=== 真实实验标定结果 ===")
-    print(f"[xi] 功率→温升实测：{xi['xi_range_C_per_kW'][0]}~{xi['xi_range_C_per_kW'][1]} °C/kW "
-          f"（中值 {xi['xi_median_C_per_kW']}）")
-    print(f"[κ_eff 实测] {ke['kappa_eff_range'][0]}~{ke['kappa_eff_range'][1]} /°C "
-          f"（中值 {ke['kappa_eff_median']}）")
+    print(
+        f"[xi] 功率→温升实测：{xi['xi_range_C_per_kW'][0]}~{xi['xi_range_C_per_kW'][1]} °C/kW "
+        f"（中值 {xi['xi_median_C_per_kW']}）"
+    )
+    print(f"[κ_eff 实测] {ke['kappa_eff_range'][0]}~{ke['kappa_eff_range'][1]} /°C （中值 {ke['kappa_eff_median']}）")
     print(f"  对比：J-C 文献标定 κ={KAPPA_TI64_CALIBRATED}，δ={DELTA_TI64_CALIBRATED}（E(T)）")
     for r_, ke_ in ((0.0, None), (0.3, None), (1.0, None)):
         print(f"  r={r_}: κ_eff(J-C) = {net_softening(KAPPA_TI64_CALIBRATED, DELTA_TI64_CALIBRATED, r_):.6f}")
-    print(f"[功率预算] 谷 2.0×（ΔT=500°C）实测需求：{p_lo:.2f}~{p_hi:.2f} kW "
-          f"（旧粗估 1.67~5.00 kW）")
+    print(f"[功率预算] 谷 2.0×（ΔT=500°C）实测需求：{p_lo:.2f}~{p_hi:.2f} kW （旧粗估 1.67~5.00 kW）")
     print(f"[安全窗] 相变 800-880°C / 氧化 1100°C / 平均安全上限 500°C")
 
     summary = {
@@ -105,9 +115,9 @@ def main() -> None:
         "absorptivity": ABSORPTIVITY,
         "sources": {
             "hybrid2023": "Dominguez-Caballero et al. 2023, IJAMT 125:1903-1916, "
-                          "DOI 10.1007/s00170-022-10764-5 (OA, thermal camera)",
+            "DOI 10.1007/s00170-022-10764-5 (OA, thermal camera)",
             "rashid2015": "Rashid et al. 2015, Lasers Manuf. Mater. Process. 2:164-185, "
-                          "DOI 10.1007/s40516-015-0013-4 (OA)",
+            "DOI 10.1007/s40516-015-0013-4 (OA)",
         },
     }
     with open(OUT / "experimental_calibration.json", "w", encoding="utf-8") as f:

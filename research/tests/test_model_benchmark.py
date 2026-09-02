@@ -1,4 +1,4 @@
-﻿"""LNN模型精度基准测试套件
+"""LNN模型精度基准测试套件
 
 对CFC、LTC、HybridLNN三个LNN模型进行标准化精度评估，输出格式化的
 对比报告并保存到 reports/model_benchmark.md。
@@ -35,9 +35,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # 基准测试标记
 pytestmark = pytest.mark.benchmark
 
-# ---------------------------------------------------------------------------
 # 常量与阈值配置
-# ---------------------------------------------------------------------------
 
 # R² 通过阈值（基线，可根据需求调整）
 R2_PASS_THRESHOLD = 0.7
@@ -53,9 +51,7 @@ REPORT_FILE = REPORT_DIR / "model_benchmark.md"
 DATA_DIR = PROJECT_ROOT / "datasets" / "uniwear" / "uniwear"
 DATA_FILE = DATA_DIR / "uniwear.csv"
 
-# ---------------------------------------------------------------------------
 # 数据加载与预处理
-# ---------------------------------------------------------------------------
 
 
 def load_uniwear_dataset() -> tuple[np.ndarray, np.ndarray]:
@@ -78,10 +74,7 @@ def load_uniwear_dataset() -> tuple[np.ndarray, np.ndarray]:
     import pandas as pd
 
     if not DATA_FILE.exists():
-        raise FileNotFoundError(
-            f"Uniwear数据集不存在: {DATA_FILE}\n"
-            "请确认 python/data/uniwear/uniwear.csv 文件存在。"
-        )
+        raise FileNotFoundError(f"Uniwear数据集不存在: {DATA_FILE}\n请确认 python/data/uniwear/uniwear.csv 文件存在。")
 
     df = pd.read_csv(DATA_FILE, index_col=0)
 
@@ -138,9 +131,7 @@ def split_train_test(
     return train_test_split(X, y, test_size=test_size, random_state=seed)
 
 
-# ---------------------------------------------------------------------------
 # 评估指标计算（复用项目已有实现）
-# ---------------------------------------------------------------------------
 
 from app.benchmarks.metrics import (  # noqa: E402
     compute_mae,
@@ -168,9 +159,8 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     }
 
 
-# ---------------------------------------------------------------------------
 # 模型初始化辅助函数
-# ---------------------------------------------------------------------------
+
 
 def _init_cfc_model(input_dim: int, output_dim: int = 1):
     """初始化CFC模型。"""
@@ -222,9 +212,8 @@ def _init_hybrid_lnn_model(input_dim: int, output_dim: int = 1):
     return model
 
 
-# ---------------------------------------------------------------------------
 # 模型训练辅助函数
-# ---------------------------------------------------------------------------
+
 
 def train_model(
     model: Any,
@@ -261,9 +250,7 @@ def train_model(
     return model
 
 
-def predict_and_evaluate(
-    model: Any, X_test: np.ndarray, y_test: np.ndarray
-) -> Dict[str, float]:
+def predict_and_evaluate(model: Any, X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, float]:
     """对模型进行预测并计算评估指标。
 
     Args:
@@ -281,9 +268,8 @@ def predict_and_evaluate(
     return compute_metrics(y_test, y_pred)
 
 
-# ---------------------------------------------------------------------------
 # 报告生成
-# ---------------------------------------------------------------------------
+
 
 def generate_report(results: List[Dict[str, Any]]) -> str:
     """生成Markdown格式的基准测试报告。
@@ -312,12 +298,7 @@ def generate_report(results: List[Dict[str, Any]]) -> str:
     for r in results:
         status = "✅ 通过" if r["passed"] else f"❌ 未通过 (R²={r['r2']:.4f})"
         lines.append(
-            f"| {r['model_name']} "
-            f"| {r['mae']:.6f} "
-            f"| {r['rmse']:.6f} "
-            f"| {r['r2']:.6f} "
-            f"| {r['mape']:.4f} "
-            f"| {status} |"
+            f"| {r['model_name']} | {r['mae']:.6f} | {r['rmse']:.6f} | {r['r2']:.6f} | {r['mape']:.4f} | {status} |"
         )
     lines.append("")
 
@@ -353,9 +334,8 @@ def save_report(report: str) -> Path:
     return REPORT_FILE
 
 
-# ---------------------------------------------------------------------------
 # Pytest Fixture
-# ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def dataset():
@@ -390,9 +370,7 @@ def dataset():
     return X_train, X_test, y_train, y_test
 
 
-# ---------------------------------------------------------------------------
 # 基准测试用例
-# ---------------------------------------------------------------------------
 
 
 class TestModelBenchmark:
@@ -429,9 +407,11 @@ class TestModelBenchmark:
         assert np.isfinite(metrics["r2"]), "CFC R²应为有限值"
         assert np.isfinite(metrics["mape"]), "CFC MAPE应为有限值"
 
-        print(f"\n[CFC] MAE={metrics['mae']:.6f}, RMSE={metrics['rmse']:.6f}, "
-              f"R²={metrics['r2']:.6f}, MAPE={metrics['mape']:.4f}% "
-              f"{'(通过)' if passed else f'(未通过, R²={r2:.4f})'}")
+        print(
+            f"\n[CFC] MAE={metrics['mae']:.6f}, RMSE={metrics['rmse']:.6f}, "
+            f"R²={metrics['r2']:.6f}, MAPE={metrics['mape']:.4f}% "
+            f"{'(通过)' if passed else f'(未通过, R²={r2:.4f})'}"
+        )
 
     @pytest.mark.benchmark
     def test_ltc_model_benchmark(self, dataset):
@@ -457,9 +437,11 @@ class TestModelBenchmark:
         assert np.isfinite(metrics["r2"]), "LTC R²应为有限值"
         assert np.isfinite(metrics["mape"]), "LTC MAPE应为有限值"
 
-        print(f"\n[LTC] MAE={metrics['mae']:.6f}, RMSE={metrics['rmse']:.6f}, "
-              f"R²={metrics['r2']:.6f}, MAPE={metrics['mape']:.4f}% "
-              f"{'(通过)' if passed else f'(未通过, R²={r2:.4f})'}")
+        print(
+            f"\n[LTC] MAE={metrics['mae']:.6f}, RMSE={metrics['rmse']:.6f}, "
+            f"R²={metrics['r2']:.6f}, MAPE={metrics['mape']:.4f}% "
+            f"{'(通过)' if passed else f'(未通过, R²={r2:.4f})'}"
+        )
 
     @pytest.mark.benchmark
     def test_hybrid_lnn_model_benchmark(self, dataset):
@@ -485,13 +467,13 @@ class TestModelBenchmark:
         assert np.isfinite(metrics["r2"]), "HybridLNN R²应为有限值"
         assert np.isfinite(metrics["mape"]), "HybridLNN MAPE应为有限值"
 
-        print(f"\n[HybridLNN] MAE={metrics['mae']:.6f}, RMSE={metrics['rmse']:.6f}, "
-              f"R²={metrics['r2']:.6f}, MAPE={metrics['mape']:.4f}% "
-              f"{'(通过)' if passed else f'(未通过, R²={r2:.4f})'}")
+        print(
+            f"\n[HybridLNN] MAE={metrics['mae']:.6f}, RMSE={metrics['rmse']:.6f}, "
+            f"R²={metrics['r2']:.6f}, MAPE={metrics['mape']:.4f}% "
+            f"{'(通过)' if passed else f'(未通过, R²={r2:.4f})'}"
+        )
 
-    # ------------------------------------------------------------------
     # 结果存储与报告
-    # ------------------------------------------------------------------
 
     def _store_result(self, model_name: str, metrics: Dict[str, float], passed: bool):
         """存储单个模型的评估结果。
@@ -501,14 +483,16 @@ class TestModelBenchmark:
         if not hasattr(self, "_results"):
             self._results: List[Dict[str, Any]] = []
 
-        self._results.append({
-            "model_name": model_name,
-            "mae": metrics["mae"],
-            "rmse": metrics["rmse"],
-            "r2": metrics["r2"],
-            "mape": metrics["mape"],
-            "passed": passed,
-        })
+        self._results.append(
+            {
+                "model_name": model_name,
+                "mae": metrics["mae"],
+                "rmse": metrics["rmse"],
+                "r2": metrics["r2"],
+                "mape": metrics["mape"],
+                "passed": passed,
+            }
+        )
 
     def _run_all_models(self, dataset):
         """手动运行三个模型测试以累积结果。
@@ -588,9 +572,7 @@ class TestBenchmarkConsistency:
 
         # 验证四次指标的一致性（容忍浮点误差）
         for key in ["mae", "rmse", "r2", "mape"]:
-            assert r1[key] == pytest.approx(r2[key], abs=1e-5), (
-                f"{key} 不一致: 第1次={r1[key]}, 第2次={r2[key]}"
-            )
+            assert r1[key] == pytest.approx(r2[key], abs=1e-5), f"{key} 不一致: 第1次={r1[key]}, 第2次={r2[key]}"
 
         print(f"\n[一致性] R² 两次运行结果: {r1['r2']:.6f} vs {r2['r2']:.6f}")
 

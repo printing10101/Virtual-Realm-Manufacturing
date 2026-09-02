@@ -65,15 +65,11 @@ class LearnableDelayEmbedding(nn.Module):
 
         # 可学习延迟 τ（参数化在 log 空间以强制正值）
         tau_init_clamped = max(0.001, min(0.5, float(tau_init)))
-        self.log_tau = nn.Parameter(
-            torch.tensor(float(tau_init_clamped)).log()
-        )
+        self.log_tau = nn.Parameter(torch.tensor(float(tau_init_clamped)).log())
 
         # 物理先验（非可学习，用于正则化）
         if tau_phys is not None:
-            self.register_buffer(
-                "tau_phys", torch.tensor(float(tau_phys))
-            )
+            self.register_buffer("tau_phys", torch.tensor(float(tau_phys)))
         else:
             self.tau_phys = None
 
@@ -99,7 +95,9 @@ class LearnableDelayEmbedding(nn.Module):
     def init_buffer(self, batch_size: int, device: torch.device) -> None:
         """初始化延迟缓冲区为零。"""
         self._buffer = torch.zeros(
-            batch_size, self.delay_buffer_size, self.hidden_dim,
+            batch_size,
+            self.delay_buffer_size,
+            self.hidden_dim,
             device=device,
         )
         self._buffer_ptr = torch.zeros(batch_size, dtype=torch.long, device=device)
@@ -163,13 +161,9 @@ class LearnableDelayEmbedding(nn.Module):
         idx_hi = (ptr - k_ceil) % self.delay_buffer_size  # [batch]
 
         # 收集延迟状态（逐 batch 索引）
-        h_lo = torch.stack([
-            self._buffer[b, idx_lo[b]] for b in range(batch_size)
-        ])  # [batch, hidden]
+        h_lo = torch.stack([self._buffer[b, idx_lo[b]] for b in range(batch_size)])  # [batch, hidden]
 
-        h_hi = torch.stack([
-            self._buffer[b, idx_hi[b]] for b in range(batch_size)
-        ])  # [batch, hidden]
+        h_hi = torch.stack([self._buffer[b, idx_hi[b]] for b in range(batch_size)])  # [batch, hidden]
 
         # 线性插值
         h_delayed = alpha * h_lo + (1.0 - alpha) * h_hi
@@ -195,7 +189,7 @@ class LearnableDelayEmbedding(nn.Module):
 
         if spindle_speed is not None and self.tau_phys is None:
             # 从归一化转速反推物理 τ_phys
-            # spindle_speed ~ [0, 1] → n_rpm = sp * 10000
+            # spindle_speed ~ [0, 1] n_rpm = sp * 10000
             n_rpm = spindle_speed * 10000.0  # [batch, 1]
             tau_phys_dynamic = 60.0 / (n_rpm + 1.0)  # 避免除零
             tau_phys_mean = tau_phys_dynamic.mean()
@@ -204,7 +198,7 @@ class LearnableDelayEmbedding(nn.Module):
             reg = self.lambda_tau_reg * ((tau_val - self.tau_phys) ** 2)
         else:
             # 无物理先验：弱 L2 正则，防止发散
-            reg = self.lambda_tau_reg * 0.01 * (tau_val ** 2)
+            reg = self.lambda_tau_reg * 0.01 * (tau_val**2)
 
         return reg
 
@@ -244,7 +238,7 @@ class LearnableDelayEmbeddingBatched(nn.Module):
         self.tau_max = tau_max
         self.delay_buffer_size = delay_buffer_size
 
-        # τ 预测网络：x → τ
+        # τ 预测网络：x τ
         self.tau_net = nn.Sequential(
             nn.Linear(input_dim, 16),
             nn.ReLU(),
@@ -279,9 +273,7 @@ class LearnableDelayEmbeddingBatched(nn.Module):
         return tau_batch
 
     def init_buffer(self, batch_size: int, device: torch.device) -> None:
-        self._buffer = torch.zeros(
-            batch_size, self.delay_buffer_size, self.hidden_dim, device=device
-        )
+        self._buffer = torch.zeros(batch_size, self.delay_buffer_size, self.hidden_dim, device=device)
         self._buffer_ptr = torch.zeros(batch_size, dtype=torch.long, device=device)
         self._buffer_initialized = True
 
@@ -294,9 +286,7 @@ class LearnableDelayEmbeddingBatched(nn.Module):
             self._buffer[b, ptr[b]] = h[b]
         self._buffer_ptr = (ptr + 1) % self.delay_buffer_size
 
-    def get_delayed(
-        self, h_current: torch.Tensor, tau_batch: torch.Tensor
-    ) -> torch.Tensor:
+    def get_delayed(self, h_current: torch.Tensor, tau_batch: torch.Tensor) -> torch.Tensor:
         """
         获取延迟隐藏状态（每样本独立 τ）。
 
@@ -323,7 +313,7 @@ class LearnableDelayEmbeddingBatched(nn.Module):
         for b in range(batch_size):
             k = k_batch[b]
             if k < 1.0:
-                h_delayed_list.append(h_current[b:b+1])
+                h_delayed_list.append(h_current[b : b + 1])
                 continue
 
             k_floor = int(torch.floor(k).item())
@@ -345,9 +335,7 @@ if __name__ == "__main__":
     print("测试 LearnableDelayEmbedding...")
 
     hidden_dim = 64
-    delay = LearnableDelayEmbedding(
-        hidden_dim=hidden_dim, dt=0.1, tau_init=0.1, tau_phys=0.1
-    )
+    delay = LearnableDelayEmbedding(hidden_dim=hidden_dim, dt=0.1, tau_init=0.1, tau_phys=0.1)
     delay.init_buffer(batch_size=4, device=torch.device("cpu"))
 
     # 模拟多个时间步
@@ -366,9 +354,7 @@ if __name__ == "__main__":
     print(f"τ 正则化: {reg.item():.6f}")
 
     print("\n测试 LearnableDelayEmbeddingBatched...")
-    delay_batched = LearnableDelayEmbeddingBatched(
-        input_dim=7, hidden_dim=hidden_dim, dt=0.1
-    )
+    delay_batched = LearnableDelayEmbeddingBatched(input_dim=7, hidden_dim=hidden_dim, dt=0.1)
     delay_batched.init_buffer(4, torch.device("cpu"))
     for t in range(50):
         h = torch.randn(4, hidden_dim)

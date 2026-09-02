@@ -39,13 +39,12 @@ from metrics import ChatterMetrics
 # 自适应 ODE 积分（实测 0.899 s/step，全量实验约 16h）；强制走 Euler
 # 一阶路径（0.010 s/step，全量约 10min）。求解器选择写入结果 JSON。
 import models as _models
+
 _HAS_ODE = _models._HAS_TORCHDIFFEQ
 _models._HAS_TORCHDIFFEQ = False  # force Euler（fast, deterministic fixed-step）
 LTC_SOLVER = "euler"
 
-# ============================================================
 # 实验参数
-# ============================================================
 DELTAS = [0.00, 0.05, 0.10, 0.20, 0.40]
 SEEDS = [42, 43, 44, 45, 46]
 NUM_SAMPLES = 1000
@@ -104,9 +103,7 @@ class MismatchChatterDataset(Dataset):
             feed_rate=feed_rate,
             radial_depth=radial_depth,
         )
-        a_lim_noisy = np.maximum(
-            a_lim * (1 + rng.standard_normal(num_samples) * noise_level), 0.01
-        )
+        a_lim_noisy = np.maximum(a_lim * (1 + rng.standard_normal(num_samples) * noise_level), 0.01)
 
         features = build_physics_features_7d(
             spindle_speed=spindle_speed,
@@ -152,9 +149,7 @@ def create_loaders(dataset: MismatchChatterDataset, batch_size: int, seed: int):
     train_n = int(total * TRAIN_RATIO)
     val_n = int(total * VAL_RATIO)
     torch.manual_seed(seed)
-    train_ds, val_ds, test_ds = torch.utils.data.random_split(
-        dataset, [train_n, val_n, total - train_n - val_n]
-    )
+    train_ds, val_ds, test_ds = torch.utils.data.random_split(dataset, [train_n, val_n, total - train_n - val_n])
     kwargs = dict(batch_size=batch_size, num_workers=0, pin_memory=True)
     return (
         DataLoader(train_ds, shuffle=True, **kwargs),
@@ -176,12 +171,8 @@ def train_model(
 ) -> nn.Module:
     """训练模型；use_physics=True 时显式注入 train_delta 档失配物理预测（门控参与训练）。"""
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
-    )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=num_epochs, eta_min=1e-5
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-5)
 
     delta_idx = DELTAS.index(train_delta)
     best_val_loss = float("inf")
@@ -244,7 +235,7 @@ def train_model(
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
 
         if verbose and (epoch == 0 or (epoch + 1) % 20 == 0):
-            print(f"    Epoch [{epoch+1}/{num_epochs}] Train: {train_loss:.4f} Val: {val_loss:.4f}")
+            print(f"    Epoch [{epoch + 1}/{num_epochs}] Train: {train_loss:.4f} Val: {val_loss:.4f}")
 
     if best_state is not None:
         model.load_state_dict(best_state)
@@ -300,7 +291,7 @@ def main():
         "lstm": {},
     }
 
-    # ---------- LSTM（纯数据，与物理无关，每 seed 训练一次） ----------
+    # LSTM（纯数据，与物理无关，每 seed 训练一次）
     lstm_by_seed = {}
     for seed in SEEDS:
         print(f"\n=== LSTM seed {seed} ===", flush=True)
@@ -316,8 +307,9 @@ def main():
             num_layers=config.num_layers,
             output_dim=config.output_dim,
         ).to(device)
-        model = train_model(model, train_loader, val_loader, config, device,
-                            train_delta=0.0, use_physics=False, verbose=False)
+        model = train_model(
+            model, train_loader, val_loader, config, device, train_delta=0.0, use_physics=False, verbose=False
+        )
         r = predict_all(model, test_loader, device, use_physics=False, delta_idx=0)
         lstm_by_seed[seed] = {
             "MAE": metrics_calc.mae(r["preds"], r["y_true"]),
@@ -332,7 +324,7 @@ def main():
         "per_seed": {str(s): lstm_by_seed[s] for s in SEEDS},
     }
 
-    # ---------- DL-LNN：train_delta x test_delta 矩阵 ----------
+    # DL-LNN：train_delta x test_delta 矩阵
     for train_delta in DELTAS:
         print(f"\n############ train_delta = {train_delta:.2f} ############", flush=True)
         tdelta_str = str(train_delta)
@@ -356,8 +348,16 @@ def main():
                 dt=config.ltc_dt,
                 dropout=config.dropout,
             ).to(device)
-            model = train_model(model, train_loader, val_loader, config, device,
-                                train_delta=train_delta, use_physics=True, verbose=False)
+            model = train_model(
+                model,
+                train_loader,
+                val_loader,
+                config,
+                device,
+                train_delta=train_delta,
+                use_physics=True,
+                verbose=False,
+            )
 
             # 测试时注入所有 test_delta
             for test_delta in DELTAS:
@@ -366,12 +366,11 @@ def main():
                 tds = str(test_delta)
                 if tds not in results["matrix"][tdelta_str]:
                     results["matrix"][tdelta_str][tds] = {"MAE_per_seed": [], "R2_per_seed": [], "gate_per_seed": []}
-                results["matrix"][tdelta_str][tds]["MAE_per_seed"].append(
-                    metrics_calc.mae(r["preds"], r["y_true"]))
-                results["matrix"][tdelta_str][tds]["R2_per_seed"].append(
-                    metrics_calc.r2_score(r["preds"], r["y_true"]))
+                results["matrix"][tdelta_str][tds]["MAE_per_seed"].append(metrics_calc.mae(r["preds"], r["y_true"]))
+                results["matrix"][tdelta_str][tds]["R2_per_seed"].append(metrics_calc.r2_score(r["preds"], r["y_true"]))
                 results["matrix"][tdelta_str][tds]["gate_per_seed"].append(
-                    float(np.mean(r["gates"])) if r["gates"] is not None else None)
+                    float(np.mean(r["gates"])) if r["gates"] is not None else None
+                )
 
                 # Tlusty 确定性基线（每 test_delta 只算一次）
                 if seed == SEEDS[0]:
@@ -404,7 +403,7 @@ def main():
 
         results["tlusty_baseline"][tdelta_str] = tlusty_baseline_by_test
 
-    # ---------- 保存 ----------
+    # 保存
     OUTPUT_DIR.mkdir(exist_ok=True)
     FIG_DIR.mkdir(exist_ok=True)
     out_file = OUTPUT_DIR / "tlusty_mismatch_results.json"
@@ -412,7 +411,7 @@ def main():
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(f"\nResults saved to {out_file}", flush=True)
 
-    # ---------- 摘要表 ----------
+    # 摘要表
     print("\n=== SUMMARY: MAE by (train_delta -> test_delta), Tlusty/LSTM reference ===", flush=True)
     header = "train_d | " + " | ".join(f"test={d:.0%}" for d in DELTAS) + " | gate_avg"
     print(header, flush=True)
@@ -425,14 +424,17 @@ def main():
         row.append(f"{np.mean([results['matrix'][tds][str(d)]['gate_mean'] for d in DELTAS]):.3f}")
         print(" | ".join(row), flush=True)
 
-    print("\nTlusty(test_delta) baseline MAE:",
-          " ".join(f"{d:.0%}={results['tlusty_baseline']['0.0'][str(d)]['MAE']:.3f}" for d in DELTAS), flush=True)
-    print("LSTM MAE:",
-          f"{results['lstm']['MAE_mean']:.3f}±{results['lstm']['MAE_std']:.3f}", flush=True)
+    print(
+        "\nTlusty(test_delta) baseline MAE:",
+        " ".join(f"{d:.0%}={results['tlusty_baseline']['0.0'][str(d)]['MAE']:.3f}" for d in DELTAS),
+        flush=True,
+    )
+    print("LSTM MAE:", f"{results['lstm']['MAE_mean']:.3f}±{results['lstm']['MAE_std']:.3f}", flush=True)
 
-    # ---------- 图 ----------
+    # 图
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -442,13 +444,34 @@ def main():
         fig, ax = plt.subplots(figsize=(7.5, 5))
         diag_means = [results["matrix"][str(d)][str(d)]["MAE_mean"] for d in DELTAS]
         diag_stds = [results["matrix"][str(d)][str(d)]["MAE_std"] for d in DELTAS]
-        ax.plot(pcts, [results["tlusty_baseline"]["0.0"][str(d)]["MAE"] for d in DELTAS],
-                "s--", color="tab:red", label="Tlusty (mismatched params)", linewidth=1.8)
-        ax.errorbar(pcts, diag_means, yerr=diag_stds, fmt="^-", color="tab:green",
-                    label="DL-LNN (trained on same mismatch)", linewidth=1.8, capsize=3)
-        ax.errorbar(pcts, [results["lstm"]["MAE_mean"]] * len(pcts),
-                    yerr=[results["lstm"]["MAE_std"]] * len(pcts), fmt="o-", color="tab:blue",
-                    label="LSTM (data-only)", linewidth=1.8, capsize=3)
+        ax.plot(
+            pcts,
+            [results["tlusty_baseline"]["0.0"][str(d)]["MAE"] for d in DELTAS],
+            "s--",
+            color="tab:red",
+            label="Tlusty (mismatched params)",
+            linewidth=1.8,
+        )
+        ax.errorbar(
+            pcts,
+            diag_means,
+            yerr=diag_stds,
+            fmt="^-",
+            color="tab:green",
+            label="DL-LNN (trained on same mismatch)",
+            linewidth=1.8,
+            capsize=3,
+        )
+        ax.errorbar(
+            pcts,
+            [results["lstm"]["MAE_mean"]] * len(pcts),
+            yerr=[results["lstm"]["MAE_std"]] * len(pcts),
+            fmt="o-",
+            color="tab:blue",
+            label="LSTM (data-only)",
+            linewidth=1.8,
+            capsize=3,
+        )
         ax.set_xlabel("Modal parameter mismatch delta (%)")
         ax.set_ylabel("Test MAE (mm)")
         ax.set_title("Residual compensation under modal parameter mismatch")
@@ -469,8 +492,15 @@ def main():
         ax.set_title("DL-LNN MAE (train x test mismatch)")
         for i in range(len(DELTAS)):
             for j in range(len(DELTAS)):
-                ax.text(j, i, f"{mat[i, j]:.2f}", ha="center", va="center",
-                        color="white" if mat[i, j] > mat.max() * 0.6 else "black", fontsize=9)
+                ax.text(
+                    j,
+                    i,
+                    f"{mat[i, j]:.2f}",
+                    ha="center",
+                    va="center",
+                    color="white" if mat[i, j] > mat.max() * 0.6 else "black",
+                    fontsize=9,
+                )
         fig.colorbar(im, ax=ax, label="MAE (mm)")
         fig.tight_layout()
         fig.savefig(FIG_DIR / "fig46b_mismatch_heatmap.png", dpi=150)

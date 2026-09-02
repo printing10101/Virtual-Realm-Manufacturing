@@ -39,7 +39,7 @@ import warnings
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
-# === WinSock 损坏绕过补丁 ===
+# WinSock 损坏绕过补丁
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -53,7 +53,7 @@ import torch
 
 warnings.filterwarnings("ignore")
 
-# === 路径设置 ===
+# 路径设置
 _current = Path(__file__).resolve()
 PROJECT_ROOT = _current
 for _ in range(6):
@@ -67,8 +67,7 @@ RESEARCH_DIR = PROJECT_ROOT / "research"
 EXPERIMENTS_DIR = RESEARCH_DIR / "experiments"
 ENGINEERING_PYTHON_DIR = PROJECT_ROOT / "engineering" / "python"
 
-for p in [str(PROJECT_ROOT), str(ENGINEERING_PYTHON_DIR),
-          str(RESEARCH_DIR), str(EXPERIMENTS_DIR)]:
+for p in [str(PROJECT_ROOT), str(ENGINEERING_PYTHON_DIR), str(RESEARCH_DIR), str(EXPERIMENTS_DIR)]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -93,9 +92,8 @@ from bayesian_uq_experiment import (
 from temperature_scaling_calibration import compute_temperature_numerical
 
 
-# =============================================================================
 # 物理引导 UQ 核心
-# =============================================================================
+
 
 def compute_physics_residual(
     ltc_mean: np.ndarray,
@@ -130,7 +128,7 @@ def compute_physics_guided_uq(
     Returns:
         uq_pg: 物理引导不确定性 [N]
     """
-    return np.sqrt(ltc_std ** 2 + (lam ** 2) * (residual ** 2))
+    return np.sqrt(ltc_std**2 + (lam**2) * (residual**2))
 
 
 def compute_lambda_numerical(
@@ -168,9 +166,8 @@ def compute_lambda_numerical(
     return float(result.x), float(result.fun)
 
 
-# =============================================================================
 # 可视化
-# =============================================================================
+
 
 def plot_uq_comparison(
     std_mc: np.ndarray,
@@ -181,6 +178,7 @@ def plot_uq_comparison(
 ) -> None:
     """绘制 MC Dropout UQ vs 物理引导 UQ 的散点对比。"""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -191,7 +189,7 @@ def plot_uq_comparison(
     ax.scatter(std_mc, errors, alpha=0.3, s=8, c="steelblue")
     ax.set_xlabel("MC Dropout std (ltc_std)")
     ax.set_ylabel("Absolute error")
-    ax.set_title(f"Stage 1: MC Dropout UQ\n(Pearson r={np.corrcoef(std_mc, errors)[0,1]:.4f})")
+    ax.set_title(f"Stage 1: MC Dropout UQ\n(Pearson r={np.corrcoef(std_mc, errors)[0, 1]:.4f})")
     ax.grid(True, alpha=0.3)
     if len(std_mc) > 10:
         z = np.polyfit(std_mc, errors, 1)
@@ -204,7 +202,7 @@ def plot_uq_comparison(
     ax.scatter(std_pg, errors, alpha=0.3, s=8, c="darkgreen")
     ax.set_xlabel(f"Physics-guided UQ (λ={lam:.3f})")
     ax.set_ylabel("Absolute error")
-    ax.set_title(f"Stage 2: Physics-guided UQ\n(Pearson r={np.corrcoef(std_pg, errors)[0,1]:.4f})")
+    ax.set_title(f"Stage 2: Physics-guided UQ\n(Pearson r={np.corrcoef(std_pg, errors)[0, 1]:.4f})")
     ax.grid(True, alpha=0.3)
     if len(std_pg) > 10:
         z = np.polyfit(std_pg, errors, 1)
@@ -227,6 +225,7 @@ def plot_residual_distribution(
 ) -> None:
     """绘制各材料的物理残差分布。"""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -249,6 +248,7 @@ def plot_residual_distribution(
     ax.grid(True, axis="y", alpha=0.3)
 
     from matplotlib.patches import Patch
+
     legend_elements = [
         Patch(facecolor="#4CAF50", alpha=0.7, label="ID"),
         Patch(facecolor="#F44336", alpha=0.7, label="OOD"),
@@ -261,9 +261,8 @@ def plot_residual_distribution(
     print(f"  [图] {save_path}")
 
 
-# =============================================================================
 # 主实验流程
-# =============================================================================
+
 
 def run_physics_guided_uq(
     weights_path: Path,
@@ -298,7 +297,7 @@ def run_physics_guided_uq(
     print(f"MC Dropout 概率: {mc_dropout_prob}")
     print()
 
-    # === 1. 加载模型 ===
+    # 1. 加载模型
     print("[1/7] 加载贝叶斯 DL-LNN 权重...")
     bayesian_model = load_bayesian_dllnn(
         weights_path=weights_path,
@@ -306,7 +305,7 @@ def run_physics_guided_uq(
         mc_dropout_prob=mc_dropout_prob,
     )
 
-    # === 2. 生成测试集 ===
+    # 2. 生成测试集
     print("\n[2/7] 生成 LOMO 测试集...")
     set_global_seed(seed)
     dataset = LomoLocoDataset(
@@ -320,7 +319,7 @@ def run_physics_guided_uq(
     materials_arr = dataset.sample_materials
     print(f"  总样本数: {len(dataset)}")
 
-    # === 3. MC Dropout 推理 ===
+    # 3. MC Dropout 推理
     print(f"\n[3/7] 对 5 种材料跑 MC Dropout (n_samples={n_samples})...")
     results_by_material: Dict[str, Dict] = {}
 
@@ -334,12 +333,15 @@ def run_physics_guided_uq(
         y_phys = dataset.data["a_lim_clean"][mask]
         ks = ks_scale[mask]
 
-        print(f"\n  材料: {mat_name} (硬度={MATERIALS_CONFIG[mat_name]['hardness']:.0f} HB, "
-              f"样本数={mask.sum()})")
+        print(f"\n  材料: {mat_name} (硬度={MATERIALS_CONFIG[mat_name]['hardness']:.0f} HB, 样本数={mask.sum()})")
 
         uq_result = bayesian_model.predict_batch(
-            X, physics_pred=y_phys, n_samples=n_samples, device=device,
-            batch_size=256, return_components=True,
+            X,
+            physics_pred=y_phys,
+            n_samples=n_samples,
+            device=device,
+            batch_size=256,
+            return_components=True,
         )
 
         # 反物理引导缩放
@@ -371,9 +373,9 @@ def run_physics_guided_uq(
             "hardness": MATERIALS_CONFIG[mat_name]["hardness"],
             "y_true": y_true,
             "mean_pred": mean_orig,
-            "std_pred": std_orig,          # final_pred 的 std（阶段1用）
+            "std_pred": std_orig,  # final_pred 的 std（阶段1用）
             "ltc_mean": ltc_mean_orig,
-            "ltc_std": ltc_std_orig,        # LTC 分支的 std（阶段2用）
+            "ltc_std": ltc_std_orig,  # LTC 分支的 std（阶段2用）
             "residual": residual,
             "y_phys": y_phys,
             "metrics": {
@@ -384,7 +386,7 @@ def run_physics_guided_uq(
             },
         }
 
-    # === 4. 学习混合系数 λ ===
+    # 4. 学习混合系数 λ
     print("\n[4/7] 学习混合系数 λ (在 ID 材料上)...")
 
     id_mats = ["45_Steel", "304_SS"]
@@ -395,9 +397,7 @@ def run_physics_guided_uq(
     id_residual = np.concatenate([results_by_material[m]["residual"] for m in id_mats])
     id_true = np.concatenate([results_by_material[m]["y_true"] for m in id_mats])
 
-    lam, min_ece_id = compute_lambda_numerical(
-        id_mean, id_ltc_std, id_residual, id_true, n_bins=10
-    )
+    lam, min_ece_id = compute_lambda_numerical(id_mean, id_ltc_std, id_residual, id_true, n_bins=10)
     print(f"  最优 λ = {lam:.4f} (ID 材料上 ECE = {min_ece_id:.4f})")
 
     # 同时学习温度参数 T（用于校准 ltc_std 的绝对值）
@@ -414,8 +414,10 @@ def run_physics_guided_uq(
     # 但如果温度缩放后 ECE 比原始差（优化器到达搜索上限），则跳过温度缩放
     T_pg, ece_pg_id = compute_temperature_numerical(id_mean, id_uq_pg_raw, id_true, n_bins=10)
     if ece_pg_id > ece_pg_raw_id:
-        print(f"  [警告] 温度缩放使 ECE 变差 ({ece_pg_raw_id:.4f} → {ece_pg_id:.4f})，"
-              f"T_pg={T_pg:.2f} 达到搜索上限，跳过温度缩放 (T_pg=1.0)")
+        print(
+            f"  [警告] 温度缩放使 ECE 变差 ({ece_pg_raw_id:.4f} → {ece_pg_id:.4f})，"
+            f"T_pg={T_pg:.2f} 达到搜索上限，跳过温度缩放 (T_pg=1.0)"
+        )
         T_pg = 1.0
         ece_pg_id = ece_pg_raw_id
     print(f"  物理引导 UQ + 温度缩放 T_pg = {T_pg:.4f} (ID ECE = {ece_pg_id:.4f})")
@@ -423,7 +425,7 @@ def run_physics_guided_uq(
     print(f"\n  最终参数: λ = {lam:.4f}, T_pg = {T_pg:.4f}")
     print(f"  公式: uq_final = {T_pg:.4f} × sqrt(ltc_std² + {lam:.4f}² × residual²)")
 
-    # === 5. 计算阶段 1 和阶段 2 的全局指标 ===
+    # 5. 计算阶段 1 和阶段 2 的全局指标
     print("\n[5/7] 计算阶段 1 (纯 MC Dropout) 和阶段 2 (物理引导 UQ) 的对比指标...")
 
     all_mean = np.concatenate([results_by_material[m]["mean_pred"] for m in results_by_material])
@@ -452,11 +454,7 @@ def run_physics_guided_uq(
     corr_s2 = compute_uq_error_correlation(all_mean, std_stage2, all_true)
 
     std_by_mat_s2 = {
-        m: compute_physics_guided_uq(
-            results_by_material[m]["ltc_std"],
-            results_by_material[m]["residual"],
-            lam
-        ) * T_pg
+        m: compute_physics_guided_uq(results_by_material[m]["ltc_std"], results_by_material[m]["residual"], lam) * T_pg
         for m in results_by_material
     }
     ood_s2 = compute_ood_detection_auc(std_by_mat_s2, id_mats, ood_mats)
@@ -464,45 +462,50 @@ def run_physics_guided_uq(
     # 打印对比
     print(f"\n  {'指标':<25} {'阶段1(MC Dropout)':>18} {'阶段2(物理引导)':>18} {'变化':>12}")
     print("  " + "-" * 75)
-    print(f"  {'ECE':<25} {ece_s1['ece']:>18.4f} {ece_s2['ece']:>18.4f} "
-          f"{(ece_s2['ece']-ece_s1['ece']):>+12.4f}")
-    print(f"  {'MCE':<25} {ece_s1['mce']:>18.4f} {ece_s2['mce']:>18.4f} "
-          f"{(ece_s2['mce']-ece_s1['mce']):>+12.4f}")
+    print(f"  {'ECE':<25} {ece_s1['ece']:>18.4f} {ece_s2['ece']:>18.4f} {(ece_s2['ece'] - ece_s1['ece']):>+12.4f}")
+    print(f"  {'MCE':<25} {ece_s1['mce']:>18.4f} {ece_s2['mce']:>18.4f} {(ece_s2['mce'] - ece_s1['mce']):>+12.4f}")
     for level in [80, 90, 95, 99]:
         b = coverage_s1[f"coverage_{level}"]
         a = coverage_s2[f"coverage_{level}"]
-        print(f"  {'Coverage ' + str(level) + '%':<25} {b:>18.4f} {a:>18.4f} {(a-b):>+12.4f}")
-    print(f"  {'Spearman 相关':<25} {corr_s1['spearman_corr']:>18.4f} "
-          f"{corr_s2['spearman_corr']:>18.4f} "
-          f"{(corr_s2['spearman_corr']-corr_s1['spearman_corr']):>+12.4f}")
-    print(f"  {'Pearson 相关':<25} {corr_s1['pearson_corr']:>18.4f} "
-          f"{corr_s2['pearson_corr']:>18.4f} "
-          f"{(corr_s2['pearson_corr']-corr_s1['pearson_corr']):>+12.4f}")
-    print(f"  {'OOD AUC':<25} {ood_s1['auc_roc']:>18.4f} "
-          f"{ood_s2['auc_roc']:>18.4f} "
-          f"{(ood_s2['auc_roc']-ood_s1['auc_roc']):>+12.4f}")
-    print(f"  {'分离比 (OOD/ID std)':<25} {ood_s1['separation_ratio']:>18.4f} "
-          f"{ood_s2['separation_ratio']:>18.4f} "
-          f"{(ood_s2['separation_ratio']-ood_s1['separation_ratio']):>+12.4f}")
+        print(f"  {'Coverage ' + str(level) + '%':<25} {b:>18.4f} {a:>18.4f} {(a - b):>+12.4f}")
+    print(
+        f"  {'Spearman 相关':<25} {corr_s1['spearman_corr']:>18.4f} "
+        f"{corr_s2['spearman_corr']:>18.4f} "
+        f"{(corr_s2['spearman_corr'] - corr_s1['spearman_corr']):>+12.4f}"
+    )
+    print(
+        f"  {'Pearson 相关':<25} {corr_s1['pearson_corr']:>18.4f} "
+        f"{corr_s2['pearson_corr']:>18.4f} "
+        f"{(corr_s2['pearson_corr'] - corr_s1['pearson_corr']):>+12.4f}"
+    )
+    print(
+        f"  {'OOD AUC':<25} {ood_s1['auc_roc']:>18.4f} "
+        f"{ood_s2['auc_roc']:>18.4f} "
+        f"{(ood_s2['auc_roc'] - ood_s1['auc_roc']):>+12.4f}"
+    )
+    print(
+        f"  {'分离比 (OOD/ID std)':<25} {ood_s1['separation_ratio']:>18.4f} "
+        f"{ood_s2['separation_ratio']:>18.4f} "
+        f"{(ood_s2['separation_ratio'] - ood_s1['separation_ratio']):>+12.4f}"
+    )
 
-    # === 6. 各材料详细对比 ===
+    # 6. 各材料详细对比
     print("\n[6/7] 各材料详细对比...")
-    print(f"\n  {'材料':<12} {'MAE':>8} {'残差均值':>10} "
-          f"{'std_s1':>10} {'std_s2':>10} {'变化':>10}")
+    print(f"\n  {'材料':<12} {'MAE':>8} {'残差均值':>10} {'std_s1':>10} {'std_s2':>10} {'变化':>10}")
     print("  " + "-" * 65)
     for mat in results_by_material:
         r = results_by_material[mat]
         m = r["metrics"]
         s1 = float(np.mean(std_by_mat_s1[mat]))
         s2 = float(np.mean(std_by_mat_s2[mat]))
-        print(f"  {mat:<12} {m['mae']:>8.4f} {m['residual_mean']:>10.4f} "
-              f"{s1:>10.4f} {s2:>10.4f} {(s2-s1):>+10.4f}")
+        print(f"  {mat:<12} {m['mae']:>8.4f} {m['residual_mean']:>10.4f} {s1:>10.4f} {s2:>10.4f} {(s2 - s1):>+10.4f}")
 
-    # === 7. 可视化 ===
+    # 7. 可视化
     print("\n[7/7] 生成可视化图表...")
 
     # 校准曲线对比
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -519,10 +522,22 @@ def run_physics_guided_uq(
 
     fig, ax = plt.subplots(figsize=(8, 7))
     ax.plot([0, 1], [0, 1], "k--", label="Perfect calibration", linewidth=1.5)
-    ax.plot(confidence_levels, actuals_s1, "r-o", markersize=5,
-            label=f"Stage 1: MC Dropout (ECE={ece_s1['ece']:.4f})", alpha=0.8)
-    ax.plot(confidence_levels, actuals_s2, "g-s", markersize=5,
-            label=f"Stage 2: Physics-guided (ECE={ece_s2['ece']:.4f})", alpha=0.8)
+    ax.plot(
+        confidence_levels,
+        actuals_s1,
+        "r-o",
+        markersize=5,
+        label=f"Stage 1: MC Dropout (ECE={ece_s1['ece']:.4f})",
+        alpha=0.8,
+    )
+    ax.plot(
+        confidence_levels,
+        actuals_s2,
+        "g-s",
+        markersize=5,
+        label=f"Stage 2: Physics-guided (ECE={ece_s2['ece']:.4f})",
+        alpha=0.8,
+    )
     ax.set_xlabel("Nominal confidence level", fontsize=12)
     ax.set_ylabel("Actual coverage", fontsize=12)
     ax.set_title("Calibration: Stage 1 vs Stage 2", fontsize=13)
@@ -537,19 +552,16 @@ def run_physics_guided_uq(
 
     # UQ-Error 散点对比
     errors = np.abs(all_mean - all_true).flatten()
-    plot_uq_comparison(std_stage1, std_stage2, errors,
-                       figures_dir / "stage_comparison_uq_error.png", lam)
+    plot_uq_comparison(std_stage1, std_stage2, errors, figures_dir / "stage_comparison_uq_error.png", lam)
 
     # 物理残差分布
     residual_by_mat = {m: results_by_material[m]["residual"] for m in results_by_material}
-    plot_residual_distribution(residual_by_mat, id_mats, ood_mats,
-                               figures_dir / "physics_residual_distribution.png")
+    plot_residual_distribution(residual_by_mat, id_mats, ood_mats, figures_dir / "physics_residual_distribution.png")
 
     # 阶段 2 的 OOD 检测箱线图
-    plot_ood_detection(std_by_mat_s2, id_mats, ood_mats,
-                       figures_dir / "ood_detection_stage2.png")
+    plot_ood_detection(std_by_mat_s2, id_mats, ood_mats, figures_dir / "ood_detection_stage2.png")
 
-    # === 汇总结果 ===
+    # 汇总结果
     full_result = {
         "experiment": "Physics-guided UQ (Stage 2)",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -605,7 +617,7 @@ def run_physics_guided_uq(
     _generate_report(full_result, report_path)
     print(f"[已保存] {report_path}")
 
-    # === 成功判据检查 ===
+    # 成功判据检查
     print("\n" + "=" * 70)
     print("阶段 2 成功判据检查")
     print("=" * 70)
@@ -657,8 +669,8 @@ def _generate_report(full_result: Dict, report_path: Path) -> None:
         "### 2.1 校准误差",
         "| 指标 | 阶段1 (MC Dropout) | 阶段2 (物理引导) | 变化 |",
         "|------|-------------------|------------------|------|",
-        f"| ECE | {s1['ece']['ece']:.4f} | {s2['ece']['ece']:.4f} | {s2['ece']['ece']-s1['ece']['ece']:+.4f} |",
-        f"| MCE | {s1['ece']['mce']:.4f} | {s2['ece']['mce']:.4f} | {s2['ece']['mce']-s1['ece']['mce']:+.4f} |",
+        f"| ECE | {s1['ece']['ece']:.4f} | {s2['ece']['ece']:.4f} | {s2['ece']['ece'] - s1['ece']['ece']:+.4f} |",
+        f"| MCE | {s1['ece']['mce']:.4f} | {s2['ece']['mce']:.4f} | {s2['ece']['mce'] - s1['ece']['mce']:+.4f} |",
         "\n### 2.2 置信区间覆盖率",
         "| 名义水平 | 阶段1 | 阶段2 | 变化 |",
         "|---------|-------|-------|------|",
@@ -667,34 +679,36 @@ def _generate_report(full_result: Dict, report_path: Path) -> None:
     for level in [80, 90, 95, 99]:
         b = s1["coverage"][f"coverage_{level}"]
         a = s2["coverage"][f"coverage_{level}"]
-        lines.append(f"| {level}% | {b:.4f} | {a:.4f} | {a-b:+.4f} |")
+        lines.append(f"| {level}% | {b:.4f} | {a:.4f} | {a - b:+.4f} |")
 
-    lines.extend([
-        "\n### 2.3 不确定性-误差相关性",
-        "| 指标 | 阶段1 | 阶段2 | 变化 |",
-        "|------|-------|-------|------|",
-        f"| Spearman 相关 | {s1['uq_error_correlation']['spearman_corr']:.4f} | "
-        f"{s2['uq_error_correlation']['spearman_corr']:.4f} | "
-        f"{s2['uq_error_correlation']['spearman_corr']-s1['uq_error_correlation']['spearman_corr']:+.4f} |",
-        f"| Pearson 相关 | {s1['uq_error_correlation']['pearson_corr']:.4f} | "
-        f"{s2['uq_error_correlation']['pearson_corr']:.4f} | "
-        f"{s2['uq_error_correlation']['pearson_corr']-s1['uq_error_correlation']['pearson_corr']:+.4f} |",
-        f"| UQ-Error 比值 | {s1['uq_error_correlation']['uq_error_ratio']:.4f} | "
-        f"{s2['uq_error_correlation']['uq_error_ratio']:.4f} | "
-        f"{s2['uq_error_correlation']['uq_error_ratio']-s1['uq_error_correlation']['uq_error_ratio']:+.4f} |",
-        "\n### 2.4 OOD 检测能力",
-        "| 指标 | 阶段1 | 阶段2 | 变化 |",
-        "|------|-------|-------|------|",
-        f"| ROC AUC | {s1['ood_detection']['auc_roc']:.4f} | "
-        f"{s2['ood_detection']['auc_roc']:.4f} | "
-        f"{s2['ood_detection']['auc_roc']-s1['ood_detection']['auc_roc']:+.4f} |",
-        f"| 分离比 (OOD/ID) | {s1['ood_detection']['separation_ratio']:.4f} | "
-        f"{s2['ood_detection']['separation_ratio']:.4f} | "
-        f"{s2['ood_detection']['separation_ratio']-s1['ood_detection']['separation_ratio']:+.4f} |",
-        "\n## 3. 各材料详细指标\n",
-        "| 材料 | 硬度(HB) | MAE | 残差均值 | std_s1 | std_s2 | 变化 |",
-        "|------|---------|-----|---------|--------|--------|------|",
-    ])
+    lines.extend(
+        [
+            "\n### 2.3 不确定性-误差相关性",
+            "| 指标 | 阶段1 | 阶段2 | 变化 |",
+            "|------|-------|-------|------|",
+            f"| Spearman 相关 | {s1['uq_error_correlation']['spearman_corr']:.4f} | "
+            f"{s2['uq_error_correlation']['spearman_corr']:.4f} | "
+            f"{s2['uq_error_correlation']['spearman_corr'] - s1['uq_error_correlation']['spearman_corr']:+.4f} |",
+            f"| Pearson 相关 | {s1['uq_error_correlation']['pearson_corr']:.4f} | "
+            f"{s2['uq_error_correlation']['pearson_corr']:.4f} | "
+            f"{s2['uq_error_correlation']['pearson_corr'] - s1['uq_error_correlation']['pearson_corr']:+.4f} |",
+            f"| UQ-Error 比值 | {s1['uq_error_correlation']['uq_error_ratio']:.4f} | "
+            f"{s2['uq_error_correlation']['uq_error_ratio']:.4f} | "
+            f"{s2['uq_error_correlation']['uq_error_ratio'] - s1['uq_error_correlation']['uq_error_ratio']:+.4f} |",
+            "\n### 2.4 OOD 检测能力",
+            "| 指标 | 阶段1 | 阶段2 | 变化 |",
+            "|------|-------|-------|------|",
+            f"| ROC AUC | {s1['ood_detection']['auc_roc']:.4f} | "
+            f"{s2['ood_detection']['auc_roc']:.4f} | "
+            f"{s2['ood_detection']['auc_roc'] - s1['ood_detection']['auc_roc']:+.4f} |",
+            f"| 分离比 (OOD/ID) | {s1['ood_detection']['separation_ratio']:.4f} | "
+            f"{s2['ood_detection']['separation_ratio']:.4f} | "
+            f"{s2['ood_detection']['separation_ratio'] - s1['ood_detection']['separation_ratio']:+.4f} |",
+            "\n## 3. 各材料详细指标\n",
+            "| 材料 | 硬度(HB) | MAE | 残差均值 | std_s1 | std_s2 | 变化 |",
+            "|------|---------|-----|---------|--------|--------|------|",
+        ]
+    )
 
     for mat, data in full_result["materials_summary"].items():
         m = data["metrics"]
@@ -702,17 +716,19 @@ def _generate_report(full_result: Dict, report_path: Path) -> None:
         s2_val = data["std_mean_s2"]
         lines.append(
             f"| {mat} | {data['hardness']:.0f} | {m['mae']:.4f} | "
-            f"{m['residual_mean']:.4f} | {s1_val:.4f} | {s2_val:.4f} | {s2_val-s1_val:+.4f} |"
+            f"{m['residual_mean']:.4f} | {s1_val:.4f} | {s2_val:.4f} | {s2_val - s1_val:+.4f} |"
         )
 
-    lines.extend([
-        "\n## 4. 可视化图表\n",
-        "- 阶段对比校准曲线: `figures/stage_comparison_calibration.png`",
-        "- 阶段对比 UQ-Error 散点: `figures/stage_comparison_uq_error.png`",
-        "- 物理残差分布: `figures/physics_residual_distribution.png`",
-        "- 阶段2 OOD 检测箱线图: `figures/ood_detection_stage2.png`",
-        "\n## 5. 结论\n",
-    ])
+    lines.extend(
+        [
+            "\n## 4. 可视化图表\n",
+            "- 阶段对比校准曲线: `figures/stage_comparison_calibration.png`",
+            "- 阶段对比 UQ-Error 散点: `figures/stage_comparison_uq_error.png`",
+            "- 物理残差分布: `figures/physics_residual_distribution.png`",
+            "- 阶段2 OOD 检测箱线图: `figures/ood_detection_stage2.png`",
+            "\n## 5. 结论\n",
+        ]
+    )
 
     # 自动结论
     if s2["ece"]["ece"] < s1["ece"]["ece"]:
@@ -721,41 +737,51 @@ def _generate_report(full_result: Dict, report_path: Path) -> None:
         lines.append(f"- ✗ 物理引导 UQ 未改善校准 (ECE: {s1['ece']['ece']:.4f} → {s2['ece']['ece']:.4f})")
 
     if s2["uq_error_correlation"]["spearman_corr"] > s1["uq_error_correlation"]["spearman_corr"]:
-        lines.append(f"- ✓ Spearman 相关性改善 ({s1['uq_error_correlation']['spearman_corr']:.4f} → "
-                     f"{s2['uq_error_correlation']['spearman_corr']:.4f})")
+        lines.append(
+            f"- ✓ Spearman 相关性改善 ({s1['uq_error_correlation']['spearman_corr']:.4f} → "
+            f"{s2['uq_error_correlation']['spearman_corr']:.4f})"
+        )
     else:
-        lines.append(f"- ✗ Spearman 相关性未改善 ({s1['uq_error_correlation']['spearman_corr']:.4f} → "
-                     f"{s2['uq_error_correlation']['spearman_corr']:.4f})")
+        lines.append(
+            f"- ✗ Spearman 相关性未改善 ({s1['uq_error_correlation']['spearman_corr']:.4f} → "
+            f"{s2['uq_error_correlation']['spearman_corr']:.4f})"
+        )
 
     if s2["ood_detection"]["auc_roc"] >= s1["ood_detection"]["auc_roc"]:
-        lines.append(f"- ✓ OOD 检测能力保持/提升 (AUC: {s1['ood_detection']['auc_roc']:.4f} → "
-                     f"{s2['ood_detection']['auc_roc']:.4f})")
+        lines.append(
+            f"- ✓ OOD 检测能力保持/提升 (AUC: {s1['ood_detection']['auc_roc']:.4f} → "
+            f"{s2['ood_detection']['auc_roc']:.4f})"
+        )
     else:
-        lines.append(f"- ✗ OOD 检测能力下降 (AUC: {s1['ood_detection']['auc_roc']:.4f} → "
-                     f"{s2['ood_detection']['auc_roc']:.4f})")
+        lines.append(
+            f"- ✗ OOD 检测能力下降 (AUC: {s1['ood_detection']['auc_roc']:.4f} → {s2['ood_detection']['auc_roc']:.4f})"
+        )
 
-    lines.append(f"\n**物理意义**: 混合系数 λ = {p['lambda']:.4f} 平衡了 MC Dropout 不确定性 "
-                 f"与物理残差的贡献。")
-    lines.append(f"**核心创新**: 物理残差 |ltc_pred - physics_pred| 提供了独立于 Dropout 的 "
-                 f"不确定性信号，当 LTC 分支偏离物理规律时自动增大不确定性。")
+    lines.append(f"\n**物理意义**: 混合系数 λ = {p['lambda']:.4f} 平衡了 MC Dropout 不确定性 与物理残差的贡献。")
+    lines.append(
+        f"**核心创新**: 物理残差 |ltc_pred - physics_pred| 提供了独立于 Dropout 的 "
+        f"不确定性信号，当 LTC 分支偏离物理规律时自动增大不确定性。"
+    )
 
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 
-# =============================================================================
 # 入口
-# =============================================================================
+
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="物理引导 UQ 实验（阶段 2）")
     parser.add_argument(
-        "--weights", type=str,
+        "--weights",
+        type=str,
         default=str(Path(__file__).parent / "results" / "full_weights.pt"),
     )
     parser.add_argument(
-        "--output_dir", type=str,
+        "--output_dir",
+        type=str,
         default=str(Path(__file__).parent / "results"),
     )
     parser.add_argument("--n_samples", type=int, default=100)

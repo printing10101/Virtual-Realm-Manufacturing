@@ -35,18 +35,18 @@ class TlustyAnalyticalModel:
     Tlusty 解析模型
     用于生成合成数据和提供物理先验
     """
-    
+
     def __init__(
         self,
         stiffness: float = 1e6,  # N/m
         modal_mass: float = 100.0,  # kg
         damping_ratio: float = 0.05,
         cutting_force_coeff: float = 2000.0,  # N/mm²
-        num_teeth: int = 4
+        num_teeth: int = 4,
     ):
         """
         初始化Tlusty模型
-        
+
         Args:
             stiffness: 机床刚度 (N/m)
             modal_mass: 模态质量 (kg)
@@ -59,27 +59,27 @@ class TlustyAnalyticalModel:
         self.damping_ratio = damping_ratio
         self.cutting_force_coeff = cutting_force_coeff
         self.num_teeth = num_teeth
-        
+
         # 计算阻尼系数
         self.damping = 2 * damping_ratio * np.sqrt(stiffness * modal_mass)
-    
+
     def frequency_response(self, omega: np.ndarray) -> np.ndarray:
         """
         计算频率响应函数 G(jω)
-        
+
         Args:
             omega: 角频率数组 (rad/s)
-        
+
         Returns:
             G(jω) 复数数组
         """
         k = self.stiffness
         m = self.modal_mass
         c = self.damping
-        
+
         G = 1 / (k - m * omega**2 + 1j * c * omega)
         return G
-    
+
     def compute_limiting_depth(
         self,
         spindle_speed: np.ndarray,
@@ -151,19 +151,19 @@ class TlustyAnalyticalModel:
             radial_depth = np.atleast_1d(np.asarray(radial_depth, dtype=float))
 
         # 多物理参数耦合（向量化计算）
-        # 1. 硬度 H → Ks（更硬材料切削力系数更大）
+        # 1. 硬度 H Ks（更硬材料切削力系数更大）
         Ks_eff = Ks_base * (hardness / 200.0) ** 0.8
-        # 2. 齿数 z → 有效切削力（更多齿单转切削力更大）
+        # 2. 齿数 z 有效切削力（更多齿单转切削力更大）
         Ks_eff = Ks_eff * (num_teeth / 4.0)
-        # 3. 进给 f → 切屑变薄非线性效应（系数 0.15 体现高进给时切屑变薄显著）
+        # 3. 进给 f 切屑变薄非线性效应（系数 0.15 体现高进给时切屑变薄显著）
         Ks_eff = Ks_eff * (1.0 + 0.15 * (feed_rate - 0.25) / 0.25)
-        # 4. 刀具直径 D → 刚度与模态质量（悬臂梁 k∝D²·I，简化为 D²）
+        # 4. 刀具直径 D 刚度与模态质量（悬臂梁 k∝D²·I，简化为 D²）
         D_ratio = (tool_diameter / 10.0) ** 2
         k_eff = k_base * D_ratio
         m_eff = m_base * D_ratio
         # 阻尼系数 c = 2·ζ·sqrt(k·m)，ζ 不变时 c ∝ D²
         c_eff = c_base * D_ratio
-        # 5. 径向切宽 ae → 方向因子 μ（更大径向接合 → 更大方向因子）
+        # 5. 径向切宽 ae 方向因子 μ（更大径向接合 更大方向因子）
         mu_dir = 0.5 * (1.0 + radial_depth / 8.0)
 
         a_lim = np.empty(N)
@@ -185,9 +185,9 @@ class TlustyAnalyticalModel:
                 f_c = j * n_rpm / 60.0
                 omega_c = 2 * np.pi * f_c
                 # 复频率响应 G(jω) = 1/(k - mω² + jcω) 的实部
-                denom_real = k_i - m_i * omega_c ** 2
+                denom_real = k_i - m_i * omega_c**2
                 denom_imag = c_i * omega_c
-                real_G = denom_real / (denom_real ** 2 + denom_imag ** 2)
+                real_G = denom_real / (denom_real**2 + denom_imag**2)
 
                 if abs(real_G) < 1e-12:
                     continue
@@ -204,25 +204,21 @@ class TlustyAnalyticalModel:
             if best_a is None:
                 best_a = 20.0
 
-            # m → mm
+            # m mm
             a_lim[idx] = best_a * 1000.0
 
         # 合理范围限制（0.1 mm - 20 mm，保留叶瓣波动）
         a_lim = np.clip(a_lim, 0.1, 20.0)
         return a_lim
-    
-    def compute_stability(
-        self,
-        spindle_speed: np.ndarray,
-        axial_depth: np.ndarray
-    ) -> np.ndarray:
+
+    def compute_stability(self, spindle_speed: np.ndarray, axial_depth: np.ndarray) -> np.ndarray:
         """
         计算稳定性标签
-        
+
         Args:
             spindle_speed: 主轴转速 (rpm)
             axial_depth: 轴向切深 (mm)
-        
+
         Returns:
             稳定性标签 (0=稳定, 1=不稳定)
         """
@@ -260,15 +256,17 @@ def build_physics_features_7d(
     Returns:
         形状 [N, 7] 的 float32 特征矩阵
     """
-    features = np.column_stack([
-        spindle_speed / 10000.0,   # n
-        feed_rate / 0.5,           # f
-        axial_depth / 10.0,        # ap
-        radial_depth / 8.0,        # ae
-        hardness / 200.0,          # H
-        tool_diameter / 20.0,      # D
-        num_teeth.astype(float) / 6.0,  # z
-    ])
+    features = np.column_stack(
+        [
+            spindle_speed / 10000.0,  # n
+            feed_rate / 0.5,  # f
+            axial_depth / 10.0,  # ap
+            radial_depth / 8.0,  # ae
+            hardness / 200.0,  # H
+            tool_diameter / 20.0,  # D
+            num_teeth.astype(float) / 6.0,  # z
+        ]
+    )
     return features.astype(np.float32)
 
 
@@ -277,24 +275,24 @@ class SyntheticChatterDataset(Dataset):
     合成颤振数据集
     使用Tlusty解析公式生成训练数据
     """
-    
+
     def __init__(
         self,
         num_samples: int = 10000,
         spindle_speed_range: Tuple[float, float] = (1000, 10000),
         axial_depth_range: Tuple[float, float] = (0.1, 10.0),
-        feed_rate_range: Tuple[float, float] = (0.05, 0.5),       # 进给 f (mm/tooth)
-        radial_depth_range: Tuple[float, float] = (0.5, 8.0),      # 径向切宽 ae (mm)
-        material_hardness: float = 95.0,                           # 材料硬度 H (HB)，单值模式
-        tool_diameter: float = 10.0,                               # 刀具直径 D (mm)，单值模式
-        num_teeth: int = 4,                                        # 刀具齿数 z，单值模式
-        hardness_range: Optional[Tuple[float, float]] = (80.0, 200.0),   # 多材料场景宽范围
-        tool_diameter_range: Optional[Tuple[float, float]] = (6.0, 16.0), # 多刀具场景宽范围
-        num_teeth_range: Optional[Tuple[int, int]] = (2, 6),             # 多齿数场景宽范围
+        feed_rate_range: Tuple[float, float] = (0.05, 0.5),  # 进给 f (mm/tooth)
+        radial_depth_range: Tuple[float, float] = (0.5, 8.0),  # 径向切宽 ae (mm)
+        material_hardness: float = 95.0,  # 材料硬度 H (HB)，单值模式
+        tool_diameter: float = 10.0,  # 刀具直径 D (mm)，单值模式
+        num_teeth: int = 4,  # 刀具齿数 z，单值模式
+        hardness_range: Optional[Tuple[float, float]] = (80.0, 200.0),  # 多材料场景宽范围
+        tool_diameter_range: Optional[Tuple[float, float]] = (6.0, 16.0),  # 多刀具场景宽范围
+        num_teeth_range: Optional[Tuple[int, int]] = (2, 6),  # 多齿数场景宽范围
         machine_id: str = "vmc_850",
         tool_id: str = "endmill_d10",
         noise_level: float = 0.02,
-        seed: int = 42
+        seed: int = 42,
     ):
         """
         初始化合成数据集
@@ -336,39 +334,21 @@ class SyntheticChatterDataset(Dataset):
 
         # 生成数据
         self.data = self._generate_data()
-    
+
     def _generate_data(self) -> Dict[str, np.ndarray]:
         """生成合成数据（7 维物理参数特征，多物理参数耦合）"""
         # 随机采样加工参数
-        spindle_speed = np.random.uniform(
-            self.spindle_speed_range[0],
-            self.spindle_speed_range[1],
-            self.num_samples
-        )
+        spindle_speed = np.random.uniform(self.spindle_speed_range[0], self.spindle_speed_range[1], self.num_samples)
 
-        axial_depth = np.random.uniform(
-            self.axial_depth_range[0],
-            self.axial_depth_range[1],
-            self.num_samples
-        )
+        axial_depth = np.random.uniform(self.axial_depth_range[0], self.axial_depth_range[1], self.num_samples)
 
         # 多维物理参数（论文第3节声明的 7 维输入特征）
-        feed_rate = np.random.uniform(
-            self.feed_rate_range[0],
-            self.feed_rate_range[1],
-            self.num_samples
-        )
-        radial_depth = np.random.uniform(
-            self.radial_depth_range[0],
-            self.radial_depth_range[1],
-            self.num_samples
-        )
+        feed_rate = np.random.uniform(self.feed_rate_range[0], self.feed_rate_range[1], self.num_samples)
+        radial_depth = np.random.uniform(self.radial_depth_range[0], self.radial_depth_range[1], self.num_samples)
 
         # 材料硬度：宽范围采样（多材料场景）或单值+噪声（同材料场景）
         if self.hardness_range is not None:
-            hardness = np.random.uniform(
-                self.hardness_range[0], self.hardness_range[1], self.num_samples
-            )
+            hardness = np.random.uniform(self.hardness_range[0], self.hardness_range[1], self.num_samples)
         else:
             hardness = self.material_hardness + np.random.randn(self.num_samples) * 2.0
 
@@ -388,7 +368,7 @@ class SyntheticChatterDataset(Dataset):
         else:
             num_teeth_arr = np.full(self.num_samples, float(self.num_teeth))
 
-        # 使用Tlusty模型计算（多物理参数耦合：H→Ks, D→k/m, z→Ks_eff, ae→μ, f→chip thinning）
+        # 使用Tlusty模型计算（多物理参数耦合：HKs, Dk/m, zKs_eff, aeμ, fchip thinning）
         tlusty_model = TlustyAnalyticalModel()
 
         # 计算极限切深（传入所有物理参数，使 7 维特征均有物理意义）
@@ -410,7 +390,7 @@ class SyntheticChatterDataset(Dataset):
 
         # 构造 7 维输入特征（归一化至合理范围）
         # 特征顺序: [主轴转速 n, 进给 f, 轴向切深 ap, 径向切宽 ae,
-        #            材料硬度 H, 刀具直径 D, 刀具齿数 z]
+        # 材料硬度 H, 刀具直径 D, 刀具齿数 z]
         features = build_physics_features_7d(
             spindle_speed=spindle_speed,
             feed_rate=feed_rate,
@@ -422,32 +402,32 @@ class SyntheticChatterDataset(Dataset):
         )
 
         return {
-            'features': features.astype(np.float32),
-            'spindle_speed': spindle_speed.astype(np.float32),
-            'axial_depth': axial_depth.astype(np.float32),
-            'feed_rate': feed_rate.astype(np.float32),
-            'radial_depth': radial_depth.astype(np.float32),
-            'a_lim': a_lim_noisy.astype(np.float32),
-            'stability': stability.astype(np.int64),
-            'a_lim_clean': a_lim.astype(np.float32)
+            "features": features.astype(np.float32),
+            "spindle_speed": spindle_speed.astype(np.float32),
+            "axial_depth": axial_depth.astype(np.float32),
+            "feed_rate": feed_rate.astype(np.float32),
+            "radial_depth": radial_depth.astype(np.float32),
+            "a_lim": a_lim_noisy.astype(np.float32),
+            "stability": stability.astype(np.int64),
+            "a_lim_clean": a_lim.astype(np.float32),
         }
-    
+
     def __len__(self) -> int:
         return self.num_samples
-    
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         获取样本
-        
+
         Returns:
             features: 输入特征
             a_lim: 极限切深标签
             a_lim_physics: 物理模型预测（无噪声）
         """
-        features = torch.from_numpy(self.data['features'][idx])
-        a_lim = torch.from_numpy(np.array([self.data['a_lim'][idx]]))
-        a_lim_physics = torch.from_numpy(np.array([self.data['a_lim_clean'][idx]]))
-        
+        features = torch.from_numpy(self.data["features"][idx])
+        a_lim = torch.from_numpy(np.array([self.data["a_lim"][idx]]))
+        a_lim_physics = torch.from_numpy(np.array([self.data["a_lim_clean"][idx]]))
+
         return features, a_lim, a_lim_physics
 
 
@@ -490,8 +470,12 @@ class PHM2010Dataset(Dataset):
 
     # PHM2010 真实信号的 7 个通道
     _SIGNAL_COLUMNS = [
-        "force_x", "force_y", "force_z",
-        "vibration_x", "vibration_y", "vibration_z",
+        "force_x",
+        "force_y",
+        "force_z",
+        "vibration_x",
+        "vibration_y",
+        "vibration_z",
         "acoustic_emission_rms",
     ]
 
@@ -541,9 +525,7 @@ class PHM2010Dataset(Dataset):
                 PHM2010_SIGNAL_COLUMNS,
             )
         except ImportError as e:
-            logger.warning(
-                "无法导入 UniwearDataLoader，PHM2010Dataset 回退到合成数据: %s", e
-            )
+            logger.warning("无法导入 UniwearDataLoader，PHM2010Dataset 回退到合成数据: %s", e)
             return self._fallback_synthetic()
 
         # 解析数据目录（默认使用项目内 python/data/uniwear/）
@@ -554,9 +536,7 @@ class PHM2010Dataset(Dataset):
             loader = UniwearDataLoader(data_dir=data_dir)
             df = loader.load_dataset(UniwearDataset.PHM2010, use_cache=False)
         except (FileNotFoundError, OSError, ValueError) as e:
-            logger.warning(
-                "加载真实 PHM2010 数据失败，回退到合成数据: %s", e
-            )
+            logger.warning("加载真实 PHM2010 数据失败，回退到合成数据: %s", e)
             return self._fallback_synthetic()
 
         # 校验信号列是否存在
@@ -572,11 +552,7 @@ class PHM2010Dataset(Dataset):
         a_lim_clean_list: List[float] = []
         tool_wear_list: List[float] = []
 
-        experiment_tags = (
-            sorted(df["experiment_tag"].dropna().unique())
-            if "experiment_tag" in df.columns
-            else [None]
-        )
+        experiment_tags = sorted(df["experiment_tag"].dropna().unique()) if "experiment_tag" in df.columns else [None]
 
         for tag in experiment_tags:
             if tag is not None:
@@ -613,9 +589,7 @@ class PHM2010Dataset(Dataset):
                 tool_wear_list.append(tw)
 
         if not features_list:
-            logger.warning(
-                "PHM2010 真实数据未提取到任何窗口样本，回退到合成数据"
-            )
+            logger.warning("PHM2010 真实数据未提取到任何窗口样本，回退到合成数据")
             return self._fallback_synthetic()
 
         features_arr = np.array(features_list, dtype=np.float32)
@@ -625,18 +599,14 @@ class PHM2010Dataset(Dataset):
         # 限制样本数量
         if len(features_arr) > self.num_samples:
             rng = np.random.default_rng(42)
-            indices = rng.choice(
-                len(features_arr), size=self.num_samples, replace=False
-            )
+            indices = rng.choice(len(features_arr), size=self.num_samples, replace=False)
             features_arr = features_arr[indices]
             a_lim_clean_arr = a_lim_clean_arr[indices]
             tool_wear_arr = tool_wear_arr[indices]
 
         # 真实信号本身的统计波动即为"噪声"，不再添加合成高斯噪声
         # 但保留 noise_level 参数对 a_lim 的轻微扰动以维持接口兼容
-        a_lim_arr = a_lim_clean_arr * (
-            1.0 + np.random.randn(len(a_lim_clean_arr)) * self.noise_level * 0.1
-        )
+        a_lim_arr = a_lim_clean_arr * (1.0 + np.random.randn(len(a_lim_clean_arr)) * self.noise_level * 0.1)
         a_lim_arr = np.maximum(a_lim_arr, 0.01).astype(np.float32)
 
         # 稳定性标签：以 a_lim 中位数为阈值
@@ -673,40 +643,28 @@ class PHM2010Dataset(Dataset):
             # 合力 RMS
             force_cols = [c for c in ["force_x", "force_y", "force_z"] if c in window.columns]
             if force_cols:
-                force_mag = np.sqrt(
-                    sum(window[c].values ** 2 for c in force_cols)
-                )
-                force_rms = float(np.sqrt(np.mean(force_mag ** 2)))
+                force_mag = np.sqrt(sum(window[c].values ** 2 for c in force_cols))
+                force_rms = float(np.sqrt(np.mean(force_mag**2)))
                 force_std = float(np.std(force_mag))
             else:
                 return None
 
             # 合振动 RMS + 峭度
-            vib_cols = [
-                c for c in ["vibration_x", "vibration_y", "vibration_z"]
-                if c in window.columns
-            ]
+            vib_cols = [c for c in ["vibration_x", "vibration_y", "vibration_z"] if c in window.columns]
             if vib_cols:
-                vib_mag = np.sqrt(
-                    sum(window[c].values ** 2 for c in vib_cols)
-                )
-                vib_rms = float(np.sqrt(np.mean(vib_mag ** 2)))
+                vib_mag = np.sqrt(sum(window[c].values ** 2 for c in vib_cols))
+                vib_rms = float(np.sqrt(np.mean(vib_mag**2)))
                 vib_std = float(np.std(vib_mag))
                 # 振动峭度：表征冲击/颤振能量（峭度越高，冲击越强烈）
                 # 峭度 = E[(X-μ)^4] / σ^4，正常振动 ~3，颤振时显著增大
                 vib_mean = float(np.mean(vib_mag))
-                vib_kurt = float(
-                    np.mean((vib_mag - vib_mean) ** 4)
-                    / (np.var(vib_mag) + 1e-8) ** 2
-                )
+                vib_kurt = float(np.mean((vib_mag - vib_mean) ** 4) / (np.var(vib_mag) + 1e-8) ** 2)
             else:
                 return None
 
             # 声发射 RMS
             if "acoustic_emission_rms" in window.columns:
-                ae_rms = float(
-                    np.sqrt(np.mean(window["acoustic_emission_rms"].values ** 2))
-                )
+                ae_rms = float(np.sqrt(np.mean(window["acoustic_emission_rms"].values ** 2)))
             else:
                 ae_rms = 0.0
 
@@ -717,15 +675,18 @@ class PHM2010Dataset(Dataset):
                 tw = 0.0
 
             # 归一化（基于典型量级，保持与 predictor.py 归一化范围一致）
-            features = np.array([
-                force_rms / 10.0,        # 合力 RMS 归一化
-                vib_rms / 5.0,            # 合振动 RMS 归一化
-                ae_rms / 2.0,             # 声发射 RMS 归一化
-                force_std / 10.0,         # 合力标准差归一化
-                vib_std / 5.0,            # 合振动标准差归一化
-                min(tw / 200.0, 1.0),     # 刀具磨损归一化到 [0, 1]
-                min(vib_kurt / 20.0, 1.0),  # 振动峭度归一化（典型范围 3-15）
-            ], dtype=np.float32)
+            features = np.array(
+                [
+                    force_rms / 10.0,  # 合力 RMS 归一化
+                    vib_rms / 5.0,  # 合振动 RMS 归一化
+                    ae_rms / 2.0,  # 声发射 RMS 归一化
+                    force_std / 10.0,  # 合力标准差归一化
+                    vib_std / 5.0,  # 合振动标准差归一化
+                    min(tw / 200.0, 1.0),  # 刀具磨损归一化到 [0, 1]
+                    min(vib_kurt / 20.0, 1.0),  # 振动峭度归一化（典型范围 3-15）
+                ],
+                dtype=np.float32,
+            )
 
             # 处理可能的 NaN/Inf
             if not np.all(np.isfinite(features)):
@@ -744,10 +705,7 @@ class PHM2010Dataset(Dataset):
         数据文件时仍可实例化（用于 CI 测试等场景）。回退时会在日志中
         明确警告，避免在论文实验中误用合成数据。
         """
-        logger.warning(
-            "PHM2010Dataset 使用合成数据回退实现，"
-            "不可用于论文实验结果！请检查数据文件路径。"
-        )
+        logger.warning("PHM2010Dataset 使用合成数据回退实现，不可用于论文实验结果！请检查数据文件路径。")
         spindle_speed = np.random.uniform(3000, 9000, self.num_samples)
         axial_depth = np.random.uniform(0.5, 8.0, self.num_samples)
 
@@ -764,15 +722,17 @@ class PHM2010Dataset(Dataset):
         # 占位值用于回退场景，不可用于论文实验
         placeholder_zeros = np.zeros_like(spindle_speed)
         placeholder_kurtosis = np.full_like(spindle_speed, 3.0 / 20.0)  # 正态分布峭度=3
-        features = np.column_stack([
-            spindle_speed / 9000.0,
-            placeholder_zeros,             # 占位：vibration_rms
-            placeholder_zeros,             # 占位：ae_rms
-            placeholder_zeros,             # 占位：force_std
-            placeholder_zeros,             # 占位：vib_std
-            placeholder_zeros,             # 占位：tool_wear
-            placeholder_kurtosis,          # 占位：vibration_kurtosis（正态分布≈3）
-        ]).astype(np.float32)
+        features = np.column_stack(
+            [
+                spindle_speed / 9000.0,
+                placeholder_zeros,  # 占位：vibration_rms
+                placeholder_zeros,  # 占位：ae_rms
+                placeholder_zeros,  # 占位：force_std
+                placeholder_zeros,  # 占位：vib_std
+                placeholder_zeros,  # 占位：tool_wear
+                placeholder_kurtosis,  # 占位：vibration_kurtosis（正态分布≈3）
+            ]
+        ).astype(np.float32)
 
         stability = (axial_depth > a_lim).astype(np.int64)
 
@@ -807,21 +767,16 @@ class NUAADataset(Dataset):
         对应真实 NUAA 数据集实验结果**。如需使用真实 NUAA 数据，
         请参考 app/data/uniwear_loader.py 中的 UniwearDataLoader。
     """
-    
-    def __init__(
-        self,
-        num_samples: int = 1800,
-        noise_level: float = 0.04,
-        seed: int = 43
-    ):
+
+    def __init__(self, num_samples: int = 1800, noise_level: float = 0.04, seed: int = 43):
         super().__init__()
         self.num_samples = num_samples
         self.noise_level = noise_level
         self.dataset_name = "NUAA"
-        
+
         np.random.seed(seed)
         self.data = self._generate_data()
-    
+
     def _generate_data(self) -> Dict[str, np.ndarray]:
         """生成NUAA风格数据（7 维物理参数特征）"""
         spindle_speed = np.random.uniform(2500, 8500, self.num_samples)
@@ -833,11 +788,7 @@ class NUAADataset(Dataset):
         tool_diameter = np.full(self.num_samples, 12.0) + np.random.randn(self.num_samples) * 0.05
         num_teeth = np.full(self.num_samples, 4.0)
 
-        tlusty_model = TlustyAnalyticalModel(
-            stiffness=1.1e6,
-            modal_mass=110.0,
-            damping_ratio=0.055
-        )
+        tlusty_model = TlustyAnalyticalModel(stiffness=1.1e6, modal_mass=110.0, damping_ratio=0.055)
 
         # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
         a_lim_clean = tlusty_model.compute_limiting_depth(
@@ -864,22 +815,22 @@ class NUAADataset(Dataset):
         )
 
         return {
-            'features': features,
-            'spindle_speed': spindle_speed.astype(np.float32),
-            'axial_depth': axial_depth.astype(np.float32),
-            'a_lim': a_lim.astype(np.float32),
-            'stability': stability.astype(np.int64),
-            'a_lim_clean': a_lim_clean.astype(np.float32)
+            "features": features,
+            "spindle_speed": spindle_speed.astype(np.float32),
+            "axial_depth": axial_depth.astype(np.float32),
+            "a_lim": a_lim.astype(np.float32),
+            "stability": stability.astype(np.int64),
+            "a_lim_clean": a_lim_clean.astype(np.float32),
         }
-    
+
     def __len__(self) -> int:
         return self.num_samples
-    
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        features = torch.from_numpy(self.data['features'][idx])
-        a_lim = torch.from_numpy(np.array([self.data['a_lim'][idx]]))
-        a_lim_physics = torch.from_numpy(np.array([self.data['a_lim_clean'][idx]]))
-        
+        features = torch.from_numpy(self.data["features"][idx])
+        a_lim = torch.from_numpy(np.array([self.data["a_lim"][idx]]))
+        a_lim_physics = torch.from_numpy(np.array([self.data["a_lim_clean"][idx]]))
+
         return features, a_lim, a_lim_physics
 
 
@@ -892,21 +843,16 @@ class NISTDataset(Dataset):
         生成合成数据。仅用于对照实验和接口兼容，**不可在论文中声称
         对应真实 NIST 数据集实验结果**。
     """
-    
-    def __init__(
-        self,
-        num_samples: int = 1500,
-        noise_level: float = 0.06,
-        seed: int = 44
-    ):
+
+    def __init__(self, num_samples: int = 1500, noise_level: float = 0.06, seed: int = 44):
         super().__init__()
         self.num_samples = num_samples
         self.noise_level = noise_level
         self.dataset_name = "NIST"
-        
+
         np.random.seed(seed)
         self.data = self._generate_data()
-    
+
     def _generate_data(self) -> Dict[str, np.ndarray]:
         """生成NIST风格数据（7 维物理参数特征）"""
         spindle_speed = np.random.uniform(2000, 7000, self.num_samples)
@@ -918,11 +864,7 @@ class NISTDataset(Dataset):
         tool_diameter = np.full(self.num_samples, 10.0) + np.random.randn(self.num_samples) * 0.05
         num_teeth = np.full(self.num_samples, 4.0)
 
-        tlusty_model = TlustyAnalyticalModel(
-            stiffness=0.9e6,
-            modal_mass=95.0,
-            damping_ratio=0.048
-        )
+        tlusty_model = TlustyAnalyticalModel(stiffness=0.9e6, modal_mass=95.0, damping_ratio=0.048)
 
         # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
         a_lim_clean = tlusty_model.compute_limiting_depth(
@@ -949,22 +891,22 @@ class NISTDataset(Dataset):
         )
 
         return {
-            'features': features,
-            'spindle_speed': spindle_speed.astype(np.float32),
-            'axial_depth': axial_depth.astype(np.float32),
-            'a_lim': a_lim.astype(np.float32),
-            'stability': stability.astype(np.int64),
-            'a_lim_clean': a_lim_clean.astype(np.float32)
+            "features": features,
+            "spindle_speed": spindle_speed.astype(np.float32),
+            "axial_depth": axial_depth.astype(np.float32),
+            "a_lim": a_lim.astype(np.float32),
+            "stability": stability.astype(np.int64),
+            "a_lim_clean": a_lim_clean.astype(np.float32),
         }
-    
+
     def __len__(self) -> int:
         return self.num_samples
-    
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        features = torch.from_numpy(self.data['features'][idx])
-        a_lim = torch.from_numpy(np.array([self.data['a_lim'][idx]]))
-        a_lim_physics = torch.from_numpy(np.array([self.data['a_lim_clean'][idx]]))
-        
+        features = torch.from_numpy(self.data["features"][idx])
+        a_lim = torch.from_numpy(np.array([self.data["a_lim"][idx]]))
+        a_lim_physics = torch.from_numpy(np.array([self.data["a_lim_clean"][idx]]))
+
         return features, a_lim, a_lim_physics
 
 
@@ -977,21 +919,16 @@ class Benchmark1Dataset(Dataset):
         生成合成数据。仅用于对照实验和接口兼容，**不可在论文中声称
         对应真实 Benchmark-1 数据集实验结果**。
     """
-    
-    def __init__(
-        self,
-        num_samples: int = 2200,
-        noise_level: float = 0.045,
-        seed: int = 45
-    ):
+
+    def __init__(self, num_samples: int = 2200, noise_level: float = 0.045, seed: int = 45):
         super().__init__()
         self.num_samples = num_samples
         self.noise_level = noise_level
         self.dataset_name = "Benchmark-1"
-        
+
         np.random.seed(seed)
         self.data = self._generate_data()
-    
+
     def _generate_data(self) -> Dict[str, np.ndarray]:
         """生成Benchmark-1风格数据（7 维物理参数特征）"""
         spindle_speed = np.random.uniform(3500, 9500, self.num_samples)
@@ -1003,11 +940,7 @@ class Benchmark1Dataset(Dataset):
         tool_diameter = np.full(self.num_samples, 16.0) + np.random.randn(self.num_samples) * 0.08
         num_teeth = np.full(self.num_samples, 4.0)
 
-        tlusty_model = TlustyAnalyticalModel(
-            stiffness=1.15e6,
-            modal_mass=115.0,
-            damping_ratio=0.052
-        )
+        tlusty_model = TlustyAnalyticalModel(stiffness=1.15e6, modal_mass=115.0, damping_ratio=0.052)
 
         # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
         a_lim_clean = tlusty_model.compute_limiting_depth(
@@ -1034,22 +967,22 @@ class Benchmark1Dataset(Dataset):
         )
 
         return {
-            'features': features,
-            'spindle_speed': spindle_speed.astype(np.float32),
-            'axial_depth': axial_depth.astype(np.float32),
-            'a_lim': a_lim.astype(np.float32),
-            'stability': stability.astype(np.int64),
-            'a_lim_clean': a_lim_clean.astype(np.float32)
+            "features": features,
+            "spindle_speed": spindle_speed.astype(np.float32),
+            "axial_depth": axial_depth.astype(np.float32),
+            "a_lim": a_lim.astype(np.float32),
+            "stability": stability.astype(np.int64),
+            "a_lim_clean": a_lim_clean.astype(np.float32),
         }
-    
+
     def __len__(self) -> int:
         return self.num_samples
-    
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        features = torch.from_numpy(self.data['features'][idx])
-        a_lim = torch.from_numpy(np.array([self.data['a_lim'][idx]]))
-        a_lim_physics = torch.from_numpy(np.array([self.data['a_lim_clean'][idx]]))
-        
+        features = torch.from_numpy(self.data["features"][idx])
+        a_lim = torch.from_numpy(np.array([self.data["a_lim"][idx]]))
+        a_lim_physics = torch.from_numpy(np.array([self.data["a_lim_clean"][idx]]))
+
         return features, a_lim, a_lim_physics
 
 
@@ -1063,21 +996,16 @@ class Industrial6061T6Dataset(Dataset):
         对应真实自采数据集实验结果**。如需使用真实自采数据，应通过
         ``data_dir`` 参数指向真实数据文件路径。
     """
-    
-    def __init__(
-        self,
-        num_samples: int = 500,
-        noise_level: float = 0.08,
-        seed: int = 46
-    ):
+
+    def __init__(self, num_samples: int = 500, noise_level: float = 0.08, seed: int = 46):
         super().__init__()
         self.num_samples = num_samples
         self.noise_level = noise_level
         self.dataset_name = "自采 6061-T6"
-        
+
         np.random.seed(seed)
         self.data = self._generate_data()
-    
+
     def _generate_data(self) -> Dict[str, np.ndarray]:
         """生成自采6061-T6风格数据（7 维物理参数特征）"""
         # 工业数据范围更窄，更符合实际
@@ -1090,11 +1018,7 @@ class Industrial6061T6Dataset(Dataset):
         tool_diameter = np.full(self.num_samples, 10.0) + np.random.randn(self.num_samples) * 0.05
         num_teeth = np.full(self.num_samples, 4.0)
 
-        tlusty_model = TlustyAnalyticalModel(
-            stiffness=1.0e6,
-            modal_mass=100.0,
-            damping_ratio=0.05
-        )
+        tlusty_model = TlustyAnalyticalModel(stiffness=1.0e6, modal_mass=100.0, damping_ratio=0.05)
 
         # 多物理参数耦合：传入所有物理参数，使 7 维特征均有物理意义
         a_lim_clean = tlusty_model.compute_limiting_depth(
@@ -1121,22 +1045,22 @@ class Industrial6061T6Dataset(Dataset):
         )
 
         return {
-            'features': features,
-            'spindle_speed': spindle_speed.astype(np.float32),
-            'axial_depth': axial_depth.astype(np.float32),
-            'a_lim': a_lim.astype(np.float32),
-            'stability': stability.astype(np.int64),
-            'a_lim_clean': a_lim_clean.astype(np.float32)
+            "features": features,
+            "spindle_speed": spindle_speed.astype(np.float32),
+            "axial_depth": axial_depth.astype(np.float32),
+            "a_lim": a_lim.astype(np.float32),
+            "stability": stability.astype(np.int64),
+            "a_lim_clean": a_lim_clean.astype(np.float32),
         }
-    
+
     def __len__(self) -> int:
         return self.num_samples
-    
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        features = torch.from_numpy(self.data['features'][idx])
-        a_lim = torch.from_numpy(np.array([self.data['a_lim'][idx]]))
-        a_lim_physics = torch.from_numpy(np.array([self.data['a_lim_clean'][idx]]))
-        
+        features = torch.from_numpy(self.data["features"][idx])
+        a_lim = torch.from_numpy(np.array([self.data["a_lim"][idx]]))
+        a_lim_physics = torch.from_numpy(np.array([self.data["a_lim_clean"][idx]]))
+
         return features, a_lim, a_lim_physics
 
 
@@ -1145,14 +1069,14 @@ class IndustrialChatterDataset(Dataset):
     工业颤振数据集
     用于加载自采工业数据（保留旧版本兼容性）
     """
-    
+
     def __init__(
         self,
         data_path: str = "data/industrial_6061t6",
         num_samples: int = 500,
         num_conditions: int = 30,
         material: str = "6061-T6",
-        seed: int = 42
+        seed: int = 42,
     ):
         super().__init__()
         self.data_path = data_path
@@ -1160,10 +1084,10 @@ class IndustrialChatterDataset(Dataset):
         self.num_conditions = num_conditions
         self.material = material
         self.dataset_name = "Industrial"
-        
+
         np.random.seed(seed)
         self.data = self._generate_mock_data()
-    
+
     def _generate_mock_data(self) -> Dict[str, np.ndarray]:
         """生成模拟工业数据（7 维物理参数特征，多物理参数耦合）"""
         spindle_speed = np.random.uniform(2000, 8000, self.num_samples)
@@ -1205,44 +1129,44 @@ class IndustrialChatterDataset(Dataset):
         )
 
         return {
-            'features': features,
-            'spindle_speed': spindle_speed.astype(np.float32),
-            'axial_depth': axial_depth.astype(np.float32),
-            'a_lim': a_lim.astype(np.float32),
-            'stability': stability.astype(np.int64),
-            'a_lim_clean': a_lim_clean.astype(np.float32)
+            "features": features,
+            "spindle_speed": spindle_speed.astype(np.float32),
+            "axial_depth": axial_depth.astype(np.float32),
+            "a_lim": a_lim.astype(np.float32),
+            "stability": stability.astype(np.int64),
+            "a_lim_clean": a_lim_clean.astype(np.float32),
         }
-    
+
     def __len__(self) -> int:
         return self.num_samples
-    
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        features = torch.from_numpy(self.data['features'][idx])
-        a_lim = torch.from_numpy(np.array([self.data['a_lim'][idx]]))
-        a_lim_physics = torch.from_numpy(np.array([self.data['a_lim_clean'][idx]]))
-        
+        features = torch.from_numpy(self.data["features"][idx])
+        a_lim = torch.from_numpy(np.array([self.data["a_lim"][idx]]))
+        a_lim_physics = torch.from_numpy(np.array([self.data["a_lim_clean"][idx]]))
+
         return features, a_lim, a_lim_physics
 
 
 # 数据集映射字典
 DATASET_REGISTRY = {
-    'PHM2010': PHM2010Dataset,
-    'NUAA': NUAADataset,
-    'NIST': NISTDataset,
-    'Benchmark-1': Benchmark1Dataset,
-    '自采 6061-T6': Industrial6061T6Dataset,
-    'Synthetic': SyntheticChatterDataset,
-    'Industrial': IndustrialChatterDataset
+    "PHM2010": PHM2010Dataset,
+    "NUAA": NUAADataset,
+    "NIST": NISTDataset,
+    "Benchmark-1": Benchmark1Dataset,
+    "自采 6061-T6": Industrial6061T6Dataset,
+    "Synthetic": SyntheticChatterDataset,
+    "Industrial": IndustrialChatterDataset,
 }
 
 
 def get_dataset_class(dataset_name: str) -> type:
     """
     根据数据集名称获取对应的数据集类
-    
+
     Args:
         dataset_name: 数据集名称
-    
+
     Returns:
         数据集类
     """
@@ -1253,11 +1177,11 @@ def get_dataset_class(dataset_name: str) -> type:
         # 依赖 experiments/ 在 sys.path（脚本运行约定，见 real_validation/README.md）
         try:
             from real_validation.measured_stability_dataset import MeasuredStabilityPointsDataset
+
             return MeasuredStabilityPointsDataset
         except ImportError as e:  # pragma: no cover
             raise ValueError(
-                "MEASURED_SLD 需要 real_validation 包（cd research/experiments 后运行）。"
-                f"导入失败: {e}"
+                f"MEASURED_SLD 需要 real_validation 包（cd research/experiments 后运行）。导入失败: {e}"
             ) from e
     raise ValueError(f"Unknown dataset: {dataset_name}. Available: {list(DATASET_REGISTRY.keys()) + ['MEASURED_SLD']}")
 
@@ -1268,11 +1192,11 @@ def create_dataloaders(
     batch_size: int = 32,
     train_ratio: float = 0.7,
     val_ratio: float = 0.15,
-    seed: int = 42
+    seed: int = 42,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     创建训练/验证/测试数据加载器
-    
+
     Args:
         dataset_class: 数据集类
         dataset_params: 数据集参数
@@ -1280,86 +1204,61 @@ def create_dataloaders(
         train_ratio: 训练集比例
         val_ratio: 验证集比例
         seed: 随机种子
-    
+
     Returns:
         train_loader, val_loader, test_loader
     """
     # 创建完整数据集
     dataset = dataset_class(**dataset_params)
-    
+
     # 计算划分大小
     total_size = len(dataset)
     train_size = int(total_size * train_ratio)
     val_size = int(total_size * val_ratio)
     test_size = total_size - train_size - val_size
-    
+
     # 随机划分
     torch.manual_seed(seed)
-    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
-        dataset, [train_size, val_size, test_size]
-    )
-    
+    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+
     # 创建数据加载器
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=0,
-        pin_memory=True
-    )
-    
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=True
-    )
-    
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=True
-    )
-    
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
+
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
+
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
+
     return train_loader, val_loader, test_loader
 
 
 if __name__ == "__main__":
     # 测试数据生成器
     print("测试合成数据集...")
-    
+
     synthetic_dataset = SyntheticChatterDataset(
-        num_samples=1000,
-        spindle_speed_range=(1000, 10000),
-        axial_depth_range=(0.1, 10.0),
-        noise_level=0.02
+        num_samples=1000, spindle_speed_range=(1000, 10000), axial_depth_range=(0.1, 10.0), noise_level=0.02
     )
-    
+
     print(f"数据集大小: {len(synthetic_dataset)}")
-    
+
     # 获取一个样本
     features, a_lim, a_lim_physics = synthetic_dataset[0]
     print(f"特征形状: {features.shape}")
     print(f"极限切深: {a_lim.item():.4f} mm")
     print(f"物理预测: {a_lim_physics.item():.4f} mm")
-    
+
     # 创建数据加载器
     train_loader, val_loader, test_loader = create_dataloaders(
-        SyntheticChatterDataset,
-        {"num_samples": 1000},
-        batch_size=32
+        SyntheticChatterDataset, {"num_samples": 1000}, batch_size=32
     )
-    
+
     print(f"\n训练集批次: {len(train_loader)}")
     print(f"验证集批次: {len(val_loader)}")
     print(f"测试集批次: {len(test_loader)}")
-    
+
     # 测试一个批次
     batch_features, batch_a_lim, batch_a_lim_physics = next(iter(train_loader))
     print(f"\n批次特征形状: {batch_features.shape}")
     print(f"批次标签形状: {batch_a_lim.shape}")
-    
+
     print("\n数据生成器测试通过！")

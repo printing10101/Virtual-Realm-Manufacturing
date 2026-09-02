@@ -15,6 +15,7 @@
 诚实标注：代理是论文 1 已训练 LNN 的 stand-in（接口契约一致，
 真实权重可热替换）；本模块证明"决策-执行"接口可行性而非 LNN 性能。
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,26 +24,26 @@ import numpy as np
 
 from thermal_sld_model import ThermalSLDModel
 
-# ---- 与 closed_loop_chatter 一致的工程场景 ----
+# 与 closed_loop_chatter 一致的工程场景
 K_STRUCT, M_MODAL, ZETA = 5.0e7, 50.0, 0.05
-XI_MED = 920.0                      # °C/kW（Springer OA 中位）
-KAPPA_EFF_MED = 0.000478            # κ−δ·r, r=0.5 中位（uncertainty_propagation）
-P_MAX = 900.0                       # W
-MARGIN_THRESHOLD = 0.15             # 裕度 < 15% 触发激光
+XI_MED = 920.0  # °C/kW（Springer OA 中位）
+KAPPA_EFF_MED = 0.000478  # κ−δ·r, r=0.5 中位（uncertainty_propagation）
+P_MAX = 900.0  # W
+MARGIN_THRESHOLD = 0.15  # 裕度 < 15% 触发激光
 HIDDEN = 128
 EPOCHS = 3000
 LR = 0.01
 
 
-# ============ 1. 监督数据生成 ============
-def build_dataset(rng: np.random.Generator | None = None,
-                  n_rpm: int = 60, n_dt: int = 9, n_ap: int = 5) -> tuple[np.ndarray, np.ndarray]:
+# 1. 监督数据生成
+def build_dataset(
+    rng: np.random.Generator | None = None, n_rpm: int = 60, n_dt: int = 9, n_ap: int = 5
+) -> tuple[np.ndarray, np.ndarray]:
     """(rpm, a_p, dT, κ_eff, xi) → margin 监督数据。
 
     margin = (a_lim(dT) − a_p) / a_lim(0)：>0 稳定，<0 失稳缺口。
     """
-    model = ThermalSLDModel(stiffness=K_STRUCT, modal_mass=M_MODAL,
-                            damping_ratio=ZETA)
+    model = ThermalSLDModel(stiffness=K_STRUCT, modal_mass=M_MODAL, damping_ratio=ZETA)
     rpm_grid = np.linspace(2000.0, 5000.0, n_rpm)
     dT_grid = np.linspace(0.0, 800.0, n_dt)
     # a_p 网格：0.5~2.0× 谷临界
@@ -84,36 +85,38 @@ class SurrogateLNN:
         h = np.tanh(X @ self.W1 + self.b1)
         return h @ self.W2 + self.b2
 
-    def train(self, X: np.ndarray, y: np.ndarray,
-              epochs: int = EPOCHS, lr: float = 0.01,
-              batch: int = 128, seed: int = 7) -> list[float]:
+    def train(
+        self, X: np.ndarray, y: np.ndarray, epochs: int = EPOCHS, lr: float = 0.01, batch: int = 128, seed: int = 7
+    ) -> list[float]:
         """小批量 Adam 训练（numpy 手写，β1=0.9 β2=0.999）。"""
         rng = np.random.default_rng(seed)
         losses = []
         n = len(X)
         # Adam 状态
-        m = {"W1": np.zeros_like(self.W1), "b1": np.zeros_like(self.b1),
-             "W2": np.zeros_like(self.W2), "b2": 0.0}
+        m = {"W1": np.zeros_like(self.W1), "b1": np.zeros_like(self.b1), "W2": np.zeros_like(self.W2), "b2": 0.0}
         v = {k: np.zeros_like(val) for k, val in m.items()}
         t = 0
         b1, b2, eps = 0.9, 0.999, 1e-8
         for ep in range(epochs):
             perm = rng.permutation(n)
             for i in range(0, n, batch):
-                idx = perm[i:i + batch]
+                idx = perm[i : i + batch]
                 Xb, yb = X[idx], y[idx]
                 h = np.tanh(Xb @ self.W1 + self.b1)
                 pred = h @ self.W2 + self.b2
                 err = pred - yb
                 t += 1
-                g = {"W2": h.T @ err / len(Xb), "b2": float(err.mean()),
-                     "W1": Xb.T @ (np.outer(err, self.W2) * (1.0 - h ** 2)) / len(Xb),
-                     "b1": (np.outer(err, self.W2) * (1.0 - h ** 2)).mean(axis=0)}
+                g = {
+                    "W2": h.T @ err / len(Xb),
+                    "b2": float(err.mean()),
+                    "W1": Xb.T @ (np.outer(err, self.W2) * (1.0 - h**2)) / len(Xb),
+                    "b1": (np.outer(err, self.W2) * (1.0 - h**2)).mean(axis=0),
+                }
                 for k in m:
                     m[k] = b1 * m[k] + (1 - b1) * g[k]
                     v[k] = b2 * v[k] + (1 - b2) * g[k] ** 2
-                    m_hat = m[k] / (1 - b1 ** t)
-                    v_hat = v[k] / (1 - b2 ** t)
+                    m_hat = m[k] / (1 - b1**t)
+                    v_hat = v[k] / (1 - b2**t)
                     self.__dict__[k] -= lr * m_hat / (np.sqrt(v_hat) + eps)
             losses.append(float(np.mean((self.forward(X) - y) ** 2)))
         return losses
@@ -123,8 +126,7 @@ class SurrogateLNN:
 
 
 # ============ 3. 功率映射律（物理闭环，非黑盒）============
-def power_setpoint(margin: float, a_p: float, kappa_eff: float = KAPPA_EFF_MED,
-                   xi: float = XI_MED) -> float:
+def power_setpoint(margin: float, a_p: float, kappa_eff: float = KAPPA_EFF_MED, xi: float = XI_MED) -> float:
     """裕度缺口 → 目标温升 → 功率设定。
 
     需要 a_lim 抬升量：缺口 r_gap = −margin（margin<0 时）。
@@ -133,7 +135,7 @@ def power_setpoint(margin: float, a_p: float, kappa_eff: float = KAPPA_EFF_MED,
     """
     if margin >= MARGIN_THRESHOLD:
         return 0.0
-    gap = MARGIN_THRESHOLD - margin          # 需抬升的裕度缺口
+    gap = MARGIN_THRESHOLD - margin  # 需抬升的裕度缺口
     # 裕度缺口对应 a_lim 抬升率 = gap·(a_lim/a_p) 近似 1+gap（a_p≈a_lim 时）
     dT_target = gap / kappa_eff
     # 安全窗硬约束：ΔT ≤ 800°C（相变限制），功率上限由安全窗决定而非 P_MAX
@@ -141,7 +143,7 @@ def power_setpoint(margin: float, a_p: float, kappa_eff: float = KAPPA_EFF_MED,
     return float(np.clip(dT_target / xi * 1000.0, 0.0, P_MAX))
 
 
-# ============ 4. 归一化工具 ============
+# 4. 归一化工具
 class Normalizer:
     def __init__(self, X: np.ndarray):
         self.mu = X.mean(axis=0)
@@ -180,9 +182,13 @@ def main() -> None:
     assert r2 > 0.97 and mae < 0.05, "代理 LNN 拟合精度不足（数据确定性，应接近完美）"
 
     # 3) 功率映射验证：强失稳工况（3600 rpm, a_p=1.3×谷）
-    a_lim0_mm = float(np.min(ThermalSLDModel(
-        stiffness=K_STRUCT, modal_mass=M_MODAL, damping_ratio=ZETA
-    ).compute_limiting_depth(np.linspace(2000, 5000, 60), dT=0.0, clip=False)))
+    a_lim0_mm = float(
+        np.min(
+            ThermalSLDModel(stiffness=K_STRUCT, modal_mass=M_MODAL, damping_ratio=ZETA).compute_limiting_depth(
+                np.linspace(2000, 5000, 60), dT=0.0, clip=False
+            )
+        )
+    )
     a_p = a_lim0_mm * 1e-3 * 1.3
     # 无激光裕度（margin 真值来自频域）
     margin0 = _margin_at(3600.0, a_p, dT=0.0)
@@ -195,37 +201,44 @@ def main() -> None:
     assert margin500 > 0.0, "500°C 加热后必须回到稳定区"
     assert 0.0 < p_set <= P_MAX, "失稳工况必须输出非零功率设定"
 
-    # 4) 闭环联动：代理功率 → 时域抑制验证
+    # 4) 闭环联动：代理功率 时域抑制验证
     import closed_loop_chatter as clc
+
     tau_reg = 60.0 / 3600.0
     k_c_lin = 2.0 * ZETA * K_STRUCT / (a_lim0_mm * 1e-3)
     # 代理设定前馈功率（带 PI 补差，模拟真实闭环）
-    r_none = clc.chatter_response(a_p, k_c_lin=k_c_lin, tau_reg=tau_reg,
-                                  control="none", t_end=1.5, seed=3600)
+    r_none = clc.chatter_response(a_p, k_c_lin=k_c_lin, tau_reg=tau_reg, control="none", t_end=1.5, seed=3600)
     # 用代理功率作为前馈设定（临时构造：直接传入 p_set）
-    r_ai = clc.chatter_response(a_p, k_c_lin=k_c_lin, tau_reg=tau_reg,
-                                control="ff+pi", t_end=1.5, seed=3600,
-                                kp=6.5e6, ki=1.0e6)
-    print(f"时域联动：无激光 RMS={r_none['rms_ss']*1e6:.1f}um → "
-          f"AI 决策闭环 RMS={r_ai['rms_ss']*1e6:.2f}um（P={r_ai['peak_p']:.0f}W）")
+    r_ai = clc.chatter_response(
+        a_p, k_c_lin=k_c_lin, tau_reg=tau_reg, control="ff+pi", t_end=1.5, seed=3600, kp=6.5e6, ki=1.0e6
+    )
+    print(
+        f"时域联动：无激光 RMS={r_none['rms_ss'] * 1e6:.1f}um → "
+        f"AI 决策闭环 RMS={r_ai['rms_ss'] * 1e6:.2f}um（P={r_ai['peak_p']:.0f}W）"
+    )
     assert r_ai["rms_ss"] < min(r_none["rms_ss"] / 3.0, 5e-6), "AI 决策闭环必须抑制颤振"
 
     # 5) 保存
     import json
+
     summary = {
-        "dataset": {"n": len(X), "grid": {"rpm": "2000~5000", "dT": "0~800°C",
-                                          "a_p": "0.5~2.0×谷"}},
-        "surrogate": {"r2": round(r2, 4), "mae": round(mae, 4),
-                      "hidden": HIDDEN, "epochs": EPOCHS,
-                      "final_loss": round(losses[-1], 6)},
-        "interface_note": "SurrogateLNN.predict 契约对齐论文1 LNNPredictor.predict；"
-                          "真实权重可热替换",
-        "power_mapping": {"margin_threshold": MARGIN_THRESHOLD,
-                          "formula": "dT=gap/kappa_eff, P=dT/xi, clamp P_MAX"},
-        "closed_loop_demo": {"rpm": 3600, "a_p_mm": round(a_p * 1e3, 3),
-                             "none_rms_um": round(r_none["rms_ss"] * 1e6, 2),
-                             "ai_cl_rms_um": round(r_ai["rms_ss"] * 1e6, 3),
-                             "ai_peak_p_W": round(r_ai["peak_p"], 0)},
+        "dataset": {"n": len(X), "grid": {"rpm": "2000~5000", "dT": "0~800°C", "a_p": "0.5~2.0×谷"}},
+        "surrogate": {
+            "r2": round(r2, 4),
+            "mae": round(mae, 4),
+            "hidden": HIDDEN,
+            "epochs": EPOCHS,
+            "final_loss": round(losses[-1], 6),
+        },
+        "interface_note": "SurrogateLNN.predict 契约对齐论文1 LNNPredictor.predict；真实权重可热替换",
+        "power_mapping": {"margin_threshold": MARGIN_THRESHOLD, "formula": "dT=gap/kappa_eff, P=dT/xi, clamp P_MAX"},
+        "closed_loop_demo": {
+            "rpm": 3600,
+            "a_p_mm": round(a_p * 1e3, 3),
+            "none_rms_um": round(r_none["rms_ss"] * 1e6, 2),
+            "ai_cl_rms_um": round(r_ai["rms_ss"] * 1e6, 3),
+            "ai_peak_p_W": round(r_ai["peak_p"], 0),
+        },
         "loss_curve": [round(l, 5) for l in losses[::50]],
     }
     out = out_dir / "lnn_mapping_summary.json"
@@ -240,8 +253,7 @@ def _margin_at(rpm: float, a_p: float, dT: float) -> float:
     故裕度基准取谷临界 a_lim_valley，而非该转速单点 a_lim（Tlusty 定义
     的"最差叶瓣"在时域中不直接对应固定模态系统）。
     """
-    model = ThermalSLDModel(stiffness=K_STRUCT, modal_mass=M_MODAL,
-                            damping_ratio=ZETA)
+    model = ThermalSLDModel(stiffness=K_STRUCT, modal_mass=M_MODAL, damping_ratio=ZETA)
     grid = np.linspace(2000, 5000, 120)
     a_lims = np.asarray(model.compute_limiting_depth(grid, dT=0.0, clip=False))
     a_lim_valley_mm = float(np.min(a_lims))

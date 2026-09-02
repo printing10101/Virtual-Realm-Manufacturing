@@ -43,7 +43,7 @@ def add_gaussian_noise(data: np.ndarray, snr_db: float) -> np.ndarray:
         添加噪声后的数据，形状与输入相同
     """
     # 计算信号功率（均方值）
-    signal_power = np.mean(data ** 2)
+    signal_power = np.mean(data**2)
 
     # 根据 SNR 计算噪声功率
     # SNR(dB) = 10 * log10(P_signal / P_noise)
@@ -58,9 +58,7 @@ def add_gaussian_noise(data: np.ndarray, snr_db: float) -> np.ndarray:
 
 
 def create_noisy_test_loader(
-    test_loader: torch.utils.data.DataLoader,
-    snr_db: float,
-    seed: int = 42
+    test_loader: torch.utils.data.DataLoader, snr_db: float, seed: int = 42
 ) -> torch.utils.data.DataLoader:
     """
     创建添加了噪声的测试数据加载器
@@ -100,16 +98,12 @@ def create_noisy_test_loader(
     noisy_dataset = torch.utils.data.TensorDataset(
         torch.from_numpy(noisy_features.astype(np.float32)),
         torch.from_numpy(all_targets.astype(np.float32)),
-        torch.from_numpy(all_physics.astype(np.float32))
+        torch.from_numpy(all_physics.astype(np.float32)),
     )
 
     # 创建 DataLoader（保持与原始相同的 batch_size）
     noisy_loader = torch.utils.data.DataLoader(
-        noisy_dataset,
-        batch_size=test_loader.batch_size,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=False
+        noisy_dataset, batch_size=test_loader.batch_size, shuffle=False, num_workers=0, pin_memory=False
     )
 
     return noisy_loader
@@ -121,7 +115,7 @@ def train_model(
     val_loader: torch.utils.data.DataLoader,
     config: ModelConfig,
     device: torch.device,
-    num_epochs: int = 80
+    num_epochs: int = 80,
 ) -> torch.nn.Module:
     """
     训练模型
@@ -141,20 +135,14 @@ def train_model(
         训练完成的最优模型
     """
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=config.learning_rate,
-        weight_decay=config.weight_decay
-    )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=num_epochs, eta_min=1e-5
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-5)
 
-    best_val_loss = float('inf')
+    best_val_loss = float("inf")
     best_state = None
 
     for epoch in range(num_epochs):
-        # ---- 训练阶段 ----
+        # 训练阶段
         model.train()
         train_loss = 0.0
         n_batches = 0
@@ -185,7 +173,7 @@ def train_model(
 
         train_loss /= max(n_batches, 1)
 
-        # ---- 验证阶段 ----
+        # 验证阶段
         model.eval()
         val_loss = 0.0
         n_val = 0
@@ -224,9 +212,7 @@ def train_model(
 
 
 def evaluate_model(
-    model: torch.nn.Module,
-    test_loader: torch.utils.data.DataLoader,
-    device: torch.device
+    model: torch.nn.Module, test_loader: torch.utils.data.DataLoader, device: torch.device
 ) -> Dict[str, float]:
     """
     在测试集上评估模型性能
@@ -268,20 +254,16 @@ def evaluate_model(
 
     metrics_calc = ChatterMetrics()
     metrics = {
-        'MAE': metrics_calc.mae(all_preds, all_targets),
-        'RMSE': metrics_calc.rmse(all_preds, all_targets),
-        'R2': metrics_calc.r2_score(all_preds, all_targets),
-        'PCC': metrics_calc.physics_consistency_coefficient(all_preds, all_phys)
+        "MAE": metrics_calc.mae(all_preds, all_targets),
+        "RMSE": metrics_calc.rmse(all_preds, all_targets),
+        "R2": metrics_calc.r2_score(all_preds, all_targets),
+        "PCC": metrics_calc.physics_consistency_coefficient(all_preds, all_phys),
     }
 
     return metrics
 
 
-def create_model_by_name(
-    model_name: str,
-    config: ModelConfig,
-    device: torch.device
-) -> torch.nn.Module:
+def create_model_by_name(model_name: str, config: ModelConfig, device: torch.device) -> torch.nn.Module:
     """
     根据模型名称创建对应的模型实例
 
@@ -300,14 +282,14 @@ def create_model_by_name(
             num_layers=config.num_layers,
             output_dim=config.output_dim,
             dt=config.ltc_dt,
-            dropout=config.dropout
+            dropout=config.dropout,
         )
     elif model_name == "LSTM":
         model = BaselineLSTM(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
     elif model_name == "Transformer":
         model = BaselineTransformer(
@@ -315,21 +297,21 @@ def create_model_by_name(
             d_model=config.hidden_dim,
             nhead=4,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
     elif model_name == "PINN":
         model = BaselinePINN(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
     elif model_name == "BPNN":
         model = BaselineBPNN(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
     else:
         raise ValueError(f"未知模型: {model_name}")
@@ -356,29 +338,25 @@ def run_noise_robustness_experiment():
     print("噪声鲁棒性实验 (Noise Robustness Experiment)")
     print("=" * 80)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n使用设备: {device}")
 
     config = ModelConfig()
 
-    # ============================================================
-    # 步骤 1: 加载工业数据集
-    # ============================================================
+    # 加载工业数据集
     print("\n[步骤 1/4] 加载工业 6061-T6 数据集...")
     train_loader, val_loader, test_loader = create_dataloaders(
         dataset_class=Industrial6061T6Dataset,
-        dataset_params={'num_samples': 500, 'noise_level': 0.08, 'seed': 46},
+        dataset_params={"num_samples": 500, "noise_level": 0.08, "seed": 46},
         batch_size=config.batch_size,
         train_ratio=0.7,
-        val_ratio=0.15
+        val_ratio=0.15,
     )
     print(f"  训练集样本数: {len(train_loader.dataset)}")
     print(f"  验证集样本数: {len(val_loader.dataset)}")
     print(f"  测试集样本数: {len(test_loader.dataset)}")
 
-    # ============================================================
-    # 步骤 2: 定义 SNR 水平和模型列表
-    # ============================================================
+    # 定义 SNR 水平和模型列表
     snr_levels = [0, 5, 10, 15, 20, 25, 30]  # 单位: dB
     model_names = ["DL-LNN", "LSTM", "Transformer", "PINN", "BPNN"]
 
@@ -388,14 +366,12 @@ def run_noise_robustness_experiment():
 
     # 初始化结果存储
     results = {
-        'timestamp': datetime.now().isoformat(),
-        'snr_levels': snr_levels,
-        'results': {name: [] for name in model_names}
+        "timestamp": datetime.now().isoformat(),
+        "snr_levels": snr_levels,
+        "results": {name: [] for name in model_names},
     }
 
-    # ============================================================
-    # 步骤 3: 对每个 SNR 水平进行实验
-    # ============================================================
+    # 对每个 SNR 水平进行实验
     print(f"\n[步骤 3/4] 开始噪声鲁棒性测试...")
 
     for snr_db in snr_levels:
@@ -415,9 +391,7 @@ def run_noise_robustness_experiment():
         orig_features = np.concatenate(orig_features, axis=0)
         noisy_features = np.concatenate(noisy_features, axis=0)
         actual_noise = noisy_features - orig_features
-        actual_snr = 10 * np.log10(
-            np.mean(orig_features ** 2) / max(np.mean(actual_noise ** 2), 1e-12)
-        )
+        actual_snr = 10 * np.log10(np.mean(orig_features**2) / max(np.mean(actual_noise**2), 1e-12))
         print(f"  实际 SNR: {actual_snr:.1f} dB (目标: {snr_db} dB)")
 
         # 3b & 3c. 训练并评估每个模型
@@ -438,41 +412,41 @@ def run_noise_robustness_experiment():
                 val_loader=val_loader,
                 config=config,
                 device=device,
-                num_epochs=80
+                num_epochs=80,
             )
 
             # 在噪声测试集上评估
             metrics = evaluate_model(model, noisy_test_loader, device)
 
             # 记录结果
-            results['results'][model_name].append({
-                'snr': snr_db,
-                'MAE': round(metrics['MAE'], 6),
-                'RMSE': round(metrics['RMSE'], 6),
-                'R2': round(metrics['R2'], 6),
-                'PCC': round(metrics['PCC'], 6)
-            })
+            results["results"][model_name].append(
+                {
+                    "snr": snr_db,
+                    "MAE": round(metrics["MAE"], 6),
+                    "RMSE": round(metrics["RMSE"], 6),
+                    "R2": round(metrics["R2"], 6),
+                    "PCC": round(metrics["PCC"], 6),
+                }
+            )
 
-            print(f"MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
-                  f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}")
+            print(
+                f"MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
+                f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}"
+            )
 
-    # ============================================================
-    # 步骤 4: 保存结果
-    # ============================================================
+    # 保存结果
     print(f"\n[步骤 4/4] 保存实验结果...")
 
     output_dir = Path("results")
     output_dir.mkdir(exist_ok=True)
 
     output_file = output_dir / "noise_robustness_results.json"
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
     print(f"  结果已保存到: {output_file}")
 
-    # ============================================================
     # 打印汇总表格
-    # ============================================================
     print(f"\n{'=' * 80}")
     print("噪声鲁棒性实验结果汇总")
     print(f"{'=' * 80}")
@@ -482,9 +456,11 @@ def run_noise_robustness_experiment():
         print(f"\n  {model_name}:")
         print(f"  {'SNR(dB)':<10} {'MAE':<12} {'RMSE':<12} {'R²':<12} {'PCC':<12}")
         print(f"  {'-' * 58}")
-        for entry in results['results'][model_name]:
-            print(f"  {entry['snr']:<10} {entry['MAE']:<12.4f} {entry['RMSE']:<12.4f} "
-                  f"{entry['R2']:<12.4f} {entry['PCC']:<12.4f}")
+        for entry in results["results"][model_name]:
+            print(
+                f"  {entry['snr']:<10} {entry['MAE']:<12.4f} {entry['RMSE']:<12.4f} "
+                f"{entry['R2']:<12.4f} {entry['PCC']:<12.4f}"
+            )
 
     # 计算鲁棒性指标：各模型在 SNR=0 到 SNR=30 的性能退化幅度
     print(f"\n{'=' * 80}")
@@ -494,17 +470,14 @@ def run_noise_robustness_experiment():
     print(f"  {'-' * 60}")
 
     for model_name in model_names:
-        snr0 = results['results'][model_name][0]   # SNR=0
-        snr30 = results['results'][model_name][-1]  # SNR=30
+        snr0 = results["results"][model_name][0]  # SNR=0
+        snr30 = results["results"][model_name][-1]  # SNR=30
 
-        mae_degradation = snr0['MAE'] - snr30['MAE']  # 正值表示 SNR=0 时更差
-        r2_degradation = snr30['R2'] - snr0['R2']      # 正值表示 SNR=30 时更好
-        pcc_degradation = snr30['PCC'] - snr0['PCC']
+        mae_degradation = snr0["MAE"] - snr30["MAE"]  # 正值表示 SNR=0 时更差
+        r2_degradation = snr30["R2"] - snr0["R2"]  # 正值表示 SNR=30 时更好
+        pcc_degradation = snr30["PCC"] - snr0["PCC"]
 
-        print(f"  {model_name:<15} "
-              f"{mae_degradation:<+15.4f} "
-              f"{r2_degradation:<+15.4f} "
-              f"{pcc_degradation:<+15.4f}")
+        print(f"  {model_name:<15} {mae_degradation:<+15.4f} {r2_degradation:<+15.4f} {pcc_degradation:<+15.4f}")
 
     print(f"\n{'=' * 80}")
     print("实验完成！")

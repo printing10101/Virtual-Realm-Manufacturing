@@ -20,9 +20,8 @@ from typing import Optional, Tuple, Dict
 import numpy as np
 
 
-# ============================================================================
 # 1. 频域损失 — Phase 1 新功能
-# ============================================================================
+
 
 class FrequencyDomainLoss(nn.Module):
     """
@@ -77,9 +76,8 @@ class FrequencyDomainLoss(nn.Module):
         return total_loss
 
 
-# ============================================================================
 # 2. 物理一致性损失（从原 PCC_Loss 提取，最小改动）
-# ============================================================================
+
 
 class PhysicsNumericalLoss(nn.Module):
     """物理数值层损失 L_phys"""
@@ -128,12 +126,11 @@ class PhysicsGradientLoss(nn.Module):
         )[0]
 
         grad_diff = grad_pred - grad_physics
-        return torch.mean(grad_diff ** 2)
+        return torch.mean(grad_diff**2)
 
 
-# ============================================================================
 # 3. 课程式物理损失 — Phase 1 核心创新
-# ============================================================================
+
 
 class CurriculumPhysicsLoss(nn.Module):
     """
@@ -278,8 +275,7 @@ class CurriculumPhysicsLoss(nn.Module):
             lambda_pcc = self.get_lambda_pcc(epoch)
             if lambda_pcc > 0 and y_physics_diff is not None and x.requires_grad:
                 loss_pcc = self.pcc_loss(
-                    y_pred[:, 0:1] if y_pred.dim() == 2 and y_pred.shape[1] > 1 else y_pred,
-                    y_physics_diff, x
+                    y_pred[:, 0:1] if y_pred.dim() == 2 and y_pred.shape[1] > 1 else y_pred, y_physics_diff, x
                 )
                 total = total + lambda_pcc * loss_pcc
                 loss_dict["pcc"] = loss_pcc.item()
@@ -306,9 +302,8 @@ class CurriculumPhysicsLoss(nn.Module):
         return total, loss_dict
 
 
-# ============================================================================
 # 4. 消融实验用简化损失
-# ============================================================================
+
 
 def compute_tau_regularization_all_layers(
     ltc_cells: list, spindle_speed: Optional[torch.Tensor] = None
@@ -325,7 +320,7 @@ def compute_tau_regularization_all_layers(
     """
     total_reg = torch.tensor(0.0, device=spindle_speed.device if spindle_speed is not None else None)
     for cell in ltc_cells:
-        if hasattr(cell, 'delay_embedding'):
+        if hasattr(cell, "delay_embedding"):
             reg = cell.delay_embedding.compute_tau_regularization(spindle_speed)
             total_reg = total_reg + reg
     return total_reg
@@ -345,7 +340,7 @@ if __name__ == "__main__":
         lambda_phys_max=0.5,
         lambda_pcc_max=0.1,
         lambda_freq_max=0.1,
-        stage1_epochs=20,   # 缩小用于测试
+        stage1_epochs=20,  # 缩小用于测试
         stage2_epochs=30,
         stage3_epochs=10,
     )

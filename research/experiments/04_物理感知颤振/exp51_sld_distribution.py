@@ -13,6 +13,7 @@ DL 价值是否被重新激活？
 分布预测 LSTM（NLL）。评估：NLL / 80% 区间覆盖率（校准）/ 平均区间宽度（锐度）/
 模糊区二分类 Brier score + 可靠性图。
 """
+
 import sys, os, json, random
 from pathlib import Path
 import numpy as np
@@ -24,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault("MPLBACKEND", "Agg")
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -35,15 +37,15 @@ from models import DLLNNModel, BaselineLSTM
 _models._HAS_TORCHDIFFEQ = False
 LTC_SOLVER = "euler"
 
-# ---------------- 配置 ----------------
-NUM_SAMPLES = 2000          # 基础样本数（每个 x 生成 K 个观测）
-K_OBS = 5                   # 每样本观测数（重复实验）
+# 配置
+NUM_SAMPLES = 2000  # 基础样本数（每个 x 生成 K 个观测）
+K_OBS = 5  # 每样本观测数（重复实验）
 NUM_EPOCHS = 80
 BATCH_SIZE = 64
 SEEDS = [42, 43, 44]
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 1e-4
-FUZZ_DELTAS = [0.0, 0.05, 0.1, 0.2, 0.4]   # 模态参数失配档（σ_fuzz 源）
+FUZZ_DELTAS = [0.0, 0.05, 0.1, 0.2, 0.4]  # 模态参数失配档（σ_fuzz 源）
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "results"
 FIG_DIR = OUTPUT_DIR / "figures"
 
@@ -63,8 +65,13 @@ def make_features(tlusty: TlustyAnalyticalModel, n_samp: int, seed: int) -> tupl
     z = rng.randint(2, 7, n_samp).astype(float)
 
     a_lim = tlusty.compute_limiting_depth(
-        n, num_lobes=10, hardness=H, tool_diameter=D,
-        num_teeth=z, feed_rate=f, radial_depth=ae,
+        n,
+        num_lobes=10,
+        hardness=H,
+        tool_diameter=D,
+        num_teeth=z,
+        feed_rate=f,
+        radial_depth=ae,
     )
     a_lim = np.maximum(a_lim, 0.05)
 
@@ -78,16 +85,29 @@ def make_features(tlusty: TlustyAnalyticalModel, n_samp: int, seed: int) -> tupl
             cutting_force_coeff=tlusty.cutting_force_coeff * (1 + delta),
             num_teeth=tlusty.num_teeth,
         )
-        a2 = np.maximum(t2.compute_limiting_depth(
-            n, num_lobes=10, hardness=H, tool_diameter=D,
-            num_teeth=z, feed_rate=f, radial_depth=ae,
-        ), 0.05)
+        a2 = np.maximum(
+            t2.compute_limiting_depth(
+                n,
+                num_lobes=10,
+                hardness=H,
+                tool_diameter=D,
+                num_teeth=z,
+                feed_rate=f,
+                radial_depth=ae,
+            ),
+            0.05,
+        )
         drifts.append(np.abs(a2 - a_lim))
     sigma_fuzz = np.mean(drifts, axis=0) + 1e-3
 
     features = build_physics_features_7d(
-        spindle_speed=n, feed_rate=f, axial_depth=ap, radial_depth=ae,
-        hardness=H, tool_diameter=D, num_teeth=z,
+        spindle_speed=n,
+        feed_rate=f,
+        axial_depth=ap,
+        radial_depth=ae,
+        hardness=H,
+        tool_diameter=D,
+        num_teeth=z,
     ).astype(np.float32)
     return features, a_lim.astype(np.float32), sigma_fuzz.astype(np.float32)
 
@@ -99,8 +119,11 @@ def make_observations(features, a_lim, sigma_fuzz, seed: int) -> tuple:
     y = np.repeat(a_lim, K_OBS) + rng.randn(len(a_lim) * K_OBS) * np.repeat(sigma_fuzz, K_OBS)
     y = np.maximum(y, 0.01)
     sigma_true = np.repeat(sigma_fuzz, K_OBS)
-    return (torch.from_numpy(X), torch.from_numpy(y.astype(np.float32)).unsqueeze(1),
-            torch.from_numpy(sigma_true.astype(np.float32)))
+    return (
+        torch.from_numpy(X),
+        torch.from_numpy(y.astype(np.float32)).unsqueeze(1),
+        torch.from_numpy(sigma_true.astype(np.float32)),
+    )
 
 
 def gaussian_nll(pred, y_true):
@@ -149,7 +172,7 @@ def predict_dist(model, X, device):
     mus, sigmas = [], []
     with torch.no_grad():
         for i in range(0, len(X), 256):
-            out = model(X[i:i + 256].to(device))
+            out = model(X[i : i + 256].to(device))
             p = out[0] if isinstance(out, tuple) else out
             mu, logvar = p[:, 0].cpu().numpy(), p[:, 1].cpu().numpy()
             mus.append(mu)
@@ -162,7 +185,7 @@ def predict_point(model, X, device):
     preds = []
     with torch.no_grad():
         for i in range(0, len(X), 256):
-            out = model(X[i:i + 256].to(device))
+            out = model(X[i : i + 256].to(device))
             p = out[0] if isinstance(out, tuple) else out
             preds.append(p[:, 0].cpu().numpy())
     return np.concatenate(preds)
@@ -199,8 +222,14 @@ def main():
     results = {
         "protocol": "SLD distribution prediction (phase 4)",
         "ltc_solver": LTC_SOLVER,
-        "NLL": {}, "coverage80": {}, "width": {}, "brier": {}, "acc_fuzzy": {},
-        "nll_per_seed": {}, "coverage_per_seed": {}, "brier_per_seed": {},
+        "NLL": {},
+        "coverage80": {},
+        "width": {},
+        "brier": {},
+        "acc_fuzzy": {},
+        "nll_per_seed": {},
+        "coverage_per_seed": {},
+        "brier_per_seed": {},
     }
 
     for seed in SEEDS:
@@ -215,7 +244,7 @@ def main():
         label = (ap > a_te).astype(float)
 
         # ---- Tlusty 确定性基线（注入模态参数失配 δ=10%：真实机床参数未知，
-        #      解析模型有系统误差——避免"用 Tlusty 预测 Tlusty"的作弊基线）----
+        # 解析模型有系统误差——避免"用 Tlusty 预测 Tlusty"的作弊基线）----
         t_mis = TlustyAnalyticalModel(
             stiffness=tlusty.stiffness * 0.9,
             modal_mass=tlusty.modal_mass,
@@ -223,47 +252,54 @@ def main():
             cutting_force_coeff=tlusty.cutting_force_coeff * 1.1,
             num_teeth=tlusty.num_teeth,
         )
-        mu_t = np.maximum(t_mis.compute_limiting_depth(
-            X_te_raw[:, 0] * 10000.0, num_lobes=10,
-            hardness=X_te_raw[:, 4] * 200.0, tool_diameter=X_te_raw[:, 5] * 20.0,
-            num_teeth=np.clip(np.round(X_te_raw[:, 6] * 6.0), 2, 6),
-            feed_rate=X_te_raw[:, 1] * 0.5, radial_depth=X_te_raw[:, 3] * 8.0,
-        ), 0.05)
+        mu_t = np.maximum(
+            t_mis.compute_limiting_depth(
+                X_te_raw[:, 0] * 10000.0,
+                num_lobes=10,
+                hardness=X_te_raw[:, 4] * 200.0,
+                tool_diameter=X_te_raw[:, 5] * 20.0,
+                num_teeth=np.clip(np.round(X_te_raw[:, 6] * 6.0), 2, 6),
+                feed_rate=X_te_raw[:, 1] * 0.5,
+                radial_depth=X_te_raw[:, 3] * 8.0,
+            ),
+            0.05,
+        )
         sigma_t = np.zeros(n_test)
         cov_t = coverage(mu_t, sigma_t, a_te)
         p_t = (ap > mu_t).astype(float)
         brier_t = brier_score(p_t, label)
         acc_t = float(np.mean((p_t > 0.5) == label))
 
-        # ---- 点回归 LTC ----
-        m_pt = DLLNNModel(input_dim=7, hidden_dim=128, num_layers=3,
-                          output_dim=1, dt=0.1, dropout=0.2).to(device)
+        # 点回归 LTC
+        m_pt = DLLNNModel(input_dim=7, hidden_dim=128, num_layers=3, output_dim=1, dt=0.1, dropout=0.2).to(device)
         train_point(m_pt, tr_loader, device)
         mu_pt = predict_point(m_pt, X_te, device)
 
-        # ---- 分布预测 LTC ----
-        m_dl = DLLNNModel(input_dim=7, hidden_dim=128, num_layers=3,
-                          output_dim=2, dt=0.1, dropout=0.2).to(device)
+        # 分布预测 LTC
+        m_dl = DLLNNModel(input_dim=7, hidden_dim=128, num_layers=3, output_dim=2, dt=0.1, dropout=0.2).to(device)
         train_dist(m_dl, tr_loader, device)
         mu_dl, sig_dl = predict_dist(m_dl, X_te, device)
 
-        # ---- 分布预测 LSTM ----
-        m_ls = BaselineLSTM(input_dim=7, hidden_dim=128, num_layers=2,
-                            output_dim=2).to(device)
+        # 分布预测 LSTM
+        m_ls = BaselineLSTM(input_dim=7, hidden_dim=128, num_layers=2, output_dim=2).to(device)
         train_dist(m_ls, tr_loader, device)
         mu_ls, sig_ls = predict_dist(m_ls, X_te, device)
 
         # ---- NLL（对真实边界的密度：以测试模糊度为尺度）----
         def nll_vs_true(mu, sigma):
-            var = sigma ** 2 + s_te ** 2 + 1e-6
+            var = sigma**2 + s_te**2 + 1e-6
             return float(np.mean(0.5 * np.log(2 * np.pi * var) + (a_te - mu) ** 2 / (2 * var)))
 
-        for name, mu, sigma in [("tlusty", mu_t, sigma_t), ("point_ltc", mu_pt, np.zeros(n_test)),
-                                ("dist_ltc", mu_dl, sig_dl), ("dist_lstm", mu_ls, sig_ls)]:
+        for name, mu, sigma in [
+            ("tlusty", mu_t, sigma_t),
+            ("point_ltc", mu_pt, np.zeros(n_test)),
+            ("dist_ltc", mu_dl, sig_dl),
+            ("dist_lstm", mu_ls, sig_ls),
+        ]:
             results["nll_per_seed"].setdefault(name, []).append(nll_vs_true(mu, sigma))
             results["coverage_per_seed"].setdefault(name, []).append(coverage(mu, sigma, a_te))
 
-        # ---- 模糊区决策 ----
+        # 模糊区决策
         # 分布预测：P(unstable) = Φ((ap−μ)/σ)
         p_dl = 0.5 * (1 + np.tanh((ap - mu_dl) / (np.maximum(sig_dl, 1e-3)) * 0.5))
         p_ls = 0.5 * (1 + np.tanh((ap - mu_ls) / (np.maximum(sig_ls, 1e-3)) * 0.5))
@@ -273,7 +309,7 @@ def main():
             results["brier_per_seed"].setdefault(name, []).append(brier_score(p, label))
             results["acc_fuzzy"].setdefault(name, []).append(float(np.mean((p > 0.5) == label)))
 
-    # ---- 汇总 ----
+    # 汇总
     print("\n=== SUMMARY: SLD distribution prediction (3 seeds) ===", flush=True)
     print(f"{'model':<12} | {'NLL':>8} | {'cov80%':>8} | {'Brier':>7} | {'acc_fuzzy':>10}", flush=True)
     names = ["tlusty", "point_ltc", "dist_ltc", "dist_lstm"]
@@ -290,6 +326,7 @@ def main():
 
     # 配对检验：dist_ltc vs point_ltc / dist_ltc vs dist_lstm（Brier）
     from scipy import stats
+
     for a, b in [("dist_ltc", "point_ltc"), ("dist_ltc", "dist_lstm"), ("dist_ltc", "tlusty")]:
         t, p = stats.ttest_rel(results["brier_per_seed"][a], results["brier_per_seed"][b])
         results[f"brier_paired_{a}_vs_{b}"] = {"t": float(t), "p": float(p)}

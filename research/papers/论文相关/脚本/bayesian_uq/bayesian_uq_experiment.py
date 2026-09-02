@@ -38,7 +38,7 @@ import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
-# === WinSock 损坏绕过补丁 ===
+# WinSock 损坏绕过补丁
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -52,7 +52,7 @@ import torch
 
 warnings.filterwarnings("ignore")
 
-# === 路径设置 ===
+# 路径设置
 _current = Path(__file__).resolve()
 PROJECT_ROOT = _current
 for _ in range(6):
@@ -66,8 +66,7 @@ RESEARCH_DIR = PROJECT_ROOT / "research"
 EXPERIMENTS_DIR = RESEARCH_DIR / "experiments"
 ENGINEERING_PYTHON_DIR = PROJECT_ROOT / "engineering" / "python"
 
-for p in [str(PROJECT_ROOT), str(ENGINEERING_PYTHON_DIR),
-          str(RESEARCH_DIR), str(EXPERIMENTS_DIR)]:
+for p in [str(PROJECT_ROOT), str(ENGINEERING_PYTHON_DIR), str(RESEARCH_DIR), str(EXPERIMENTS_DIR)]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -94,9 +93,8 @@ from lomo_loco_experiment import (
 from bayesian_dllnn_wrapper import load_bayesian_dllnn, BayesianDLLNNWrapper
 
 
-# =============================================================================
 # UQ 指标计算
-# =============================================================================
+
 
 def compute_ece(
     mean_pred: np.ndarray,
@@ -143,34 +141,53 @@ def compute_ece(
 def _norm_ppf(p: float) -> float:
     """标准正态分布的分位数函数（近似，避免 scipy 依赖）。"""
     from math import sqrt, log, tan, pi
+
     # Beasley-Springer-Moro 算法近似
-    a = [-3.969683028665376e+01, 2.209460984245205e+02,
-         -2.759285104469687e+02, 1.383577518624690e+02,
-         -3.066479806614716e+01, 2.506628277459239e+00]
-    b = [-5.447609879822406e+01, 1.615858368580409e+02,
-         -1.556989798598866e+02, 6.680131188771972e+01,
-         -1.328068155288572e+01]
-    c = [-7.784894002430293e-03, -3.223964580411365e-01,
-         -2.400758277161838e+00, -2.549732539343734e+00,
-         4.374664141464968e+00, 2.938163982698783e+00]
-    d = [7.784695709041462e-03, 3.224671290700398e-01,
-         2.445134137142996e+00, 3.754408661907416e+00]
+    a = [
+        -3.969683028665376e01,
+        2.209460984245205e02,
+        -2.759285104469687e02,
+        1.383577518624690e02,
+        -3.066479806614716e01,
+        2.506628277459239e00,
+    ]
+    b = [
+        -5.447609879822406e01,
+        1.615858368580409e02,
+        -1.556989798598866e02,
+        6.680131188771972e01,
+        -1.328068155288572e01,
+    ]
+    c = [
+        -7.784894002430293e-03,
+        -3.223964580411365e-01,
+        -2.400758277161838e00,
+        -2.549732539343734e00,
+        4.374664141464968e00,
+        2.938163982698783e00,
+    ]
+    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 3.754408661907416e00]
     plow = 0.02425
     phigh = 1 - plow
 
     if p < plow:
         q = sqrt(-2 * log(p))
-        return (((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5]) / \
-               ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1)
+        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
+            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
+        )
     elif p <= phigh:
         q = p - 0.5
         r = q * q
-        return (((((a[0]*r + a[1])*r + a[2])*r + a[3])*r + a[4])*r + a[5]) * q / \
-               (((((b[0]*r + b[1])*r + b[2])*r + b[3])*r + b[4])*r + 1)
+        return (
+            (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
+            * q
+            / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+        )
     else:
         q = sqrt(-2 * log(1 - p))
-        return -(((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5]) / \
-                ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1)
+        return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
+            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
+        )
 
 
 def compute_coverage(
@@ -193,8 +210,8 @@ def compute_coverage(
         lower = mean_pred - k * std_pred
         upper = mean_pred + k * std_pred
         actual = float(np.mean((true_value >= lower) & (true_value <= upper)))
-        results[f"coverage_{int(nominal*100)}"] = actual
-        results[f"coverage_{int(nominal*100)}_gap"] = actual - nominal
+        results[f"coverage_{int(nominal * 100)}"] = actual
+        results[f"coverage_{int(nominal * 100)}_gap"] = actual - nominal
     return results
 
 
@@ -222,6 +239,7 @@ def compute_ood_detection_auc(
 
     # ROC AUC
     from sklearn.metrics import roc_auc_score
+
     auc = float(roc_auc_score(y_true, y_score))
 
     id_mean = float(np.mean(id_stds))
@@ -251,6 +269,7 @@ def compute_uq_error_correlation(
 
     # Spearman 相关（秩相关，更鲁棒）
     from scipy.stats import spearmanr, pearsonr
+
     spearman_r, spearman_p = spearmanr(std_pred.flatten(), errors)
     pearson_r, pearson_p = pearsonr(std_pred.flatten(), errors)
 
@@ -273,9 +292,8 @@ def compute_uq_error_correlation(
     }
 
 
-# =============================================================================
 # 可视化
-# =============================================================================
+
 
 def plot_calibration(
     mean_pred: np.ndarray,
@@ -286,6 +304,7 @@ def plot_calibration(
 ) -> None:
     """绘制校准曲线。"""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -322,6 +341,7 @@ def plot_ood_detection(
 ) -> None:
     """绘制 OOD 检测箱线图。"""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -345,6 +365,7 @@ def plot_ood_detection(
 
     # 添加图例
     from matplotlib.patches import Patch
+
     legend_elements = [
         Patch(facecolor="#4CAF50", alpha=0.7, label="ID (in-distribution)"),
         Patch(facecolor="#F44336", alpha=0.7, label="OOD (leave-one-out)"),
@@ -365,6 +386,7 @@ def plot_uq_error_scatter(
 ) -> None:
     """绘制不确定性-误差散点图。"""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -392,9 +414,8 @@ def plot_uq_error_scatter(
     print(f"  [图] {save_path}")
 
 
-# =============================================================================
 # 主实验流程
-# =============================================================================
+
 
 def run_bayesian_uq_experiment(
     weights_path: Path,
@@ -430,7 +451,7 @@ def run_bayesian_uq_experiment(
     print(f"MC Dropout 概率: {mc_dropout_prob}")
     print()
 
-    # === 1. 加载贝叶斯模型 ===
+    # 1. 加载贝叶斯模型
     print("[1/5] 加载贝叶斯 DL-LNN 权重...")
     bayesian_model = load_bayesian_dllnn(
         weights_path=weights_path,
@@ -456,7 +477,7 @@ def run_bayesian_uq_experiment(
     print(f"  总样本数: {len(dataset)}")
     print(f"  材料数: {len(MATERIALS_CONFIG)}")
 
-    # === 3. 对每种材料跑 MC Dropout ===
+    # 3. 对每种材料跑 MC Dropout
     print(f"\n[3/5] 对 5 种材料跑 MC Dropout (n_samples={n_samples})...")
     results_by_material: Dict[str, Dict] = {}
 
@@ -470,13 +491,16 @@ def run_bayesian_uq_experiment(
         y_phys = dataset.data["a_lim_clean"][mask]
         ks = ks_scale[mask]
 
-        print(f"\n  材料: {mat_name} (硬度={MATERIALS_CONFIG[mat_name]['hardness']:.0f} HB, "
-              f"样本数={mask.sum()})")
+        print(f"\n  材料: {mat_name} (硬度={MATERIALS_CONFIG[mat_name]['hardness']:.0f} HB, 样本数={mask.sum()})")
 
         # MC Dropout 推理（必须传入 physics_pred 才能激活门控融合）
         uq_result = bayesian_model.predict_batch(
-            X, physics_pred=y_phys, n_samples=n_samples, device=device,
-            batch_size=256, return_components=True,
+            X,
+            physics_pred=y_phys,
+            n_samples=n_samples,
+            device=device,
+            batch_size=256,
+            return_components=True,
         )
 
         mean_denorm = uq_result["mean_denorm"].flatten()
@@ -492,8 +516,7 @@ def run_bayesian_uq_experiment(
         std_mean = float(np.mean(std_orig))
         std_median = float(np.median(std_orig))
 
-        print(f"    MAE={mae:.4f}, RMSE={rmse:.4f}, "
-              f"std_mean={std_mean:.4f}, std_median={std_median:.4f}")
+        print(f"    MAE={mae:.4f}, RMSE={rmse:.4f}, std_mean={std_mean:.4f}, std_median={std_median:.4f}")
 
         results_by_material[mat_name] = {
             "n_samples": int(mask.sum()),
@@ -510,7 +533,7 @@ def run_bayesian_uq_experiment(
             },
         }
 
-    # === 4. 计算全局 UQ 指标 ===
+    # 4. 计算全局 UQ 指标
     print("\n[4/5] 计算全局 UQ 指标...")
 
     # 合并所有材料数据
@@ -524,13 +547,14 @@ def run_bayesian_uq_experiment(
 
     # 置信区间覆盖率
     coverage = compute_coverage(all_mean, all_std, all_true)
-    print(f"  覆盖率: 80%→{coverage['coverage_80']:.3f}, "
-          f"90%→{coverage['coverage_90']:.3f}, 95%→{coverage['coverage_95']:.3f}")
+    print(
+        f"  覆盖率: 80%→{coverage['coverage_80']:.3f}, "
+        f"90%→{coverage['coverage_90']:.3f}, 95%→{coverage['coverage_95']:.3f}"
+    )
 
     # 不确定性-误差相关性
     uq_error_corr = compute_uq_error_correlation(all_mean, all_std, all_true)
-    print(f"  Spearman 相关: {uq_error_corr['spearman_corr']:.4f} "
-          f"(p={uq_error_corr['spearman_p_value']:.4e})")
+    print(f"  Spearman 相关: {uq_error_corr['spearman_corr']:.4f} (p={uq_error_corr['spearman_p_value']:.4e})")
     print(f"  高UQ组MAE / 低UQ组MAE = {uq_error_corr['uq_error_ratio']:.3f}")
 
     # OOD 检测
@@ -541,25 +565,22 @@ def run_bayesian_uq_experiment(
     # 拉低 OOD 整体均值，使 AUC=0.32（反向）。6061-T6 的 std=3.31（最高），
     # 与 ID 材料 45_Steel（std=1.04）分离比 3.19×，符合 OOD 检测预期。
     # TC4/HRC52 的低不确定性是模型局限，将在论文"Limitations"部分讨论。
-    std_by_material = {
-        m: np.array(r["std_pred"]) for m, r in results_by_material.items()
-    }
+    std_by_material = {m: np.array(r["std_pred"]) for m, r in results_by_material.items()}
     id_mats = ["45_Steel", "304_SS"]
     ood_mats = ["6061-T6"]  # 仅保留低硬度 OOD 材料
 
     ood_result = compute_ood_detection_auc(std_by_material, id_mats, ood_mats)
     print(f"  OOD 检测 AUC = {ood_result['auc_roc']:.4f}")
-    print(f"  ID std均值 = {ood_result['id_std_mean']:.4f}, "
-          f"OOD std均值 = {ood_result['ood_std_mean']:.4f}")
+    print(f"  ID std均值 = {ood_result['id_std_mean']:.4f}, OOD std均值 = {ood_result['ood_std_mean']:.4f}")
     print(f"  分离比 = {ood_result['separation_ratio']:.3f}")
 
-    # === 5. 生成可视化 ===
+    # 5. 生成可视化
     print("\n[5/5] 生成可视化图表...")
     plot_calibration(all_mean, all_std, all_true, figures_dir / "calibration.png")
     plot_ood_detection(std_by_material, id_mats, ood_mats, figures_dir / "ood_detection.png")
     plot_uq_error_scatter(all_mean, all_std, all_true, figures_dir / "uq_error_corr.png")
 
-    # === 汇总结果 ===
+    # 汇总结果
     full_result = {
         "experiment": "Bayesian DL-LNN UQ (Version A)",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -570,9 +591,7 @@ def run_bayesian_uq_experiment(
             "device": device,
             "weights_path": str(weights_path),
         },
-        "materials": {
-            m: r["metrics"] for m, r in results_by_material.items()
-        },
+        "materials": {m: r["metrics"] for m, r in results_by_material.items()},
         "global_uq_metrics": {
             "ece": ece_result,
             "coverage": coverage,
@@ -600,7 +619,7 @@ def run_bayesian_uq_experiment(
     _generate_report(full_result, results_by_material, report_path)
     print(f"[已保存] {report_path}")
 
-    # === 成功判据检查 ===
+    # 成功判据检查
     print("\n" + "=" * 70)
     print("版本 A 成功判据检查")
     print("=" * 70)
@@ -651,14 +670,16 @@ def _generate_report(
         )
 
     uq = full_result["global_uq_metrics"]
-    lines.extend([
-        "\n## 2. 校准误差\n",
-        f"- **ECE (期望校准误差)**: {uq['ece']['ece']:.4f}",
-        f"- **MCE (最大校准误差)**: {uq['ece']['mce']:.4f}",
-        "\n## 3. 置信区间覆盖率\n",
-        "| 名义置信水平 | 实际覆盖率 | 偏差 |",
-        "|-------------|-----------|------|",
-    ])
+    lines.extend(
+        [
+            "\n## 2. 校准误差\n",
+            f"- **ECE (期望校准误差)**: {uq['ece']['ece']:.4f}",
+            f"- **MCE (最大校准误差)**: {uq['ece']['mce']:.4f}",
+            "\n## 3. 置信区间覆盖率\n",
+            "| 名义置信水平 | 实际覆盖率 | 偏差 |",
+            "|-------------|-----------|------|",
+        ]
+    )
 
     for level in [80, 90, 95, 99]:
         actual = uq["coverage"][f"coverage_{level}"]
@@ -666,38 +687,40 @@ def _generate_report(
         lines.append(f"| {level}% | {actual:.4f} | {gap:+.4f} |")
 
     corr = uq["uq_error_correlation"]
-    lines.extend([
-        "\n## 4. 不确定性-误差相关性\n",
-        f"- **Spearman 相关系数**: {corr['spearman_corr']:.4f} (p={corr['spearman_p_value']:.4e})",
-        f"- **Pearson 相关系数**: {corr['pearson_corr']:.4f} (p={corr['pearson_p_value']:.4e})",
-        f"- **高不确定性组 MAE**: {corr['high_uq_mae']:.4f}",
-        f"- **低不确定性组 MAE**: {corr['low_uq_mae']:.4f}",
-        f"- **UQ-Error 比值**: {corr['uq_error_ratio']:.3f}",
-        "\n## 5. OOD 检测能力\n",
-        f"- **ROC AUC**: {uq['ood_detection']['auc_roc']:.4f}",
-        f"- **ID 材料平均 std**: {uq['ood_detection']['id_std_mean']:.4f}",
-        f"- **OOD 材料平均 std**: {uq['ood_detection']['ood_std_mean']:.4f}",
-        f"- **分离比 (OOD/ID)**: {uq['ood_detection']['separation_ratio']:.3f}",
-        "\n## 6. 可视化图表\n",
-        "- 校准曲线: `figures/calibration.png`",
-        "- OOD 检测箱线图: `figures/ood_detection.png`",
-        "- 不确定性-误差散点图: `figures/uq_error_corr.png`",
-        "\n## 7. 结论\n",
-    ])
+    lines.extend(
+        [
+            "\n## 4. 不确定性-误差相关性\n",
+            f"- **Spearman 相关系数**: {corr['spearman_corr']:.4f} (p={corr['spearman_p_value']:.4e})",
+            f"- **Pearson 相关系数**: {corr['pearson_corr']:.4f} (p={corr['pearson_p_value']:.4e})",
+            f"- **高不确定性组 MAE**: {corr['high_uq_mae']:.4f}",
+            f"- **低不确定性组 MAE**: {corr['low_uq_mae']:.4f}",
+            f"- **UQ-Error 比值**: {corr['uq_error_ratio']:.3f}",
+            "\n## 5. OOD 检测能力\n",
+            f"- **ROC AUC**: {uq['ood_detection']['auc_roc']:.4f}",
+            f"- **ID 材料平均 std**: {uq['ood_detection']['id_std_mean']:.4f}",
+            f"- **OOD 材料平均 std**: {uq['ood_detection']['ood_std_mean']:.4f}",
+            f"- **分离比 (OOD/ID)**: {uq['ood_detection']['separation_ratio']:.3f}",
+            "\n## 6. 可视化图表\n",
+            "- 校准曲线: `figures/calibration.png`",
+            "- OOD 检测箱线图: `figures/ood_detection.png`",
+            "- 不确定性-误差散点图: `figures/uq_error_corr.png`",
+            "\n## 7. 结论\n",
+        ]
+    )
 
     # 自动结论
     checks = []
-    if uq['ood_detection']['separation_ratio'] > 2.0:
+    if uq["ood_detection"]["separation_ratio"] > 2.0:
         checks.append("✓ 不确定性成功区分 ID/OOD 材料（分离比 > 2）")
     else:
         checks.append("✗ 不确定性未能充分区分 ID/OOD 材料")
 
-    if uq['ece']['ece'] < 0.10:
+    if uq["ece"]["ece"] < 0.10:
         checks.append("✓ 校准误差在可接受范围内（ECE < 0.10）")
     else:
         checks.append("✗ 校准误差偏高，需温度缩放校准")
 
-    if corr['spearman_corr'] > 0.3:
+    if corr["spearman_corr"] > 0.3:
         checks.append("✓ 不确定性与误差正相关，可作为可信度指标")
     else:
         checks.append("✗ 不确定性与误差相关性不足")
@@ -709,19 +732,20 @@ def _generate_report(
         f.write("\n".join(lines) + "\n")
 
 
-# =============================================================================
 # 入口
-# =============================================================================
+
 
 def main():
     parser = argparse.ArgumentParser(description="贝叶斯 DL-LNN UQ 实验")
     parser.add_argument(
-        "--weights", type=str,
+        "--weights",
+        type=str,
         default=str(Path(__file__).parent / "results" / "full_weights.pt"),
         help="Full 配置权重文件路径",
     )
     parser.add_argument(
-        "--output_dir", type=str,
+        "--output_dir",
+        type=str,
         default=str(Path(__file__).parent / "results"),
         help="结果输出目录",
     )

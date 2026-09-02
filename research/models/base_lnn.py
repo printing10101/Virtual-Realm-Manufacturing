@@ -192,7 +192,7 @@ class BaseLNNModel(ABC):
             训练历史记录
         """
         # 设置全局随机种子确保可复现性
-        # 延迟导入避免 models ↔ training 循环依赖
+        # 延迟导入避免 models training 循环依赖
         from training.reproducibility import set_global_seed
 
         set_global_seed(seed)
@@ -230,9 +230,7 @@ class BaseLNNModel(ABC):
                 lr=learning_rate,
                 weight_decay=DEFAULT_WEIGHT_DECAY,
             )
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                optimizer, T_max=epochs, eta_min=1e-6
-            )
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
             criterion = torch.nn.MSELoss()
 
             best_val_loss = float("inf")
@@ -283,15 +281,15 @@ class BaseLNNModel(ABC):
                         best_val_loss = val_loss
                         patience_counter = 0
                         # 保存最佳模型权重
-                        self._best_torch_state = {
-                            k: v.cpu().clone() for k, v in torch_model.state_dict().items()
-                        }
+                        self._best_torch_state = {k: v.cpu().clone() for k, v in torch_model.state_dict().items()}
                     else:
                         patience_counter += 1
                         if patience_counter >= early_stopping_patience:
                             logger.info(
                                 "Early stopping at epoch %s/%s (val_loss=%.6f)",
-                                epoch + 1, epochs, val_loss,
+                                epoch + 1,
+                                epochs,
+                                val_loss,
                             )
                             break
 
@@ -309,8 +307,13 @@ class BaseLNNModel(ABC):
                 "Install PyTorch (pip install torch) for proper gradient computation."
             )
             return self._train_numpy_fallback(
-                train_data, train_labels, val_data, val_labels,
-                epochs, batch_size, learning_rate,
+                train_data,
+                train_labels,
+                val_data,
+                val_labels,
+                epochs,
+                batch_size,
+                learning_rate,
             )
 
     def _train_numpy_fallback(
@@ -325,9 +328,7 @@ class BaseLNNModel(ABC):
     ) -> Dict[str, List[float]]:
         """NumPy训练回退方案（仅当PyTorch不可用时使用）"""
         for epoch in range(epochs):
-            epoch_loss = self._train_step(
-                train_data, train_labels, batch_size, learning_rate
-            )
+            epoch_loss = self._train_step(train_data, train_labels, batch_size, learning_rate)
             self.training_history["loss"].append(epoch_loss)
 
             if val_data is not None and val_labels is not None:
@@ -509,9 +510,7 @@ class BaseLNNModel(ABC):
         self.output_dim = int(data["output_dim"])
         self.is_trained = bool(data["is_trained"])
 
-    def measure_inference_time(
-        self, x: np.ndarray, n_runs: int = 100
-    ) -> Dict[str, float]:
+    def measure_inference_time(self, x: np.ndarray, n_runs: int = 100) -> Dict[str, float]:
         """
         测量推理时间
 

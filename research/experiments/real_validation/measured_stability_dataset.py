@@ -38,7 +38,9 @@ from .schema import FEATURE_KEY_COLUMNS, NUMERIC_COLUMNS, load_rows, to_float, v
 
 DEFAULT_CSV = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "datasets", "measured_stability", "measured_stability_points.csv",
+    "datasets",
+    "measured_stability",
+    "measured_stability_points.csv",
 )
 
 
@@ -76,9 +78,7 @@ class MeasuredStabilityPointsDataset(Dataset):
 
         ok, problems = validate_schema(self._rows)
         if not ok:
-            raise ValueError(
-                "实测稳定性数据 schema 校验失败:\n  " + "\n  ".join(problems)
-            )
+            raise ValueError("实测稳定性数据 schema 校验失败:\n  " + "\n  ".join(problems))
 
         # 特征与标签
         self.n_rpm = np.array([to_float(r, "n_rpm") for r in self._rows], dtype=np.float32)
@@ -89,21 +89,14 @@ class MeasuredStabilityPointsDataset(Dataset):
         self.diameter = np.array([to_float(r, "tool_diameter_mm") for r in self._rows], dtype=np.float32)
         self.teeth = np.array([to_float(r, "num_teeth") for r in self._rows], dtype=np.float32)
         self.stability = np.array([int(r.get("stable", "0")) for r in self._rows], dtype=np.int64)
-        self.a_lim_measured = np.array(
-            [to_float(r, "a_lim_measured_mm") for r in self._rows], dtype=np.float32
-        )
-        self.sources = [
-            f"{r.get('source','')} | {r.get('doi','')}" for r in self._rows
-        ]
+        self.a_lim_measured = np.array([to_float(r, "a_lim_measured_mm") for r in self._rows], dtype=np.float32)
+        self.sources = [f"{r.get('source', '')} | {r.get('doi', '')}" for r in self._rows]
         self.materials = [r.get("material", "") for r in self._rows]
 
         # 检查关键列是否全 NaN（缺数据会静默失真）
         for name, arr in [("n_rpm", self.n_rpm), ("ap_mm", self.ap), ("ae_mm", self.ae)]:
             if np.isnan(arr).any():
-                raise ValueError(
-                    f"列 '{name}' 存在 NaN——实测数据缺切削参数，无法构造 7 维特征。"
-                    "请补齐或删除该行。"
-                )
+                raise ValueError(f"列 '{name}' 存在 NaN——实测数据缺切削参数，无法构造 7 维特征。请补齐或删除该行。")
 
         # 7 维特征（与 config.input_dim=7 对齐）
         self.features = build_physics_features_7d(
@@ -141,7 +134,7 @@ class MeasuredStabilityPointsDataset(Dataset):
         a_lim_physics = torch.from_numpy(np.array([self.a_lim_physics[idx]], dtype=np.float32))
         return features, a_lim, a_lim_physics
 
-    # ---------- 附加访问器 ----------
+    # 附加访问器
     def rows_with_measured_boundary(self) -> np.ndarray:
         """有实测边界值 a_lim_measured 的行索引（可用于回归验证）。"""
         return np.where(~np.isnan(self.a_lim_measured))[0]
@@ -182,10 +175,8 @@ def evaluate_stability_classification(
     y_true = dataset.stability.astype(int)
     a_lim_pred = np.asarray(predict_a_lim(dataset.features), dtype=np.float32).reshape(-1)
     if len(a_lim_pred) != len(y_true):
-        raise ValueError(
-            f"predict_a_lim 返回长度 {len(a_lim_pred)} != 样本数 {len(y_true)}"
-        )
-    # 预测稳定性：试验切深 ap > 预测极限切深 → 预测为稳定
+        raise ValueError(f"predict_a_lim 返回长度 {len(a_lim_pred)} != 样本数 {len(y_true)}")
+    # 预测稳定性：试验切深 ap > 预测极限切深 预测为稳定
     y_pred = (dataset.ap > a_lim_pred).astype(int)
 
     metrics: Dict[str, float] = {

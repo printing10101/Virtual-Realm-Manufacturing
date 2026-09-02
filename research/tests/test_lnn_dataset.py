@@ -1,4 +1,4 @@
-﻿"""LNN Dataset 单元测试。
+"""LNN Dataset 单元测试。
 
 目标：为 python/app/ai/lnn/training/dataset.py 提供高覆盖率的单元测试。
 覆盖范围：
@@ -21,9 +21,7 @@ import numpy as np
 import pytest
 
 
-# =============================================================================
 # 工具函数与 Fixtures
-# =============================================================================
 
 
 @pytest.fixture
@@ -46,21 +44,18 @@ def sample_labels_2d() -> np.ndarray:
 @pytest.fixture
 def dataset_module():
     from training import dataset as ds_mod
+
     return ds_mod
 
 
-# =============================================================================
 # 1. LNNDataset 初始化与基本方法
-# =============================================================================
 
 
 class TestLNNDatasetInit:
     """LNNDataset 初始化测试。"""
 
     def test_init_2d_data(self, dataset_module, sample_data_2d, sample_labels_1d):
-        ds = dataset_module.LNNDataset(
-            data=sample_data_2d, labels=sample_labels_1d
-        )
+        ds = dataset_module.LNNDataset(data=sample_data_2d, labels=sample_labels_1d)
         assert ds.data.shape == (20, 4)
         assert ds.labels.shape == (20, 1)
         assert ds.metadata == {}
@@ -78,17 +73,13 @@ class TestLNNDatasetInit:
         def target_transform(y):
             return y + 1
 
-        ds = dataset_module.LNNDataset(
-            data=sample_data_2d, transform=transform, target_transform=target_transform
-        )
+        ds = dataset_module.LNNDataset(data=sample_data_2d, transform=transform, target_transform=target_transform)
         assert ds.transform is transform
         assert ds.target_transform is target_transform
 
     def test_init_with_metadata(self, dataset_module, sample_data_2d):
         meta = {"source": "test", "version": 1}
-        ds = dataset_module.LNNDataset(
-            data=sample_data_2d, metadata=meta
-        )
+        ds = dataset_module.LNNDataset(data=sample_data_2d, metadata=meta)
         assert ds.metadata == meta
         assert ds.metadata["source"] == "test"
 
@@ -108,9 +99,7 @@ class TestLNNDatasetLen:
 
 
 class TestLNNDatasetGetItem:
-    def test_getitem_with_labels(
-        self, dataset_module, sample_data_2d, sample_labels_1d
-    ):
+    def test_getitem_with_labels(self, dataset_module, sample_data_2d, sample_labels_1d):
         ds = dataset_module.LNNDataset(data=sample_data_2d, labels=sample_labels_1d)
         sample, target = ds[0]
         assert sample.shape == (4,)
@@ -121,9 +110,7 @@ class TestLNNDatasetGetItem:
         sample = ds[0]
         assert sample.shape == (4,)
 
-    def test_getitem_applies_transform(
-        self, dataset_module, sample_data_2d, sample_labels_1d
-    ):
+    def test_getitem_applies_transform(self, dataset_module, sample_data_2d, sample_labels_1d):
         def transform(x):
             return x * 0.0
 
@@ -131,21 +118,15 @@ class TestLNNDatasetGetItem:
         sample = ds[0]
         np.testing.assert_array_equal(sample, np.zeros_like(sample_data_2d[0]))
 
-    def test_getitem_applies_target_transform(
-        self, dataset_module, sample_data_2d, sample_labels_1d
-    ):
+    def test_getitem_applies_target_transform(self, dataset_module, sample_data_2d, sample_labels_1d):
         def ttarget(y):
             return y * 0.0
 
-        ds = dataset_module.LNNDataset(
-            data=sample_data_2d, labels=sample_labels_1d, target_transform=ttarget
-        )
+        ds = dataset_module.LNNDataset(data=sample_data_2d, labels=sample_labels_1d, target_transform=ttarget)
         sample, target = ds[0]
         np.testing.assert_array_equal(target, np.zeros_like(sample_labels_1d[0:1]))
 
-    def test_getitem_returns_only_sample_without_labels(
-        self, dataset_module, sample_data_2d
-    ):
+    def test_getitem_returns_only_sample_without_labels(self, dataset_module, sample_data_2d):
         ds = dataset_module.LNNDataset(data=sample_data_2d)
         result = ds[0]
         # 不应是 tuple
@@ -174,10 +155,7 @@ class TestGetBatch:
 
 class TestLNNDatasetSplit:
     def test_split_default_ratios(self, dataset_module, sample_data_2d, sample_labels_1d):
-        ds = dataset_module.LNNDataset(
-            data=sample_data_2d, labels=sample_labels_1d,
-            metadata={"name": "test"}
-        )
+        ds = dataset_module.LNNDataset(data=sample_data_2d, labels=sample_labels_1d, metadata={"name": "test"})
         train, val, test = ds.split()
         assert len(train) == 14  # 0.7 * 20
         assert len(val) == 3
@@ -225,9 +203,7 @@ class TestLNNDatasetSplit:
 
     def test_split_custom_ratios(self, dataset_module, sample_data_2d):
         ds = dataset_module.LNNDataset(data=sample_data_2d)
-        train, val, test = ds.split(
-            train_ratio=0.6, val_ratio=0.2, test_ratio=0.2
-        )
+        train, val, test = ds.split(train_ratio=0.6, val_ratio=0.2, test_ratio=0.2)
         assert len(train) == 12
         assert len(val) == 4
         assert len(test) == 4
@@ -238,16 +214,12 @@ class TestLNNDatasetSplit:
             ds.split(train_ratio=0.5, val_ratio=0.3, test_ratio=0.1)
 
 
-# =============================================================================
 # 2. LNNDataset 类方法工厂
-# =============================================================================
 
 
 class TestLNNDatasetFromNumpy:
     def test_from_numpy(self, dataset_module, sample_data_2d, sample_labels_1d):
-        ds = dataset_module.LNNDataset.from_numpy(
-            data=sample_data_2d, labels=sample_labels_1d
-        )
+        ds = dataset_module.LNNDataset.from_numpy(data=sample_data_2d, labels=sample_labels_1d)
         assert isinstance(ds, dataset_module.LNNDataset)
         assert len(ds) == 20
 
@@ -257,9 +229,7 @@ class TestLNNDatasetFromNumpy:
 
 
 class TestLNNDatasetFromJson:
-    def test_from_json_basic(
-        self, dataset_module, tmp_path, sample_data_2d, sample_labels_1d
-    ):
+    def test_from_json_basic(self, dataset_module, tmp_path, sample_data_2d, sample_labels_1d):
         payload = {
             "data": sample_data_2d.tolist(),
             "labels": sample_labels_1d.tolist(),
@@ -288,9 +258,7 @@ class TestLNNDatasetFromJson:
         path = tmp_path / "ds.json"
         path.write_text(json.dumps(payload), encoding="utf-8")
 
-        ds = dataset_module.LNNDataset.from_json(
-            str(path), data_key="features", label_key="targets"
-        )
+        ds = dataset_module.LNNDataset.from_json(str(path), data_key="features", label_key="targets")
         assert ds.data.shape[0] == 20
 
 
@@ -331,9 +299,7 @@ class TestLNNDatasetFromCsv:
         assert ds.labels is None
 
 
-# =============================================================================
 # 3. TrainingDataPreprocessor
-# =============================================================================
 
 
 class TestTrainingDataPreprocessorInit:
@@ -346,9 +312,7 @@ class TestTrainingDataPreprocessorInit:
         assert p.std_ is None
 
     def test_init_custom(self, dataset_module):
-        p = dataset_module.TrainingDataPreprocessor(
-            normalize=False, standardize=False, handle_missing=False
-        )
+        p = dataset_module.TrainingDataPreprocessor(normalize=False, standardize=False, handle_missing=False)
         assert p.normalize is False
         assert p.standardize is False
         assert p.handle_missing is False
@@ -384,17 +348,13 @@ class TestTrainingDataPreprocessorTransform:
 
     def test_transform_only_standardize(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0]])
-        p = dataset_module.TrainingDataPreprocessor(
-            normalize=False, standardize=True, handle_missing=False
-        ).fit(data)
+        p = dataset_module.TrainingDataPreprocessor(normalize=False, standardize=True, handle_missing=False).fit(data)
         out = p.transform(data)
         assert out.shape == data.shape
 
     def test_transform_only_normalize(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0]])
-        p = dataset_module.TrainingDataPreprocessor(
-            normalize=True, standardize=False, handle_missing=False
-        ).fit(data)
+        p = dataset_module.TrainingDataPreprocessor(normalize=True, standardize=False, handle_missing=False).fit(data)
         out = p.transform(data)
         # 数据被缩放到 [0, 1]
         assert out.min() >= 0.0 - 1e-5
@@ -409,9 +369,7 @@ class TestTrainingDataPreprocessorTransform:
 
     def test_transform_without_missing_handling(self, dataset_module):
         data = np.array([[1.0, 2.0], [3.0, 4.0]])
-        p = dataset_module.TrainingDataPreprocessor(
-            normalize=False, standardize=True, handle_missing=False
-        ).fit(data)
+        p = dataset_module.TrainingDataPreprocessor(normalize=False, standardize=True, handle_missing=False).fit(data)
         out = p.transform(data)
         # 标准差为 0 之前已加 1e-10，因此输出是有限数
         assert np.all(np.isfinite(out))
@@ -445,9 +403,7 @@ class TestHandleMissing:
         np.testing.assert_array_equal(out, data)
 
 
-# =============================================================================
 # 4. FeatureExtractor
-# =============================================================================
 
 
 class TestTimeDomainFeatures:
@@ -488,26 +444,20 @@ class TestFrequencyDomainFeatures:
         # 用一个简单的正弦信号
         t = np.linspace(0, 1, 100, endpoint=False)
         signal = np.sin(2 * np.pi * 10 * t)
-        features = dataset_module.FeatureExtractor.extract_frequency_domain_features(
-            signal, fs=100.0
-        )
+        features = dataset_module.FeatureExtractor.extract_frequency_domain_features(signal, fs=100.0)
         assert features.shape == (1, 3)
 
     def test_extract_frequency_domain_features_2d(self, dataset_module):
         rng = np.random.RandomState(0)
         signals = rng.randn(3, 128)
-        features = dataset_module.FeatureExtractor.extract_frequency_domain_features(
-            signals, fs=256.0
-        )
+        features = dataset_module.FeatureExtractor.extract_frequency_domain_features(signals, fs=256.0)
         assert features.shape == (3, 3)
 
     def test_dominant_freq_approximation(self, dataset_module):
         # 10Hz 正弦波，fs=100，Dominant freq 应该在 10Hz 附近
         t = np.linspace(0, 1, 100, endpoint=False)
         signal = np.sin(2 * np.pi * 10 * t)
-        features = dataset_module.FeatureExtractor.extract_frequency_domain_features(
-            signal, fs=100.0
-        )
+        features = dataset_module.FeatureExtractor.extract_frequency_domain_features(signal, fs=100.0)
         assert features[0, 0] == pytest.approx(10.0, abs=1.0)
 
 
@@ -525,9 +475,7 @@ class TestExtractAllFeatures:
         assert features.shape == (4, 9)
 
 
-# =============================================================================
 # 5. BoschCNCDataset - 缓存模式
-# =============================================================================
 
 
 class _FakeH5Group:
@@ -581,9 +529,7 @@ class _FakeH5File:
     """模拟 h5py.File，支持 with 上下文与 __enter__/__exit__。"""
 
     def __init__(self, op_data: dict[str, tuple[np.ndarray, np.ndarray]]) -> None:
-        self._groups = {
-            k: _FakeH5Group(v[0], v[1]) for k, v in op_data.items()
-        }
+        self._groups = {k: _FakeH5Group(v[0], v[1]) for k, v in op_data.items()}
 
     def __enter__(self):
         return self
@@ -614,6 +560,7 @@ def _make_op_data(n_samples: int = 16) -> dict[str, tuple[np.ndarray, np.ndarray
 
 def _patch_h5py(monkeypatch, op_data: dict):
     """替换 dataset 模块中的 h5py.File。"""
+
     def _fake_h5py_file(path, mode):
         return _FakeH5File(op_data)
 
@@ -624,6 +571,7 @@ def _patch_h5py(monkeypatch, op_data: dict):
     # 同时 patch 已被 dataset 模块引用过的 h5py（如果存在）
     try:
         from training import dataset as ds_mod
+
         monkeypatch.setattr(ds_mod, "h5py", fake_h5py, raising=False)
     except Exception:
         pass
@@ -644,9 +592,7 @@ def fake_h5py(monkeypatch, tmp_path):
 class TestBoschCNCDatasetInit:
     def test_init_file_not_found(self, dataset_module):
         with pytest.raises(FileNotFoundError):
-            dataset_module.BoschCNCDataset(
-                hdf5_path="/nonexistent/path/to.h5"
-            )
+            dataset_module.BoschCNCDataset(hdf5_path="/nonexistent/path/to.h5")
 
     def test_init_with_cache_loads_data(self, dataset_module, fake_h5py):
         ds = dataset_module.BoschCNCDataset(
@@ -685,6 +631,7 @@ class TestBoschCNCDatasetInit:
     def test_init_with_transform(self, dataset_module, fake_h5py):
         def tf(x):
             return x * 2.0
+
         ds = dataset_module.BoschCNCDataset(
             hdf5_path=fake_h5py["hdf5_path"],
             cache_data=True,
@@ -705,16 +652,12 @@ class TestBoschCNCDatasetInit:
 
 class TestBoschCNCDatasetCache:
     def test_get_or_create_cache_default(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         cache = ds._get_or_create_cache()
         assert isinstance(cache, dataset_module.DatasetCache)
 
     def test_get_or_create_cache_provided(self, dataset_module, fake_h5py):
-        custom_cache = dataset_module.DatasetCache(
-            cache_directory=str(fake_h5py["tmp_path"] / "custom_cache")
-        )
+        custom_cache = dataset_module.DatasetCache(cache_directory=str(fake_h5py["tmp_path"] / "custom_cache"))
         ds = dataset_module.BoschCNCDataset(
             hdf5_path=fake_h5py["hdf5_path"],
             cache_data=True,
@@ -748,9 +691,7 @@ class TestBoschCNCDatasetCache:
 
 class TestBoschCNCDatasetLen:
     def test_len_cached(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         # 32 = 16+16 from two operations
         assert len(ds) == 32
 
@@ -765,9 +706,7 @@ class TestBoschCNCDatasetLen:
 
 class TestBoschCNCDatasetGetItem:
     def test_getitem_cached(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         signal, label = ds[0]
         assert signal.ndim >= 1
         assert label.ndim == 0 or label.shape == ()
@@ -803,9 +742,7 @@ class TestBoschCNCDatasetGetItem:
         np.testing.assert_array_equal(signal_raw, np.zeros_like(signal_raw))
 
     def test_getitem_returns_float32(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         signal, label = ds[0]
         assert signal.dtype == np.float32
         assert label.dtype == np.float32
@@ -813,64 +750,48 @@ class TestBoschCNCDatasetGetItem:
 
 class TestBoschCNCDatasetGetSignals:
     def test_get_signals_after_cache(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         signals = ds.get_signals()
         assert signals is not None
 
     def test_get_signals_without_cache_raises(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=False
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=False)
         with pytest.raises(RuntimeError):
             ds.get_signals()
 
 
 class TestBoschCNCDatasetGetLabels:
     def test_get_labels_after_cache(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         labels = ds.get_labels()
         assert labels is not None
         assert len(labels) == 32
 
     def test_get_labels_without_cache_raises(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=False
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=False)
         with pytest.raises(RuntimeError):
             ds.get_labels()
 
 
 class TestBoschCNCDatasetSplit:
     def test_split_default(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         train, val, test = ds.split()
         assert len(train) + len(val) + len(test) == 32
 
     def test_split_with_seed(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         train1, _, _ = ds.split(random_seed=42)
         train2, _, _ = ds.split(random_seed=42)
         np.testing.assert_array_equal(train1._data, train2._data)
 
     def test_split_invalid_ratios_raises(self, dataset_module, fake_h5py):
-        ds = dataset_module.BoschCNCDataset(
-            hdf5_path=fake_h5py["hdf5_path"], cache_data=True
-        )
+        ds = dataset_module.BoschCNCDataset(hdf5_path=fake_h5py["hdf5_path"], cache_data=True)
         with pytest.raises(AssertionError):
             ds.split(train_ratio=0.5, val_ratio=0.3, test_ratio=0.1)
 
 
-# =============================================================================
 # 6. DataAugmentation
-# =============================================================================
 
 
 class TestDataAugmentation:
@@ -905,9 +826,7 @@ class TestDataAugmentation:
 
     def test_amplitude_scaling_custom_range(self, dataset_module):
         signal = np.array([1.0, 2.0, 3.0])
-        out = dataset_module.DataAugmentation.amplitude_scaling(
-            signal, scale_range=(2.0, 2.0)
-        )
+        out = dataset_module.DataAugmentation.amplitude_scaling(signal, scale_range=(2.0, 2.0))
         np.testing.assert_array_almost_equal(out, signal * 2.0)
 
     def test_time_stretch_preserves_length(self, dataset_module):
@@ -918,9 +837,7 @@ class TestDataAugmentation:
 
     def test_time_stretch_unit_factor(self, dataset_module):
         signal = np.arange(50, dtype=np.float32)
-        out = dataset_module.DataAugmentation.time_stretch(
-            signal, stretch_range=(1.0, 1.0)
-        )
+        out = dataset_module.DataAugmentation.time_stretch(signal, stretch_range=(1.0, 1.0))
         # 拉伸因子为 1 时应几乎与原信号一致（插值可能引入微小差异）
         np.testing.assert_array_almost_equal(out, signal, decimal=4)
 
@@ -952,9 +869,7 @@ class TestDataAugmentation:
         np.testing.assert_array_equal(composed(signal), signal)
 
 
-# =============================================================================
 # 7. 集成场景 - 与 LNNDataset + TrainingDataPreprocessor 组合
-# =============================================================================
 
 
 class TestIntegration:

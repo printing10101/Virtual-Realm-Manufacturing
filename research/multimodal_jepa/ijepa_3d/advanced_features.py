@@ -10,6 +10,7 @@
 输入：DxfParseResult
 输出：List[RecognizedFeature]
 """
+
 from __future__ import annotations
 
 import math
@@ -75,9 +76,7 @@ def _polyline_centroid(pl) -> Tuple[float, float]:
     return (sum(p[0] for p in pts) / n, sum(p[1] for p in pts) / n)
 
 
-# ===========================================================================
 # 1. 多型腔检测
-# ===========================================================================
 
 
 def detect_multi_cavity(polylines) -> List[RecognizedFeature]:
@@ -140,9 +139,7 @@ def detect_multi_cavity(polylines) -> List[RecognizedFeature]:
     return out
 
 
-# ===========================================================================
 # 2. 岛屿检测
-# ===========================================================================
 
 
 def detect_island(polylines) -> List[RecognizedFeature]:
@@ -206,9 +203,7 @@ def detect_island(polylines) -> List[RecognizedFeature]:
     return out
 
 
-# ===========================================================================
 # 3. 长型腔检测
-# ===========================================================================
 
 
 def detect_long_cavity(polylines) -> List[RecognizedFeature]:
@@ -253,9 +248,7 @@ def detect_long_cavity(polylines) -> List[RecognizedFeature]:
     return out
 
 
-# ===========================================================================
 # 4. 孔阵列检测
-# ===========================================================================
 
 
 def detect_hole_array(circles) -> List[RecognizedFeature]:
@@ -290,7 +283,8 @@ def detect_hole_array(circles) -> List[RecognizedFeature]:
                 centers[i][0] - centers[j][0],
                 centers[i][1] - centers[j][1],
             )
-            for j in range(n) if j != i
+            for j in range(n)
+            if j != i
         )
         nn_dists.append(nearest)
     mean_nn = sum(nn_dists) / n
@@ -324,9 +318,7 @@ def detect_hole_array(circles) -> List[RecognizedFeature]:
     return out
 
 
-# ===========================================================================
 # 统一入口
-# ===========================================================================
 
 
 def detect_all_advanced(parse_result) -> List[RecognizedFeature]:

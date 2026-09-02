@@ -97,61 +97,61 @@ class IJEPA3DConfig:
         target_inference_time_ms: 目标推理时间（ms）
     """
 
-    # ========== 输入参数 ==========
+    # 输入参数
     image_size: Tuple[int, int] = (256, 256)
     in_channels: int = 3
 
-    # ========== CNN骨干网络 (ResNet-18) ==========
+    # CNN骨干网络 (ResNet-18)
     cnn_output_channels: int = 64
 
-    # ========== ViT编码器 (ViT-Small) ==========
+    # ViT编码器 (ViT-Small)
     vit_patch_size: int = 16
     vit_embed_dim: int = 512
     vit_depth: int = 12
     vit_num_heads: int = 8
     vit_mlp_ratio: int = 4
 
-    # ========== 预测器网络 ==========
+    # 预测器网络
     predictor_hidden_dim: int = 1024
     predictor_output_dim: int = 512
     predictor_depth: int = 3
 
-    # ========== 掩码策略 ==========
+    # 掩码策略
     mask_block_size: int = 16
     mask_ratio_start: float = 0.10
     mask_ratio_end: float = 0.30
     predict_target_size: int = 64
     progressive_masking: bool = True
 
-    # ========== 视图融合 ==========
+    # 视图融合
     view_fusion_num_heads: int = 8
     view_fusion_dropout: float = 0.1
     front_view_weight: float = 0.60
     side_view_weight: float = 0.20
     top_view_weight: float = 0.20
 
-    # ========== 输出头 ==========
+    # 输出头
     bbox_output_dim: int = 6
     num_keypoints: int = 10
     keypoint_output_dim: int = 30  # 10 * 3
 
-    # ========== 损失权重 ==========
+    # 损失权重
     lambda_reconstruction: float = 1.0
     lambda_embedding: float = 0.5
     lambda_geometry: float = 2.0
 
-    # ========== VICReg参数 ==========
+    # VICReg参数
     vicreg_variance_weight: float = 1.0
     vicreg_covariance_weight: float = 1.0
     vicreg_invariance_weight: float = 25.0
 
-    # ========== EMA参数 ==========
+    # EMA参数
     ema_decay: float = 0.996
 
-    # ========== Smooth L1参数 ==========
+    # Smooth L1参数
     smooth_l1_delta: float = 1.0
 
-    # ========== 训练参数 ==========
+    # 训练参数
     stage1_epochs: int = 100
     stage2_epochs: int = 200
     stage1_lr: float = 5e-4
@@ -160,29 +160,31 @@ class IJEPA3DConfig:
     stage2_batch_size: int = 16
     frozen_layers: int = 8
 
-    # ========== 数据增强 ==========
+    # 数据增强
     rotation_range: float = 15.0
     scale_range: Tuple[float, float] = (0.8, 1.2)
     brightness_range: float = 0.20
     gaussian_noise_std: float = 0.05
 
-    # ========== 保存与日志 ==========
+    # 保存与日志
     save_every_n_epochs: int = 50
     log_every_n_steps: int = 10
 
-    # ========== 推理 ==========
+    # 推理
     target_inference_time_ms: float = 100.0
 
-    # ========== 数据集配置 ==========
+    # 数据集配置
     min_samples_per_class: int = 100
     total_samples: int = 500
-    part_type_distribution: dict = field(default_factory=lambda: {
-        "bracket": 0.20,    # 支架类
-        "flange": 0.20,     # 法兰类
-        "stepped_shaft": 0.20,  # 阶梯轴类
-        "gear_blank": 0.20,     # 齿轮毛坯类
-        "housing": 0.20,    # 壳体类
-    })
+    part_type_distribution: dict = field(
+        default_factory=lambda: {
+            "bracket": 0.20,  # 支架类
+            "flange": 0.20,  # 法兰类
+            "stepped_shaft": 0.20,  # 阶梯轴类
+            "gear_blank": 0.20,  # 齿轮毛坯类
+            "housing": 0.20,  # 壳体类
+        }
+    )
 
     @property
     def vit_patches_per_side(self) -> int:
@@ -192,7 +194,7 @@ class IJEPA3DConfig:
     @property
     def vit_num_patches(self) -> int:
         """计算总patch数量。"""
-        return self.vit_patches_per_side ** 2
+        return self.vit_patches_per_side**2
 
     @property
     def num_mask_blocks_per_side(self) -> int:
@@ -202,4 +204,4 @@ class IJEPA3DConfig:
     @property
     def total_mask_blocks(self) -> int:
         """计算总掩码块数量。"""
-        return self.num_mask_blocks_per_side ** 2
+        return self.num_mask_blocks_per_side**2

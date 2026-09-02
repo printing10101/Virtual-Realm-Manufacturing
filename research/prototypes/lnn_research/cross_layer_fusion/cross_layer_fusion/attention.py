@@ -82,8 +82,7 @@ class CrossLayerAttention(nn.Module):
         self.dim_head = dim_out // n_heads
         if dim_out % n_heads != 0:
             raise ValueError(
-                f"输出维度 dim_out={dim_out} 必须能被注意力头数 n_heads={n_heads} 整除。"
-                f"请调整dim_out或n_heads参数。"
+                f"输出维度 dim_out={dim_out} 必须能被注意力头数 n_heads={n_heads} 整除。请调整dim_out或n_heads参数。"
             )
 
         # 注意力缩放因子: 1 / sqrt(d_k)
@@ -136,9 +135,7 @@ class CrossLayerAttention(nn.Module):
         """
         for name, tensor in [("query", query), ("key", key), ("value", value)]:
             if not isinstance(tensor, torch.Tensor):
-                raise TypeError(
-                    f"{name} 必须是 torch.Tensor 类型，实际类型为 {type(tensor).__name__}。"
-                )
+                raise TypeError(f"{name} 必须是 torch.Tensor 类型，实际类型为 {type(tensor).__name__}。")
 
         if query.dim() < 2:
             raise ValueError(
@@ -147,20 +144,15 @@ class CrossLayerAttention(nn.Module):
             )
 
         if key.dim() < 2:
-            raise ValueError(
-                f"key 维度必须 >= 2，实际维度为 {key.dim()}。"
-            )
+            raise ValueError(f"key 维度必须 >= 2，实际维度为 {key.dim()}。")
 
         if value.dim() < 2:
-            raise ValueError(
-                f"value 维度必须 >= 2，实际维度为 {value.dim()}。"
-            )
+            raise ValueError(f"value 维度必须 >= 2，实际维度为 {value.dim()}。")
 
         # 检查特征维度是否匹配初始化参数
         if query.size(-1) != self.dim_q and query.dim() >= 2:
             warnings.warn(
-                f"query 最后一维 ({query.size(-1)}) 与初始化 dim_q ({self.dim_q}) 不匹配。"
-                f"将使用投影层进行维度对齐。"
+                f"query 最后一维 ({query.size(-1)}) 与初始化 dim_q ({self.dim_q}) 不匹配。将使用投影层进行维度对齐。"
             )
 
     def _align_dimensions(
@@ -267,29 +259,29 @@ class CrossLayerAttention(nn.Module):
         Raises:
             RuntimeError: 当输入维度不兼容导致计算失败时抛出。
         """
-        # 步骤0: 输入验证
+        # 输入验证
         self._validate_inputs(query, key, value)
 
         batch_size = query.size(0)
 
-        # 步骤0.5: 维度对齐 - 通过投影层统一特征空间
+        # 5: 维度对齐 - 通过投影层统一特征空间
         q_proj, k_proj, v_proj = self._align_dimensions(query, key, value)
 
-        # 步骤0.6: 处理单样本输入 (batch, dim) -> (batch, 1, dim)
+        # 6: 处理单样本输入 (batch, dim) -> (batch, 1, dim)
         if q_proj.dim() == 2:
             q_proj = q_proj.unsqueeze(1)
             k_proj = k_proj.unsqueeze(1)
             v_proj = v_proj.unsqueeze(1)
 
-        # 步骤1: 重塑为多头格式
+        # 重塑为多头格式
         q_multi = self._reshape_for_multihead(q_proj)  # (B*H, seq_q, d_head)
         k_multi = self._reshape_for_multihead(k_proj)  # (B*H, seq_k, d_head)
         v_multi = self._reshape_for_multihead(v_proj)  # (B*H, seq_v, d_head)
 
-        # 步骤2: 计算相似度矩阵 scores = Q @ K^T * scale
+        # 计算相似度矩阵 scores = Q @ K^T * scale
         scores = torch.bmm(q_multi, k_multi.transpose(1, 2)) * self.scale
 
-        # 步骤2.5: 应用分数偏置（如时间衰减因子）
+        # 5: 应用分数偏置（如时间衰减因子）
         if score_bias is not None:
             # score_bias广播到 (B*H, seq_q, seq_k)
             if score_bias.dim() == 1:
@@ -298,7 +290,7 @@ class CrossLayerAttention(nn.Module):
                 score_bias = score_bias.unsqueeze(1)  # (B, 1, seq_k)
             scores = scores + score_bias
 
-        # 步骤3: 应用掩码（如果提供）
+        # 应用掩码（如果提供）
         if mask is not None:
             seq_q = q_multi.size(1)
             seq_k = k_multi.size(1)
@@ -317,22 +309,20 @@ class CrossLayerAttention(nn.Module):
             else:
                 raise ValueError(f"mask 维度 {mask.dim()} 不支持，预期 2~4 维。")
 
-            mask_expanded = mask_expanded.reshape(
-                batch_size * self.n_heads, seq_q, seq_k
-            )
+            mask_expanded = mask_expanded.reshape(batch_size * self.n_heads, seq_q, seq_k)
             scores = scores.masked_fill(mask_expanded, float("-inf"))
 
-        # 步骤4: Softmax归一化
+        # Softmax归一化
         attn_weights = F.softmax(scores, dim=-1)
 
-        # 步骤5: 加权求和 output = attn @ V
+        # 加权求和 output = attn @ V
         context = torch.bmm(attn_weights, v_multi)
 
-        # 步骤6: 重塑回原始格式并投影
+        # 重塑回原始格式并投影
         output = self._reshape_from_multihead(context, batch_size)
         output = self.W_o(output)
 
-        # 步骤7: 层归一化 + 残差连接
+        # 层归一化 + 残差连接
         output = self.layer_norm(output + q_proj)
 
         # 准备返回的注意力权重
@@ -370,7 +360,9 @@ class CrossLayerAttention(nn.Module):
 
         # 重塑为 (B, H, seq_q, seq_k)
         attn_weights = reshape_attention_weights(
-            attn_weights_flat, batch_size, self.n_heads,
+            attn_weights_flat,
+            batch_size,
+            self.n_heads,
         )
 
         if aggregate_heads == "mean":
@@ -378,9 +370,7 @@ class CrossLayerAttention(nn.Module):
         elif aggregate_heads == "max":
             return attn_weights.max(dim=1)[0]
         else:
-            raise ValueError(
-                f"aggregate_heads 参数必须是 'mean' 或 'max'，实际为 '{aggregate_heads}'。"
-            )
+            raise ValueError(f"aggregate_heads 参数必须是 'mean' 或 'max'，实际为 '{aggregate_heads}'。")
 
     def extra_repr(self) -> str:
         """返回模块的额外字符串表示。"""

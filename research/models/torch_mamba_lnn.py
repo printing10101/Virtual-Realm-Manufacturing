@@ -69,7 +69,9 @@ class SSMCell(nn.Module):
         if selective:
             self.dt_proj = nn.Linear(input_size, hidden_size)
 
-    def step(self, x: torch.Tensor, h: torch.Tensor, dt: float | torch.Tensor = 0.01) -> tuple[torch.Tensor, torch.Tensor]:
+    def step(
+        self, x: torch.Tensor, h: torch.Tensor, dt: float | torch.Tensor = 0.01
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """单步状态更新。
 
         Args:
@@ -128,9 +130,7 @@ class TorchMambaLNN(BaseLNN):
             selective,
         )
 
-    # ------------------------------------------------------------------
     # BaseLNN 抽象接口
-    # ------------------------------------------------------------------
     def init_hidden(self, batch_size: int) -> torch.Tensor:
         """初始状态 (num_layers, batch, hidden)。"""
         return torch.zeros(self.num_layers, batch_size, self.config.hidden_size, device=self.device)
@@ -153,9 +153,7 @@ class TorchMambaLNN(BaseLNN):
         """
         return self.step(x, hidden_state, dt)
 
-    # ------------------------------------------------------------------
     # 便捷接口
-    # ------------------------------------------------------------------
     def step(
         self,
         x: torch.Tensor,

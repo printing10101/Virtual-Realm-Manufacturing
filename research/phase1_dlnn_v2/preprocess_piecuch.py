@@ -26,9 +26,7 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 INPUT_CSV = os.path.join(DATA_DIR, "FeatureAndMetadata_Milling.csv")
 OUTPUT_CSV = os.path.join(DATA_DIR, "piecuch_dlnn_features.csv")
 
-# ============================================================================
 # 1. 加载与清洗
-# ============================================================================
 
 df = pd.read_csv(INPUT_CSV, sep=";", decimal=",", encoding="utf-8", skiprows=[0])
 print(f"[1] 加载数据: {df.shape[0]} 行 × {df.shape[1]} 列")
@@ -47,14 +45,20 @@ ACCEL_STD_COLS = [
 
 # 元数据列
 META_COLS = [
-    "FileName", "NumberOfCycle", "SampleIndex", "TollIndex",
-    "MillingToolType", "ADOC", "RDOC", "HardnessMean",
-    "ToolHolderLength", "CycleToFailure", "CycleToFailureNormalized",
+    "FileName",
+    "NumberOfCycle",
+    "SampleIndex",
+    "TollIndex",
+    "MillingToolType",
+    "ADOC",
+    "RDOC",
+    "HardnessMean",
+    "ToolHolderLength",
+    "CycleToFailure",
+    "CycleToFailureNormalized",
 ]
 
-# ============================================================================
 # 2. 构造 7 维 DL-LNN 输入
-# ============================================================================
 
 n_samples = len(df)
 
@@ -62,9 +66,9 @@ n_samples = len(df)
 # 来源: Nature 论文描述 Haas VF-1, 42CrMo4, D10 4-齿端铣刀
 # 标准切削参数: n≈4000 rpm, f≈0.1 mm/齿
 SPINDLE_SPEED = np.full(n_samples, 4000.0, dtype=np.float32)  # rpm
-FEED_PER_TOOTH = np.full(n_samples, 0.1, dtype=np.float32)    # mm/齿
-TOOL_DIAMETER = np.full(n_samples, 10.0, dtype=np.float32)    # mm
-NUM_TEETH = np.full(n_samples, 4, dtype=np.float32)           # 齿数
+FEED_PER_TOOTH = np.full(n_samples, 0.1, dtype=np.float32)  # mm/齿
+TOOL_DIAMETER = np.full(n_samples, 10.0, dtype=np.float32)  # mm
+NUM_TEETH = np.full(n_samples, 4, dtype=np.float32)  # 齿数
 
 # 轴向切深 a_p (mm) — ADOC
 ap = df["ADOC"].values.astype(np.float32)  # [5, 10] mm
@@ -76,23 +80,23 @@ ae = df["RDOC"].values.astype(np.float32)  # [4.5, 8] mm
 H = df["HardnessMean"].values.astype(np.float32)  # [35, 42] HRC
 
 # 特征矩阵 [N, 7]
-features_raw = np.column_stack([
-    SPINDLE_SPEED,      # n (rpm)
-    FEED_PER_TOOTH,     # f (mm/齿)
-    ap,                 # a_p (mm)
-    ae,                 # a_e (mm)
-    H,                  # H (HRC)
-    TOOL_DIAMETER,      # D (mm)
-    NUM_TEETH,          # z
-])
+features_raw = np.column_stack(
+    [
+        SPINDLE_SPEED,  # n (rpm)
+        FEED_PER_TOOTH,  # f (mm/齿)
+        ap,  # a_p (mm)
+        ae,  # a_e (mm)
+        H,  # H (HRC)
+        TOOL_DIAMETER,  # D (mm)
+        NUM_TEETH,  # z
+    ]
+)
 
-# ============================================================================
 # 3. 构造颤振代理标签
-# ============================================================================
 
 # 方法：计算 8 通道加速的 RMS 的均方根，作为"振动强度"
 accel_std = df[ACCEL_STD_COLS].values  # [N, 8]
-vibration_rms = np.sqrt(np.mean(accel_std ** 2, axis=1))  # [N]
+vibration_rms = np.sqrt(np.mean(accel_std**2, axis=1))  # [N]
 
 # 颤振代理标签: vibration_rms / a_p (切深越大+振动越大=越可能颤振)
 # 归一化到 [0, 1]
@@ -102,9 +106,7 @@ chatter_label = (raw_score - raw_score.min()) / (raw_score.max() - raw_score.min
 print(f"[2] 振动 RMS 范围: [{vibration_rms.min():.1f}, {vibration_rms.max():.1f}]")
 print(f"[2] 颤振标签范围: [{chatter_label.min():.3f}, {chatter_label.max():.3f}]")
 
-# ============================================================================
 # 4. 归一化到 [0, 1]（与 DL-LNN 训练数据格式一致）
-# ============================================================================
 
 # 参考归一化常量（与 data_generator_v2.py 一致）
 NORM_SCALES = np.array([10000.0, 0.5, 10.0, 8.0, 200.0, 20.0, 6.0], dtype=np.float32)
@@ -112,9 +114,7 @@ NORM_SCALES = np.array([10000.0, 0.5, 10.0, 8.0, 200.0, 20.0, 6.0], dtype=np.flo
 features_normalized = features_raw / NORM_SCALES
 features_normalized = np.clip(features_normalized, 0.0, 1.0)
 
-# ============================================================================
 # 5. 保存
-# ============================================================================
 
 output = pd.DataFrame(
     features_normalized,
@@ -134,14 +134,12 @@ print(f"    颤振标签统计: mean={chatter_label.mean():.3f}, std={chatter_la
 print(f"    高颤振样本 (>0.8): {int((chatter_label > 0.8).sum())} / {n_samples}")
 print(f"    低颤振样本 (<0.2): {int((chatter_label < 0.2).sum())} / {n_samples}")
 
-# ============================================================================
 # 6. 与合成数据的交叉验证建议
-# ============================================================================
 
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print(f"使用建议:")
 print(f"  1. 将此 CSV 作为 DL-LNN 的 '真实数据验证集'")
 print(f"  2. 用合成数据 (Tlusty ZOA) 预训练模型")
 print(f"  3. 用此数据集的 80% (774 样本) 微调")
 print(f"  4. 用 20% (194 样本) 评估 sim→real 迁移增益")
-print(f"{'='*60}")
+print(f"{'=' * 60}")

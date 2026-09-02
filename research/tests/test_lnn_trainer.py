@@ -1,4 +1,4 @@
-﻿"""LNNTrainer 单元测试。
+"""LNNTrainer 单元测试。
 
 目标：为 python/app/ai/lnn/training/trainer.py 提供高覆盖率的单元测试。
 覆盖范围：
@@ -25,9 +25,7 @@ import pytest
 torch = pytest.importorskip("torch")
 
 
-# =============================================================================
 # 测试专用 Fixtures
-# =============================================================================
 
 
 class _FakeParam(torch.nn.Parameter):
@@ -48,9 +46,7 @@ class _FakeParam(torch.nn.Parameter):
         # 用 torch.from_numpy 而非 torch.tensor：_build_torch_patch 会把
         # torch.tensor 替换为 _fake_tensor（返回 _FakeTensor），而
         # nn.Parameter.__new__ 需要真实 torch.Tensor 数据。
-        return super().__new__(
-            cls, torch.from_numpy(np.asarray(data, dtype=np.float32))
-        )
+        return super().__new__(cls, torch.from_numpy(np.asarray(data, dtype=np.float32)))
 
     def __init__(self, data: np.ndarray) -> None:
         # 数据转换已在 __new__ 完成；nn.Parameter 无自定义 __init__，
@@ -298,8 +294,10 @@ class _FakeModel:
     def forward(self, x: _FakeTensor) -> _FakeTensor:
         self.forward_calls += 1
         if self._use_tuple_output:
-            return (_FakeTensor(np.zeros((x._arr.shape[0], self.output_dim))),
-                    np.zeros((x._arr.shape[0], self.output_dim)))
+            return (
+                _FakeTensor(np.zeros((x._arr.shape[0], self.output_dim))),
+                np.zeros((x._arr.shape[0], self.output_dim)),
+            )
         return _FakeTensor(np.zeros((x._arr.shape[0], self.output_dim)))
 
     def __call__(self, x: _FakeTensor) -> _FakeTensor:
@@ -312,9 +310,14 @@ class _FakeModel:
 class _FakeDataLoader:
     """模拟 DataLoader，按 batch 返回 (X, y) 样本。"""
 
-    def __init__(self, n_samples: int = 16, batch_size: int = 4,
-                 input_dim: int = 4, output_dim: int = 2,
-                 classification: bool = True) -> None:
+    def __init__(
+        self,
+        n_samples: int = 16,
+        batch_size: int = 4,
+        input_dim: int = 4,
+        output_dim: int = 2,
+        classification: bool = True,
+    ) -> None:
         self.n_samples = n_samples
         self.batch_size = batch_size
         self.input_dim = input_dim
@@ -330,8 +333,7 @@ class _FakeDataLoader:
 
     def __iter__(self):
         for i in range(0, self.n_samples, self.batch_size):
-            yield (_FakeTensor(self._X[i:i + self.batch_size]),
-                   _FakeTensor(self._y[i:i + self.batch_size]))
+            yield (_FakeTensor(self._X[i : i + self.batch_size]), _FakeTensor(self._y[i : i + self.batch_size]))
 
     def __len__(self) -> int:
         return (self.n_samples + self.batch_size - 1) // self.batch_size
@@ -349,9 +351,7 @@ class _FakeDataLoader:
         return _Ds(self.n_samples)
 
 
-# =============================================================================
 # 工具函数：构造一个带桩的 torch 模块
-# =============================================================================
 
 
 def _build_torch_patch() -> dict[str, Any]:
@@ -364,8 +364,7 @@ def _build_torch_patch() -> dict[str, Any]:
         "cuda.amp.GradScaler": _FakeGradScaler,
         "cuda.amp.autocast": _FakeCM,
         "cuda.get_device_properties": lambda i=0: type(
-            "Props", (), {"name": "FakeGPU", "total_memory": 8 * 1024**3,
-                          "major": 7, "minor": 0}
+            "Props", (), {"name": "FakeGPU", "total_memory": 8 * 1024**3, "major": 7, "minor": 0}
         )(),
         "cuda.memory_allocated": lambda i=0: 100 * 1024 * 1024,
         "cuda.memory_reserved": lambda i=0: 200 * 1024 * 1024,
@@ -440,7 +439,8 @@ def _fake_randn(*size, **kwargs):
     """
     # 过滤掉 device 等 stub 关键字参数
     filtered_kwargs = {
-        k: v for k, v in kwargs.items()
+        k: v
+        for k, v in kwargs.items()
         if k not in ("device", "dtype", "layout", "pin_memory", "requires_grad", "generator", "out")
     }
     try:
@@ -508,15 +508,13 @@ def _FakeTrace(model, example, check_trace=False):
             os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
             with open(path, "wb") as f:
                 f.write(b"TRACED")
+
     return _Scripted()
 
 
 def _FakeSave(obj, path):
     """替代 ``torch.save`` 的桩：识别 checkpoint dict 走专用保存逻辑。"""
-    if isinstance(obj, dict) and (
-        "model_state_dict" in obj
-        or "epoch" in obj
-    ):
+    if isinstance(obj, dict) and ("model_state_dict" in obj or "epoch" in obj):
         # 训练检查点场景
         _FakeCheckpointSave(obj, path)
         return
@@ -606,6 +604,7 @@ def _patch_torch(monkeypatch, target_module: str = "research.training.trainer"):
     ``raising=False`` 会静默吞掉 setattr 失败，导致 loss/jit 桩从不生效）。
     """
     import sys
+
     torch_stub = sys.modules.get("torch")
     if torch_stub is None:
         return
@@ -621,9 +620,7 @@ def _patch_torch(monkeypatch, target_module: str = "research.training.trainer"):
         if name.startswith("nn."):
             sub_attr = name.split(".", 1)[1]
             try:
-                monkeypatch.setattr(
-                    f"{target_module}.nn.{sub_attr}", val, raising=False
-                )
+                monkeypatch.setattr(f"{target_module}.nn.{sub_attr}", val, raising=False)
             except Exception:
                 pass
         elif name == "nn":
@@ -649,9 +646,7 @@ def reset_class_state():
     _FakeModel.instances.clear()
 
 
-# =============================================================================
 # 核心：导入被测模块
-# =============================================================================
 
 
 @pytest.fixture
@@ -673,16 +668,12 @@ def simple_model():
 
 @pytest.fixture
 def cls_loaders():
-    return _FakeDataLoader(
-        n_samples=16, batch_size=4, input_dim=4, output_dim=2, classification=True
-    )
+    return _FakeDataLoader(n_samples=16, batch_size=4, input_dim=4, output_dim=2, classification=True)
 
 
 @pytest.fixture
 def reg_loaders():
-    return _FakeDataLoader(
-        n_samples=16, batch_size=4, input_dim=4, output_dim=1, classification=False
-    )
+    return _FakeDataLoader(n_samples=16, batch_size=4, input_dim=4, output_dim=1, classification=False)
 
 
 @pytest.fixture(autouse=False)
@@ -693,15 +684,10 @@ def patch_r2_for_classification(trainer_module, monkeypatch):
     原始 ``_compute_r2`` 展平后形状不一致。但本测试只关心 accuracy 路径，
     不测试 R² 实现，因此将其桩成返回 0.0。
     """
-    monkeypatch.setattr(
-        trainer_module.LNNTrainer, "_compute_r2",
-        staticmethod(lambda yt, yp: 0.0)
-    )
+    monkeypatch.setattr(trainer_module.LNNTrainer, "_compute_r2", staticmethod(lambda yt, yp: 0.0))
 
 
-# =============================================================================
 # 1. 构造与初始化
-# =============================================================================
 
 
 class TestLNNTrainerInit:
@@ -758,62 +744,52 @@ class TestLNNTrainerInit:
 
     def test_init_amp_disabled_when_cpu(self, trainer_module, simple_model):
         """当 device 为 cpu 时 use_amp 自动关闭。"""
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, device="cpu", use_amp=True
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, device="cpu", use_amp=True)
         assert trainer.use_amp is False
         assert trainer.scaler is None
 
 
-# =============================================================================
 # 2. 优化器创建（_create_optimizer）
-# =============================================================================
 
 
 class TestCreateOptimizer:
     """覆盖所有优化器类型分支。"""
 
-    @pytest.mark.parametrize("opt_type,expected_class", [
-        ("adam", _FakeOptimizer),
-        ("adamw", _FakeOptimizer),
-        ("sgd", _FakeOptimizer),
-        ("rmsprop", _FakeOptimizer),
-        ("unknown_type_falls_back", _FakeOptimizer),  # 未知类型回退到 AdamW
-    ])
+    @pytest.mark.parametrize(
+        "opt_type,expected_class",
+        [
+            ("adam", _FakeOptimizer),
+            ("adamw", _FakeOptimizer),
+            ("sgd", _FakeOptimizer),
+            ("rmsprop", _FakeOptimizer),
+            ("unknown_type_falls_back", _FakeOptimizer),  # 未知类型回退到 AdamW
+        ],
+    )
     def test_create_optimizer_all_types(self, trainer_module, simple_model, opt_type, expected_class):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, optimizer_type=opt_type
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, optimizer_type=opt_type)
         assert isinstance(trainer.optimizer, expected_class)
 
     def test_optimizer_uses_learning_rate(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, optimizer_type="adam", learning_rate=0.005
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, optimizer_type="adam", learning_rate=0.005)
         assert trainer.optimizer.lr == 0.005
 
     def test_sgd_uses_momentum(self, trainer_module, simple_model):
         """SGD 应支持 momentum 参数。"""
-        with mock.patch.object(trainer_module.torch.optim, "SGD",
-                               wraps=_FakeOptimizer) as sgd_mock:
+        with mock.patch.object(trainer_module.torch.optim, "SGD", wraps=_FakeOptimizer) as sgd_mock:
             trainer_module.LNNTrainer(model=simple_model, optimizer_type="sgd")
             assert sgd_mock.called
             call_kwargs = sgd_mock.call_args.kwargs
             assert call_kwargs.get("momentum") == 0.9
 
 
-# =============================================================================
 # 3. 学习率调度器创建（_create_lr_scheduler）
-# =============================================================================
 
 
 class TestCreateLRScheduler:
     """覆盖所有调度器类型分支。"""
 
     def test_step_scheduler_default(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, lr_scheduler_type="step"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, lr_scheduler_type="step")
         assert isinstance(trainer.lr_scheduler, _FakeScheduler)
 
     def test_step_scheduler_custom(self, trainer_module, simple_model):
@@ -825,95 +801,67 @@ class TestCreateLRScheduler:
         assert isinstance(trainer.lr_scheduler, _FakeScheduler)
 
     def test_cosine_scheduler(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, lr_scheduler_type="cosine"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, lr_scheduler_type="cosine")
         assert isinstance(trainer.lr_scheduler, _FakeScheduler)
 
     def test_reduce_on_plateau_scheduler(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, lr_scheduler_type="reduce_on_plateau"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, lr_scheduler_type="reduce_on_plateau")
         assert isinstance(trainer.lr_scheduler, _FakeScheduler)
 
     def test_exponential_scheduler(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, lr_scheduler_type="exponential"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, lr_scheduler_type="exponential")
         assert isinstance(trainer.lr_scheduler, _FakeScheduler)
 
     def test_unknown_scheduler_returns_none(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, lr_scheduler_type="non_existent_type"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, lr_scheduler_type="non_existent_type")
         assert trainer.lr_scheduler is None
 
 
-# =============================================================================
 # 4. 损失函数创建（_create_criterion）
-# =============================================================================
 
 
 class TestCreateCriterion:
     """覆盖所有损失函数类型分支。"""
 
-    @pytest.mark.parametrize("loss_type", [
-        "cross_entropy", "mse", "mae", "bce", "bce_with_logits", "unknown"
-    ])
+    @pytest.mark.parametrize("loss_type", ["cross_entropy", "mse", "mae", "bce", "bce_with_logits", "unknown"])
     def test_create_criterion_all_types(self, trainer_module, simple_model, loss_type):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type=loss_type
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type=loss_type)
         assert trainer.criterion is not None
 
 
-# =============================================================================
 # 5. 训练循环 train_epoch
-# =============================================================================
 
 
 class TestTrainEpoch:
     """训练单个 epoch 的核心逻辑。"""
 
-    def test_train_epoch_basic(self, trainer_module, simple_model, reg_loaders,
-                               patch_r2_for_classification):
+    def test_train_epoch_basic(self, trainer_module, simple_model, reg_loaders, patch_r2_for_classification):
         """基础训练 epoch（回归任务，labels 与 outputs 维度一致）。"""
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="mse"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="mse")
         loss, acc, r2 = trainer.train_epoch(reg_loaders)
         assert loss >= 0
         # r2 在桩模式下应为 0.0
         assert isinstance(r2, float)
 
-    def test_train_epoch_classification_accuracy(self, trainer_module,
-                                                 simple_model, cls_loaders,
-                                                 monkeypatch):
+    def test_train_epoch_classification_accuracy(self, trainer_module, simple_model, cls_loaders, monkeypatch):
         """分类任务：只验证 accuracy，绕过 R² 的维度不匹配。"""
         # 让 _compute_r2 不被实际调用，避免分类标签维度问题
-        monkeypatch.setattr(
-            trainer_module.LNNTrainer, "_compute_r2",
-            staticmethod(lambda yt, yp: 0.0)
-        )
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy"
-        )
+        monkeypatch.setattr(trainer_module.LNNTrainer, "_compute_r2", staticmethod(lambda yt, yp: 0.0))
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy")
         loss, acc, r2 = trainer.train_epoch(cls_loaders)
         assert loss >= 0
         assert 0.0 <= acc <= 1.0
         assert r2 == 0.0
 
-    def test_train_epoch_with_amp(self, trainer_module, simple_model, cls_loaders,
-                                  patch_r2_for_classification, monkeypatch):
+    def test_train_epoch_with_amp(
+        self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification, monkeypatch
+    ):
         """AMP 训练路径。"""
         # 强制 use_amp=True
         monkeypatch.setattr(trainer_module.torch.cuda, "is_available", lambda: True)
         scaler = _FakeGradScaler()
-        monkeypatch.setattr(trainer_module.torch.cuda.amp, "GradScaler",
-                            lambda: scaler)
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", device="cuda"
-        )
+        monkeypatch.setattr(trainer_module.torch.cuda.amp, "GradScaler", lambda: scaler)
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", device="cuda")
         trainer.use_amp = True
         trainer.scaler = scaler
         # 修补 autocast 上下文
@@ -921,10 +869,9 @@ class TestTrainEpoch:
         loss, acc, r2 = trainer.train_epoch(cls_loaders)
         assert scaler.scale_calls >= 1
 
-    def test_train_epoch_with_gradient_clipping(self, trainer_module, simple_model,
-                                                cls_loaders,
-                                                patch_r2_for_classification,
-                                                monkeypatch):
+    def test_train_epoch_with_gradient_clipping(
+        self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification, monkeypatch
+    ):
         """梯度裁剪路径。"""
         clip_calls = []
 
@@ -933,16 +880,13 @@ class TestTrainEpoch:
             return 0.0
 
         monkeypatch.setattr(trainer_module.torch.nn.utils, "clip_grad_norm_", clip_stub)
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", gradient_clip_value=0.5
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", gradient_clip_value=0.5)
         trainer.train_epoch(cls_loaders)
         assert 0.5 in clip_calls
 
-    def test_train_epoch_no_gradient_clipping(self, trainer_module, simple_model,
-                                              cls_loaders,
-                                              patch_r2_for_classification,
-                                              monkeypatch):
+    def test_train_epoch_no_gradient_clipping(
+        self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification, monkeypatch
+    ):
         """gradient_clip_value=None 时不进行梯度裁剪。"""
         clip_calls = []
 
@@ -951,9 +895,7 @@ class TestTrainEpoch:
             return 0.0
 
         monkeypatch.setattr(trainer_module.torch.nn.utils, "clip_grad_norm_", clip_stub)
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", gradient_clip_value=None
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", gradient_clip_value=None)
         trainer.train_epoch(cls_loaders)
         assert clip_calls == []
 
@@ -966,9 +908,7 @@ class TestTrainEpoch:
     ):
         """模型输出为 tuple 时拆包。"""
         simple_model._use_tuple_output = True
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy")
         loss, acc, r2 = trainer.train_epoch(cls_loaders)
         simple_model._use_tuple_output = False
         assert loss >= 0
@@ -988,36 +928,26 @@ class TestTrainEpoch:
                 self.hidden_state = _FakeTensor(np.array([1.0]))
 
         model = _HiddenModel()
-        trainer = trainer_module.LNNTrainer(
-            model=model, loss_type="cross_entropy"
-        )
+        trainer = trainer_module.LNNTrainer(model=model, loss_type="cross_entropy")
         trainer.train_epoch(cls_loaders)
         # hidden_state 应被 detach
         assert model.hidden_state is not None
 
     def test_train_epoch_bce_loss(self, trainer_module, simple_model):
         """BCE 损失分支。"""
-        loaders = _FakeDataLoader(
-            n_samples=8, batch_size=2, output_dim=1, classification=False
-        )
+        loaders = _FakeDataLoader(n_samples=8, batch_size=2, output_dim=1, classification=False)
         # 临时把模型 output_dim 改成 1 以匹配回归标签
         simple_model.output_dim = 1
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="bce"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="bce")
         loss, acc, r2 = trainer.train_epoch(loaders)
         simple_model.output_dim = 2
         assert loss >= 0
 
     def test_train_epoch_mae_loss(self, trainer_module, simple_model):
         """MAE 损失分支。"""
-        loaders = _FakeDataLoader(
-            n_samples=8, batch_size=2, output_dim=1, classification=False
-        )
+        loaders = _FakeDataLoader(n_samples=8, batch_size=2, output_dim=1, classification=False)
         simple_model.output_dim = 1
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="mae"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="mae")
         loss, acc, r2 = trainer.train_epoch(loaders)
         simple_model.output_dim = 2
         assert loss >= 0
@@ -1030,16 +960,12 @@ class TestTrainEpoch:
         patch_r2_for_classification,
     ):
         """回归任务（mse）。"""
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="mse"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="mse")
         loss, acc, r2 = trainer.train_epoch(reg_loaders)
         assert loss >= 0
 
 
-# =============================================================================
 # 6. 验证 validate
-# =============================================================================
 
 
 class TestValidate:
@@ -1052,9 +978,7 @@ class TestValidate:
         cls_loaders,
         patch_r2_for_classification,
     ):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy")
         loss, acc, r2 = trainer.validate(cls_loaders)
         assert loss >= 0
         assert 0.0 <= acc <= 1.0
@@ -1071,54 +995,43 @@ class TestValidate:
         scaler = _FakeGradScaler()
         monkeypatch.setattr(trainer_module.torch.cuda.amp, "GradScaler", lambda: scaler)
         monkeypatch.setattr(trainer_module.torch.cuda.amp, "autocast", _FakeCM)
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", device="cuda"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", device="cuda")
         trainer.use_amp = True
         trainer.scaler = scaler
         loss, acc, r2 = trainer.validate(cls_loaders)
         assert loss >= 0
 
-    def test_validate_with_tuple_output(self, trainer_module, simple_model,
-                                        cls_loaders,
-                                        patch_r2_for_classification):
+    def test_validate_with_tuple_output(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
         simple_model._use_tuple_output = True
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy")
         loss, acc, r2 = trainer.validate(cls_loaders)
         simple_model._use_tuple_output = False
         assert loss >= 0
 
 
-# =============================================================================
 # 7. 完整 fit 流程
-# =============================================================================
 
 
 class TestFit:
     """完整训练流程测试。"""
 
-    def test_fit_short_training(self, trainer_module, simple_model, cls_loaders,
-                                patch_r2_for_classification):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=2
-        )
+    def test_fit_short_training(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=2)
         history = trainer.fit(cls_loaders, cls_loaders)
         assert "train_loss" in history
         assert "val_loss" in history
         assert len(history["train_loss"]) <= 2
 
-    def test_fit_with_progress_callback(self, trainer_module, simple_model,
-                                        cls_loaders,
-                                        patch_r2_for_classification):
+    def test_fit_with_progress_callback(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
         callback_calls = []
 
         def cb(epoch, loss, metrics):
             callback_calls.append((epoch, loss, metrics))
 
         trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=2,
+            model=simple_model,
+            loss_type="cross_entropy",
+            epochs=2,
             progress_callback=cb,
         )
         trainer.fit(cls_loaders, cls_loaders)
@@ -1128,80 +1041,71 @@ class TestFit:
             assert isinstance(loss, float)
             assert "train_accuracy" in metrics
 
-    def test_fit_callback_failure_does_not_break_training(self, trainer_module,
-                                                          simple_model,
-                                                          cls_loaders,
-                                                          patch_r2_for_classification):
+    def test_fit_callback_failure_does_not_break_training(
+        self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification
+    ):
         """进度回调失败不应中断训练。"""
 
         def bad_cb(epoch, loss, metrics):
             raise RuntimeError("simulated callback failure")
 
         trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=2,
+            model=simple_model,
+            loss_type="cross_entropy",
+            epochs=2,
             progress_callback=bad_cb,
         )
         # 不应抛出异常
         trainer.fit(cls_loaders, cls_loaders)
         assert simple_model.is_trained is True
 
-    def test_fit_with_cancel_event(self, trainer_module, simple_model, cls_loaders,
-                                   patch_r2_for_classification):
+    def test_fit_with_cancel_event(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
         """取消事件在第一个 epoch 后应触发 CancelledError。"""
         ev = asyncio.Event()
         ev.set()  # 立即取消
         trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=5,
+            model=simple_model,
+            loss_type="cross_entropy",
+            epochs=5,
             cancel_event=ev,
         )
         with pytest.raises(asyncio.CancelledError):
             trainer.fit(cls_loaders, cls_loaders)
 
-    def test_fit_early_stopping(self, trainer_module, simple_model, cls_loaders,
-                                patch_r2_for_classification):
+    def test_fit_early_stopping(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
         """早停机制：构造一个 val_loss 永远不下降的情形。"""
         # 强制 validate 始终返回同一个较大 loss
-        with mock.patch.object(trainer_module.LNNTrainer, "validate",
-                               return_value=(1.0, 0.5, 0.0)):
+        with mock.patch.object(trainer_module.LNNTrainer, "validate", return_value=(1.0, 0.5, 0.0)):
             trainer = trainer_module.LNNTrainer(
-                model=simple_model, loss_type="cross_entropy", epochs=20,
+                model=simple_model,
+                loss_type="cross_entropy",
+                epochs=20,
                 early_stopping_patience=3,
             )
             trainer.fit(cls_loaders, cls_loaders)
             # 早停：训练不会跑满 20 个 epoch
             assert trainer.current_epoch < 20
 
-    def test_fit_saves_best_model(self, trainer_module, simple_model, cls_loaders,
-                                  patch_r2_for_classification):
+    def test_fit_saves_best_model(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
         """训练过程中应保存 best_model_state。"""
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=3
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=3)
         trainer.fit(cls_loaders, cls_loaders)
         # 训练完成后 best_model_state 已被 restore
         assert trainer.best_model_state is not None
 
-    def test_fit_with_explicit_epochs(self, trainer_module, simple_model, cls_loaders,
-                                      patch_r2_for_classification):
+    def test_fit_with_explicit_epochs(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
         """传入显式 epochs 覆盖默认 epochs。"""
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=10
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=10)
         trainer.fit(cls_loaders, cls_loaders, epochs=1)
         assert trainer.current_epoch <= 1
 
-    def test_fit_marks_model_trained(self, trainer_module, simple_model, cls_loaders,
-                                     patch_r2_for_classification):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=1
-        )
+    def test_fit_marks_model_trained(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=1)
         trainer.fit(cls_loaders, cls_loaders)
         assert simple_model.is_trained is True
 
 
-# =============================================================================
 # 8. R² 计算 (_compute_r2)
-# =============================================================================
 
 
 class TestComputeR2:
@@ -1227,67 +1131,49 @@ class TestComputeR2:
         assert r2 == pytest.approx(1.0)
 
 
-# =============================================================================
 # 9. 学习率调度步骤 (_step_lr_scheduler)
-# =============================================================================
 
 
 class TestStepLRScheduler:
     def test_no_scheduler_does_nothing(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, lr_scheduler_type="non_existent"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, lr_scheduler_type="non_existent")
         # 不应抛出异常
         trainer._step_lr_scheduler(0.5)
 
     def test_plateau_scheduler_uses_metric(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, lr_scheduler_type="reduce_on_plateau"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, lr_scheduler_type="reduce_on_plateau")
         before = trainer.lr_scheduler.step_calls
         trainer._step_lr_scheduler(0.7)
         after = trainer.lr_scheduler.step_calls
         assert after == before + 1
 
     def test_other_scheduler_ignores_metric(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, lr_scheduler_type="cosine"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, lr_scheduler_type="cosine")
         before = trainer.lr_scheduler.step_calls
         trainer._step_lr_scheduler(0.7)  # 参数被忽略
         after = trainer.lr_scheduler.step_calls
         assert after == before + 1
 
 
-# =============================================================================
 # 10. 检查点保存与加载
-# =============================================================================
 
 
 class TestCheckpointIO:
     def test_save_checkpoint(self, trainer_module, simple_model, tmp_path):
         path = tmp_path / "ckpt.pt"
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=1
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=1)
         trainer.save_checkpoint(str(path), epoch=1, metrics={"acc": 0.9})
         assert path.exists()
 
-    def test_save_checkpoint_creates_parent_dir(
-        self, trainer_module, simple_model, tmp_path
-    ):
+    def test_save_checkpoint_creates_parent_dir(self, trainer_module, simple_model, tmp_path):
         path = tmp_path / "subdir" / "ckpt.pt"
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=1
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=1)
         trainer.save_checkpoint(str(path))
         assert path.exists()
 
     def test_load_checkpoint_success(self, trainer_module, simple_model, tmp_path):
         path = tmp_path / "ckpt.pt"
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=1
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=1)
         trainer.save_checkpoint(str(path), epoch=3)
         result = trainer.load_checkpoint(str(path))
         # save_checkpoint 持久化了 9 个键：epoch/best_val_loss/model_state_dict/
@@ -1299,46 +1185,34 @@ class TestCheckpointIO:
 
     def test_load_checkpoint_file_not_found(self, trainer_module, simple_model, tmp_path):
         path = tmp_path / "nonexistent.pt"
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=1
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=1)
         with pytest.raises(FileNotFoundError):
             trainer.load_checkpoint(str(path))
 
-    def test_save_and_load_uses_device_str(self, trainer_module, simple_model,
-                                           tmp_path):
+    def test_save_and_load_uses_device_str(self, trainer_module, simple_model, tmp_path):
         path = tmp_path / "ckpt.pt"
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=1
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=1)
         trainer.save_checkpoint(str(path))
         result = trainer.load_checkpoint(str(path))
         # trainer.save_checkpoint 内部已经写入了 "device" 键
         assert "device" in result
 
 
-# =============================================================================
 # 11. TorchScript 导出
-# =============================================================================
 
 
 class TestExportTorchScript:
     def test_export_with_example(self, trainer_module, simple_model, tmp_path):
         path = tmp_path / "model.ts"
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=1
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=1)
         example = _FakeTensor(np.zeros((1, simple_model.input_dim)))
         out = trainer.export_torchscript(str(path), example_input=example)
         assert Path(out).exists()
         assert Path(out).suffix == ".ts"
 
-    def test_export_without_example_uses_input_dim(self, trainer_module,
-                                                   simple_model, tmp_path):
+    def test_export_without_example_uses_input_dim(self, trainer_module, simple_model, tmp_path):
         path = tmp_path / "model.pt"
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=1
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=1)
         out = trainer.export_torchscript(str(path))
         assert Path(out).exists()
 
@@ -1353,24 +1227,17 @@ class TestExportTorchScript:
 
         model = _ResettableModel()
         path = tmp_path / "model.ts"
-        trainer = trainer_module.LNNTrainer(
-            model=model, loss_type="cross_entropy", epochs=1
-        )
+        trainer = trainer_module.LNNTrainer(model=model, loss_type="cross_entropy", epochs=1)
         trainer.export_torchscript(str(path))
         assert model.reset_calls == 1
 
 
-# =============================================================================
 # 12. 训练摘要
-# =============================================================================
 
 
 class TestTrainingSummary:
-    def test_summary_basic(self, trainer_module, simple_model, cls_loaders,
-                           patch_r2_for_classification):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy", epochs=2
-        )
+    def test_summary_basic(self, trainer_module, simple_model, cls_loaders, patch_r2_for_classification):
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy", epochs=2)
         trainer.fit(cls_loaders, cls_loaders)
         summary = trainer.get_training_summary()
         assert summary["total_epochs"] == 2
@@ -1382,24 +1249,18 @@ class TestTrainingSummary:
 
     def test_summary_without_training(self, trainer_module, simple_model):
         """未训练时 final_* 应为 None。"""
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy")
         summary = trainer.get_training_summary()
         assert summary["final_train_loss"] is None
         assert summary["final_val_loss"] is None
 
 
-# =============================================================================
 # 13. 状态保存与恢复
-# =============================================================================
 
 
 class TestStateSaveRestore:
     def test_save_restore_round_trip(self, trainer_module, simple_model):
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, loss_type="cross_entropy"
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, loss_type="cross_entropy")
         state = trainer._save_model_state()
         assert "model_state_dict" in state
         assert "optimizer_state_dict" in state
@@ -1409,14 +1270,13 @@ class TestStateSaveRestore:
         assert trainer.optimizer.state_dict_calls >= 1
 
 
-# =============================================================================
 # 14. 设备信息记录
-# =============================================================================
 
 
 class TestLogDeviceInfo:
     def test_log_device_info_cpu(self, trainer_module, simple_model, caplog):
         import logging
+
         trainer = trainer_module.LNNTrainer(model=simple_model, device="cpu")
         with caplog.at_level(logging.INFO):
             trainer._log_device_info()
@@ -1425,8 +1285,6 @@ class TestLogDeviceInfo:
 
     def test_log_device_info_cuda(self, trainer_module, simple_model, monkeypatch):
         monkeypatch.setattr(trainer_module.torch.cuda, "is_available", lambda: True)
-        trainer = trainer_module.LNNTrainer(
-            model=simple_model, device="cuda", use_amp=True
-        )
+        trainer = trainer_module.LNNTrainer(model=simple_model, device="cuda", use_amp=True)
         # 不应抛异常
         trainer._log_device_info()

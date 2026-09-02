@@ -134,9 +134,7 @@ class LNNTrainer:
             self.device = torch.device(device)
         else:
             self.device = device
-        self.use_amp = (
-            use_amp and self.device.type == "cuda" and torch.cuda.is_available()
-        )
+        self.use_amp = use_amp and self.device.type == "cuda" and torch.cuda.is_available()
         self.progress_callback = progress_callback
         self.cancel_event = cancel_event
 
@@ -193,9 +191,7 @@ class LNNTrainer:
                 weight_decay=self.weight_decay,
             )
         elif self.optimizer_type == "sgd":
-            return torch.optim.SGD(
-                self.model.parameters(), lr=self.learning_rate, momentum=0.9
-            )
+            return torch.optim.SGD(self.model.parameters(), lr=self.learning_rate, momentum=0.9)
         elif self.optimizer_type == "rmsprop":
             return torch.optim.RMSprop(self.model.parameters(), lr=self.learning_rate)
         else:
@@ -210,15 +206,11 @@ class LNNTrainer:
         if self.lr_scheduler_type == "step":
             step_size = self.lr_scheduler_params.get("step_size", 30)
             gamma = self.lr_scheduler_params.get("gamma", 0.1)
-            return torch.optim.lr_scheduler.StepLR(
-                self.optimizer, step_size=step_size, gamma=gamma
-            )
+            return torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=step_size, gamma=gamma)
         elif self.lr_scheduler_type == "cosine":
             T_max = self.lr_scheduler_params.get("T_max", self.epochs)
             eta_min = self.lr_scheduler_params.get("eta_min", 0)
-            return torch.optim.lr_scheduler.CosineAnnealingLR(
-                self.optimizer, T_max=T_max, eta_min=eta_min
-            )
+            return torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=T_max, eta_min=eta_min)
         elif self.lr_scheduler_type == "reduce_on_plateau":
             mode = self.lr_scheduler_params.get("mode", "min")
             factor = self.lr_scheduler_params.get("factor", 0.1)
@@ -275,10 +267,7 @@ class LNNTrainer:
                     outputs = self.model(batch_X)
                     if isinstance(outputs, tuple):
                         outputs = outputs[0]
-                        if (
-                            hasattr(self.model, "hidden_state")
-                            and self.model.hidden_state is not None
-                        ):
+                        if hasattr(self.model, "hidden_state") and self.model.hidden_state is not None:
                             self.model.hidden_state = self.model.hidden_state.detach()
 
                     loss = self.criterion(outputs, batch_y)
@@ -287,9 +276,7 @@ class LNNTrainer:
 
                 if self.gradient_clip_value is not None:
                     self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.gradient_clip_value
-                    )
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clip_value)
 
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
@@ -297,10 +284,7 @@ class LNNTrainer:
                 outputs = self.model(batch_X)
                 if isinstance(outputs, tuple):
                     outputs = outputs[0]
-                    if (
-                        hasattr(self.model, "hidden_state")
-                        and self.model.hidden_state is not None
-                    ):
+                    if hasattr(self.model, "hidden_state") and self.model.hidden_state is not None:
                         self.model.hidden_state = self.model.hidden_state.detach()
 
                 loss = self.criterion(outputs, batch_y)
@@ -308,9 +292,7 @@ class LNNTrainer:
                 loss.backward()
 
                 if self.gradient_clip_value is not None:
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.gradient_clip_value
-                    )
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clip_value)
 
                 self.optimizer.step()
 
@@ -320,9 +302,7 @@ class LNNTrainer:
 
             if self.loss_type in ["cross_entropy", "bce_with_logits"]:
                 preds = torch.argmax(outputs, dim=1)
-                true_labels = (
-                    torch.argmax(batch_y, dim=1) if batch_y.ndim > 1 else batch_y
-                )
+                true_labels = torch.argmax(batch_y, dim=1) if batch_y.ndim > 1 else batch_y
             elif self.loss_type == "bce":
                 preds = (outputs > 0.5).float()
                 true_labels = batch_y
@@ -371,22 +351,14 @@ class LNNTrainer:
                         outputs = self.model(batch_X)
                         if isinstance(outputs, tuple):
                             outputs = outputs[0]
-                            if (
-                                hasattr(self.model, "hidden_state")
-                                and self.model.hidden_state is not None
-                            ):
-                                self.model.hidden_state = (
-                                    self.model.hidden_state.detach()
-                                )
+                            if hasattr(self.model, "hidden_state") and self.model.hidden_state is not None:
+                                self.model.hidden_state = self.model.hidden_state.detach()
                         loss = self.criterion(outputs, batch_y)
                 else:
                     outputs = self.model(batch_X)
                     if isinstance(outputs, tuple):
                         outputs = outputs[0]
-                        if (
-                            hasattr(self.model, "hidden_state")
-                            and self.model.hidden_state is not None
-                        ):
+                        if hasattr(self.model, "hidden_state") and self.model.hidden_state is not None:
                             self.model.hidden_state = self.model.hidden_state.detach()
                     loss = self.criterion(outputs, batch_y)
 
@@ -396,9 +368,7 @@ class LNNTrainer:
 
                 if self.loss_type in ["cross_entropy", "bce_with_logits"]:
                     preds = torch.argmax(outputs, dim=1)
-                    true_labels = (
-                        torch.argmax(batch_y, dim=1) if batch_y.ndim > 1 else batch_y
-                    )
+                    true_labels = torch.argmax(batch_y, dim=1) if batch_y.ndim > 1 else batch_y
                 elif self.loss_type == "bce":
                     preds = (outputs > 0.5).float()
                     true_labels = batch_y
@@ -454,21 +424,23 @@ class LNNTrainer:
             tracking_ctx = nullcontext()
 
         with tracking_ctx:
-            mlflow_log_params({
-                "learning_rate": self.learning_rate,
-                "optimizer_type": self.optimizer_type,
-                "loss_type": self.loss_type,
-                "batch_size": self.batch_size,
-                "epochs": epochs,
-                "seed": self.seed,
-                "early_stopping_patience": self.early_stopping_patience,
-                "gradient_clip_value": self.gradient_clip_value,
-                "lr_scheduler_type": self.lr_scheduler_type,
-                "lr_scheduler_params": str(self.lr_scheduler_params),
-                "weight_decay": self.weight_decay,
-                "device": str(self.device),
-                "use_amp": self.use_amp,
-            })
+            mlflow_log_params(
+                {
+                    "learning_rate": self.learning_rate,
+                    "optimizer_type": self.optimizer_type,
+                    "loss_type": self.loss_type,
+                    "batch_size": self.batch_size,
+                    "epochs": epochs,
+                    "seed": self.seed,
+                    "early_stopping_patience": self.early_stopping_patience,
+                    "gradient_clip_value": self.gradient_clip_value,
+                    "lr_scheduler_type": self.lr_scheduler_type,
+                    "lr_scheduler_params": str(self.lr_scheduler_params),
+                    "weight_decay": self.weight_decay,
+                    "device": str(self.device),
+                    "use_amp": self.use_amp,
+                }
+            )
 
             train_size = len(train_loader.dataset)
             val_size = len(val_loader.dataset)
@@ -482,9 +454,7 @@ class LNNTrainer:
             device_info = self.device.type.upper()
             if self.device.type == "cuda":
                 gpu_index = self.device.index if self.device.index is not None else 0
-                device_info = (
-                    f"CUDA:{gpu_index} ({torch.cuda.get_device_properties(gpu_index).name})"
-                )
+                device_info = f"CUDA:{gpu_index} ({torch.cuda.get_device_properties(gpu_index).name})"
 
             logger.info("Starting training for %s epochs...", epochs)
             logger.info(
@@ -520,20 +490,21 @@ class LNNTrainer:
                 self.training_history["val_accuracy"].append(val_acc)
                 self.training_history["train_r2"].append(train_r2)
                 self.training_history["val_r2"].append(val_r2)
-                self.training_history["learning_rate"].append(
-                    self.optimizer.param_groups[0]["lr"]
-                )
+                self.training_history["learning_rate"].append(self.optimizer.param_groups[0]["lr"])
 
                 # 学术诚信：每个 epoch 的指标记录到 MLflow
-                mlflow_log_metrics({
-                    "train_loss": train_loss,
-                    "val_loss": val_loss,
-                    "train_accuracy": train_acc,
-                    "val_accuracy": val_acc,
-                    "train_r2": train_r2,
-                    "val_r2": val_r2,
-                    "learning_rate": self.optimizer.param_groups[0]["lr"],
-                }, step=epoch)
+                mlflow_log_metrics(
+                    {
+                        "train_loss": train_loss,
+                        "val_loss": val_loss,
+                        "train_accuracy": train_acc,
+                        "val_accuracy": val_acc,
+                        "train_r2": train_r2,
+                        "val_r2": val_r2,
+                        "learning_rate": self.optimizer.param_groups[0]["lr"],
+                    },
+                    step=epoch,
+                )
 
                 if self.progress_callback:
                     try:
@@ -552,9 +523,7 @@ class LNNTrainer:
                         )
                     except (RuntimeError, ValueError, TypeError, AttributeError) as cb_err:
                         # 进度回调失败不应中断训练主流程，记录警告
-                        logger.warning(
-                            f"Progress callback failed: {cb_err}", exc_info=True
-                        )
+                        logger.warning(f"Progress callback failed: {cb_err}", exc_info=True)
 
                 device_display = device_info
                 if self.device.type == "cuda" and epoch % 10 == 0:
@@ -585,9 +554,7 @@ class LNNTrainer:
                         logger.info("Early stopping at epoch %s", epoch + 1)
                         break
 
-                if self.device.type == "cuda" and not check_gpu_memory_safe(
-                    threshold_percent=95.0
-                ):
+                if self.device.type == "cuda" and not check_gpu_memory_safe(threshold_percent=95.0):
                     logger.warning("GPU memory usage high, clearing cache")
                     clear_gpu_memory(self.device)
 
@@ -606,18 +573,18 @@ class LNNTrainer:
 
             # 学术诚信：记录最终模型和训练摘要到 MLflow
             mlflow_log_model(self.model, artifact_path="model")
-            mlflow_log_metrics({
-                "best_val_loss": self.best_val_loss,
-                "total_training_time_s": total_training_time,
-                "total_epochs_run": self.current_epoch,
-            })
+            mlflow_log_metrics(
+                {
+                    "best_val_loss": self.best_val_loss,
+                    "total_training_time_s": total_training_time,
+                    "total_epochs_run": self.current_epoch,
+                }
+            )
 
             # ADR-005 阶段 2：训练结束自动记录实验快照（best-effort，失败不中断）
             # 强制记录 git SHA + 数据版本 + 完整配置 + 指标 + 环境，支持一键复现
             if self.snapshot_store is not None:
-                self._record_experiment_snapshot_sync(
-                    total_training_time=total_training_time
-                )
+                self._record_experiment_snapshot_sync(total_training_time=total_training_time)
 
             return self.training_history
 
@@ -653,9 +620,7 @@ class LNNTrainer:
         self.model.load_state_dict(state["model_state_dict"])
         self.optimizer.load_state_dict(state["optimizer_state_dict"])
 
-    # ------------------------------------------------------------------
     # ADR-005 阶段 2：实验快照集成
-    # ------------------------------------------------------------------
 
     def _build_snapshot_config(self, total_training_time: float) -> Dict[str, Any]:
         """组装实验快照的 config 字段（含完整训练配置 + workflow_spec）."""
@@ -676,10 +641,7 @@ class LNNTrainer:
             },
             "seed": self.seed,
             "total_training_time_s": float(total_training_time),
-            "training_history": {
-                k: list(v) if isinstance(v, list) else v
-                for k, v in self.training_history.items()
-            },
+            "training_history": {k: list(v) if isinstance(v, list) else v for k, v in self.training_history.items()},
         }
         # workflow_spec 用于一键复现：reproduce 时反序列化为 WorkflowSpec 并启动新运行
         if self.workflow_spec is not None:
@@ -696,15 +658,11 @@ class LNNTrainer:
         if self.training_history.get("val_loss"):
             metrics["final_val_loss"] = float(self.training_history["val_loss"][-1])
         if self.training_history.get("train_loss"):
-            metrics["final_train_loss"] = float(
-                self.training_history["train_loss"][-1]
-            )
+            metrics["final_train_loss"] = float(self.training_history["train_loss"][-1])
         if self.training_history.get("val_r2"):
             metrics["final_val_r2"] = float(self.training_history["val_r2"][-1])
         if self.training_history.get("train_r2"):
-            metrics["final_train_r2"] = float(
-                self.training_history["train_r2"][-1]
-            )
+            metrics["final_train_r2"] = float(self.training_history["train_r2"][-1])
         return metrics
 
     def _record_experiment_snapshot_sync(self, total_training_time: float) -> None:
@@ -740,6 +698,7 @@ class LNNTrainer:
             if loop is not None and loop.is_running():
                 # 已有事件循环运行：调度为 task，不阻塞
                 future = asyncio.ensure_future(coro)
+
                 # 注册回调记录 snapshot_id
                 def _on_done(task: "asyncio.Task[Any]") -> None:
                     try:
@@ -751,27 +710,20 @@ class LNNTrainer:
                                 self._last_snapshot_id,
                             )
                     except Exception as exc:  # noqa: BLE001
-                        logger.warning(
-                            "Snapshot creation task failed: %s", exc, exc_info=True
-                        )
+                        logger.warning("Snapshot creation task failed: %s", exc, exc_info=True)
+
                 future.add_done_callback(_on_done)
             else:
                 # 无运行中的事件循环：用 asyncio.run 阻塞执行
                 result = asyncio.run(coro)
                 self._last_snapshot_id = getattr(result, "snapshot_id", None)
                 if self._last_snapshot_id:
-                    logger.info(
-                        "Experiment snapshot recorded: %s", self._last_snapshot_id
-                    )
+                    logger.info("Experiment snapshot recorded: %s", self._last_snapshot_id)
         except Exception as e:  # noqa: BLE001
             # best-effort：快照记录失败不影响训练结果
-            logger.warning(
-                f"记录实验快照失败（不影响训练结果）: {e}", exc_info=True
-            )
+            logger.warning(f"记录实验快照失败（不影响训练结果）: {e}", exc_info=True)
 
-    async def record_experiment_snapshot(
-        self, total_training_time: Optional[float] = None
-    ) -> Optional[str]:
+    async def record_experiment_snapshot(self, total_training_time: Optional[float] = None) -> Optional[str]:
         """显式记录实验快照（async 调用方使用）.
 
         Args:
@@ -809,9 +761,7 @@ class LNNTrainer:
                 )
             return self._last_snapshot_id
         except Exception as e:  # noqa: BLE001
-            logger.warning(
-                f"显式记录实验快照失败: {e}", exc_info=True
-            )
+            logger.warning(f"显式记录实验快照失败: {e}", exc_info=True)
             return None
 
     def save_checkpoint(
@@ -845,18 +795,12 @@ class LNNTrainer:
             "timestamp": datetime.now().isoformat(),
             "device": str(self.device),
             "use_amp": self.use_amp,
-            "scaler_state_dict": self.scaler.state_dict()
-            if self.scaler is not None
-            else None,
+            "scaler_state_dict": self.scaler.state_dict() if self.scaler is not None else None,
             # 学术诚信修复：保存学习率调度器状态，避免恢复训练时调度器重置
-            "lr_scheduler_state_dict": self.lr_scheduler.state_dict()
-            if self.lr_scheduler is not None
-            else None,
+            "lr_scheduler_state_dict": self.lr_scheduler.state_dict() if self.lr_scheduler is not None else None,
         }
 
-        os.makedirs(
-            os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
-        )
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
         torch.save(checkpoint, path)
         logger.info("Checkpoint saved to %s", path)
 
@@ -894,9 +838,7 @@ class LNNTrainer:
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.current_epoch = checkpoint.get("epoch", 0)
         self.best_val_loss = checkpoint.get("best_val_loss", float("inf"))
-        self.training_history = checkpoint.get(
-            "training_history", self.training_history
-        )
+        self.training_history = checkpoint.get("training_history", self.training_history)
 
         if self.scaler is not None and checkpoint.get("scaler_state_dict") is not None:
             self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
@@ -908,9 +850,7 @@ class LNNTrainer:
         logger.info("Checkpoint loaded from %s", path)
         return checkpoint
 
-    def export_torchscript(
-        self, save_path: str, example_input: Optional[torch.Tensor] = None
-    ) -> str:
+    def export_torchscript(self, save_path: str, example_input: Optional[torch.Tensor] = None) -> str:
         """
         导出模型为TorchScript格式
 
@@ -950,9 +890,7 @@ class LNNTrainer:
             "final_train_loss": self.training_history["train_loss"][-1]
             if self.training_history["train_loss"]
             else None,
-            "final_val_loss": self.training_history["val_loss"][-1]
-            if self.training_history["val_loss"]
-            else None,
+            "final_val_loss": self.training_history["val_loss"][-1] if self.training_history["val_loss"] else None,
             "final_train_accuracy": self.training_history["train_accuracy"][-1]
             if self.training_history["train_accuracy"]
             else None,
@@ -968,8 +906,6 @@ class LNNTrainer:
         if self.device.type == "cuda":
             gpu_index = self.device.index if self.device.index is not None else 0
             summary["gpu_name"] = torch.cuda.get_device_properties(gpu_index).name
-            summary["gpu_max_memory_mb"] = round(
-                torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2
-            )
+            summary["gpu_max_memory_mb"] = round(torch.cuda.max_memory_allocated(gpu_index) / (1024**2), 2)
 
         return summary

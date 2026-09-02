@@ -35,20 +35,14 @@ def train_model(
     val_loader: torch.utils.data.DataLoader,
     learning_rate: float,
     device: torch.device,
-    num_epochs: int = 80
+    num_epochs: int = 80,
 ) -> torch.nn.Module:
     """训练模型"""
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=learning_rate,
-        weight_decay=1e-4
-    )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=num_epochs, eta_min=1e-5
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-5)
 
-    best_val_loss = float('inf')
+    best_val_loss = float("inf")
     best_state = None
 
     for epoch in range(num_epochs):
@@ -120,9 +114,7 @@ def train_model(
 
 
 def evaluate_model(
-    model: torch.nn.Module,
-    test_loader: torch.utils.data.DataLoader,
-    device: torch.device
+    model: torch.nn.Module, test_loader: torch.utils.data.DataLoader, device: torch.device
 ) -> Dict[str, float]:
     """评估模型"""
     model.eval()
@@ -154,10 +146,10 @@ def evaluate_model(
 
     metrics_calc = ChatterMetrics()
     metrics = {
-        'MAE': metrics_calc.mae(all_preds, all_targets),
-        'RMSE': metrics_calc.rmse(all_preds, all_targets),
-        'R2': metrics_calc.r2_score(all_preds, all_targets),
-        'PCC': metrics_calc.physics_consistency_coefficient(all_preds, all_phys)
+        "MAE": metrics_calc.mae(all_preds, all_targets),
+        "RMSE": metrics_calc.rmse(all_preds, all_targets),
+        "R2": metrics_calc.r2_score(all_preds, all_targets),
+        "PCC": metrics_calc.physics_consistency_coefficient(all_preds, all_phys),
     }
 
     return metrics
@@ -169,17 +161,17 @@ def run_hyperparameter_sensitivity_experiment():
     print("超参数灵敏度分析实验 (Hyperparameter Sensitivity Analysis)")
     print("=" * 80)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n使用设备: {device}")
 
     # 加载数据
     print("\n[步骤 1/5] 加载工业 6061-T6 数据集...")
     train_loader, val_loader, test_loader = create_dataloaders(
         dataset_class=Industrial6061T6Dataset,
-        dataset_params={'num_samples': 500, 'noise_level': 0.08, 'seed': 46},
+        dataset_params={"num_samples": 500, "noise_level": 0.08, "seed": 46},
         batch_size=32,
         train_ratio=0.7,
-        val_ratio=0.15
+        val_ratio=0.15,
     )
     print(f"  训练集样本数: {len(train_loader.dataset)}")
     print(f"  验证集样本数: {len(val_loader.dataset)}")
@@ -198,31 +190,24 @@ def run_hyperparameter_sensitivity_experiment():
     print(f"  Dropout率: {dropouts}")
 
     results = {
-        'timestamp': datetime.now().isoformat(),
-        'hidden_dim_analysis': [],
-        'learning_rate_analysis': [],
-        'dt_analysis': [],
-        'dropout_analysis': [],
-        'best_config': None
+        "timestamp": datetime.now().isoformat(),
+        "hidden_dim_analysis": [],
+        "learning_rate_analysis": [],
+        "dt_analysis": [],
+        "dropout_analysis": [],
+        "best_config": None,
     }
 
-    # ============================================================
-    # 步骤 3: 隐藏层维度分析
-    # ============================================================
+    # 隐藏层维度分析
     print(f"\n[步骤 3/5] 隐藏层维度分析...")
     for hidden_dim in hidden_dims:
         print(f"\n  hidden_dim = {hidden_dim}")
-        
+
         torch.manual_seed(42)
         np.random.seed(42)
 
         model = DLLNNWithPhysics(
-            input_dim=7,
-            hidden_dim=hidden_dim,
-            num_layers=3,
-            output_dim=1,
-            dt=0.1,
-            dropout=0.2
+            input_dim=7, hidden_dim=hidden_dim, num_layers=3, output_dim=1, dt=0.1, dropout=0.2
         ).to(device)
 
         model = train_model(
@@ -231,40 +216,37 @@ def run_hyperparameter_sensitivity_experiment():
             val_loader=val_loader,
             learning_rate=1e-3,
             device=device,
-            num_epochs=80
+            num_epochs=80,
         )
 
         metrics = evaluate_model(model, test_loader, device)
-        
-        results['hidden_dim_analysis'].append({
-            'hidden_dim': hidden_dim,
-            'MAE': round(metrics['MAE'], 6),
-            'RMSE': round(metrics['RMSE'], 6),
-            'R2': round(metrics['R2'], 6),
-            'PCC': round(metrics['PCC'], 6)
-        })
 
-        print(f"    MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
-              f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}")
+        results["hidden_dim_analysis"].append(
+            {
+                "hidden_dim": hidden_dim,
+                "MAE": round(metrics["MAE"], 6),
+                "RMSE": round(metrics["RMSE"], 6),
+                "R2": round(metrics["R2"], 6),
+                "PCC": round(metrics["PCC"], 6),
+            }
+        )
 
-    # ============================================================
-    # 步骤 4: 学习率分析
-    # ============================================================
+        print(
+            f"    MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
+            f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}"
+        )
+
+    # 学习率分析
     print(f"\n[步骤 4/5] 学习率分析...")
     for lr in learning_rates:
         print(f"\n  learning_rate = {lr}")
-        
+
         torch.manual_seed(42)
         np.random.seed(42)
 
-        model = DLLNNWithPhysics(
-            input_dim=7,
-            hidden_dim=128,
-            num_layers=3,
-            output_dim=1,
-            dt=0.1,
-            dropout=0.2
-        ).to(device)
+        model = DLLNNWithPhysics(input_dim=7, hidden_dim=128, num_layers=3, output_dim=1, dt=0.1, dropout=0.2).to(
+            device
+        )
 
         model = train_model(
             model=model,
@@ -272,40 +254,35 @@ def run_hyperparameter_sensitivity_experiment():
             val_loader=val_loader,
             learning_rate=lr,
             device=device,
-            num_epochs=80
+            num_epochs=80,
         )
 
         metrics = evaluate_model(model, test_loader, device)
-        
-        results['learning_rate_analysis'].append({
-            'learning_rate': lr,
-            'MAE': round(metrics['MAE'], 6),
-            'RMSE': round(metrics['RMSE'], 6),
-            'R2': round(metrics['R2'], 6),
-            'PCC': round(metrics['PCC'], 6)
-        })
 
-        print(f"    MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
-              f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}")
+        results["learning_rate_analysis"].append(
+            {
+                "learning_rate": lr,
+                "MAE": round(metrics["MAE"], 6),
+                "RMSE": round(metrics["RMSE"], 6),
+                "R2": round(metrics["R2"], 6),
+                "PCC": round(metrics["PCC"], 6),
+            }
+        )
 
-    # ============================================================
-    # 步骤 5: 时间常数 dt 分析
-    # ============================================================
+        print(
+            f"    MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
+            f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}"
+        )
+
+    # 时间常数 dt 分析
     print(f"\n[步骤 5/5] 时间常数 dt 分析...")
     for dt in dts:
         print(f"\n  dt = {dt}")
-        
+
         torch.manual_seed(42)
         np.random.seed(42)
 
-        model = DLLNNWithPhysics(
-            input_dim=7,
-            hidden_dim=128,
-            num_layers=3,
-            output_dim=1,
-            dt=dt,
-            dropout=0.2
-        ).to(device)
+        model = DLLNNWithPhysics(input_dim=7, hidden_dim=128, num_layers=3, output_dim=1, dt=dt, dropout=0.2).to(device)
 
         model = train_model(
             model=model,
@@ -313,40 +290,37 @@ def run_hyperparameter_sensitivity_experiment():
             val_loader=val_loader,
             learning_rate=1e-3,
             device=device,
-            num_epochs=80
+            num_epochs=80,
         )
 
         metrics = evaluate_model(model, test_loader, device)
-        
-        results['dt_analysis'].append({
-            'dt': dt,
-            'MAE': round(metrics['MAE'], 6),
-            'RMSE': round(metrics['RMSE'], 6),
-            'R2': round(metrics['R2'], 6),
-            'PCC': round(metrics['PCC'], 6)
-        })
 
-        print(f"    MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
-              f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}")
+        results["dt_analysis"].append(
+            {
+                "dt": dt,
+                "MAE": round(metrics["MAE"], 6),
+                "RMSE": round(metrics["RMSE"], 6),
+                "R2": round(metrics["R2"], 6),
+                "PCC": round(metrics["PCC"], 6),
+            }
+        )
 
-    # ============================================================
-    # 步骤 6: Dropout 分析
-    # ============================================================
+        print(
+            f"    MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
+            f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}"
+        )
+
+    # Dropout 分析
     print(f"\n[步骤 6/5] Dropout 分析...")
     for dropout in dropouts:
         print(f"\n  dropout = {dropout}")
-        
+
         torch.manual_seed(42)
         np.random.seed(42)
 
-        model = DLLNNWithPhysics(
-            input_dim=7,
-            hidden_dim=128,
-            num_layers=3,
-            output_dim=1,
-            dt=0.1,
-            dropout=dropout
-        ).to(device)
+        model = DLLNNWithPhysics(input_dim=7, hidden_dim=128, num_layers=3, output_dim=1, dt=0.1, dropout=dropout).to(
+            device
+        )
 
         model = train_model(
             model=model,
@@ -354,39 +328,41 @@ def run_hyperparameter_sensitivity_experiment():
             val_loader=val_loader,
             learning_rate=1e-3,
             device=device,
-            num_epochs=80
+            num_epochs=80,
         )
 
         metrics = evaluate_model(model, test_loader, device)
-        
-        results['dropout_analysis'].append({
-            'dropout': dropout,
-            'MAE': round(metrics['MAE'], 6),
-            'RMSE': round(metrics['RMSE'], 6),
-            'R2': round(metrics['R2'], 6),
-            'PCC': round(metrics['PCC'], 6)
-        })
 
-        print(f"    MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
-              f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}")
+        results["dropout_analysis"].append(
+            {
+                "dropout": dropout,
+                "MAE": round(metrics["MAE"], 6),
+                "RMSE": round(metrics["RMSE"], 6),
+                "R2": round(metrics["R2"], 6),
+                "PCC": round(metrics["PCC"], 6),
+            }
+        )
 
-    # ============================================================
-    # 步骤 7: 找出最优配置
-    # ============================================================
+        print(
+            f"    MAE={metrics['MAE']:.4f}, RMSE={metrics['RMSE']:.4f}, "
+            f"R²={metrics['R2']:.4f}, PCC={metrics['PCC']:.4f}"
+        )
+
+    # 找出最优配置
     print(f"\n[步骤 7/5] 分析最优配置...")
-    
-    # 找出每个维度的最优值
-    best_hidden_dim = min(results['hidden_dim_analysis'], key=lambda x: x['MAE'])
-    best_lr = min(results['learning_rate_analysis'], key=lambda x: x['MAE'])
-    best_dt = min(results['dt_analysis'], key=lambda x: x['MAE'])
-    best_dropout = min(results['dropout_analysis'], key=lambda x: x['MAE'])
 
-    results['best_config'] = {
-        'hidden_dim': best_hidden_dim['hidden_dim'],
-        'learning_rate': best_lr['learning_rate'],
-        'dt': best_dt['dt'],
-        'dropout': best_dropout['dropout'],
-        'best_MAE': best_hidden_dim['MAE']
+    # 找出每个维度的最优值
+    best_hidden_dim = min(results["hidden_dim_analysis"], key=lambda x: x["MAE"])
+    best_lr = min(results["learning_rate_analysis"], key=lambda x: x["MAE"])
+    best_dt = min(results["dt_analysis"], key=lambda x: x["MAE"])
+    best_dropout = min(results["dropout_analysis"], key=lambda x: x["MAE"])
+
+    results["best_config"] = {
+        "hidden_dim": best_hidden_dim["hidden_dim"],
+        "learning_rate": best_lr["learning_rate"],
+        "dt": best_dt["dt"],
+        "dropout": best_dropout["dropout"],
+        "best_MAE": best_hidden_dim["MAE"],
     }
 
     print(f"\n最优配置:")
@@ -395,16 +371,14 @@ def run_hyperparameter_sensitivity_experiment():
     print(f"  dt = {results['best_config']['dt']}")
     print(f"  dropout = {results['best_config']['dropout']}")
 
-    # ============================================================
-    # 步骤 8: 保存结果
-    # ============================================================
+    # 保存结果
     print(f"\n[步骤 8/5] 保存实验结果...")
 
     output_dir = Path("results")
     output_dir.mkdir(exist_ok=True)
 
     output_file = output_dir / "hyperparameter_sensitivity_results.json"
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
     print(f"  结果已保存到: {output_file}")

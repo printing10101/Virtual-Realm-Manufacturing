@@ -26,32 +26,36 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import ModelConfig
 from models import (
-    DLLNNModel, DLLNNWithPhysics,
-    BaselineLSTM, BaselineTransformer, BaselinePINN, BaselineBPNN,
-    BaselineCNN, BaselineGRU, BaselinegPINN, BaselinePeRCNN
+    DLLNNModel,
+    DLLNNWithPhysics,
+    BaselineLSTM,
+    BaselineTransformer,
+    BaselinePINN,
+    BaselineBPNN,
+    BaselineCNN,
+    BaselineGRU,
+    BaselinegPINN,
+    BaselinePeRCNN,
 )
 from data_generator import Industrial6061T6Dataset, create_dataloaders
 from metrics import ChatterMetrics
 
 
-# ============================================================
 # 实验参数
-# ============================================================
 
 # 5个独立实验的随机种子
 SEEDS = [42, 43, 44, 45, 46]
 NUM_TRIALS = len(SEEDS)
 
 # 参与对比的模型列表
-MODEL_NAMES = ['DL-LNN', 'LSTM', 'GRU', 'Transformer', 'CNN', 'PINN', 'gPINN', 'PeRCNN', 'BPNN']
+MODEL_NAMES = ["DL-LNN", "LSTM", "GRU", "Transformer", "CNN", "PINN", "gPINN", "PeRCNN", "BPNN"]
 
 # 需要统计检验的指标
-METRIC_NAMES = ['MAE', 'RMSE', 'R2', 'PCC']
+METRIC_NAMES = ["MAE", "RMSE", "R2", "PCC"]
 
 
-# ============================================================
 # 工具函数
-# ============================================================
+
 
 def create_model_by_name(name: str, config: ModelConfig, device: torch.device) -> torch.nn.Module:
     """
@@ -71,69 +75,61 @@ def create_model_by_name(name: str, config: ModelConfig, device: torch.device) -
         output_dim=config.output_dim,
     )
 
-    if name == 'DL-LNN':
+    if name == "DL-LNN":
         model = DLLNNWithPhysics(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
             output_dim=config.output_dim,
             dt=config.ltc_dt,
-            dropout=config.dropout
+            dropout=config.dropout,
         )
-    elif name == 'LSTM':
+    elif name == "LSTM":
         model = BaselineLSTM(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
-    elif name == 'GRU':
+    elif name == "GRU":
         model = BaselineGRU(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
-    elif name == 'Transformer':
+    elif name == "Transformer":
         model = BaselineTransformer(
             input_dim=config.input_dim,
             d_model=config.hidden_dim,
             nhead=4,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
-    elif name == 'CNN':
-        model = BaselineCNN(
-            input_dim=config.input_dim,
-            hidden_dim=config.hidden_dim,
-            output_dim=config.output_dim
-        )
-    elif name == 'PINN':
+    elif name == "CNN":
+        model = BaselineCNN(input_dim=config.input_dim, hidden_dim=config.hidden_dim, output_dim=config.output_dim)
+    elif name == "PINN":
         model = BaselinePINN(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
-    elif name == 'gPINN':
+    elif name == "gPINN":
         model = BaselinegPINN(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
-    elif name == 'PeRCNN':
-        model = BaselinePeRCNN(
-            input_dim=config.input_dim,
-            hidden_dim=config.hidden_dim,
-            output_dim=config.output_dim
-        )
-    elif name == 'BPNN':
+    elif name == "PeRCNN":
+        model = BaselinePeRCNN(input_dim=config.input_dim, hidden_dim=config.hidden_dim, output_dim=config.output_dim)
+    elif name == "BPNN":
         model = BaselineBPNN(
             input_dim=config.input_dim,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_layers,
-            output_dim=config.output_dim
+            output_dim=config.output_dim,
         )
     else:
         raise ValueError(f"未知模型: {name}")
@@ -148,7 +144,7 @@ def train_model(
     val_loader,
     config: ModelConfig,
     device: torch.device,
-    num_epochs: int = 80
+    num_epochs: int = 80,
 ) -> torch.nn.Module:
     """
     训练模型，返回最佳模型
@@ -169,11 +165,11 @@ def train_model(
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-5)
 
-    best_val_loss = float('inf')
+    best_val_loss = float("inf")
     best_state = None
 
     for epoch in range(num_epochs):
-        # ---- 训练阶段 ----
+        # 训练阶段
         model.train()
         train_loss = 0.0
         n_batches = 0
@@ -205,7 +201,7 @@ def train_model(
 
         train_loss /= max(n_batches, 1)
 
-        # ---- 验证阶段 ----
+        # 验证阶段
         model.eval()
         val_loss = 0.0
         n_val = 0
@@ -238,7 +234,7 @@ def train_model(
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
 
         if (epoch + 1) % 20 == 0 or epoch == 0:
-            print(f"    Epoch [{epoch+1}/{num_epochs}] Train: {train_loss:.4f} Val: {val_loss:.4f}")
+            print(f"    Epoch [{epoch + 1}/{num_epochs}] Train: {train_loss:.4f} Val: {val_loss:.4f}")
 
     # 加载最佳权重
     if best_state is not None:
@@ -247,11 +243,7 @@ def train_model(
     return model
 
 
-def evaluate_model(
-    model: torch.nn.Module,
-    test_loader,
-    device: torch.device
-) -> Dict[str, float]:
+def evaluate_model(model: torch.nn.Module, test_loader, device: torch.device) -> Dict[str, float]:
     """
     评估模型，计算MAE, RMSE, R², PCC等指标
 
@@ -292,10 +284,10 @@ def evaluate_model(
 
     metrics_calc = ChatterMetrics()
     metrics = {
-        'MAE': metrics_calc.mae(all_preds, all_targets),
-        'RMSE': metrics_calc.rmse(all_preds, all_targets),
-        'R2': metrics_calc.r2_score(all_preds, all_targets),
-        'PCC': metrics_calc.physics_consistency_coefficient(all_preds, all_phys)
+        "MAE": metrics_calc.mae(all_preds, all_targets),
+        "RMSE": metrics_calc.rmse(all_preds, all_targets),
+        "R2": metrics_calc.r2_score(all_preds, all_targets),
+        "PCC": metrics_calc.physics_consistency_coefficient(all_preds, all_phys),
     }
 
     return metrics
@@ -357,19 +349,18 @@ def independent_t_test(group1: np.ndarray, group2: np.ndarray) -> Dict[str, floa
     d = cohens_d(group1, group2)
 
     return {
-        't_stat': float(t_stat),
-        'p_value': float(p_value),
-        'significant': bool(p_value < 0.05),
-        'cohens_d': d,
-        'mean_diff': float(mean_diff),
-        'ci_95_lower': float(ci_lower),
-        'ci_95_upper': float(ci_upper)
+        "t_stat": float(t_stat),
+        "p_value": float(p_value),
+        "significant": bool(p_value < 0.05),
+        "cohens_d": d,
+        "mean_diff": float(mean_diff),
+        "ci_95_lower": float(ci_lower),
+        "ci_95_upper": float(ci_upper),
     }
 
 
-# ============================================================
 # 单次实验：在一个随机种子下训练并评估所有模型
-# ============================================================
+
 
 def run_single_trial(seed: int, config: ModelConfig, device: torch.device) -> Dict[str, Dict[str, float]]:
     """
@@ -394,15 +385,11 @@ def run_single_trial(seed: int, config: ModelConfig, device: torch.device) -> Di
     # 创建数据加载器（使用Industrial6061T6Dataset）
     train_loader, val_loader, test_loader = create_dataloaders(
         dataset_class=Industrial6061T6Dataset,
-        dataset_params={
-            'num_samples': 500,
-            'noise_level': 0.08,
-            'seed': seed
-        },
+        dataset_params={"num_samples": 500, "noise_level": 0.08, "seed": seed},
         batch_size=config.batch_size,
         train_ratio=0.7,
         val_ratio=0.15,
-        seed=seed
+        seed=seed,
     )
 
     trial_results = {}
@@ -422,34 +409,36 @@ def run_single_trial(seed: int, config: ModelConfig, device: torch.device) -> Di
                 val_loader=val_loader,
                 config=config,
                 device=device,
-                num_epochs=80
+                num_epochs=80,
             )
 
             # 评估
             test_metrics = evaluate_model(model, test_loader, device)
             trial_results[model_name] = test_metrics
 
-            print(f"      MAE: {test_metrics['MAE']:.4f}, RMSE: {test_metrics['RMSE']:.4f}, "
-                  f"R2: {test_metrics['R2']:.4f}, PCC: {test_metrics['PCC']:.4f}")
+            print(
+                f"      MAE: {test_metrics['MAE']:.4f}, RMSE: {test_metrics['RMSE']:.4f}, "
+                f"R2: {test_metrics['R2']:.4f}, PCC: {test_metrics['PCC']:.4f}"
+            )
 
         except Exception as e:
             print(f"      错误: {str(e)}")
             import traceback
+
             traceback.print_exc()
             # 记录NaN表示该次实验失败
             trial_results[model_name] = {
-                'MAE': float('nan'),
-                'RMSE': float('nan'),
-                'R2': float('nan'),
-                'PCC': float('nan')
+                "MAE": float("nan"),
+                "RMSE": float("nan"),
+                "R2": float("nan"),
+                "PCC": float("nan"),
             }
 
     return trial_results
 
 
-# ============================================================
 # 主实验流程
-# ============================================================
+
 
 def run_statistical_significance_experiment():
     """
@@ -467,33 +456,29 @@ def run_statistical_significance_experiment():
     print(f"对比模型: {', '.join(MODEL_NAMES)}")
     print("=" * 80)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n使用设备: {device}")
 
     config = ModelConfig()
 
-    # ----------------------------------------------------------
-    # 步骤1：对每个种子运行实验，收集所有模型的指标
-    # ----------------------------------------------------------
+    # 对每个种子运行实验，收集所有模型的指标
     print("\n[步骤1] 运行多次独立实验...")
 
     # all_trial_results[seed_idx][model_name][metric_name] = value
     all_trial_results: List[Dict[str, Dict[str, float]]] = []
 
     for trial_idx, seed in enumerate(SEEDS):
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"第 {trial_idx + 1}/{NUM_TRIALS} 次实验 (seed={seed})")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         trial_result = run_single_trial(seed, config, device)
         all_trial_results.append(trial_result)
 
-    # ----------------------------------------------------------
-    # 步骤2：汇总统计量（均值 ± 标准差）
-    # ----------------------------------------------------------
-    print(f"\n{'='*80}")
+    # 汇总统计量（均值 ± 标准差）
+    print(f"\n{'=' * 80}")
     print("[步骤2] 计算均值和标准差...")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     # results[model_name][metric_name] = {"mean": ..., "std": ...}
     results: Dict[str, Dict[str, Dict[str, float]]] = {}
@@ -511,16 +496,12 @@ def run_statistical_significance_experiment():
 
             if len(values) > 0:
                 results[model_name][metric_name] = {
-                    'mean': float(np.mean(values)),
-                    'std': float(np.std(values, ddof=1)) if len(values) > 1 else 0.0,
-                    'values': values  # 保留原始值用于t检验
+                    "mean": float(np.mean(values)),
+                    "std": float(np.std(values, ddof=1)) if len(values) > 1 else 0.0,
+                    "values": values,  # 保留原始值用于t检验
                 }
             else:
-                results[model_name][metric_name] = {
-                    'mean': float('nan'),
-                    'std': float('nan'),
-                    'values': []
-                }
+                results[model_name][metric_name] = {"mean": float("nan"), "std": float("nan"), "values": []}
 
     # 打印汇总表
     print(f"\n{'模型':<15}", end="")
@@ -532,25 +513,23 @@ def run_statistical_significance_experiment():
     for model_name in MODEL_NAMES:
         print(f"{model_name:<15}", end="")
         for metric_name in METRIC_NAMES:
-            mean = results[model_name][metric_name]['mean']
-            std = results[model_name][metric_name]['std']
+            mean = results[model_name][metric_name]["mean"]
+            std = results[model_name][metric_name]["std"]
             if np.isnan(mean):
                 print(f"{'N/A':<25}", end="")
             else:
                 print(f"{mean:.4f}±{std:.4f}{'':<12}", end="")
         print()
 
-    # ----------------------------------------------------------
-    # 步骤3：t检验（DL-LNN vs 其他模型）
-    # ----------------------------------------------------------
-    print(f"\n{'='*80}")
+    # t检验（DL-LNN vs 其他模型）
+    print(f"\n{'=' * 80}")
     print("[步骤3] 独立样本t检验 (DL-LNN vs 其他模型)...")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     # t_tests[comparison][metric_name] = {t_stat, p_value, significant, cohens_d, ...}
     t_tests: Dict[str, Dict[str, Dict]] = {}
 
-    ct_ltc_name = 'DL-LNN'
+    ct_ltc_name = "DL-LNN"
 
     for other_model in MODEL_NAMES:
         if other_model == ct_ltc_name:
@@ -562,20 +541,20 @@ def run_statistical_significance_experiment():
         print(f"\n  {comparison_key}:")
 
         for metric_name in METRIC_NAMES:
-            ct_values = np.array(results[ct_ltc_name][metric_name]['values'])
-            other_values = np.array(results[other_model][metric_name]['values'])
+            ct_values = np.array(results[ct_ltc_name][metric_name]["values"])
+            other_values = np.array(results[other_model][metric_name]["values"])
 
             # 检查是否有足够的数据进行t检验
             if len(ct_values) < 2 or len(other_values) < 2:
                 print(f"    {metric_name}: 数据不足，跳过t检验")
                 t_tests[comparison_key][metric_name] = {
-                    't_stat': float('nan'),
-                    'p_value': float('nan'),
-                    'significant': False,
-                    'cohens_d': float('nan'),
-                    'mean_diff': float('nan'),
-                    'ci_95_lower': float('nan'),
-                    'ci_95_upper': float('nan')
+                    "t_stat": float("nan"),
+                    "p_value": float("nan"),
+                    "significant": False,
+                    "cohens_d": float("nan"),
+                    "mean_diff": float("nan"),
+                    "ci_95_lower": float("nan"),
+                    "ci_95_upper": float("nan"),
                 }
                 continue
 
@@ -584,19 +563,19 @@ def run_statistical_significance_experiment():
             t_tests[comparison_key][metric_name] = test_result
 
             # 打印结果
-            sig_mark = "***" if test_result['p_value'] < 0.001 else (
-                "**" if test_result['p_value'] < 0.01 else (
-                    "*" if test_result['p_value'] < 0.05 else "ns"
-                )
+            sig_mark = (
+                "***"
+                if test_result["p_value"] < 0.001
+                else ("**" if test_result["p_value"] < 0.01 else ("*" if test_result["p_value"] < 0.05 else "ns"))
             )
-            print(f"    {metric_name}: t={test_result['t_stat']:.4f}, "
-                  f"p={test_result['p_value']:.6f} [{sig_mark}], "
-                  f"d={test_result['cohens_d']:.4f}, "
-                  f"diff=[{test_result['ci_95_lower']:.4f}, {test_result['ci_95_upper']:.4f}]")
+            print(
+                f"    {metric_name}: t={test_result['t_stat']:.4f}, "
+                f"p={test_result['p_value']:.6f} [{sig_mark}], "
+                f"d={test_result['cohens_d']:.4f}, "
+                f"diff=[{test_result['ci_95_lower']:.4f}, {test_result['ci_95_upper']:.4f}]"
+            )
 
-    # ----------------------------------------------------------
-    # 步骤4：保存结果到JSON
-    # ----------------------------------------------------------
+    # 保存结果到JSON
     output_dir = Path("results")
     output_dir.mkdir(exist_ok=True)
 
@@ -608,8 +587,8 @@ def run_statistical_significance_experiment():
         output_results[model_name] = {}
         for metric_name in METRIC_NAMES:
             output_results[model_name][metric_name] = {
-                'mean': results[model_name][metric_name]['mean'],
-                'std': results[model_name][metric_name]['std']
+                "mean": results[model_name][metric_name]["mean"],
+                "std": results[model_name][metric_name]["std"],
             }
 
     # 构建t检验输出（处理NaN的JSON序列化）
@@ -625,25 +604,23 @@ def run_statistical_significance_experiment():
                     output_t_tests[comp_key][metric_name][k] = v
 
     output_data = {
-        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'num_trials': NUM_TRIALS,
-        'seeds': SEEDS,
-        'dataset': 'Industrial6061T6',
-        'num_samples': 500,
-        'results': output_results,
-        't_tests': output_t_tests
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "num_trials": NUM_TRIALS,
+        "seeds": SEEDS,
+        "dataset": "Industrial6061T6",
+        "num_samples": 500,
+        "results": output_results,
+        "t_tests": output_t_tests,
     }
 
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"实验完成！结果已保存到: {output_file}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
-    # ----------------------------------------------------------
-    # 步骤5：打印显著性汇总
-    # ----------------------------------------------------------
+    # 打印显著性汇总
     print("\n显著性汇总 (p < 0.05 标记为 *)：")
     print("-" * 100)
     header = f"{'对比':<25}" + "".join([f"{m:<18}" for m in METRIC_NAMES])
@@ -654,11 +631,11 @@ def run_statistical_significance_experiment():
         row = f"{comp_key:<25}"
         for metric_name in METRIC_NAMES:
             test_result = t_tests[comp_key][metric_name]
-            if test_result['significant']:
-                d = test_result['cohens_d']
+            if test_result["significant"]:
+                d = test_result["cohens_d"]
                 row += f"p={test_result['p_value']:.4f}*{'':<6}"
             else:
-                p_val = test_result['p_value']
+                p_val = test_result["p_value"]
                 if np.isnan(p_val):
                     row += f"{'N/A':<18}"
                 else:
@@ -677,7 +654,7 @@ def run_statistical_significance_experiment():
         row = f"{comp_key:<25}"
         for metric_name in METRIC_NAMES:
             test_result = t_tests[comp_key][metric_name]
-            d = test_result['cohens_d']
+            d = test_result["cohens_d"]
             if np.isnan(d):
                 row += f"{'N/A':<18}"
             else:

@@ -42,6 +42,7 @@ from config import ModelConfig
 from metrics import ChatterMetrics
 
 import models as _models
+
 _HAS_ODE = _models._HAS_TORCHDIFFEQ
 _models._HAS_TORCHDIFFEQ = False
 LTC_SOLVER = "euler"
@@ -63,20 +64,18 @@ def make_loaders(dataset, batch_size=BATCH_SIZE, seed=0):
     idx = torch.randperm(n, generator=g)
     n_train, n_val = int(0.8 * n), int(0.1 * n)
     train_ds = torch.utils.data.Subset(dataset, idx[:n_train])
-    val_ds = torch.utils.data.Subset(dataset, idx[n_train:n_train + n_val])
-    test_ds = torch.utils.data.Subset(dataset, idx[n_train + n_val:])
+    val_ds = torch.utils.data.Subset(dataset, idx[n_train : n_train + n_val])
+    test_ds = torch.utils.data.Subset(dataset, idx[n_train + n_val :])
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)
     test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=0)
     return train_loader, val_loader, test_loader
 
 
-def train_loop(model, train_loader, val_loader, config, device, use_physics=True,
-               num_epochs=NUM_EPOCHS, verbose=False):
+def train_loop(model, train_loader, val_loader, config, device, use_physics=True, num_epochs=NUM_EPOCHS, verbose=False):
     """训练；use_physics=True 时注入 batch[2]（该数据集自身的 a_lim_clean）。"""
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate,
-                                 weight_decay=config.weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-5)
     best_val, best_state = float("inf"), None
     for epoch in range(num_epochs):
@@ -159,8 +158,10 @@ def main():
 
     # 每个模型：{seed: {in_domain: {...}, extrapolation: {...}}}
     for model_name, use_physics in [("lstm", False), ("dlnn", True), ("dlnn_v2", True)]:
-        results["models"][model_name] = {"in_domain": {"MAE": [], "R2": [], "gate": []},
-                                         "extrapolation": {"MAE": [], "R2": [], "gate": []}}
+        results["models"][model_name] = {
+            "in_domain": {"MAE": [], "R2": [], "gate": []},
+            "extrapolation": {"MAE": [], "R2": [], "gate": []},
+        }
 
     # Tlusty 基线（确定性，2 区间各算一次即可）
     tlusty = {}
@@ -191,13 +192,18 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
 
-        train_ds = SyntheticChatterDataset(num_samples=NUM_SAMPLES, spindle_speed_range=TRAIN_RANGE,
-                                  noise_level=0.02, seed=seed)
+        train_ds = SyntheticChatterDataset(
+            num_samples=NUM_SAMPLES, spindle_speed_range=TRAIN_RANGE, noise_level=0.02, seed=seed
+        )
         train_loader, val_loader, in_test_loader = make_loaders(train_ds, BATCH_SIZE, seed)
 
         # ---- LSTM（纯数据分支，不注入物理）----
-        lstm = BaselineLSTM(input_dim=config.input_dim, hidden_dim=config.hidden_dim,
-                            num_layers=config.num_layers, output_dim=config.output_dim).to(device)
+        lstm = BaselineLSTM(
+            input_dim=config.input_dim,
+            hidden_dim=config.hidden_dim,
+            num_layers=config.num_layers,
+            output_dim=config.output_dim,
+        ).to(device)
         lstm = train_loop(lstm, train_loader, val_loader, config, device, use_physics=False)
         r_in = evaluate(lstm, in_test_loader, device, use_physics=False)
         r_ex = evaluate(lstm, extrap_loader, device, use_physics=False)
@@ -206,15 +212,18 @@ def main():
         results["models"]["lstm"]["extrapolation"]["MAE"].append(metrics_calc.mae(r_ex["preds"], r_ex["y_true"]))
         results["models"]["lstm"]["extrapolation"]["R2"].append(metrics_calc.r2_score(r_ex["preds"], r_ex["y_true"]))
 
-        # ---- DL-LNN 原版门控 ----
-        dlnn = DLLNNWithPhysics(input_dim=config.input_dim, hidden_dim=config.hidden_dim,
-                                num_layers=config.num_layers, output_dim=config.output_dim,
-                                dt=config.ltc_dt, dropout=config.dropout).to(device)
+        # DL-LNN 原版门控
+        dlnn = DLLNNWithPhysics(
+            input_dim=config.input_dim,
+            hidden_dim=config.hidden_dim,
+            num_layers=config.num_layers,
+            output_dim=config.output_dim,
+            dt=config.ltc_dt,
+            dropout=config.dropout,
+        ).to(device)
         dlnn = train_loop(dlnn, train_loader, val_loader, config, device, use_physics=True)
-        r_in = evaluate(dlnn, in_test_loader, device, use_physics=True,
-                        gate_fn=lambda m, x, p: m.gate(x))
-        r_ex = evaluate(dlnn, extrap_loader, device, use_physics=True,
-                        gate_fn=lambda m, x, p: m.gate(x))
+        r_in = evaluate(dlnn, in_test_loader, device, use_physics=True, gate_fn=lambda m, x, p: m.gate(x))
+        r_ex = evaluate(dlnn, extrap_loader, device, use_physics=True, gate_fn=lambda m, x, p: m.gate(x))
         saved_models[(seed, "dlnn")] = dlnn.cpu()
         results["models"]["dlnn"]["in_domain"]["MAE"].append(metrics_calc.mae(r_in["preds"], r_in["y_true"]))
         results["models"]["dlnn"]["in_domain"]["R2"].append(metrics_calc.r2_score(r_in["preds"], r_in["y_true"]))
@@ -223,10 +232,15 @@ def main():
         results["models"]["dlnn"]["extrapolation"]["R2"].append(metrics_calc.r2_score(r_ex["preds"], r_ex["y_true"]))
         results["models"]["dlnn"]["extrapolation"]["gate"].append(float(np.mean(r_ex["gates"])))
 
-        # ---- DL-LNN v2 冲突门控 ----
-        dlnn2 = v2.PhysicsAwareDLLNNV2(input_dim=config.input_dim, hidden_dim=config.hidden_dim,
-                                       num_layers=config.num_layers, output_dim=config.output_dim,
-                                       dt=config.ltc_dt, dropout=config.dropout).to(device)
+        # DL-LNN v2 冲突门控
+        dlnn2 = v2.PhysicsAwareDLLNNV2(
+            input_dim=config.input_dim,
+            hidden_dim=config.hidden_dim,
+            num_layers=config.num_layers,
+            output_dim=config.output_dim,
+            dt=config.ltc_dt,
+            dropout=config.dropout,
+        ).to(device)
         dlnn2 = train_loop(dlnn2, train_loader, val_loader, config, device, use_physics=True)
         gate2 = lambda m, x, p: m.gate(torch.cat([x, p, (p - m.ltc_branch(x)).abs()], dim=1))
         r_in = evaluate(dlnn2, in_test_loader, device, use_physics=True, gate_fn=gate2)
@@ -239,7 +253,7 @@ def main():
         results["models"]["dlnn_v2"]["extrapolation"]["R2"].append(metrics_calc.r2_score(r_ex["preds"], r_ex["y_true"]))
         results["models"]["dlnn_v2"]["extrapolation"]["gate"].append(float(np.mean(r_ex["gates"])))
 
-    # ---- 汇总统计 ----
+    # 汇总统计
     for mn in results["models"]:
         for key in ["in_domain", "extrapolation"]:
             cell = results["models"][mn][key]
@@ -275,25 +289,40 @@ def main():
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(f"Results saved to {out_file}", flush=True)
 
-    # ---- 摘要 ----
+    # 摘要
     print("\n=== SUMMARY: MAE (in-domain 3-8k vs extrapolation 10-15k) ===", flush=True)
-    print(f"{'model':<10} | {'in MAE':>8} | {'extrap MAE':>10} | {'extrap R2':>9} | {'gate in':>7} | {'gate ex':>7}", flush=True)
-    print(f"{'Tlusty':<10} | {tlusty['in_domain']['MAE']:8.4f} | {tlusty['extrapolation']['MAE']:10.4f} | {tlusty['extrapolation']['R2']:9.3f} |", flush=True)
+    print(
+        f"{'model':<10} | {'in MAE':>8} | {'extrap MAE':>10} | {'extrap R2':>9} | {'gate in':>7} | {'gate ex':>7}",
+        flush=True,
+    )
+    print(
+        f"{'Tlusty':<10} | {tlusty['in_domain']['MAE']:8.4f} | {tlusty['extrapolation']['MAE']:10.4f} | {tlusty['extrapolation']['R2']:9.3f} |",
+        flush=True,
+    )
     for mn, label in [("lstm", "LSTM"), ("dlnn", "DL-LNN"), ("dlnn_v2", "DL-LNN v2")]:
         c = results["models"][mn]
-        print(f"{label:<10} | {c['in_domain']['MAE_mean']:8.4f} | {c['extrapolation']['MAE_mean']:10.4f} | {c['extrapolation']['R2_mean']:9.3f} | {c['in_domain']['gate_mean']:7.3f} | {c['extrapolation']['gate_mean']:7.3f}", flush=True)
+        print(
+            f"{label:<10} | {c['in_domain']['MAE_mean']:8.4f} | {c['extrapolation']['MAE_mean']:10.4f} | {c['extrapolation']['R2_mean']:9.3f} | {c['in_domain']['gate_mean']:7.3f} | {c['extrapolation']['gate_mean']:7.3f}",
+            flush=True,
+        )
 
     print("\n=== Gate alpha: in-domain vs extrapolation (paired t) ===", flush=True)
     for mn in ["dlnn", "dlnn_v2"]:
         c = results["models"][mn]
         p = results["models"][mn]["gate_in_vs_extrap_p"]
-        print(f"{mn}: in={c['in_domain']['gate_mean']:.3f} ex={c['extrapolation']['gate_mean']:.3f} p={p:.4f}" if p else f"{mn}: constant", flush=True)
+        print(
+            f"{mn}: in={c['in_domain']['gate_mean']:.3f} ex={c['extrapolation']['gate_mean']:.3f} p={p:.4f}"
+            if p
+            else f"{mn}: constant",
+            flush=True,
+        )
     print(f"extrap DL-LNN vs LSTM p={results.get('extrap_dlnn_vs_lstm_p')}", flush=True)
     print(f"extrap v2 vs LSTM p={results.get('extrap_v2_vs_lstm_p')}", flush=True)
 
-    # ---- 图 ----
+    # 图
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -317,31 +346,43 @@ def main():
         ax.grid(axis="y", alpha=0.3)
         for bars in [b1, b2]:
             for bar in bars:
-                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
-                        f"{bar.get_height():.2f}", ha="center", fontsize=8)
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() + 0.01,
+                    f"{bar.get_height():.2f}",
+                    ha="center",
+                    fontsize=8,
+                )
         fig.tight_layout()
         fig.savefig(FIG_DIR / "fig49a_extrap_mae.png", dpi=300)
         plt.close(fig)
 
         # 图B：gate alpha 箱线（域内 vs 外推）
         fig, ax = plt.subplots(figsize=(7, 5))
-        data_in = [results["models"]["dlnn"]["in_domain"]["gate"],
-                   results["models"]["dlnn_v2"]["in_domain"]["gate"]]
-        data_ex = [results["models"]["dlnn"]["extrapolation"]["gate"],
-                   results["models"]["dlnn_v2"]["extrapolation"]["gate"]]
+        data_in = [results["models"]["dlnn"]["in_domain"]["gate"], results["models"]["dlnn_v2"]["in_domain"]["gate"]]
+        data_ex = [
+            results["models"]["dlnn"]["extrapolation"]["gate"],
+            results["models"]["dlnn_v2"]["extrapolation"]["gate"],
+        ]
         pos_in = [1, 2]
         pos_ex = [1.35, 2.35]
-        bp1 = ax.boxplot(data_in, positions=pos_in, widths=0.28, patch_artist=True,
-                         boxprops=dict(facecolor="tab:blue", alpha=0.6))
-        bp2 = ax.boxplot(data_ex, positions=pos_ex, widths=0.28, patch_artist=True,
-                         boxprops=dict(facecolor="tab:red", alpha=0.6))
+        bp1 = ax.boxplot(
+            data_in, positions=pos_in, widths=0.28, patch_artist=True, boxprops=dict(facecolor="tab:blue", alpha=0.6)
+        )
+        bp2 = ax.boxplot(
+            data_ex, positions=pos_ex, widths=0.28, patch_artist=True, boxprops=dict(facecolor="tab:red", alpha=0.6)
+        )
         ax.set_xticks([1.175, 2.175])
         ax.set_xticklabels(["DL-LNN", "DL-LNN v2"])
         ax.set_ylabel("Gate alpha (mean)")
         ax.set_title("Gate alpha: in-domain vs extrapolation")
         from matplotlib.patches import Patch
-        ax.legend([Patch(color="tab:blue", alpha=0.6), Patch(color="tab:red", alpha=0.6)],
-                  ["In-domain", "Extrapolation"], fontsize=9)
+
+        ax.legend(
+            [Patch(color="tab:blue", alpha=0.6), Patch(color="tab:red", alpha=0.6)],
+            ["In-domain", "Extrapolation"],
+            fontsize=9,
+        )
         ax.grid(axis="y", alpha=0.3)
         fig.tight_layout()
         fig.savefig(FIG_DIR / "fig49b_gate_alpha_extrap.png", dpi=300)
@@ -361,7 +402,9 @@ def main():
                     model = saved_models[(seed, mn)].to(device)
                     with torch.no_grad():
                         for rng in [TRAIN_RANGE, EXTRAP_RANGE]:
-                            ds_ = SyntheticChatterDataset(num_samples=400, spindle_speed_range=rng, noise_level=0.02, seed=999)
+                            ds_ = SyntheticChatterDataset(
+                                num_samples=400, spindle_speed_range=rng, noise_level=0.02, seed=999
+                            )
                             loader_ = DataLoader(ds_, batch_size=64, shuffle=False)
                             for batch in loader_:
                                 x, _, p = batch

@@ -1,4 +1,4 @@
-﻿"""
+"""
 实验 45：CNN+LSTM 基线对比实验
 
 目的：
@@ -63,9 +63,7 @@ from models import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 配置
-# ---------------------------------------------------------------------------
 
 # 参与对比的模型列表（与 exp7 主对比保持差异：聚焦于"传统深度时序基线"对照组）
 MODEL_NAMES = ["DL-LNN", "LTC", "CNN-LSTM", "LSTM", "CNN"]
@@ -153,9 +151,7 @@ def train_model(
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=num_epochs, eta_min=1e-5
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-5)
 
     best_val_loss = float("inf")
     best_state = None
@@ -223,24 +219,25 @@ def train_model(
         max_gap = max(max_gap, gap)
         if gap > OVERFITTING_GAP_THRESHOLD:
             overfitting_consecutive += 1
-            if (not overfitting_detected
-                    and overfitting_consecutive >= OVERFITTING_PATIENCE):
+            if not overfitting_detected and overfitting_consecutive >= OVERFITTING_PATIENCE:
                 overfitting_detected = True
                 overfitting_detected_epoch = epoch + 1
         else:
             overfitting_consecutive = 0
 
-        history.append({
-            "epoch": epoch + 1,
-            "train_loss": train_loss,
-            "val_loss": val_loss,
-            "overfitting_gap": gap,
-        })
+        history.append(
+            {
+                "epoch": epoch + 1,
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+                "overfitting_gap": gap,
+            }
+        )
 
         if (epoch + 1) % 20 == 0 or epoch == 0:
             of_flag = " [OVERFIT]" if gap > OVERFITTING_GAP_THRESHOLD else ""
             print(
-                f"    Epoch [{epoch+1}/{num_epochs}] "
+                f"    Epoch [{epoch + 1}/{num_epochs}] "
                 f"Train: {train_loss:.4f} Val: {val_loss:.4f}"
                 f" Gap: {gap:.4f}{of_flag}"
             )
@@ -422,8 +419,7 @@ def run_cnn_lstm_baseline_experiment():
     output_payload = dict(results)
     output_payload["_metadata"] = {
         "description": (
-            "CNN+LSTM 基线对比实验：5 个数据集 × 5 个模型"
-            "（DL-LNN/LTC/CNN-LSTM/LSTM/CNN），聚焦传统深度时序模型对照组"
+            "CNN+LSTM 基线对比实验：5 个数据集 × 5 个模型（DL-LNN/LTC/CNN-LSTM/LSTM/CNN），聚焦传统深度时序模型对照组"
         ),
         "experiment_id": "exp45_cnn_lstm_baseline",
         "generated_at": timestamp,

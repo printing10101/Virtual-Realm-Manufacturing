@@ -1,4 +1,4 @@
-﻿"""
+"""
 实验10: 消融实验
 
 验证DL-LNN各核心组件的贡献:
@@ -50,55 +50,43 @@ from trainer import DLLNNTrainer, BaselineTrainer
 
 class AblationExperiment:
     """消融实验"""
-    
+
     def __init__(self, config: ExperimentConfig):
         self.config = config
         self.device = torch.device(config.model.device if torch.cuda.is_available() else "cpu")
         self.results = {}
-    
-    def run_ablation_study(
-        self,
-        dataset_class,
-        dataset_params: Dict
-    ) -> Dict[str, Dict[str, float]]:
+
+    def run_ablation_study(self, dataset_class, dataset_params: Dict) -> Dict[str, Dict[str, float]]:
         """
         运行消融实验
-        
+
         实验变体:
         1. Full Model (完整DL-LNN)
         2. w/o PCC Loss (移除物理一致性损失)
         3. w/o Pre-train (移除解析预训练)
         4. LTC → LSTM (替换为离散时间网络)
         5. w/o Gate (移除门控融合)
-        
+
         Args:
             dataset_class: 数据集类
             dataset_params: 数据集参数
-        
+
         Returns:
             结果字典 {variant_name: {metric: value}}
         """
         print("\n" + "=" * 60)
         print("消融实验: 核心组件贡献分析")
         print("=" * 60)
-        
+
         # 准备数据
         train_dataset = dataset_class(**dataset_params)
-        test_dataset = dataset_class(**{**dataset_params, 'seed': 123})
-        
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=self.config.model.batch_size,
-            shuffle=True
-        )
-        test_loader = DataLoader(
-            test_dataset,
-            batch_size=self.config.model.batch_size,
-            shuffle=False
-        )
-        
+        test_dataset = dataset_class(**{**dataset_params, "seed": 123})
+
+        train_loader = DataLoader(train_dataset, batch_size=self.config.model.batch_size, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=self.config.model.batch_size, shuffle=False)
+
         ablation_results = {}
-        
+
         # 1. Full Model (完整DL-LNN)
         print("\n[1/5] Full Model (DL-LNN + PCC Loss + Pre-train + Gate)")
         print("-" * 60)
@@ -106,12 +94,10 @@ class AblationExperiment:
         trainer = DLLNNTrainer(self.config, self.device)
         trainer.train(train_loader, test_loader)
         full_metrics = trainer.evaluate(test_loader)
-        ablation_results['Full Model'] = full_metrics
-        
-        print(f"  MAE: {full_metrics['MAE']:.3f}, "
-              f"PCC: {full_metrics['PCC']:.3f}, "
-              f"R²: {full_metrics['R²']:.3f}")
-        
+        ablation_results["Full Model"] = full_metrics
+
+        print(f"  MAE: {full_metrics['MAE']:.3f}, PCC: {full_metrics['PCC']:.3f}, R²: {full_metrics['R²']:.3f}")
+
         # 2. w/o PCC Loss (移除物理一致性损失)
         print("\n[2/5] w/o PCC Loss (仅使用数据损失)")
         print("-" * 60)
@@ -119,16 +105,14 @@ class AblationExperiment:
         config_no_pcc = ExperimentConfig()
         config_no_pcc.model.lambda_pcc = 0.0
         config_no_pcc.model.lambda_phys = 0.0
-        
+
         trainer_no_pcc = DLLNNTrainer(config_no_pcc, self.device)
         trainer_no_pcc.train(train_loader, test_loader)
         no_pcc_metrics = trainer_no_pcc.evaluate(test_loader)
-        ablation_results['w/o PCC Loss'] = no_pcc_metrics
-        
-        print(f"  MAE: {no_pcc_metrics['MAE']:.3f}, "
-              f"PCC: {no_pcc_metrics['PCC']:.3f}, "
-              f"R²: {no_pcc_metrics['R²']:.3f}")
-        
+        ablation_results["w/o PCC Loss"] = no_pcc_metrics
+
+        print(f"  MAE: {no_pcc_metrics['MAE']:.3f}, PCC: {no_pcc_metrics['PCC']:.3f}, R²: {no_pcc_metrics['R²']:.3f}")
+
         # 3. w/o Pre-train (移除解析预训练)
         print("\n[3/5] w/o Pre-train (直接从零训练)")
         print("-" * 60)
@@ -136,38 +120,38 @@ class AblationExperiment:
             input_dim=self.config.model.input_dim,
             hidden_dim=self.config.model.hidden_dim,
             num_layers=self.config.model.num_layers,
-            dropout=self.config.model.dropout
+            dropout=self.config.model.dropout,
         ).to(self.device)
-        
+
         config_no_pretrain = ExperimentConfig()
         config_no_pretrain.model.num_epochs_stage1 = 0  # 跳过预训练
-        
+
         trainer_no_pretrain = DLLNNTrainer(config_no_pretrain, self.device)
         trainer_no_pretrain.train(train_loader, test_loader)
         no_pretrain_metrics = trainer_no_pretrain.evaluate(test_loader)
-        ablation_results['w/o Pre-train'] = no_pretrain_metrics
-        
-        print(f"  MAE: {no_pretrain_metrics['MAE']:.3f}, "
-              f"PCC: {no_pretrain_metrics['PCC']:.3f}, "
-              f"R²: {no_pretrain_metrics['R²']:.3f}")
-        
-        # 4. LTC → LSTM (替换为离散时间网络)
+        ablation_results["w/o Pre-train"] = no_pretrain_metrics
+
+        print(
+            f"  MAE: {no_pretrain_metrics['MAE']:.3f}, "
+            f"PCC: {no_pretrain_metrics['PCC']:.3f}, "
+            f"R²: {no_pretrain_metrics['R²']:.3f}"
+        )
+
+        # 4. LTC LSTM (替换为离散时间网络)
         print("\n[4/5] LTC → LSTM (离散时间网络)")
         print("-" * 60)
         lstm_model = BaselineLSTM(
             input_dim=self.config.model.input_dim,
             hidden_dim=self.config.model.hidden_dim,
             num_layers=self.config.model.num_layers,
-            output_dim=1
+            output_dim=1,
         ).to(self.device)
-        
+
         lstm_metrics = self._train_baseline(lstm_model, train_loader, test_loader)
-        ablation_results['LTC → LSTM'] = lstm_metrics
-        
-        print(f"  MAE: {lstm_metrics['MAE']:.3f}, "
-              f"PCC: {lstm_metrics['PCC']:.3f}, "
-              f"R²: {lstm_metrics['R²']:.3f}")
-        
+        ablation_results["LTC → LSTM"] = lstm_metrics
+
+        print(f"  MAE: {lstm_metrics['MAE']:.3f}, PCC: {lstm_metrics['PCC']:.3f}, R²: {lstm_metrics['R²']:.3f}")
+
         # 5. w/o Gate (移除门控融合,直接相加)
         print("\n[5/5] w/o Gate (移除门控融合机制)")
         print("-" * 60)
@@ -177,50 +161,41 @@ class AblationExperiment:
             hidden_dim=self.config.model.hidden_dim,
             num_layers=self.config.model.num_layers,
             output_dim=1,
-            dropout=self.config.model.dropout
+            dropout=self.config.model.dropout,
         ).to(self.device)
-        
+
         no_gate_metrics = self._train_baseline(model_no_gate, train_loader, test_loader)
-        ablation_results['w/o Gate'] = no_gate_metrics
-        
-        print(f"  MAE: {no_gate_metrics['MAE']:.3f}, "
-              f"PCC: {no_gate_metrics['PCC']:.3f}, "
-              f"R²: {no_gate_metrics['R²']:.3f}")
-        
+        ablation_results["w/o Gate"] = no_gate_metrics
+
+        print(
+            f"  MAE: {no_gate_metrics['MAE']:.3f}, PCC: {no_gate_metrics['PCC']:.3f}, R²: {no_gate_metrics['R²']:.3f}"
+        )
+
         # 计算相对改进
         print("\n" + "=" * 60)
         print("消融实验结果汇总")
         print("=" * 60)
-        
-        baseline_mae = ablation_results['Full Model']['MAE']
-        
+
+        baseline_mae = ablation_results["Full Model"]["MAE"]
+
         for variant, metrics in ablation_results.items():
-            if variant != 'Full Model':
-                degradation = (metrics['MAE'] - baseline_mae) / baseline_mae * 100
-                print(f"{variant:20s}: MAE={metrics['MAE']:.3f} "
-                      f"(+{degradation:.1f}% vs Full)")
-        
-        self.results['ablation'] = ablation_results
+            if variant != "Full Model":
+                degradation = (metrics["MAE"] - baseline_mae) / baseline_mae * 100
+                print(f"{variant:20s}: MAE={metrics['MAE']:.3f} (+{degradation:.1f}% vs Full)")
+
+        self.results["ablation"] = ablation_results
         return ablation_results
-    
+
     def _train_baseline(
-        self,
-        model: torch.nn.Module,
-        train_loader: DataLoader,
-        test_loader: DataLoader,
-        num_epochs: int = 200
+        self, model: torch.nn.Module, train_loader: DataLoader, test_loader: DataLoader, num_epochs: int = 200
     ) -> Dict[str, float]:
         """训练基线模型"""
         optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=self.config.model.learning_rate,
-            weight_decay=self.config.model.weight_decay
+            model.parameters(), lr=self.config.model.learning_rate, weight_decay=self.config.model.weight_decay
         )
         criterion = torch.nn.L1Loss()
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=num_epochs
-        )
-        
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+
         # 训练
         model.train()
         for epoch in range(num_epochs):
@@ -228,49 +203,47 @@ class AblationExperiment:
             for batch_x, batch_y, batch_y_phys in train_loader:
                 batch_x = batch_x.to(self.device)
                 batch_y = batch_y.to(self.device)
-                
+
                 optimizer.zero_grad()
                 outputs = model(batch_x)
                 loss = criterion(outputs, batch_y)
                 loss.backward()
                 optimizer.step()
-                
+
                 train_loss += loss.item()
-            
+
             scheduler.step()
-        
+
         # 评估
         model.eval()
         all_preds = []
         all_targets = []
         all_phys = []
-        
+
         with torch.no_grad():
             for batch_x, batch_y, batch_y_phys in test_loader:
                 batch_x = batch_x.to(self.device)
                 outputs = model(batch_x)
-                
+
                 all_preds.extend(outputs.cpu().numpy())
                 all_targets.extend(batch_y.numpy())
                 all_phys.extend(batch_y_phys.numpy())
-        
+
         all_preds = np.array(all_preds)
         all_targets = np.array(all_targets)
         all_phys = np.array(all_phys)
-        
+
         # 计算指标
         metrics = {
-            'MAE': Metrics.mae(all_preds, all_targets),
-            'RMSE': Metrics.rmse(all_preds, all_targets),
-            'R²': Metrics.r2_score(all_preds, all_targets),
-            'PCC': Metrics.physics_consistency_coefficient(all_preds, all_phys)
+            "MAE": Metrics.mae(all_preds, all_targets),
+            "RMSE": Metrics.rmse(all_preds, all_targets),
+            "R²": Metrics.r2_score(all_preds, all_targets),
+            "PCC": Metrics.physics_consistency_coefficient(all_preds, all_phys),
         }
-        
+
         return metrics
 
-    # ------------------------------------------------------------------
     # 流式推理消融实验（lingbot-map 五大设计）
-    # ------------------------------------------------------------------
 
     def run_streaming_ablation(
         self,
@@ -329,7 +302,7 @@ class AblationExperiment:
         # 1. 训练基础模型（复用 Full Model 配置）
         print("\n[Stream] 训练基础 DL-LNN 模型...")
         train_dataset = dataset_class(**dataset_params)
-        test_dataset = dataset_class(**{**dataset_params, 'seed': 123})
+        test_dataset = dataset_class(**{**dataset_params, "seed": 123})
 
         train_loader = DataLoader(
             train_dataset,
@@ -348,11 +321,13 @@ class AblationExperiment:
         model.eval()
 
         # 2. 构造长时序测试流
-        stream_dataset = dataset_class(**{
-            **dataset_params,
-            'num_samples': stream_size,
-            'seed': 2024,
-        })
+        stream_dataset = dataset_class(
+            **{
+                **dataset_params,
+                "num_samples": stream_size,
+                "seed": 2024,
+            }
+        )
         stream_loader = DataLoader(stream_dataset, batch_size=1, shuffle=False)
 
         stream_features: List[np.ndarray] = []
@@ -367,45 +342,45 @@ class AblationExperiment:
 
         # 3. 定义消融变体配置
         variants: Dict[str, StreamingConfig] = {
-            'Full Streaming': StreamingConfig(
+            "Full Streaming": StreamingConfig(
                 keyframe_interval=2,
-                keyframe_mode='hybrid',
+                keyframe_mode="hybrid",
                 max_cache_pages=320,
                 anchor_enabled=True,
                 trajectory_memory_size=64,
                 window_size=64,
                 overlap_keyframes=8,
             ),
-            'w/o Paged Cache': StreamingConfig(
+            "w/o Paged Cache": StreamingConfig(
                 keyframe_interval=2,
-                keyframe_mode='hybrid',
+                keyframe_mode="hybrid",
                 max_cache_pages=1,  # 仅 1 页，立即淘汰，等价于无分页
                 anchor_enabled=True,
                 trajectory_memory_size=64,
                 window_size=64,
                 overlap_keyframes=8,
             ),
-            'w/o Keyframe Strategy': StreamingConfig(
+            "w/o Keyframe Strategy": StreamingConfig(
                 keyframe_interval=1,  # 每帧都关键帧
-                keyframe_mode='interval',
+                keyframe_mode="interval",
                 max_cache_pages=320,
                 anchor_enabled=True,
                 trajectory_memory_size=64,
                 window_size=64,
                 overlap_keyframes=8,
             ),
-            'w/o Anchor Context': StreamingConfig(
+            "w/o Anchor Context": StreamingConfig(
                 keyframe_interval=2,
-                keyframe_mode='hybrid',
+                keyframe_mode="hybrid",
                 max_cache_pages=320,
                 anchor_enabled=False,
                 trajectory_memory_size=64,
                 window_size=64,
                 overlap_keyframes=8,
             ),
-            'w/o Trajectory Memory': StreamingConfig(
+            "w/o Trajectory Memory": StreamingConfig(
                 keyframe_interval=2,
-                keyframe_mode='hybrid',
+                keyframe_mode="hybrid",
                 max_cache_pages=320,
                 anchor_enabled=True,
                 trajectory_memory_size=1,  # 仅 1 帧，等价于无记忆
@@ -413,9 +388,9 @@ class AblationExperiment:
                 window_size=64,
                 overlap_keyframes=8,
             ),
-            'w/o Windowed Inference': StreamingConfig(
+            "w/o Windowed Inference": StreamingConfig(
                 keyframe_interval=2,
-                keyframe_mode='hybrid',
+                keyframe_mode="hybrid",
                 max_cache_pages=320,
                 anchor_enabled=True,
                 trajectory_memory_size=64,
@@ -449,20 +424,13 @@ class AblationExperiment:
         print("流式消融实验结果汇总")
         print("=" * 60)
 
-        baseline_mae = ablation_results['Full Streaming']['MAE']
+        baseline_mae = ablation_results["Full Streaming"]["MAE"]
         for variant, metrics in ablation_results.items():
-            if variant != 'Full Streaming':
-                degradation = (
-                    (metrics['MAE'] - baseline_mae) / baseline_mae * 100
-                    if baseline_mae > 0
-                    else 0.0
-                )
-                print(
-                    f"{variant:25s}: MAE={metrics['MAE']:.3f} "
-                    f"(+{degradation:.1f}% vs Full)"
-                )
+            if variant != "Full Streaming":
+                degradation = (metrics["MAE"] - baseline_mae) / baseline_mae * 100 if baseline_mae > 0 else 0.0
+                print(f"{variant:25s}: MAE={metrics['MAE']:.3f} (+{degradation:.1f}% vs Full)")
 
-        self.results['streaming_ablation'] = ablation_results
+        self.results["streaming_ablation"] = ablation_results
         return ablation_results
 
     def _run_streaming_variant(
@@ -499,7 +467,7 @@ class AblationExperiment:
         # 初始化五大组件
         cache = PagedHiddenStateCache(
             max_pages=config.max_cache_pages,
-            device='cpu',
+            device="cpu",
             predictor_device=self.device,
         )
         keyframe_selector = KeyframeSelector(
@@ -574,9 +542,7 @@ class AblationExperiment:
                     if anchor_drift > 0:
                         n_anchor_corrections += 1
                     # 稳态判定：非关键帧或稳态关键帧更新锚点
-                    is_stable = (not kf_decision.is_keyframe) or (
-                        kf_decision.reason in ('interval', 'energy_stable')
-                    )
+                    is_stable = (not kf_decision.is_keyframe) or (kf_decision.reason in ("interval", "energy_stable"))
                     anchor.update(proxy_hidden, is_stable=is_stable)
                 except (ValueError, TypeError):
                     pass
@@ -602,20 +568,18 @@ class AblationExperiment:
         phys_array = np.array(all_phys)
 
         metrics: Dict[str, float] = {
-            'MAE': float(Metrics.mae(preds_array, targets_array)),
-            'RMSE': float(Metrics.rmse(preds_array, targets_array)),
-            'R²': float(Metrics.r2_score(preds_array, targets_array)),
-            'PCC': float(
-                Metrics.physics_consistency_coefficient(preds_array, phys_array)
-            ),
+            "MAE": float(Metrics.mae(preds_array, targets_array)),
+            "RMSE": float(Metrics.rmse(preds_array, targets_array)),
+            "R²": float(Metrics.r2_score(preds_array, targets_array)),
+            "PCC": float(Metrics.physics_consistency_coefficient(preds_array, phys_array)),
             # 运营指标
-            'keyframe_ratio': n_keyframes / total_frames if total_frames > 0 else 0.0,
-            'keyframes': float(n_keyframes),
-            'anchor_corrections': float(n_anchor_corrections),
-            'trajectory_corrections': float(n_trajectory_corrections),
-            'cache_evictions': float(cache.stats()['eviction_count']),
-            'cache_pages': float(cache.stats()['page_count']),
-            'avg_inference_ms': total_inference_ms / total_frames if total_frames > 0 else 0.0,
+            "keyframe_ratio": n_keyframes / total_frames if total_frames > 0 else 0.0,
+            "keyframes": float(n_keyframes),
+            "anchor_corrections": float(n_anchor_corrections),
+            "trajectory_corrections": float(n_trajectory_corrections),
+            "cache_evictions": float(cache.stats()["eviction_count"]),
+            "cache_pages": float(cache.stats()["page_count"]),
+            "avg_inference_ms": total_inference_ms / total_frames if total_frames > 0 else 0.0,
         }
 
         return metrics
@@ -623,10 +587,10 @@ class AblationExperiment:
     def save_results(self, save_path: str = "results/ablation_results.json"):
         """保存实验结果"""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        
-        with open(save_path, 'w', encoding='utf-8') as f:
+
+        with open(save_path, "w", encoding="utf-8") as f:
             json.dump(self.results, f, indent=2, ensure_ascii=False)
-        
+
         print(f"\n✓ 消融实验结果已保存: {save_path}")
 
 
@@ -643,17 +607,10 @@ def main():
     experiment = AblationExperiment(config)
 
     # 在工业数据集上运行消融实验
-    dataset_params = {
-        'num_samples': 500,
-        'num_conditions': 30,
-        'material': '6061-T6'
-    }
+    dataset_params = {"num_samples": 500, "num_conditions": 30, "material": "6061-T6"}
 
     # 1. 核心组件消融（PCC Loss / Pre-train / LTC / Gate）
-    ablation_results = experiment.run_ablation_study(
-        IndustrialChatterDataset,
-        dataset_params
-    )
+    ablation_results = experiment.run_ablation_study(IndustrialChatterDataset, dataset_params)
 
     # 2. 流式推理消融（lingbot-map 五大设计）
     streaming_results = experiment.run_streaming_ablation(

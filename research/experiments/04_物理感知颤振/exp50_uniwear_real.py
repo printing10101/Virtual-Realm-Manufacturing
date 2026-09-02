@@ -35,6 +35,7 @@ from models import DLLNNModel, BaselineLSTM
 from metrics import ChatterMetrics
 
 import models as _models
+
 _HAS_ODE = _models._HAS_TORCHDIFFEQ
 _models._HAS_TORCHDIFFEQ = False
 LTC_SOLVER = "euler"
@@ -51,7 +52,8 @@ OUTPUT_DIR = Path(__file__).resolve().parent.parent / "results"
 FIG_DIR = OUTPUT_DIR / "figures"
 
 
-# ---------- 特征工程 ----------
+# 特征工程
+
 
 def build_window_features(df_group: pd.DataFrame) -> tuple:
     """组内滑动窗口聚合：3 信号 × 5 统计 + 时间位置 2 维 = 17 维。"""
@@ -63,12 +65,11 @@ def build_window_features(df_group: pd.DataFrame) -> tuple:
     t0 = df_group["timestamp"].iloc[0]
     t1 = df_group["timestamp"].iloc[-1]
     for wi, s in enumerate(starts):
-        seg = df_group.iloc[s:s + WINDOW]
+        seg = df_group.iloc[s : s + WINDOW]
         feats = []
         for c in sig_cols:
             v = seg[c].values.astype(np.float64)
-            feats += [v.mean(), np.sqrt(np.mean(v ** 2)), v.std(),
-                      stats.kurtosis(v), np.ptp(v)]
+            feats += [v.mean(), np.sqrt(np.mean(v**2)), v.std(), stats.kurtosis(v), np.ptp(v)]
         # 时间位置：窗口序号归一化 + 窗口平均时间归一化
         feats.append(wi / max(total_windows - 1, 1))
         t_mid = seg["timestamp"].mean()
@@ -80,27 +81,27 @@ def build_window_features(df_group: pd.DataFrame) -> tuple:
     return X, y
 
 
-def taylor_wear_baseline(y_train: np.ndarray, t_train: np.ndarray,
-                         t_test: np.ndarray) -> np.ndarray:
+def taylor_wear_baseline(y_train: np.ndarray, t_train: np.ndarray, t_test: np.ndarray) -> np.ndarray:
     """经验磨损律 VB = k * t^p（t 为归一化时间位置），训练集拟合 k,p。"""
     t_train = np.clip(t_train, 1e-6, None)
     t_test = np.clip(t_test, 1e-6, None)
     A = np.stack([np.ones_like(t_train), np.log(t_train)], axis=1)
     coef, *_ = np.linalg.lstsq(A, np.log(np.clip(y_train, 1e-6, None)), rcond=None)
     ln_k, p = coef[0], coef[1]
-    return np.exp(ln_k) * (t_test ** p)
+    return np.exp(ln_k) * (t_test**p)
 
 
-# ---------- 模型 ----------
+# 模型
+
 
 class GatedWearModel(nn.Module):
     """残差补偿：final = alpha * LTC(x) + (1 - alpha) * y_phys（门控融合）。"""
 
-    def __init__(self, input_dim=FEAT_DIM, hidden_dim=64, num_layers=2,
-                 output_dim=1, dt=0.1):
+    def __init__(self, input_dim=FEAT_DIM, hidden_dim=64, num_layers=2, output_dim=1, dt=0.1):
         super().__init__()
-        self.ltc_branch = DLLNNModel(input_dim=input_dim, hidden_dim=hidden_dim,
-                                     num_layers=num_layers, output_dim=output_dim, dt=dt)
+        self.ltc_branch = DLLNNModel(
+            input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim, dt=dt
+        )
         self.gate_net = nn.Sequential(
             nn.Linear(input_dim + 1, 16),
             nn.ReLU(),
@@ -114,8 +115,7 @@ class GatedWearModel(nn.Module):
         return final, ltc_out, alpha
 
 
-def train_model(model, train_loader, val_loader, epochs=NUM_EPOCHS,
-                use_physics=True, verbose=False):
+def train_model(model, train_loader, val_loader, epochs=NUM_EPOCHS, use_physics=True, verbose=False):
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
@@ -169,7 +169,8 @@ def predict(model, loader, use_physics=True):
     return np.concatenate(preds), np.concatenate(ys), (np.concatenate(alphas) if alphas else None)
 
 
-# ---------- 主流程 ----------
+# 主流程
+
 
 def main():
     print("Device: cpu (uniwear real-data experiment)", flush=True)
@@ -195,9 +196,14 @@ def main():
     }
 
     for grp in groups:
-        results["groups"][grp] = {"n_windows": 0, "n_train": 0, "n_test": 0,
-                                  "baseline": {}, "lstm": {"MAE": [], "R2": []},
-                                  "dlnn": {"MAE": [], "R2": [], "gate": []}}
+        results["groups"][grp] = {
+            "n_windows": 0,
+            "n_train": 0,
+            "n_test": 0,
+            "baseline": {},
+            "lstm": {"MAE": [], "R2": []},
+            "dlnn": {"MAE": [], "R2": [], "gate": []},
+        }
 
     # 每组的特征/标签（seed 无关，先算一次）
     group_data = {}
@@ -243,8 +249,8 @@ def main():
             tr_ds = TensorDataset(X_tr_t, y_tr_t, phys_tr_t)
             te_ds = TensorDataset(X_te_t, y_te_t, phys_te_t)
             n_val = max(int(n_tr * 0.15), 1)
-            tr_ds2 = TensorDataset(X_tr_t[:n_tr - n_val], y_tr_t[:n_tr - n_val], phys_tr_t[:n_tr - n_val])
-            val_ds = TensorDataset(X_tr_t[n_tr - n_val:], y_tr_t[n_tr - n_val:], phys_tr_t[n_tr - n_val:])
+            tr_ds2 = TensorDataset(X_tr_t[: n_tr - n_val], y_tr_t[: n_tr - n_val], phys_tr_t[: n_tr - n_val])
+            val_ds = TensorDataset(X_tr_t[n_tr - n_val :], y_tr_t[n_tr - n_val :], phys_tr_t[n_tr - n_val :])
             tr_loader = DataLoader(tr_ds2, batch_size=BATCH_SIZE, shuffle=True)
             val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False)
             te_loader = DataLoader(te_ds, batch_size=BATCH_SIZE, shuffle=False)
@@ -256,7 +262,7 @@ def main():
             results["groups"][grp]["lstm"]["MAE"].append(metrics_calc.mae(p_lstm, y_te))
             results["groups"][grp]["lstm"]["R2"].append(metrics_calc.r2_score(p_lstm, y_te))
 
-            # ---- DL-LNN 残差补偿 ----
+            # DL-LNN 残差补偿
             dlnn = GatedWearModel(input_dim=FEAT_DIM, hidden_dim=64, num_layers=2, output_dim=1)
             dlnn = train_model(dlnn, tr_loader, val_loader, use_physics=True)
             p_dlnn, _, alphas = predict(dlnn, te_loader, use_physics=True)
@@ -264,9 +270,12 @@ def main():
             results["groups"][grp]["dlnn"]["R2"].append(metrics_calc.r2_score(p_dlnn, y_te))
             results["groups"][grp]["dlnn"]["gate"].append(float(np.mean(alphas)))
 
-    # ---- 汇总 ----
+    # 汇总
     print("\n=== SUMMARY: uniwear real (time-split 70/30, 3 seeds) ===", flush=True)
-    print(f"{'grp':<5} | {'n':>4} | {'base MAE':>8} | {'lstm MAE':>8} | {'dlnn MAE':>8} | {'lstm R2':>7} | {'dlnn R2':>7} | {'gate':>5}", flush=True)
+    print(
+        f"{'grp':<5} | {'n':>4} | {'base MAE':>8} | {'lstm MAE':>8} | {'dlnn MAE':>8} | {'lstm R2':>7} | {'dlnn R2':>7} | {'gate':>5}",
+        flush=True,
+    )
     all_mae = {"base": [], "lstm": [], "dlnn": []}
     all_r2 = {"lstm": [], "dlnn": []}
     for grp in groups:
@@ -277,7 +286,10 @@ def main():
         r_l = np.mean(g["lstm"]["R2"])
         r_d = np.mean(g["dlnn"]["R2"])
         al = np.mean(g["dlnn"]["gate"])
-        print(f"{grp:<5} | {g['n_windows']:>4} | {m_b:8.4f} | {m_l:8.4f} | {m_d:8.4f} | {r_l:7.3f} | {r_d:7.3f} | {al:5.3f}", flush=True)
+        print(
+            f"{grp:<5} | {g['n_windows']:>4} | {m_b:8.4f} | {m_l:8.4f} | {m_d:8.4f} | {r_l:7.3f} | {r_d:7.3f} | {al:5.3f}",
+            flush=True,
+        )
         all_mae["base"].append(m_b)
         all_mae["lstm"].append(m_l)
         all_mae["dlnn"].append(m_d)
@@ -288,10 +300,13 @@ def main():
         results[f"mean_MAE_{k}"] = float(np.mean(all_mae[k]))
     for k in all_r2:
         results[f"mean_R2_{k}"] = float(np.mean(all_r2[k]))
-    print(f"\nMean MAE: base={results['mean_MAE_base']:.4f} lstm={results['mean_MAE_lstm']:.4f} dlnn={results['mean_MAE_dlnn']:.4f}", flush=True)
+    print(
+        f"\nMean MAE: base={results['mean_MAE_base']:.4f} lstm={results['mean_MAE_lstm']:.4f} dlnn={results['mean_MAE_dlnn']:.4f}",
+        flush=True,
+    )
     print(f"Mean R2 : lstm={results['mean_R2_lstm']:.3f} dlnn={results['mean_R2_dlnn']:.3f}", flush=True)
 
-    # 配对 t（12 组 × 3 seeds 展平 → 36 配对）
+    # 配对 t（12 组 × 3 seeds 展平 36 配对）
     flat_l = []
     flat_d = []
     for grp in groups:
@@ -324,9 +339,10 @@ def main():
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(f"Results saved to {out_file}", flush=True)
 
-    # ---- 图 ----
+    # 图
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 

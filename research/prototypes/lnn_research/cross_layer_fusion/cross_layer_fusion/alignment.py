@@ -66,21 +66,16 @@ def alignment_loss(
     # 输入验证
     if embed1.dim() != 2 or embed2.dim() != 2:
         raise ValueError(
-            f"嵌入向量必须是2维张量 (batch_size, dim)，"
-            f"实际维度: embed1={embed1.dim()}, embed2={embed2.dim()}"
+            f"嵌入向量必须是2维张量 (batch_size, dim)，实际维度: embed1={embed1.dim()}, embed2={embed2.dim()}"
         )
 
     if embed1.size(0) != embed2.size(0):
-        raise ValueError(
-            f"两个嵌入向量的批次大小必须相同，"
-            f"实际: embed1={embed1.size(0)}, embed2={embed2.size(0)}"
-        )
+        raise ValueError(f"两个嵌入向量的批次大小必须相同，实际: embed1={embed1.size(0)}, embed2={embed2.size(0)}")
 
     batch_size = embed1.size(0)
     if batch_size < 2 and neg_sample_strategy == "in_batch":
         raise RuntimeError(
-            f"批次内负样本策略需要 batch_size >= 2，当前 batch_size={batch_size}。"
-            f"请增大批次大小或使用 'random' 策略。"
+            f"批次内负样本策略需要 batch_size >= 2，当前 batch_size={batch_size}。请增大批次大小或使用 'random' 策略。"
         )
 
     # 确保嵌入向量已归一化
@@ -99,15 +94,15 @@ def alignment_loss(
         if neg_samples is None:
             raise ValueError("strategy='random' 时必须提供 neg_samples 参数。")
         neg_sim = _compute_random_negatives(
-            embed1_norm, embed2_norm, neg_samples, temperature,
+            embed1_norm,
+            embed2_norm,
+            neg_samples,
+            temperature,
         )
     elif neg_sample_strategy == "hard":
         neg_sim = _compute_hard_negatives(embed1_norm, embed2_norm, temperature)
     else:
-        raise ValueError(
-            f"无效的负样本策略: '{neg_sample_strategy}'。"
-            f"可选: 'in_batch', 'random', 'hard'。"
-        )
+        raise ValueError(f"无效的负样本策略: '{neg_sample_strategy}'。可选: 'in_batch', 'random', 'hard'。")
 
     # 计算InfoNCE损失
     logits = neg_sim  # (N, N) for in_batch, (N, N+M) for random
@@ -211,9 +206,7 @@ def _compute_hard_negatives(
     return hard_sim / temperature
 
 
-# ============================================================================
 # 对齐损失追踪器
-# ============================================================================
 
 
 class AlignmentLossTracker:
@@ -276,7 +269,7 @@ class AlignmentLossTracker:
             return False
 
         # 检查条件1: 当前损失低于阈值
-        recent = self.history[-self.stability_window:]
+        recent = self.history[-self.stability_window :]
         if max(recent) >= self.convergence_threshold:
             return False
 

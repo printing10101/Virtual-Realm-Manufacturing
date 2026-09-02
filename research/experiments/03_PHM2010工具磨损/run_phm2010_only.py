@@ -5,6 +5,7 @@ PHM2010Dataset._load_real_data 中的 pandas/numpy 操作会触发 0xC0000005 �
 解决方案：在导入 trainer/models 之前先实例化 PHM2010Dataset 预加载数据，
 然后用 InMemoryDataset 包装预加载数据，传给 run_single_dataset_experiment。
 """
+
 import sys
 import os
 import json
@@ -14,7 +15,7 @@ import time
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-# === WinSock 损坏绕过补丁 ===
+# WinSock 损坏绕过补丁
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -23,7 +24,7 @@ except OSError:
     sys.modules["_overlapped"] = _patch
     print("[warn] _overlapped 模块加载失败，已注入空实现绕过 WinSock 损坏。", flush=True)
 
-# === 关键：在导入 trainer/models（触发 C 扩展）之前，先加载 PHM2010 数据 ===
+# 关键：在导入 trainer/models（触发 C 扩展）之前，先加载 PHM2010 数据
 _EXPERIMENTS_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(_EXPERIMENTS_DIR)
 sys.path.insert(0, _PROJECT_ROOT)
@@ -48,8 +49,7 @@ gc.collect()
 class InMemoryPHM2010Dataset(Dataset):
     """从预加载数据字典构造的内存 Dataset，绕过 _load_real_data 的 C 扩展冲突。"""
 
-    def __init__(self, num_samples: int = 300, noise_level: float = 0.05,
-                 window_size: int = 500, **kwargs):
+    def __init__(self, num_samples: int = 300, noise_level: float = 0.05, window_size: int = 500, **kwargs):
         super().__init__()
         self.data = _PRELOADED_DATA
         self.num_samples = len(self.data["features"])
@@ -61,9 +61,7 @@ class InMemoryPHM2010Dataset(Dataset):
     def __getitem__(self, idx):
         feats = torch.tensor(self.data["features"][idx], dtype=torch.float32)
         a_lim = torch.tensor(self.data["a_lim"][idx], dtype=torch.float32)
-        a_lim_physics = torch.tensor(
-            self.data.get("a_lim_clean", self.data["a_lim"])[idx], dtype=torch.float32
-        )
+        a_lim_physics = torch.tensor(self.data.get("a_lim_clean", self.data["a_lim"])[idx], dtype=torch.float32)
         return feats, a_lim, a_lim_physics
 
 
@@ -121,14 +119,13 @@ def main():
         },
     )
     elapsed = time.time() - start_time
-    print(f"\n[PHM2010] 完成，耗时 {elapsed/60:.1f} 分钟", flush=True)
+    print(f"\n[PHM2010] 完成，耗时 {elapsed / 60:.1f} 分钟", flush=True)
 
     gc.collect()
 
     # 合并结果
     all_results["PHM2010"] = {
-        model_name: {k: float(v) for k, v in metrics.items()}
-        for model_name, metrics in phm2010_results.items()
+        model_name: {k: float(v) for k, v in metrics.items()} for model_name, metrics in phm2010_results.items()
     }
 
     # 保存

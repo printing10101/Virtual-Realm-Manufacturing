@@ -54,9 +54,9 @@ from dataclasses import dataclass
 
 # === WinSock 损坏绕过补丁（必须在 import torch 之前执行）===
 # 本机 Python 3.11 + Windows 存在系统级 WinSock 损坏，`_overlapped` C 扩展模块
-# 导入失败（WinError 10038），导致 `torch → asyncio → _overlapped` 导入链断裂。
+# 导入失败（WinError 10038），导致 `torch asyncio _overlapped` 导入链断裂。
 # 此补丁必须在 import torch/numpy 之前注入空实现到 sys.modules，否则 torch
-# 导入时会触发 asyncio.windows_events → _overlapped 崩溃。
+# 导入时会触发 asyncio.windows_events _overlapped 崩溃。
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -80,7 +80,7 @@ EXPERIMENTS_DIR = RESEARCH_DIR / "experiments"
 ENGINEERING_PYTHON_DIR = PROJECT_ROOT / "engineering" / "python"
 
 # sys.path 优先级（insert(0,...) 后插的在前，按优先级从低到高插入）：
-#   PROJECT_ROOT < ENGINEERING_PYTHON_DIR < RESEARCH_DIR < EXPERIMENTS_DIR
+# PROJECT_ROOT < ENGINEERING_PYTHON_DIR < RESEARCH_DIR < EXPERIMENTS_DIR
 # 关键：EXPERIMENTS_DIR 必须在 RESEARCH_DIR 之前，否则 trainer.py 内的
 # `from models import create_model` 会解析到 research/models/（包目录）
 # 而非 research/experiments/models.py（实际模块）
@@ -106,39 +106,35 @@ from experiments.trainer import (
 from experiments.metrics import ChatterMetrics
 
 
-# =============================================================================
 # 材料与工况定义
-# =============================================================================
 
 # 5 种材料及其典型硬度（HB）——覆盖铝合金/钛合金/不锈钢/碳钢/淬硬钢
 MATERIALS_CONFIG = {
-    "6061-T6":  {"hardness": 95.0,  "Ks_factor": 1.0,  "description": "铝合金"},
-    "TC4":      {"hardness": 350.0, "Ks_factor": 2.2,  "description": "钛合金 Ti-6Al-4V"},
-    "HRC52":    {"hardness": 520.0, "Ks_factor": 3.0,  "description": "淬硬不锈钢"},
-    "45_Steel": {"hardness": 200.0, "Ks_factor": 1.5,  "description": "45号碳钢"},
-    "304_SS":   {"hardness": 180.0, "Ks_factor": 1.8,  "description": "304 奥氏体不锈钢"},
+    "6061-T6": {"hardness": 95.0, "Ks_factor": 1.0, "description": "铝合金"},
+    "TC4": {"hardness": 350.0, "Ks_factor": 2.2, "description": "钛合金 Ti-6Al-4V"},
+    "HRC52": {"hardness": 520.0, "Ks_factor": 3.0, "description": "淬硬不锈钢"},
+    "45_Steel": {"hardness": 200.0, "Ks_factor": 1.5, "description": "45号碳钢"},
+    "304_SS": {"hardness": 180.0, "Ks_factor": 1.8, "description": "304 奥氏体不锈钢"},
 }
 
 # 9 种工况（3 参数 × 3 水平）
 CONDITIONS_CONFIG = {
-    "low_speed":   {"spindle_range": (1000, 3000),  "feed_range": (0.05, 0.15), "depth_range": (0.5, 2.0)},
-    "mid_speed":   {"spindle_range": (3000, 6000),  "feed_range": (0.15, 0.30), "depth_range": (2.0, 5.0)},
-    "high_speed":  {"spindle_range": (6000, 10000), "feed_range": (0.30, 0.50), "depth_range": (5.0, 10.0)},
-    "low_feed":    {"spindle_range": (2000, 8000),  "feed_range": (0.05, 0.12), "depth_range": (1.0, 6.0)},
-    "mid_feed":    {"spindle_range": (2000, 8000),  "feed_range": (0.12, 0.25), "depth_range": (1.0, 6.0)},
-    "high_feed":   {"spindle_range": (2000, 8000),  "feed_range": (0.25, 0.50), "depth_range": (1.0, 6.0)},
-    "low_depth":   {"spindle_range": (2000, 8000),  "feed_range": (0.10, 0.30), "depth_range": (0.5, 1.5)},
-    "mid_depth":   {"spindle_range": (2000, 8000),  "feed_range": (0.10, 0.30), "depth_range": (1.5, 4.0)},
-    "high_depth":  {"spindle_range": (2000, 8000),  "feed_range": (0.10, 0.30), "depth_range": (4.0, 10.0)},
+    "low_speed": {"spindle_range": (1000, 3000), "feed_range": (0.05, 0.15), "depth_range": (0.5, 2.0)},
+    "mid_speed": {"spindle_range": (3000, 6000), "feed_range": (0.15, 0.30), "depth_range": (2.0, 5.0)},
+    "high_speed": {"spindle_range": (6000, 10000), "feed_range": (0.30, 0.50), "depth_range": (5.0, 10.0)},
+    "low_feed": {"spindle_range": (2000, 8000), "feed_range": (0.05, 0.12), "depth_range": (1.0, 6.0)},
+    "mid_feed": {"spindle_range": (2000, 8000), "feed_range": (0.12, 0.25), "depth_range": (1.0, 6.0)},
+    "high_feed": {"spindle_range": (2000, 8000), "feed_range": (0.25, 0.50), "depth_range": (1.0, 6.0)},
+    "low_depth": {"spindle_range": (2000, 8000), "feed_range": (0.10, 0.30), "depth_range": (0.5, 1.5)},
+    "mid_depth": {"spindle_range": (2000, 8000), "feed_range": (0.10, 0.30), "depth_range": (1.5, 4.0)},
+    "high_depth": {"spindle_range": (2000, 8000), "feed_range": (0.10, 0.30), "depth_range": (4.0, 10.0)},
 }
 
-ALL_MODELS = ["SVR", "RF", "XGBoost", "GP", "BPNN", "LSTM",
-              "Transformer", "PINN", "DL-LNN"]
+ALL_MODELS = ["SVR", "RF", "XGBoost", "GP", "BPNN", "LSTM", "Transformer", "PINN", "DL-LNN"]
 
 
-# =============================================================================
 # LOMO/LOCO 专用数据集
-# =============================================================================
+
 
 class LomoLocoDataset(Dataset):
     """LOMO/LOCO 实验专用数据集。
@@ -294,9 +290,8 @@ class SubsetDataset(Dataset):
         return self.parent[self.indices[idx]]
 
 
-# =============================================================================
 # 通用训练与评估（复用主实验 Trainer）
-# =============================================================================
+
 
 def train_and_evaluate(
     model_name: str,
@@ -380,8 +375,7 @@ def train_and_evaluate(
     val_ds = _SimpleDataset(X_train[val_idx], y_train_scaled[val_idx], y_phys_train_scaled[val_idx])
     test_ds = _SimpleDataset(X_test, y_test, y_phys_test)
 
-    train_loader = DataLoader(train_ds, batch_size=32, shuffle=True,
-                               generator=torch.Generator().manual_seed(seed))
+    train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, generator=torch.Generator().manual_seed(seed))
     val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
@@ -390,7 +384,7 @@ def train_and_evaluate(
         # 将 config 的 stage2 轮数同步为实际训练轮数，
         # 保证 CosineAnnealingLR 的 T_max 与 train_stage2 的 num_epochs 一致
         # （否则 LOMO 默认 stage2_epochs=100 < config.num_epochs_stage2=200，
-        #  调度器无法完成完整退火周期，影响收敛质量与可复现性）
+        # 调度器无法完成完整退火周期，影响收敛质量与可复现性）
         config.model.num_epochs_stage2 = stage2_epochs
         trainer = DLLNNTrainer(config, device=config.model.device)
         trainer.train_stage1(train_loader, val_loader, num_epochs=stage1_epochs)
@@ -455,9 +449,7 @@ def train_and_evaluate(
     return metrics
 
 
-# =============================================================================
 # Checkpoint 机制（方案 A，防止进程崩溃丢失全部 fold 结果）
-# =============================================================================
 # 设计：每个 fold 完成后立即将 results_per_fold 写入 checkpoint JSON 文件，
 # 进程重启后从 checkpoint 加载已完成的 fold，跳过已完成部分，仅训练剩余 fold。
 # 所有 fold 完成后删除 checkpoint 文件以区分"已完成"与"中断续跑"状态。
@@ -465,14 +457,12 @@ def train_and_evaluate(
 # checkpoint 文件命名：{protocol.lower()}_ckpt_{model_name}{suffix}.json
 # 其中 suffix = "_physics_aware" 或 "_baseline"，与最终结果文件命名一致。
 
-def _make_ckpt_path(output_dir: str, protocol: str, model_name: str,
-                    physics_aware: bool) -> str:
+
+def _make_ckpt_path(output_dir: str, protocol: str, model_name: str, physics_aware: bool) -> str:
     """构造 checkpoint 文件路径。"""
     suffix = "_physics_aware" if physics_aware else "_baseline"
     safe_model = model_name.replace("/", "_").replace("\\", "_")
-    return os.path.join(
-        output_dir, f"{protocol.lower()}_ckpt_{safe_model}{suffix}.json"
-    )
+    return os.path.join(output_dir, f"{protocol.lower()}_ckpt_{safe_model}{suffix}.json")
 
 
 def _load_checkpoint(ckpt_path: str) -> List[Dict]:
@@ -494,8 +484,7 @@ def _load_checkpoint(ckpt_path: str) -> List[Dict]:
         return []
 
 
-def _save_checkpoint(ckpt_path: str, completed_folds: List[Dict],
-                     total_folds: int) -> None:
+def _save_checkpoint(ckpt_path: str, completed_folds: List[Dict], total_folds: int) -> None:
     """保存 checkpoint（原子写入：先写临时文件再 rename，防止写中途崩溃损坏）。"""
     tmp_path = ckpt_path + ".tmp"
     payload = {
@@ -522,9 +511,8 @@ def _cleanup_checkpoint(ckpt_path: str) -> None:
         print(f"  [CKPT] 警告: 清理 checkpoint 失败 ({e})")
 
 
-# =============================================================================
 # LOMO 协议
-# =============================================================================
+
 
 def run_lomo_experiment(
     model_name: str,
@@ -550,25 +538,22 @@ def run_lomo_experiment(
     n_materials = len(materials)
 
     # === Checkpoint 加载（方案 A）===
-    ckpt_path = _make_ckpt_path(output_dir, "LOMO", model_name, physics_aware) \
-        if output_dir else None
+    ckpt_path = _make_ckpt_path(output_dir, "LOMO", model_name, physics_aware) if output_dir else None
     completed_folds = _load_checkpoint(ckpt_path) if ckpt_path else []
     completed_materials = {f["test_material"] for f in completed_folds}
 
     results_per_fold = list(completed_folds)  # 复用已完成结果
-    print(f"\n[LOMO] 模型: {model_name}, 材料数: {n_materials}, "
-          f"physics_aware: {physics_aware}")
+    print(f"\n[LOMO] 模型: {model_name}, 材料数: {n_materials}, physics_aware: {physics_aware}")
     if completed_folds:
-        print(f"  [CKPT] 从 checkpoint 恢复 {len(completed_folds)} 个 fold: "
-              f"{sorted(completed_materials)}")
+        print(f"  [CKPT] 从 checkpoint 恢复 {len(completed_folds)} 个 fold: {sorted(completed_materials)}")
 
     for i, test_material in enumerate(materials):
         # 跳过已完成的 fold（checkpoint 续跑）
         if test_material in completed_materials:
-            print(f"  Fold {i+1}/{n_materials}: 留出 {test_material} ... [CKPT 跳过]")
+            print(f"  Fold {i + 1}/{n_materials}: 留出 {test_material} ... [CKPT 跳过]")
             continue
 
-        print(f"  Fold {i+1}/{n_materials}: 留出 {test_material} ...")
+        print(f"  Fold {i + 1}/{n_materials}: 留出 {test_material} ...")
 
         # 按材料划分
         train_mask = dataset.sample_materials != test_material
@@ -590,9 +575,15 @@ def run_lomo_experiment(
             continue
 
         metrics = train_and_evaluate(
-            model_name, X_train, y_train, y_phys_train,
-            X_test, y_test, y_phys_test,
-            config, seed=seed,
+            model_name,
+            X_train,
+            y_train,
+            y_phys_train,
+            X_test,
+            y_test,
+            y_phys_test,
+            config,
+            seed=seed,
             stage1_epochs=stage1_epochs,
             stage2_epochs=stage2_epochs,
             baseline_epochs=baseline_epochs,
@@ -605,10 +596,12 @@ def run_lomo_experiment(
         metrics["physics_aware"] = bool(physics_aware)
         results_per_fold.append(metrics)
 
-        print(f"    MAE = {metrics['mae']:.4f}, RMSE = {metrics['rmse']:.4f}, "
-              f"R² = {metrics['r2']:.4f}, PCC = {metrics.get('pcc', 0):.4f}")
+        print(
+            f"    MAE = {metrics['mae']:.4f}, RMSE = {metrics['rmse']:.4f}, "
+            f"R² = {metrics['r2']:.4f}, PCC = {metrics.get('pcc', 0):.4f}"
+        )
 
-        # === Checkpoint 保存（方案 A）：每个 fold 完成后立即写入 ===
+        # Checkpoint 保存（方案 A）：每个 fold 完成后立即写入
         if ckpt_path:
             _save_checkpoint(ckpt_path, results_per_fold, n_materials)
 
@@ -643,9 +636,8 @@ def run_lomo_experiment(
     return summary
 
 
-# =============================================================================
 # LOCO 协议
-# =============================================================================
+
 
 def run_loco_experiment(
     model_name: str,
@@ -670,25 +662,22 @@ def run_loco_experiment(
     n_conditions = len(conditions)
 
     # === Checkpoint 加载（方案 A）===
-    ckpt_path = _make_ckpt_path(output_dir, "LOCO", model_name, physics_aware) \
-        if output_dir else None
+    ckpt_path = _make_ckpt_path(output_dir, "LOCO", model_name, physics_aware) if output_dir else None
     completed_folds = _load_checkpoint(ckpt_path) if ckpt_path else []
     completed_conditions = {f["test_condition"] for f in completed_folds}
 
     results_per_fold = list(completed_folds)
-    print(f"\n[LOCO] 模型: {model_name}, 工况数: {n_conditions}, "
-          f"physics_aware: {physics_aware}")
+    print(f"\n[LOCO] 模型: {model_name}, 工况数: {n_conditions}, physics_aware: {physics_aware}")
     if completed_folds:
-        print(f"  [CKPT] 从 checkpoint 恢复 {len(completed_folds)} 个 fold: "
-              f"{sorted(completed_conditions)}")
+        print(f"  [CKPT] 从 checkpoint 恢复 {len(completed_folds)} 个 fold: {sorted(completed_conditions)}")
 
     for i, test_cond in enumerate(conditions):
         # 跳过已完成的 fold（checkpoint 续跑）
         if test_cond in completed_conditions:
-            print(f"  Fold {i+1}/{n_conditions}: 留出 {test_cond} ... [CKPT 跳过]")
+            print(f"  Fold {i + 1}/{n_conditions}: 留出 {test_cond} ... [CKPT 跳过]")
             continue
 
-        print(f"  Fold {i+1}/{n_conditions}: 留出 {test_cond} ...")
+        print(f"  Fold {i + 1}/{n_conditions}: 留出 {test_cond} ...")
 
         train_mask = dataset.sample_conditions != test_cond
         test_mask = dataset.sample_conditions == test_cond
@@ -709,9 +698,15 @@ def run_loco_experiment(
             continue
 
         metrics = train_and_evaluate(
-            model_name, X_train, y_train, y_phys_train,
-            X_test, y_test, y_phys_test,
-            config, seed=seed,
+            model_name,
+            X_train,
+            y_train,
+            y_phys_train,
+            X_test,
+            y_test,
+            y_phys_test,
+            config,
+            seed=seed,
             stage1_epochs=stage1_epochs,
             stage2_epochs=stage2_epochs,
             baseline_epochs=baseline_epochs,
@@ -726,7 +721,7 @@ def run_loco_experiment(
 
         print(f"    MAE = {metrics['mae']:.4f}, PCC = {metrics.get('pcc', 0):.4f}")
 
-        # === Checkpoint 保存（方案 A）：每个 fold 完成后立即写入 ===
+        # Checkpoint 保存（方案 A）：每个 fold 完成后立即写入
         if ckpt_path:
             _save_checkpoint(ckpt_path, results_per_fold, n_conditions)
 
@@ -755,32 +750,36 @@ def run_loco_experiment(
     return summary
 
 
-# =============================================================================
 # 汇总与报告生成
-# =============================================================================
 
-def save_summary_csv(all_results: Dict, protocol: str, output_dir: str,
-                     file_suffix: str = "") -> str:
+
+def save_summary_csv(all_results: Dict, protocol: str, output_dir: str, file_suffix: str = "") -> str:
     """保存汇总表为 CSV（便于直接粘贴论文表格）。"""
     csv_path = os.path.join(output_dir, f"{protocol.lower()}_summary{file_suffix}.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["Model", "MAE_mean", "MAE_std", "RMSE_mean", "RMSE_std",
-                          "R2_mean", "R2_std", "PCC_mean", "PCC_std"])
+        writer.writerow(
+            ["Model", "MAE_mean", "MAE_std", "RMSE_mean", "RMSE_std", "R2_mean", "R2_std", "PCC_mean", "PCC_std"]
+        )
         for model_name, result in all_results.items():
             s = result.get("summary", {})
-            writer.writerow([
-                model_name,
-                f"{s.get('mae_mean', 0):.4f}", f"{s.get('mae_std', 0):.4f}",
-                f"{s.get('rmse_mean', 0):.4f}", f"{s.get('rmse_std', 0):.4f}",
-                f"{s.get('r2_mean', 0):.4f}", f"{s.get('r2_std', 0):.4f}",
-                f"{s.get('pcc_mean', 0):.4f}", f"{s.get('pcc_std', 0):.4f}",
-            ])
+            writer.writerow(
+                [
+                    model_name,
+                    f"{s.get('mae_mean', 0):.4f}",
+                    f"{s.get('mae_std', 0):.4f}",
+                    f"{s.get('rmse_mean', 0):.4f}",
+                    f"{s.get('rmse_std', 0):.4f}",
+                    f"{s.get('r2_mean', 0):.4f}",
+                    f"{s.get('r2_std', 0):.4f}",
+                    f"{s.get('pcc_mean', 0):.4f}",
+                    f"{s.get('pcc_std', 0):.4f}",
+                ]
+            )
     return csv_path
 
 
-def save_report_md(all_results: Dict, protocol: str, output_dir: str,
-                   dataset_name: str, file_suffix: str = "") -> str:
+def save_report_md(all_results: Dict, protocol: str, output_dir: str, dataset_name: str, file_suffix: str = "") -> str:
     """生成 Markdown 报告。"""
     md_path = os.path.join(output_dir, f"{protocol.lower()}_report{file_suffix}.md")
     physics_aware_note = ""
@@ -801,25 +800,30 @@ def save_report_md(all_results: Dict, protocol: str, output_dir: str,
         f.write(f"**协议**: {protocol}\n\n")
         f.write(f"**日期**: {np.datetime64('now', 'D')}\n\n")
         if physics_aware_note:
-            f.write("**AR-02 修复**: 启用物理引导 target 缩放 "
-                    "(ks_scale=(hardness/200)^0.8，与 Tlusty 物理模型一致)\n\n")
+            f.write(
+                "**AR-02 修复**: 启用物理引导 target 缩放 (ks_scale=(hardness/200)^0.8，与 Tlusty 物理模型一致)\n\n"
+            )
         f.write("## 汇总结果\n\n")
         f.write("| 模型 | MAE (mean±std) | RMSE (mean±std) | R² (mean±std) | PCC (mean±std) |\n")
         f.write("|------|----------------|-----------------|---------------|----------------|\n")
         for model_name, result in all_results.items():
             s = result.get("summary", {})
-            f.write(f"| {model_name} | "
-                    f"{s.get('mae_mean', 0):.4f}±{s.get('mae_std', 0):.4f} | "
-                    f"{s.get('rmse_mean', 0):.4f}±{s.get('rmse_std', 0):.4f} | "
-                    f"{s.get('r2_mean', 0):.4f}±{s.get('r2_std', 0):.4f} | "
-                    f"{s.get('pcc_mean', 0):.4f}±{s.get('pcc_std', 0):.4f} |\n")
+            f.write(
+                f"| {model_name} | "
+                f"{s.get('mae_mean', 0):.4f}±{s.get('mae_std', 0):.4f} | "
+                f"{s.get('rmse_mean', 0):.4f}±{s.get('rmse_std', 0):.4f} | "
+                f"{s.get('r2_mean', 0):.4f}±{s.get('r2_std', 0):.4f} | "
+                f"{s.get('pcc_mean', 0):.4f}±{s.get('pcc_std', 0):.4f} |\n"
+            )
         f.write("\n## 各折详细结果\n\n")
         for model_name, result in all_results.items():
             f.write(f"### {model_name}\n\n")
             for fold in result.get("per_fold", []):
-                f.write(f"- 留出 {fold.get('test_material', fold.get('test_condition', 'N/A'))}: "
-                        f"MAE={fold['mae']:.4f}, R²={fold['r2']:.4f}, "
-                        f"PCC={fold.get('pcc', 0):.4f}\n")
+                f.write(
+                    f"- 留出 {fold.get('test_material', fold.get('test_condition', 'N/A'))}: "
+                    f"MAE={fold['mae']:.4f}, R²={fold['r2']:.4f}, "
+                    f"PCC={fold.get('pcc', 0):.4f}\n"
+                )
             f.write("\n")
     return md_path
 
@@ -856,8 +860,7 @@ def run_all_experiments(
         samples_per_group=samples_per_group,
         seed=seed,
     )
-    print(f"\n数据集统计: 总样本 {len(dataset)}, "
-          f"材料 {len(dataset.materials)}, 工况 {len(dataset.conditions)}")
+    print(f"\n数据集统计: 总样本 {len(dataset)}, 材料 {len(dataset.materials)}, 工况 {len(dataset.conditions)}")
 
     # 获取配置
     config = get_config("lomo_loco_experiment")
@@ -867,7 +870,10 @@ def run_all_experiments(
     for model_name in models:
         if protocol == "LOMO":
             result = run_lomo_experiment(
-                model_name, dataset, config, seed=seed,
+                model_name,
+                dataset,
+                config,
+                seed=seed,
                 stage1_epochs=stage1_epochs,
                 stage2_epochs=stage2_epochs,
                 baseline_epochs=baseline_epochs,
@@ -876,7 +882,10 @@ def run_all_experiments(
             )
         else:
             result = run_loco_experiment(
-                model_name, dataset, config, seed=seed,
+                model_name,
+                dataset,
+                config,
+                seed=seed,
                 stage1_epochs=stage1_epochs,
                 stage2_epochs=stage2_epochs,
                 baseline_epochs=baseline_epochs,
@@ -897,8 +906,7 @@ def run_all_experiments(
     print(f"[OK] 汇总表已保存至: {csv_path}")
 
     # 保存 Markdown 报告
-    md_path = save_report_md(all_results, protocol, output_dir, dataset_name,
-                              file_suffix=suffix)
+    md_path = save_report_md(all_results, protocol, output_dir, dataset_name, file_suffix=suffix)
     print(f"[OK] Markdown 报告已保存至: {md_path}")
 
     # 打印汇总表
@@ -910,44 +918,39 @@ def run_all_experiments(
     for model_name in models:
         if model_name in all_results:
             s = all_results[model_name]["summary"]
-            print(f"{model_name:<15} "
-                  f"{s['mae_mean']:.4f}±{s['mae_std']:.4f}       "
-                  f"{s.get('r2_mean', 0):.4f}±{s.get('r2_std', 0):.4f}       "
-                  f"{s.get('pcc_mean', 0):.4f}±{s.get('pcc_std', 0):.4f}")
+            print(
+                f"{model_name:<15} "
+                f"{s['mae_mean']:.4f}±{s['mae_std']:.4f}       "
+                f"{s.get('r2_mean', 0):.4f}±{s.get('r2_std', 0):.4f}       "
+                f"{s.get('pcc_mean', 0):.4f}±{s.get('pcc_std', 0):.4f}"
+            )
 
     return all_results
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="LOMO/LOCO 跨工况泛化实验（v2.1，AR-02 物理引导缩放）"
+    parser = argparse.ArgumentParser(description="LOMO/LOCO 跨工况泛化实验（v2.1，AR-02 物理引导缩放）")
+    parser.add_argument("--protocol", type=str, default="LOMO", choices=["LOMO", "LOCO"], help="评估协议")
+    parser.add_argument("--models", type=str, nargs="+", default=ALL_MODELS, help="要评估的模型列表")
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="synthetic_multi",
+        choices=["synthetic_multi"],
+        help="数据集名称（v2 仅支持 synthetic_multi）",
     )
-    parser.add_argument("--protocol", type=str, default="LOMO",
-                        choices=["LOMO", "LOCO"],
-                        help="评估协议")
-    parser.add_argument("--models", type=str, nargs="+",
-                        default=ALL_MODELS,
-                        help="要评估的模型列表")
-    parser.add_argument("--dataset", type=str, default="synthetic_multi",
-                        choices=["synthetic_multi"],
-                        help="数据集名称（v2 仅支持 synthetic_multi）")
-    parser.add_argument("--output_dir", type=str,
-                        default="论文相关/脚本/results/lomo_loco",
-                        help="输出目录")
+    parser.add_argument("--output_dir", type=str, default="论文相关/脚本/results/lomo_loco", help="输出目录")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
-    parser.add_argument("--samples_per_group", type=int, default=200,
-                        help="每种材料×工况的样本数")
-    parser.add_argument("--stage1_epochs", type=int, default=50,
-                        help="DL-LNN 阶段一轮数（缩减以加速 LOMO）")
-    parser.add_argument("--stage2_epochs", type=int, default=100,
-                        help="DL-LNN 阶段二轮数（缩减以加速 LOMO）")
-    parser.add_argument("--baseline_epochs", type=int, default=150,
-                        help="非 sklearn 基线训练轮数")
+    parser.add_argument("--samples_per_group", type=int, default=200, help="每种材料×工况的样本数")
+    parser.add_argument("--stage1_epochs", type=int, default=50, help="DL-LNN 阶段一轮数（缩减以加速 LOMO）")
+    parser.add_argument("--stage2_epochs", type=int, default=100, help="DL-LNN 阶段二轮数（缩减以加速 LOMO）")
+    parser.add_argument("--baseline_epochs", type=int, default=150, help="非 sklearn 基线训练轮数")
     # AR-02 修复：物理引导 target 缩放开关
     parser.add_argument(
-        "--physics_aware", action=argparse.BooleanOptionalAction, default=True,
-        help="启用物理引导 target 缩放（AR-02 修复，默认启用）。"
-             "使用 --no-physics_aware 关闭以运行 v2 原行为对照实验。"
+        "--physics_aware",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="启用物理引导 target 缩放（AR-02 修复，默认启用）。使用 --no-physics_aware 关闭以运行 v2 原行为对照实验。",
     )
     args = parser.parse_args()
 

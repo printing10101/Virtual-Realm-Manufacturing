@@ -36,6 +36,7 @@ from models import DLLNNModel
 from config import ModelConfig
 from metrics import ChatterMetrics
 
+
 # Tlusty 确定性基线（从 exp46 结果文件读取，避免重复计算）
 def _load_tlusty_mae() -> dict:
     p = Path(__file__).resolve().parent.parent / "results" / "tlusty_mismatch_results.json"
@@ -43,10 +44,12 @@ def _load_tlusty_mae() -> dict:
     tb = data["tlusty_baseline"]["0.0"]
     return {float(k): float(v["MAE"]) for k, v in tb.items()}
 
+
 TLUSTY_MAE = _load_tlusty_mae()
 
 # 与 exp46 完全相同的求解器决策（诚信记录）
 import models as _models
+
 _HAS_ODE = _models._HAS_TORCHDIFFEQ
 _models._HAS_TORCHDIFFEQ = False
 LTC_SOLVER = "euler"
@@ -67,12 +70,23 @@ class PhysicsAwareDLLNN(nn.Module):
     且 forward 时 gate 接收 [x, physics_pred] 拼接。
     """
 
-    def __init__(self, input_dim: int = 7, hidden_dim: int = 64, num_layers: int = 3,
-                 output_dim: int = 1, dt: float = 0.1, dropout: float = 0.2):
+    def __init__(
+        self,
+        input_dim: int = 7,
+        hidden_dim: int = 64,
+        num_layers: int = 3,
+        output_dim: int = 1,
+        dt: float = 0.1,
+        dropout: float = 0.2,
+    ):
         super().__init__()
         self.ltc_branch = DLLNNModel(
-            input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers,
-            output_dim=output_dim, dt=dt, dropout=dropout,
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers,
+            output_dim=output_dim,
+            dt=dt,
+            dropout=dropout,
         )
         # 物理感知门控：输入 = x (7) + physics_pred (1) = 8 维
         self.gate = nn.Sequential(
@@ -88,9 +102,7 @@ class PhysicsAwareDLLNN(nn.Module):
         ltc_pred = self.ltc_branch(x)
         gate_in = torch.cat([x, physics_pred], dim=1)
         alpha = self.gate(gate_in)
-        final_pred = alpha * ltc_pred + (1 - alpha) * (
-            self.physics_scale * physics_pred + self.physics_bias
-        )
+        final_pred = alpha * ltc_pred + (1 - alpha) * (self.physics_scale * physics_pred + self.physics_bias)
         return final_pred, ltc_pred
 
     def reset_hidden(self):
@@ -150,12 +162,23 @@ def main():
             train_loader, val_loader, test_loader = base.create_loaders(dataset, base.BATCH_SIZE, seed)
 
             model = PhysicsAwareDLLNN(
-                input_dim=config.input_dim, hidden_dim=config.hidden_dim,
-                num_layers=config.num_layers, output_dim=config.output_dim,
-                dt=config.ltc_dt, dropout=config.dropout,
+                input_dim=config.input_dim,
+                hidden_dim=config.hidden_dim,
+                num_layers=config.num_layers,
+                output_dim=config.output_dim,
+                dt=config.ltc_dt,
+                dropout=config.dropout,
             ).to(device)
-            model = base.train_model(model, train_loader, val_loader, config, device,
-                                     train_delta=train_delta, use_physics=True, verbose=False)
+            model = base.train_model(
+                model,
+                train_loader,
+                val_loader,
+                config,
+                device,
+                train_delta=train_delta,
+                use_physics=True,
+                verbose=False,
+            )
 
             for test_delta in DELTAS:
                 t_idx = DELTAS.index(test_delta)
@@ -163,10 +186,8 @@ def main():
                 key = str(test_delta)
                 if key not in results["matrix"][tds]:
                     results["matrix"][tds][key] = {"MAE_per_seed": [], "R2_per_seed": [], "gate_per_seed": []}
-                results["matrix"][tds][key]["MAE_per_seed"].append(
-                    metrics_calc.mae(r["preds"], r["y_true"]))
-                results["matrix"][tds][key]["R2_per_seed"].append(
-                    metrics_calc.r2_score(r["preds"], r["y_true"]))
+                results["matrix"][tds][key]["MAE_per_seed"].append(metrics_calc.mae(r["preds"], r["y_true"]))
+                results["matrix"][tds][key]["R2_per_seed"].append(metrics_calc.r2_score(r["preds"], r["y_true"]))
                 results["matrix"][tds][key]["gate_per_seed"].append(float(np.mean(r["gates"])))
 
         # 汇总 + 统计（对比 Tlusty 基线，来自 exp46 结果文件）
@@ -183,11 +204,15 @@ def main():
                 t_stat, p_val = stats.ttest_1samp(maes, TLUSTY_MAE[test_delta], alternative="less")
                 cell["p_vs_tlusty"] = float(p_val)
                 cell["cohens_d"] = float((TLUSTY_MAE[test_delta] - np.mean(maes)) / np.std(maes, ddof=1))
-                cell["gain_vs_tlusty_pct"] = float((TLUSTY_MAE[test_delta] - np.mean(maes)) / TLUSTY_MAE[test_delta] * 100.0)
+                cell["gain_vs_tlusty_pct"] = float(
+                    (TLUSTY_MAE[test_delta] - np.mean(maes)) / TLUSTY_MAE[test_delta] * 100.0
+                )
             else:
                 cell["p_vs_tlusty"] = None
                 cell["cohens_d"] = None
-                cell["gain_vs_tlusty_pct"] = float((TLUSTY_MAE[test_delta] - np.mean(maes)) / TLUSTY_MAE[test_delta] * 100.0)
+                cell["gain_vs_tlusty_pct"] = float(
+                    (TLUSTY_MAE[test_delta] - np.mean(maes)) / TLUSTY_MAE[test_delta] * 100.0
+                )
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     FIG_DIR.mkdir(exist_ok=True)
@@ -196,7 +221,7 @@ def main():
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(f"\nResults saved to {out_file}", flush=True)
 
-    # ---------- 摘要 ----------
+    # 摘要
     print("\n=== SUMMARY: Physics-Aware Gate MAE (train_d -> test_d) ===", flush=True)
     print("train_d | " + " | ".join(f"test={d:.0%}" for d in DELTAS) + " | gate_avg", flush=True)
     for train_delta in DELTAS:
@@ -208,7 +233,7 @@ def main():
         row.append(f"{np.mean([results['matrix'][tds][str(d)]['gate_mean'] for d in DELTAS]):.3f}")
         print(" | ".join(row), flush=True)
 
-    # ---------- 与原版 exp46 对比 ----------
+    # 与原版 exp46 对比
     print("\n=== vs exp46 (original gate): gain difference on key cells ===", flush=True)
     try:
         exp46 = json.load(open(OUTPUT_DIR / "tlusty_mismatch_results.json", encoding="utf-8"))
@@ -220,13 +245,14 @@ def main():
                 m47 = float("nan")
             else:
                 m47 = cell47["MAE_mean"]
-            print(f"({td:.0%},{td2:.0%})           | {m46:.4f}   | {m47:.4f}   | {m47-m46:+.4f}", flush=True)
+            print(f"({td:.0%},{td2:.0%})           | {m46:.4f}   | {m47:.4f}   | {m47 - m46:+.4f}", flush=True)
     except Exception as e:
         print(f"  exp46 compare failed: {e}", flush=True)
 
-    # ---------- 图 ----------
+    # 图
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -237,12 +263,22 @@ def main():
         diag47 = [results["matrix"][str(d)][str(d)]["MAE_mean"] for d in DELTAS]
         diag47s = [results["matrix"][str(d)][str(d)]["MAE_std"] for d in DELTAS]
         diag46 = [exp46["matrix"][str(d)][str(d)]["MAE_mean"] for d in DELTAS]
-        ax.plot(pcts, [TLUSTY_MAE[d] for d in DELTAS], "s--", color="tab:red",
-                label="Tlusty (mismatched)", linewidth=1.8)
-        ax.errorbar(pcts, diag46, fmt="o-", color="tab:orange", label="DL-LNN orig gate (exp46)",
-                    linewidth=1.6, capsize=3)
-        ax.errorbar(pcts, diag47, yerr=diag47s, fmt="^-", color="tab:green",
-                    label="DL-LNN physics-aware gate (exp47)", linewidth=1.8, capsize=3)
+        ax.plot(
+            pcts, [TLUSTY_MAE[d] for d in DELTAS], "s--", color="tab:red", label="Tlusty (mismatched)", linewidth=1.8
+        )
+        ax.errorbar(
+            pcts, diag46, fmt="o-", color="tab:orange", label="DL-LNN orig gate (exp46)", linewidth=1.6, capsize=3
+        )
+        ax.errorbar(
+            pcts,
+            diag47,
+            yerr=diag47s,
+            fmt="^-",
+            color="tab:green",
+            label="DL-LNN physics-aware gate (exp47)",
+            linewidth=1.8,
+            capsize=3,
+        )
         ax.set_xlabel("Modal mismatch delta (%)")
         ax.set_ylabel("Test MAE (mm)")
         ax.set_title("Diagonal: physics-aware vs original gate")
@@ -256,8 +292,9 @@ def main():
         fig, ax = plt.subplots(figsize=(7.5, 5))
         row46 = [exp46["matrix"]["0.0"][str(d)]["MAE_mean"] for d in DELTAS]
         row47 = [results["matrix"]["0.0"][str(d)]["MAE_mean"] for d in DELTAS]
-        ax.plot(pcts, [TLUSTY_MAE[d] for d in DELTAS], "s--", color="tab:red",
-                label="Tlusty (mismatched)", linewidth=1.8)
+        ax.plot(
+            pcts, [TLUSTY_MAE[d] for d in DELTAS], "s--", color="tab:red", label="Tlusty (mismatched)", linewidth=1.8
+        )
         ax.plot(pcts, row46, "o-", color="tab:orange", label="orig gate (train=0%)", linewidth=1.6)
         ax.plot(pcts, row47, "^-", color="tab:green", label="physics-aware gate (train=0%)", linewidth=1.8)
         ax.set_xlabel("Test mismatch delta (%)")

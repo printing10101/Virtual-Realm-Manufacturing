@@ -1,4 +1,4 @@
-﻿"""LOMO A2 消融实验 —— 验证 L_pcc 在跨材料泛化上的贡献。
+"""LOMO A2 消融实验 —— 验证 L_pcc 在跨材料泛化上的贡献。
 
 背景：
     合成数据消融实验（ablation_smoke/）显示 A2（λ₃=0, PINN）在 in-distribution 上
@@ -20,6 +20,7 @@
     - 若 L_pcc 有效：A2 的 LOMO MAE > Full 的 LOMO MAE（L_pcc 改善 OOD）
     - 若 L_pcc 无效：A2 ≈ Full 或 A2 < Full（需重新审视论文声明）
 """
+
 import sys
 import os
 import types
@@ -27,7 +28,7 @@ import json
 import time
 from pathlib import Path
 
-# === WinSock 损坏绕过补丁 ===
+# WinSock 损坏绕过补丁
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -72,8 +73,7 @@ def main():
     print("=" * 70)
     print("LOMO A2 消融实验（λ₃=0，验证 L_pcc 在 OOD 上的贡献）")
     print("=" * 70)
-    print(f"参数: samples_per_group={samples_per_group}, "
-          f"stage1={stage1_epochs}, stage2={stage2_epochs}")
+    print(f"参数: samples_per_group={samples_per_group}, stage1={stage1_epochs}, stage2={stage2_epochs}")
     print(f"配置: lambda_phys=0.5, lambda_pcc=0.0 (A2 = PINN)")
     print(f"输出: {output_dir}")
     print("=" * 70)
@@ -81,8 +81,7 @@ def main():
     # 构造数据集（与 Full 相同的种子和参数）
     print("\n[1/3] 构造 LOMO 数据集...")
     dataset = LomoLocoDataset(samples_per_group=samples_per_group, seed=seed)
-    print(f"  总样本: {len(dataset)}, 材料: {len(dataset.materials)}, "
-          f"工况: {len(dataset.conditions)}")
+    print(f"  总样本: {len(dataset)}, 材料: {len(dataset.materials)}, 工况: {len(dataset.conditions)}")
 
     # 获取配置并覆盖 lambda_pcc = 0.0（A2 配置）
     print("\n[2/3] 配置 A2 消融（λ₃=0）...")
@@ -90,8 +89,7 @@ def main():
     config.model.device = "cuda" if torch.cuda.is_available() else "cpu"
     config.model.lambda_pcc = 0.0  # A2: 去除 L_pcc
     config.model.lambda_phys = 0.5  # 保留 L_phys
-    print(f"  lambda_phys={config.model.lambda_phys}, "
-          f"lambda_pcc={config.model.lambda_pcc}")
+    print(f"  lambda_phys={config.model.lambda_phys}, lambda_pcc={config.model.lambda_pcc}")
     print(f"  device={config.model.device}")
 
     # 运行 LOMO 实验
@@ -130,7 +128,7 @@ def main():
     print(f"  RMSE: {s.get('rmse_mean', 0):.4f} ± {s.get('rmse_std', 0):.4f}")
     print(f"  R²:   {s.get('r2_mean', 0):.4f} ± {s.get('r2_std', 0):.4f}")
     print(f"  PCC:  {s.get('pcc_mean', 0):.4f} ± {s.get('pcc_std', 0):.4f}")
-    print(f"  耗时: {elapsed:.1f}s ({elapsed/60:.1f} min)")
+    print(f"  耗时: {elapsed:.1f}s ({elapsed / 60:.1f} min)")
     print("=" * 70)
 
     return result

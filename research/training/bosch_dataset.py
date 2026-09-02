@@ -242,9 +242,7 @@ class BoschDatasetProcessor:
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
         target_cols = self.config.target_columns
-        feature_cols = self.config.feature_columns or [
-            c for c in numeric_cols if c not in target_cols
-        ]
+        feature_cols = self.config.feature_columns or [c for c in numeric_cols if c not in target_cols]
 
         lag_steps = lag_steps or [1, 3, 5]
         rolling_windows = rolling_windows or [5, 10, 20]
@@ -304,9 +302,7 @@ class BoschDatasetProcessor:
         self._stats["feature_count"] = X.shape[1]
         self._stats["sample_count"] = X.shape[0]
 
-        logger.info(
-            f"Feature engineering complete: X={X.shape}, y={y.shape if y is not None else None}"
-        )
+        logger.info(f"Feature engineering complete: X={X.shape}, y={y.shape if y is not None else None}")
 
         return X
 
@@ -345,7 +341,7 @@ class BoschDatasetProcessor:
         test_size = self.config.test_size
         val_size = self.config.val_size / (1 - test_size)
 
-        # 步骤 1：先划分，再拟合预处理器，避免测试集统计信息泄漏
+        # 先划分，再拟合预处理器，避免测试集统计信息泄漏
         X_temp, X_test, y_temp, y_test = train_test_split(
             X, y, test_size=test_size, random_state=self.config.random_state
         )
@@ -354,7 +350,7 @@ class BoschDatasetProcessor:
             X_temp, y_temp, test_size=val_size, random_state=self.config.random_state
         )
 
-        # 步骤 2：仅用训练集拟合 imputer，防止 val/test 统计量泄漏
+        # 仅用训练集拟合 imputer，防止 val/test 统计量泄漏
         strategy = self.config.imputation_strategy
         if strategy in ("median", "most_frequent"):
             self.imputer = SimpleImputer(strategy=strategy)
@@ -364,7 +360,7 @@ class BoschDatasetProcessor:
         X_val = self.imputer.transform(X_val)
         X_test = self.imputer.transform(X_test)
 
-        # 步骤 3：仅用训练集拟合 scaler，防止 val/test 统计量泄漏
+        # 仅用训练集拟合 scaler，防止 val/test 统计量泄漏
         method = self.config.normalization_method
         if method == "minmax":
             self.scaler = MinMaxScaler()
@@ -391,15 +387,9 @@ class BoschDatasetProcessor:
         )
 
         if return_tensors and HAS_TORCH:
-            train_dataset = TensorDataset(
-                torch.FloatTensor(X_train), torch.FloatTensor(y_train)
-            )
-            val_dataset = TensorDataset(
-                torch.FloatTensor(X_val), torch.FloatTensor(y_val)
-            )
-            test_dataset = TensorDataset(
-                torch.FloatTensor(X_test), torch.FloatTensor(y_test)
-            )
+            train_dataset = TensorDataset(torch.FloatTensor(X_train), torch.FloatTensor(y_train))
+            val_dataset = TensorDataset(torch.FloatTensor(X_val), torch.FloatTensor(y_val))
+            test_dataset = TensorDataset(torch.FloatTensor(X_test), torch.FloatTensor(y_test))
             return train_dataset, val_dataset, test_dataset
 
         return X_train, X_val, X_test, y_train, y_val, y_test
@@ -475,15 +465,9 @@ class BoschDatasetProcessor:
 
         train_dataset, val_dataset, test_dataset = self.split_data(return_tensors=True)
 
-        train_loader = DataLoader(
-            train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
-        )
-        val_loader = DataLoader(
-            val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
-        )
-        test_loader = DataLoader(
-            test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
-        )
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
         return train_loader, val_loader, test_loader
 

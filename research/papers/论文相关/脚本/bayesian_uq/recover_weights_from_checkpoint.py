@@ -21,7 +21,7 @@ import sys
 import types
 from pathlib import Path
 
-# === WinSock 损坏绕过补丁 ===
+# WinSock 损坏绕过补丁
 try:
     import _overlapped  # noqa: F401
 except OSError:

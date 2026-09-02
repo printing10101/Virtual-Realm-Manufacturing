@@ -1,4 +1,4 @@
-﻿"""LTC (Liquid Time-Constant) Model for Time-Series Prediction.
+"""LTC (Liquid Time-Constant) Model for Time-Series Prediction.
 
 Implements the Liquid Time-Constant network architecture for continuous-time
 neural dynamics. The LTC model uses adaptive time constants that vary with
@@ -128,9 +128,7 @@ class LTCModel(BaseLNNModel):
             return
 
         # 初始化时序处理权重
-        layer_dims = (
-            [self.input_dim] + [self.hidden_dim] * self.num_layers + [self.output_dim]
-        )
+        layer_dims = [self.input_dim] + [self.hidden_dim] * self.num_layers + [self.output_dim]
 
         for i in range(len(layer_dims) - 1):
             fan_in = layer_dims[i]
@@ -171,11 +169,11 @@ class LTCModel(BaseLNNModel):
         if not self._initialized:
             self.build()
 
-        # 单样本 → (1, input_dim)
+        # 单样本 (1, input_dim)
         if x.ndim == 1:
             x = x.reshape(1, -1)
 
-        # 批量独立样本（2D）→ 直接通过网络，不当时序处理
+        # 批量独立样本（2D） 直接通过网络，不当时序处理
         if x.ndim == 2:
             return self._forward_batch(x)
 
@@ -371,9 +369,7 @@ class LTCModel(BaseLNNModel):
             import torch
 
             n_samples = data.shape[0]
-            indices = np.random.choice(
-                n_samples, min(batch_size, n_samples), replace=False
-            )
+            indices = np.random.choice(n_samples, min(batch_size, n_samples), replace=False)
             # 显式 dtype=float32：替代 torch.FloatTensor，便于类型注解与设备一致性
             batch_data = torch.tensor(data[indices], dtype=torch.float32)
             batch_labels = torch.tensor(labels[indices], dtype=torch.float32)
@@ -384,9 +380,7 @@ class LTCModel(BaseLNNModel):
             torch_model = self.to_torch(device=self.device)
             torch_model.train()
 
-            optimizer = torch.optim.AdamW(
-                torch_model.parameters(), lr=learning_rate, weight_decay=DEFAULT_WEIGHT_DECAY
-            )
+            optimizer = torch.optim.AdamW(torch_model.parameters(), lr=learning_rate, weight_decay=DEFAULT_WEIGHT_DECAY)
             criterion = torch.nn.MSELoss()
 
             optimizer.zero_grad()
@@ -428,9 +422,9 @@ class LTCModel(BaseLNNModel):
             (``_train_step_torch``)。
         """
         import logging as _logging
+
         _logging.getLogger(__name__).warning(
-            "_train_step_numpy 被调用：此为非功能性占位，不执行真实梯度更新。"
-            "请安装 PyTorch 以启用正式训练。"
+            "_train_step_numpy 被调用：此为非功能性占位，不执行真实梯度更新。请安装 PyTorch 以启用正式训练。"
         )
         n_samples = data.shape[0]
         indices = np.random.choice(n_samples, min(batch_size, n_samples), replace=False)
@@ -446,6 +440,7 @@ class LTCModel(BaseLNNModel):
     def _sync_from_torch(self, torch_model) -> None:
         """从PyTorch模型同步权重回NumPy模型"""
         import torch as _torch
+
         # P2-AI-4: 使用 inference_mode 替代 no_grad，权重同步为纯读操作，无需 autograd 图
         with _torch.no_grad():
             if len(self.weights) >= 1 and len(torch_model.ltc_cells) >= 1:
@@ -547,30 +542,16 @@ class LTCModel(BaseLNNModel):
         with torch.no_grad():
             if len(self.weights) >= 1 and len(torch_model.ltc_cells) >= 1:
                 first_cell = torch_model.ltc_cells[0]
-                first_cell.W.data = torch.tensor(
-                    self.weights[0].T, dtype=torch.float32
-                )
-                first_cell.bias.data = torch.tensor(
-                    self.biases[0], dtype=torch.float32
-                )
+                first_cell.W.data = torch.tensor(self.weights[0].T, dtype=torch.float32)
+                first_cell.bias.data = torch.tensor(self.biases[0], dtype=torch.float32)
                 if self.weights[0].shape[1] == self.weights[0].shape[0]:
-                    first_cell.U.data = torch.tensor(
-                        self.weights[0].T, dtype=torch.float32
-                    )
+                    first_cell.U.data = torch.tensor(self.weights[0].T, dtype=torch.float32)
 
             if len(self.weights) >= 2 and len(torch_model.ltc_cells) >= 2:
                 second_cell = torch_model.ltc_cells[1]
-                second_cell.W.data = torch.tensor(
-                    self.weights[1].T, dtype=torch.float32
-                )
-                second_cell.bias.data = torch.tensor(
-                    self.biases[1], dtype=torch.float32
-                )
+                second_cell.W.data = torch.tensor(self.weights[1].T, dtype=torch.float32)
+                second_cell.bias.data = torch.tensor(self.biases[1], dtype=torch.float32)
 
             if len(self.weights) >= 3:
-                torch_model.output_layer.weight.data = torch.tensor(
-                    self.weights[-1].T, dtype=torch.float32
-                )
-                torch_model.output_layer.bias.data = torch.tensor(
-                    self.biases[-1], dtype=torch.float32
-                )
+                torch_model.output_layer.weight.data = torch.tensor(self.weights[-1].T, dtype=torch.float32)
+                torch_model.output_layer.bias.data = torch.tensor(self.biases[-1], dtype=torch.float32)

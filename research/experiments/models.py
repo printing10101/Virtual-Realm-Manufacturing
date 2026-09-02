@@ -14,10 +14,12 @@ import numpy as np
 # 软依赖：未安装时降级为一阶 Euler 方法，但会打印警告
 try:
     from torchdiffeq import odeint as _torchdiffeq_odeint
+
     _HAS_TORCHDIFFEQ = True
 except ImportError:  # pragma: no cover - 降级路径
     _HAS_TORCHDIFFEQ = False
     import warnings
+
     warnings.warn(
         "torchdiffeq 未安装，LTCCell 将降级为一阶 Euler 方法。"
         "论文声称的连续时间 ODE 优势无法体现，请执行：pip install torchdiffeq==0.2.3 "
@@ -137,18 +139,12 @@ class LTCCell(nn.Module):
                 dtype=h.dtype,
             )
             # odeint 返回 [2, batch, hidden]，取终点状态
-            h_new = _torchdiffeq_odeint(
-                self.ode_func, h, t_span, method=self.solver
-            )[-1]
+            h_new = _torchdiffeq_odeint(self.ode_func, h, t_span, method=self.solver)[-1]
             return h_new
 
         # 降级路径：一阶 Euler 方法（仅当 torchdiffeq 不可用）
         tau = torch.clamp(self.ode_func.tau, min=0.01)
-        dh = torch.tanh(
-            torch.mm(x, self.ode_func.W.t())
-            + torch.mm(h, self.ode_func.U.t())
-            + self.ode_func.bias
-        )
+        dh = torch.tanh(torch.mm(x, self.ode_func.W.t()) + torch.mm(h, self.ode_func.U.t()) + self.ode_func.bias)
         h_new = h + dt * (dh - h) / tau.unsqueeze(0)
         return h_new
 
@@ -158,7 +154,7 @@ class DLLNNModel(nn.Module):
     DL-LNN 模型
     连续时间液态时间常数网络用于颤振预测
     """
-    
+
     def __init__(
         self,
         input_dim: int = 7,
@@ -166,7 +162,7 @@ class DLLNNModel(nn.Module):
         num_layers: int = 3,
         output_dim: int = 1,
         dt: float = 0.1,
-        dropout: float = 0.2
+        dropout: float = 0.2,
     ):
         """
         初始化DL-LNN模型
@@ -180,72 +176,67 @@ class DLLNNModel(nn.Module):
             dropout: dropout率
         """
         super().__init__()
-        
+
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.output_dim = output_dim
         self.dt = dt
-        
+
         # 输入投影层
         self.input_proj = nn.Linear(input_dim, hidden_dim)
-        
+
         # LTC层
-        self.ltc_cells = nn.ModuleList([
-            LTCCell(hidden_dim, hidden_dim) for _ in range(num_layers)
-        ])
-        
+        self.ltc_cells = nn.ModuleList([LTCCell(hidden_dim, hidden_dim) for _ in range(num_layers)])
+
         # 输出层
         self.output_proj = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden_dim // 2, output_dim)
+            nn.Linear(hidden_dim // 2, output_dim),
         )
-        
+
         # 初始化隐藏状态
         self.hidden_states = None
-    
+
     def init_hidden(self, batch_size: int, device: torch.device) -> None:
         """初始化隐藏状态"""
-        self.hidden_states = [
-            torch.zeros(batch_size, self.hidden_dim, device=device)
-            for _ in range(self.num_layers)
-        ]
-    
+        self.hidden_states = [torch.zeros(batch_size, self.hidden_dim, device=device) for _ in range(self.num_layers)]
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         前向传播
-        
+
         Args:
             x: 输入 [batch_size, input_dim]
-        
+
         Returns:
             输出 [batch_size, output_dim]
         """
         batch_size = x.size(0)
         device = x.device
-        
+
         # 初始化隐藏状态（每个批次都重新初始化，避免计算图持久化）
         # 使用 zeros_like 风格但确保 requires_grad 正确传播
         hidden_states = []
         for _ in range(self.num_layers):
             h = torch.zeros(batch_size, self.hidden_dim, device=device)
             hidden_states.append(h)
-        
+
         # 输入投影
         h = self.input_proj(x)
-        
+
         # 通过 LTC 层
         for i, ltc_cell in enumerate(self.ltc_cells):
             hidden_states[i] = ltc_cell(h, hidden_states[i], self.dt)
             h = hidden_states[i]
-        
+
         # 输出投影
         output = self.output_proj(h)
-        
+
         return output
-    
+
     def reset_hidden(self):
         """重置隐藏状态"""
         self.hidden_states = None
@@ -289,7 +280,7 @@ class DifferentiableTlustyPhysics(nn.Module):
         # damping = 2 * zeta * sqrt(k * m)
         damping = 2 * damping_ratio * (stiffness * modal_mass) ** 0.5
         self.register_buffer("c_base", torch.tensor(float(damping)))
-        # Ks_base: N/mm² → N/m² (×1e6)
+        # Ks_base: N/mm² N/m² (×1e6)
         self.register_buffer("Ks_base", torch.tensor(float(cutting_force_coeff) * 1e6))
 
         self.num_lobes = int(num_lobes)
@@ -317,51 +308,51 @@ class DifferentiableTlustyPhysics(nn.Module):
             a_lim: 物理极限切深 [batch_size, 1]（单位 mm，范围 [0.1, 20]）
         """
         # 反归一化到真实物理量
-        n_rpm = x[:, 0:1] * self.n_scale        # [B, 1]
-        f_rate = x[:, 1:2] * self.f_scale       # [B, 1]
-        ae = x[:, 3:4] * self.ae_scale          # [B, 1]
-        H = x[:, 4:5] * self.H_scale            # [B, 1]
-        D = x[:, 5:6] * self.D_scale            # [B, 1]
-        z = x[:, 6:7] * self.z_scale            # [B, 1]
+        n_rpm = x[:, 0:1] * self.n_scale  # [B, 1]
+        f_rate = x[:, 1:2] * self.f_scale  # [B, 1]
+        ae = x[:, 3:4] * self.ae_scale  # [B, 1]
+        H = x[:, 4:5] * self.H_scale  # [B, 1]
+        D = x[:, 5:6] * self.D_scale  # [B, 1]
+        z = x[:, 6:7] * self.z_scale  # [B, 1]
 
         # 多物理参数耦合（向量化，与 compute_limiting_depth 一致）
-        # 1. 硬度 H → Ks
+        # 1. 硬度 H Ks
         Ks_eff = self.Ks_base * (H / 200.0) ** 0.8
-        # 2. 齿数 z → 有效切削力
+        # 2. 齿数 z 有效切削力
         Ks_eff = Ks_eff * (z / 4.0)
-        # 3. 进给 f → 切屑变薄非线性效应
+        # 3. 进给 f 切屑变薄非线性效应
         Ks_eff = Ks_eff * (1.0 + 0.15 * (f_rate - 0.25) / 0.25)
-        # 4. 刀具直径 D → 刚度与模态质量
+        # 4. 刀具直径 D 刚度与模态质量
         D_ratio = (D / 10.0) ** 2
         k_eff = self.k_base * D_ratio
         m_eff = self.m_base * D_ratio
         c_eff = self.c_base * D_ratio
-        # 5. 径向切宽 ae → 方向因子 μ
+        # 5. 径向切宽 ae 方向因子 μ
         mu_dir = 0.5 * (1.0 + ae / 8.0)
 
         # 向量化叶瓣计算 [B, num_lobes]
         # f_c = j * n / 60
-        j = self.lobe_j.unsqueeze(0)            # [1, num_lobes]
-        f_c = j * n_rpm / 60.0                  # [B, num_lobes]
-        omega_c = 2.0 * torch.pi * f_c          # [B, num_lobes]
+        j = self.lobe_j.unsqueeze(0)  # [1, num_lobes]
+        f_c = j * n_rpm / 60.0  # [B, num_lobes]
+        omega_c = 2.0 * torch.pi * f_c  # [B, num_lobes]
 
         # 复频率响应 G(jω) 实部
-        denom_real = k_eff - m_eff * omega_c ** 2     # [B, num_lobes]
-        denom_imag = c_eff * omega_c                  # [B, num_lobes]
-        real_G = denom_real / (denom_real ** 2 + denom_imag ** 2 + 1e-12)
+        denom_real = k_eff - m_eff * omega_c**2  # [B, num_lobes]
+        denom_imag = c_eff * omega_c  # [B, num_lobes]
+        real_G = denom_real / (denom_real**2 + denom_imag**2 + 1e-12)
 
         # Tlusty: a_lim = -1 / (2 · Ks · μ · Re(G))，仅 Re(G)<0 时为正
         # 广播：Ks_eff [B,1], mu_dir [B,1], real_G [B,num_lobes]
         a_vals = -1.0 / (2.0 * Ks_eff * mu_dir * real_G + 1e-12)  # [B, num_lobes]
 
-        # 处理无效叶瓣：Re(G)>=0 或 a<=0 或 n<=0 → 用大值替代（不参与 min）
+        # 处理无效叶瓣：Re(G)>=0 或 a<=0 或 n<=0 用大值替代（不参与 min）
         invalid = (real_G >= 0) | (a_vals <= 0) | (n_rpm <= 0)
         a_vals = torch.where(invalid, torch.full_like(a_vals, 1e6), a_vals)
 
         # soft min: -logsumexp(-tau·a) / tau （可微近似 hard min）
         soft_min = -torch.logsumexp(-self.soft_min_tau * a_vals, dim=1, keepdim=True) / self.soft_min_tau
 
-        # m → mm
+        # m mm
         a_lim = soft_min * 1000.0
 
         # 范围限制 [0.1, 20] mm
@@ -375,7 +366,7 @@ class DLLNNWithPhysics(nn.Module):
     DL-LNN 带物理分支的完整模型
     包含数据驱动分支和解析物理分支
     """
-    
+
     def __init__(
         self,
         input_dim: int = 7,
@@ -383,10 +374,10 @@ class DLLNNWithPhysics(nn.Module):
         num_layers: int = 3,
         output_dim: int = 1,
         dt: float = 0.1,
-        dropout: float = 0.2
+        dropout: float = 0.2,
     ):
         super().__init__()
-        
+
         # 数据驱动分支 (LTC)
         self.ltc_branch = DLLNNModel(
             input_dim=input_dim,
@@ -394,17 +385,12 @@ class DLLNNWithPhysics(nn.Module):
             num_layers=num_layers,
             output_dim=output_dim,
             dt=dt,
-            dropout=dropout
+            dropout=dropout,
         )
-        
+
         # 门控融合层
-        self.gate = nn.Sequential(
-            nn.Linear(input_dim, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1),
-            nn.Sigmoid()
-        )
-        
+        self.gate = nn.Sequential(nn.Linear(input_dim, 32), nn.ReLU(), nn.Linear(32, 1), nn.Sigmoid())
+
         # 物理分支参数（可学习）
         self.physics_scale = nn.Parameter(torch.ones(1))
         self.physics_bias = nn.Parameter(torch.zeros(1))
@@ -412,7 +398,7 @@ class DLLNNWithPhysics(nn.Module):
         # 可微 Tlusty 解析物理分支（固定参数，非可学习）
         # 用于实现论文第3节 L_pcc 梯度方向一致性（AR-05 修复）
         self.physics_branch = DifferentiableTlustyPhysics()
-    
+
     def compute_differentiable_physics(self, x: torch.Tensor) -> torch.Tensor:
         """
         计算可微的物理分支预测（用于 L_pcc 梯度一致性损失）
@@ -429,39 +415,35 @@ class DLLNNWithPhysics(nn.Module):
         return self.physics_branch(x)
 
     def forward(
-        self,
-        x: torch.Tensor,
-        physics_pred: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, physics_pred: Optional[torch.Tensor] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         前向传播
-        
+
         Args:
             x: 输入特征 [batch_size, input_dim]
             physics_pred: 物理模型预测 [batch_size, output_dim]
                          （预计算值，用于门控融合；若 None 则用可微物理分支）
-        
+
         Returns:
             final_pred: 最终预测
             ltc_pred: LTC分支预测
         """
         # LTC分支预测
         ltc_pred = self.ltc_branch(x)
-        
+
         # 如果没有物理预测，使用可微物理分支（保证门控融合仍有物理输入）
         if physics_pred is None:
             physics_pred = self.physics_branch(x)
             # 仅用 LTC 分支（保持与原 None 行为一致，避免阶段一无物理分支干扰）
             return ltc_pred, ltc_pred
-        
+
         # 门控融合
         alpha = self.gate(x)
-        final_pred = alpha * ltc_pred + (1 - alpha) * (
-            self.physics_scale * physics_pred + self.physics_bias
-        )
-        
+        final_pred = alpha * ltc_pred + (1 - alpha) * (self.physics_scale * physics_pred + self.physics_bias)
+
         return final_pred, ltc_pred
-    
+
     def reset_hidden(self):
         """重置隐藏状态"""
         self.ltc_branch.reset_hidden()
@@ -472,27 +454,20 @@ class BaselineLSTM(nn.Module):
 
     def __init__(self, input_dim: int = 7, hidden_dim: int = 64, num_layers: int = 2, output_dim: int = 1):
         super().__init__()
-        
+
         self.lstm = nn.LSTM(
-            input_size=input_dim,
-            hidden_size=hidden_dim,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout=0.2
+            input_size=input_dim, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True, dropout=0.2
         )
-        
+
         self.fc = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_dim // 2, output_dim)
+            nn.Linear(hidden_dim, hidden_dim // 2), nn.ReLU(), nn.Dropout(0.2), nn.Linear(hidden_dim // 2, output_dim)
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # LSTM需要序列输入，这里将单个样本视为长度为1的序列
         if x.dim() == 2:
             x = x.unsqueeze(1)
-        
+
         lstm_out, _ = self.lstm(x)
         output = self.fc(lstm_out[:, -1, :])
         return output
@@ -503,30 +478,23 @@ class BaselineTransformer(nn.Module):
 
     def __init__(self, input_dim: int = 7, d_model: int = 64, nhead: int = 4, num_layers: int = 2, output_dim: int = 1):
         super().__init__()
-        
+
         self.input_proj = nn.Linear(input_dim, d_model)
-        
+
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=nhead,
-            dim_feedforward=d_model * 2,
-            dropout=0.2,
-            batch_first=True
+            d_model=d_model, nhead=nhead, dim_feedforward=d_model * 2, dropout=0.2, batch_first=True
         )
-        
+
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        
+
         self.output_proj = nn.Sequential(
-            nn.Linear(d_model, d_model // 2),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(d_model // 2, output_dim)
+            nn.Linear(d_model, d_model // 2), nn.ReLU(), nn.Dropout(0.2), nn.Linear(d_model // 2, output_dim)
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.dim() == 2:
             x = x.unsqueeze(1)
-        
+
         x = self.input_proj(x)
         x = self.transformer(x)
         output = self.output_proj(x[:, -1, :])
@@ -538,19 +506,19 @@ class BaselinePINN(nn.Module):
 
     def __init__(self, input_dim: int = 7, hidden_dim: int = 64, num_layers: int = 4, output_dim: int = 1):
         super().__init__()
-        
+
         layers = []
         in_dim = input_dim
-        
+
         for _ in range(num_layers):
             layers.append(nn.Linear(in_dim, hidden_dim))
             layers.append(nn.Tanh())
             in_dim = hidden_dim
-        
+
         layers.append(nn.Linear(in_dim, output_dim))
-        
+
         self.network = nn.Sequential(*layers)
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)
 
@@ -560,20 +528,20 @@ class BaselineBPNN(nn.Module):
 
     def __init__(self, input_dim: int = 7, hidden_dim: int = 64, num_layers: int = 3, output_dim: int = 1):
         super().__init__()
-        
+
         layers = []
         in_dim = input_dim
-        
+
         for _ in range(num_layers):
             layers.append(nn.Linear(in_dim, hidden_dim))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(0.2))
             in_dim = hidden_dim
-        
+
         layers.append(nn.Linear(in_dim, output_dim))
-        
+
         self.network = nn.Sequential(*layers)
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)
 
@@ -583,29 +551,26 @@ class BaselineCNN(nn.Module):
 
     def __init__(self, input_dim: int = 7, hidden_dim: int = 64, output_dim: int = 1):
         super().__init__()
-        
+
         # 1D卷积层 - 移除MaxPool1d以适配短序列
         self.conv_layers = nn.Sequential(
             nn.Conv1d(input_dim, hidden_dim, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.Conv1d(hidden_dim, hidden_dim * 2, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.AdaptiveAvgPool1d(1)
+            nn.AdaptiveAvgPool1d(1),
         )
-        
+
         # 全连接层
         self.fc_layers = nn.Sequential(
-            nn.Linear(hidden_dim * 2, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_dim, output_dim)
+            nn.Linear(hidden_dim * 2, hidden_dim), nn.ReLU(), nn.Dropout(0.2), nn.Linear(hidden_dim, output_dim)
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # CNN需要序列输入 [batch, channels, length]
         if x.dim() == 2:
             x = x.unsqueeze(2)  # [batch, features, 1]
-        
+
         conv_out = self.conv_layers(x)
         conv_out = conv_out.squeeze(2)  # [batch, features]
         output = self.fc_layers(conv_out)
@@ -617,27 +582,20 @@ class BaselineGRU(nn.Module):
 
     def __init__(self, input_dim: int = 7, hidden_dim: int = 64, num_layers: int = 2, output_dim: int = 1):
         super().__init__()
-        
+
         self.gru = nn.GRU(
-            input_size=input_dim,
-            hidden_size=hidden_dim,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout=0.2
+            input_size=input_dim, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True, dropout=0.2
         )
-        
+
         self.fc = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_dim // 2, output_dim)
+            nn.Linear(hidden_dim, hidden_dim // 2), nn.ReLU(), nn.Dropout(0.2), nn.Linear(hidden_dim // 2, output_dim)
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # GRU需要序列输入
         if x.dim() == 2:
             x = x.unsqueeze(1)
-        
+
         gru_out, _ = self.gru(x)
         output = self.fc(gru_out[:, -1, :])
         return output
@@ -648,35 +606,30 @@ class BaselinegPINN(nn.Module):
 
     def __init__(self, input_dim: int = 7, hidden_dim: int = 64, num_layers: int = 4, output_dim: int = 1):
         super().__init__()
-        
+
         layers = []
         in_dim = input_dim
-        
+
         for _ in range(num_layers):
             layers.append(nn.Linear(in_dim, hidden_dim))
             layers.append(nn.Tanh())
             in_dim = hidden_dim
-        
+
         layers.append(nn.Linear(in_dim, output_dim))
-        
+
         self.network = nn.Sequential(*layers)
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)
-    
+
     def gradient_loss(self, x: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
         """计算梯度损失（gPINN特有）"""
         # 计算一阶导数
         grad_outputs = torch.ones_like(y_pred)
-        gradients = torch.autograd.grad(
-            outputs=y_pred,
-            inputs=x,
-            grad_outputs=grad_outputs,
-            create_graph=True
-        )[0]
-        
+        gradients = torch.autograd.grad(outputs=y_pred, inputs=x, grad_outputs=grad_outputs, create_graph=True)[0]
+
         # 梯度正则化损失
-        grad_loss = torch.mean(gradients ** 2)
+        grad_loss = torch.mean(gradients**2)
         return grad_loss
 
 
@@ -685,22 +638,20 @@ class BaselinePeRCNN(nn.Module):
 
     def __init__(self, input_dim: int = 7, hidden_dim: int = 64, output_dim: int = 1):
         super().__init__()
-        
+
         # 物理编码层
         self.physics_encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, hidden_dim)
+            nn.Linear(input_dim, hidden_dim), nn.Tanh(), nn.Linear(hidden_dim, hidden_dim)
         )
-        
+
         # 循环卷积层
         self.conv_rnn = nn.Sequential(
             nn.Conv1d(hidden_dim, hidden_dim * 2, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.Conv1d(hidden_dim * 2, hidden_dim * 2, kernel_size=3, padding=1),
-            nn.ReLU()
+            nn.ReLU(),
         )
-        
+
         # 输出层
         self.output_layer = nn.Sequential(
             nn.AdaptiveAvgPool1d(1),
@@ -708,20 +659,20 @@ class BaselinePeRCNN(nn.Module):
             nn.Linear(hidden_dim * 2, hidden_dim),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_dim, output_dim)
+            nn.Linear(hidden_dim, output_dim),
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # 物理编码
         physics_features = self.physics_encoder(x)
-        
+
         # 转换为序列格式 [batch, channels, length]
         if physics_features.dim() == 2:
             physics_features = physics_features.unsqueeze(2)
-        
+
         # 循环卷积
         conv_out = self.conv_rnn(physics_features)
-        
+
         # 输出
         output = self.output_layer(conv_out)
         return output
@@ -855,21 +806,15 @@ class SklearnBaselineWrapper(nn.Module):
             预测张量 [batch_size, 1]
         """
         if not self._is_fitted:
-            raise RuntimeError(
-                f"{type(self.sklearn_model).__name__} 尚未训练，请先调用 fit()"
-            )
+            raise RuntimeError(f"{type(self.sklearn_model).__name__} 尚未训练，请先调用 fit()")
         x_numpy = x.detach().cpu().numpy()
         y_pred = self.sklearn_model.predict(x_numpy)
-        return torch.from_numpy(
-            np.asarray(y_pred).reshape(-1, 1)
-        ).float().to(x.device)
+        return torch.from_numpy(np.asarray(y_pred).reshape(-1, 1)).float().to(x.device)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """numpy 接口预测（供 SklearnBaselineTrainer 使用）。"""
         if not self._is_fitted:
-            raise RuntimeError(
-                f"{type(self.sklearn_model).__name__} 尚未训练，请先调用 fit()"
-            )
+            raise RuntimeError(f"{type(self.sklearn_model).__name__} 尚未训练，请先调用 fit()")
         return np.asarray(self.sklearn_model.predict(X)).reshape(-1, 1)
 
 
@@ -882,6 +827,7 @@ class BaselineSVR(SklearnBaselineWrapper):
 
     def __init__(self, input_dim: int = 7, C: float = 1.0, epsilon: float = 0.1, **kwargs):
         from sklearn.svm import SVR
+
         super().__init__(
             SVR(kernel="rbf", C=C, epsilon=epsilon, **kwargs),
             input_dim=input_dim,
@@ -895,9 +841,11 @@ class BaselineRF(SklearnBaselineWrapper):
     集成树方法的优越性。
     """
 
-    def __init__(self, input_dim: int = 7, n_estimators: int = 100,
-                 max_depth: int = 10, random_state: int = 42, **kwargs):
+    def __init__(
+        self, input_dim: int = 7, n_estimators: int = 100, max_depth: int = 10, random_state: int = 42, **kwargs
+    ):
         from sklearn.ensemble import RandomForestRegressor
+
         super().__init__(
             RandomForestRegressor(
                 n_estimators=n_estimators,
@@ -916,10 +864,17 @@ class BaselineXGBoost(SklearnBaselineWrapper):
     梯度提升树方法的优越性。
     """
 
-    def __init__(self, input_dim: int = 7, n_estimators: int = 100,
-                 max_depth: int = 6, learning_rate: float = 0.1,
-                 random_state: int = 42, **kwargs):
+    def __init__(
+        self,
+        input_dim: int = 7,
+        n_estimators: int = 100,
+        max_depth: int = 6,
+        learning_rate: float = 0.1,
+        random_state: int = 42,
+        **kwargs,
+    ):
         import xgboost as xgb
+
         super().__init__(
             xgb.XGBRegressor(
                 n_estimators=n_estimators,
@@ -946,19 +901,23 @@ class BaselineGP(SklearnBaselineWrapper):
         - 这一修改使 GP 基线公平地使用搜索到的超参，与论文实验方法一致。
     """
 
-    def __init__(self, input_dim: int = 7, alpha: float = 1e-6,
-                 length_scale: float = 1.0, constant_value: float = 1.0,
-                 random_state: int = 42, **kwargs):
+    def __init__(
+        self,
+        input_dim: int = 7,
+        alpha: float = 1e-6,
+        length_scale: float = 1.0,
+        constant_value: float = 1.0,
+        random_state: int = 42,
+        **kwargs,
+    ):
         from sklearn.gaussian_process import GaussianProcessRegressor
         from sklearn.gaussian_process.kernels import RBF, ConstantKernel
+
         kernel = ConstantKernel(constant_value) * RBF(length_scale=length_scale)
         # optimizer=None: 禁用 sklearn 内部 L-BFGS 核参数重优化，
         # 保留 Optuna 搜索得到的最佳核参数（否则 length_scale 会被压回 1e-5 导致发散）
         super().__init__(
-            GaussianProcessRegressor(
-                kernel=kernel, alpha=alpha, random_state=random_state,
-                optimizer=None, **kwargs
-            ),
+            GaussianProcessRegressor(kernel=kernel, alpha=alpha, random_state=random_state, optimizer=None, **kwargs),
             input_dim=input_dim,
         )
 
@@ -966,11 +925,11 @@ class BaselineGP(SklearnBaselineWrapper):
 def create_model(model_name: str, config) -> nn.Module:
     """
     创建模型
-    
+
     Args:
         model_name: 模型名称
         config: 配置
-    
+
     Returns:
         模型实例
     """
@@ -978,7 +937,7 @@ def create_model(model_name: str, config) -> nn.Module:
     hidden_dim = config.model.hidden_dim
     num_layers = config.model.num_layers
     output_dim = config.model.output_dim
-    
+
     if model_name in ("CT-LTC", "DL-LNN"):
         return DLLNNWithPhysics(
             input_dim=input_dim,
@@ -986,7 +945,7 @@ def create_model(model_name: str, config) -> nn.Module:
             num_layers=num_layers,
             output_dim=output_dim,
             dt=config.model.ltc_dt,
-            dropout=config.model.dropout
+            dropout=config.model.dropout,
         )
     elif model_name == "LTC":
         return DLLNNModel(
@@ -995,36 +954,18 @@ def create_model(model_name: str, config) -> nn.Module:
             num_layers=num_layers,
             output_dim=output_dim,
             dt=config.model.ltc_dt,
-            dropout=config.model.dropout
+            dropout=config.model.dropout,
         )
     elif model_name == "LSTM":
-        return BaselineLSTM(
-            input_dim=input_dim,
-            hidden_dim=hidden_dim,
-            num_layers=num_layers,
-            output_dim=output_dim
-        )
+        return BaselineLSTM(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim)
     elif model_name == "Transformer":
         return BaselineTransformer(
-            input_dim=input_dim,
-            d_model=hidden_dim,
-            num_layers=num_layers,
-            output_dim=output_dim
+            input_dim=input_dim, d_model=hidden_dim, num_layers=num_layers, output_dim=output_dim
         )
     elif model_name == "PINN":
-        return BaselinePINN(
-            input_dim=input_dim,
-            hidden_dim=hidden_dim,
-            num_layers=num_layers,
-            output_dim=output_dim
-        )
+        return BaselinePINN(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim)
     elif model_name == "BPNN":
-        return BaselineBPNN(
-            input_dim=input_dim,
-            hidden_dim=hidden_dim,
-            num_layers=num_layers,
-            output_dim=output_dim
-        )
+        return BaselineBPNN(input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim)
     elif model_name == "CNN-LSTM":
         return BaselineCNNLSTM(
             input_dim=input_dim,
@@ -1060,26 +1001,34 @@ def create_model(model_name: str, config) -> nn.Module:
 if __name__ == "__main__":
     # 测试模型
     print("测试DL-LNN模型...")
-    
-    config = type('Config', (), {
-        'model': type('ModelConfig', (), {
-            'input_dim': 7,  # AR-06: 与 config.py 默认值及论文第3节声明的 7 维物理参数特征一致
-            'hidden_dim': 64,
-            'num_layers': 3,
-            'output_dim': 1,
-            'ltc_dt': 0.1,
-            'dropout': 0.2
-        })()
-    })()
-    
+
+    config = type(
+        "Config",
+        (),
+        {
+            "model": type(
+                "ModelConfig",
+                (),
+                {
+                    "input_dim": 7,  # AR-06: 与 config.py 默认值及论文第3节声明的 7 维物理参数特征一致
+                    "hidden_dim": 64,
+                    "num_layers": 3,
+                    "output_dim": 1,
+                    "ltc_dt": 0.1,
+                    "dropout": 0.2,
+                },
+            )()
+        },
+    )()
+
     model = create_model("DL-LNN", config)
-    
+
     # 测试前向传播
     x = torch.randn(32, 7)  # AR-06: 与 input_dim 一致
     output, ltc_output = model(x)
-    
+
     print(f"输入形状: {x.shape}")
     print(f"输出形状: {output.shape}")
     print(f"LTC输出形状: {ltc_output.shape}")
-    
+
     print("\n模型测试通过！")

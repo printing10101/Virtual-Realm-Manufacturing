@@ -36,6 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import exp50_uniwear_real as E  # 复用 exp50 组件（窗口特征/模型/训练/基线）
 
 import models as _models
+
 _models._HAS_TORCHDIFFEQ = False  # 强制 Euler（记忆坑：漏设则 LTCCell 走 dopri5 慢 90 倍）
 LTC_SOLVER = "euler"
 
@@ -46,8 +47,8 @@ OUTPUT_DIR = Path(__file__).resolve().parent.parent / "results"
 FIG_DIR = OUTPUT_DIR / "figures"
 UNIWEAR_CSV = E.UNIWEAR_CSV
 
-NUAA_GROUPS = [f"W{i}" for i in range(1, 10)]          # W1-W9
-PHM_GROUPS = ["c1", "c4", "c6"]                        # phm2010
+NUAA_GROUPS = [f"W{i}" for i in range(1, 10)]  # W1-W9
+PHM_GROUPS = ["c1", "c4", "c6"]  # phm2010
 
 
 def build_scene_data(df, train_groups, test_groups):
@@ -83,11 +84,11 @@ def run_scene(df, train_groups, test_groups, scene_name, seed, metrics_calc):
     t_tr = X_tr[:, -1].astype(np.float64)
     t_te = X_te[:, -1].astype(np.float64)
 
-    # ---- Taylor 经验基线（时间律，训练集拟合 → 测试集外推）----
+    # ---- Taylor 经验基线（时间律，训练集拟合 测试集外推）----
     pred_base = E.taylor_wear_baseline(y_tr[:, 0], t_tr, t_te).reshape(-1, 1)
     mae_b = float(metrics_calc.mae(pred_base, y_te))
     r2_b = float(metrics_calc.r2_score(pred_base, y_te))
-    var_tr = float(np.var(y_te))                     # var_true_ratio 诊断
+    var_tr = float(np.var(y_te))  # var_true_ratio 诊断
     var_all = float(np.var(np.concatenate([y_tr, y_te])))
     var_ratio = var_tr / max(var_all, 1e-12)
 
@@ -102,8 +103,8 @@ def run_scene(df, train_groups, test_groups, scene_name, seed, metrics_calc):
     phys_te_t = torch.from_numpy(y_phys_te)
 
     n_val = max(int(n_tr * 0.1), 1)
-    tr_ds = TensorDataset(X_tr_t[:n_tr - n_val], y_tr_t[:n_tr - n_val], phys_tr_t[:n_tr - n_val])
-    val_ds = TensorDataset(X_tr_t[n_tr - n_val:], y_tr_t[n_tr - n_val:], phys_tr_t[n_tr - n_val:])
+    tr_ds = TensorDataset(X_tr_t[: n_tr - n_val], y_tr_t[: n_tr - n_val], phys_tr_t[: n_tr - n_val])
+    val_ds = TensorDataset(X_tr_t[n_tr - n_val :], y_tr_t[n_tr - n_val :], phys_tr_t[n_tr - n_val :])
     te_ds = TensorDataset(X_te_t, y_te_t, phys_te_t)
     tr_loader = DataLoader(tr_ds, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False)
@@ -116,7 +117,7 @@ def run_scene(df, train_groups, test_groups, scene_name, seed, metrics_calc):
     mae_l = float(metrics_calc.mae(p_lstm, y_te))
     r2_l = float(metrics_calc.r2_score(p_lstm, y_te))
 
-    # ---- DL-LNN 残差补偿 ----
+    # DL-LNN 残差补偿
     dlnn = E.GatedWearModel(input_dim=E.FEAT_DIM, hidden_dim=64, num_layers=2, output_dim=1)
     dlnn = E.train_model(dlnn, tr_loader, val_loader, epochs=NUM_EPOCHS, use_physics=True)
     p_dlnn, _, alphas = E.predict(dlnn, te_loader, use_physics=True)
@@ -125,8 +126,10 @@ def run_scene(df, train_groups, test_groups, scene_name, seed, metrics_calc):
     alpha = float(np.mean(alphas))
 
     return {
-        "scene": scene_name, "seed": seed,
-        "n_train": int(n_tr), "n_test": int(len(X_te)),
+        "scene": scene_name,
+        "seed": seed,
+        "n_train": int(n_tr),
+        "n_test": int(len(X_te)),
         "test_groups": te_meta,
         "baseline": {"MAE": mae_b, "R2": r2_b},
         "lstm": {"MAE": mae_l, "R2": r2_l},
@@ -160,8 +163,7 @@ def main():
 
     for scene_name, tr_groups, te_groups in scenes:
         print(f"\n=== scene {scene_name}: train={tr_groups} test={te_groups} ===", flush=True)
-        runs = [run_scene(df, tr_groups, te_groups, scene_name, s, metrics_calc)
-                for s in SEEDS]
+        runs = [run_scene(df, tr_groups, te_groups, scene_name, s, metrics_calc) for s in SEEDS]
         results["scenes"][scene_name] = {"runs": runs}
 
         # 汇总（3 seeds 均值）
@@ -174,19 +176,24 @@ def main():
         agg["var_true_ratio"] = float(np.mean([r["diagnostics"]["var_true_ratio"] for r in runs]))
         results["scenes"][scene_name]["agg"] = agg
 
-        m_b = agg["baseline"]["MAE"]; m_l = agg["lstm"]["MAE"]; m_d = agg["dlnn"]["MAE"]
-        r_l = agg["lstm"]["R2"]; r_d = agg["dlnn"]["R2"]
-        print(f"  baseline MAE={m_b:.4f} | lstm MAE={m_l:.4f} R2={r_l:.3f} | "
-              f"dlnn MAE={m_d:.4f} R2={r_d:.3f} gate={agg['dlnn']['gate']:.3f} | "
-              f"var_true_ratio={agg['var_true_ratio']:.4f}", flush=True)
+        m_b = agg["baseline"]["MAE"]
+        m_l = agg["lstm"]["MAE"]
+        m_d = agg["dlnn"]["MAE"]
+        r_l = agg["lstm"]["R2"]
+        r_d = agg["dlnn"]["R2"]
+        print(
+            f"  baseline MAE={m_b:.4f} | lstm MAE={m_l:.4f} R2={r_l:.3f} | "
+            f"dlnn MAE={m_d:.4f} R2={r_d:.3f} gate={agg['dlnn']['gate']:.3f} | "
+            f"var_true_ratio={agg['var_true_ratio']:.4f}",
+            flush=True,
+        )
 
         # 配对 t（DL-LNN vs LSTM，3 seeds）
         flat_l = np.array([r["lstm"]["MAE"] for r in runs])
         flat_d = np.array([r["dlnn"]["MAE"] for r in runs])
         if np.std(flat_l - flat_d) > 0:
             t_stat, p_val = stats.ttest_rel(flat_l, flat_d)
-            results["scenes"][scene_name]["paired_t"] = {
-                "t": float(t_stat), "p": float(p_val), "n": int(len(flat_l))}
+            results["scenes"][scene_name]["paired_t"] = {"t": float(t_stat), "p": float(p_val), "n": int(len(flat_l))}
             print(f"  dlnn vs lstm paired t: p={p_val:.4f} (n={len(flat_l)})", flush=True)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -196,9 +203,10 @@ def main():
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(f"Results saved to {out_file}", flush=True)
 
-    # ---- 图 ----
+    # 图
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -209,8 +217,7 @@ def main():
             maes = [agg["baseline"]["MAE"], agg["lstm"]["MAE"], agg["dlnn"]["MAE"]]
             bars = ax.bar(labels, maes, color=["#888888", "#d98c8c", "#8c9ad9"])
             for b, v in zip(bars, maes):
-                ax.text(b.get_x() + b.get_width() / 2, v, f"{v:.4f}",
-                        ha="center", va="bottom", fontsize=9)
+                ax.text(b.get_x() + b.get_width() / 2, v, f"{v:.4f}", ha="center", va="bottom", fontsize=9)
             ax.set_title(f"Scene {sn}\n(var_true_ratio={agg['var_true_ratio']:.4f})")
             ax.set_ylabel("MAE (mm)")
             ax.grid(axis="y", alpha=0.3)

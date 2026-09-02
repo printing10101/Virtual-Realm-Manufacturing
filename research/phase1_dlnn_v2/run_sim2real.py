@@ -32,6 +32,7 @@ from data_generator_v2 import LongHorizonChatterDataset
 def load_piecuch_data():
     """加载预处理后的 Piecuch 数据集，转换为 PyTorch Tensors。"""
     import pandas as pd
+
     csv_path = os.path.join(_RESEARCH_DIR, "datasets", "piecuch_2025", "piecuch_dlnn_features.csv")
     df = pd.read_csv(csv_path)
     features = df[["n", "f", "ap", "ae", "H", "D", "z"]].values.astype(np.float32)
@@ -47,7 +48,7 @@ def evaluate_model(model, X_test, y_test, device="cpu"):
     all_preds = []
     with torch.no_grad():
         for i in range(0, len(X_test), 32):
-            x = X_test[i:i+32].to(device)
+            x = X_test[i : i + 32].to(device)
             y_pred, _ = model(x, use_horizon=False)
             all_preds.append(y_pred.cpu().numpy())
     preds = np.concatenate(all_preds).flatten()
@@ -70,8 +71,11 @@ def main():
     args = parser.parse_args()
 
     config_base = Phase1Config(
-        hidden_dim=args.hidden, num_layers=3,
-        prediction_horizon=20, batch_size=32, device=args.device,
+        hidden_dim=args.hidden,
+        num_layers=3,
+        prediction_horizon=20,
+        batch_size=32,
+        device=args.device,
     )
 
     print("=" * 60)
@@ -79,20 +83,21 @@ def main():
     print(f" 启动: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
-    # ========================================================================
     # 数据准备
-    # ========================================================================
     print("\n[1/5] 加载数据...")
 
     # 合成数据
     syn_ds = LongHorizonChatterDataset(
-        num_samples=args.syn_samples, prediction_horizon=20,
-        noise_level=0.02, seed=42,
+        num_samples=args.syn_samples,
+        prediction_horizon=20,
+        noise_level=0.02,
+        seed=42,
     )
     n_syn = len(syn_ds)
     n_syn_train = int(n_syn * 0.8)
     syn_train, syn_test = torch.utils.data.random_split(
-        syn_ds, [n_syn_train, n_syn - n_syn_train],
+        syn_ds,
+        [n_syn_train, n_syn - n_syn_train],
     )
     syn_train_loader = DataLoader(syn_train, batch_size=32, shuffle=True)
     syn_test_loader = DataLoader(syn_test, batch_size=32, shuffle=False)
@@ -107,17 +112,20 @@ def main():
     X_test_real, y_test_real = X_real[idx[n_real_train:]], y_real[idx[n_real_train:]]
     print(f"  Piecuch 真实数据: {n_real_train} train / {n_real - n_real_train} test")
 
-    # ========================================================================
     # Line A: 纯合成 (已完成)
-    # ========================================================================
     print("\n[2/5] Line A: 纯合成训练...")
     model_a = DLLNNWithPhysicsV2(
-        input_dim=7, hidden_dim=args.hidden, num_layers=3,
-        prediction_horizon=20, tau_init=0.1,
+        input_dim=7,
+        hidden_dim=args.hidden,
+        num_layers=3,
+        prediction_horizon=20,
+        tau_init=0.1,
     )
     config_a = Phase1Config(
-        num_epochs_stage1=args.epochs_pretrain, num_epochs_stage2=5,
-        num_epochs_stage3=0, hidden_dim=args.hidden,
+        num_epochs_stage1=args.epochs_pretrain,
+        num_epochs_stage2=5,
+        num_epochs_stage3=0,
+        hidden_dim=args.hidden,
     )
     trainer_a = Phase1Trainer(config_a, model_a, device=args.device)
     trainer_a.train_stage1(syn_train_loader, syn_test_loader)
@@ -128,17 +136,20 @@ def main():
     print(f"  Line A syn→syn: R²={metrics_a_syn['r2']:.4f}")
     print(f"  Line A syn→real (zero-shot): R²={metrics_a_real_zs['R²']:.4f}")
 
-    # ========================================================================
-    # Line B: 合成预训练 → 真实微调 (Sim→Real Transfer)
-    # ========================================================================
+    # Line B: 合成预训练 真实微调 (SimReal Transfer)
     print("\n[3/5] Line B: 合成预训练 → 真实微调...")
     model_b = DLLNNWithPhysicsV2(
-        input_dim=7, hidden_dim=args.hidden, num_layers=3,
-        prediction_horizon=20, tau_init=0.1,
+        input_dim=7,
+        hidden_dim=args.hidden,
+        num_layers=3,
+        prediction_horizon=20,
+        tau_init=0.1,
     )
     config_b_pretrain = Phase1Config(
-        num_epochs_stage1=args.epochs_pretrain, num_epochs_stage2=0,
-        num_epochs_stage3=0, hidden_dim=args.hidden,
+        num_epochs_stage1=args.epochs_pretrain,
+        num_epochs_stage2=0,
+        num_epochs_stage3=0,
+        hidden_dim=args.hidden,
     )
     trainer_b = Phase1Trainer(config_b_pretrain, model_b, device=args.device)
     trainer_b.train_stage1(syn_train_loader, syn_test_loader)
@@ -147,12 +158,16 @@ def main():
     real_train_ds = TensorDataset(X_train_real, y_train_real)
     real_train_loader = DataLoader(real_train_ds, batch_size=32, shuffle=True)
     real_val_loader = DataLoader(
-        TensorDataset(X_test_real, y_test_real), batch_size=32, shuffle=False,
+        TensorDataset(X_test_real, y_test_real),
+        batch_size=32,
+        shuffle=False,
     )
 
     config_b_ft = Phase1Config(
-        num_epochs_stage1=args.epochs_finetune, num_epochs_stage2=0,
-        num_epochs_stage3=0, hidden_dim=args.hidden,
+        num_epochs_stage1=args.epochs_finetune,
+        num_epochs_stage2=0,
+        num_epochs_stage3=0,
+        hidden_dim=args.hidden,
         lr_stage1=5e-4,
     )
     trainer_b_ft = Phase1Trainer(config_b_ft, model_b, device=args.device)
@@ -161,17 +176,20 @@ def main():
     metrics_b_real = evaluate_model(model_b, X_test_real, y_test_real, args.device)
     print(f"  Line B sim→real transfer: R²={metrics_b_real['R²']:.4f}")
 
-    # ========================================================================
     # Line C: 纯真实数据训练
-    # ========================================================================
     print("\n[4/5] Line C: 纯真实数据训练...")
     model_c = DLLNNWithPhysicsV2(
-        input_dim=7, hidden_dim=args.hidden, num_layers=3,
-        prediction_horizon=20, tau_init=0.1,
+        input_dim=7,
+        hidden_dim=args.hidden,
+        num_layers=3,
+        prediction_horizon=20,
+        tau_init=0.1,
     )
     config_c = Phase1Config(
-        num_epochs_stage1=args.epochs_pretrain, num_epochs_stage2=0,
-        num_epochs_stage3=0, hidden_dim=args.hidden,
+        num_epochs_stage1=args.epochs_pretrain,
+        num_epochs_stage2=0,
+        num_epochs_stage3=0,
+        hidden_dim=args.hidden,
     )
     trainer_c = Phase1Trainer(config_c, model_c, device=args.device)
     trainer_c.train_stage1(real_train_loader, real_val_loader)
@@ -179,19 +197,17 @@ def main():
     metrics_c_real = evaluate_model(model_c, X_test_real, y_test_real, args.device)
     print(f"  Line C real-only: R²={metrics_c_real['R²']:.4f}")
 
-    # ========================================================================
     # 汇总
-    # ========================================================================
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f" Sim→Real 迁移实验结果")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  Line A (纯合成, syn test):     R² = {metrics_a_syn['r2']:.4f}")
     print(f"  Line A (纯合成, real test ZS):  R² = {metrics_a_real_zs['R²']:.4f}")
     print(f"  Line B (合成→真实迁移):          R² = {metrics_b_real['R²']:.4f}")
     print(f"  Line C (纯真实):                R² = {metrics_c_real['R²']:.4f}")
     print(f"  Δ(B-A, transfer gain):          ΔR² = {metrics_b_real['R²'] - metrics_a_real_zs['R²']:.4f}")
     print(f"  Δ(B-C, pretrain benefit):       ΔR² = {metrics_b_real['R²'] - metrics_c_real['R²']:.4f}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # 保存
     results = {

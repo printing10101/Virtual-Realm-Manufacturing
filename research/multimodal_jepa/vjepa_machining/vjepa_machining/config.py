@@ -86,12 +86,12 @@ class VJEPAMachiningConfig:
         log_every_n_steps: 日志记录间隔
     """
 
-    # ========== 视频输入参数 ==========
+    # 视频输入参数
     num_frames: int = 16
     frame_size: Tuple[int, int] = (224, 224)
     in_channels: int = 3
 
-    # ========== 时空ViT编码器 ==========
+    # 时空ViT编码器
     temporal_patch_size: int = 2
     spatial_patch_size: int = 16
     vit_embed_dim: int = 512
@@ -100,7 +100,7 @@ class VJEPAMachiningConfig:
     vit_mlp_ratio: int = 4
     vit_dropout: float = 0.1
 
-    # ========== 时空掩码策略 ==========
+    # 时空掩码策略
     temporal_mask_ratio_start: float = 0.10
     temporal_mask_ratio_end: float = 0.30
     spatial_mask_ratio_start: float = 0.15
@@ -108,38 +108,49 @@ class VJEPAMachiningConfig:
     spatial_mask_block_size: int = 32
     progressive_masking: bool = True
 
-    # ========== 动作条件预测器 ==========
+    # 动作条件预测器
     num_action_types: int = 3
     action_embed_dim: int = 64
     predictor_hidden_dim: int = 1024
     predictor_depth: int = 3
 
-    # ========== 异常检测头 ==========
+    # 异常检测头
     num_anomaly_types: int = 4
     anomaly_hidden_dim: int = 256
     cosine_similarity_threshold: float = 0.92
     euclidean_threshold_initial: float = 1.5
 
-    # ========== 异常严重程度 ==========
-    severity_levels: List[str] = field(default_factory=lambda: [
-        "normal", "mild", "moderate", "severe", "danger",
-    ])
-    severity_thresholds: List[float] = field(default_factory=lambda: [
-        0.92, 0.75, 0.55, 0.30,
-    ])
+    # 异常严重程度
+    severity_levels: List[str] = field(
+        default_factory=lambda: [
+            "normal",
+            "mild",
+            "moderate",
+            "severe",
+            "danger",
+        ]
+    )
+    severity_thresholds: List[float] = field(
+        default_factory=lambda: [
+            0.92,
+            0.75,
+            0.55,
+            0.30,
+        ]
+    )
 
-    # ========== 传感器特征 ==========
+    # 传感器特征
     num_sensor_channels: int = 6
     sensor_feature_dim: int = 128
 
-    # ========== 对比损失 ==========
+    # 对比损失
     lambda_triplet: float = 0.30
     triplet_margin: float = 0.5
 
-    # ========== EMA参数 ==========
+    # EMA参数
     ema_decay: float = 0.996
 
-    # ========== 训练参数 ==========
+    # 训练参数
     epochs: int = 100
     initial_lr: float = 1e-4
     batch_size: int = 16
@@ -148,22 +159,22 @@ class VJEPAMachiningConfig:
     dropout: float = 0.30
     weight_decay: float = 1e-5
 
-    # ========== 数据增强 ==========
+    # 数据增强
     rotation_range: float = 10.0
     brightness_range: float = 0.15
     gaussian_noise_std: float = 0.03
 
-    # ========== 数据集 ==========
+    # 数据集
     train_val_test_split: Tuple[float, float, float] = (0.70, 0.15, 0.15)
 
-    # ========== 推理 ==========
+    # 推理
     target_inference_time_ms: float = 100.0
 
-    # ========== 保存与日志 ==========
+    # 保存与日志
     save_every_n_epochs: int = 10
     log_every_n_steps: int = 20
 
-    # ========== 计算属性 ==========
+    # 计算属性
 
     @property
     def spatial_patches_per_side(self) -> int:
@@ -173,7 +184,7 @@ class VJEPAMachiningConfig:
     @property
     def num_spatial_patches(self) -> int:
         """空间维度总patch数。"""
-        return self.spatial_patches_per_side ** 2
+        return self.spatial_patches_per_side**2
 
     @property
     def num_temporal_patches(self) -> int:
@@ -193,4 +204,4 @@ class VJEPAMachiningConfig:
     @property
     def total_spatial_mask_blocks(self) -> int:
         """空间维度总掩码块数。"""
-        return self.spatial_mask_blocks_per_side ** 2
+        return self.spatial_mask_blocks_per_side**2

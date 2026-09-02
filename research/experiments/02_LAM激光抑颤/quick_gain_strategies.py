@@ -9,6 +9,7 @@
 
 输出：控制台表格 + results/gain_strategies/gain_strategies.json
 """
+
 import json
 import sys
 from pathlib import Path
@@ -17,8 +18,11 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from thermal_sld_model import (
-    ThermalSLDModel, default_spindle_grid,
-    KAPPA_TI64_CALIBRATED, DELTA_TI64_CALIBRATED, net_softening,
+    ThermalSLDModel,
+    default_spindle_grid,
+    KAPPA_TI64_CALIBRATED,
+    DELTA_TI64_CALIBRATED,
+    net_softening,
 )
 
 OUT = Path(__file__).resolve().parent.parent / "results" / "gain_strategies"
@@ -56,9 +60,9 @@ def main() -> None:
         print(f"  κ_eff×{boost:<4} → {ke:.6f} → 谷增益 {g:.3f}×")
     summary["B_DRX_boost_500C"] = {f"x{boost}": g for boost, _, g in b_rows}
 
-    # ---- C. 转速联动：等比放大 → 谷→肩部平移与加热乘法叠加 ----
-    #     δ=0 时叶瓣等比放大（形状不变），乘法分解应精确成立；
-    #     δ>0 时叶瓣变形平移，固定工作点增益可能被破坏 → 需要转速重新寻优。
+    # C. 转速联动：等比放大 谷肩部平移与加热乘法叠加
+    # δ=0 时叶瓣等比放大（形状不变），乘法分解应精确成立；
+    # δ>0 时叶瓣变形平移，固定工作点增益可能被破坏 需要转速重新寻优。
     print("\n=== C. 转速联动（等比放大保持叶瓣形状 → 乘法分解）===")
     grid = default_spindle_grid(4000)
     model = ThermalSLDModel()
@@ -81,9 +85,11 @@ def main() -> None:
     pos0 = s0 / v0
     total0 = sT0 / v0
     mult0 = pos0 * (heat0 / v0)
-    print(f"  [C1 δ=0] 谷 {v0:.4f}→{heat0:.4f}（{heat0/v0:.3f}×），肩 {s0:.4f}→{sT0:.4f}（{sT0/s0:.3f}×）")
-    print(f"          纯转速平移 {pos0:.3f}×，复合 {total0:.3f}×，乘法分解预测 {mult0:.3f}×，"
-          f"误差 {abs(total0-mult0)/total0*100:.2f}%")
+    print(f"  [C1 δ=0] 谷 {v0:.4f}→{heat0:.4f}（{heat0 / v0:.3f}×），肩 {s0:.4f}→{sT0:.4f}（{sT0 / s0:.3f}×）")
+    print(
+        f"          纯转速平移 {pos0:.3f}×，复合 {total0:.3f}×，乘法分解预测 {mult0:.3f}×，"
+        f"误差 {abs(total0 - mult0) / total0 * 100:.2f}%"
+    )
 
     # C2: δ>0 固定工作点 vs 谷邻域（±5% 转速）重新寻优
     heat_d = vT / v0
@@ -92,11 +98,14 @@ def main() -> None:
     i_best0 = n_lo + int(np.argmax(a0[n_lo:n_hi]))
     i_bestT = n_lo + int(np.argmax(aT[n_lo:n_hi]))
     opt0, optT = a0[i_best0], aT[i_bestT]
-    print(f"  [C2 δ>0] 固定谷增益 {heat_d:.3f}×；谷邻域±5%rpm 重新寻优："
-          f"{opt0:.4f}→{optT:.4f}（{optT/opt0:.3f}× vs 未加热邻域最优，{optT/v0:.3f}× vs 原始谷）")
+    print(
+        f"  [C2 δ>0] 固定谷增益 {heat_d:.3f}×；谷邻域±5%rpm 重新寻优："
+        f"{opt0:.4f}→{optT:.4f}（{optT / opt0:.3f}× vs 未加热邻域最优，{optT / v0:.3f}× vs 原始谷）"
+    )
     print(f"  [负面发现] δ 使叶瓣变形：固定工作点（肩 {s0:.4f}→{sT:.4f}）增益可能被破坏")
     summary["C_spindle_link"] = {
-        "valley_rpm": float(grid[i_v]), "shoulder_rpm": float(grid[i_shoulder]),
+        "valley_rpm": float(grid[i_v]),
+        "shoulder_rpm": float(grid[i_shoulder]),
         "c1_delta0_mult_error_pct": round(abs(total0 - mult0) / total0 * 100, 2),
         "c2_fixed_gain": round(heat_d, 3),
         "c2_neighborhood_opt_gain_vs_orig_valley": round(optT / v0, 3),

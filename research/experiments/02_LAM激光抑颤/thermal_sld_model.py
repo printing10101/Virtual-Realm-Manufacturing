@@ -38,21 +38,24 @@ from typing import Optional, Sequence, Tuple
 import numpy as np
 
 # 基准参数（与 data_generator.TlustyAnalyticalModel 默认值一致）
-DEFAULT_STIFFNESS = 1e6        # N/m
-DEFAULT_MODAL_MASS = 100.0     # kg
+DEFAULT_STIFFNESS = 1e6  # N/m
+DEFAULT_MODAL_MASS = 100.0  # kg
 DEFAULT_DAMPING_RATIO = 0.05
 DEFAULT_CUTTING_FORCE_COEFF = 2000.0  # N/mm^2
 DEFAULT_NUM_TEETH = 4
 
 # ---- Ti-6Al-4V 文献标定值（calibrate_kappa_delta.py 产出）----
-KAPPA_TI64_CALIBRATED = 0.000736   # 1/°C，9 组 J-C 参数均值（300-500°C 窗口）
+KAPPA_TI64_CALIBRATED = 0.000736  # 1/°C，9 组 J-C 参数均值（300-500°C 窗口）
 KAPPA_TI64_RANGE = (0.000527, 0.001267)  # 文献范围
-DELTA_TI64_CALIBRATED = round(57.7 / 111_672.0, 9)   # ≈0.000517 /°C，Karpat 2009 E(T) 线性拟合
+DELTA_TI64_CALIBRATED = round(57.7 / 111_672.0, 9)  # ≈0.000517 /°C，Karpat 2009 E(T) 线性拟合
+
 
 def net_softening(kappa: float, delta: float, r):
     """净软化率 κ_eff = κ - δ·r（r=结构温升/切削区温升，0~1）。"""
     return kappa - delta * r
-CLIP_LO, CLIP_HI = 0.1, 20.0   # a_lim 合理范围（mm，与 data_generator 一致）
+
+
+CLIP_LO, CLIP_HI = 0.1, 20.0  # a_lim 合理范围（mm，与 data_generator 一致）
 
 
 def _tlusty_a_lim_base(
@@ -105,9 +108,9 @@ def _tlusty_a_lim_base(
         for j in range(1, num_lobes + 1):
             f_c = j * n_rpm / 60.0
             omega_c = 2 * np.pi * f_c
-            denom_real = k_i - m_i * omega_c ** 2
+            denom_real = k_i - m_i * omega_c**2
             denom_imag = c_i * omega_c
-            real_G = denom_real / (denom_real ** 2 + denom_imag ** 2)
+            real_G = denom_real / (denom_real**2 + denom_imag**2)
             if abs(real_G) < 1e-12:
                 continue
             a_val = -1.0 / (2.0 * Ks_i * mu_i * real_G)
@@ -142,7 +145,6 @@ class ThermalSLDModel:
         self.cutting_force_coeff = cutting_force_coeff
         self.num_teeth = num_teeth
 
-    # ------------------------------------------------------------------
     def compute_limiting_depth(
         self,
         spindle_speed: np.ndarray,
@@ -225,9 +227,9 @@ class ThermalSLDModel:
             for j in range(1, num_lobes + 1):
                 f_c = j * n_rpm / 60.0
                 omega_c = 2 * np.pi * f_c
-                denom_real = k_i - m_i * omega_c ** 2
+                denom_real = k_i - m_i * omega_c**2
                 denom_imag = c_i * omega_c
-                real_G = denom_real / (denom_real ** 2 + denom_imag ** 2)
+                real_G = denom_real / (denom_real**2 + denom_imag**2)
                 if abs(real_G) < 1e-12:
                     continue
                 a_val = -1.0 / (2.0 * Ks_i * mu_i * real_G)
@@ -240,7 +242,6 @@ class ThermalSLDModel:
             return np.clip(a_lim, CLIP_LO, CLIP_HI)
         return a_lim
 
-    # ------------------------------------------------------------------
     def closed_form_ratio(self, kappa: float, dT: float) -> float:
         """闭式解：加热后 a_lim 的等比放大因子 1/(1-kappa*dT)（delta=0 时）。"""
         return 1.0 / (1.0 - kappa * dT)
@@ -266,7 +267,6 @@ class ThermalSLDModel:
         rel_err = np.abs(ratio - expect) / expect
         return float(rel_err.max()), float(rel_err.mean()), n_total, n_total
 
-    # ------------------------------------------------------------------
     @staticmethod
     def detect_valleys(a_lim: np.ndarray, n_valleys: int = 3) -> np.ndarray:
         """检测 SLD 局部极小（叶瓣谷）索引，按深度排序取最深的 n_valleys 个。"""
@@ -291,7 +291,6 @@ class ThermalSLDModel:
             return float(np.min(a_lim))
         return float(np.mean(np.asarray(a_lim)[idx]))
 
-    # ------------------------------------------------------------------
     @staticmethod
     def cross_check_original_model(
         spindle_speed: np.ndarray,
@@ -303,6 +302,7 @@ class ThermalSLDModel:
         try:
             import sys
             from pathlib import Path
+
             exp_dir = str(Path(__file__).resolve().parent)
             if exp_dir not in sys.path:
                 sys.path.insert(0, exp_dir)

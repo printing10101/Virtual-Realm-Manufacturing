@@ -37,6 +37,7 @@ from config import ModelConfig
 from metrics import ChatterMetrics
 
 import models as _models
+
 _HAS_ODE = _models._HAS_TORCHDIFFEQ
 _models._HAS_TORCHDIFFEQ = False
 LTC_SOLVER = "euler"
@@ -52,15 +53,13 @@ OUTPUT_DIR = Path(__file__).resolve().parent.parent / "results"
 FIG_DIR = OUTPUT_DIR / "figures"
 
 
-def train_model_augmented(model, train_loader, val_loader, config, device,
-                          num_epochs=NUM_EPOCHS, verbose=False):
+def train_model_augmented(model, train_loader, val_loader, config, device, num_epochs=NUM_EPOCHS, verbose=False):
     """训练时每个 batch 随机注入失配档（失配数据增强）。
 
     与 exp46 train_model 的唯一差异：physics 不固定为 train_delta，
     而是每个 batch 从 DELTAS 均匀随机抽取。
     """
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate,
-                                  weight_decay=config.weight_decay)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
     model.train()
     for epoch in range(num_epochs):
@@ -78,7 +77,7 @@ def train_model_augmented(model, train_loader, val_loader, config, device,
             total_loss += loss.item()
         scheduler.step()
         if verbose and (epoch + 1) % 20 == 0:
-            print(f"    epoch {epoch+1}/{num_epochs} loss={total_loss/len(train_loader):.4f}", flush=True)
+            print(f"    epoch {epoch + 1}/{num_epochs} loss={total_loss / len(train_loader):.4f}", flush=True)
     return model
 
 
@@ -115,9 +114,12 @@ def main():
         train_loader, val_loader, test_loader = base.create_loaders(dataset, BATCH_SIZE, seed)
 
         model = v2.PhysicsAwareDLLNNV2(
-            input_dim=config.input_dim, hidden_dim=config.hidden_dim,
-            num_layers=config.num_layers, output_dim=config.output_dim,
-            dt=config.ltc_dt, dropout=config.dropout,
+            input_dim=config.input_dim,
+            hidden_dim=config.hidden_dim,
+            num_layers=config.num_layers,
+            output_dim=config.output_dim,
+            dt=config.ltc_dt,
+            dropout=config.dropout,
         ).to(device)
         model = train_model_augmented(model, train_loader, val_loader, config, device, verbose=False)
 
@@ -127,10 +129,8 @@ def main():
             key = str(test_delta)
             if key not in results["matrix"][row_key]:
                 results["matrix"][row_key][key] = {"MAE_per_seed": [], "R2_per_seed": [], "gate_per_seed": []}
-            results["matrix"][row_key][key]["MAE_per_seed"].append(
-                metrics_calc.mae(r["preds"], r["y_true"]))
-            results["matrix"][row_key][key]["R2_per_seed"].append(
-                metrics_calc.r2_score(r["preds"], r["y_true"]))
+            results["matrix"][row_key][key]["MAE_per_seed"].append(metrics_calc.mae(r["preds"], r["y_true"]))
+            results["matrix"][row_key][key]["R2_per_seed"].append(metrics_calc.r2_score(r["preds"], r["y_true"]))
             results["matrix"][row_key][key]["gate_per_seed"].append(float(np.mean(r["gates"])))
 
     # 汇总 + 统计
@@ -147,11 +147,15 @@ def main():
             t_stat, p_val = stats.ttest_1samp(maes, TLUSTY_MAE[test_delta], alternative="less")
             cell["p_vs_tlusty"] = float(p_val)
             cell["cohens_d"] = float((TLUSTY_MAE[test_delta] - np.mean(maes)) / np.std(maes, ddof=1))
-            cell["gain_vs_tlusty_pct"] = float((TLUSTY_MAE[test_delta] - np.mean(maes)) / TLUSTY_MAE[test_delta] * 100.0)
+            cell["gain_vs_tlusty_pct"] = float(
+                (TLUSTY_MAE[test_delta] - np.mean(maes)) / TLUSTY_MAE[test_delta] * 100.0
+            )
         else:
             cell["p_vs_tlusty"] = None
             cell["cohens_d"] = None
-            cell["gain_vs_tlusty_pct"] = float((TLUSTY_MAE[test_delta] - np.mean(maes)) / TLUSTY_MAE[test_delta] * 100.0)
+            cell["gain_vs_tlusty_pct"] = float(
+                (TLUSTY_MAE[test_delta] - np.mean(maes)) / TLUSTY_MAE[test_delta] * 100.0
+            )
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     FIG_DIR.mkdir(exist_ok=True)
@@ -160,7 +164,7 @@ def main():
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(f"\nResults saved to {out_file}", flush=True)
 
-    # ---------- 摘要 ----------
+    # 摘要
     print("\n=== SUMMARY: Augmented training, MAE by test_delta ===", flush=True)
     print("train=aug | " + " | ".join(f"test={d:.0%}" for d in DELTAS) + " | gate_avg", flush=True)
     row = ["aug"]
@@ -170,7 +174,7 @@ def main():
     row.append(f"{np.mean([results['matrix'][row_key][str(d)]['gate_mean'] for d in DELTAS]):.3f}")
     print(" | ".join(row), flush=True)
 
-    # ---------- 对比 exp46 对角线 / 47b 对角线 / Tlusty ----------
+    # 对比 exp46 对角线 / 47b 对角线 / Tlusty
     print("\n=== vs exp46-diag / exp47b-diag / Tlusty ===", flush=True)
     try:
         exp46 = json.load(open(OUTPUT_DIR / "tlusty_mismatch_results.json", encoding="utf-8"))
@@ -184,9 +188,10 @@ def main():
     except Exception as e:
         print(f"  compare failed: {e}", flush=True)
 
-    # ---------- 图 ----------
+    # 图
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -200,12 +205,21 @@ def main():
         diag47b = [exp47b["matrix"][str(d)][str(d)]["MAE_mean"] for d in DELTAS]
         aug = [results["matrix"][row_key][str(d)]["MAE_mean"] for d in DELTAS]
         augs = [results["matrix"][row_key][str(d)]["MAE_std"] for d in DELTAS]
-        ax.plot(pcts, [TLUSTY_MAE[d] for d in DELTAS], "s--", color="tab:red",
-                label="Tlusty (mismatched)", linewidth=1.8)
+        ax.plot(
+            pcts, [TLUSTY_MAE[d] for d in DELTAS], "s--", color="tab:red", label="Tlusty (mismatched)", linewidth=1.8
+        )
         ax.plot(pcts, diag46, "o-", color="tab:orange", label="exp46 diag (train=test)", linewidth=1.5)
         ax.plot(pcts, diag47b, "^-", color="tab:blue", label="exp47b diag (train=test)", linewidth=1.5)
-        ax.errorbar(pcts, aug, yerr=augs, fmt="D-", color="tab:green",
-                    label="exp48 augmented (one model, all test d)", linewidth=2, capsize=3)
+        ax.errorbar(
+            pcts,
+            aug,
+            yerr=augs,
+            fmt="D-",
+            color="tab:green",
+            label="exp48 augmented (one model, all test d)",
+            linewidth=2,
+            capsize=3,
+        )
         ax.set_xlabel("Test mismatch delta (%)")
         ax.set_ylabel("Test MAE (mm)")
         ax.set_title("Mismatch-augmented training: universal defense?")

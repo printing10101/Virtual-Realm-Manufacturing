@@ -43,7 +43,7 @@ import warnings
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
-# === WinSock 损坏绕过补丁 ===
+# WinSock 损坏绕过补丁
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -57,7 +57,7 @@ import torch
 
 warnings.filterwarnings("ignore")
 
-# === 路径设置 ===
+# 路径设置
 _current = Path(__file__).resolve()
 PROJECT_ROOT = _current
 for _ in range(6):
@@ -71,8 +71,7 @@ RESEARCH_DIR = PROJECT_ROOT / "research"
 EXPERIMENTS_DIR = RESEARCH_DIR / "experiments"
 ENGINEERING_PYTHON_DIR = PROJECT_ROOT / "engineering" / "python"
 
-for p in [str(PROJECT_ROOT), str(ENGINEERING_PYTHON_DIR),
-          str(RESEARCH_DIR), str(EXPERIMENTS_DIR)]:
+for p in [str(PROJECT_ROOT), str(ENGINEERING_PYTHON_DIR), str(RESEARCH_DIR), str(EXPERIMENTS_DIR)]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -96,9 +95,8 @@ from bayesian_uq_experiment import (
 )
 
 
-# =============================================================================
 # 温度缩放核心
-# =============================================================================
+
 
 def compute_temperature_analytic(
     mean_pred: np.ndarray,
@@ -170,9 +168,8 @@ def apply_temperature(
     return std_pred * T
 
 
-# =============================================================================
 # 校准前后对比可视化
-# =============================================================================
+
 
 def plot_calibration_comparison(
     mean_pred: np.ndarray,
@@ -184,6 +181,7 @@ def plot_calibration_comparison(
 ) -> None:
     """绘制校准前后的校准曲线对比。"""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -204,10 +202,22 @@ def plot_calibration_comparison(
 
     fig, ax = plt.subplots(figsize=(7, 7))
     ax.plot([0, 1], [0, 1], "k--", label="Perfect calibration", linewidth=1.5)
-    ax.plot(confidence_levels, actuals_before, "r-o", markersize=5,
-            label=f"Before calibration (ECE={compute_ece(mean_pred, std_before, true_value)['ece']:.4f})", alpha=0.8)
-    ax.plot(confidence_levels, actuals_after, "g-s", markersize=5,
-            label=f"After T={T:.2f} (ECE={compute_ece(mean_pred, std_after, true_value)['ece']:.4f})", alpha=0.8)
+    ax.plot(
+        confidence_levels,
+        actuals_before,
+        "r-o",
+        markersize=5,
+        label=f"Before calibration (ECE={compute_ece(mean_pred, std_before, true_value)['ece']:.4f})",
+        alpha=0.8,
+    )
+    ax.plot(
+        confidence_levels,
+        actuals_after,
+        "g-s",
+        markersize=5,
+        label=f"After T={T:.2f} (ECE={compute_ece(mean_pred, std_after, true_value)['ece']:.4f})",
+        alpha=0.8,
+    )
     ax.set_xlabel("Nominal confidence level", fontsize=12)
     ax.set_ylabel("Actual coverage", fontsize=12)
     ax.set_title("Calibration Curve: Before vs After Temperature Scaling", fontsize=13)
@@ -231,6 +241,7 @@ def plot_coverage_comparison(
 ) -> None:
     """绘制校准前后覆盖率对比柱状图。"""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -238,11 +249,7 @@ def plot_coverage_comparison(
     ks = [1.282, 1.645, 1.960, 2.576]
 
     def get_actuals(std):
-        return [
-            float(np.mean((true_value >= mean_pred - k * std) &
-                          (true_value <= mean_pred + k * std)))
-            for k in ks
-        ]
+        return [float(np.mean((true_value >= mean_pred - k * std) & (true_value <= mean_pred + k * std))) for k in ks]
 
     actuals_before = get_actuals(std_before)
     actuals_after = get_actuals(std_after)
@@ -259,7 +266,7 @@ def plot_coverage_comparison(
     ax.set_ylabel("Actual coverage", fontsize=12)
     ax.set_title("Coverage Comparison: Before vs After Temperature Scaling", fontsize=13)
     ax.set_xticks(x)
-    ax.set_xticklabels([f"{int(l*100)}%" for l in levels])
+    ax.set_xticklabels([f"{int(l * 100)}%" for l in levels])
     ax.legend(fontsize=10)
     ax.grid(True, axis="y", alpha=0.3)
     ax.set_ylim(0, 1.05)
@@ -268,8 +275,7 @@ def plot_coverage_comparison(
     for bars in [bars_before, bars_after]:
         for bar in bars:
             h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2, h + 0.01,
-                    f"{h:.3f}", ha="center", va="bottom", fontsize=9)
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.01, f"{h:.3f}", ha="center", va="bottom", fontsize=9)
 
     fig.tight_layout()
     fig.savefig(save_path, dpi=150, bbox_inches="tight")
@@ -277,9 +283,8 @@ def plot_coverage_comparison(
     print(f"  [图] {save_path}")
 
 
-# =============================================================================
 # 主校准流程
-# =============================================================================
+
 
 def run_calibration(
     weights_path: Path,
@@ -312,7 +317,7 @@ def run_calibration(
     print(f"MC Dropout 概率: {mc_dropout_prob}")
     print()
 
-    # === 1. 加载贝叶斯模型 ===
+    # 1. 加载贝叶斯模型
     print("[1/6] 加载贝叶斯 DL-LNN 权重...")
     bayesian_model = load_bayesian_dllnn(
         weights_path=weights_path,
@@ -320,7 +325,7 @@ def run_calibration(
         mc_dropout_prob=mc_dropout_prob,
     )
 
-    # === 2. 生成 LOMO 测试集 ===
+    # 2. 生成 LOMO 测试集
     print("\n[2/6] 生成 LOMO 测试集...")
     set_global_seed(seed)
     dataset = LomoLocoDataset(
@@ -334,7 +339,7 @@ def run_calibration(
     materials_arr = dataset.sample_materials
     print(f"  总样本数: {len(dataset)}")
 
-    # === 3. 对每种材料跑 MC Dropout ===
+    # 3. 对每种材料跑 MC Dropout
     print(f"\n[3/6] 对 5 种材料跑 MC Dropout (n_samples={n_samples})...")
     results_by_material: Dict[str, Dict] = {}
 
@@ -348,12 +353,15 @@ def run_calibration(
         y_phys = dataset.data["a_lim_clean"][mask]
         ks = ks_scale[mask]
 
-        print(f"\n  材料: {mat_name} (硬度={MATERIALS_CONFIG[mat_name]['hardness']:.0f} HB, "
-              f"样本数={mask.sum()})")
+        print(f"\n  材料: {mat_name} (硬度={MATERIALS_CONFIG[mat_name]['hardness']:.0f} HB, 样本数={mask.sum()})")
 
         uq_result = bayesian_model.predict_batch(
-            X, physics_pred=y_phys, n_samples=n_samples, device=device,
-            batch_size=256, return_components=True,
+            X,
+            physics_pred=y_phys,
+            n_samples=n_samples,
+            device=device,
+            batch_size=256,
+            return_components=True,
         )
 
         mean_denorm = uq_result["mean_denorm"].flatten()
@@ -383,7 +391,7 @@ def run_calibration(
             },
         }
 
-    # === 4. 学习温度参数 T ===
+    # 4. 学习温度参数 T
     print("\n[4/6] 学习温度参数 T (在 ID 材料上)...")
 
     id_mats = ["45_Steel", "304_SS"]
@@ -418,7 +426,7 @@ def run_calibration(
     print(f"\n  最终温度参数 T = {T:.4f} (方法: {T_method})")
     print(f"  含义: σ_calibrated = {T:.4f} × σ_original")
 
-    # === 5. 应用校准并对比 ===
+    # 5. 应用校准并对比
     print("\n[5/6] 应用校准并对比前后指标...")
 
     # 合并所有材料
@@ -433,9 +441,7 @@ def run_calibration(
     coverage_before = compute_coverage(all_mean_before, all_std_before, all_true)
     uq_corr_before = compute_uq_error_correlation(all_mean_before, all_std_before, all_true)
 
-    std_by_material_before = {
-        m: results_by_material[m]["std_pred"] for m in results_by_material
-    }
+    std_by_material_before = {m: results_by_material[m]["std_pred"] for m in results_by_material}
     ood_before = compute_ood_detection_auc(std_by_material_before, id_mats, ood_mats)
 
     # 校准后指标
@@ -443,57 +449,79 @@ def run_calibration(
     coverage_after = compute_coverage(all_mean_before, all_std_after, all_true)
     uq_corr_after = compute_uq_error_correlation(all_mean_before, all_std_after, all_true)
 
-    std_by_material_after = {
-        m: results_by_material[m]["std_pred"] * T for m in results_by_material
-    }
+    std_by_material_after = {m: results_by_material[m]["std_pred"] * T for m in results_by_material}
     ood_after = compute_ood_detection_auc(std_by_material_after, id_mats, ood_mats)
 
     # 打印对比
     print(f"\n  {'指标':<25} {'校准前':>12} {'校准后':>12} {'变化':>12}")
     print("  " + "-" * 65)
-    print(f"  {'ECE':<25} {ece_before['ece']:>12.4f} {ece_after['ece']:>12.4f} "
-          f"{(ece_after['ece']-ece_before['ece']):>+12.4f}")
-    print(f"  {'MCE':<25} {ece_before['mce']:>12.4f} {ece_after['mce']:>12.4f} "
-          f"{(ece_after['mce']-ece_before['mce']):>+12.4f}")
+    print(
+        f"  {'ECE':<25} {ece_before['ece']:>12.4f} {ece_after['ece']:>12.4f} "
+        f"{(ece_after['ece'] - ece_before['ece']):>+12.4f}"
+    )
+    print(
+        f"  {'MCE':<25} {ece_before['mce']:>12.4f} {ece_after['mce']:>12.4f} "
+        f"{(ece_after['mce'] - ece_before['mce']):>+12.4f}"
+    )
     for level in [80, 90, 95, 99]:
         b = coverage_before[f"coverage_{level}"]
         a = coverage_after[f"coverage_{level}"]
-        print(f"  {'Coverage ' + str(level) + '%':<25} {b:>12.4f} {a:>12.4f} {(a-b):>+12.4f}")
-    print(f"  {'Spearman 相关':<25} {uq_corr_before['spearman_corr']:>12.4f} "
-          f"{uq_corr_after['spearman_corr']:>12.4f} "
-          f"{(uq_corr_after['spearman_corr']-uq_corr_before['spearman_corr']):>+12.4f}")
-    print(f"  {'Pearson 相关':<25} {uq_corr_before['pearson_corr']:>12.4f} "
-          f"{uq_corr_after['pearson_corr']:>12.4f} "
-          f"{(uq_corr_after['pearson_corr']-uq_corr_before['pearson_corr']):>+12.4f}")
-    print(f"  {'OOD AUC':<25} {ood_before['auc_roc']:>12.4f} "
-          f"{ood_after['auc_roc']:>12.4f} "
-          f"{(ood_after['auc_roc']-ood_before['auc_roc']):>+12.4f}")
-    print(f"  {'分离比 (OOD/ID std)':<25} {ood_before['separation_ratio']:>12.4f} "
-          f"{ood_after['separation_ratio']:>12.4f} "
-          f"{(ood_after['separation_ratio']-ood_before['separation_ratio']):>+12.4f}")
+        print(f"  {'Coverage ' + str(level) + '%':<25} {b:>12.4f} {a:>12.4f} {(a - b):>+12.4f}")
+    print(
+        f"  {'Spearman 相关':<25} {uq_corr_before['spearman_corr']:>12.4f} "
+        f"{uq_corr_after['spearman_corr']:>12.4f} "
+        f"{(uq_corr_after['spearman_corr'] - uq_corr_before['spearman_corr']):>+12.4f}"
+    )
+    print(
+        f"  {'Pearson 相关':<25} {uq_corr_before['pearson_corr']:>12.4f} "
+        f"{uq_corr_after['pearson_corr']:>12.4f} "
+        f"{(uq_corr_after['pearson_corr'] - uq_corr_before['pearson_corr']):>+12.4f}"
+    )
+    print(
+        f"  {'OOD AUC':<25} {ood_before['auc_roc']:>12.4f} "
+        f"{ood_after['auc_roc']:>12.4f} "
+        f"{(ood_after['auc_roc'] - ood_before['auc_roc']):>+12.4f}"
+    )
+    print(
+        f"  {'分离比 (OOD/ID std)':<25} {ood_before['separation_ratio']:>12.4f} "
+        f"{ood_after['separation_ratio']:>12.4f} "
+        f"{(ood_after['separation_ratio'] - ood_before['separation_ratio']):>+12.4f}"
+    )
 
-    # === 6. 可视化 ===
+    # 6. 可视化
     print("\n[6/6] 生成可视化图表...")
     plot_calibration_comparison(
-        all_mean_before, all_std_before, all_std_after, all_true,
-        figures_dir / "calibration_before_after.png", T,
+        all_mean_before,
+        all_std_before,
+        all_std_after,
+        all_true,
+        figures_dir / "calibration_before_after.png",
+        T,
     )
     plot_coverage_comparison(
-        all_mean_before, all_std_before, all_std_after, all_true,
-        figures_dir / "coverage_comparison.png", T,
+        all_mean_before,
+        all_std_before,
+        all_std_after,
+        all_true,
+        figures_dir / "coverage_comparison.png",
+        T,
     )
     # 校准后的 OOD 检测箱线图
     plot_ood_detection(
-        std_by_material_after, id_mats, ood_mats,
+        std_by_material_after,
+        id_mats,
+        ood_mats,
         figures_dir / "ood_detection_calibrated.png",
     )
     # 校准后的 UQ-误差散点图
     plot_uq_error_scatter(
-        all_mean_before, all_std_after, all_true,
+        all_mean_before,
+        all_std_after,
+        all_true,
         figures_dir / "uq_error_corr_calibrated.png",
     )
 
-    # === 汇总结果 ===
+    # 汇总结果
     full_result = {
         "experiment": "Temperature Scaling Calibration for Bayesian DL-LNN UQ",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -548,7 +576,7 @@ def run_calibration(
     _generate_calibration_report(full_result, report_path)
     print(f"[已保存] {report_path}")
 
-    # === 成功判据检查 ===
+    # 成功判据检查
     print("\n" + "=" * 70)
     print("校准成功判据检查")
     print("=" * 70)
@@ -598,8 +626,8 @@ def _generate_calibration_report(full_result: Dict, report_path: Path) -> None:
         "### 2.1 校准误差",
         "| 指标 | 校准前 | 校准后 | 变化 |",
         "|------|--------|--------|------|",
-        f"| ECE | {b['ece']['ece']:.4f} | {a['ece']['ece']:.4f} | {a['ece']['ece']-b['ece']['ece']:+.4f} |",
-        f"| MCE | {b['ece']['mce']:.4f} | {a['ece']['mce']:.4f} | {a['ece']['mce']-b['ece']['mce']:+.4f} |",
+        f"| ECE | {b['ece']['ece']:.4f} | {a['ece']['ece']:.4f} | {a['ece']['ece'] - b['ece']['ece']:+.4f} |",
+        f"| MCE | {b['ece']['mce']:.4f} | {a['ece']['mce']:.4f} | {a['ece']['mce'] - b['ece']['mce']:+.4f} |",
         "\n### 2.2 置信区间覆盖率",
         "| 名义水平 | 校准前 | 校准后 | 变化 |",
         "|---------|--------|--------|------|",
@@ -608,46 +636,48 @@ def _generate_calibration_report(full_result: Dict, report_path: Path) -> None:
     for level in [80, 90, 95, 99]:
         before = b["coverage"][f"coverage_{level}"]
         after = a["coverage"][f"coverage_{level}"]
-        lines.append(f"| {level}% | {before:.4f} | {after:.4f} | {after-before:+.4f} |")
+        lines.append(f"| {level}% | {before:.4f} | {after:.4f} | {after - before:+.4f} |")
 
-    lines.extend([
-        "\n### 2.3 不确定性-误差相关性",
-        "| 指标 | 校准前 | 校准后 | 变化 |",
-        "|------|--------|--------|------|",
-        f"| Spearman 相关 | {b['uq_error_correlation']['spearman_corr']:.4f} | "
-        f"{a['uq_error_correlation']['spearman_corr']:.4f} | "
-        f"{a['uq_error_correlation']['spearman_corr']-b['uq_error_correlation']['spearman_corr']:+.4f} |",
-        f"| Pearson 相关 | {b['uq_error_correlation']['pearson_corr']:.4f} | "
-        f"{a['uq_error_correlation']['pearson_corr']:.4f} | "
-        f"{a['uq_error_correlation']['pearson_corr']-b['uq_error_correlation']['pearson_corr']:+.4f} |",
-        f"| 高UQ组 MAE | {b['uq_error_correlation']['high_uq_mae']:.4f} | "
-        f"{a['uq_error_correlation']['high_uq_mae']:.4f} | "
-        f"{a['uq_error_correlation']['high_uq_mae']-b['uq_error_correlation']['high_uq_mae']:+.4f} |",
-        f"| 低UQ组 MAE | {b['uq_error_correlation']['low_uq_mae']:.4f} | "
-        f"{a['uq_error_correlation']['low_uq_mae']:.4f} | "
-        f"{a['uq_error_correlation']['low_uq_mae']-b['uq_error_correlation']['low_uq_mae']:+.4f} |",
-        f"| UQ-Error 比值 | {b['uq_error_correlation']['uq_error_ratio']:.4f} | "
-        f"{a['uq_error_correlation']['uq_error_ratio']:.4f} | "
-        f"{a['uq_error_correlation']['uq_error_ratio']-b['uq_error_correlation']['uq_error_ratio']:+.4f} |",
-        "\n### 2.4 OOD 检测能力",
-        "| 指标 | 校准前 | 校准后 | 变化 |",
-        "|------|--------|--------|------|",
-        f"| ROC AUC | {b['ood_detection']['auc_roc']:.4f} | "
-        f"{a['ood_detection']['auc_roc']:.4f} | "
-        f"{a['ood_detection']['auc_roc']-b['ood_detection']['auc_roc']:+.4f} |",
-        f"| ID std 均值 | {b['ood_detection']['id_std_mean']:.4f} | "
-        f"{a['ood_detection']['id_std_mean']:.4f} | "
-        f"{a['ood_detection']['id_std_mean']-b['ood_detection']['id_std_mean']:+.4f} |",
-        f"| OOD std 均值 | {b['ood_detection']['ood_std_mean']:.4f} | "
-        f"{a['ood_detection']['ood_std_mean']:.4f} | "
-        f"{a['ood_detection']['ood_std_mean']-b['ood_detection']['ood_std_mean']:+.4f} |",
-        f"| 分离比 (OOD/ID) | {b['ood_detection']['separation_ratio']:.4f} | "
-        f"{a['ood_detection']['separation_ratio']:.4f} | "
-        f"{a['ood_detection']['separation_ratio']-b['ood_detection']['separation_ratio']:+.4f} |",
-        "\n## 3. 各材料校准后指标\n",
-        "| 材料 | 硬度(HB) | 样本数 | MAE | std_mean (校准前) | std_mean (校准后) |",
-        "|------|---------|--------|-----|------------------|------------------|",
-    ])
+    lines.extend(
+        [
+            "\n### 2.3 不确定性-误差相关性",
+            "| 指标 | 校准前 | 校准后 | 变化 |",
+            "|------|--------|--------|------|",
+            f"| Spearman 相关 | {b['uq_error_correlation']['spearman_corr']:.4f} | "
+            f"{a['uq_error_correlation']['spearman_corr']:.4f} | "
+            f"{a['uq_error_correlation']['spearman_corr'] - b['uq_error_correlation']['spearman_corr']:+.4f} |",
+            f"| Pearson 相关 | {b['uq_error_correlation']['pearson_corr']:.4f} | "
+            f"{a['uq_error_correlation']['pearson_corr']:.4f} | "
+            f"{a['uq_error_correlation']['pearson_corr'] - b['uq_error_correlation']['pearson_corr']:+.4f} |",
+            f"| 高UQ组 MAE | {b['uq_error_correlation']['high_uq_mae']:.4f} | "
+            f"{a['uq_error_correlation']['high_uq_mae']:.4f} | "
+            f"{a['uq_error_correlation']['high_uq_mae'] - b['uq_error_correlation']['high_uq_mae']:+.4f} |",
+            f"| 低UQ组 MAE | {b['uq_error_correlation']['low_uq_mae']:.4f} | "
+            f"{a['uq_error_correlation']['low_uq_mae']:.4f} | "
+            f"{a['uq_error_correlation']['low_uq_mae'] - b['uq_error_correlation']['low_uq_mae']:+.4f} |",
+            f"| UQ-Error 比值 | {b['uq_error_correlation']['uq_error_ratio']:.4f} | "
+            f"{a['uq_error_correlation']['uq_error_ratio']:.4f} | "
+            f"{a['uq_error_correlation']['uq_error_ratio'] - b['uq_error_correlation']['uq_error_ratio']:+.4f} |",
+            "\n### 2.4 OOD 检测能力",
+            "| 指标 | 校准前 | 校准后 | 变化 |",
+            "|------|--------|--------|------|",
+            f"| ROC AUC | {b['ood_detection']['auc_roc']:.4f} | "
+            f"{a['ood_detection']['auc_roc']:.4f} | "
+            f"{a['ood_detection']['auc_roc'] - b['ood_detection']['auc_roc']:+.4f} |",
+            f"| ID std 均值 | {b['ood_detection']['id_std_mean']:.4f} | "
+            f"{a['ood_detection']['id_std_mean']:.4f} | "
+            f"{a['ood_detection']['id_std_mean'] - b['ood_detection']['id_std_mean']:+.4f} |",
+            f"| OOD std 均值 | {b['ood_detection']['ood_std_mean']:.4f} | "
+            f"{a['ood_detection']['ood_std_mean']:.4f} | "
+            f"{a['ood_detection']['ood_std_mean'] - b['ood_detection']['ood_std_mean']:+.4f} |",
+            f"| 分离比 (OOD/ID) | {b['ood_detection']['separation_ratio']:.4f} | "
+            f"{a['ood_detection']['separation_ratio']:.4f} | "
+            f"{a['ood_detection']['separation_ratio'] - b['ood_detection']['separation_ratio']:+.4f} |",
+            "\n## 3. 各材料校准后指标\n",
+            "| 材料 | 硬度(HB) | 样本数 | MAE | std_mean (校准前) | std_mean (校准后) |",
+            "|------|---------|--------|-----|------------------|------------------|",
+        ]
+    )
 
     for mat, data in full_result["materials_summary"].items():
         m = data["metrics"]
@@ -658,14 +688,16 @@ def _generate_calibration_report(full_result: Dict, report_path: Path) -> None:
             f"{m['mae']:.4f} | {std_before:.4f} | {std_after:.4f} |"
         )
 
-    lines.extend([
-        "\n## 4. 可视化图表\n",
-        "- 校准前后对比曲线: `figures/calibration_before_after.png`",
-        "- 覆盖率对比柱状图: `figures/coverage_comparison.png`",
-        "- 校准后 OOD 检测箱线图: `figures/ood_detection_calibrated.png`",
-        "- 校准后 UQ-误差散点图: `figures/uq_error_corr_calibrated.png`",
-        "\n## 5. 结论\n",
-    ])
+    lines.extend(
+        [
+            "\n## 4. 可视化图表\n",
+            "- 校准前后对比曲线: `figures/calibration_before_after.png`",
+            "- 覆盖率对比柱状图: `figures/coverage_comparison.png`",
+            "- 校准后 OOD 检测箱线图: `figures/ood_detection_calibrated.png`",
+            "- 校准后 UQ-误差散点图: `figures/uq_error_corr_calibrated.png`",
+            "\n## 5. 结论\n",
+        ]
+    )
 
     # 自动结论
     if a["ece"]["ece"] < 0.10:
@@ -688,29 +720,32 @@ def _generate_calibration_report(full_result: Dict, report_path: Path) -> None:
     else:
         lines.append("- ✗ Spearman 相关性未改善")
 
-    lines.append(f"\n**物理意义**: 温度参数 T = {t['T_final']:.4f} 表明原始 MC Dropout "
-                 f"不确定性需要放大 {t['T_final']:.1f} 倍才能匹配实际误差分布。")
-    lines.append(f"**OOD 检测不变性**: T 是全局缩放，不改变 std 的相对排序，"
-                 f"因此 OOD AUC 和分离比保持不变。")
+    lines.append(
+        f"\n**物理意义**: 温度参数 T = {t['T_final']:.4f} 表明原始 MC Dropout "
+        f"不确定性需要放大 {t['T_final']:.1f} 倍才能匹配实际误差分布。"
+    )
+    lines.append(f"**OOD 检测不变性**: T 是全局缩放，不改变 std 的相对排序，因此 OOD AUC 和分离比保持不变。")
 
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 
-# =============================================================================
 # 入口
-# =============================================================================
+
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="温度缩放校准实验")
     parser.add_argument(
-        "--weights", type=str,
+        "--weights",
+        type=str,
         default=str(Path(__file__).parent / "results" / "full_weights.pt"),
         help="Full 配置权重文件路径",
     )
     parser.add_argument(
-        "--output_dir", type=str,
+        "--output_dir",
+        type=str,
         default=str(Path(__file__).parent / "results"),
         help="结果输出目录",
     )

@@ -27,9 +27,7 @@ import torch.nn.functional as F
 from app.ai.cross_layer_fusion.attention import CrossLayerAttention
 
 
-# ============================================================================
-# 1. 认知→感知 融合机制
-# ============================================================================
+# 1. 认知感知 融合机制
 
 
 class CognitiveToPerceptionFusion(nn.Module):
@@ -169,29 +167,32 @@ class CognitiveToPerceptionFusion(nn.Module):
                 - reweight_vector: 感知任务重新加权向量 (batch, dim_perception)。
                 - attn_weights: 跨模态注意力权重矩阵，return_attention=True时返回。
         """
-        # 步骤1: 维度对齐投影
+        # 维度对齐投影
         cog_proj = self.norm_cog(self.proj_cognitive(cognitive_embed))
         per_proj = self.norm_per(self.proj_perception(perception_embed))
 
-        # 步骤2: 计算模态重要性权重
+        # 计算模态重要性权重
         w_cog, w_per = self._compute_importance_weights(cog_proj, per_proj)
 
-        # 步骤3: 加权融合 - 将重要性权重应用于特征
+        # 加权融合 - 将重要性权重应用于特征
         cog_weighted = cog_proj * w_cog  # (batch, dim_fusion)
         per_weighted = per_proj * w_per  # (batch, dim_fusion)
 
-        # 步骤4: 跨模态注意力 - 认知意图(query)关注感知特征(key/value)
+        # 跨模态注意力 - 认知意图(query)关注感知特征(key/value)
         # 添加序列维度: (batch, dim) -> (batch, 1, dim)
         q = cog_weighted.unsqueeze(1)  # (batch, 1, dim_fusion)
         k = per_weighted.unsqueeze(1)  # (batch, 1, dim_fusion)
         v = per_weighted.unsqueeze(1)  # (batch, 1, dim_fusion)
 
         fused, attn_weights = self.cross_modal_attn(
-            q, k, v, return_attention=return_attention,
+            q,
+            k,
+            v,
+            return_attention=return_attention,
         )
         fused = fused.squeeze(1)  # (batch, dim_fusion)
 
-        # 步骤5: 生成感知任务重新加权向量
+        # 生成感知任务重新加权向量
         reweight_vector = self.reweight_generator(fused)  # (batch, dim_perception)
 
         if return_attention:
@@ -199,9 +200,7 @@ class CognitiveToPerceptionFusion(nn.Module):
         return reweight_vector, None
 
 
-# ============================================================================
-# 2. 感知→执行 融合机制
-# ============================================================================
+# 2. 感知执行 融合机制
 
 
 class TemporalPositionalEncoding(nn.Module):
@@ -227,9 +226,7 @@ class TemporalPositionalEncoding(nn.Module):
 
         # 预计算位置编码矩阵
         position = torch.arange(max_len).unsqueeze(1).float()  # (max_len, 1)
-        div_term = torch.exp(
-            torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
-        )  # (d_model/2,)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))  # (d_model/2,)
 
         pe = torch.zeros(max_len, d_model)
         pe[:, 0::2] = torch.sin(position * div_term)
@@ -447,19 +444,21 @@ class PerceptionToExecutionFusion(nn.Module):
         """
         _ = geometry_params.size(0)
 
-        # 步骤1: 维度投影
+        # 维度投影
         geom_proj = self.norm_geom(self.proj_geometry(geometry_params))  # (batch, dim_fusion)
         sensor_proj = self.norm_sensor(self.proj_sensor(sensor_history))  # (batch, seq_len, dim_fusion)
 
-        # 步骤2: 时序位置编码
+        # 时序位置编码
         sensor_encoded = self.pos_encoding(sensor_proj)  # (batch, seq_len, dim_fusion)
 
-        # 步骤3: 计算时间衰减因子
+        # 计算时间衰减因子
         time_deltas = self._compute_time_deltas(
-            sensor_history.size(1), time_stamps, geometry_params.device,
+            sensor_history.size(1),
+            time_stamps,
+            geometry_params.device,
         )  # (batch or 1, seq_len)
 
-        # 步骤4: 时序注意力 - 施加时间衰减偏置到分数上
+        # 时序注意力 - 施加时间衰减偏置到分数上
         # time_decay_bias = log(exp(-decay_rate * delta_t)) = -decay_rate * delta_t
         time_decay_bias = -self.time_decay.decay_rate * time_deltas.abs()  # (B or 1, seq_len)
         q = geom_proj.unsqueeze(1)  # (batch, 1, dim_fusion)
@@ -467,11 +466,15 @@ class PerceptionToExecutionFusion(nn.Module):
         v = sensor_encoded  # (batch, seq_len, dim_fusion)
 
         fused, attn_weights = self.temporal_attn(
-            q, k, v, score_bias=time_decay_bias, return_attention=return_attention,
+            q,
+            k,
+            v,
+            score_bias=time_decay_bias,
+            return_attention=return_attention,
         )
         fused = fused.squeeze(1)  # (batch, dim_fusion)
 
-        # 步骤6: 生成执行层初始状态向量
+        # 生成执行层初始状态向量
         exec_state = self.state_generator(fused)  # (batch, dim_exec)
 
         if return_attention:
@@ -479,9 +482,7 @@ class PerceptionToExecutionFusion(nn.Module):
         return exec_state, None
 
 
-# ============================================================================
-# 3. 执行→认知 反馈机制
-# ============================================================================
+# 3. 执行认知 反馈机制
 
 
 class AnomalyPriorityEncoder(nn.Module):
@@ -498,11 +499,11 @@ class AnomalyPriorityEncoder(nn.Module):
 
     # 严重等级映射 - 数值越高越紧急
     SEVERITY_WEIGHTS = {
-        0: 0.1,   # INFO
-        1: 0.3,   # LOW
-        2: 0.5,   # WARNING
-        3: 0.8,   # HIGH
-        4: 1.0,   # CRITICAL
+        0: 0.1,  # INFO
+        1: 0.3,  # LOW
+        2: 0.5,  # WARNING
+        3: 0.8,  # HIGH
+        4: 1.0,  # CRITICAL
     }
 
     def __init__(
@@ -670,8 +671,8 @@ class ExecutionToCognitiveFusion(nn.Module):
         if n_events >= self.max_events:
             # 截断到最大事件数
             return (
-                anomaly_events[:, :self.max_events],
-                severity_levels[:, :self.max_events],
+                anomaly_events[:, : self.max_events],
+                severity_levels[:, : self.max_events],
                 torch.ones(batch_size, self.max_events, device=anomaly_events.device),
             )
 
@@ -713,39 +714,44 @@ class ExecutionToCognitiveFusion(nn.Module):
                 - adjustment_params: 认知层方案调整参数 (batch, dim_adjustment)。
                 - attn_weights: 反馈注意力权重，return_attention=True时返回。
         """
-        # 步骤1: 投影执行状态
+        # 投影执行状态
         exec_proj = self.norm_exec(self.proj_exec(exec_state))  # (batch, dim_fusion)
 
-        # 步骤2: 填充异常事件到固定长度
+        # 填充异常事件到固定长度
         anomaly_padded, severity_padded, event_mask = self._pad_anomaly_events(
-            anomaly_events, severity_levels,
+            anomaly_events,
+            severity_levels,
         )
 
-        # 步骤3: 异常事件优先级编码
+        # 异常事件优先级编码
         anomaly_encoded = self.anomaly_encoder(anomaly_padded, severity_padded)
         anomaly_encoded = self.norm_anomaly(anomaly_encoded)  # (batch, max_events, dim_fusion)
 
-        # 步骤4: 反馈注意力 - 异常事件(query)关注执行状态(key/value)
+        # 反馈注意力 - 异常事件(query)关注执行状态(key/value)
         k = exec_proj.unsqueeze(1)  # (batch, 1, dim_fusion)
         v = exec_proj.unsqueeze(1)  # (batch, 1, dim_fusion)
 
         # 创建注意力掩码 - 屏蔽填充的异常事件
-        attn_mask = (event_mask == 0)  # True表示需要屏蔽的位置
+        attn_mask = event_mask == 0  # True表示需要屏蔽的位置
         attn_mask = attn_mask.unsqueeze(-1)  # (batch, max_events, 1)
 
         fused, attn_weights = self.feedback_attn(
-            anomaly_encoded, k, v, mask=attn_mask, return_attention=return_attention,
+            anomaly_encoded,
+            k,
+            v,
+            mask=attn_mask,
+            return_attention=return_attention,
         )  # fused: (batch, max_events, dim_fusion)
 
-        # 步骤5: 聚合多事件反馈 - 使用掩码加权平均
+        # 聚合多事件反馈 - 使用掩码加权平均
         fused_weighted = fused * event_mask.unsqueeze(-1)  # 屏蔽填充事件
         fused_aggregated = fused_weighted.sum(dim=1) / (event_mask.sum(dim=1, keepdim=True) + 1e-10)
         # (batch, dim_fusion)
 
-        # 步骤6: 紧急程度门控 - 决定反馈信号强度
+        # 紧急程度门控 - 决定反馈信号强度
         urgency = self.urgency_gate(fused_aggregated)  # (batch, 1)
 
-        # 步骤7: 生成认知层方案调整参数
+        # 生成认知层方案调整参数
         combined = torch.cat([fused_aggregated, exec_proj * urgency], dim=-1)
         adjustment_params = self.adjustment_generator(combined)  # (batch, dim_adjustment)
 
@@ -754,9 +760,7 @@ class ExecutionToCognitiveFusion(nn.Module):
         return adjustment_params, None
 
 
-# ============================================================================
 # 完整三层融合系统
-# ============================================================================
 
 
 class CrossLayerFusionSystem(nn.Module):
@@ -881,7 +885,10 @@ class CrossLayerFusionSystem(nn.Module):
             (exec_state, attn_weights) 执行状态和注意力权重。
         """
         exec_state, attn = self.per2exec(
-            geometry_params, sensor_history, time_stamps, return_attention=True,
+            geometry_params,
+            sensor_history,
+            time_stamps,
+            return_attention=True,
         )
         if attn is not None:
             self._last_attentions["per2exec"] = attn.detach()
@@ -904,7 +911,10 @@ class CrossLayerFusionSystem(nn.Module):
             (adjustment_params, attn_weights) 调整参数和注意力权重。
         """
         adjustment, attn = self.exec2cog(
-            exec_state, anomaly_events, severity_levels, return_attention=True,
+            exec_state,
+            anomaly_events,
+            severity_levels,
+            return_attention=True,
         )
         if attn is not None:
             self._last_attentions["exec2cog"] = attn.detach()
@@ -938,20 +948,25 @@ class CrossLayerFusionSystem(nn.Module):
                 - "cognitive_adjustment": 认知方案调整参数
                 - "attentions": 各层注意力权重字典
         """
-        # C → P
+        # C P
         per_reweight, attn_cp = self.forward_cognitive_to_perception(
-            cognitive_embed, perception_embed,
+            cognitive_embed,
+            perception_embed,
         )
 
-        # P → E (使用重加权的感知特征)
+        # P E (使用重加权的感知特征)
         weighted_perception = perception_embed * per_reweight
         exec_state, attn_pe = self.forward_perception_to_execution(
-            weighted_perception, sensor_history, time_stamps,
+            weighted_perception,
+            sensor_history,
+            time_stamps,
         )
 
-        # E → C
+        # E C
         adjustment, attn_ec = self.forward_execution_to_cognitive(
-            exec_state, anomaly_events, severity_levels,
+            exec_state,
+            anomaly_events,
+            severity_levels,
         )
 
         return {
@@ -992,8 +1007,12 @@ class CrossLayerFusionSystem(nn.Module):
             融合结果字典。
         """
         return self.forward_full_cycle(
-            cognitive_embed, perception_embed, sensor_history,
-            anomaly_events, severity_levels, time_stamps,
+            cognitive_embed,
+            perception_embed,
+            sensor_history,
+            anomaly_events,
+            severity_levels,
+            time_stamps,
         )
 
     def extra_repr(self) -> str:

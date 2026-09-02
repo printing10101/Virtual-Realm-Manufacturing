@@ -68,9 +68,9 @@ from dataclasses import dataclass, field
 
 # === WinSock 损坏绕过补丁（必须在 import torch 之前执行）===
 # 本机 Python 3.11 + Windows 存在系统级 WinSock 损坏，`_overlapped` C 扩展模块
-# 导入失败（WinError 10038），导致 `torch → asyncio → _overlapped` 导入链断裂。
+# 导入失败（WinError 10038），导致 `torch asyncio _overlapped` 导入链断裂。
 # 此补丁必须在 import torch/numpy 之前注入空实现到 sys.modules，否则 torch
-# 导入时会触发 asyncio.windows_events → _overlapped 崩溃。
+# 导入时会触发 asyncio.windows_events _overlapped 崩溃。
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -106,15 +106,15 @@ EXPERIMENTS_DIR = RESEARCH_DIR / "experiments"
 PYTHON_DIR = PROJECT_ROOT / "python"  # 兼容旧路径，可能不存在但不会报错
 ENGINEERING_PYTHON_DIR = PROJECT_ROOT / "engineering" / "python"  # app 模块所在
 # sys.path 优先级（insert(0,...) 后插的在前，按优先级从低到高插入）：
-#   PROJECT_ROOT < ENGINEERING_PYTHON_DIR < RESEARCH_DIR < EXPERIMENTS_DIR
+# PROJECT_ROOT < ENGINEERING_PYTHON_DIR < RESEARCH_DIR < EXPERIMENTS_DIR
 # 关键：EXPERIMENTS_DIR 必须在 RESEARCH_DIR 之前，否则 trainer.py 内的
 # `from models import create_model` 会解析到 research/models/（包目录）
 # 而非 research/experiments/models.py（实际模块）
-sys.path.insert(0, str(PROJECT_ROOT))              # 让 `from xxx import` 工作
-sys.path.insert(0, str(ENGINEERING_PYTHON_DIR))    # 让 `from app.xxx import` 工作
-sys.path.insert(0, str(RESEARCH_DIR))              # 让 `from experiments.xxx import` 工作（experiments 是 research 下的包）
-sys.path.insert(0, str(EXPERIMENTS_DIR))           # 兼容 trainer.py 内 `from models import`（直接从 experiments/ 目录找）
-sys.path.insert(0, str(PYTHON_DIR))                # 兼容旧路径
+sys.path.insert(0, str(PROJECT_ROOT))  # 让 `from xxx import` 工作
+sys.path.insert(0, str(ENGINEERING_PYTHON_DIR))  # 让 `from app.xxx import` 工作
+sys.path.insert(0, str(RESEARCH_DIR))  # 让 `from experiments.xxx import` 工作（experiments 是 research 下的包）
+sys.path.insert(0, str(EXPERIMENTS_DIR))  # 兼容 trainer.py 内 `from models import`（直接从 experiments/ 目录找）
+sys.path.insert(0, str(PYTHON_DIR))  # 兼容旧路径
 
 # 复用主实验模块
 from training.reproducibility import set_global_seed
@@ -138,9 +138,8 @@ from experiments.losses import PCC_Loss
 from experiments.metrics import ChatterMetrics
 
 
-# =============================================================================
 # 消融配置定义
-# =============================================================================
+
 
 @dataclass
 class AblationSpec:
@@ -149,19 +148,20 @@ class AblationSpec:
     通过修改 config / trainer / model 三个层面实现消融，
     而非独立实现整个训练流程。
     """
-    name: str               # 消融配置名称（Full / A1 / A2 / A3 / A4_x / A5 / A6_fixed_x / A7_xxx）
-    description: str        # 消融描述（写入报告）
+
+    name: str  # 消融配置名称（Full / A1 / A2 / A3 / A4_x / A5 / A6_fixed_x / A7_xxx）
+    description: str  # 消融描述（写入报告）
     # 损失权重覆盖（None 表示不修改，使用 config 默认值）
     lambda_phys: Optional[float] = None
     lambda_pcc: Optional[float] = None
     # 训练策略
-    two_stage: bool = True              # False = 单阶段（A3）
-    single_stage_epochs: int = 300      # A3 单阶段训练总轮数
+    two_stage: bool = True  # False = 单阶段（A3）
+    single_stage_epochs: int = 300  # A3 单阶段训练总轮数
     # 模型变体
-    model_variant: str = "default"      # default / fixed_gate / mlp_backbone / cnn_backbone
-    fixed_alpha: Optional[float] = None # A6: 固定门控值
+    model_variant: str = "default"  # default / fixed_gate / mlp_backbone / cnn_backbone
+    fixed_alpha: Optional[float] = None  # A6: 固定门控值
     # 标记
-    is_na: bool = False                 # 当前架构下不适用（A5）
+    is_na: bool = False  # 当前架构下不适用（A5）
 
 
 def get_ablation_specs() -> Dict[str, AblationSpec]:
@@ -228,9 +228,8 @@ def get_ablation_specs() -> Dict[str, AblationSpec]:
     return specs
 
 
-# =============================================================================
 # A6/A7 模型变体（DLLNNWithPhysics 的子类，保持接口一致）
-# =============================================================================
+
 
 class DLLNNWithPhysicsFixedGate(DLLNNWithPhysics):
     """A6: 固定 α 门控（用于与输入自适应门控对比）。
@@ -248,12 +247,8 @@ class DLLNNWithPhysicsFixedGate(DLLNNWithPhysics):
         if physics_pred is None:
             return ltc_pred, ltc_pred
         # 固定 α 门控（不可学习）
-        alpha = torch.full(
-            (x.size(0), 1), self.fixed_alpha, device=x.device, dtype=x.dtype
-        )
-        final_pred = alpha * ltc_pred + (1 - alpha) * (
-            self.physics_scale * physics_pred + self.physics_bias
-        )
+        alpha = torch.full((x.size(0), 1), self.fixed_alpha, device=x.device, dtype=x.dtype)
+        final_pred = alpha * ltc_pred + (1 - alpha) * (self.physics_scale * physics_pred + self.physics_bias)
         return final_pred, ltc_pred
 
 
@@ -264,12 +259,24 @@ class DLLNNWithPhysicsMLP(DLLNNWithPhysics):
     用于隔离 LTC 连续时间动力学对性能的贡献。
     """
 
-    def __init__(self, input_dim: int = 7, hidden_dim: int = 64,
-                 num_layers: int = 3, output_dim: int = 1,
-                 dt: float = 0.1, dropout: float = 0.2, **kwargs):
+    def __init__(
+        self,
+        input_dim: int = 7,
+        hidden_dim: int = 64,
+        num_layers: int = 3,
+        output_dim: int = 1,
+        dt: float = 0.1,
+        dropout: float = 0.2,
+        **kwargs,
+    ):
         super().__init__(
-            input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers,
-            output_dim=output_dim, dt=dt, dropout=dropout, **kwargs
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers,
+            output_dim=output_dim,
+            dt=dt,
+            dropout=dropout,
+            **kwargs,
         )
         # 替换 LTC 分支为 MLP
         layers = []
@@ -289,12 +296,24 @@ class DLLNNWithPhysicsCNN(DLLNNWithPhysics):
     将 LTC 分支替换为 1D-CNN，其余架构（物理分支 + 自适应门控）与 DL-LNN 完全一致。
     """
 
-    def __init__(self, input_dim: int = 7, hidden_dim: int = 64,
-                 num_layers: int = 3, output_dim: int = 1,
-                 dt: float = 0.1, dropout: float = 0.2, **kwargs):
+    def __init__(
+        self,
+        input_dim: int = 7,
+        hidden_dim: int = 64,
+        num_layers: int = 3,
+        output_dim: int = 1,
+        dt: float = 0.1,
+        dropout: float = 0.2,
+        **kwargs,
+    ):
         super().__init__(
-            input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers,
-            output_dim=output_dim, dt=dt, dropout=dropout, **kwargs
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers,
+            output_dim=output_dim,
+            dt=dt,
+            dropout=dropout,
+            **kwargs,
         )
         # 替换 LTC 分支为 1D-CNN
         self.ltc_branch = nn.Sequential(
@@ -317,9 +336,7 @@ class DLLNNWithPhysicsCNN(DLLNNWithPhysics):
         if physics_pred is None:
             return ltc_pred, ltc_pred
         alpha = self.gate(x)
-        final_pred = alpha * ltc_pred + (1 - alpha) * (
-            self.physics_scale * physics_pred + self.physics_bias
-        )
+        final_pred = alpha * ltc_pred + (1 - alpha) * (self.physics_scale * physics_pred + self.physics_bias)
         return final_pred, ltc_pred
 
 
@@ -347,9 +364,8 @@ def create_ablation_model(spec: AblationSpec, config: ExperimentConfig) -> nn.Mo
         raise ValueError(f"未知模型变体: {variant}")
 
 
-# =============================================================================
 # 数据加载（复用主实验数据集）
-# =============================================================================
+
 
 def load_ablation_dataset(name: str, seed: int = 42) -> Dict[str, np.ndarray]:
     """加载消融实验数据集，返回训练/验证/测试三折。
@@ -410,15 +426,20 @@ def load_ablation_dataset(name: str, seed: int = 42) -> Dict[str, np.ndarray]:
     X_test, y_test, yp_test = subset_to_arrays(test_subset)
 
     return {
-        "X_train": X_train, "y_train": y_train, "y_phys_train": yp_train,
-        "X_val": X_val, "y_val": y_val, "y_phys_val": yp_val,
-        "X_test": X_test, "y_test": y_test, "y_phys_test": yp_test,
+        "X_train": X_train,
+        "y_train": y_train,
+        "y_phys_train": yp_train,
+        "X_val": X_val,
+        "y_val": y_val,
+        "y_phys_val": yp_val,
+        "X_test": X_test,
+        "y_test": y_test,
+        "y_phys_test": yp_test,
     }
 
 
-# =============================================================================
 # 通用训练与评估（复用主实验 DLLNNTrainer）
-# =============================================================================
+
 
 class _SimpleDataset(Dataset):
     """将 numpy 数组包装为 Dataset，返回 (x, y_true, y_physics) 三元组。"""
@@ -468,7 +489,7 @@ def train_and_evaluate_ablation(
     set_global_seed(seed)
     start_time = time.time()
 
-    # === 1. 深拷贝 config 并应用消融修改 ===
+    # 1. 深拷贝 config 并应用消融修改
     config = copy.deepcopy(base_config)
 
     # 修改 stage 轮数
@@ -485,19 +506,21 @@ def train_and_evaluate_ablation(
     if not spec.two_stage:
         config.model.num_epochs_stage2 = stage1_epochs + stage2_epochs
 
-    # === 2. 构造数据加载器 ===
+    # 2. 构造数据加载器
     train_ds = _SimpleDataset(data["X_train"], data["y_train"], data["y_phys_train"])
     val_ds = _SimpleDataset(data["X_val"], data["y_val"], data["y_phys_val"])
     test_ds = _SimpleDataset(data["X_test"], data["y_test"], data["y_phys_test"])
 
     train_loader = DataLoader(
-        train_ds, batch_size=32, shuffle=True,
+        train_ds,
+        batch_size=32,
+        shuffle=True,
         generator=torch.Generator().manual_seed(seed),
     )
     val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
-    # === 3. 创建 Trainer ===
+    # 3. 创建 Trainer
     trainer = DLLNNTrainer(config, device=config.model.device)
 
     # 若使用模型变体（A6/A7），替换 trainer.model 并重建优化器
@@ -516,7 +539,7 @@ def train_and_evaluate_ablation(
             eta_min=1e-5,
         )
 
-    # === 4. 训练 ===
+    # 4. 训练
     if spec.two_stage:
         # 两阶段：stage1 预训练 + stage2 微调
         trainer.train_stage1(train_loader, val_loader, num_epochs=stage1_epochs)
@@ -530,7 +553,7 @@ def train_and_evaluate_ablation(
         single_epochs = stage1_epochs + stage2_epochs
         trainer.train_stage2(train_loader, val_loader, num_epochs=single_epochs)
 
-    # === 5. 评估 ===
+    # 5. 评估
     trainer.model.eval()
     all_preds = []
     all_targets = []
@@ -594,9 +617,8 @@ def train_and_evaluate_ablation(
     }
 
 
-# =============================================================================
 # Checkpoint 增量保存与恢复（防止中断丢失结果）
-# =============================================================================
+
 
 def get_checkpoint_path(output_dir: Path, dataset_name: str) -> Path:
     """获取 checkpoint 文件路径。"""
@@ -634,17 +656,22 @@ def save_checkpoint(
     # 原子写入：先写临时文件再重命名，防止写入过程中断损坏
     tmp_path = ckpt_path.with_suffix(".tmp")
     with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "dataset": dataset_name,
-            "last_update": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "completed": completed,
-        }, f, indent=2, ensure_ascii=False, default=str)
+        json.dump(
+            {
+                "dataset": dataset_name,
+                "last_update": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "completed": completed,
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+            default=str,
+        )
     tmp_path.replace(ckpt_path)
 
 
-# =============================================================================
 # 报告生成
-# =============================================================================
+
 
 def save_results(
     results: List[Dict[str, Any]],
@@ -654,17 +681,22 @@ def save_results(
     """保存 JSON / CSV / Markdown 三种格式报告。"""
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # === JSON ===
+    # JSON
     json_path = output_dir / "ablation_results.json"
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "dataset": dataset_name,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "results": results,
-        }, f, indent=2, ensure_ascii=False)
+        json.dump(
+            {
+                "dataset": dataset_name,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "results": results,
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
     print(f"\n[已保存] JSON: {json_path}")
 
-    # === CSV ===
+    # CSV
     csv_path = output_dir / "ablation_summary.csv"
     metric_keys = set()
     for r in results:
@@ -688,7 +720,7 @@ def save_results(
             writer.writerow(row)
     print(f"[已保存] CSV:  {csv_path}")
 
-    # === Markdown ===
+    # Markdown
     md_path = output_dir / "ablation_report.md"
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(f"# 消融实验报告\n\n")
@@ -743,47 +775,57 @@ def save_results(
     print(f"[已保存] MD:   {md_path}")
 
 
-# =============================================================================
 # 主入口
-# =============================================================================
+
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="DL-LNN 消融实验脚本 v2（复用主实验基础设施）"
-    )
+    parser = argparse.ArgumentParser(description="DL-LNN 消融实验脚本 v2（复用主实验基础设施）")
     parser.add_argument(
-        "--dataset", type=str, default="synthetic",
+        "--dataset",
+        type=str,
+        default="synthetic",
         choices=["synthetic", "industrial_6061", "phm2010"],
         help="数据集名称",
     )
     parser.add_argument(
-        "--ablations", type=str, nargs="+",
+        "--ablations",
+        type=str,
+        nargs="+",
         default=["Full", "A1", "A2", "A3", "A4_lam0.1", "A6_fixed0.5", "A7_MLP"],
         help="消融配置名称列表（用空格分隔）。支持: Full A1 A2 A3 A4_lam{x} A5 A6_fixed{x} A7_LTC A7_MLP A7_CNN",
     )
     parser.add_argument(
-        "--output_dir", type=str,
+        "--output_dir",
+        type=str,
         default="论文相关/脚本/results/ablation",
         help="结果输出目录",
     )
     parser.add_argument(
-        "--stage1_epochs", type=int, default=100,
+        "--stage1_epochs",
+        type=int,
+        default=100,
         help="阶段一（解析预训练）轮数",
     )
     parser.add_argument(
-        "--stage2_epochs", type=int, default=200,
+        "--stage2_epochs",
+        type=int,
+        default=200,
         help="阶段二（物理残差微调）轮数",
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="随机种子",
     )
     parser.add_argument(
-        "--resume", action="store_true",
+        "--resume",
+        action="store_true",
         help="从 checkpoint 恢复，跳过已完成的配置",
     )
     parser.add_argument(
-        "--fresh", action="store_true",
+        "--fresh",
+        action="store_true",
         help="忽略已有 checkpoint，从头开始（会覆盖）",
     )
     return parser.parse_args()
@@ -851,14 +893,14 @@ def main():
 
         # 恢复逻辑：若已存在该配置的结果，直接复用
         if ablation_name in completed:
-            print(f"\n[Checkpoint] [{i+1}/{len(args.ablations)}] 跳过已完成的 {ablation_name}")
+            print(f"\n[Checkpoint] [{i + 1}/{len(args.ablations)}] 跳过已完成的 {ablation_name}")
             results.append(completed[ablation_name])
             continue
 
-        print(f"\n{'='*60}")
-        print(f"[{i+1}/{len(args.ablations)}] 消融配置: {spec.name}")
+        print(f"\n{'=' * 60}")
+        print(f"[{i + 1}/{len(args.ablations)}] 消融配置: {spec.name}")
         print(f"  描述: {spec.description}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         try:
             result = train_and_evaluate_ablation(
@@ -878,6 +920,7 @@ def main():
         except Exception as e:
             print(f"[错误] 消融 {spec.name} 执行失败: {e}")
             import traceback
+
             traceback.print_exc()
             result = {
                 "spec_name": spec.name,
@@ -896,10 +939,10 @@ def main():
     # 保存最终结果（JSON/CSV/MD）
     save_results(results, args.dataset, output_dir)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"消融实验完成！共 {len(results)} 个配置")
     print(f"结果保存至: {output_dir.resolve()}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
 
 if __name__ == "__main__":

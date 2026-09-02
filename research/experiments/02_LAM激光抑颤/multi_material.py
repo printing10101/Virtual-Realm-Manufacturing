@@ -18,6 +18,7 @@
 
 输出：材料 × 功率的增益窗口表 + 证据级别标注。
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -29,24 +30,24 @@ import numpy as np
 TI64_KAPPA, TI64_DELTA = 0.000736, 0.000517
 
 # ---- 公开材料属性（ASM 手册级）----
-# Inconel 718: E0=200 GPa @20°C, E(500°C)≈170 GPa → δ=(200-170)/200/500
+# Inconel 718: E0=200 GPa @20°C, E(500°C)≈170 GPa δ=(200-170)/200/500
 IN718_E0_GPA, IN718_E500_GPA = 200.0, 170.0
-IN718_DELTA = (IN718_E0_GPA - IN718_E500_GPA) / IN718_E0_GPA / 500.0   # ≈0.0003
-IN718_KAPPA_RANGE = (0.0006, 0.0012)     # 🔶 文献综述区间（García 2013 等）
+IN718_DELTA = (IN718_E0_GPA - IN718_E500_GPA) / IN718_E0_GPA / 500.0  # ≈0.0003
+IN718_KAPPA_RANGE = (0.0006, 0.0012)  # 🔶 文献综述区间（García 2013 等）
 
 TI5553_KAPPA_RANGE = (0.000527, 0.001267)  # ⚠️ 同族保守：与 Ti-6Al-4V J-C 区间一致
-TI5553_DELTA = TI64_DELTA                   # ⚠️ E(T) 同族近似
+TI5553_DELTA = TI64_DELTA  # ⚠️ E(T) 同族近似
 
-XI_LO, XI_HI = 733.0, 1107.0                # ✅ Springer OA 实测（Ti-6Al-4V）
-XI_TI5553_SCALE = 1.0                       # ⚠️ 近 β 钛热导率相近，xi 保守取同族
-XI_IN718_SCALE = 0.9                        # 🔶 镍基热导率更高(11.4 W/mK)，加热效率略低
+XI_LO, XI_HI = 733.0, 1107.0  # ✅ Springer OA 实测（Ti-6Al-4V）
+XI_TI5553_SCALE = 1.0  # ⚠️ 近 β 钛热导率相近，xi 保守取同族
+XI_IN718_SCALE = 0.9  # 🔶 镍基热导率更高(11.4 W/mK)，加热效率略低
 
 
 @dataclass
 class Material:
     name: str
-    kappa: tuple[float, float]        # (lo, hi) /°C
-    delta: float                      # /°C
+    kappa: tuple[float, float]  # (lo, hi) /°C
+    delta: float  # /°C
     xi_scale: float
     evidence: str
     note: str = ""
@@ -60,25 +61,39 @@ class Material:
         ke = self.kappa_eff(r)
         # 温升取 min(dT, 上限)：不越过相变安全窗 800°C
         dT = min(dT_degC, 800.0)
-        g_hi = 1.0 / (1.0 - ke[0] * dT)   # κ 低端 → 增益小（保守）
+        g_hi = 1.0 / (1.0 - ke[0] * dT)  # κ 低端 → 增益小（保守）
         g_lo = 1.0 / (1.0 - ke[1] * dT)
-        return (g_hi, g_lo)               # (保守, 乐观)
+        return (g_hi, g_lo)  # (保守, 乐观)
 
     def power_for_dT(self, dT_degC: float, xi_C_per_kW: float) -> float:
         return dT_degC / xi_C_per_kW * 1000.0
 
 
 MATERIALS = [
-    Material("Ti-6Al-4V", (TI64_KAPPA * 0.75, TI64_KAPPA * 1.25),
-             TI64_DELTA, 1.0, "✅ 锚点：J-C 9 组 + Karpat 2009 E(T) + Springer 实测",
-             "力降 10~40% 实测（Dominguez-Caballero 2023 / Hedberg-Shin 2015）"),
-    Material("Ti5553 (近β钛)", TI5553_KAPPA_RANGE, TI5553_DELTA, XI_TI5553_SCALE,
-             "⚠️ 同族推导：热导率 7 W/mK≈Ti-6Al-4V；β 相高温软化更强（保守取等）",
-             "Rashid 等近 β 钛 LAM 文献支持机制，定量需实验"),
-    Material("Inconel 718", IN718_KAPPA_RANGE, IN718_DELTA, XI_IN718_SCALE,
-             "🔶 κ=文献综述区间（García et al. 2013 IJMTM 报道 LAM 显著改善）；"
-             "δ=ASM 公开 E(T) 推导 0.0003",
-             "镍基热导率 11.4 W/mK → 激光热散失快，xi 略低"),
+    Material(
+        "Ti-6Al-4V",
+        (TI64_KAPPA * 0.75, TI64_KAPPA * 1.25),
+        TI64_DELTA,
+        1.0,
+        "✅ 锚点：J-C 9 组 + Karpat 2009 E(T) + Springer 实测",
+        "力降 10~40% 实测（Dominguez-Caballero 2023 / Hedberg-Shin 2015）",
+    ),
+    Material(
+        "Ti5553 (近β钛)",
+        TI5553_KAPPA_RANGE,
+        TI5553_DELTA,
+        XI_TI5553_SCALE,
+        "⚠️ 同族推导：热导率 7 W/mK≈Ti-6Al-4V；β 相高温软化更强（保守取等）",
+        "Rashid 等近 β 钛 LAM 文献支持机制，定量需实验",
+    ),
+    Material(
+        "Inconel 718",
+        IN718_KAPPA_RANGE,
+        IN718_DELTA,
+        XI_IN718_SCALE,
+        "🔶 κ=文献综述区间（García et al. 2013 IJMTM 报道 LAM 显著改善）；δ=ASM 公开 E(T) 推导 0.0003",
+        "镍基热导率 11.4 W/mK → 激光热散失快，xi 略低",
+    ),
 ]
 
 
@@ -99,16 +114,22 @@ def main() -> None:
         ke_r10 = mat.kappa_eff(1.0)
         g_r03 = mat.gain_at(P_ENG, dT, r=0.3)
         g_r10 = mat.gain_at(P_ENG, dT, r=1.0)
-        rows.append({"material": mat.name, "xi_C_per_kW": round(xi, 1),
-                     "dT_C": round(dT, 0), "kappa_eff_r0.3": ke_r03,
-                     "kappa_eff_r1.0": ke_r10, "gain_r0.3": g_r03,
-                     "gain_r1.0": g_r10, "evidence": mat.evidence})
+        rows.append(
+            {
+                "material": mat.name,
+                "xi_C_per_kW": round(xi, 1),
+                "dT_C": round(dT, 0),
+                "kappa_eff_r0.3": ke_r03,
+                "kappa_eff_r1.0": ke_r10,
+                "gain_r0.3": g_r03,
+                "gain_r1.0": g_r10,
+                "evidence": mat.evidence,
+            }
+        )
         print(f"\n[{mat.name}]  （{mat.evidence}）")
         print(f"  xi={xi:.0f} °C/kW → 651W 时 ΔT={dT:.0f}°C")
-        print(f"  κ_eff: r=0.3 → {ke_r03[0]:.5f}~{ke_r03[1]:.5f} /°C"
-              f" | r=1.0 → {ke_r10[0]:.5f}~{ke_r10[1]:.5f} /°C")
-        print(f"  增益窗口: r=0.3 → {g_r03[0]:.2f}~{g_r03[1]:.2f}×"
-              f" | r=1.0 → {g_r10[0]:.2f}~{g_r10[1]:.2f}×")
+        print(f"  κ_eff: r=0.3 → {ke_r03[0]:.5f}~{ke_r03[1]:.5f} /°C | r=1.0 → {ke_r10[0]:.5f}~{ke_r10[1]:.5f} /°C")
+        print(f"  增益窗口: r=0.3 → {g_r03[0]:.2f}~{g_r03[1]:.2f}× | r=1.0 → {g_r10[0]:.2f}~{g_r10[1]:.2f}×")
 
     print("\n" + "=" * 74)
     print("边界结论（论文 discussion 素材）")
@@ -120,14 +141,25 @@ def main() -> None:
     print("     高热导率材料（镍基/铝）需更高功率或束斑优化")
 
     import json
+
     out = out_dir / "multi_material_summary.json"
-    out.write_text(json.dumps({"p_eng_W": P_ENG, "xi_median_C_per_kW": XI_MED,
-                               "materials": rows,
-                               "conclusions": [
-                                   "Ti 族 1.2~1.6× 可靠（锚点+同族）",
-                                   "Inconel 718 需镍基实测标定（κ 区间宽）",
-                                   "低热导率材料 LAM 效率高"]},
-                              ensure_ascii=False, indent=1), encoding="utf-8")
+    out.write_text(
+        json.dumps(
+            {
+                "p_eng_W": P_ENG,
+                "xi_median_C_per_kW": XI_MED,
+                "materials": rows,
+                "conclusions": [
+                    "Ti 族 1.2~1.6× 可靠（锚点+同族）",
+                    "Inconel 718 需镍基实测标定（κ 区间宽）",
+                    "低热导率材料 LAM 效率高",
+                ],
+            },
+            ensure_ascii=False,
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
     print(f"\n已保存 {out}")
 
 

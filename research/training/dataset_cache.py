@@ -33,15 +33,15 @@ logger = logging.getLogger(__name__)
 # 防止攻击者篡改 .pkl 文件触发 pickle 反序列化 RCE。
 #
 # 密钥解析顺序：
-#   1. 环境变量 ``LNN_CACHE_HMAC_KEY``（生产部署推荐；以 hex 或 base64 字符串形式提供，
-#      长度需 ≥ 32 字节解码后）。设置后，磁盘缓存可在进程重启之间复用，提升命中率。
-#   2. 未设置时回退到进程级随机密钥（基于 pid + 启动时间）。
-#      此模式同样安全，但每次进程重启都会使旧 .pkl 文件 HMAC 校验失败而被清理，
-#      缓存命中率下降。开发环境可保持回退；生产环境务必显式配置环境变量。
+# 1. 环境变量 ``LNN_CACHE_HMAC_KEY``（生产部署推荐；以 hex 或 base64 字符串形式提供，
+# 长度需 ≥ 32 字节解码后）。设置后，磁盘缓存可在进程重启之间复用，提升命中率。
+# 2. 未设置时回退到进程级随机密钥（基于 pid + 启动时间）。
+# 此模式同样安全，但每次进程重启都会使旧 .pkl 文件 HMAC 校验失败而被清理，
+# 缓存命中率下降。开发环境可保持回退；生产环境务必显式配置环境变量。
 #
 # 安全提示：
-#   - 密钥一旦变更，所有现有磁盘缓存将失效（HMAC 校验失败自动清理），属预期行为。
-#   - 切勿将真实密钥提交到版本控制；通过 .env 或部署平台密钥管理注入。
+# - 密钥一旦变更，所有现有磁盘缓存将失效（HMAC 校验失败自动清理），属预期行为。
+# - 切勿将真实密钥提交到版本控制；通过 .env 或部署平台密钥管理注入。
 _LNN_CACHE_HMAC_KEY_ENV = os.environ.get("LNN_CACHE_HMAC_KEY", "").strip()
 
 
@@ -55,20 +55,19 @@ def _resolve_cache_hmac_key() -> bytes:
             if len(decoded) >= 32:
                 return decoded
             logger.warning(
-                "LNN_CACHE_HMAC_KEY hex 解码成功但长度不足 32 字节（实际 %d），"
-                "回退到进程级随机密钥。",
+                "LNN_CACHE_HMAC_KEY hex 解码成功但长度不足 32 字节（实际 %d），回退到进程级随机密钥。",
                 len(decoded),
             )
         except ValueError:
             # 非 hex 字符串，尝试 base64 解码
             import base64
+
             try:
                 decoded = base64.b64decode(env_value, validate=True)
                 if len(decoded) >= 32:
                     return decoded
                 logger.warning(
-                    "LNN_CACHE_HMAC_KEY base64 解码成功但长度不足 32 字节（实际 %d），"
-                    "回退到进程级随机密钥。",
+                    "LNN_CACHE_HMAC_KEY base64 解码成功但长度不足 32 字节（实际 %d），回退到进程级随机密钥。",
                     len(decoded),
                 )
             except (ValueError, base64.binascii.Error):
@@ -78,14 +77,11 @@ def _resolve_cache_hmac_key() -> bytes:
                     # 派生定长密钥，避免直接使用可变长度密钥
                     return hashlib.sha256(raw).digest()
                 logger.warning(
-                    "LNN_CACHE_HMAC_KEY 既非有效 hex/base64，原始长度也不足 32 字节"
-                    "（实际 %d），回退到进程级随机密钥。",
+                    "LNN_CACHE_HMAC_KEY 既非有效 hex/base64，原始长度也不足 32 字节（实际 %d），回退到进程级随机密钥。",
                     len(raw),
                 )
     # 回退：进程级随机密钥（开发模式安全默认）
-    return hashlib.sha256(
-        f"dataset_cache:{os.getpid()}:{time.time()}".encode()
-    ).digest()
+    return hashlib.sha256(f"dataset_cache:{os.getpid()}:{time.time()}".encode()).digest()
 
 
 _CACHE_HMAC_KEY = _resolve_cache_hmac_key()
@@ -213,14 +209,10 @@ class DatasetCache:
                                 f"Failed to read size for cache file {filepath}: {e}",
                                 exc_info=True,
                             )
-                logger.debug(
-                    f"Loaded disk cache metadata: {self._current_disk_usage} bytes"
-                )
+                logger.debug(f"Loaded disk cache metadata: {self._current_disk_usage} bytes")
         except (OSError, IOError, json.JSONDecodeError, ValueError, KeyError) as e:
             # 磁盘缓存元数据加载涉及文件 IO、JSON 解析、字段访问
-            logger.warning(
-                f"Failed to load disk cache metadata: {e}", exc_info=True
-            )
+            logger.warning(f"Failed to load disk cache metadata: {e}", exc_info=True)
 
     @staticmethod
     def generate_cache_key(file_path: str) -> Tuple[str, float, int]:
@@ -258,9 +250,7 @@ class DatasetCache:
 
         return cache_key, file_mtime, file_size
 
-    def _validate_cache(
-        self, file_path: str, expected_mtime: float, expected_size: int
-    ) -> bool:
+    def _validate_cache(self, file_path: str, expected_mtime: float, expected_size: int) -> bool:
         """
         三级缓存有效性检测
 
@@ -289,17 +279,11 @@ class DatasetCache:
             current_size = current_stat.st_size
 
             if abs(current_mtime - expected_mtime) > 0.001:
-                logger.debug(
-                    f"Cache invalid: mtime changed "
-                    f"(expected={expected_mtime}, current={current_mtime})"
-                )
+                logger.debug(f"Cache invalid: mtime changed (expected={expected_mtime}, current={current_mtime})")
                 return False
 
             if current_size != expected_size:
-                logger.debug(
-                    f"Cache invalid: size changed "
-                    f"(expected={expected_size}, current={current_size})"
-                )
+                logger.debug(f"Cache invalid: size changed (expected={expected_size}, current={current_size})")
                 return False
 
             return True
@@ -350,19 +334,13 @@ class DatasetCache:
                     self._cache_hits += 1
                     # P2-批次2 修复：改用 %s 懒求值。缓存命中是热路径，
                     # 每次训练 batch 加载都会触发，info 级别关闭时避免插值开销。
-                    logger.info(
-                        "Cache hit (memory): %s, key=%s...", file_path, cache_key[:8]
-                    )
+                    logger.info("Cache hit (memory): %s, key=%s...", file_path, cache_key[:8])
                     return memory_result
 
-                disk_result = self._get_from_disk(
-                    cache_key, file_path, file_mtime, file_size
-                )
+                disk_result = self._get_from_disk(cache_key, file_path, file_mtime, file_size)
                 if disk_result is not None:
                     self._cache_hits += 1
-                    logger.info(
-                        "Cache hit (disk): %s, key=%s...", file_path, cache_key[:8]
-                    )
+                    logger.info("Cache hit (disk): %s, key=%s...", file_path, cache_key[:8])
                     return disk_result
 
         with self._lock:
@@ -370,9 +348,7 @@ class DatasetCache:
             logger.info("Cache miss: %s", file_path)
             return None
 
-    def _get_from_memory(
-        self, cache_key: str
-    ) -> Optional[Tuple[Any, Any, Dict[str, Any]]]:
+    def _get_from_memory(self, cache_key: str) -> Optional[Tuple[Any, Any, Dict[str, Any]]]:
         """
         从内存缓存获取数据
 
@@ -435,8 +411,7 @@ class DatasetCache:
                 except OSError as rm_err:
                     # 删除失败不阻塞返回 None（已判定签名不匹配），
                     # 记录便于排查：下次加载仍会触发签名校验失败
-                    logger.debug("Failed to remove tampered cache file %s: %s",
-                                 cache_file, rm_err)
+                    logger.debug("Failed to remove tampered cache file %s: %s", cache_file, rm_err)
                 return None
             entry_data = pickle.loads(payload)
 
@@ -459,9 +434,7 @@ class DatasetCache:
             return entry.data, entry.labels, entry.metadata
 
         except (pickle.UnpicklingError, EOFError, KeyError) as e:
-            logger.warning(
-                f"Failed to load cache from disk: {e}, removing corrupted file"
-            )
+            logger.warning(f"Failed to load cache from disk: {e}, removing corrupted file")
             try:
                 os.remove(cache_file)
             except OSError as remove_err:
@@ -473,9 +446,7 @@ class DatasetCache:
             return None
         except (OSError, IOError, ValueError, TypeError, KeyError) as e:
             # 兜底捕获：磁盘缓存加载可能涉及文件 IO、反序列化、字段缺失等未知错误
-            logger.warning(
-                f"Unexpected error loading cache from disk: {e}", exc_info=True
-            )
+            logger.warning(f"Unexpected error loading cache from disk: {e}", exc_info=True)
             return None
 
     def put(
@@ -529,10 +500,7 @@ class DatasetCache:
             self._add_to_memory(entry)
             self._save_to_disk(entry)
 
-            logger.info(
-                f"Cache stored: {file_path}, key={cache_key[:8]}..., "
-                f"size={memory_size / 1024:.2f}KB"
-            )
+            logger.info(f"Cache stored: {file_path}, key={cache_key[:8]}..., size={memory_size / 1024:.2f}KB")
 
             return cache_key
 
@@ -555,8 +523,7 @@ class DatasetCache:
             return
 
         while (
-            self._current_memory_usage + entry.memory_size_bytes
-            > self._memory_cache_size
+            self._current_memory_usage + entry.memory_size_bytes > self._memory_cache_size
             and len(self._memory_cache) > 0
         ):
             self._evict_from_memory()
@@ -578,8 +545,7 @@ class DatasetCache:
         evicted_key, evicted_entry = self._memory_cache.popitem(last=False)
         self._current_memory_usage -= evicted_entry.memory_size_bytes
         logger.debug(
-            f"Memory cache evicted: key={evicted_key[:8]}..., "
-            f"freed={evicted_entry.memory_size_bytes / 1024:.2f}KB"
+            f"Memory cache evicted: key={evicted_key[:8]}..., freed={evicted_entry.memory_size_bytes / 1024:.2f}KB"
         )
 
     def _save_to_disk(self, entry: CacheEntry) -> None:
@@ -613,10 +579,7 @@ class DatasetCache:
 
             file_size = os.path.getsize(cache_file)
 
-            while (
-                self._current_disk_usage + file_size > self._max_cache_size
-                and self._has_disk_cache()
-            ):
+            while self._current_disk_usage + file_size > self._max_cache_size and self._has_disk_cache():
                 self._evict_from_disk()
 
             self._current_disk_usage += file_size
@@ -629,9 +592,7 @@ class DatasetCache:
                 logger.error("Failed to save cache to disk: %s", e)
         except (pickle.PickleError, ValueError, TypeError, AttributeError) as e:
             # 兜底捕获：磁盘缓存序列化可能因对象类型、属性访问等失败
-            logger.error(
-                f"Unexpected error saving cache to disk: {e}", exc_info=True
-            )
+            logger.error(f"Unexpected error saving cache to disk: {e}", exc_info=True)
 
     def _has_disk_cache(self) -> bool:
         """检查是否有磁盘缓存文件"""
@@ -671,15 +632,12 @@ class DatasetCache:
                 os.remove(oldest_file)
                 self._current_disk_usage -= file_size
                 logger.debug(
-                    f"Disk cache evicted: file={os.path.basename(oldest_file)}, "
-                    f"freed={file_size / 1024:.2f}KB"
+                    f"Disk cache evicted: file={os.path.basename(oldest_file)}, freed={file_size / 1024:.2f}KB"
                 )
 
         except (OSError, ValueError, TypeError, AttributeError) as e:
             # 磁盘缓存清理涉及文件 IO、属性访问等
-            logger.warning(
-                f"Failed to evict from disk cache: {e}", exc_info=True
-            )
+            logger.warning(f"Failed to evict from disk cache: {e}", exc_info=True)
 
     def _clear_disk_cache(self) -> None:
         """清空所有磁盘缓存"""
@@ -700,9 +658,7 @@ class DatasetCache:
 
         except (OSError, ValueError, TypeError, AttributeError) as e:
             # 兜底捕获：清空缓存涉及目录遍历、文件 IO 等
-            logger.error(
-                f"Failed to clear disk cache: {e}", exc_info=True
-            )
+            logger.error(f"Failed to clear disk cache: {e}", exc_info=True)
 
     @staticmethod
     def _estimate_memory_size(data: Any, labels: Any) -> int:
@@ -786,16 +742,12 @@ class DatasetCache:
                                 )
                 except (OSError, ValueError, TypeError, AttributeError) as e:
                     # 兜底捕获：批量清理磁盘缓存涉及目录遍历、文件 IO
-                    logger.warning(
-                        f"Failed to clear disk cache: {e}", exc_info=True
-                    )
+                    logger.warning(f"Failed to clear disk cache: {e}", exc_info=True)
 
                 self._current_disk_usage = 0
                 count += disk_count
                 freed += disk_freed
-                logger.info(
-                    f"Disk cache cleared: {disk_count} files, {disk_freed} bytes"
-                )
+                logger.info(f"Disk cache cleared: {disk_count} files, {disk_freed} bytes")
 
             return count, freed
 
@@ -807,17 +759,9 @@ class DatasetCache:
             包含缓存命中率、加载时间、缓存大小等指标的字典
         """
         with self._lock:
-            hit_rate = (
-                self._cache_hits / self._total_requests
-                if self._total_requests > 0
-                else 0.0
-            )
+            hit_rate = self._cache_hits / self._total_requests if self._total_requests > 0 else 0.0
 
-            avg_load_time = (
-                self._total_load_time / self._total_requests
-                if self._total_requests > 0
-                else 0.0
-            )
+            avg_load_time = self._total_load_time / self._total_requests if self._total_requests > 0 else 0.0
 
             return {
                 "total_requests": self._total_requests,
@@ -827,17 +771,11 @@ class DatasetCache:
                 "average_load_time_ms": round(avg_load_time * 1000, 2),
                 "memory_cache_entries": len(self._memory_cache),
                 "memory_cache_usage_bytes": self._current_memory_usage,
-                "memory_cache_usage_mb": round(
-                    self._current_memory_usage / (1024 * 1024), 2
-                ),
+                "memory_cache_usage_mb": round(self._current_memory_usage / (1024 * 1024), 2),
                 "memory_cache_limit_bytes": self._memory_cache_size,
-                "memory_cache_limit_mb": round(
-                    self._memory_cache_size / (1024 * 1024), 2
-                ),
+                "memory_cache_limit_mb": round(self._memory_cache_size / (1024 * 1024), 2),
                 "disk_cache_usage_bytes": self._current_disk_usage,
-                "disk_cache_usage_mb": round(
-                    self._current_disk_usage / (1024 * 1024), 2
-                ),
+                "disk_cache_usage_mb": round(self._current_disk_usage / (1024 * 1024), 2),
                 "disk_cache_limit_bytes": self._max_cache_size,
                 "disk_cache_limit_mb": round(self._max_cache_size / (1024 * 1024), 2),
                 "eviction_policy": self._eviction_policy,

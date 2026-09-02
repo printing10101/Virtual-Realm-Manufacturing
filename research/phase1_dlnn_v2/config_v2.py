@@ -16,28 +16,28 @@ import os
 class Phase1Config:
     """Phase 1 完整实验配置"""
 
-    # ========== 实验标识 ==========
+    # 实验标识
     experiment_name: str = "phase1_dlnn_v2"
     seed: int = 42
 
-    # ========== 模型参数 ==========
+    # 模型参数
     input_dim: int = 7
     hidden_dim: int = 128
     num_layers: int = 3
     ltc_dt: float = 0.1
     dropout: float = 0.2
 
-    # ========== 延迟嵌入参数（Phase 1 核心创新） ==========
-    tau_init: float = 0.1            # 初始 τ (s)，对应 n≈600 rpm
-    tau_phys_enabled: bool = True     # 是否启用物理 τ 正则化
-    lambda_tau_reg: float = 0.01      # τ 正则化系数
-    delay_buffer_size: int = 128      # 延迟历史缓冲区大小
+    # 延迟嵌入参数（Phase 1 核心创新）
+    tau_init: float = 0.1  # 初始 τ (s)，对应 n≈600 rpm
+    tau_phys_enabled: bool = True  # 是否启用物理 τ 正则化
+    lambda_tau_reg: float = 0.01  # τ 正则化系数
+    delay_buffer_size: int = 128  # 延迟历史缓冲区大小
 
-    # ========== 预测目标参数 ==========
-    prediction_horizon: int = 50      # 预测未来帧数（长时间预测）
-    prediction_stride: int = 1        # 预测步长
+    # 预测目标参数
+    prediction_horizon: int = 50  # 预测未来帧数（长时间预测）
+    prediction_stride: int = 1  # 预测步长
 
-    # ========== 三阶段训练参数 ==========
+    # 三阶段训练参数
     batch_size: int = 32
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
@@ -51,7 +51,7 @@ class Phase1Config:
     # 阶段 3：频域精调（加入 L_freq，权重退火）
     num_epochs_stage3: int = 50
 
-    # ========== 物理损失权重（课程式退火） ==========
+    # 物理损失权重（课程式退火）
     # 论文原始权重：λ_data=1.0, λ_phys=0.5, λ_pcc=0.1
     lambda_data: float = 1.0
     lambda_phys: float = 0.5
@@ -62,21 +62,21 @@ class Phase1Config:
     lambda_freq_end: float = 0.1
     epsilon_phys: float = 0.1
 
-    # ========== 优化器参数 ==========
+    # 优化器参数
     lr_stage1: float = 1e-3
     lr_stage2: float = 5e-4
     lr_stage3: float = 1e-4
 
-    # ========== 数据集参数 ==========
+    # 数据集参数
     dataset_name: str = "Synthetic"
     num_samples: int = 10000
     train_ratio: float = 0.7
     val_ratio: float = 0.15
 
-    # ========== 设备 ==========
+    # 设备
     device: str = "cuda"
 
-    # ========== 输出路径 ==========
+    # 输出路径
     output_dir: str = "phase1_dlnn_v2/results"
     checkpoint_dir: str = "phase1_dlnn_v2/checkpoints"
 

@@ -29,26 +29,52 @@ import os
 from typing import Dict, List, Tuple
 
 SCHEMA_COLUMNS: List[str] = [
-    "source", "doi", "material", "hardness_hb",
-    "n_rpm", "feed_mm_per_tooth", "ap_mm", "ae_mm",
-    "tool_diameter_mm", "num_teeth", "stable", "a_lim_measured_mm",
+    "source",
+    "doi",
+    "material",
+    "hardness_hb",
+    "n_rpm",
+    "feed_mm_per_tooth",
+    "ap_mm",
+    "ae_mm",
+    "tool_diameter_mm",
+    "num_teeth",
+    "stable",
+    "a_lim_measured_mm",
 ]
 
-# 数值列（缺失/空 → NaN）
+# 数值列（缺失/空 NaN）
 NUMERIC_COLUMNS: List[str] = [
-    "hardness_hb", "n_rpm", "feed_mm_per_tooth", "ap_mm", "ae_mm",
-    "tool_diameter_mm", "num_teeth", "stable", "a_lim_measured_mm",
+    "hardness_hb",
+    "n_rpm",
+    "feed_mm_per_tooth",
+    "ap_mm",
+    "ae_mm",
+    "tool_diameter_mm",
+    "num_teeth",
+    "stable",
+    "a_lim_measured_mm",
 ]
 
 # 必填非空列
 REQUIRED_COLUMNS: List[str] = [
-    "source", "doi", "n_rpm", "ap_mm", "ae_mm", "stable",
+    "source",
+    "doi",
+    "n_rpm",
+    "ap_mm",
+    "ae_mm",
+    "stable",
 ]
 
 # 键列（引擎 7 维特征所需）
 FEATURE_KEY_COLUMNS: List[str] = [
-    "n_rpm", "feed_mm_per_tooth", "ap_mm", "ae_mm",
-    "hardness_hb", "tool_diameter_mm", "num_teeth",
+    "n_rpm",
+    "feed_mm_per_tooth",
+    "ap_mm",
+    "ae_mm",
+    "hardness_hb",
+    "tool_diameter_mm",
+    "num_teeth",
 ]
 
 

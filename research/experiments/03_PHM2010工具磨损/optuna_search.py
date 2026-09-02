@@ -1,4 +1,4 @@
-﻿"""
+"""
 Optuna 超参搜索脚本
 
 为 GP 基线和 DL-LNN 关键超参执行 Optuna 贝叶斯优化搜索，
@@ -24,7 +24,7 @@ import types
 import time
 import copy
 
-# === WinSock 损坏绕过补丁（与 run_experiment.py 保持一致） ===
+# WinSock 损坏绕过补丁（与 run_experiment.py 保持一致）
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -52,9 +52,8 @@ from experiments.trainer import DLLNNTrainer
 from experiments.metrics import ChatterMetrics
 
 
-# ============================================================================
 # 数据准备（与 run_experiment.py 完全一致的划分，确保搜索结果可复用）
-# ============================================================================
+
 
 def prepare_dataset(dataset_name: str, config):
     """准备数据集与 DataLoader，返回 (train_loader, val_loader, test_loader)。"""
@@ -84,7 +83,9 @@ def prepare_dataset(dataset_name: str, config):
     )
 
     train_loader = DataLoader(
-        train_dataset, batch_size=32, shuffle=True,
+        train_dataset,
+        batch_size=32,
+        shuffle=True,
         generator=torch.Generator().manual_seed(42),
         worker_init_fn=get_worker_init_fn(42),
     )
@@ -109,9 +110,8 @@ def collect_numpy(loader):
     return X, y
 
 
-# ============================================================================
 # GP 基线 Optuna 搜索
-# ============================================================================
+
 
 def gp_objective(trial, train_loader, val_loader):
     """GP 基线 Optuna 目标函数：返回验证集 MAE（越小越好）。"""
@@ -165,9 +165,8 @@ def search_gp(train_loader, val_loader, n_trials=30):
     return study.best_params, study.best_value
 
 
-# ============================================================================
 # DL-LNN Optuna 搜索
-# ============================================================================
+
 
 def dlnn_objective(trial, config, dataset_name, train_loader, val_loader):
     """DL-LNN Optuna 目标函数：返回验证集 MAE（越小越好）。
@@ -242,9 +241,8 @@ def search_dlnn(config, dataset_name, train_loader, val_loader, n_trials=5):
     return study.best_params, study.best_value
 
 
-# ============================================================================
 # 主流程
-# ============================================================================
+
 
 def main():
     config = get_config("optuna_search")
@@ -293,9 +291,7 @@ def main():
 
     # 2. DL-LNN 关键超参搜索（5 trials × 10+15 epochs，约 10 分钟）
     try:
-        dlnn_best, dlnn_mae = search_dlnn(
-            config, dataset_name, train_loader, val_loader, n_trials=5
-        )
+        dlnn_best, dlnn_mae = search_dlnn(config, dataset_name, train_loader, val_loader, n_trials=5)
         best_params["DL-LNN"] = dlnn_best
         best_params["DL-LNN_search_mae"] = dlnn_mae
     except Exception as e:

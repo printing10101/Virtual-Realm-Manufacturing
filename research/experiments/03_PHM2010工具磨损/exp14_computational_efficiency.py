@@ -1,4 +1,4 @@
-﻿"""
+"""
 实验14: 计算效率分析
 对比各模型的计算资源消耗，包括：
 - 模型参数量
@@ -124,10 +124,7 @@ def estimate_flops(model: torch.nn.Module, input_tensor: torch.Tensor) -> int:
 
 
 def measure_training_time(
-    model: torch.nn.Module,
-    train_loader,
-    num_epochs: int = 10,
-    device: str = "cpu"
+    model: torch.nn.Module, train_loader, num_epochs: int = 10, device: str = "cpu"
 ) -> Dict[str, float]:
     """
     测量模型训练时间，记录每个epoch的耗时
@@ -186,10 +183,7 @@ def measure_training_time(
 
 
 def measure_inference_time(
-    model: torch.nn.Module,
-    input_tensor: torch.Tensor,
-    num_runs: int = 100,
-    device: str = "cpu"
+    model: torch.nn.Module, input_tensor: torch.Tensor, num_runs: int = 100, device: str = "cpu"
 ) -> float:
     """
     测量模型推理时间（单样本预测）
@@ -303,12 +297,12 @@ def run_computational_efficiency_experiment():
 
     # 定义要对比的模型列表（仅包含create_model支持的模型）
     model_names = [
-        "DL-LNN",       # DLLNNWithPhysics（带物理分支的完整模型）
-        "LTC",          # DLLNNModel（纯LTC模型）
-        "LSTM",         # 基线LSTM
+        "DL-LNN",  # DLLNNWithPhysics（带物理分支的完整模型）
+        "LTC",  # DLLNNModel（纯LTC模型）
+        "LSTM",  # 基线LSTM
         "Transformer",  # 基线Transformer
-        "PINN",         # 基线PINN
-        "BPNN",         # 基线BPNN
+        "PINN",  # 基线PINN
+        "BPNN",  # 基线BPNN
     ]
 
     # 获取模型配置
@@ -341,32 +335,28 @@ def run_computational_efficiency_experiment():
             model = create_model(model_name, config)
             model = model.to(device)
 
-            # ---- 1. 统计参数量 ----
+            # 1. 统计参数量
             param_count = count_parameters(model)
             print(f"  参数量: {param_count:,}")
 
-            # ---- 2. 估算FLOPs ----
+            # 2. 估算FLOPs
             flops = estimate_flops(model, sample_input)
             print(f"  FLOPs: {flops:,}")
 
-            # ---- 3. 测量训练时间（10个epoch） ----
+            # 3. 测量训练时间（10个epoch）
             # 每次训练前重新创建模型，避免状态累积
             fresh_model = create_model(model_name, config)
             print(f"  训练中（10个epoch）...", end="", flush=True)
-            train_result = measure_training_time(
-                fresh_model, train_loader, num_epochs=10, device=device
-            )
+            train_result = measure_training_time(fresh_model, train_loader, num_epochs=10, device=device)
             print(f" 完成")
             print(f"  平均每epoch时间: {train_result['avg_epoch_time']:.4f}s")
 
-            # ---- 4. 测量推理时间（100次前向传播取平均） ----
+            # 4. 测量推理时间（100次前向传播取平均）
             test_model = create_model(model_name, config)
-            inference_time = measure_inference_time(
-                test_model, sample_input, num_runs=100, device=device
-            )
+            inference_time = measure_inference_time(test_model, sample_input, num_runs=100, device=device)
             print(f"  推理时间: {inference_time:.4f}ms")
 
-            # ---- 5. 测量内存占用 ----
+            # 5. 测量内存占用
             mem_model = create_model(model_name, config)
             memory_mb = measure_memory_usage(mem_model, device=device)
             print(f"  内存占用: {memory_mb:.2f}MB")
@@ -388,7 +378,7 @@ def run_computational_efficiency_experiment():
                 "error": str(e),
             }
 
-    # ---- 保存结果到JSON文件 ----
+    # 保存结果到JSON文件
     print("\n" + "=" * 60)
     print("[3/3] 保存实验结果...")
 
@@ -401,7 +391,7 @@ def run_computational_efficiency_experiment():
 
     print(f"  结果已保存到: {output_path}")
 
-    # ---- 打印汇总表 ----
+    # 打印汇总表
     print("\n" + "=" * 60)
     print("计算效率对比汇总表")
     print("=" * 60)

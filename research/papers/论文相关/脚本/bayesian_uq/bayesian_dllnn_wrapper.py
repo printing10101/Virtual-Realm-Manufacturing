@@ -27,7 +27,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-# === WinSock 损坏绕过补丁 ===
+# WinSock 损坏绕过补丁
 try:
     import _overlapped  # noqa: F401
 except OSError:
@@ -100,9 +100,7 @@ class BayesianDLLNNWrapper(nn.Module):
             # 在 output_proj 输入（h）上注入额外 Dropout，绕过 ReLU 截断问题
             if hasattr(ltc, "output_proj"):
                 self._extra_dropout = nn.Dropout(p=self.mc_dropout_prob)
-                self._extra_dropout_hook = ltc.output_proj.register_forward_pre_hook(
-                    self._inject_extra_dropout
-                )
+                self._extra_dropout_hook = ltc.output_proj.register_forward_pre_hook(self._inject_extra_dropout)
 
     def _inject_extra_dropout(self, module, inputs):
         """forward_pre_hook：在 output_proj 输入上应用额外 Dropout。
@@ -192,10 +190,10 @@ class BayesianDLLNNWrapper(nn.Module):
         std_denorm = std * self.target_std
 
         result = {
-            "mean": mean,              # 归一化空间
-            "std": std,                # 归一化空间
+            "mean": mean,  # 归一化空间
+            "std": std,  # 归一化空间
             "mean_denorm": mean_denorm,  # 原始 a_lim 尺度 (mm)
-            "std_denorm": std_denorm,    # 原始尺度 (mm)
+            "std_denorm": std_denorm,  # 原始尺度 (mm)
         }
 
         if return_components:
@@ -246,11 +244,9 @@ class BayesianDLLNNWrapper(nn.Module):
 
         with torch.no_grad():
             for i in range(0, N, batch_size):
-                x_batch = torch.from_numpy(X[i:i+batch_size].astype(np.float32)).to(device)
+                x_batch = torch.from_numpy(X[i : i + batch_size].astype(np.float32)).to(device)
                 if physics_pred is not None:
-                    phys_batch = torch.from_numpy(
-                        physics_pred[i:i+batch_size].astype(np.float32)
-                    ).to(device)
+                    phys_batch = torch.from_numpy(physics_pred[i : i + batch_size].astype(np.float32)).to(device)
                 else:
                     phys_batch = None
                 result = self.predict_with_uncertainty(
@@ -312,8 +308,7 @@ def load_bayesian_dllnn(
     experiments_dir = research_dir / "experiments"
     engineering_python_dir = project_root / "engineering" / "python"
 
-    for p in [str(project_root), str(engineering_python_dir),
-              str(research_dir), str(experiments_dir)]:
+    for p in [str(project_root), str(engineering_python_dir), str(research_dir), str(experiments_dir)]:
         if p not in sys.path:
             sys.path.insert(0, p)
 
@@ -350,7 +345,8 @@ def load_bayesian_dllnn(
     print(f"  MC Dropout prob = {mc_dropout_prob}")
     if "metrics" in ckpt:
         m = ckpt["metrics"]
-        print(f"  原始模型指标: R²={m.get('r2', 'N/A'):.4f}, "
-              f"MAE={m.get('mae', 'N/A'):.4f}, PCC={m.get('pcc', 'N/A'):.4f}")
+        print(
+            f"  原始模型指标: R²={m.get('r2', 'N/A'):.4f}, MAE={m.get('mae', 'N/A'):.4f}, PCC={m.get('pcc', 'N/A'):.4f}"
+        )
 
     return bayesian_model

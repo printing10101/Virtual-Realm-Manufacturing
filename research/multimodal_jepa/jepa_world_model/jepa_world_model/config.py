@@ -47,48 +47,50 @@ class JEPAWorldModelConfig:
         operation_types: 支持的操作类型列表
     """
 
-    # ========== 嵌入维度 ==========
+    # 嵌入维度
     embed_dim: int = 512
     state_embed_dim: int = 512
     action_embed_dim: int = 512
 
-    # ========== 预测器参数 ==========
+    # 预测器参数
     predictor_hidden_dim: int = 1024
     predictor_depth: int = 3
     predictor_dropout: float = 0.1
 
-    # ========== CEM规划参数 ==========
+    # CEM规划参数
     cem_population_size: int = 500
     cem_top_k_ratio: float = 0.15
     cem_max_iterations: int = 20
     cem_planning_horizon: int = 10
     cem_elite_fraction: float = 0.15
 
-    # ========== 奖励函数权重 ==========
+    # 奖励函数权重
     reward_quality_weight: float = 0.40
     reward_efficiency_weight: float = 0.35
     reward_risk_weight: float = 0.25
 
-    # ========== 训练参数 ==========
+    # 训练参数
     epochs: int = 100
     initial_lr: float = 1e-4
     batch_size: int = 32
     weight_decay: float = 1e-5
     early_stopping_patience: int = 10
 
-    # ========== 操作类型定义 ==========
-    operation_types: List[str] = field(default_factory=lambda: [
-        "rough_milling",
-        "finish_milling",
-        "drilling",
-        "reaming",
-        "tapping",
-        "boring",
-        "facing",
-        "chamfering",
-        "grooving",
-        "threading",
-    ])
+    # 操作类型定义
+    operation_types: List[str] = field(
+        default_factory=lambda: [
+            "rough_milling",
+            "finish_milling",
+            "drilling",
+            "reaming",
+            "tapping",
+            "boring",
+            "facing",
+            "chamfering",
+            "grooving",
+            "threading",
+        ]
+    )
 
     @property
     def cem_num_elite(self) -> int:
