@@ -182,9 +182,7 @@ def _generate_stl_from_dxf(
     return {"success": True, "error": None, "suggestion": None}
 
 
-# =============================================================================
 # Numba JIT加速的批量刀具掩码应用函数
-# =============================================================================
 if HAS_NUMBA:
 
     @numba.jit(nopython=True, cache=_NUMBA_CACHE, parallel=False)

@@ -23,9 +23,7 @@ All three token types are supported by the unified middleware:
 
 from __future__ import annotations
 
-# ============================================================
 # permissions.py — PermissionLevel + path / scope constants
-# ============================================================
 from app.auth.permissions import (
     AGENT_ENDPOINT_PERMISSIONS,
     AUTH_PUBLIC_PATHS,
@@ -42,34 +40,26 @@ from app.auth.permissions import (
     _PUBLIC_ENDPOINTS_LNN,
 )
 
-# ============================================================
 # audit.py — Agent audit log
-# ============================================================
 from app.auth.audit import (
     AgentAuditEntry,
     AgentAuditLog,
     agent_audit_log,
 )
 
-# ============================================================
 # rate_limiter.py — Agent rate limiter
-# ============================================================
 from app.auth.rate_limiter import (
     AgentRateLimiter,
     agent_rate_limiter,
 )
 
-# ============================================================
 # idempotency.py — Idempotency store
-# ============================================================
 from app.auth.idempotency import (
     IdempotencyStore,
     idempotency_store,
 )
 
-# ============================================================
 # middleware.py — UnifiedAuthMiddleware + LNN/JWT/agent helpers
-# ============================================================
 from app.auth.middleware import (
     UnifiedAuthMiddleware,
     _decode_token,

@@ -22,9 +22,7 @@ from typing import Any
 import pytest
 
 
-# ---------------------------------------------------------------------------
 # 工艺方案验证工具
-# ---------------------------------------------------------------------------
 
 
 class ProcessPlanValidator:
@@ -54,7 +52,11 @@ class ProcessPlanValidator:
 
     # TC4必需工序
     TC4_REQUIRED_OPERATIONS = [
-        "下料", "车削", "铣削", "钻孔", "检验",
+        "下料",
+        "车削",
+        "铣削",
+        "钻孔",
+        "检验",
     ]
 
     @staticmethod
@@ -67,12 +69,14 @@ class ProcessPlanValidator:
             if param_name in params:
                 value = params[param_name]
                 if value < low or value > high:
-                    violations.append({
-                        "parameter": param_name,
-                        "value": value,
-                        "range": [low, high],
-                        "severity": "high" if value > high * 1.2 else "medium",
-                    })
+                    violations.append(
+                        {
+                            "parameter": param_name,
+                            "value": value,
+                            "range": [low, high],
+                            "severity": "high" if value > high * 1.2 else "medium",
+                        }
+                    )
 
         return {
             "is_valid": len(violations) == 0,
@@ -81,9 +85,7 @@ class ProcessPlanValidator:
         }
 
     @staticmethod
-    def validate_process_route_coverage(
-        operations: list[dict[str, Any]], required_ops: list[str]
-    ) -> dict[str, Any]:
+    def validate_process_route_coverage(operations: list[dict[str, Any]], required_ops: list[str]) -> dict[str, Any]:
         """验证工艺路线工序覆盖率."""
         op_names = [op.get("operation", "") for op in operations]
         covered = []
@@ -113,21 +115,15 @@ class ProcessPlanValidator:
         op_sequence.sort()
 
         # 检查基本加工逻辑：粗加工在精加工之前
-        rough_positions = [
-            i for i, (_, name) in enumerate(op_sequence) if "粗" in name
-        ]
-        finish_positions = [
-            i for i, (_, name) in enumerate(op_sequence) if "精" in name
-        ]
+        rough_positions = [i for i, (_, name) in enumerate(op_sequence) if "粗" in name]
+        finish_positions = [i for i, (_, name) in enumerate(op_sequence) if "精" in name]
 
         if rough_positions and finish_positions:
             if max(finish_positions) < max(rough_positions):
                 issues.append("精加工工序应排在粗加工之后")
 
         # 检验应在加工完成之后
-        inspection_positions = [
-            i for i, (_, name) in enumerate(op_sequence) if "检验" in name
-        ]
+        inspection_positions = [i for i, (_, name) in enumerate(op_sequence) if "检验" in name]
         if inspection_positions:
             if inspection_positions[-1] < len(op_sequence) - 3:
                 issues.append("检验工序应在工艺路线末端")
@@ -139,9 +135,7 @@ class ProcessPlanValidator:
         }
 
 
-# ---------------------------------------------------------------------------
 # 场景3 端到端测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -152,7 +146,7 @@ class TestProcessConsultation:
     def setup_method(self):
         self.validator = ProcessPlanValidator()
 
-    # ---------- 自然语言理解 ----------
+    # 自然语言理解
 
     def test_natural_language_query_understanding(self):
         """认知层验证：自然语言查询 "帮我看看这个材料怎么加工"."""
@@ -191,10 +185,9 @@ class TestProcessConsultation:
         # TC4硬度等级应为HIGH或以上
         hardness = MATERIAL_HARDNESS_MAP.get("TC4钛合金")
         if hardness:
-            assert hardness.value in ("high", "very_high"), \
-                f"TC4硬度等级应为high/very_high: {hardness}"
+            assert hardness.value in ("high", "very_high"), f"TC4硬度等级应为high/very_high: {hardness}"
 
-    # ---------- 材料参数库验证 ----------
+    # 材料参数库验证
 
     def test_material_database_completeness(self, material_tc4, material_steel_45, material_aluminum_6061):
         """验证材料参数库包含完整的材料性能参数."""
@@ -215,44 +208,40 @@ class TestProcessConsultation:
             assert mat.thermal_conductivity > 0, f"{name}热导率无效"
 
             # 切削参数范围
-            assert mat.cutting_speed_range[0] < mat.cutting_speed_range[1], \
-                f"{name}切削速度范围无效"
-            assert mat.feed_range[0] < mat.feed_range[1], \
-                f"{name}进给范围无效"
+            assert mat.cutting_speed_range[0] < mat.cutting_speed_range[1], f"{name}切削速度范围无效"
+            assert mat.feed_range[0] < mat.feed_range[1], f"{name}进给范围无效"
 
     def test_tc4_cutting_parameters(self, material_tc4):
         """验证TC4钛合金切削参数在安全加工范围内."""
         # TC4典型切削参数
         tc4_params = {
-            "cutting_speed": 50.0,   # m/min
-            "feed_rate": 0.08,       # mm/r
-            "depth_of_cut": 1.0,     # mm
-            "spindle_speed": 1592,   # r/min
+            "cutting_speed": 50.0,  # m/min
+            "feed_rate": 0.08,  # mm/r
+            "depth_of_cut": 1.0,  # mm
+            "spindle_speed": 1592,  # r/min
         }
 
         result = self.validator.validate_tc4_parameters(tc4_params)
-        assert result["is_valid"], \
-            f"TC4切削参数超出安全范围: {result['violations']}"
+        assert result["is_valid"], f"TC4切削参数超出安全范围: {result['violations']}"
 
         # 验证参数在材料的允许范围内
-        assert (material_tc4.cutting_speed_range[0] <= tc4_params["cutting_speed"]
-                <= material_tc4.cutting_speed_range[1]), \
-            f"切削速度超出TC4材料范围: {tc4_params['cutting_speed']}"
+        assert (
+            material_tc4.cutting_speed_range[0] <= tc4_params["cutting_speed"] <= material_tc4.cutting_speed_range[1]
+        ), f"切削速度超出TC4材料范围: {tc4_params['cutting_speed']}"
 
     def test_tc4_invalid_parameters_detected(self):
         """验证超范围TC4参数被检测."""
         invalid_params = {
             "cutting_speed": 200.0,  # 超出TC4安全范围（25-100 m/min）
-            "feed_rate": 0.5,        # 超出范围（0.03-0.18 mm/r）
-            "depth_of_cut": 5.0,     # 超出范围（0.05-3.0 mm）
+            "feed_rate": 0.5,  # 超出范围（0.03-0.18 mm/r）
+            "depth_of_cut": 5.0,  # 超出范围（0.05-3.0 mm）
         }
 
         result = self.validator.validate_tc4_parameters(invalid_params)
         assert not result["is_valid"], "超范围参数应被标记为无效"
-        assert len(result["violations"]) >= 2, \
-            f"应检测到至少2个违规: {result['violations']}"
+        assert len(result["violations"]) >= 2, f"应检测到至少2个违规: {result['violations']}"
 
-    # ---------- 工艺路线生成 ----------
+    # 工艺路线生成
 
     def test_process_route_completeness(self, sample_process_card):
         """验收标准：工艺路线包含从毛坯到成品的所有必要工序（≥95%覆盖率）."""
@@ -274,8 +263,9 @@ class TestProcessConsultation:
         result = self.validator.validate_process_route_coverage(
             tc4_process_route, self.validator.TC4_REQUIRED_OPERATIONS
         )
-        assert result["meets_threshold"], \
+        assert result["meets_threshold"], (
             f"工序覆盖率{result['coverage_pct']:.0f}% < 95%阈值, 缺失: {result['missing']}"
+        )
 
         assert len(tc4_process_route) >= 8, "工序数量不足"
 
@@ -285,16 +275,23 @@ class TestProcessConsultation:
         operations = sample_process_card.operations
         result = self.validator.validate_operation_sequence(operations)
 
-        assert result["is_reasonable"], \
-            f"工序顺序不合理: {result['issues']}"
+        assert result["is_reasonable"], f"工序顺序不合理: {result['issues']}"
 
-    # ---------- 切削参数表 ----------
+    # 切削参数表
 
     def test_tc4_cutting_parameter_table(self, material_tc4):
         """验收标准：切削参数表符合TC4钛合金加工特性."""
         tc4_cutting_table = [
             {"operation": "粗车", "v": 45, "f": 0.12, "ap": 1.5, "n": 1200, "tool": "硬质合金涂层", "type": "milling"},
-            {"operation": "半精车", "v": 55, "f": 0.08, "ap": 0.5, "n": 1500, "tool": "硬质合金涂层", "type": "milling"},
+            {
+                "operation": "半精车",
+                "v": 55,
+                "f": 0.08,
+                "ap": 0.5,
+                "n": 1500,
+                "tool": "硬质合金涂层",
+                "type": "milling",
+            },
             {"operation": "精车", "v": 70, "f": 0.05, "ap": 0.15, "n": 2000, "tool": "PCD刀具", "type": "milling"},
             {"operation": "钻孔", "v": 15, "f": 0.06, "ap": 1.0, "n": 800, "tool": "硬质合金钻头", "type": "drilling"},
             {"operation": "铰孔", "v": 5, "f": 0.15, "ap": 0.1, "n": 250, "tool": "硬质合金铰刀", "type": "reaming"},
@@ -322,20 +319,18 @@ class TestProcessConsultation:
                 if param_name in ranges and param_name in params:
                     low, high = ranges[param_name]
                     if params[param_name] < low or params[param_name] > high:
-                        violations.append({
-                            "parameter": param_name,
-                            "value": params[param_name],
-                            "range": [low, high],
-                        })
+                        violations.append(
+                            {
+                                "parameter": param_name,
+                                "value": params[param_name],
+                                "range": [low, high],
+                            }
+                        )
                         is_valid = False
 
             if not is_valid:
-                violations_info = "; ".join(
-                    f"{v['parameter']}={v['value']}(范围{v['range']})"
-                    for v in violations
-                )
-                assert is_valid, \
-                    f"{row['operation']}参数超出TC4安全范围: {violations_info}"
+                violations_info = "; ".join(f"{v['parameter']}={v['value']}(范围{v['range']})" for v in violations)
+                assert is_valid, f"{row['operation']}参数超出TC4安全范围: {violations_info}"
 
     def test_cutting_parameters_industry_standard_compliance(self):
         """验收标准：所有参数与行业标准规范一致."""
@@ -360,26 +355,64 @@ class TestProcessConsultation:
 
         for tp in test_params:
             std = industry_standards[tp["type"]]
-            assert std["spindle_speed_range"][0] <= tp["n"] <= std["spindle_speed_range"][1], \
+            assert std["spindle_speed_range"][0] <= tp["n"] <= std["spindle_speed_range"][1], (
                 f"{tp['type']}主轴转速不符合行业标准"
-            assert std["feed_rate_range"][0] <= tp["f"] <= std["feed_rate_range"][1], \
+            )
+            assert std["feed_rate_range"][0] <= tp["f"] <= std["feed_rate_range"][1], (
                 f"{tp['type']}进给量不符合行业标准"
-            assert std["depth_of_cut_range"][0] <= tp["ap"] <= std["depth_of_cut_range"][1], \
+            )
+            assert std["depth_of_cut_range"][0] <= tp["ap"] <= std["depth_of_cut_range"][1], (
                 f"{tp['type']}切削深度不符合行业标准"
+            )
 
-    # ---------- 风险识别 ----------
+    # 风险识别
 
     def test_risk_identification_coverage(self, risk_assessment_template):
         """验收标准：风险识别覆盖所有主要加工风险点（≥90%识别率）."""
         tc4_risks = [
-            {"category": "安全", "risk": "钛合金切屑易燃", "severity": "高", "mitigation": "使用专用灭火器，控制切削温度"},
-            {"category": "质量", "risk": "加工硬化导致刀具磨损快", "severity": "高", "mitigation": "使用涂层刀具，控制切削速度"},
-            {"category": "质量", "risk": "热传导差导致切削区温度高", "severity": "中", "mitigation": "充分冷却，使用高压冷却液"},
+            {
+                "category": "安全",
+                "risk": "钛合金切屑易燃",
+                "severity": "高",
+                "mitigation": "使用专用灭火器，控制切削温度",
+            },
+            {
+                "category": "质量",
+                "risk": "加工硬化导致刀具磨损快",
+                "severity": "高",
+                "mitigation": "使用涂层刀具，控制切削速度",
+            },
+            {
+                "category": "质量",
+                "risk": "热传导差导致切削区温度高",
+                "severity": "中",
+                "mitigation": "充分冷却，使用高压冷却液",
+            },
             {"category": "质量", "risk": "弹性模量低导致变形", "severity": "中", "mitigation": "合理装夹，减少夹紧力"},
-            {"category": "设备", "risk": "刀具磨损导致切削力增大", "severity": "中", "mitigation": "设置刀具寿命监控，定期更换"},
-            {"category": "效率", "risk": "加工效率低", "severity": "低", "mitigation": "优化切削参数，使用高效刀具路径"},
-            {"category": "质量", "risk": "表面质量不稳定", "severity": "中", "mitigation": "控制切削速度和进给量，保持刀具锋利"},
-            {"category": "安全", "risk": "钛合金粉尘爆炸风险", "severity": "中", "mitigation": "除尘系统维护，定期清理"},
+            {
+                "category": "设备",
+                "risk": "刀具磨损导致切削力增大",
+                "severity": "中",
+                "mitigation": "设置刀具寿命监控，定期更换",
+            },
+            {
+                "category": "效率",
+                "risk": "加工效率低",
+                "severity": "低",
+                "mitigation": "优化切削参数，使用高效刀具路径",
+            },
+            {
+                "category": "质量",
+                "risk": "表面质量不稳定",
+                "severity": "中",
+                "mitigation": "控制切削速度和进给量，保持刀具锋利",
+            },
+            {
+                "category": "安全",
+                "risk": "钛合金粉尘爆炸风险",
+                "severity": "中",
+                "mitigation": "除尘系统维护，定期清理",
+            },
         ]
 
         # 应覆盖的风险类别
@@ -391,16 +424,14 @@ class TestProcessConsultation:
 
         for cat, min_expected in required_categories.items():
             actual = actual_categories.get(cat, 0)
-            assert actual >= min_expected, \
-                f"{cat}类风险覆盖不足: {actual} < {min_expected}"
+            assert actual >= min_expected, f"{cat}类风险覆盖不足: {actual} < {min_expected}"
 
         # 验证所有风险都有缓解措施
         for risk in tc4_risks:
             assert risk["mitigation"], f"风险'{risk['risk']}'缺少缓解措施"
-            assert len(risk["mitigation"]) > 5, \
-                f"风险'{risk['risk']}'的缓解措施过于简略"
+            assert len(risk["mitigation"]) > 5, f"风险'{risk['risk']}'的缓解措施过于简略"
 
-    # ---------- 知识来源追溯 ----------
+    # 知识来源追溯
 
     def test_knowledge_source_traceability(self):
         """验收标准：提供所有建议的技术文献、标准或经验数据来源."""
@@ -435,8 +466,7 @@ class TestProcessConsultation:
         # 知识来源应覆盖多种类型
         source_types = {s["source_type"] for s in knowledge_sources}
         required_types = {"技术标准", "工业数据", "技术手册", "学术论文", "企业标准"}
-        assert source_types >= required_types, \
-            f"知识来源类型不完整: {source_types}"
+        assert source_types >= required_types, f"知识来源类型不完整: {source_types}"
 
         # 每个来源必须有关联性说明
         for source in knowledge_sources:
@@ -458,9 +488,7 @@ class TestProcessConsultation:
             pytest.skip(f"RAG知识库不可用: {e}")
 
 
-# ---------------------------------------------------------------------------
 # 工艺方案完整性测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -472,9 +500,21 @@ class TestProcessPlanCompleteness:
         """验收标准：方案包含从毛坯到成品的所有必要工序."""
         # TC4法兰盘完整工艺路线（15道工序）
         complete_route = [
-            "备料", "下料", "粗车外圆", "粗铣端面", "钻孔",
-            "扩孔", "粗镗孔", "半精车", "半精铣", "精车",
-            "精铣", "铰孔", "去毛刺", "表面处理", "终检",
+            "备料",
+            "下料",
+            "粗车外圆",
+            "粗铣端面",
+            "钻孔",
+            "扩孔",
+            "粗镗孔",
+            "半精车",
+            "半精铣",
+            "精车",
+            "精铣",
+            "铰孔",
+            "去毛刺",
+            "表面处理",
+            "终检",
         ]
 
         assert len(complete_route) >= 12, "工序数量不足"
@@ -507,9 +547,7 @@ class TestProcessPlanCompleteness:
         assert batch_plan["batch_divisions"] >= 5, "批次划分不合理"
 
 
-# ---------------------------------------------------------------------------
 # 对话式交互测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -546,7 +584,11 @@ class TestConversationalConsultation:
             {"role": "user", "content": "帮我看看TC4钛合金怎么加工"},
             {"role": "assistant", "content": "TC4钛合金加工需要注意以下几点...", "context": {"material": "TC4钛合金"}},
             {"role": "user", "content": "批量1000件需要多长时间？"},
-            {"role": "assistant", "content": "根据TC4钛合金的加工特性...", "context": {"material": "TC4钛合金", "quantity": 1000}},
+            {
+                "role": "assistant",
+                "content": "根据TC4钛合金的加工特性...",
+                "context": {"material": "TC4钛合金", "quantity": 1000},
+            },
         ]
 
         assert len(conversation) == 4

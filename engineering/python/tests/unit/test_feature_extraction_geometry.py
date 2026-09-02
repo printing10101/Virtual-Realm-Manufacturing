@@ -80,7 +80,7 @@ class TestFitCircle:
         assert _fit_circle_2d(np.array([[0.0, 0.0]])) is None
 
     def test_fit_circle_degenerate(self):
-        # 所有点在原点 → 半径平方 <= 0 → None
+        # 所有点在原点 半径平方 <= 0 None
         pts = np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]])
         assert _fit_circle_kasa(pts) is None
 
@@ -134,8 +134,23 @@ class TestClassifyHoleOrBoss:
     def _make_plane_data(self, center_z_offset):
         normal = np.array([0.0, 0.0, 1.0])
         # 圆心附近点（2D 距离 < 0.6）带 z 偏移；远处点 z=0
-        all_plane_2d = np.array([[0, 0], [0.1, 0], [-0.1, 0], [0, 0.1], [0, -0.1], [1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]], dtype=float)
-        all_plane_3d = np.array([[0, 0, center_z_offset], [0.1, 0, center_z_offset], [-0.1, 0, center_z_offset], [0, 0.1, center_z_offset], [0, -0.1, center_z_offset], [1.5, 0, 0], [-1.5, 0, 0], [0, 1.5, 0], [0, -1.5, 0]], dtype=float)
+        all_plane_2d = np.array(
+            [[0, 0], [0.1, 0], [-0.1, 0], [0, 0.1], [0, -0.1], [1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]], dtype=float
+        )
+        all_plane_3d = np.array(
+            [
+                [0, 0, center_z_offset],
+                [0.1, 0, center_z_offset],
+                [-0.1, 0, center_z_offset],
+                [0, 0.1, center_z_offset],
+                [0, -0.1, center_z_offset],
+                [1.5, 0, 0],
+                [-1.5, 0, 0],
+                [0, 1.5, 0],
+                [0, -1.5, 0],
+            ],
+            dtype=float,
+        )
         inlier_2d = np.array([[1.9, 0], [-1.9, 0], [0, 1.9], [0, -1.9]], dtype=float)
         inlier_3d = np.array([[1.9, 0, 0], [-1.9, 0, 0], [0, 1.9, 0], [0, -1.9, 0]], dtype=float)
         return all_plane_3d, all_plane_2d, inlier_3d, inlier_2d, normal
@@ -143,14 +158,18 @@ class TestClassifyHoleOrBoss:
     def test_hole_when_depressed(self):
         d = self._detector()
         all_plane_3d, all_plane_2d, inlier_3d, inlier_2d, normal = self._make_plane_data(-2.0)
-        ftype, offset = d._classify_hole_or_boss(inlier_3d, inlier_2d, all_plane_3d, all_plane_2d, 0.0, 0.0, 2.0, normal)
+        ftype, offset = d._classify_hole_or_boss(
+            inlier_3d, inlier_2d, all_plane_3d, all_plane_2d, 0.0, 0.0, 2.0, normal
+        )
         assert ftype == FeatureType.HOLE
         assert offset < 0
 
     def test_boss_when_raised(self):
         d = self._detector()
         all_plane_3d, all_plane_2d, inlier_3d, inlier_2d, normal = self._make_plane_data(2.0)
-        ftype, offset = d._classify_hole_or_boss(inlier_3d, inlier_2d, all_plane_3d, all_plane_2d, 0.0, 0.0, 2.0, normal)
+        ftype, offset = d._classify_hole_or_boss(
+            inlier_3d, inlier_2d, all_plane_3d, all_plane_2d, 0.0, 0.0, 2.0, normal
+        )
         assert ftype == FeatureType.BOSS
         assert offset > 0
 
@@ -162,10 +181,12 @@ class TestClassifyHoleOrBoss:
         all_plane_3d = np.array([[1.0, 0, 0], [-1.0, 0, 0], [0, 1.0, 0], [0, -1.0, 0]], dtype=float)
         inlier_3d = all_plane_3d.copy()
         inlier_2d = all_plane_2d.copy()
-        ftype, offset = d._classify_hole_or_boss(inlier_3d, inlier_2d, all_plane_3d, all_plane_2d, 0.0, 0.0, 0.5, normal)
+        ftype, offset = d._classify_hole_or_boss(
+            inlier_3d, inlier_2d, all_plane_3d, all_plane_2d, 0.0, 0.0, 0.5, normal
+        )
         assert ftype == FeatureType.HOLE
         assert offset == 0.0
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

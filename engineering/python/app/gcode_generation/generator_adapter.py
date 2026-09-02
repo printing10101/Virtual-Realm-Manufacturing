@@ -60,18 +60,14 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # 异常
-# =============================================================================
 
 
 class GeneratorAdapterError(GCodeGenerationError):
     """GeneratorAdapter 适配异常。"""
 
 
-# =============================================================================
 # OperationPlan JSON 反序列化
-# =============================================================================
 
 
 # OperationPlan.to_dict() 输出的必填字段
@@ -176,9 +172,7 @@ def load_operation_plan(json_path: str) -> OperationPlan:
     )
 
 
-# =============================================================================
 # GeneratorAdapter：组合 GCodeGenerator
-# =============================================================================
 
 
 class GeneratorAdapter:
@@ -212,9 +206,7 @@ class GeneratorAdapter:
         """
         self._generator = GCodeGenerator(machine_config=machine_config)
 
-    # -------------------------------------------------------------------------
     # 主入口：adapt()
-    # -------------------------------------------------------------------------
 
     def adapt(
         self,
@@ -293,10 +285,10 @@ class GeneratorAdapter:
                 f.feature_id,
             )
 
-        # 3. 构建 feature_id → (start_line, end_line) 映射（基于 checkpoints）
+        # 3. 构建 feature_id (start_line, end_line) 映射（基于 checkpoints）
         feature_line_ranges = self._build_feature_line_ranges(base_result, operation_plan)
 
-        # 5. 切分 G 代码行（program_text → list[str]）
+        # 5. 切分 G 代码行（program_text list[str]）
         program_lines = base_result.program_text.split("\n") if base_result.program_text else []
 
         # 6. 遍历 chatter_results，生成 FeatureGCodeResult
@@ -356,9 +348,7 @@ class GeneratorAdapter:
 
         return base_result, feature_gcode_results
 
-    # -------------------------------------------------------------------------
     # 辅助方法
-    # -------------------------------------------------------------------------
 
     @staticmethod
     def _compute_safety_margin(axial_depth_mm: float, limit_depth_mm: float) -> float:

@@ -23,58 +23,40 @@ from app.integrations.mtconnect.streaming import (
 )
 
 
-# ---------------------------------------------------------------------------
 # AlertCondition
-# ---------------------------------------------------------------------------
 
 
 class TestAlertCondition:
     def test_greater_than_triggered(self) -> None:
-        cond = AlertCondition(
-            data_item="spindle_load", threshold=80.0, operator="greater_than"
-        )
+        cond = AlertCondition(data_item="spindle_load", threshold=80.0, operator="greater_than")
         assert cond.evaluate(85.0) is True
 
     def test_greater_than_not_triggered(self) -> None:
-        cond = AlertCondition(
-            data_item="spindle_load", threshold=80.0, operator="greater_than"
-        )
+        cond = AlertCondition(data_item="spindle_load", threshold=80.0, operator="greater_than")
         assert cond.evaluate(79.9) is False
 
     def test_less_than_triggered(self) -> None:
-        cond = AlertCondition(
-            data_item="feedrate", threshold=0.1, operator="less_than"
-        )
+        cond = AlertCondition(data_item="feedrate", threshold=0.1, operator="less_than")
         assert cond.evaluate(0.05) is True
 
     def test_less_than_not_triggered(self) -> None:
-        cond = AlertCondition(
-            data_item="feedrate", threshold=0.1, operator="less_than"
-        )
+        cond = AlertCondition(data_item="feedrate", threshold=0.1, operator="less_than")
         assert cond.evaluate(0.5) is False
 
     def test_between_triggered(self) -> None:
-        cond = AlertCondition(
-            data_item="temperature", threshold=20.0, operator="between"
-        )
+        cond = AlertCondition(data_item="temperature", threshold=20.0, operator="between")
         assert cond.evaluate(25.0) is True
 
     def test_none_value_never_triggers(self) -> None:
-        cond = AlertCondition(
-            data_item="spindle_load", threshold=80.0, operator="greater_than"
-        )
+        cond = AlertCondition(data_item="spindle_load", threshold=80.0, operator="greater_than")
         assert cond.evaluate(None) is False
 
     def test_unknown_operator_never_triggers(self) -> None:
-        cond = AlertCondition(
-            data_item="x", threshold=1.0, operator="not_a_real_operator"
-        )
+        cond = AlertCondition(data_item="x", threshold=1.0, operator="not_a_real_operator")
         assert cond.evaluate(5.0) is False
 
 
-# ---------------------------------------------------------------------------
 # ConditionChecker
-# ---------------------------------------------------------------------------
 
 
 class TestConditionChecker:
@@ -142,9 +124,7 @@ class TestConditionChecker:
         assert "triggered_at" in d
 
 
-# ---------------------------------------------------------------------------
 # ChatterDetector
-# ---------------------------------------------------------------------------
 
 
 class TestChatterDetector:
@@ -183,9 +163,7 @@ class TestChatterDetector:
         assert detector.get_chatter_risk_score() == 0.0
 
 
-# ---------------------------------------------------------------------------
 # Streaming events
-# ---------------------------------------------------------------------------
 
 
 class TestStreamEvent:
@@ -279,9 +257,7 @@ class TestMTConnectStreamServer:
         assert server._check_alerts(sample) == []
 
     def test_alerts_disabled(self) -> None:
-        server = MTConnectStreamServer(
-            agent_url="http://example.invalid", enable_alerts=False
-        )
+        server = MTConnectStreamServer(agent_url="http://example.invalid", enable_alerts=False)
         sample = Sample(spindle_load=95.0)
         # With alerts disabled, the server's check still runs but the
         # public API contracts should not raise.

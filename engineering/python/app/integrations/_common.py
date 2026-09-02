@@ -17,9 +17,7 @@ if TYPE_CHECKING:
     from app.integrations.opcua.parser import Sample
 
 
-# ---------------------------------------------------------------------------
 # TDS URL 解析
-# ---------------------------------------------------------------------------
 
 # Regex used by the CLI to translate ``tds://host:port/db`` shorthand
 # into the (host, port, database) tuple the TDengine client expects.
@@ -45,9 +43,7 @@ def parse_tds_url(url: str) -> tuple[str, int, str]:
     return host, port, database
 
 
-# ---------------------------------------------------------------------------
 # CLI 输出格式化
-# ---------------------------------------------------------------------------
 
 
 def format_sample(sample: "Sample") -> str:
@@ -75,9 +71,7 @@ def _fmt(value: float | None) -> str:
     return f"{value:.2f}"
 
 
-# ---------------------------------------------------------------------------
 # TDengine wiring
-# ---------------------------------------------------------------------------
 
 
 def build_tdengine_client(output_url: str):
@@ -89,7 +83,7 @@ def build_tdengine_client(output_url: str):
     """
     host, port, database = parse_tds_url(output_url)
     # The TDengine client reads its connection parameters from
-    # environment variables.  Set them on the fly so the same client
+    # environment variables. Set them on the fly so the same client
     # can be reused for any URL passed via the CLI.
     logger = logging.getLogger(__name__)
     password = os.environ.get("TDENGINE_PASSWORD", "")

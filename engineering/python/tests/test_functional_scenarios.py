@@ -1,4 +1,4 @@
-﻿"""
+"""
 Functional test scenarios for the Atomic Task Checkout Lock Mechanism.
 
 Covers 10 user-defined scenarios:
@@ -113,10 +113,8 @@ def _make_request(
     )
 
 
-# ============================================================
 # Scenario 1: 任务检出基础功能测试
 # 验证: pending -> in_progress, assigned_to 设置
-# ============================================================
 class TestScenario1BasicCheckout:
     def test_checkout_updates_status_and_assignment(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-001"))
@@ -139,10 +137,8 @@ class TestScenario1BasicCheckout:
         assert lock.status == LockStatus.ACTIVE
 
 
-# ============================================================
 # Scenario 2: 任务并发检出冲突测试
 # 验证: 代理B检出同一任务失败，状态不变
-# ============================================================
 class TestScenario2ConcurrentConflict:
     def test_second_agent_cannot_checkout_same_task(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-002"))
@@ -158,10 +154,8 @@ class TestScenario2ConcurrentConflict:
         assert task.assigned_to == "agent-A"
 
 
-# ============================================================
 # Scenario 3: 代理崩溃场景下的锁自动释放测试
 # 验证: 超时后自动释放，状态恢复pending，assigned_to清空
-# ============================================================
 class TestScenario3CrashAutoRelease:
     def test_lock_timeout_releases_and_resets_task(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-003"))
@@ -184,17 +178,13 @@ class TestScenario3CrashAutoRelease:
         assert task_after.assigned_to is None
 
 
-# ============================================================
 # Scenario 4: 锁释放后的任务重新检出测试
 # 验证: 代理B可以在锁释放后成功检出
-# ============================================================
 class TestScenario4RecheckoutAfterRelease:
     def test_agent_b_can_checkout_after_lock_release(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-004"))
 
-        checkout_manager.checkout_task(
-            _make_request("task-004", "agent-A", timeout_hours=0.001)
-        )
+        checkout_manager.checkout_task(_make_request("task-004", "agent-A", timeout_hours=0.001))
         time.sleep(5)
         checkout_manager.cleanup_expired_locks()
 
@@ -215,10 +205,8 @@ class TestScenario4RecheckoutAfterRelease:
         assert task.assigned_to == "agent-B"
 
 
-# ============================================================
 # Scenario 5: 预算超限场景处理测试
 # 验证: 检出被拒绝，不自动重试
-# ============================================================
 class TestScenario5BudgetExceeded:
     def test_budget_exceeded_rejects_and_no_retry(self, checkout_manager):
         budget_state, _ = _setup_default_checkers(checkout_manager)
@@ -235,10 +223,8 @@ class TestScenario5BudgetExceeded:
         assert task.status == TaskStatus.PENDING.value
 
 
-# ============================================================
 # Scenario 6: GPU资源不足场景处理测试
 # 验证: 初始检出被拒绝，5分钟后重试
-# ============================================================
 class TestScenario6GPUInsufficient:
     def test_gpu_unavailable_rejects_and_retries(self, checkout_manager):
         _, gpu_state = _setup_default_checkers(checkout_manager)
@@ -287,10 +273,8 @@ class TestScenario6GPUInsufficient:
         assert task.status == TaskStatus.IN_PROGRESS.value
 
 
-# ============================================================
 # Scenario 7: 数据库锁记录验证测试
 # 验证: execution_locks表包含正确的过期时间戳
-# ============================================================
 class TestScenario7DatabaseLockRecord:
     def test_lock_records_have_valid_expiration_timestamps(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-007"))
@@ -302,9 +286,7 @@ class TestScenario7DatabaseLockRecord:
         assert lock.expires_at > lock.created_at
 
         conn = checkout_manager._lock_store._get_conn()
-        row = conn.execute(
-            "SELECT * FROM execution_locks WHERE task_id = ?", ("task-007",)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM execution_locks WHERE task_id = ?", ("task-007",)).fetchone()
         assert row is not None
         assert row["expires_at"] is not None
         assert row["expires_at"] > row["created_at"]
@@ -315,10 +297,8 @@ class TestScenario7DatabaseLockRecord:
         assert abs(actual_timeout - expected_timeout_seconds) < 2
 
 
-# ============================================================
 # Scenario 8: 前端状态实时显示测试
 # 验证: 任务看板显示代理信息与后端一致
-# ============================================================
 class TestScenario8FrontendDisplay:
     def test_board_shows_lock_info_consistent_with_backend(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-008"))
@@ -342,10 +322,8 @@ class TestScenario8FrontendDisplay:
         assert backend_task.assigned_to == lock_info["agent_id"]
 
 
-# ============================================================
 # Scenario 9: 管理员手动释放锁功能测试
 # 验证: 状态立即更新为pending，assigned_to清空
-# ============================================================
 class TestScenario9AdminForceRelease:
     def test_admin_force_release_resets_task_immediately(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-009"))
@@ -367,10 +345,8 @@ class TestScenario9AdminForceRelease:
         assert lock.status == LockStatus.FORCE_RELEASED
 
 
-# ============================================================
 # Scenario 10: 高并发任务检出竞争测试
 # 验证: 10个代理竞争同一任务，仅1个成功，其余失败
-# ============================================================
 class TestScenario10HighConcurrency:
     def test_ten_agents_competing_for_one_task(self, checkout_manager):
         checkout_manager.register_task(_make_task("task-010"))

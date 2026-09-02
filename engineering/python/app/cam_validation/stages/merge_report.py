@@ -54,7 +54,7 @@ from ._common import (
 
 
 class MergeReportMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _build_result: Callable[..., Any]
     _store: Any
 
@@ -74,9 +74,7 @@ class MergeReportMixin:
         - 导出操作使用 _export_lock 防止文件写入竞争
     """
 
-    # -------------------------------------------------------------------------
     # 工程师审核
-    # -------------------------------------------------------------------------
 
     def review_task(
         self,
@@ -158,7 +156,7 @@ class MergeReportMixin:
                 # 非 edited 也允许记录备注
                 target.edited_params = {"engineer_notes": engineer_notes}
 
-            # 检查是否全部审核完毕 → REVIEWED
+            # 检查是否全部审核完毕 REVIEWED
             all_reviewed = all(
                 r.review_status != CamReviewStatus.PENDING.value for r in task.feature_validation_results
             )
@@ -178,9 +176,7 @@ class MergeReportMixin:
         )
         return target
 
-    # -------------------------------------------------------------------------
     # 确认任务 + 导出报告
-    # -------------------------------------------------------------------------
 
     def confirm_task(
         self,
@@ -251,9 +247,7 @@ class MergeReportMixin:
         )
         return self._build_result(task)
 
-    # -------------------------------------------------------------------------
     # 内部辅助：导出 cam_report.json
-    # -------------------------------------------------------------------------
 
     def _export_cam_report(
         self,
@@ -374,7 +368,7 @@ class MergeReportMixin:
         # 所有特征共享同一个 cam_check_passed 和 cam_messages
         first = task.feature_validation_results[0]
         cam_check_passed = first.cam_check_passed
-        # status 推断：manual 后端 → manual_pending；其他 → pass/fail
+        # status 推断：manual 后端 manual_pending；其他 pass/fail
         if task.cam_backend_used == "manual":
             status = "manual_pending"
         elif task.cam_backend_used == "internal_only":
@@ -398,9 +392,7 @@ class MergeReportMixin:
             "manual_checklist_path": "",
         }
 
-    # -------------------------------------------------------------------------
     # 内部辅助：导出 internal_report.json
-    # -------------------------------------------------------------------------
 
     def _export_internal_report(
         self,

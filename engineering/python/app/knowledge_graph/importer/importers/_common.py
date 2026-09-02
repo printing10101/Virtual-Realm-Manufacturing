@@ -32,12 +32,10 @@ from collections.abc import Callable
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 路径常量
-# ---------------------------------------------------------------------------
 
 # 项目根目录：
-# python/app/knowledge_graph/importer/importers/_common.py → parents[5] = engineering/
+# python/app/knowledge_graph/importer/importers/_common.py parents[5] = engineering/
 _PROJECT_ROOT = Path(__file__).resolve().parents[5]
 _DATA_DIR = _PROJECT_ROOT / "python" / "app" / "data"
 _DATABASE_DATA_DIR = _PROJECT_ROOT / "python" / "app" / "database" / "data"
@@ -60,7 +58,7 @@ EDGE_SUITABLE_FOR = "SUITABLE_FOR"
 EDGE_APPLIED_TO = "APPLIED_TO"
 EDGE_USED = "USED"
 
-# 工具 → 特征 的映射（基于 series 或 application 关键词）
+# 工具 特征 的映射（基于 series 或 application 关键词）
 # 值元组为 (feature_id, feature_name, feature_type) 三元组
 _SERIES_TO_FEATURES: dict[str, list[tuple[str, str, str]]] = {
     # series -> [(feature_id, feature_name, feature_type)]
@@ -73,7 +71,7 @@ _SERIES_TO_FEATURES: dict[str, list[tuple[str, str, str]]] = {
     "center_drill": [("feature-hole", "孔", "hole")],
 }
 
-# 工具 → 适用材料（用于 Tool SUITABLE_FOR Material 关系）
+# 工具 适用材料（用于 Tool SUITABLE_FOR Material 关系）
 # 全部 4 种材料，可根据材料 category 进一步细化
 _ALL_MATERIAL_NAMES: tuple[str, ...] = (
     "45#钢",
@@ -82,7 +80,7 @@ _ALL_MATERIAL_NAMES: tuple[str, ...] = (
     "40Cr",
 )
 
-# 规则中特征 → 推荐工具映射（用于 Process USED Tool 关系）
+# 规则中特征 推荐工具映射（用于 Process USED Tool 关系）
 _FEATURE_TO_REPRESENTATIVE_TOOLS: dict[str, list[str]] = {
     "feature-face": ["tool-face_mill_50", "tool-face_mill_80"],
     "feature-hole": ["tool-twist_drill_5", "tool-twist_drill_10"],
@@ -94,9 +92,7 @@ _FEATURE_TO_REPRESENTATIVE_TOOLS: dict[str, list[str]] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # 数据类
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -205,9 +201,7 @@ class ImportReport:
         return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # 工具函数
-# ---------------------------------------------------------------------------
 
 
 # 材料 ID 映射（按 name 归一化为稳定的 slug）
@@ -318,9 +312,7 @@ def _resolve_default_path(attr_name: str) -> Path:
     return globals()[attr_name]
 
 
-# ---------------------------------------------------------------------------
 # 公共工具：去重 & 节点 ID 归一化
-# ---------------------------------------------------------------------------
 
 
 class _MaterialDeduper:

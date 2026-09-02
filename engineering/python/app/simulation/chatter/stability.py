@@ -262,7 +262,7 @@ def compute_stability_limit(
         re_frf = frf.real
 
         # 跳过 Re[G] <= 0 或接近零的点（避免 a_lim 数值奇异）
-        # Re[G] → 0 时 a_lim = numerator / (2·K_s·Re[G]) 会发散到无穷大
+        # Re[G] 0 时 a_lim = numerator / (2·K_s·Re[G]) 会发散到无穷大
         if re_frf <= 1e-9:
             continue
 
@@ -270,7 +270,7 @@ def compute_stability_limit(
         # a_lim = |1 + 2ζi·G(ω)|² / (2·K_s·Re[G(ω)])
         numerator = abs(1.0 + 2.0 * zeta * 1j * frf) ** 2
 
-        # 单位转换：K_s (N/mm²), FRF (m/N → mm/N)
+        # 单位转换：K_s (N/mm²), FRF (m/N mm/N)
         k_s = params.tool.cutting_force_coeff  # N/mm²
         re_frf_mm = re_frf * 1000.0  # m/N → mm/N
 

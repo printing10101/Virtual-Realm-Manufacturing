@@ -59,7 +59,7 @@ def _record(**overrides) -> dict:
 
 
 @pytest.fixture(scope="module")
-def env(tmp_path_factory) :
+def env(tmp_path_factory):
     """模块级一次性环境：临时 SQLite + 临时用户存储 + 登录后的 TestClient。
 
     teardown 恢复 DB_URL / 引擎单例 / 用户存储，避免影响同进程内
@@ -74,7 +74,7 @@ def env(tmp_path_factory) :
     from app.middleware import rate_limiter as rate_limiter_module
     from app.models import user as user_module
 
-    # --- DB：指向临时 SQLite 并重置引擎单例，确保懒初始化读到新 DB_URL ---
+    # DB：指向临时 SQLite 并重置引擎单例，确保懒初始化读到新 DB_URL
     original_db_url = os.environ.get("DB_URL")
     original_singletons = db_connection._singletons
     os.environ["DB_URL"] = f"sqlite:///{(tmp / 'experience.db').as_posix()}"
@@ -93,7 +93,7 @@ def env(tmp_path_factory) :
     user_module.USER_STORE_FILE = str(tmp / "users.json")
     user_module._holder.reset()
 
-    # --- 登录/注册限流：清空 slowapi 存储，避免与其他模块的请求叠加触发 429 ---
+    # 登录/注册限流：清空 slowapi 存储，避免与其他模块的请求叠加触发 429
     for _name in ("limiter", "_registration_limiter"):
         _limiter = getattr(rate_limiter_module, _name, None)
         storage = getattr(_limiter, "_storage", None)
@@ -125,7 +125,7 @@ def env(tmp_path_factory) :
         token = body["data"]["access_token"]
         yield SimpleNamespace(client=client, headers={"Authorization": f"Bearer {token}"})
 
-    # --- 恢复环境 ---
+    # 恢复环境
     user_module.USER_STORE_FILE = original_store_file
     user_module._holder.reset()
     if original_db_url is None:
@@ -135,9 +135,7 @@ def env(tmp_path_factory) :
     db_connection._singletons = original_singletons
 
 
-# ============================================================================
 # 采集（capture / batch）
-# ============================================================================
 
 
 class TestCapture:
@@ -219,9 +217,7 @@ class TestBatchCapture:
         assert "1000" in body["message"]
 
 
-# ============================================================================
 # 查询与统计
-# ============================================================================
 
 
 class TestListExperiences:
@@ -320,9 +316,7 @@ class TestStats:
         assert resp.json()["ok_rate"] is None
 
 
-# ============================================================================
 # 详情与删除
-# ============================================================================
 
 
 class TestDetailAndDelete:

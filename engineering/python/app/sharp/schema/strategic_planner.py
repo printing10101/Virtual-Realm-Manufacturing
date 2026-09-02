@@ -44,9 +44,7 @@ from app.sharp.schema.domain_schema import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 验证策略结构
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -103,9 +101,7 @@ class VerificationStrategy:
         }
 
 
-# ---------------------------------------------------------------------------
 # 工具名常量（与 M2 tool_registry 对齐）
-# ---------------------------------------------------------------------------
 
 # KG 工具（基于 KnowledgeGraphQueryAPI）
 TOOL_KG_QUERY_ENTITY = "kg.query_entity"  # 查询实体属性
@@ -125,9 +121,7 @@ TOOL_LLM_EXTRACT = "llm.extract"  # LLM 实体/关系抽取
 TOOL_AGGREGATE_EVIDENCE = "aggregate.evidence"  # 证据聚合
 
 
-# ---------------------------------------------------------------------------
 # 战略规划器
-# ---------------------------------------------------------------------------
 
 
 class StrategicPlanner:
@@ -169,9 +163,7 @@ class StrategicPlanner:
         if ablation_mode not in valid_modes:
             raise ValueError(f"ablation_mode 必须是 {valid_modes} 之一，实际: {ablation_mode}")
 
-    # ------------------------------------------------------------------
     # 公共入口
-    # ------------------------------------------------------------------
 
     def plan(self, triple: Triple) -> VerificationStrategy:
         """为三元组生成验证策略。"""
@@ -198,9 +190,7 @@ class StrategicPlanner:
         strategy.rationale = self._generate_rationale(triple, strategy)
         return strategy
 
-    # ------------------------------------------------------------------
     # 分维度规则
-    # ------------------------------------------------------------------
 
     def _apply_relation_rule(self, triple: Triple, strategy: VerificationStrategy) -> None:
         """根据关系类型决定工具优先级与关注维度。"""
@@ -342,9 +332,7 @@ class StrategicPlanner:
             # Memory 消融在 M4 处理，这里不调整策略
             pass
 
-    # ------------------------------------------------------------------
     # 辅助方法
-    # ------------------------------------------------------------------
 
     def _plan_uniform(self, triple: Triple) -> VerificationStrategy:
         """消融模式 no_schema 的统一策略。"""

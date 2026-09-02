@@ -13,9 +13,7 @@ from app.core.response import ErrorCode, error, success
 from app.services import process_routes_service
 
 
-# ---------------------------------------------------------------------------
 # Pydantic schemas
-# ---------------------------------------------------------------------------
 
 
 class ProcessStepCreate(BaseModel):
@@ -43,9 +41,7 @@ class ProcessRouteUpdate(BaseModel):
     steps: list[ProcessStepCreate] | None = None
 
 
-# ---------------------------------------------------------------------------
 # Router
-# ---------------------------------------------------------------------------
 
 router = APIRouter(
     prefix="/api/v1/process-routes",

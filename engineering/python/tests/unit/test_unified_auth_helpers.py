@@ -52,9 +52,7 @@ from app.auth.unified_auth import (
 )
 
 
-# ===========================================================================
 # Fixtures
-# ===========================================================================
 
 
 @pytest.fixture
@@ -138,9 +136,7 @@ def app_factory(token_file, monkeypatch):
     return _make
 
 
-# ===========================================================================
 # _is_public_path
-# ===========================================================================
 
 
 class TestIsPublicPath:
@@ -166,9 +162,7 @@ class TestIsPublicPath:
             assert _is_public_path(p) is True
 
 
-# ===========================================================================
 # _get_token_metadata
-# ===========================================================================
 
 
 class TestGetTokenMetadata:
@@ -228,9 +222,7 @@ def caplog_at_level(monkeypatch, level_name: str):
     return None
 
 
-# ===========================================================================
 # _save_token / _load_token / _initialize_token / _get_token_file_path
-# ===========================================================================
 
 
 class TestTokenFileOps:
@@ -284,9 +276,7 @@ def monkeypatch_set_env_token_file(tmp_path: Path, path: Path) -> None:
     os.environ["LNN_TOKEN_FILE"] = str(path)
 
 
-# ===========================================================================
 # _decode_token / _decode_token_strict / _get_token_ban_list
-# ===========================================================================
 
 
 class TestDecodeHelpers:
@@ -325,9 +315,7 @@ class TestDecodeHelpers:
         assert ban_list is real_ban_list()
 
 
-# ===========================================================================
 # PermissionLevel / _get_permission_class / _check_scope
-# ===========================================================================
 
 
 class TestPermissionHelpers:
@@ -384,9 +372,7 @@ class TestAgentTokenStore:
         assert s is agent_token_store
 
 
-# ===========================================================================
 # AgentAuditLog
-# ===========================================================================
 
 
 class TestAgentAuditLog:
@@ -476,9 +462,7 @@ class TestAgentAuditLog:
         assert log._log_path.name == "agent_audit.log"
 
 
-# ===========================================================================
 # AgentRateLimiter
-# ===========================================================================
 
 
 class TestAgentRateLimiter:
@@ -522,9 +506,7 @@ class TestAgentRateLimiter:
         assert rl.get_active_tasks("a1") == 0
 
 
-# ===========================================================================
 # IdempotencyStore
-# ===========================================================================
 
 
 class TestIdempotencyStore:
@@ -568,9 +550,7 @@ class TestIdempotencyStore:
         assert "k1" not in store._keys
 
 
-# ===========================================================================
 # _make_json_response / _send_json_response
-# ===========================================================================
 
 
 class TestMakeJsonResponse:
@@ -597,26 +577,20 @@ class TestMakeJsonResponse:
         assert sent[0]["status"] == 400
 
 
-# ===========================================================================
 # UnifiedAuthMiddleware 初始化与 __call__ 全面分支
-# ===========================================================================
 
 
 class TestMiddlewareInit:
     def test_init_loads_lnn_token_when_enabled(self, token_file, monkeypatch):
         monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
         app = FastAPI()
-        middleware = UnifiedAuthMiddleware(
-            app, lnn_auth_enabled=True, lnn_permission_enforced=False
-        )
+        middleware = UnifiedAuthMiddleware(app, lnn_auth_enabled=True, lnn_permission_enforced=False)
         assert middleware._lnn_token == "test-token-uuid-abc"
 
     def test_init_skips_lnn_token_when_disabled(self, token_file, monkeypatch):
         monkeypatch.setenv("LNN_TOKEN_FILE", str(token_file))
         app = FastAPI()
-        middleware = UnifiedAuthMiddleware(
-            app, lnn_auth_enabled=False, lnn_permission_enforced=False
-        )
+        middleware = UnifiedAuthMiddleware(app, lnn_auth_enabled=False, lnn_permission_enforced=False)
         assert middleware._lnn_token is None
 
 
@@ -663,9 +637,7 @@ class TestAgentPathBranch:
     def test_agent_path_disabled_allows_request(self, app_factory):
         # 当 agent_auth_enabled=False 且 lnn_auth_enabled=False 时，
         # agent 路径不会被拦截，直接转发到下游应用。
-        client = TestClient(
-            app_factory(agent_auth_enabled=False, lnn_auth_enabled=False)
-        )
+        client = TestClient(app_factory(agent_auth_enabled=False, lnn_auth_enabled=False))
         response = client.post("/api/agent/v1/predict", json={})
         assert response.status_code == 200
 
@@ -792,16 +764,12 @@ class TestAgentPathBranch:
         assert body.get("status") == "queued"
 
 
-# ===========================================================================
 # JWT 路径
-# ===========================================================================
 
 
 class TestJwtPath:
     def test_jwt_with_disabled_lnn_jwt_disabled(self, app_factory):
-        client = TestClient(
-            app_factory(lnn_auth_enabled=False, jwt_auth_enabled=False)
-        )
+        client = TestClient(app_factory(lnn_auth_enabled=False, jwt_auth_enabled=False))
         response = client.post(
             "/api/agent/v1/predict",
             json={},
@@ -811,9 +779,7 @@ class TestJwtPath:
         assert response.status_code == 200
 
     def test_jwt_with_lnn_disabled_jwt_enabled_invalid(self, app_factory):
-        client = TestClient(
-            app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True)
-        )
+        client = TestClient(app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True))
         response = client.get(
             "/protected",
             headers={"Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.bad.token"},
@@ -824,9 +790,7 @@ class TestJwtPath:
         from app.auth.security import create_access_token
 
         token = create_access_token({"sub": "u1", "role": "user"})
-        client = TestClient(
-            app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True)
-        )
+        client = TestClient(app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True))
         response = client.get("/protected", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 200
 
@@ -835,30 +799,22 @@ class TestJwtPath:
 
         token = create_access_token({"sub": "u1", "role": "user"})
         get_token_ban_list().ban(token)
-        client = TestClient(
-            app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True)
-        )
+        client = TestClient(app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True))
         response = client.get("/protected", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 401
 
     def test_jwt_no_auth_header_returns_401(self, app_factory):
-        client = TestClient(
-            app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True)
-        )
+        client = TestClient(app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True))
         response = client.get("/protected")
         assert response.status_code == 401
 
     def test_jwt_invalid_bearer_prefix_returns_401(self, app_factory):
-        client = TestClient(
-            app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True)
-        )
+        client = TestClient(app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True))
         response = client.get("/protected", headers={"Authorization": "Basic xyz"})
         assert response.status_code == 401
 
 
-# ===========================================================================
 # LNN auth 内部函数 _check_lnn_auth
-# ===========================================================================
 
 
 class TestCheckLnnAuth:
@@ -878,9 +834,7 @@ class TestCheckLnnAuth:
         response = client.get("/api/docs")
         assert response.status_code == 200
 
-    def test_lnn_enabled_permission_enforced_emits_audit_log(
-        self, app_factory, caplog
-    ):
+    def test_lnn_enabled_permission_enforced_emits_audit_log(self, app_factory, caplog):
         from app.auth import unified_auth as ua
 
         class _PermChecker:
@@ -916,15 +870,11 @@ class TestCheckLnnAuth:
     def test_lnn_enabled_invalid_token_returns_401(self, app_factory, caplog):
         client = TestClient(app_factory(lnn_auth_enabled=True, jwt_auth_enabled=False))
         with caplog.at_level(logging.WARNING, logger="app.auth.unified_auth"):
-            response = client.get(
-                "/protected", headers={"Authorization": "Bearer wrong-token"}
-            )
+            response = client.get("/protected", headers={"Authorization": "Bearer wrong-token"})
         assert response.status_code == 401
 
 
-# ===========================================================================
 # module-level singletons
-# ===========================================================================
 
 
 class TestModuleLevelSingletons:

@@ -151,9 +151,7 @@ class SimulationStatusResponse(BaseModel):
     result: SimulationResponse | None = None
 
 
-# ===========================================================================
 # 以下模型由安装验证（2026-08-03）发现拆分遗漏，从拆分前 api.py 恢复
-# ===========================================================================
 
 
 class ConflictCheckRequest(BaseModel):

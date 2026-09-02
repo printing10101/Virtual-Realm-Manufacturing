@@ -318,17 +318,14 @@ async def quick_health():
     return {"status": "ok", "version": PY_VERSION, "uptime": round(time.time() - APP_START, 1)}
 
 
-# =============================================================================
 # 标准化健康检查端点（容器/探针专用）
-# =============================================================================
 # 标准化端点设计：
-#   - GET /api/health       — 主健康检查，返回标准 JSON（status/version/timestamp）
-#   - GET /api/health/ping  — 轻量级存活探测，仅返回 {"ping": true}，
-#                            用于 Docker HEALTHCHECK 等高频探活场景
+# - GET /api/health — 主健康检查，返回标准 JSON（status/version/timestamp）
+# - GET /api/health/ping — 轻量级存活探测，仅返回 {"ping": true}，
+# 用于 Docker HEALTHCHECK 等高频探活场景
 # 两个端点均为公开访问路径（unified_auth 的 PUBLIC_PATHS 中已注册），
 # 不需要任何身份验证或授权校验。
 # 旧的根路径 /health 已在主程序中彻底移除，避免端点重复和潜在混淆。
-# =============================================================================
 
 
 @simple_health_router.get(

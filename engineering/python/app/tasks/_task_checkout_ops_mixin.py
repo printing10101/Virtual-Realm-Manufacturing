@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class _TaskCheckoutOpsMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _get_conn: Callable[..., Any]
     _record_failure: Callable[..., Any]
     _row_to_task: Callable[..., Any]
@@ -292,10 +292,10 @@ class _TaskCheckoutOpsMixin:
     def close(self):
         # 修复：原实现直接调用 self._conn.close() 关闭连接，
         # 但连接是从 SQLiteConnectionPool 借出的——直接 close 会导致：
-        #   1. 连接池 _active_count / _created_count 不会减少（计数器永久漂移）
-        #   2. _borrowed 字典残留借出记录，check_leaked_connections 误报泄漏
-        #   3. 后续 close_all() 再次 close 同一连接（虽 sqlite3 允许重复 close，
-        #      但日志会刷错误且掩盖真实问题）
+        # 1. 连接池 _active_count / _created_count 不会减少（计数器永久漂移）
+        # 2. _borrowed 字典残留借出记录，check_leaked_connections 误报泄漏
+        # 3. 后续 close_all() 再次 close 同一连接（虽 sqlite3 允许重复 close，
+        # 但日志会刷错误且掩盖真实问题）
         # 现通过 return_connection 将连接归还到连接池，由连接池统一决定
         # 是否放回池中复用或关闭（连接池满时由 return_connection 内部 close）。
         if self._conn is not None:

@@ -38,9 +38,8 @@ def tmp_db(tmp_path):
     return str(tmp_path / "test.db")
 
 
-# ---------------------------------------------------------------------------
 # CostEvent / 数据类
-# ---------------------------------------------------------------------------
+
 
 class TestCostEvent:
     def test_cost_event_to_dict_roundtrip(self):
@@ -67,9 +66,8 @@ class TestCostEvent:
         assert ev.event_id is None  # 未持久化前无 id
 
 
-# ---------------------------------------------------------------------------
 # MultiDimensionCostTracker
-# ---------------------------------------------------------------------------
+
 
 class TestCostTracker:
     def test_init_creates_schema(self, tmp_db):
@@ -255,9 +253,8 @@ class TestCostTracker:
         tracker.close()  # 二次关闭不抛错
 
 
-# ---------------------------------------------------------------------------
 # BudgetPolicy 模型
-# ---------------------------------------------------------------------------
+
 
 class TestBudgetPolicy:
     def test_usage_ratio_and_status_ok(self):
@@ -291,9 +288,8 @@ class TestBudgetPolicy:
         assert d["resource_type"] == "total_cost"
 
 
-# ---------------------------------------------------------------------------
 # BudgetEnforcer
-# ---------------------------------------------------------------------------
+
 
 class TestBudgetEnforcer:
     def test_init_and_default_policies(self, tmp_db):
@@ -332,7 +328,9 @@ class TestBudgetEnforcer:
     def test_adjust_budget(self, tmp_db):
         enforcer = BudgetEnforcer(db_path=tmp_db)
         try:
-            policy = BudgetPolicy(level=BudgetLevel.PROJECT, scope_id="p1", resource_type=ResourceType.TOTAL_COST, limit=100.0)
+            policy = BudgetPolicy(
+                level=BudgetLevel.PROJECT, scope_id="p1", resource_type=ResourceType.TOTAL_COST, limit=100.0
+            )
             enforcer.set_policy(policy)
             enforcer.adjust_budget(BudgetLevel.PROJECT, "p1", ResourceType.TOTAL_COST, new_limit=500.0, reason="扩容")
             got = enforcer.get_policy(BudgetLevel.PROJECT, "p1", ResourceType.TOTAL_COST)
@@ -344,7 +342,13 @@ class TestBudgetEnforcer:
     def test_check_budget_ok(self, tmp_db):
         enforcer = BudgetEnforcer(db_path=tmp_db)
         try:
-            policy = BudgetPolicy(level=BudgetLevel.AGENT, scope_id="a1", resource_type=ResourceType.API_CALLS, limit=100.0, warning_threshold=0.8)
+            policy = BudgetPolicy(
+                level=BudgetLevel.AGENT,
+                scope_id="a1",
+                resource_type=ResourceType.API_CALLS,
+                limit=100.0,
+                warning_threshold=0.8,
+            )
             enforcer.set_policy(policy)
             enforcer.record_usage(BudgetLevel.AGENT, "a1", ResourceType.API_CALLS, usage=30.0)
             result = enforcer.check_budget(BudgetLevel.AGENT, "a1", ResourceType.API_CALLS)
@@ -356,7 +360,13 @@ class TestBudgetEnforcer:
     def test_check_budget_warning(self, tmp_db):
         enforcer = BudgetEnforcer(db_path=tmp_db)
         try:
-            policy = BudgetPolicy(level=BudgetLevel.AGENT, scope_id="a2", resource_type=ResourceType.API_CALLS, limit=100.0, warning_threshold=0.8)
+            policy = BudgetPolicy(
+                level=BudgetLevel.AGENT,
+                scope_id="a2",
+                resource_type=ResourceType.API_CALLS,
+                limit=100.0,
+                warning_threshold=0.8,
+            )
             enforcer.set_policy(policy)
             enforcer.record_usage(BudgetLevel.AGENT, "a2", ResourceType.API_CALLS, usage=90.0)
             result = enforcer.check_budget(BudgetLevel.AGENT, "a2", ResourceType.API_CALLS)
@@ -367,7 +377,13 @@ class TestBudgetEnforcer:
     def test_check_budget_exceeded_blocks(self, tmp_db):
         enforcer = BudgetEnforcer(db_path=tmp_db)
         try:
-            policy = BudgetPolicy(level=BudgetLevel.AGENT, scope_id="a3", resource_type=ResourceType.API_CALLS, limit=100.0, hard_stop=True)
+            policy = BudgetPolicy(
+                level=BudgetLevel.AGENT,
+                scope_id="a3",
+                resource_type=ResourceType.API_CALLS,
+                limit=100.0,
+                hard_stop=True,
+            )
             enforcer.set_policy(policy)
             enforcer.record_usage(BudgetLevel.AGENT, "a3", ResourceType.API_CALLS, usage=150.0)
             result = enforcer.check_budget(BudgetLevel.AGENT, "a3", ResourceType.API_CALLS)
@@ -379,7 +395,13 @@ class TestBudgetEnforcer:
     def test_reset_period(self, tmp_db):
         enforcer = BudgetEnforcer(db_path=tmp_db)
         try:
-            policy = BudgetPolicy(level=BudgetLevel.TASK, scope_id="t1", resource_type=ResourceType.GPU_TIME, limit=10.0, period=BudgetPeriod.DAILY)
+            policy = BudgetPolicy(
+                level=BudgetLevel.TASK,
+                scope_id="t1",
+                resource_type=ResourceType.GPU_TIME,
+                limit=10.0,
+                period=BudgetPeriod.DAILY,
+            )
             enforcer.set_policy(policy)
             enforcer.record_usage(BudgetLevel.TASK, "t1", ResourceType.GPU_TIME, usage=8.0)
             enforcer.reset_period(BudgetLevel.TASK, "t1", ResourceType.GPU_TIME)
@@ -392,7 +414,13 @@ class TestBudgetEnforcer:
     def test_alerts_lifecycle(self, tmp_db):
         enforcer = BudgetEnforcer(db_path=tmp_db)
         try:
-            policy = BudgetPolicy(level=BudgetLevel.GLOBAL, scope_id="default", resource_type=ResourceType.TOTAL_COST, limit=50.0, warning_threshold=0.5)
+            policy = BudgetPolicy(
+                level=BudgetLevel.GLOBAL,
+                scope_id="default",
+                resource_type=ResourceType.TOTAL_COST,
+                limit=50.0,
+                warning_threshold=0.5,
+            )
             enforcer.set_policy(policy)
             enforcer.record_usage(BudgetLevel.GLOBAL, "default", ResourceType.TOTAL_COST, usage=40.0)
             alerts = enforcer.get_alerts()

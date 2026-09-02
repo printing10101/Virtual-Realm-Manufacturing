@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class _ApprovalQueryMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _get_request: Callable[..., Any]
     _row_to_request: Callable[..., Any]
     _conn: Any

@@ -37,12 +37,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["Agent State Management"])
 
 
-# ---------------------------------------------------------------------------
 # [P0-17] 安全修复：Pydantic 请求模型替换 payload: dict 弱验证
 # 防止 AgentState(agent_id=agent_id, **payload) 解包注入 created_at /
 # updated_at / state_version / agent_id 等内部字段，以及 setattr 路径
 # 篡改不该被 API 修改的字段。仅暴露业务可写字段。
-# ---------------------------------------------------------------------------
 
 
 class AgentStateSaveRequest(BaseModel):
@@ -57,12 +55,10 @@ class AgentStateSaveRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, description="元数据")
 
 
-# ---------------------------------------------------------------------------
 # [P0-18] 安全修复：save_checkpoint / add_memory / rollback_checkpoint /
 # update_context / clone_agent 端点 Pydantic 请求模型
 # 替换 payload: dict 弱验证，约束字段类型并校验枚举值，防止
 # CheckpointType(payload.get(...)) 接收非法值抛未处理 ValueError
-# ---------------------------------------------------------------------------
 
 
 class CheckpointSaveRequest(BaseModel):

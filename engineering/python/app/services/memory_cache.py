@@ -89,9 +89,7 @@ class MemoryCache:
             if expired_keys:
                 logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
 
-    # =========================================================================
     # 简单 KV 操作
-    # =========================================================================
 
     async def set(self, key: str, value: Any, ex: int | None = None) -> bool:
         """设置键值对，ex 为过期时间（秒）"""
@@ -133,9 +131,7 @@ class MemoryCache:
                 return False
             return True
 
-    # =========================================================================
     # Hash 操作（用于任务进度存储）
-    # =========================================================================
 
     async def hset(self, key: str, mapping: dict[str, Any]) -> bool:
         """设置 Hash 字段"""
@@ -175,9 +171,7 @@ class MemoryCache:
                 return None
             return entry.value.get(field)
 
-    # =========================================================================
     # 兼容性方法
-    # =========================================================================
 
     async def ping(self) -> bool:
         """兼容性方法：始终返回 True"""
@@ -203,9 +197,7 @@ class MemoryCache:
         }
 
 
-# =============================================================================
 # 全局单例
-# =============================================================================
 
 _memory_cache: MemoryCache | None = None
 _holder_lock = threading.Lock()

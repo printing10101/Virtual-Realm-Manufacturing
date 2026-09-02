@@ -24,9 +24,7 @@ from app.sharp.react.trajectory_recorder import TrajectoryRecorder
 from app.sharp.schema.strategic_planner import VerificationStrategy
 
 
-# ---------------------------------------------------------------------------
 # 终止决策
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -56,9 +54,7 @@ class StoppingDecision:
         }
 
 
-# ---------------------------------------------------------------------------
 # 终止条件判定器
-# ---------------------------------------------------------------------------
 
 
 class StoppingCriteria:
@@ -167,9 +163,7 @@ class StoppingCriteria:
 
         return StoppingDecision(should_stop=False)
 
-    # ------------------------------------------------------------------
     # 内部判定
-    # ------------------------------------------------------------------
 
     def _is_evidence_converged(
         self,

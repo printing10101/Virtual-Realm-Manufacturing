@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class _TransferMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _find_group_by_name: Callable[..., Any]
     _get_conn: Callable[..., Any]
     _now: Callable[..., Any]

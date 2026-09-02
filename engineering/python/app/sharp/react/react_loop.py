@@ -55,9 +55,7 @@ from app.sharp.tools.tool_registry import ToolRegistry
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 验证结果
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -127,9 +125,7 @@ class VerificationResult:
         }
 
 
-# ---------------------------------------------------------------------------
 # ReAct 主循环
-# ---------------------------------------------------------------------------
 
 
 class ReActLoop:
@@ -183,9 +179,7 @@ class ReActLoop:
         self.llm_temperature = llm_temperature
         self.memory_augmentor = memory_augmentor
 
-    # ------------------------------------------------------------------
     # 公共入口
-    # ------------------------------------------------------------------
 
     async def verify(
         self,
@@ -440,9 +434,7 @@ class ReActLoop:
 
         return result
 
-    # ------------------------------------------------------------------
     # 内部方法
-    # ------------------------------------------------------------------
 
     async def _call_llm_with_retry(
         self, user_prompt: str, verification_id: str, step_idx: int

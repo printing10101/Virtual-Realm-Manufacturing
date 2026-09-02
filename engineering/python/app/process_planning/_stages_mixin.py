@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class _StagesMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _data_valid: Any
 
     def _validate_input(self, part_description: dict[str, Any]) -> PipelineStage:

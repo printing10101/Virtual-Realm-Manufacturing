@@ -40,7 +40,7 @@ def _handle_service_exception(e: Exception, operation: str) -> None:
     if isinstance(e, HTTPException):
         raise e
 
-    # 2. 客户端输入错误 → 400
+    # 2. 客户端输入错误 400
     if isinstance(e, (ValueError, KeyError, TypeError)):
         logger.error("Invalid input during %s: %s", operation, e)
         raise HTTPException(
@@ -48,7 +48,7 @@ def _handle_service_exception(e: Exception, operation: str) -> None:
             detail="请求参数无效，请检查输入",
         ) from e
 
-    # 3. 软依赖缺失 → 503
+    # 3. 软依赖缺失 503
     if isinstance(e, (ImportError, ModuleNotFoundError)):
         logger.error("Optional dependency missing during %s: %s", operation, e)
         raise HTTPException(
@@ -56,7 +56,7 @@ def _handle_service_exception(e: Exception, operation: str) -> None:
             detail="服务依赖未就绪，请联系管理员",
         ) from e
 
-    # 4. 其他未预期异常 → 500
+    # 4. 其他未预期异常 500
     logger.error("Failed to %s: %s", operation, e, exc_info=True)
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

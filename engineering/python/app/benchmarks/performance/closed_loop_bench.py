@@ -100,9 +100,7 @@ class ClosedLoopPerfBenchmark:
         self._wm_model_uri = "model://world_model/bench/1.0.0"
         self._rl_model_uri = "model://rl_agent/bench/1.0.0"
 
-    # ------------------------------------------------------------------
     # 初始化
-    # ------------------------------------------------------------------
 
     def setup(self) -> None:
         """初始化 WorldModelPlugin + RLAgentPlugin."""
@@ -123,9 +121,7 @@ class ClosedLoopPerfBenchmark:
         self._stage_times = {n: [] for n in self.NODE_SEQUENCE}
         self._total_times = []
 
-    # ------------------------------------------------------------------
     # 单次闭环执行
-    # ------------------------------------------------------------------
 
     def _run_single_closed_loop(self) -> dict[str, float]:
         """执行单次闭环工作流，返回各节点耗时（毫秒）.
@@ -139,12 +135,12 @@ class ClosedLoopPerfBenchmark:
 
         stage_times: dict[str, float] = {}
 
-        # ---------- 节点 1: perceive（模拟传感器信号处理） ----------
+        # 节点 1: perceive（模拟传感器信号处理）
         t0 = time.perf_counter()
         current_state = self._simulate_perceive()
         stage_times["perceive"] = (time.perf_counter() - t0) * 1000
 
-        # ---------- 节点 2: predict（真实 WorldModelPlugin） ----------
+        # 节点 2: predict（真实 WorldModelPlugin）
         t0 = time.perf_counter()
         candidate_action = np.random.randn(self._horizon, self._action_dim).astype(np.float32)
         state_artifact = Artifact(
@@ -180,7 +176,7 @@ class ClosedLoopPerfBenchmark:
         trajectory_artifact = predict_result.outputs.get("predicted_trajectory")
         trajectory_metrics_artifact = predict_result.outputs.get("trajectory_metrics")
 
-        # ---------- 节点 3: decide（真实 RLAgentPlugin） ----------
+        # 节点 3: decide（真实 RLAgentPlugin）
         t0 = time.perf_counter()
         decide_ctx = TaskContext(
             job_id=f"bench-decide-{time.time_ns()}",
@@ -198,22 +194,22 @@ class ClosedLoopPerfBenchmark:
 
         recommended_action = decide_result.outputs.get("action")
 
-        # ---------- 节点 4: generate_params（模拟 CAM 参数生成） ----------
+        # 节点 4: generate_params（模拟 CAM 参数生成）
         t0 = time.perf_counter()
         gcode_artifact = self._simulate_generate_params(recommended_action)
         stage_times["generate_params"] = (time.perf_counter() - t0) * 1000
 
-        # ---------- 节点 5: validate_cam（模拟 CAM 软件验证） ----------
+        # 节点 5: validate_cam（模拟 CAM 软件验证）
         t0 = time.perf_counter()
         validation_artifact = self._simulate_validate_cam(gcode_artifact)
         stage_times["validate_cam"] = (time.perf_counter() - t0) * 1000
 
-        # ---------- 节点 6: execute（模拟 CAM 仿真，dry_run=true） ----------
+        # 节点 6: execute（模拟 CAM 仿真，dry_run=true）
         t0 = time.perf_counter()
         execution_artifact = self._simulate_execute(gcode_artifact, validation_artifact)
         stage_times["execute"] = (time.perf_counter() - t0) * 1000
 
-        # ---------- 节点 7: collect_feedback（模拟反馈回写） ----------
+        # 节点 7: collect_feedback（模拟反馈回写）
         t0 = time.perf_counter()
         self._simulate_collect_feedback(
             execution_artifact,
@@ -226,9 +222,7 @@ class ClosedLoopPerfBenchmark:
         stage_times["total"] = sum(stage_times[n] for n in self.NODE_SEQUENCE)
         return stage_times
 
-    # ------------------------------------------------------------------
     # 模拟节点实现
-    # ------------------------------------------------------------------
 
     def _simulate_perceive(self) -> np.ndarray:
         """模拟传感器信号处理（FFT + 小波包特征提取）.
@@ -326,9 +320,7 @@ class ClosedLoopPerfBenchmark:
             },
         )
 
-    # ------------------------------------------------------------------
     # 基准方法
-    # ------------------------------------------------------------------
 
     def run_full_pipeline(self, n_iterations: int = 10) -> dict[str, Any]:
         """完整闭环端到端延迟基准（n_iterations 轮）.
@@ -445,9 +437,7 @@ class ClosedLoopPerfBenchmark:
         self._results.update(result)
         return result
 
-    # ------------------------------------------------------------------
     # 瓶颈分析
-    # ------------------------------------------------------------------
 
     def _analyze_bottlenecks(self, total_mean_ms: float) -> list[dict[str, Any]]:
         """识别闭环中的性能瓶颈节点.
@@ -483,9 +473,7 @@ class ClosedLoopPerfBenchmark:
 
         return bottlenecks
 
-    # ------------------------------------------------------------------
     # 汇总与持久化
-    # ------------------------------------------------------------------
 
     def get_all_results(self) -> dict[str, Any]:
         """返回所有已测量的结果."""
@@ -524,9 +512,7 @@ class ClosedLoopPerfBenchmark:
         return output_path
 
 
-# ---------------------------------------------------------------------------
 # pytest-benchmark 集成
-# ---------------------------------------------------------------------------
 
 
 def bench_full_pipeline(benchmark: Any) -> None:

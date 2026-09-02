@@ -39,9 +39,7 @@ def _get_session():
     return sessionmaker
 
 
-# ---------------------------------------------------------------------------
 # 写入
-# ---------------------------------------------------------------------------
 
 
 async def create_cutting_experience(record: CuttingExperience) -> dict:
@@ -91,9 +89,7 @@ async def create_many_cutting_experiences(records: list[CuttingExperience]) -> i
         return len(models)
 
 
-# ---------------------------------------------------------------------------
 # 查询
-# ---------------------------------------------------------------------------
 
 
 async def list_cutting_experiences(query: ExperienceQuery) -> dict:
@@ -202,9 +198,7 @@ async def aggregate_experience_stats(query: ExperienceQuery) -> ExperienceStats:
     )
 
 
-# ---------------------------------------------------------------------------
 # 删除
-# ---------------------------------------------------------------------------
 
 
 async def delete_cutting_experience(record_id: UUID | str) -> bool:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """软著源码收集：探查自研代码文件清单与版权头情况（一次性分析脚本）。"""
+
 import os
 import re
 import sys
@@ -8,14 +9,26 @@ from collections import Counter
 
 ROOT = r"C:\Users\Lenovo\Desktop\灵境制造（上线版）"
 
-# 自研代码目录（按逻辑顺序：后端 → 前端 → 桌面壳/rust）
+# 自研代码目录（按逻辑顺序：后端 前端 桌面壳/rust）
 INCLUDE_DIRS = [
     r"engineering\python\app",
     r"engineering\src",
     r"engineering\src-tauri",
     r"rust",
 ]
-EXCLUDE_DIR_PARTS = ("__pycache__", "node_modules", "dist", "build", ".venv", "venv", ".git", "target", ".cargo", "coverage", ".vite")
+EXCLUDE_DIR_PARTS = (
+    "__pycache__",
+    "node_modules",
+    "dist",
+    "build",
+    ".venv",
+    "venv",
+    ".git",
+    "target",
+    ".cargo",
+    "coverage",
+    ".vite",
+)
 EXCLUDE_FILE_PARTS = (".pyc", ".pyo", ".map", ".min.js")
 # 测试/配置类文件不进入产品源码
 EXCLUDE_DIR_NAMES = ("tests", "test", "__tests__", "migrations", "assets", "public", "static", "icons")
@@ -67,7 +80,9 @@ def probe_headers(files):
 def main():
     files = collect_files()
     print(f"总文件数: {len(files)}")
-    by_dir = Counter(rel.split("/")[0] + ("/" + rel.split("/")[1] if len(rel.split("/")) > 1 else "") for rel, _ in files)
+    by_dir = Counter(
+        rel.split("/")[0] + ("/" + rel.split("/")[1] if len(rel.split("/")) > 1 else "") for rel, _ in files
+    )
     for d, c in sorted(by_dir.items()):
         print(f"  {d}: {c} 文件")
     total_lines = 0

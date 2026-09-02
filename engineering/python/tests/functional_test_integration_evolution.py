@@ -1,4 +1,4 @@
-﻿"""System-wide integration tests for Template Evolution System.
+"""System-wide integration tests for Template Evolution System.
 
 Covers 12 end-to-end scenarios:
 1. Stability: 10 consecutive runs extract >= 1 valid pattern
@@ -106,9 +106,7 @@ def test_1_stability_pattern_extraction(all_systems):
             for p in new:
                 pattern_types.append(p.pattern_type)
 
-    assert success_count >= 1, (
-        f"10 runs produced {success_count} valid extractions (expected >= 1)"
-    )
+    assert success_count >= 1, f"10 runs produced {success_count} valid extractions (expected >= 1)"
     assert len(pattern_types) >= 1, "No pattern types discovered"
 
 
@@ -132,19 +130,11 @@ def test_2_branch_config_traffic_control(all_systems):
         assignments[branch] += 1
 
     assert assignments["candidate"] > 0, "No projects assigned to candidate"
-    candidate_pct = assignments["candidate"] / (
-        assignments["control"] + assignments["candidate"]
-    )
-    assert candidate_pct <= 0.25, (
-        f"Candidate ratio {candidate_pct:.0%} exceeds reasonable range (should be ~10%)"
-    )
+    candidate_pct = assignments["candidate"] / (assignments["control"] + assignments["candidate"])
+    assert candidate_pct <= 0.25, f"Candidate ratio {candidate_pct:.0%} exceeds reasonable range (should be ~10%)"
 
     consistency_branch = ab_framework.assign_branch("project_0", exp.experiment_id)
-    assert (
-        consistency_branch == assignments.get("candidate", 0) > 0
-        and "candidate"
-        or "control"
-    )
+    assert consistency_branch == assignments.get("candidate", 0) > 0 and "candidate" or "control"
 
 
 # ─── Test 3: A/B effectiveness — >5% improvement auto-merge ───
@@ -176,9 +166,7 @@ def test_3_ab_auto_merge(all_systems):
     result = ab_framework.auto_conclude(exp.experiment_id)
     assert result is not None, "auto_conclude returned None"
     assert result.status == "merged", f"Expected 'merged', got '{result.status}'"
-    assert result.result == "winner_candidate", (
-        f"Expected 'winner_candidate', got '{result.result}'"
-    )
+    assert result.result == "winner_candidate", f"Expected 'winner_candidate', got '{result.result}'"
 
 
 # ─── Test 4: Auto-rollback — performance degradation ───
@@ -209,12 +197,8 @@ def test_4_auto_rollback(all_systems):
 
     result = ab_framework.auto_conclude(exp.experiment_id)
     assert result is not None, "auto_conclude returned None"
-    assert result.status == "rolled_back", (
-        f"Expected 'rolled_back', got '{result.status}'"
-    )
-    assert result.result == "winner_control", (
-        f"Expected 'winner_control', got '{result.result}'"
-    )
+    assert result.status == "rolled_back", f"Expected 'rolled_back', got '{result.status}'"
+    assert result.result == "winner_control", f"Expected 'winner_control', got '{result.result}'"
 
 
 # ─── Test 5: Pattern recognition + doc evolution ───
@@ -233,14 +217,10 @@ def test_5_error_pattern_triggers_skill_update(all_systems):
 
     new = evolution_eng.evaluate_triggers()
     skill_triggers = [s for s in new if s.trigger_type == "skill"]
-    assert len(skill_triggers) >= 1, (
-        "Skill evolution trigger did not fire after 3 same-type errors"
-    )
-    assert "timeout_error" in skill_triggers[
-        0
-    ].description.lower() or "timeout_error" in str(skill_triggers[0].data_evidence), (
-        "Error type not reflected in suggestion"
-    )
+    assert len(skill_triggers) >= 1, "Skill evolution trigger did not fire after 3 same-type errors"
+    assert "timeout_error" in skill_triggers[0].description.lower() or "timeout_error" in str(
+        skill_triggers[0].data_evidence
+    ), "Error type not reflected in suggestion"
 
 
 # ─── Test 6: Push notification after main branch update ───
@@ -261,12 +241,8 @@ def test_6_push_notification_on_update(all_systems):
     ]
 
     notifications = update_svc.scan_for_updates("project_running", suggestions)
-    assert len(notifications) >= 1, (
-        "No notification created for project after main update"
-    )
-    assert notifications[0].priority == "recommended", (
-        f"Expected 'recommended', got '{notifications[0].priority}'"
-    )
+    assert len(notifications) >= 1, "No notification created for project after main update"
+    assert notifications[0].priority == "recommended", f"Expected 'recommended', got '{notifications[0].priority}'"
 
 
 # ─── Test 7: One-click apply ───
@@ -296,7 +272,7 @@ def test_7_one_click_apply(all_systems):
     assert len(applied) >= 1, "Applied notification not found in status filter"
 
 
-# ─── Test 8: Branch merge — material → main ───
+# ─── Test 8: Branch merge — material main ───
 
 
 def test_8_material_branch_merge(all_systems):
@@ -321,16 +297,12 @@ def test_8_material_branch_merge(all_systems):
         metadata={"type": "material"},
     )
 
-    merged = branch_mgr.merge_branch(
-        material.branch_id, main.branch_id, strategy="deep_merge"
-    )
+    merged = branch_mgr.merge_branch(material.branch_id, main.branch_id, strategy="deep_merge")
     assert merged is not None, "merge returned None"
     assert merged.template_data["material_specific"]["aluminum"] is True, (
         "Material optimization not present in merged branch"
     )
-    assert merged.template_data["params"]["lr"] == 0.005, (
-        "Material branch lr not applied during merge"
-    )
+    assert merged.template_data["params"]["lr"] == 0.005, "Material branch lr not applied during merge"
 
 
 # ─── Test 9: Evolution history completeness ───
@@ -360,12 +332,8 @@ def test_9_evolution_history_path(all_systems):
     assert len(history) >= 1, "No evolution history found"
 
     entry = history[0]
-    assert entry["action"] == "applied", (
-        f"Expected action='applied', got '{entry['action']}'"
-    )
-    assert entry["suggestion_id"] == suggestion.suggestion_id, (
-        "Suggestion ID mismatch in history"
-    )
+    assert entry["action"] == "applied", f"Expected action='applied', got '{entry['action']}'"
+    assert entry["suggestion_id"] == suggestion.suggestion_id, "Suggestion ID mismatch in history"
     assert "details" in entry, "Missing change details in history entry"
     assert entry["details"]["action"] == "update_lr", "Change content not recorded"
 
@@ -459,16 +427,10 @@ def test_12_cross_project_learning(all_systems):
         "expected_impact": {"improvement": 0.10},
     }
 
-    notifications_a = update_svc.scan_for_updates(
-        "project_a", [optimization_suggestion]
-    )
+    notifications_a = update_svc.scan_for_updates("project_a", [optimization_suggestion])
     assert len(notifications_a) == 1
     update_svc.apply_update(notifications_a[0].notification_id)
 
-    notifications_b = update_svc.scan_for_updates(
-        "project_b", [optimization_suggestion]
-    )
-    assert len(notifications_b) == 1, (
-        "Cross-project learning failed: project_b did not receive suggestion"
-    )
+    notifications_b = update_svc.scan_for_updates("project_b", [optimization_suggestion])
+    assert len(notifications_b) == 1, "Cross-project learning failed: project_b did not receive suggestion"
     assert notifications_b[0].suggestion_id == "ev_cross_001"

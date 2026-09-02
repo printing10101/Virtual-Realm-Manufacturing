@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 
 class _LossesMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _compute_alignment_score: Callable[..., Any]
     _compute_uniformity: Callable[..., Any]
     _compatibility_scores: Any

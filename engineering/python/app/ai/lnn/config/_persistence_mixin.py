@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class _PersistenceMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _apply_environment_adaptations: Callable[..., Any]
     _build_config_object: Callable[..., Any]
     _validate_config: Callable[..., Any]

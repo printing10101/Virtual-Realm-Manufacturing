@@ -22,6 +22,7 @@ Usage:
     python scripts/sovereignty_ratio.py --verbose  # 打印每模块占比
     python scripts/sovereignty_ratio.py --json     # JSON 输出（CI 门禁用）
 """
+
 from __future__ import annotations
 
 import argparse
@@ -126,7 +127,7 @@ def analyze_file(path: Path) -> dict[str, Any]:
     sovereign = 0
     framework = 0
 
-    # 白盒模块 → 全部代码行视为自主（import 除外）
+    # 白盒模块 全部代码行视为自主（import 除外）
     is_whitebox = any(m in path.name for m in WHITEBOX_MODULE_MARKERS)
 
     for line in lines:
@@ -204,10 +205,7 @@ def main() -> int:
         if args.verbose:
             print("\n按模块：")
             for r in sorted(results, key=lambda x: -x["ratio"]):
-                print(
-                    f"  {r['path']:<60} {r['sovereign']:>6}/{r['total']:<6} "
-                    f"({r['ratio']:.1%})"
-                )
+                print(f"  {r['path']:<60} {r['sovereign']:>6}/{r['total']:<6} ({r['ratio']:.1%})")
 
     # CI 门禁：未达目标返回非零
     return 0 if summary["sovereignty_ratio"] >= args.target else 1

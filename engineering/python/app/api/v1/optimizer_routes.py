@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/optimizer", tags=["parameter-optimizer"])
 
 
-# ---------------------------------------------------------------------------
 # 请求/响应模型
-# ---------------------------------------------------------------------------
 
 
 class RecommendRequest(BaseModel):
@@ -61,9 +59,7 @@ class CompareRequest(BaseModel):
     b_results: list[dict] = Field(..., min_length=1)
 
 
-# ---------------------------------------------------------------------------
 # 端点
-# ---------------------------------------------------------------------------
 
 
 @router.post("/recommend")

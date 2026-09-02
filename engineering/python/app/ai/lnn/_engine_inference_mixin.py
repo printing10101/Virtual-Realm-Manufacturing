@@ -32,7 +32,7 @@ DEFAULT_PRIOR_CONFIDENCE = 0.6
 
 
 class _EngineInferenceMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _custom_models: Any
     _engine_stats: Any
     _fusion: Any

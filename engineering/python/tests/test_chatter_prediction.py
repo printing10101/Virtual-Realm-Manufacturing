@@ -28,9 +28,7 @@ from pathlib import Path
 import pytest
 
 
-# =============================================================================
 # 辅助：构造最小 ChatterParams JSON（阶段 4 输出格式）
-# =============================================================================
 
 
 def _build_minimal_chatter_params_json(
@@ -60,33 +58,35 @@ def _build_minimal_chatter_params_json(
     feature_types = ["plane", "cylinder", "hole", "boss"]
     chatter_params_list = []
     for i in range(feature_count):
-        chatter_params_list.append({
-            "feature_id": f"feat_{i+1:03d}",
-            "feature_type": feature_types[i % len(feature_types)],
-            "operation": "roughing",
-            "chatter_params": {
-                "spindle_rpm": 8000.0,
-                "machine": {
-                    "machine_id": "vmc_850",
-                    "stiffness_x": 1.5e7,
-                    "stiffness_y": 1.5e7,
-                    "stiffness_z": 2.0e8,
-                    "damping_ratio": 0.05,
-                    "natural_freq": 100.0,
-                    "modal_mass": 50.0,
+        chatter_params_list.append(
+            {
+                "feature_id": f"feat_{i + 1:03d}",
+                "feature_type": feature_types[i % len(feature_types)],
+                "operation": "roughing",
+                "chatter_params": {
+                    "spindle_rpm": 8000.0,
+                    "machine": {
+                        "machine_id": "vmc_850",
+                        "stiffness_x": 1.5e7,
+                        "stiffness_y": 1.5e7,
+                        "stiffness_z": 2.0e8,
+                        "damping_ratio": 0.05,
+                        "natural_freq": 100.0,
+                        "modal_mass": 50.0,
+                    },
+                    "tool": {
+                        "tool_id": "endmill_d10",
+                        "diameter": 10.0,
+                        "num_flutes": 4,
+                        "helix_angle": 30.0,
+                        "cutting_force_coeff": 2000.0,  # K_s 直接传递
+                    },
+                    "axial_depth": 1.0,  # 远小于极限切深，判定为稳定
                 },
-                "tool": {
-                    "tool_id": "endmill_d10",
-                    "diameter": 10.0,
-                    "num_flutes": 4,
-                    "helix_angle": 30.0,
-                    "cutting_force_coeff": 2000.0,  # K_s 直接传递
-                },
-                "axial_depth": 1.0,  # 远小于极限切深，判定为稳定
-            },
-            "material_id": material_id,
-            "k_s_n_per_mm2": 2000.0,
-        })
+                "material_id": material_id,
+                "k_s_n_per_mm2": 2000.0,
+            }
+        )
 
     data = {
         "task_id": "cp_test_001",
@@ -102,9 +102,7 @@ def _build_minimal_chatter_params_json(
     return str(json_path)
 
 
-# =============================================================================
 # 模块导入测试
-# =============================================================================
 
 
 class TestModuleImport:
@@ -137,15 +135,27 @@ class TestModuleImport:
         )
 
         for obj in [
-            ChatterPredictionTask, ChatterPredictionTaskStatus,
-            ChatterReviewStatus, PredictionMethod,
-            FeatureChatterResult, ChatterPredictionError,
-            ChatterParamsLoadError, ReviewError,
-            TaskStore, generate_task_id, get_task_store,
-            ChatterDisclaimer, INDUSTRIAL_HARD_GATES, build_chatter_disclaimer,
-            ChatterPredictorAdapter, PredictorAdapterError, check_ltc_model_available,
-            ChatterPredictionPipeline, ChatterPredictionResult,
-            ChatterPredictionPipelineError, ChatterReviewError,
+            ChatterPredictionTask,
+            ChatterPredictionTaskStatus,
+            ChatterReviewStatus,
+            PredictionMethod,
+            FeatureChatterResult,
+            ChatterPredictionError,
+            ChatterParamsLoadError,
+            ReviewError,
+            TaskStore,
+            generate_task_id,
+            get_task_store,
+            ChatterDisclaimer,
+            INDUSTRIAL_HARD_GATES,
+            build_chatter_disclaimer,
+            ChatterPredictorAdapter,
+            PredictorAdapterError,
+            check_ltc_model_available,
+            ChatterPredictionPipeline,
+            ChatterPredictionResult,
+            ChatterPredictionPipelineError,
+            ChatterReviewError,
         ]:
             assert obj is not None, f"{obj} 导入失败"
 
@@ -155,10 +165,7 @@ class TestModuleImport:
 
         assert hasattr(ch_routes_pkg, "routes")
         assert ch_routes_pkg.routes.router is not None
-        assert (
-            ch_routes_pkg.routes.router.prefix
-            == "/api/v1/chatter_prediction"
-        )
+        assert ch_routes_pkg.routes.router.prefix == "/api/v1/chatter_prediction"
 
     def test_ten_endpoints_registered(self):
         """T03: 10 个 API 端点全部注册。
@@ -206,18 +213,14 @@ class TestModuleImport:
         from app.api.v1.chatter_prediction import routes as ch_routes
 
         tags = ch_routes.router.tags
-        assert any("Engineer-Assisted" in t for t in tags), (
-            f"路由 tags 未标注工程师辅助定位: {tags}"
-        )
+        assert any("Engineer-Assisted" in t for t in tags), f"路由 tags 未标注工程师辅助定位: {tags}"
 
         # 顶层 dependencies 必须包含权限依赖
         deps = ch_routes.router.dependencies
         assert len(deps) > 0, "路由未挂载任何 dependencies（权限校验缺失）"
 
 
-# =============================================================================
 # 枚举完整性测试
-# =============================================================================
 
 
 class TestEnums:
@@ -262,9 +265,7 @@ class TestEnums:
         assert S.CANCELLED.value == "cancelled"
 
 
-# =============================================================================
 # 精度告知机制测试
-# =============================================================================
 
 
 class TestChatterDisclaimer:
@@ -368,9 +369,7 @@ class TestChatterDisclaimer:
         """T13: INDUSTRIAL_HARD_GATES 含 8 条硬门槛，覆盖关键约束。"""
         from app.chatter_prediction import INDUSTRIAL_HARD_GATES
 
-        assert len(INDUSTRIAL_HARD_GATES) == 8, (
-            f"工业硬门槛应为 8 条，实际 {len(INDUSTRIAL_HARD_GATES)}"
-        )
+        assert len(INDUSTRIAL_HARD_GATES) == 8, f"工业硬门槛应为 8 条，实际 {len(INDUSTRIAL_HARD_GATES)}"
 
         # 关键约束覆盖检查（项目记忆硬约束）
         all_gates = " ".join(INDUSTRIAL_HARD_GATES)
@@ -397,17 +396,11 @@ class TestChatterDisclaimer:
             ltc_active_ratio=1.0,
             chatter_report_ready=True,
         )
-        assert disclaimer.requires_engineer_review is True, (
-            "requires_engineer_review 必须始终 True（工程师助手定位）"
-        )
-        assert disclaimer.requires_cam_validation is True, (
-            "requires_cam_validation 必须始终 True（CAM 二次校验强制）"
-        )
+        assert disclaimer.requires_engineer_review is True, "requires_engineer_review 必须始终 True（工程师助手定位）"
+        assert disclaimer.requires_cam_validation is True, "requires_cam_validation 必须始终 True（CAM 二次校验强制）"
 
 
-# =============================================================================
 # FeatureChatterResult.effective_result() 测试
-# =============================================================================
 
 
 class TestFeatureChatterResultEffective:
@@ -479,13 +472,28 @@ class TestFeatureChatterResultEffective:
         d = result.to_dict()
 
         required_fields = {
-            "feature_id", "feature_type", "material_id",
-            "spindle_rpm", "axial_depth_mm", "limit_depth_mm",
-            "stable", "stability_margin", "method", "ltc_active",
-            "confidence", "inference_time_ms", "warnings",
-            "material_calibration_status", "review_status", "edited_params",
-            "reviewed_by", "reviewed_at", "engineer_notes",
-            "source_cutting_params_task_id", "machine_id", "tool_id",
+            "feature_id",
+            "feature_type",
+            "material_id",
+            "spindle_rpm",
+            "axial_depth_mm",
+            "limit_depth_mm",
+            "stable",
+            "stability_margin",
+            "method",
+            "ltc_active",
+            "confidence",
+            "inference_time_ms",
+            "warnings",
+            "material_calibration_status",
+            "review_status",
+            "edited_params",
+            "reviewed_by",
+            "reviewed_at",
+            "engineer_notes",
+            "source_cutting_params_task_id",
+            "machine_id",
+            "tool_id",
             "cutting_force_coeff",
         }
         missing = required_fields - set(d.keys())
@@ -495,9 +503,7 @@ class TestFeatureChatterResultEffective:
         assert d["cutting_force_coeff"] == 2500.0
 
 
-# =============================================================================
 # 预测适配器测试
-# =============================================================================
 
 
 class TestPredictorAdapter:
@@ -510,18 +516,14 @@ class TestPredictorAdapter:
         result = check_ltc_model_available()
         assert isinstance(result, bool)
         # 默认环境无 chatter_model.pt，应为 False
-        assert result is False, (
-            "默认环境应无 chatter_model.pt，check_ltc_model_available 应返回 False"
-        )
+        assert result is False, "默认环境应无 chatter_model.pt，check_ltc_model_available 应返回 False"
 
     def test_adapter_force_analytical_disables_ltc(self):
         """T19: force_analytical=True 时适配器不尝试 LTC。"""
         from app.chatter_prediction import ChatterPredictorAdapter
 
         adapter = ChatterPredictorAdapter(force_analytical=True)
-        assert adapter.ltc_model_available is False, (
-            "force_analytical=True 时 ltc_model_available 必须为 False"
-        )
+        assert adapter.ltc_model_available is False, "force_analytical=True 时 ltc_model_available 必须为 False"
 
     def test_hrc52_triggers_pending_calibration(self):
         """T20: HRC52 材料触发 pending_calibration 标注 + 置信度降低。
@@ -652,9 +654,7 @@ class TestPredictorAdapter:
         )
 
         assert result.method == "analytical"
-        assert result.limit_depth_mm > 0, (
-            f"解析法极限切深应 > 0，实际 {result.limit_depth_mm}"
-        )
+        assert result.limit_depth_mm > 0, f"解析法极限切深应 > 0，实际 {result.limit_depth_mm}"
         # 稳定性裕度 = axial_depth / limit_depth
         if result.limit_depth_mm > 0:
             expected_margin = 0.5 / result.limit_depth_mm
@@ -697,12 +697,11 @@ class TestPredictorAdapter:
         if result.limit_depth_mm > 0:
             # 实际切深 100mm 远超极限切深，必然触发安全裕度警告
             safety_warnings = [
-                w for w in result.warnings
-                if "超过极限切深" in w or "安全裕度" in w or SAFETY_MARGIN_RATIO*100 == 80.0
+                w
+                for w in result.warnings
+                if "超过极限切深" in w or "安全裕度" in w or SAFETY_MARGIN_RATIO * 100 == 80.0
             ]
-            assert len(safety_warnings) > 0, (
-                f"实际切深超过极限切深 80% 应触发警告: {result.warnings}"
-            )
+            assert len(safety_warnings) > 0, f"实际切深超过极限切深 80% 应触发警告: {result.warnings}"
 
     def test_k_s_direct_passthrough(self):
         """T24: K_s（cutting_force_coeff）直接传递，不二次拟合。
@@ -741,14 +740,10 @@ class TestPredictorAdapter:
         )
 
         # K_s 必须原样传递，不被二次拟合
-        assert result.cutting_force_coeff == test_k_s, (
-            f"K_s 应直接传递为 {test_k_s}，实际 {result.cutting_force_coeff}"
-        )
+        assert result.cutting_force_coeff == test_k_s, f"K_s 应直接传递为 {test_k_s}，实际 {result.cutting_force_coeff}"
 
 
-# =============================================================================
 # Pipeline 状态机测试
-# =============================================================================
 
 
 class TestPipelineStateMachine:
@@ -788,7 +783,7 @@ class TestPipelineStateMachine:
         )
         assert task.status == ChatterPredictionTaskStatus.PENDING.value
 
-        # 2. 执行预测（PENDING → RUNNING → PREDICTED）
+        # 2. 执行预测（PENDING RUNNING PREDICTED）
         result = await pipeline.run_pipeline(task.task_id)
         assert result.status == ChatterPredictionTaskStatus.PREDICTED.value
         assert result.feature_count == 2
@@ -803,7 +798,7 @@ class TestPipelineStateMachine:
         assert stored.status == ChatterPredictionTaskStatus.PREDICTED.value
         assert len(stored.feature_results) == 2
 
-        # 3. 工程师审核全部特征（PREDICTED → REVIEWED）
+        # 3. 工程师审核全部特征（PREDICTED REVIEWED）
         for fr in stored.feature_results:
             pipeline.review_result(
                 task_id=task.task_id,
@@ -815,7 +810,7 @@ class TestPipelineStateMachine:
         stored = pipeline._store.get_task(task.task_id)
         assert stored.status == ChatterPredictionTaskStatus.REVIEWED.value
 
-        # 4. 导出 ChatterReport（REVIEWED → SUCCEEDED）
+        # 4. 导出 ChatterReport（REVIEWED SUCCEEDED）
         export_path = pipeline.export_chatter_report(task.task_id)
         assert Path(export_path).exists()
 
@@ -966,9 +961,7 @@ class TestPipelineStateMachine:
         # 仅 2 个特征进入 ChatterReport（rejected 排除）
         assert report["feature_count"] == 2
         exported_ids = {r["feature_id"] for r in report["feature_results"]}
-        assert feature_ids[0] not in exported_ids, (
-            "rejected 特征不应出现在 ChatterReport 中"
-        )
+        assert feature_ids[0] not in exported_ids, "rejected 特征不应出现在 ChatterReport 中"
 
     @pytest.mark.asyncio
     async def test_export_fails_when_all_rejected(self, tmp_path):
@@ -1086,9 +1079,7 @@ class TestPipelineStateMachine:
         TaskStore.reset_instance()
         pipeline = self._make_pipeline(tmp_path)
 
-        chatter_params_path = _build_minimal_chatter_params_json(
-            tmp_path, "steel_hrc52", 1
-        )
+        chatter_params_path = _build_minimal_chatter_params_json(tmp_path, "steel_hrc52", 1)
         task = pipeline.create_task(
             source_cutting_parameters_task_id="cp_hrc52_001",
             chatter_params_path=chatter_params_path,
@@ -1149,9 +1140,7 @@ class TestPipelineStateMachine:
         assert loaded[0]["feature_id"] == "feat_list_001"
 
 
-# =============================================================================
 # SUCCEEDED 禁删硬约束测试
-# =============================================================================
 
 
 class TestSucceededDeleteGuard:
@@ -1235,9 +1224,7 @@ class TestSucceededDeleteGuard:
         assert pipeline._store.get_task(task.task_id) is None
 
 
-# =============================================================================
 # 配置校验测试
-# =============================================================================
 
 
 class TestChatterPredictionConfig:
@@ -1271,12 +1258,8 @@ class TestChatterPredictionConfig:
             allow_delete_succeeded=True,  # 试图开启，应被强制重置为 False
             cam_validation_required=False,  # 试图关闭，应被强制重置为 True
         )
-        assert cfg.allow_delete_succeeded is False, (
-            "allow_delete_succeeded 必须始终 False（SUCCEEDED 禁删硬约束）"
-        )
-        assert cfg.cam_validation_required is True, (
-            "cam_validation_required 必须始终 True（CAM 二次校验强制）"
-        )
+        assert cfg.allow_delete_succeeded is False, "allow_delete_succeeded 必须始终 False（SUCCEEDED 禁删硬约束）"
+        assert cfg.cam_validation_required is True, "cam_validation_required 必须始终 True（CAM 二次校验强制）"
 
     def test_config_invalid_precision_tier_falls_back(self):
         """T40: 非法 precision_tier 回退到 standard。"""
@@ -1307,18 +1290,23 @@ class TestChatterPredictionConfig:
 
         field_names = {f.name for f in dataclasses.fields(ChatterPredictionConfig)}
         expected_fields = {
-            "enabled", "output_dir", "max_concurrent", "task_timeout_seconds",
-            "task_retention_hours", "precision_tier", "default_mesh_calibrated",
-            "default_machine_type", "force_analytical",
-            "allow_delete_succeeded", "cam_validation_required",
+            "enabled",
+            "output_dir",
+            "max_concurrent",
+            "task_timeout_seconds",
+            "task_retention_hours",
+            "precision_tier",
+            "default_mesh_calibrated",
+            "default_machine_type",
+            "force_analytical",
+            "allow_delete_succeeded",
+            "cam_validation_required",
         }
         missing = expected_fields - field_names
         assert not missing, f"ChatterPredictionConfig 缺失字段: {missing}"
 
 
-# =============================================================================
 # 项目记忆硬约束验证
-# =============================================================================
 
 
 class TestProjectMemoryHardConstraints:
@@ -1328,12 +1316,8 @@ class TestProjectMemoryHardConstraints:
         """T44: 模块文档字符串明确标注「工程师助手」定位。"""
         from app.chatter_prediction import __doc__ as module_doc
 
-        assert "工程师助手" in module_doc, (
-            "chatter_prediction 模块文档必须明确标注「工程师助手」定位"
-        )
-        assert "非" in module_doc and "全自动" in module_doc, (
-            "文档必须明确否认「全自动」定位"
-        )
+        assert "工程师助手" in module_doc, "chatter_prediction 模块文档必须明确标注「工程师助手」定位"
+        assert "非" in module_doc and "全自动" in module_doc, "文档必须明确否认「全自动」定位"
 
     def test_cam_validation_required_in_task(self):
         """T45: ChatterPredictionTask.cam_validation_required 默认 True。"""
@@ -1344,9 +1328,7 @@ class TestProjectMemoryHardConstraints:
         assert "cam_validation_required" in fields
         # 默认值必须为 True
         default_value = fields["cam_validation_required"].default
-        assert default_value is True, (
-            "cam_validation_required 默认值必须为 True（项目记忆硬约束）"
-        )
+        assert default_value is True, "cam_validation_required 默认值必须为 True（项目记忆硬约束）"
 
     def test_succeeded_status_delete_guard_in_store(self):
         """T46: TaskStore.delete_task 中显式检查 SUCCEEDED 禁删。"""
@@ -1374,9 +1356,9 @@ class TestProjectMemoryHardConstraints:
         # 检查 _predict_via_analytical 源码
         source = inspect.getsource(ChatterPredictorAdapter._predict_via_analytical)
         assert "cutting_force_coeff" in source, "解析法路径未传递 cutting_force_coeff"
-        assert "直接传递" in source or "不二次拟合" in inspect.getsource(
-            ChatterPredictorAdapter
-        ), "适配器文档未声明 K_s 直接传递策略"
+        assert "直接传递" in source or "不二次拟合" in inspect.getsource(ChatterPredictorAdapter), (
+            "适配器文档未声明 K_s 直接传递策略"
+        )
 
     def test_fit_transform_not_used_in_inference_path(self):
         """T49: 推理路径不使用 fit_transform（项目记忆硬约束）。
@@ -1429,9 +1411,7 @@ class TestProjectMemoryHardConstraints:
         from app.chatter_prediction.pipeline import ChatterPredictionPipeline
 
         source = inspect.getsource(ChatterPredictionPipeline.export_chatter_report)
-        assert "cam_validation_required" in source, (
-            "export_chatter_report 未包含 cam_validation_required 字段"
-        )
+        assert "cam_validation_required" in source, "export_chatter_report 未包含 cam_validation_required 字段"
         # 必须引用 task.cam_validation_required（而非硬编码 True）
         assert "task.cam_validation_required" in source, (
             "export_chatter_report 应引用 task.cam_validation_required（保持数据流一致）"
@@ -1449,12 +1429,8 @@ class TestProjectMemoryHardConstraints:
 
         # 状态机中不应有两轮审核相关的中间态（如 STEP_GENERATED）
         all_states = {s.value for s in S}
-        assert "step_generated" not in all_states, (
-            "阶段 5 不应有两轮审核中间态 STEP_GENERATED"
-        )
-        assert "finalize_pending" not in all_states, (
-            "阶段 5 不应有两轮审核中间态 finalize_pending"
-        )
+        assert "step_generated" not in all_states, "阶段 5 不应有两轮审核中间态 STEP_GENERATED"
+        assert "finalize_pending" not in all_states, "阶段 5 不应有两轮审核中间态 finalize_pending"
         # 单轮审核核心状态
         assert "predicted" in all_states
         assert "reviewed" in all_states

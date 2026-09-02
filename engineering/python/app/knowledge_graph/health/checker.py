@@ -24,9 +24,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 数据模型
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -79,9 +77,7 @@ class HealthCheckResult:
         return len(self.isolated_nodes) + len(self.contradictory_edges) + len(self.stale_nodes)
 
 
-# ---------------------------------------------------------------------------
 # 健康检查器
-# ---------------------------------------------------------------------------
 
 
 class HealthChecker:
@@ -201,7 +197,7 @@ class HealthChecker:
         for u, v, key_u_v, data_u_v in graph.edges(keys=True, data=True):
             # 检查反向边是否存在
             if graph.has_edge(v, u):
-                # 避免重复报告（A→B 和 B→A 只报告一次）
+                # 避免重复报告（AB 和 BA 只报告一次）
                 pair_key = tuple(sorted([u, v]))
                 if pair_key in seen_pairs:
                     continue

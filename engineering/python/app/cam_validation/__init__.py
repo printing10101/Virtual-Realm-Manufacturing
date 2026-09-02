@@ -56,16 +56,14 @@ K_s 传递策略（项目记忆硬约束）：
 
 from __future__ import annotations
 
-# =============================================================================
 # 阶段 7 CAM 校验模块公开符号导出
-# =============================================================================
 # 导入顺序遵循依赖关系（与阶段 5/6 风格对齐）：
 # cam_store（基础：异常 + dataclass + 枚举 + 常量 + 工具函数）
-# → cam_disclaimer（依赖 config）
-# → gcode_loader（依赖 cam_store 的 GCodeReportLoadError）
-# → internal_validator（依赖 cam_store + simulation.collision_detector）
-# → cam_adapter（依赖 cam_store 的 CamAdapterError）
-# → pipeline（编排器，依赖上述全部）
+#  cam_disclaimer（依赖 config）
+#  gcode_loader（依赖 cam_store 的 GCodeReportLoadError）
+#  internal_validator（依赖 cam_store + simulation.collision_detector）
+#  cam_adapter（依赖 cam_store 的 CamAdapterError）
+#  pipeline（编排器，依赖上述全部）
 
 from app.cam_validation.cam_store import (
     CamAdapterError,

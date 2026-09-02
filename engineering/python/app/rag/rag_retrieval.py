@@ -22,9 +22,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
 # 配置开关（通过环境变量控制，便于灰度发布与 A/B 测试）
-# ---------------------------------------------------------------------------
 
 # 是否启用多源并行检索（默认开启）
 ENABLE_PARALLEL_RETRIEVAL = os.getenv("ENABLE_PARALLEL_RETRIEVAL", "1") == "1"
@@ -728,7 +726,7 @@ class RagRetrievalEngine:
             distance = r.get("distance", 1.0) or 1.0
             # 学术诚信修复：ChromaDB 使用 cosine 距离（distance ∈ [0,2]），
             # 原 1.0 - min(distance, 1.0) 在 distance>1 时截断为 0，丢失区分度；
-            # 改为标准 cosine 归一化 1.0 - distance/2.0，映射 [0,2] → [1,0]
+            # 改为标准 cosine 归一化 1.0 - distance/2.0，映射 [0,2] [1,0]
             semantic_score = 1.0 - distance / 2.0
             score = semantic_score
             # 文档与元数据小写只计算一次
@@ -768,9 +766,7 @@ class RagRetrievalEngine:
         self._cache.clear()
 
 
-# ===========================================================================
 # 以下符号由安装验证（2026-08-03）发现拆分/迁移丢失，从 592aedb 恢复
-# ===========================================================================
 
 RAG_SOURCE_QUERY_TIMEOUT_SEC = float(os.getenv("RAG_SOURCE_QUERY_TIMEOUT_SEC", "15"))
 

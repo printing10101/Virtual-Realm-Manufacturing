@@ -23,9 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# ============================================================
 # Route Extraction from Python Source Code
-# ============================================================
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options", "trace"}
 
@@ -54,6 +52,7 @@ TAGS_PATTERN = re.compile(
 @dataclass
 class RouteInfo:
     """Represents a single API route."""
+
     method: str = ""
     path: str = ""
     prefix: str = ""
@@ -102,7 +101,7 @@ def extract_routes_from_file(file_path: str) -> list[RouteInfo]:
         # Find the function definition after this decorator
         func_match = re.search(
             rf"async\s+def\s+(\w+)",
-            content[match.end(): match.end() + 100],
+            content[match.end() : match.end() + 100],
         )
         func_name = func_match.group(1) if func_match else ""
 
@@ -147,7 +146,7 @@ def extract_routes_from_file(file_path: str) -> list[RouteInfo]:
             request_model=request_model,
             path_params=path_params,
             source_file=os.path.basename(file_path),
-            source_line=content[:match.start()].count("\n") + 1,
+            source_line=content[: match.start()].count("\n") + 1,
         )
         routes.append(route)
 
@@ -174,7 +173,7 @@ def extract_main_routes(file_path: str) -> list[RouteInfo]:
 
         func_match = re.search(
             rf"async\s+def\s+(\w+)",
-            content[match.end(): match.end() + 100],
+            content[match.end() : match.end() + 100],
         )
         func_name = func_match.group(1) if func_match else ""
 
@@ -184,7 +183,7 @@ def extract_main_routes(file_path: str) -> list[RouteInfo]:
             full_path=path,
             function_name=func_name,
             source_file=os.path.basename(file_path),
-            source_line=content[:match.start()].count("\n") + 1,
+            source_line=content[: match.start()].count("\n") + 1,
         )
         routes.append(route)
 
@@ -237,9 +236,8 @@ def scan_api_routes(project_root: str) -> list[RouteInfo]:
     return all_routes
 
 
-# ============================================================
 # Documentation Parsing
-# ============================================================
+
 
 def extract_routes_from_docs(docs_path: str) -> dict[str, list[dict[str, Any]]]:
     """Extract documented routes from the API documentation markdown file."""
@@ -324,9 +322,8 @@ def extract_routes_from_docs(docs_path: str) -> dict[str, list[dict[str, Any]]]:
     return documented_routes
 
 
-# ============================================================
 # Comparison and Reporting
-# ============================================================
+
 
 def compare_routes(
     code_routes: list[RouteInfo],
@@ -389,10 +386,7 @@ def generate_report(
         lines.append("ROUTES IN CODE BUT MISSING FROM DOCS:")
         lines.append("-" * 60)
         for route in sorted(result["code_only"], key=lambda r: r.full_path):
-            lines.append(
-                f"  [{route.method}] {route.full_path}"
-                f"  ({route.source_file}:{route.source_line})"
-            )
+            lines.append(f"  [{route.method}] {route.full_path}  ({route.source_file}:{route.source_line})")
             if route.function_name:
                 lines.append(f"    Function: {route.function_name}")
             if route.request_model:
@@ -427,22 +421,17 @@ def generate_report(
     lines.append("=" * 60)
     if result["code_only"]:
         lines.append("STATUS: SYNC REQUIRED")
-        lines.append(
-            f"  - {len(result['code_only'])} routes need to be added to docs"
-        )
+        lines.append(f"  - {len(result['code_only'])} routes need to be added to docs")
     else:
         lines.append("STATUS: FULLY SYNCHRONIZED")
-    lines.append(
-        f"  - {len(result['docs_only'])} routes only in docs (informational)"
-    )
+    lines.append(f"  - {len(result['docs_only'])} routes only in docs (informational)")
     lines.append("=" * 60)
 
     return "\n".join(lines)
 
 
-# ============================================================
 # JSON Report Output
-# ============================================================
+
 
 def generate_json_report(result: dict[str, Any]) -> dict[str, Any]:
     """Generate a JSON-serializable report."""
@@ -456,9 +445,7 @@ def generate_json_report(result: dict[str, Any]) -> dict[str, Any]:
             # `code_only` > 0 表示代码里有未文档化的接口（必须修复）。
             # `docs_only` > 0 表示文档里有代码里已不存在的接口（一般是已弃用），
             # 只作为信息提示，不会让 CI 失败。
-            "sync_status": "SYNC_REQUIRED"
-            if result["code_only"]
-            else "FULLY_SYNCHRONIZED",
+            "sync_status": "SYNC_REQUIRED" if result["code_only"] else "FULLY_SYNCHRONIZED",
         },
         "missing_from_docs": [
             {
@@ -474,9 +461,8 @@ def generate_json_report(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-# ============================================================
 # Main
-# ============================================================
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -527,13 +513,14 @@ def main():
         json_report = generate_json_report(result)
         json_path = os.path.join(project_root, args.json_output)
         import json
+
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(json_report, f, indent=2, ensure_ascii=False)
         print(f"\nJSON report saved to: {json_path}")
 
     # `code_only` = 路由在代码中存在但文档里缺失（必须为 0，否则视为不同步）。
     # `docs_only` = 路由在文档中存在但代码里找不到（一般是已弃用/历史路由，
-    #               不会让 CI 失败，只在报告中提示）。
+    # 不会让 CI 失败，只在报告中提示）。
     if args.fail_on_unsync and result["code_only"]:
         sys.exit(1)
 

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class _PublisherPromoteMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _save_record: Callable[..., Any]
     _update_stage_only: Callable[..., Any]
     publish: Callable[..., Any]
@@ -80,7 +80,7 @@ class _PublisherPromoteMixin:
             else:
                 next_stage = target_stage
 
-            # 阶段顺序校验：不允许跨级晋级（必须 1%→10%→50%→100%）
+            # 阶段顺序校验：不允许跨级晋级（必须 1%10%50%100%）
             if target_stage is not None:
                 current_idx = _STAGE_ORDER.index(current_stage)
                 target_idx = _STAGE_ORDER.index(target_stage)

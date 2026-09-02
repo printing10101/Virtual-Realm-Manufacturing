@@ -11,9 +11,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-# ============================================================
 # 集中式路径管理 - 消除各模块重复的路径定义
-# ============================================================
 
 
 def get_project_root() -> Path:
@@ -76,9 +74,7 @@ def cleanup_temp_file(temp_path: Path) -> None:
         logger.debug("临时文件清理失败 %s: %s", temp_path, cleanup_err, exc_info=True)
 
 
-# ============================================================
 # 路径安全工具函数 - 防止路径遍历攻击
-# ============================================================
 
 
 def safe_file_path(user_input: str, base_dir: str) -> Path:

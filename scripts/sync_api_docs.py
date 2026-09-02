@@ -4,6 +4,7 @@
 将缺失路由追加到 docs/API.md，保持风格一致
 按模块分章节，每条路由使用与原文相同的格式
 """
+
 import json
 import sys
 from pathlib import Path
@@ -70,8 +71,7 @@ def render_route_block(method: str, path: str, func: str, source: str, line: int
     return "\n".join(lines)
 
 
-def main(report_path: str = "api-sync-report.json",
-         api_md_path: str = "docs/API.md"):
+def main(report_path: str = "api-sync-report.json", api_md_path: str = "docs/API.md"):
     with open(report_path, "r", encoding="utf-8") as f:
         report = json.load(f)
 
@@ -104,7 +104,9 @@ def main(report_path: str = "api-sync-report.json",
     parts.append("### 模块索引")
     parts.append("")
     for i, mod in enumerate(sorted(by_module.keys()), 1):
-        parts.append(f"{i}. [{mod}](#{mod.lower().replace(' ', '-').replace('&', 'and')}) — {len(by_module[mod])} 个路由")
+        parts.append(
+            f"{i}. [{mod}](#{mod.lower().replace(' ', '-').replace('&', 'and')}) — {len(by_module[mod])} 个路由"
+        )
     parts.append("")
 
     for mod in sorted(by_module.keys()):

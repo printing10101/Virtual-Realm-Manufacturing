@@ -81,7 +81,7 @@ class TestDxfParser:
     def test_parse_path_traversal_blocked(self, tmp_path):
         dxf = tmp_path / "sample.dxf"
         _make_sample_dxf(dxf)
-        # base_dir 之外的路径 → 安全检查失败
+        # base_dir 之外的路径 安全检查失败
         outside = tmp_path.parent / "evil.dxf"
         with pytest.raises(DxfParseError):
             DxfParser().parse(str(dxf), base_dir=str(outside))

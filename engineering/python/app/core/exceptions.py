@@ -19,10 +19,11 @@ from typing import Any
 
 class ErrorLevel(str, Enum):
     """错误等级"""
-    INFO = "info"           # 信息级别，无需处理
-    WARNING = "warning"     # 警告，可自动恢复
-    ERROR = "error"         # 错误，需要人工介入
-    CRITICAL = "critical"   # 严重错误，系统不可用
+
+    INFO = "info"  # 信息级别，无需处理
+    WARNING = "warning"  # 警告，可自动恢复
+    ERROR = "error"  # 错误，需要人工介入
+    CRITICAL = "critical"  # 严重错误，系统不可用
 
 
 class AppException(Exception):
@@ -71,9 +72,7 @@ class AppException(Exception):
         return result
 
 
-# ============================================================
 # 客户端错误 (1xxx, HTTP 4xx)
-# ============================================================
 
 
 class NotFoundException(AppException):
@@ -111,9 +110,7 @@ class RateLimitException(AppException):
         super().__init__(code=1007, message=message, status_code=429, detail=detail, hint="请稍后重试", retryable=True)
 
 
-# ============================================================
 # 服务端错误 (2xxx, HTTP 5xx)
-# ============================================================
 
 
 class InternalServerException(AppException):
@@ -133,17 +130,19 @@ class GatewayException(AppException):
 
 class TimeoutException(AppException):
     def __init__(self, message: str = "请求超时", detail: Any = None):
-        super().__init__(code=2004, message=message, status_code=504, detail=detail, hint="请检查网络连接", retryable=True)
+        super().__init__(
+            code=2004, message=message, status_code=504, detail=detail, hint="请检查网络连接", retryable=True
+        )
 
 
-# ============================================================
 # 仓库层错误 (3xxx)
-# ============================================================
 
 
 class RepositoryException(AppException):
     def __init__(self, message: str = "数据仓库操作异常", detail: Any = None):
-        super().__init__(code=3001, message=message, status_code=500, detail=detail, hint="请联系管理员", retryable=True)
+        super().__init__(
+            code=3001, message=message, status_code=500, detail=detail, hint="请联系管理员", retryable=True
+        )
 
 
 class RecordNotFoundException(AppException):
@@ -153,12 +152,12 @@ class RecordNotFoundException(AppException):
 
 class StorageException(AppException):
     def __init__(self, message: str = "存储操作失败", detail: Any = None):
-        super().__init__(code=3003, message=message, status_code=500, detail=detail, hint="请检查磁盘空间", retryable=True)
+        super().__init__(
+            code=3003, message=message, status_code=500, detail=detail, hint="请检查磁盘空间", retryable=True
+        )
 
 
-# ============================================================
 # 执行锁错误 (4xxx)
-# ============================================================
 
 
 class LockException(AppException):
@@ -178,7 +177,9 @@ class LockNotFoundException(AppException):
 
 class LockExpiredException(AppException):
     def __init__(self, message: str = "锁已过期", detail: Any = None):
-        super().__init__(code=4004, message=message, status_code=409, detail=detail, hint="请重新获取锁", retryable=True)
+        super().__init__(
+            code=4004, message=message, status_code=409, detail=detail, hint="请重新获取锁", retryable=True
+        )
 
 
 class LockOwnershipException(AppException):
@@ -186,9 +187,7 @@ class LockOwnershipException(AppException):
         super().__init__(code=4005, message=message, status_code=403, detail=detail, hint="请确认锁所有权")
 
 
-# ============================================================
 # 状态持久化错误 (5xxx)
-# ============================================================
 
 
 class StateException(AppException):
@@ -206,18 +205,19 @@ class StateNotFoundException(AppException):
         super().__init__(code=5003, message=message, status_code=404, detail=detail, hint="请检查状态 ID")
 
 
-# ============================================================
 # AI/LLM错误 (6xxx)
-# ============================================================
 
 
 class LLMException(AppException):
     def __init__(self, message: str = "大模型调用异常", detail: Any = None):
-        super().__init__(code=6001, message=message, status_code=502, detail=detail, hint="请检查 AI 服务状态", retryable=True)
+        super().__init__(
+            code=6001, message=message, status_code=502, detail=detail, hint="请检查 AI 服务状态", retryable=True
+        )
 
 
 class LLMProviderException(LLMException):
     """AI 提供商服务失败"""
+
     def __init__(self, provider: str, message: str = None, detail: Any = None):
         super().__init__(
             code=6010,
@@ -230,6 +230,7 @@ class LLMProviderException(LLMException):
 
 class LLMTimeoutException(LLMException):
     """AI 服务超时"""
+
     def __init__(self, provider: str, timeout_sec: float = None, detail: Any = None):
         super().__init__(
             code=6011,
@@ -242,18 +243,20 @@ class LLMTimeoutException(LLMException):
 
 class LLMRateLimitException(LLMException):
     """AI 服务限流"""
+
     def __init__(self, provider: str, retry_after: int = None, detail: Any = None):
         super().__init__(
             code=6012,
             message=f"{provider} 服务达到限流阈值",
             detail=detail,
-            hint=f"请稍后重试" + (f"或等待{retry_after}s" if retry_after else ""),
+            hint="请稍后重试" + (f"或等待{retry_after}s" if retry_after else ""),
             retryable=True,
         )
 
 
 class LLMAuthException(LLMException):
     """AI 认证失败"""
+
     def __init__(self, provider: str, message: str = None, detail: Any = None):
         super().__init__(
             code=6013,
@@ -269,9 +272,7 @@ class LLMResponseException(AppException):
         super().__init__(code=6003, message=message, status_code=502, detail=detail, hint="请重试请求", retryable=True)
 
 
-# ============================================================
 # CAD错误 (7xxx)
-# ============================================================
 
 
 class CadException(AppException):
@@ -291,6 +292,7 @@ class CadExportException(AppException):
 
 class CadParserException(CadException):
     """CAD 解析失败"""
+
     def __init__(self, message: str = "CAD 解析失败", format_hint: str = None, detail: Any = None):
         hint = "请检查文件格式"
         if format_hint:
@@ -300,19 +302,18 @@ class CadParserException(CadException):
 
 class CadFileNotFoundError(CadException):
     """CAD 文件未找到"""
+
     def __init__(self, file_path: str = None, detail: Any = None):
         super().__init__(
             code=7011,
-            message=f"CAD 文件未找到" + (f": {file_path}" if file_path else ""),
+            message="CAD 文件未找到" + (f": {file_path}" if file_path else ""),
             detail=detail,
             hint="请检查文件路径",
             retryable=False,
         )
 
 
-# ============================================================
 # NC 代码生成错误 (8xxx)
-# ============================================================
 
 
 class NCCodeException(AppException):
@@ -322,12 +323,14 @@ class NCCodeException(AppException):
 
 class NCCodeGenerationException(NCCodeException):
     """NC 代码生成失败"""
+
     def __init__(self, message: str = "NC 代码生成失败", detail: Any = None):
         super().__init__(code=8010, message=message, detail=detail, hint="请检查输入参数")
 
 
 class PostprocessorException(NCCodeException):
     """后处理器错误"""
+
     def __init__(self, postprocessor_name: str, message: str = None, detail: Any = None):
         super().__init__(
             code=8011,
@@ -340,6 +343,7 @@ class PostprocessorException(NCCodeException):
 
 class NCCodeValidationException(NCCodeException):
     """NC 代码验证失败"""
+
     def __init__(self, errors: list[str] = None, detail: Any = None):
         super().__init__(
             code=8012,
@@ -350,13 +354,12 @@ class NCCodeValidationException(NCCodeException):
         )
 
 
-# ============================================================
 # 熔断器错误 (9xxx)
-# ============================================================
 
 
 class CircuitBreakerOpenException(AppException):
     """熔断器已打开，拒绝调用"""
+
     def __init__(self, service: str, opened_at: str = None, detail: Any = None):
         super().__init__(
             code=9001,
@@ -369,6 +372,7 @@ class CircuitBreakerOpenException(AppException):
 
 class CircuitBreakerHalfOpenException(AppException):
     """熔断器半开状态，正在探测"""
+
     def __init__(self, service: str, attempts: int = None, detail: Any = None):
         super().__init__(
             code=9002,
@@ -379,9 +383,7 @@ class CircuitBreakerHalfOpenException(AppException):
         )
 
 
-# ============================================================
 # 错误码映射：AppException.code -> 异常类
-# ============================================================
 
 EXCEPTION_CODE_MAP: dict[int, type[AppException]] = {
     # 客户端错误

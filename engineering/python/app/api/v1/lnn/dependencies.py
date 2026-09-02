@@ -36,7 +36,7 @@ MAX_CONCURRENT_TRAINING_TASKS = 3
 task_manager = AsyncTaskManager()
 
 
-# === 以下状态从 routes.py 迁移（P0-2.3 子路由拆分） ===
+# 以下状态从 routes.py 迁移（P0-2.3 子路由拆分）
 import os
 from typing import Any
 

@@ -54,10 +54,7 @@ class LomoAPIError(LomoError):
         self.recoverable = recoverable
 
     def __repr__(self) -> str:  # pragma: no cover - 仅调试用
-        return (
-            f"{self.__class__.__name__}(code={self.code!r}, "
-            f"message={str(self)!r}, request_id={self.request_id!r})"
-        )
+        return f"{self.__class__.__name__}(code={self.code!r}, message={str(self)!r}, request_id={self.request_id!r})"
 
 
 class LomoConnectionError(LomoError):
@@ -89,9 +86,7 @@ class LomoServiceUnavailableError(LomoAPIError):
     """服务暂时不可用（code=2002）。一般可重试。"""
 
 
-# ---------------------------------------------------------------------------
 # 响应信封 -> 异常 的自动映射
-# ---------------------------------------------------------------------------
 
 # 数值错误码 -> 异常类的映射表。未列出的码统一抛 LomoAPIError。
 _NUMERIC_CODE_TO_EXC: dict[int, type[LomoAPIError]] = {

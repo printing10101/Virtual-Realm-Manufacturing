@@ -59,9 +59,7 @@ class GitCollector:
         self._cache: GitInfo | None = None
         self._lock = threading.RLock()
 
-    # ------------------------------------------------------------------
     # 公开 API
-    # ------------------------------------------------------------------
 
     def collect(self, *, force_refresh: bool = False) -> GitInfo:
         """采集 git 信息.
@@ -88,9 +86,7 @@ class GitCollector:
         """便捷方法：返回当前 dirty 状态."""
         return self.collect().code_dirty
 
-    # ------------------------------------------------------------------
     # 内部实现
-    # ------------------------------------------------------------------
 
     def _collect_uncached(self) -> GitInfo:
         """实际执行 git 命令采集信息（无缓存）."""

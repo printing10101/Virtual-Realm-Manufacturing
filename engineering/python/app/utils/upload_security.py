@@ -34,9 +34,7 @@ from app.config.limits import MAX_UPLOAD_SIZE, STREAM_CHUNK_SIZE
 
 logger = logging.getLogger(__name__)
 
-# ============================================================
 # 常量
-# ============================================================
 
 # ``MAX_UPLOAD_SIZE`` 由 ``app.config.limits`` 集中管理（50MB 默认上限），
 # 与 ``dxf/api.py`` / ``step_import/api.py`` / ``projects/project_api.py``
@@ -82,7 +80,7 @@ ALLOWED_MIME_SIGNATURES: dict[str, list[bytes | None]] = {
     "application/json": [None],
 }
 
-# 扩展名 → MIME 映射。未列出的扩展名若被显式允许，将按 octet-stream
+# 扩展名 MIME 映射。未列出的扩展名若被显式允许，将按 octet-stream
 # 处理（跳过 magic 校验，仅做扩展名 + 大小校验）。
 EXTENSION_TO_MIME: dict[str, str] = {
     ".pdf": "application/pdf",
@@ -141,9 +139,7 @@ except ImportError:
     _HAS_LIBMAGIC = False
 
 
-# ============================================================
 # 核心校验函数
-# ============================================================
 
 
 async def validate_upload(
@@ -172,9 +168,7 @@ async def validate_upload(
             - 413: 文件大小超过 ``max_size``
             - 415: 扩展名或 magic bytes 不被允许
     """
-    # ----------------------------------------------------------
     # 1. 文件名 + 扩展名校验
-    # ----------------------------------------------------------
     filename = file.filename or ""
     if not filename:
         raise HTTPException(
@@ -198,11 +192,9 @@ async def validate_upload(
             detail=f"不支持的文件格式 '{ext}'，允许的格式: {allowed_str}",
         )
 
-    # ----------------------------------------------------------
     # 2. 分块流式读取 + 大小硬上限
-    #    避免一次性 ``await file.read()`` 将超大文件全量入内存。
-    #    读取过程中累计字节，一旦超过 ``max_size`` 立即中止并抛出 413。
-    # ----------------------------------------------------------
+    # 避免一次性 ``await file.read()`` 将超大文件全量入内存。
+    # 读取过程中累计字节，一旦超过 ``max_size`` 立即中止并抛出 413。
     chunks: list[bytes] = []
     total = 0
     max_size_plus_one = max_size + 1  # 多读 1 字节以判断是否超限
@@ -232,17 +224,13 @@ async def validate_upload(
             detail="文件内容为空",
         )
 
-    # ----------------------------------------------------------
     # 3. magic bytes 签名校验
-    # ----------------------------------------------------------
     _verify_magic_bytes(content, ext, allowed_mimes)
 
     return content
 
 
-# ============================================================
 # 内部辅助
-# ============================================================
 
 
 def _verify_magic_bytes(

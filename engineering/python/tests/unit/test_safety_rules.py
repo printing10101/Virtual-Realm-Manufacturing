@@ -25,9 +25,8 @@ from app.rules.safety_constraint_rules import (
 pytestmark = pytest.mark.unit
 
 
-# ---------------------------------------------------------------------------
 # 枚举与基础数据类
-# ---------------------------------------------------------------------------
+
 
 class TestEnums:
     def test_priority_level(self):
@@ -54,9 +53,8 @@ class TestEnums:
         assert RuleCategory.SAFETY.value == "S"
 
 
-# ---------------------------------------------------------------------------
 # RuleCondition / RuleAction 序列化
-# ---------------------------------------------------------------------------
+
 
 class TestRuleCondition:
     def test_to_dict_and_from_dict(self):
@@ -101,9 +99,8 @@ class TestRuleAction:
         assert a.action_type == ActionType.ALERT
 
 
-# ---------------------------------------------------------------------------
 # SafetyRule 序列化
-# ---------------------------------------------------------------------------
+
 
 class TestSafetyRule:
     def _make_rule(self) -> SafetyRule:
@@ -154,9 +151,8 @@ class TestSafetyRule:
         assert rule.action.action_type == ActionType.FORCE_CHANGE
 
 
-# ---------------------------------------------------------------------------
 # validate_rules 校验链
-# ---------------------------------------------------------------------------
+
 
 class TestValidateRules:
     def _make_rule(self, rule_id: str = "M-001", priority: Priority = Priority.P1) -> SafetyRule:
@@ -219,9 +215,8 @@ class TestValidateRules:
         assert errors[0].field == "rules"
 
 
-# ---------------------------------------------------------------------------
 # SafeMathEvaluator 安全表达式求值
-# ---------------------------------------------------------------------------
+
 
 class TestSafeMathEvaluator:
     def test_basic_arithmetic(self):

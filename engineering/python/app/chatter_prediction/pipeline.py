@@ -71,9 +71,7 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # 异常类
-# =============================================================================
 
 
 class ChatterPredictionPipelineError(ChatterPredictionError):
@@ -84,9 +82,7 @@ class ChatterReviewError(ChatterPredictionError):
     """工程师审核操作失败。"""
 
 
-# =============================================================================
 # 结果数据类
-# =============================================================================
 
 
 @dataclass
@@ -129,9 +125,7 @@ class ChatterPredictionResult:
         }
 
 
-# =============================================================================
 # 流水线
-# =============================================================================
 
 
 class ChatterPredictionPipeline:
@@ -155,9 +149,7 @@ class ChatterPredictionPipeline:
         self._store = get_task_store()
         self._adapter = adapter if adapter is not None else ChatterPredictorAdapter()
 
-    # -------------------------------------------------------------------------
     # 创建任务
-    # -------------------------------------------------------------------------
 
     def create_task(
         self,
@@ -208,9 +200,7 @@ class ChatterPredictionPipeline:
         )
         return task
 
-    # -------------------------------------------------------------------------
     # 执行流水线（异步）
-    # -------------------------------------------------------------------------
 
     async def run_pipeline(self, task_id: str) -> ChatterPredictionResult:
         """异步执行 ChatterParams 加载 + 双路径预测。
@@ -377,9 +367,7 @@ class ChatterPredictionPipeline:
                 error_message=safe.get("message"),
             )
 
-    # -------------------------------------------------------------------------
     # 工程师审核
-    # -------------------------------------------------------------------------
 
     def review_result(
         self,
@@ -444,7 +432,7 @@ class ChatterPredictionPipeline:
         target.engineer_notes = engineer_notes
         if review_status == ChatterReviewStatus.EDITED.value and edited_params:
             target.edited_params = dict(edited_params)
-            # edited 时若修改了 stable 字段，同步更新 stable（0/1 → bool）
+            # edited 时若修改了 stable 字段，同步更新 stable（0/1 bool）
             if "stable" in edited_params:
                 target.stable = bool(edited_params["stable"])
             # edited 时若修改了 limit_depth_mm，同步更新
@@ -457,7 +445,7 @@ class ChatterPredictionPipeline:
                 if target.limit_depth_mm > 0:
                     target.stability_margin = target.axial_depth_mm / target.limit_depth_mm
 
-        # 检查是否全部审核完毕 → REVIEWED
+        # 检查是否全部审核完毕 REVIEWED
         all_reviewed = all(r.review_status != ChatterReviewStatus.PENDING.value for r in task.feature_results)
         if all_reviewed:
             task.status = ChatterPredictionTaskStatus.REVIEWED.value
@@ -474,9 +462,7 @@ class ChatterPredictionPipeline:
         )
         return target
 
-    # -------------------------------------------------------------------------
     # 导出 ChatterReport
-    # -------------------------------------------------------------------------
 
     def export_chatter_report(self, task_id: str) -> str:
         """导出 ChatterReport JSON（供阶段 6 G 代码生成使用）。
@@ -568,9 +554,7 @@ class ChatterPredictionPipeline:
         )
         return str(export_path)
 
-    # -------------------------------------------------------------------------
     # 内部辅助
-    # -------------------------------------------------------------------------
 
     def _load_chatter_params(self, chatter_params_path: str) -> list[dict[str, Any]]:
         """加载阶段 4 ChatterParams JSON。

@@ -47,9 +47,7 @@ class SnapshotStore(ISnapshotStore):
             raise RuntimeError("数据库未配置，无法获取 session")
         return sessionmaker()
 
-    # ------------------------------------------------------------------
     # ISnapshotStore 实现
-    # ------------------------------------------------------------------
 
     async def create(
         self,
@@ -182,9 +180,7 @@ class SnapshotStore(ISnapshotStore):
         return workflow_run_id
 
 
-# ---------------------------------------------------------------------------
 # 辅助函数
-# ---------------------------------------------------------------------------
 
 
 def _collect_environment() -> dict[str, str]:
@@ -329,9 +325,7 @@ def _workflow_spec_from_dict(spec_dict: dict[str, Any]) -> WorkflowSpec:
     )
 
 
-# ---------------------------------------------------------------------------
 # 单例
-# ---------------------------------------------------------------------------
 
 
 _snapshot_store: SnapshotStore | None = None

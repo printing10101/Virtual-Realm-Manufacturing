@@ -21,34 +21,32 @@ logger = logging.getLogger(__name__)
 DEFAULT_COLLECTION = "knowledge_base"
 DEFAULT_PERSIST_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "chroma_db")
 
-# ============================================================
 # HNSW 索引调优参数（参考 ChromaDB 官方文档与 HNSW 论文最佳实践）
-# ============================================================
 # 这些参数显著影响向量检索的召回率、索引构建质量和查询延迟。
 # 默认值经过中等规模知识库（1万~100万向量）场景调优，可通过环境变量覆盖。
 #
 # 参考：
-#   - HNSW 论文: Malkov & Yashunin, "Efficient and robust approximate nearest
-#     neighbor search using Hierarchical Navigable Small World graphs" (2018)
-#   - ChromaDB 文档: https://docs.trychroma.com/usage-guide#changing-the-distance-method
+# - HNSW 论文: Malkov & Yashunin, "Efficient and robust approximate nearest
+# neighbor search using Hierarchical Navigable Small World graphs" (2018)
+# - ChromaDB 文档: https://docs.trychroma.com/usage-guide#changing-the-distance-method
 #
 # M (每层最大连接数):
-#   - 控制图的度数，影响索引大小与召回率的平衡
-#   - 默认 16，取 32 适合中等规模知识库，召回率更优
-#   - 增大 M 提升召回但增加内存和索引构建时间
+# - 控制图的度数，影响索引大小与召回率的平衡
+# - 默认 16，取 32 适合中等规模知识库，召回率更优
+# - 增大 M 提升召回但增加内存和索引构建时间
 #
 # ef_construction (构建时搜索宽度):
-#   - 控制索引构建时的搜索范围，影响索引质量
-#   - 默认 100，取 200 显著提升索引质量，构建略慢但值得
-#   - 建议为 M 的 5~10 倍
+# - 控制索引构建时的搜索范围，影响索引质量
+# - 默认 100，取 200 显著提升索引质量，构建略慢但值得
+# - 建议为 M 的 5~10 倍
 #
 # ef_search (查询时搜索宽度):
-#   - 控制查询时的搜索范围，直接影响召回率
-#   - 默认 10（偏低），取 100 显著提升召回率
-#   - 增大 ef_search 提升召回但增加查询延迟
+# - 控制查询时的搜索范围，直接影响召回率
+# - 默认 10（偏低），取 100 显著提升召回率
+# - 增大 ef_search 提升召回但增加查询延迟
 #
 # num_threads (构建并行线程数):
-#   - 索引构建并行度，4 适合多数服务器 CPU
+# - 索引构建并行度，4 适合多数服务器 CPU
 DEFAULT_HNSW_M = int(os.environ.get("RAG_HNSW_M", "32"))
 DEFAULT_HNSW_EF_CONSTRUCTION = int(os.environ.get("RAG_HNSW_EF_CONSTRUCTION", "200"))
 DEFAULT_HNSW_EF_SEARCH = int(os.environ.get("RAG_HNSW_EF_SEARCH", "100"))
@@ -320,13 +318,10 @@ class VectorStore:
             self._closed = True
 
 
-# ---------------------------------------------------------------------------
 # Thread-safe lazy singleton (替代 ``global _`` 模式)
-# ---------------------------------------------------------------------------
 # 原实现使用 ``global _vector_store``；现改为将状态封装在内部类中，并使用
 # 线程锁保证并发环境下的安全。调用方仍然通过 :func:`get_vector_store` 访问，
 # 行为与重构前完全一致：首次访问时懒初始化、之后返回同一实例。
-# ---------------------------------------------------------------------------
 
 
 class _VectorStoreHolder:

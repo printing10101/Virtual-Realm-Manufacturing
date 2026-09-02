@@ -83,9 +83,7 @@ class MemoryAugmentor:
         # 缓存最近一次检索的 (record, score) 列表，便于调试与可观测性
         self.last_retrieve_scores: list[tuple[StoredTrajectory, SimilarityScore]] = []
 
-    # ------------------------------------------------------------------
     # 公共接口
-    # ------------------------------------------------------------------
 
     async def retrieve_similar(self, triple: Triple) -> list[StoredTrajectory]:
         """检索与当前三元组相似的历史轨迹。
@@ -192,9 +190,7 @@ class MemoryAugmentor:
             logger.warning("Memory store failed: %s", e)
             return None
 
-    # ------------------------------------------------------------------
     # 辅助方法
-    # ------------------------------------------------------------------
 
     def is_enabled(self) -> bool:
         """是否启用 Memory 增强。"""

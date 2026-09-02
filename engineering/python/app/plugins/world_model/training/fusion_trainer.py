@@ -175,7 +175,7 @@ class FusionWorldModelTrainer:
         self.models_dir = models_dir
         self.save_every_epoch = save_every_epoch
 
-        # 设备解析（auto → cuda if available else cpu）
+        # 设备解析（auto cuda if available else cpu）
         if isinstance(device, str) and device == "auto":
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
@@ -206,9 +206,7 @@ class FusionWorldModelTrainer:
             "learning_rate": [],
         }
 
-    # ------------------------------------------------------------------
     # 内部构造器
-    # ------------------------------------------------------------------
 
     def _build_optimizer(self) -> "torch.optim.Optimizer":
         """构造优化器."""
@@ -263,9 +261,7 @@ class FusionWorldModelTrainer:
             f"不支持的 LR 调度器类型: {self.lr_scheduler_type}（支持 cosine/step/reduce_on_plateau/exponential/none）"
         )
 
-    # ------------------------------------------------------------------
     # 训练循环
-    # ------------------------------------------------------------------
 
     def train(
         self,
@@ -559,9 +555,7 @@ class FusionWorldModelTrainer:
             raise FusionTrainerError("验证数据为空（0 个样本）")
         return total_loss / total_samples
 
-    # ------------------------------------------------------------------
     # checkpoint 保存 / 加载
-    # ------------------------------------------------------------------
 
     def save_checkpoint(
         self,
@@ -660,9 +654,7 @@ class FusionWorldModelTrainer:
         logger.info("融合模型 checkpoint 已加载: %s", path)
         return checkpoint
 
-    # ------------------------------------------------------------------
     # 辅助方法
-    # ------------------------------------------------------------------
 
     def _collect_hyperparams(self, horizon: int) -> dict[str, Any]:
         """收集超参（含融合专属字段）用于 MLflow 记录."""

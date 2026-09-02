@@ -5,7 +5,7 @@ from pathlib import Path
 
 d = json.loads(Path(__file__).parent.joinpath("baseline", "LATEST.json").read_text(encoding="utf-8"))
 
-# 需要检查的 missing 测试（来自报告中的 ❓ 项）
+# 需要检查的 missing 测试（来自报告中的 项）
 missing_tests = [
     ("TestDatabaseConnectionPoolPerformance", "test_connection_pool_creation_time"),
     ("TestDatabaseConnectionPoolPerformance", "test_concurrent_engine_access"),

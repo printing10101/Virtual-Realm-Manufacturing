@@ -28,16 +28,13 @@ def _make_context(history_size: int = 3) -> SessionContext:
         task_id="task-1",
         task_type="chatter_prediction",
         task_description="测试会话",
-        conversation_history=[
-            {"role": "user", "content": f"消息 {i}"} for i in range(history_size)
-        ],
+        conversation_history=[{"role": "user", "content": f"消息 {i}"} for i in range(history_size)],
     )
     return ctx
 
 
-# ---------------------------------------------------------------------------
 # CheckpointLifecycleManager
-# ---------------------------------------------------------------------------
+
 
 class TestCheckpointLifecycle:
     def test_init_creates_base_dir(self, tmp_path):
@@ -98,9 +95,8 @@ class TestCheckpointLifecycle:
         assert removed == 3  # 保留最新的 2 个
 
 
-# ---------------------------------------------------------------------------
 # StateCompressor
-# ---------------------------------------------------------------------------
+
 
 class TestStateCompressor:
     def test_should_compress_small_context_false(self):

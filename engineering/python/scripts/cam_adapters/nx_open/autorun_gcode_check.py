@@ -80,6 +80,7 @@ NX Open 环境要求
 ``cam_adapter.py`` 收到 status="error" 后自动降级到 manual 后端，
 链路不中断。
 """
+
 from __future__ import annotations
 
 import json
@@ -90,9 +91,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# =============================================================================
 # 输出协议常量（与 cam_adapter.py _JSON_*_FIELD 对齐）
-# =============================================================================
 
 _JSON_STATUS_FIELD = "status"
 _JSON_COLLISIONS_FIELD = "collisions"
@@ -100,7 +99,7 @@ _JSON_MESSAGES_FIELD = "messages"
 
 _VALID_STATUSES = frozenset({"pass", "fail", "error"})
 
-# 控制器类型 → NX Open 后处理器名称映射（车间现场可扩展）
+# 控制器类型 NX Open 后处理器名称映射（车间现场可扩展）
 _CONTROLLER_TO_POSTPROCESSOR: dict[str, str] = {
     "fanuc_0i": "fanuc_0i",
     "siemens_840d": "siemens_840d",
@@ -109,9 +108,7 @@ _CONTROLLER_TO_POSTPROCESSOR: dict[str, str] = {
 }
 
 
-# =============================================================================
 # 输出工具函数
-# =============================================================================
 
 
 def _emit_result(
@@ -145,10 +142,7 @@ def _emit_result(
         sys.stdout.flush()
     except Exception as exc:
         # JSON 序列化失败：写 stderr，返回非零退出码
-        sys.stderr.write(
-            f"NX Open 脚本 JSON 输出失败: {exc}\n"
-            f"payload: {payload}\n"
-        )
+        sys.stderr.write(f"NX Open 脚本 JSON 输出失败: {exc}\npayload: {payload}\n")
         return 1
 
     return 0 if status in {"pass", "fail"} else 1
@@ -159,9 +153,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# =============================================================================
 # NX Open 仿真核心逻辑
-# =============================================================================
 
 
 def _import_nx_open() -> dict[str, Any]:
@@ -232,9 +224,7 @@ def _load_gcode_to_nx(
     # 1. 校验 G 代码文件存在
     gcode_path = Path(gcode_file_path)
     if not gcode_path.is_file():
-        raise RuntimeError(
-            f"G 代码文件不存在：{gcode_file_path}"
-        )
+        raise RuntimeError(f"G 代码文件不存在：{gcode_file_path}")
 
     # 2. 获取 NX Session
     the_session = NXOpen.Session.GetSession()
@@ -243,8 +233,7 @@ def _load_gcode_to_nx(
 
     # 3. 创建新 part 文件（在临时目录，避免污染车间 NX 工作区）
     temp_part = os.path.join(
-        os.environ.get("TEMP", "/tmp"),
-        f"cam_check_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.prt"
+        os.environ.get("TEMP", "/tmp"), f"cam_check_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.prt"
     )
     base_part = the_session.Parts.NewDisplay(
         temp_part,
@@ -254,20 +243,18 @@ def _load_gcode_to_nx(
     # 4. 创建 CAM Setup
     cam_setup_collection = base_part.CAMSetups  # noqa: F841 - 参考实现框架占位（后续实现使用）
     # 选择后处理器
-    post_name = _CONTROLLER_TO_POSTPROCESSOR.get(
-        controller_type, controller_type
-    )
+    post_name = _CONTROLLER_TO_POSTPROCESSOR.get(controller_type, controller_type)
 
     # 5. 导入 G 代码为刀轨（参考实现）
     # 实际车间部署应使用 NX Open CAM API 的 OperationCollection.Create
     # 此处仅给出框架，具体实现需根据车间 NX 版本和后处理器调整
     # ──────────────────────────────────────────────────────────────
-    # NOTE: 完整的 G 代码 → NX 刀轨导入需要：
-    #   a. 创建 Tool（刀具）对象，参数来自 gcode_report.json
-    #   b. 创建 Operation（工序）对象，类型为 mill_planar / mill_contour
-    #   c. 设置 GeometryGroup（毛坯 + 工件 + 检查几何体）
-    #   d. 通过 ToolPathEditor.ImportGcode 导入 G 代码
-    #   e. 应用后处理器 post_name
+    # NOTE: 完整的 G 代码 NX 刀轨导入需要：
+    # a. 创建 Tool（刀具）对象，参数来自 gcode_report.json
+    # b. 创建 Operation（工序）对象，类型为 mill_planar / mill_contour
+    # c. 设置 GeometryGroup（毛坯 + 工件 + 检查几何体）
+    # d. 通过 ToolPathEditor.ImportGcode 导入 G 代码
+    # e. 应用后处理器 post_name
     # ──────────────────────────────────────────────────────────────
 
     return {
@@ -304,32 +291,28 @@ def _run_simulation_and_detect_collisions(
     # 参考实现框架（车间现场应替换为真实 NX Open API 调用）：
     #
     # 1. 获取 CAMSetup 的 Operation 列表
-    #    operations = sim_context["setup"].CamOperationCollection
+    # operations = sim_context["setup"].CamOperationCollection
     #
     # 2. 对每个 Operation 执行刀轨仿真：
-    #    for op in operations:
-    #        op.GenerateToolpath()
-    #        # 使用 ISV 仿真
-    #        isv = CAM.CAMSimulation.CreateISV(the_session, setup)
-    #        isv.SimulationMode = CAM.SimulationMode.Verify
-    #        result = isv.Run()
+    # for op in operations:
+    # op.GenerateToolpath()
+    # # 使用 ISV 仿真
+    # isv = CAM.CAMSimulation.CreateISV(the_session, setup)
+    # isv.SimulationMode = CAM.SimulationMode.Verify
+    # result = isv.Run()
     #
     # 3. 解析仿真结果中的碰撞事件：
-    #    for event in result.CollisionEvents:
-    #        collisions.append({
-    #            "collision_type": _map_nx_collision_type(event.Type),
-    #            "block_number": event.BlockNumber,
-    #            "message": event.Description,
-    #            "severity": "critical" if event.IsSevere else "warning",
-    #        })
+    # for event in result.CollisionEvents:
+    # collisions.append({
+    # "collision_type": _map_nx_collision_type(event.Type),
+    # "block_number": event.BlockNumber,
+    # "message": event.Description,
+    # "severity": "critical" if event.IsSevere else "warning",
+    # })
     # ──────────────────────────────────────────────────────────────
 
-    messages.append(
-        f"NX Open 仿真完成（参考实现框架，post_processor={sim_context['post_processor']}）"
-    )
-    messages.append(
-        f"G 代码文件：{sim_context['gcode_path']}"
-    )
+    messages.append(f"NX Open 仿真完成（参考实现框架，post_processor={sim_context['post_processor']}）")
+    messages.append(f"G 代码文件：{sim_context['gcode_path']}")
 
     # 占位：实际车间部署应返回真实碰撞检测结果
     # 此处返回空碰撞列表，status 由调用方根据 collisions 长度决定
@@ -361,9 +344,7 @@ def _map_nx_collision_type(nx_type: int) -> str:
     return mapping.get(nx_type, f"unknown_{nx_type}")
 
 
-# =============================================================================
 # 主入口
-# =============================================================================
 
 
 def main(argv: list[str]) -> int:
@@ -393,10 +374,7 @@ def main(argv: list[str]) -> int:
     if controller_type not in _CONTROLLER_TO_POSTPROCESSOR:
         return _emit_result(
             status="error",
-            messages=[
-                f"未知控制器类型：{controller_type}。"
-                f"合法值：{sorted(_CONTROLLER_TO_POSTPROCESSOR.keys())}"
-            ],
+            messages=[f"未知控制器类型：{controller_type}。合法值：{sorted(_CONTROLLER_TO_POSTPROCESSOR.keys())}"],
         )
 
     # 2. 校验 G 代码文件存在性（早期失败，避免 NX 启动开销）
@@ -423,9 +401,7 @@ def main(argv: list[str]) -> int:
 
     # 4. 在 NX 中加载 G 代码
     try:
-        sim_context = _load_gcode_to_nx(
-            nx_modules, gcode_file_path, controller_type
-        )
+        sim_context = _load_gcode_to_nx(nx_modules, gcode_file_path, controller_type)
     except RuntimeError as exc:
         return _emit_result(
             status="error",
@@ -445,9 +421,7 @@ def main(argv: list[str]) -> int:
 
     # 5. 执行仿真 + 碰撞检测
     try:
-        collisions, messages = _run_simulation_and_detect_collisions(
-            nx_modules, sim_context
-        )
+        collisions, messages = _run_simulation_and_detect_collisions(nx_modules, sim_context)
     except Exception as exc:
         return _emit_result(
             status="error",

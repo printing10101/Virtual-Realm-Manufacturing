@@ -49,9 +49,7 @@ from app.models import user as user_module
 from app.models.user import UserStore
 
 
-# ---------------------------------------------------------------------------
 # Fixtures (与 test_auth_register.py 保持一致的隔离策略)
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -75,6 +73,7 @@ def fresh_ban_list(tmp_path, monkeypatch) -> Generator[Any, None, None]:
     ban_file = tmp_path / "banned_tokens.json"
     monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
     import app.auth.security as security_module
+
     monkeypatch.setattr(security_module, "_token_ban_list", None)
     yield get_token_ban_list()
     monkeypatch.setattr(security_module, "_token_ban_list", None)
@@ -135,9 +134,7 @@ def registered_user(client, monkeypatch) -> Generator[dict, None, None]:
     yield {"username": "alice", "password": "Passw0rd!"}
 
 
-# ---------------------------------------------------------------------------
 # 登录 / Token 刷新 / 登出 / me 端点
-# ---------------------------------------------------------------------------
 
 
 class TestLoginEndpoint:
@@ -216,9 +213,7 @@ class TestRefreshEndpoint:
         )
         assert response.status_code == 401
 
-    def test_refresh_with_banned_token_returns_401(
-        self, client, registered_user, fresh_ban_list
-    ):
+    def test_refresh_with_banned_token_returns_401(self, client, registered_user, fresh_ban_list):
         """已被撤销的 refresh token 返回 401。"""
         login_resp = client.post(
             "/api/v1/auth/login",
@@ -236,9 +231,7 @@ class TestRefreshEndpoint:
         )
         assert response.status_code == 401
 
-    def test_refresh_success_returns_new_tokens(
-        self, client, registered_user, fresh_ban_list
-    ):
+    def test_refresh_success_returns_new_tokens(self, client, registered_user, fresh_ban_list):
         """使用有效 refresh token 应返回新的 access + refresh。"""
         login_resp = client.post(
             "/api/v1/auth/login",
@@ -268,9 +261,7 @@ class TestLogoutEndpoint:
         assert response.status_code == 200
         assert response.json()["code"] == 0
 
-    def test_logout_bans_access_token(
-        self, client, registered_user, fresh_ban_list
-    ):
+    def test_logout_bans_access_token(self, client, registered_user, fresh_ban_list):
         """登出时 access token 会被加入 ban list。"""
         login_resp = client.post(
             "/api/v1/auth/login",
@@ -289,9 +280,7 @@ class TestLogoutEndpoint:
         # token 已被撤销
         assert fresh_ban_list.is_banned(access_token) is True
 
-    def test_logout_bans_refresh_token(
-        self, client, registered_user, fresh_ban_list
-    ):
+    def test_logout_bans_refresh_token(self, client, registered_user, fresh_ban_list):
         """登出时 refresh token 也会被加入 ban list。"""
         login_resp = client.post(
             "/api/v1/auth/login",
@@ -317,9 +306,7 @@ class TestMeEndpoint:
         response = client.get("/api/v1/auth/me")
         assert response.status_code in (401, 403)
 
-    def test_me_with_valid_token_returns_user_info(
-        self, client, registered_user
-    ):
+    def test_me_with_valid_token_returns_user_info(self, client, registered_user):
         """提供有效 access token 时返回当前用户信息。"""
         login_resp = client.post(
             "/api/v1/auth/login",
@@ -339,9 +326,7 @@ class TestMeEndpoint:
         assert body["data"]["username"] == registered_user["username"]
 
 
-# ---------------------------------------------------------------------------
 # get_current_user 依赖项
-# ---------------------------------------------------------------------------
 
 
 class TestGetCurrentUserDependency:
@@ -367,9 +352,7 @@ class TestGetCurrentUserDependency:
             )
         assert response.status_code == 401
 
-    def test_get_current_user_with_banned_token_returns_401(
-        self, registered_user, fresh_ban_list
-    ):
+    def test_get_current_user_with_banned_token_returns_401(self, registered_user, fresh_ban_list):
         """已被 ban 的 token 触发 401。"""
         # 注册并登录拿到有效 token
         app = self._build_app_with_route()
@@ -390,9 +373,7 @@ class TestGetCurrentUserDependency:
             )
         assert response.status_code == 401
 
-    def test_get_current_user_with_token_for_missing_user_returns_401(
-        self, monkeypatch, fresh_ban_list
-    ):
+    def test_get_current_user_with_token_for_missing_user_returns_401(self, monkeypatch, fresh_ban_list):
         """token 合法但 store 中无此用户时返回 401。"""
         # 直接签发一个 token，但 store 中并不存在该用户
         bogus_token = create_access_token({"sub": "phantom", "jti": "jti-1"})
@@ -460,17 +441,13 @@ class TestRequireRoleDependency:
         assert response.json()["username"] == registered_user["username"]
 
 
-# ---------------------------------------------------------------------------
 # register 端点的 ValueError 兜底分支
-# ---------------------------------------------------------------------------
 
 
 class TestRegisterValueErrorFallback:
     """注册时 store.create_user 抛 ValueError 时应返回 409。"""
 
-    def test_register_value_error_returns_409(
-        self, client, monkeypatch, isolated_user_store
-    ):
+    def test_register_value_error_returns_409(self, client, monkeypatch, isolated_user_store):
         """当 store.create_user 抛出 ValueError 时返回 409。"""
         monkeypatch.setenv("LNN_REGISTRATION_CODE", "SECRET-1234")
 
@@ -501,9 +478,7 @@ class TestRegisterValueErrorFallback:
         assert body["message"]
 
 
-# ---------------------------------------------------------------------------
 # 访客模式登录端点（/api/v1/auth/guest）
-# ---------------------------------------------------------------------------
 
 
 class TestGuestLoginEndpoint:

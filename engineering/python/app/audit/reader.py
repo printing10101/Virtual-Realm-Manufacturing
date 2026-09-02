@@ -33,7 +33,7 @@ logger = logging.getLogger("app.audit.audit_log")
 
 
 class ReaderMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _log_root: Any
 
     """审计日志查询与导出 mixin。

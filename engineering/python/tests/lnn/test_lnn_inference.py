@@ -314,10 +314,7 @@ class TestBatchInferenceEngine:
         predictor = MagicMock(spec=LNNPredictor)
 
         def mock_predict_batch(data_list, batch_size=32):
-            return [
-                PredictionResult(value=[0.8], confidence=0.9, inference_time=20.0)
-                for _ in range(len(data_list))
-            ]
+            return [PredictionResult(value=[0.8], confidence=0.9, inference_time=20.0) for _ in range(len(data_list))]
 
         predictor.predict_batch = mock_predict_batch
         return predictor
@@ -393,9 +390,7 @@ class TestBatchInferenceEngine:
         assert engine.max_concurrency == 10
 
 
-# ============================================================
 # 8.2.1 模型加载测试
-# ============================================================
 
 
 class TestPredictorModelLoading:
@@ -456,9 +451,7 @@ class TestPredictorModelLoading:
         assert predictor.model_name == "my_predictor"
 
 
-# ============================================================
 # 8.2.2 单次预测测试
-# ============================================================
 
 
 class TestPredictorSinglePrediction:
@@ -501,9 +494,7 @@ class TestPredictorSinglePrediction:
         assert result.inference_time >= 0
 
 
-# ============================================================
 # 8.2.3 批量预测测试
-# ============================================================
 
 
 class TestPredictorBatchPrediction:
@@ -550,9 +541,7 @@ class TestPredictorBatchPrediction:
             assert len(results) == 30
 
 
-# ============================================================
 # 8.2.4 预处理/后处理测试
-# ============================================================
 
 
 class TestDataPreprocessing:
@@ -616,9 +605,7 @@ class TestDataPostprocessing:
     """测试数据后处理逻辑"""
 
     def setup_method(self):
-        self.postprocessor = ResultPostprocessor(
-            include_metadata=True, include_uncertainty=True
-        )
+        self.postprocessor = ResultPostprocessor(include_metadata=True, include_uncertainty=True)
 
     def test_postprocess_result_structure(self):
         """测试结果结构化格式"""
@@ -636,17 +623,13 @@ class TestDataPostprocessing:
     def test_postprocess_confidence_computation(self):
         """测试置信度计算"""
         predictions = np.array([[0.9, 0.1], [0.85, 0.15]])
-        result = self.postprocessor.process_result(
-            predictions=predictions, engine=EngineType.LNN
-        )
+        result = self.postprocessor.process_result(predictions=predictions, engine=EngineType.LNN)
         assert 0.0 <= result.confidence <= 1.0
 
     def test_postprocess_uncertainty_assessment(self):
         """测试不确定性评估"""
         predictions = np.array([[0.5, 0.5], [0.5, 0.5]])
-        result = self.postprocessor.process_result(
-            predictions=predictions, engine=EngineType.LNN
-        )
+        result = self.postprocessor.process_result(predictions=predictions, engine=EngineType.LNN)
         assert result.uncertainty is not None
         assert "entropy" in result.uncertainty
         assert "normalized_entropy" in result.uncertainty
@@ -654,17 +637,13 @@ class TestDataPostprocessing:
     def test_postprocess_evidence_building(self):
         """测试证据列表构建"""
         predictions = np.array([[0.8, 0.2], [0.3, 0.7]])
-        result = self.postprocessor.process_result(
-            predictions=predictions, engine=EngineType.LNN
-        )
+        result = self.postprocessor.process_result(predictions=predictions, engine=EngineType.LNN)
         assert len(result.evidence) == 2
 
     def test_postprocess_to_json(self):
         """测试JSON格式输出"""
         predictions = np.array([[0.8, 0.2]])
-        result = self.postprocessor.process_result(
-            predictions=predictions, engine=EngineType.LNN
-        )
+        result = self.postprocessor.process_result(predictions=predictions, engine=EngineType.LNN)
         json_str = self.postprocessor.to_json(result)
         assert isinstance(json_str, str)
         parsed = json.loads(json_str)
@@ -673,9 +652,7 @@ class TestDataPostprocessing:
     def test_postprocess_to_xml(self):
         """测试XML格式输出"""
         predictions = np.array([[0.8, 0.2]])
-        result = self.postprocessor.process_result(
-            predictions=predictions, engine=EngineType.LNN
-        )
+        result = self.postprocessor.process_result(predictions=predictions, engine=EngineType.LNN)
         xml_str = self.postprocessor.to_xml(result)
         assert isinstance(xml_str, str)
         assert "<?xml" in xml_str
@@ -683,19 +660,13 @@ class TestDataPostprocessing:
 
     def test_postprocess_without_metadata(self):
         """测试不包含元数据的后处理"""
-        postprocessor = ResultPostprocessor(
-            include_metadata=False, include_uncertainty=False
-        )
+        postprocessor = ResultPostprocessor(include_metadata=False, include_uncertainty=False)
         predictions = np.array([[0.8, 0.2]])
-        result = postprocessor.process_result(
-            predictions=predictions, engine=EngineType.LNN
-        )
+        result = postprocessor.process_result(predictions=predictions, engine=EngineType.LNN)
         assert result.uncertainty is None
 
 
-# ============================================================
 # 8.2.5 错误处理测试
-# ============================================================
 
 
 class TestPredictorErrorHandling:
@@ -794,8 +765,6 @@ class TestPostprocessingErrorHandling:
         """测试空预测结果处理"""
         postprocessor = ResultPostprocessor()
         predictions = np.array([]).reshape(0, 1)
-        result = postprocessor.process_result(
-            predictions=predictions, engine=EngineType.LNN
-        )
+        result = postprocessor.process_result(predictions=predictions, engine=EngineType.LNN)
         assert result is not None
         assert result.confidence == 0.0 or len(result.evidence) == 0

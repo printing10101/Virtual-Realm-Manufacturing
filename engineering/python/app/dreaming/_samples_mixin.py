@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class _SamplesMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _lock: Any
     _samples: Any
     samples_dir: Any
@@ -56,9 +56,7 @@ class _SamplesMixin:
         except OSError as e:
             logger.warning("样本持久化失败 rule_id=%s: %s", rule_id, e)
 
-    # ------------------------------------------------------------------
     # 样本录入 API
-    # ------------------------------------------------------------------
 
     def record_sample(self, sample: OutcomeSample) -> bool:
         """录入单次规则触发的效果样本。

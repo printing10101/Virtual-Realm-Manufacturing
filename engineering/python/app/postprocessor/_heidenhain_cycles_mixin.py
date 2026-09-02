@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class _HeidenhainCyclesMixin:
-    # ---- 宿主契约：由兄弟 mixin / 基类提供（mypy 需要显式声明） ----
+    # 宿主契约：由兄弟 mixin / 基类提供（mypy 需要显式声明）
     _block_counter: int
     _last_program_number: int
     _next_block: Callable[[], int]
@@ -234,17 +234,17 @@ class _HeidenhainCyclesMixin:
 
         # CYCL DEF 266 切槽循环格式
         # CYCL DEF 266 GROOVING
-        #    Q200=SET-UP CLEARANCE
-        #    Q201=DEPTH
-        #    Q202=PLUNGING DEPTH
-        #    Q203=SURFACE COORDINATE
-        #    Q204=2ND SET-UP CLEARANCE
-        #    Q206=FEED RATE
-        #    Q210=DWELL TIME AT TOP
-        #    Q211=DWELL TIME AT DEPTH
-        #    Q214=SET-UP CLEARANCE IN TOOL AXIS
-        #    Q226=RETRACT AMOUNT
-        #    Q227=FINISHING ALLOWANCE
+        # Q200=SET-UP CLEARANCE
+        # Q201=DEPTH
+        # Q202=PLUNGING DEPTH
+        # Q203=SURFACE COORDINATE
+        # Q204=2ND SET-UP CLEARANCE
+        # Q206=FEED RATE
+        # Q210=DWELL TIME AT TOP
+        # Q211=DWELL TIME AT DEPTH
+        # Q214=SET-UP CLEARANCE IN TOOL AXIS
+        # Q226=RETRACT AMOUNT
+        # Q227=FINISHING ALLOWANCE
         lines = [
             f"{self._next_block()}  CYCL DEF 266 GROOVING",
             f"{self._next_block()}     Q200={self._fmt(r_plane)}  ;SET-UP CLEARANCE",
@@ -296,15 +296,15 @@ class _HeidenhainCyclesMixin:
 
         # CYCL DEF 263 外螺纹车削循环格式
         # CYCL DEF 263 THREAD
-        #    Q200=SET-UP CLEARANCE
-        #    Q201=DEPTH
-        #    Q202=PLUNGING DEPTH
-        #    Q203=SURFACE COORDINATE
-        #    Q204=2ND SET-UP CLEARANCE
-        #    Q206=FEED RATE
-        #    Q239=PITCH
-        #    Q243=NUMBER OF PASSES
-        #    Q244=THREAD ANGLE
+        # Q200=SET-UP CLEARANCE
+        # Q201=DEPTH
+        # Q202=PLUNGING DEPTH
+        # Q203=SURFACE COORDINATE
+        # Q204=2ND SET-UP CLEARANCE
+        # Q206=FEED RATE
+        # Q239=PITCH
+        # Q243=NUMBER OF PASSES
+        # Q244=THREAD ANGLE
         r_plane = self.safe_z_height
         lines = [
             f"{self._next_block()}  L  X+{self._fmt(x + 2.0)} Z+{self._fmt(z + 5.0)} R0 FMAX",

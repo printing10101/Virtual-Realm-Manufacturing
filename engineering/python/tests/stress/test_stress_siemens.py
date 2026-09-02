@@ -57,13 +57,11 @@ import pytest
 
 pytestmark = pytest.mark.skip_ci  # 重型压力测试：CI 默认跳过，本地显式运行
 
-# ---------------------------------------------------------------------------
 # 西门子工业软件验收阈值
-# ---------------------------------------------------------------------------
-CPU_THRESHOLD = 90.0          # %
-MEMORY_THRESHOLD = 75.0       # %
-GPU_MEMORY_THRESHOLD = 85.0   # %
-NETWORK_THRESHOLD = 50.0      # Mbps
+CPU_THRESHOLD = 90.0  # %
+MEMORY_THRESHOLD = 75.0  # %
+GPU_MEMORY_THRESHOLD = 85.0  # %
+NETWORK_THRESHOLD = 50.0  # Mbps
 ERROR_RATE_THRESHOLD_PCT = 1.0
 SOAK_MEMORY_GROWTH_PCT = 15.0
 RECOVERY_MULTIPLIER = 3.0
@@ -79,14 +77,14 @@ REPORT_DIR = Path(__file__).parent / "reports"
 REPORT_PATH = REPORT_DIR / "STRESS_TEST_REPORT.md"
 
 
-# ---------------------------------------------------------------------------
 # 通用工具
-# ---------------------------------------------------------------------------
+
 
 def _rss_mb() -> float:
     """当前进程 RSS（MB）。psutil 缺失时返回 0 并由调用方跳过。"""
     try:
         import psutil
+
         return psutil.Process().memory_info().rss / 1024 / 1024
     except Exception:
         return 0.0
@@ -131,14 +129,13 @@ def _qps(latencies_ms: list[float]) -> float:
 def _psutil_available() -> bool:
     try:
         import psutil  # noqa: F401
+
         return True
     except ImportError:
         return False
 
 
-# ---------------------------------------------------------------------------
 # 测试数据工厂（真实业务输入）
-# ---------------------------------------------------------------------------
 
 _CONTROLLER_TYPES = ["fanuc_0i", "siemens_840d", "heidenhain_tnc", "xmachine_xm100"]
 
@@ -185,9 +182,8 @@ def _sensor_sample(idx: int) -> dict[str, float]:
     }
 
 
-# ---------------------------------------------------------------------------
 # 报告收集器（session 级，teardown 时写出 Markdown 报告）
-# ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def stress_report() -> dict[str, Any]:
@@ -210,12 +206,14 @@ def stress_report() -> dict[str, Any]:
 
 def _python_version() -> str:
     import sys
+
     return sys.version.split()[0]
 
 
 def _psutil_version() -> str:
     try:
         import psutil
+
         return psutil.__version__
     except Exception:
         return "N/A"
@@ -223,18 +221,22 @@ def _psutil_version() -> str:
 
 def _platform_name() -> str:
     import platform
+
     return platform.platform()
 
 
-def _record(report: dict[str, Any], name: str, status: str, metrics: dict,
-            thresholds: dict | None = None, notes: str = "") -> None:
-    report["results"].append({
-        "name": name,
-        "status": status,
-        "metrics": metrics,
-        "thresholds": thresholds or {},
-        "notes": notes,
-    })
+def _record(
+    report: dict[str, Any], name: str, status: str, metrics: dict, thresholds: dict | None = None, notes: str = ""
+) -> None:
+    report["results"].append(
+        {
+            "name": name,
+            "status": status,
+            "metrics": metrics,
+            "thresholds": thresholds or {},
+            "notes": notes,
+        }
+    )
 
 
 def _fmt_metric(key: str, value: Any) -> str:
@@ -299,9 +301,8 @@ def _render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-# ---------------------------------------------------------------------------
 # 1. 并发压力（Concurrency Stress）
-# ---------------------------------------------------------------------------
+
 
 class TestConcurrencyStress:
     """高并发访问关键路径，验证无死锁/无数据损坏。"""
@@ -342,11 +343,14 @@ class TestConcurrencyStress:
 
         assert summary["p99"] < 1.0, f"并发验签 p99={summary['p99']:.4f}ms >= 1ms"
 
-        _record(stress_report, "并发JWT创建+验签",
-                "PASS" if summary["p99"] < 1.0 else "FAIL",
-                {**summary, "qps": qps, "total_ms": total_ms},
-                {"p99": 1.0},
-                f"{self.THREADS}线程×{self.ITERATIONS_PER_THREAD}次，错误数={len(errors)}")
+        _record(
+            stress_report,
+            "并发JWT创建+验签",
+            "PASS" if summary["p99"] < 1.0 else "FAIL",
+            {**summary, "qps": qps, "total_ms": total_ms},
+            {"p99": 1.0},
+            f"{self.THREADS}线程×{self.ITERATIONS_PER_THREAD}次，错误数={len(errors)}",
+        )
 
     def test_concurrent_gcode_generation(self, stress_report):
         """20 线程并发 G 代码生成（每种控制器独立）：无异常、输出完整。"""
@@ -386,13 +390,16 @@ class TestConcurrencyStress:
         assert len(generated_lines) == 20 * 50, "生成数量缺失"
         summary = _summarize(latencies)
 
-        _record(stress_report, "并发G代码生成",
-                "PASS" if not errors and len(generated_lines) == 20 * 50 else "FAIL",
-                {**summary, "generated": len(generated_lines), "avg_lines": statistics.mean(generated_lines)},
-                {"errors": 1.0},
-                "20线程×50次×4控制器；并发正确性：无异常、输出完整。"
-                "p99 受 CPU 密集并发下 GIL 串行影响仅供参考，"
-                "真实延迟上界见吞吐量用例（p99<30ms）")
+        _record(
+            stress_report,
+            "并发G代码生成",
+            "PASS" if not errors and len(generated_lines) == 20 * 50 else "FAIL",
+            {**summary, "generated": len(generated_lines), "avg_lines": statistics.mean(generated_lines)},
+            {"errors": 1.0},
+            "20线程×50次×4控制器；并发正确性：无异常、输出完整。"
+            "p99 受 CPU 密集并发下 GIL 串行影响仅供参考，"
+            "真实延迟上界见吞吐量用例（p99<30ms）",
+        )
 
     def test_concurrent_process_planning(self, stress_report):
         """20 线程并发工艺规划（各自独立实例）：无死锁。"""
@@ -438,12 +445,14 @@ class TestConcurrencyStress:
         assert not errors, f"并发工艺规划异常: {errors[:5]}"
         summary = _summarize(latencies)
 
-        _record(stress_report, "并发工艺规划",
-                "PASS" if not errors else "FAIL",
-                {**summary, "total": len(latencies)},
-                {"errors": 1.0},
-                "20线程×30次×8特征；并发正确性：无死锁、无异常。"
-                "p99 受 GIL 并发串行影响仅供参考，真实延迟上界见吞吐量用例")
+        _record(
+            stress_report,
+            "并发工艺规划",
+            "PASS" if not errors else "FAIL",
+            {**summary, "total": len(latencies)},
+            {"errors": 1.0},
+            "20线程×30次×8特征；并发正确性：无死锁、无异常。p99 受 GIL 并发串行影响仅供参考，真实延迟上界见吞吐量用例",
+        )
 
     def test_concurrent_wakeup_queue_isolated(self, stress_report, tmp_path):
         """10 线程并发心跳调度（各自独立 DB）：无 SQLite 锁冲突。"""
@@ -457,13 +466,15 @@ class TestConcurrencyStress:
                 db_path = str(tmp_path / f"wq_{tid}.db")
                 q = WakeupQueue(db_path=db_path)
                 for i in range(200):
-                    q.add_task(ScheduledTask(
-                        task_id=f"t{tid}_task_{i}",
-                        agent_id=f"agent_{tid}",
-                        schedule="*/5 * * * *",
-                        task_type="stress",
-                        params={"tid": tid, "i": i},
-                    ))
+                    q.add_task(
+                        ScheduledTask(
+                            task_id=f"t{tid}_task_{i}",
+                            agent_id=f"agent_{tid}",
+                            schedule="*/5 * * * *",
+                            task_type="stress",
+                            params={"tid": tid, "i": i},
+                        )
+                    )
                 counts.append(len(q.get_due_tasks(current_time=time.time() + 3600)))
                 q.close()
             except Exception as e:  # pragma: no cover
@@ -481,16 +492,18 @@ class TestConcurrencyStress:
         # 每线程注册 200 个未来任务，get_due_tasks(未来时间) 应全部取出
         assert all(c >= 200 for c in counts), f"任务未完整持久化: {counts}"
 
-        _record(stress_report, "并发心跳调度(独立DB)",
-                "PASS" if not errors and all(c >= 200 for c in counts) else "FAIL",
-                {"threads": 10, "tasks_per_thread": 200, "due_counts": counts},
-                {"errors": 1.0},
-                "10线程×200任务，各独立 SQLite 实例；并发正确性：无 SQLite 锁冲突、任务完整持久化（每线程应取出全部 200 条）")
+        _record(
+            stress_report,
+            "并发心跳调度(独立DB)",
+            "PASS" if not errors and all(c >= 200 for c in counts) else "FAIL",
+            {"threads": 10, "tasks_per_thread": 200, "due_counts": counts},
+            {"errors": 1.0},
+            "10线程×200任务，各独立 SQLite 实例；并发正确性：无 SQLite 锁冲突、任务完整持久化（每线程应取出全部 200 条）",
+        )
 
 
-# ---------------------------------------------------------------------------
 # 2. 吞吐量与尾部延迟（Throughput & Tail Latency）
-# ---------------------------------------------------------------------------
+
 
 class TestThroughputAndTailLatency:
     """关键业务路径在持续负载下的吞吐量（QPS）与尾部延迟（p95/p99）。"""
@@ -511,11 +524,14 @@ class TestThroughputAndTailLatency:
         qps = _qps(latencies)
         ok = qps >= JWT_CREATE_VERIFY_QPS_TARGET and summary["p99"] < 1.0
 
-        _record(stress_report, "JWT验签吞吐量",
-                "PASS" if ok else "FAIL",
-                {**summary, "qps": qps},
-                {"qps_min": JWT_CREATE_VERIFY_QPS_TARGET, "p99": 1.0},
-                f"{iterations}次")
+        _record(
+            stress_report,
+            "JWT验签吞吐量",
+            "PASS" if ok else "FAIL",
+            {**summary, "qps": qps},
+            {"qps_min": JWT_CREATE_VERIFY_QPS_TARGET, "p99": 1.0},
+            f"{iterations}次",
+        )
 
     def test_gcode_generation_throughput(self, stress_report):
         """G 代码生成吞吐量：单次 < 10ms，p99 < 30ms（4 种控制器）。"""
@@ -527,19 +543,21 @@ class TestThroughputAndTailLatency:
         for i in range(200):
             ctrl = _CONTROLLER_TYPES[i % len(_CONTROLLER_TYPES)]
             start = time.perf_counter()
-            result = gen.generate(operation_plan=plan, controller_type=ctrl,
-                                  material_name="45#钢", safe_z=50.0)
+            result = gen.generate(operation_plan=plan, controller_type=ctrl, material_name="45#钢", safe_z=50.0)
             latencies.append((time.perf_counter() - start) * 1000)
             assert result.program_text
 
         summary = _summarize(latencies)
         ok = summary["avg"] < GCODE_PER_CALL_MS_TARGET and summary["p99"] < GCODE_P99_MS_TARGET
 
-        _record(stress_report, "G代码生成吞吐量",
-                "PASS" if ok else "FAIL",
-                {**summary, "qps": _qps(latencies)},
-                {"avg": GCODE_PER_CALL_MS_TARGET, "p99": GCODE_P99_MS_TARGET},
-                "200次×4控制器混合")
+        _record(
+            stress_report,
+            "G代码生成吞吐量",
+            "PASS" if ok else "FAIL",
+            {**summary, "qps": _qps(latencies)},
+            {"avg": GCODE_PER_CALL_MS_TARGET, "p99": GCODE_P99_MS_TARGET},
+            "200次×4控制器混合",
+        )
 
     def test_sensor_stream_throughput(self, stress_report):
         """实时传感器处理吞吐量：p99 < 1ms（场景2 目标 <100ms 的 1% 级）。"""
@@ -555,11 +573,14 @@ class TestThroughputAndTailLatency:
         summary = _summarize(latencies)
         ok = summary["p99"] < SENSOR_P99_MS_TARGET
 
-        _record(stress_report, "实时传感器处理吞吐量",
-                "PASS" if ok else "FAIL",
-                {**summary, "qps": _qps(latencies)},
-                {"p99": SENSOR_P99_MS_TARGET},
-                "10000样本连续流")
+        _record(
+            stress_report,
+            "实时传感器处理吞吐量",
+            "PASS" if ok else "FAIL",
+            {**summary, "qps": _qps(latencies)},
+            {"p99": SENSOR_P99_MS_TARGET},
+            "10000样本连续流",
+        )
 
     def test_audit_log_throughput(self, stress_report, tmp_path):
         """审计日志哈希链写入吞吐量：单条 < 5ms，p99 < 10ms。"""
@@ -570,19 +591,27 @@ class TestThroughputAndTailLatency:
             latencies: list[float] = []
             for i in range(3000):
                 start = time.perf_counter()
-                log.log(agent_id=f"agent_{i % 50}", route=f"/api/v1/stress/{i}",
-                        permission_class="write", status_code=200, latency_ms=3.0)
+                log.log(
+                    agent_id=f"agent_{i % 50}",
+                    route=f"/api/v1/stress/{i}",
+                    permission_class="write",
+                    status_code=200,
+                    latency_ms=3.0,
+                )
                 latencies.append((time.perf_counter() - start) * 1000)
 
             summary = _summarize(latencies)
             ok = summary["avg"] < 5.0 and summary["p99"] < AUDIT_LOG_P99_MS_TARGET
             is_valid, _breaks = log.verify_integrity()
 
-            _record(stress_report, "审计日志写入吞吐量",
-                    "PASS" if ok and is_valid else "FAIL",
-                    {**summary, "qps": _qps(latencies), "integrity": is_valid},
-                    {"avg": 5.0, "p99": AUDIT_LOG_P99_MS_TARGET},
-                    f"3000条；完整性={is_valid}")
+            _record(
+                stress_report,
+                "审计日志写入吞吐量",
+                "PASS" if ok and is_valid else "FAIL",
+                {**summary, "qps": _qps(latencies), "integrity": is_valid},
+                {"avg": 5.0, "p99": AUDIT_LOG_P99_MS_TARGET},
+                f"3000条；完整性={is_valid}",
+            )
         finally:
             log.close()
 
@@ -596,27 +625,34 @@ class TestThroughputAndTailLatency:
             latencies: list[float] = []
             for i in range(2000):
                 start = time.perf_counter()
-                q.add_task(ScheduledTask(
-                    task_id=f"q_task_{i}", agent_id="agent_q",
-                    schedule="*/5 * * * *", task_type="stress", params={"i": i},
-                ))
+                q.add_task(
+                    ScheduledTask(
+                        task_id=f"q_task_{i}",
+                        agent_id="agent_q",
+                        schedule="*/5 * * * *",
+                        task_type="stress",
+                        params={"i": i},
+                    )
+                )
                 latencies.append((time.perf_counter() - start) * 1000)
             summary = _summarize(latencies)
             ok = summary["avg"] < 10.0
 
-            _record(stress_report, "心跳调度add_task吞吐量",
-                    "PASS" if ok else "FAIL",
-                    {**summary, "qps": _qps(latencies)},
-                    {"avg": 10.0},
-                    "2000次批量插入")
+            _record(
+                stress_report,
+                "心跳调度add_task吞吐量",
+                "PASS" if ok else "FAIL",
+                {**summary, "qps": _qps(latencies)},
+                {"avg": 10.0},
+                "2000次批量插入",
+            )
         finally:
             q.close()
             CronParser.clear_cache()
 
 
-# ---------------------------------------------------------------------------
 # 3. 浸泡测试（Soak / 内存泄漏与性能漂移）
-# ---------------------------------------------------------------------------
+
 
 class TestSoakStability:
     """长周期高负载运行：内存无泄漏、延迟无漂移。"""
@@ -634,8 +670,7 @@ class TestSoakStability:
 
         # 预热 + 基线 RSS
         for _ in range(50):
-            gen.generate(operation_plan=plan, controller_type="fanuc_0i",
-                         material_name="45#钢", safe_z=50.0)
+            gen.generate(operation_plan=plan, controller_type="fanuc_0i", material_name="45#钢", safe_z=50.0)
         gc.collect()
         baseline_rss = _rss_mb()
         assert baseline_rss > 0, "无法获取 RSS"
@@ -643,8 +678,7 @@ class TestSoakStability:
         growth_pcts: list[float] = []
         for batch in range(self.N_BATCHES):
             for _ in range(self.BATCH_SIZE):
-                gen.generate(operation_plan=plan, controller_type="fanuc_0i",
-                             material_name="45#钢", safe_z=50.0)
+                gen.generate(operation_plan=plan, controller_type="fanuc_0i", material_name="45#钢", safe_z=50.0)
             gc.collect()
             current = _rss_mb()
             growth = (current - baseline_rss) / max(baseline_rss, 1) * 100
@@ -652,17 +686,22 @@ class TestSoakStability:
 
         final_growth = growth_pcts[-1]
         # 允许批次间波动，取后 1/3 平均增长作为判定
-        tail_growth = statistics.mean(growth_pcts[len(growth_pcts) // 3 * 2:])
+        tail_growth = statistics.mean(growth_pcts[len(growth_pcts) // 3 * 2 :])
         ok = tail_growth < SOAK_MEMORY_GROWTH_PCT
 
-        _record(stress_report, "G代码生成浸泡(2000次)",
-                "PASS" if ok else "FAIL",
-                {"baseline_rss_mb": round(baseline_rss, 2),
-                 "final_growth_pct": round(final_growth, 2),
-                 "tail_growth_pct": round(tail_growth, 2),
-                 "max_growth_pct": round(max(growth_pcts), 2)},
-                {"growth": SOAK_MEMORY_GROWTH_PCT},
-                f"{self.N_BATCHES}批×{self.BATCH_SIZE}次")
+        _record(
+            stress_report,
+            "G代码生成浸泡(2000次)",
+            "PASS" if ok else "FAIL",
+            {
+                "baseline_rss_mb": round(baseline_rss, 2),
+                "final_growth_pct": round(final_growth, 2),
+                "tail_growth_pct": round(tail_growth, 2),
+                "max_growth_pct": round(max(growth_pcts), 2),
+            },
+            {"growth": SOAK_MEMORY_GROWTH_PCT},
+            f"{self.N_BATCHES}批×{self.BATCH_SIZE}次",
+        )
 
     @pytest.mark.skipif(not _psutil_available(), reason="psutil 不可用，无法测 RSS")
     def test_audit_log_soak_no_leak(self, stress_report, tmp_path):
@@ -679,25 +718,34 @@ class TestSoakStability:
             growth_pcts: list[float] = []
             for batch in range(6):
                 for i in range(500):
-                    log.log(agent_id=f"agent_{i % 30}",
-                            route=f"/api/v1/soak/{batch}/{i}",
-                            permission_class="write", status_code=200, latency_ms=2.0)
+                    log.log(
+                        agent_id=f"agent_{i % 30}",
+                        route=f"/api/v1/soak/{batch}/{i}",
+                        permission_class="write",
+                        status_code=200,
+                        latency_ms=2.0,
+                    )
                 gc.collect()
                 current = _rss_mb()
                 growth_pcts.append((current - baseline_rss) / max(baseline_rss, 1) * 100)
 
-            tail_growth = statistics.mean(growth_pcts[len(growth_pcts) // 3 * 2:])
+            tail_growth = statistics.mean(growth_pcts[len(growth_pcts) // 3 * 2 :])
             is_valid, _breaks = log.verify_integrity()
             ok = tail_growth < SOAK_MEMORY_GROWTH_PCT and is_valid
 
-            _record(stress_report, "审计日志浸泡(3000条)",
-                    "PASS" if ok else "FAIL",
-                    {"baseline_rss_mb": round(baseline_rss, 2),
-                     "tail_growth_pct": round(tail_growth, 2),
-                     "max_growth_pct": round(max(growth_pcts), 2),
-                     "integrity": is_valid},
-                    {"growth": SOAK_MEMORY_GROWTH_PCT},
-                    "哈希链完整性保持")
+            _record(
+                stress_report,
+                "审计日志浸泡(3000条)",
+                "PASS" if ok else "FAIL",
+                {
+                    "baseline_rss_mb": round(baseline_rss, 2),
+                    "tail_growth_pct": round(tail_growth, 2),
+                    "max_growth_pct": round(max(growth_pcts), 2),
+                    "integrity": is_valid,
+                },
+                {"growth": SOAK_MEMORY_GROWTH_PCT},
+                "哈希链完整性保持",
+            )
         finally:
             log.close()
 
@@ -716,17 +764,22 @@ class TestSoakStability:
         drift_ratio = tail_p95 / max(first_p95, 1e-6)
         ok = drift_ratio <= RECOVERY_MULTIPLIER
 
-        _record(stress_report, "浸泡延迟漂移(JWT)",
-                "PASS" if ok else "FAIL",
-                {"first_p95_ms": round(first_p95, 4), "tail_p95_ms": round(tail_p95, 4),
-                 "drift_ratio": round(drift_ratio, 2)},
-                {"drift_ratio": RECOVERY_MULTIPLIER},
-                "15批×200次，前5批 vs 后5批")
+        _record(
+            stress_report,
+            "浸泡延迟漂移(JWT)",
+            "PASS" if ok else "FAIL",
+            {
+                "first_p95_ms": round(first_p95, 4),
+                "tail_p95_ms": round(tail_p95, 4),
+                "drift_ratio": round(drift_ratio, 2),
+            },
+            {"drift_ratio": RECOVERY_MULTIPLIER},
+            "15批×200次，前5批 vs 后5批",
+        )
 
 
-# ---------------------------------------------------------------------------
 # 4. 压力下资源阈值（Resource Thresholds Under Stress）
-# ---------------------------------------------------------------------------
+
 
 class TestResourceThresholdUnderStress:
     """极限负载运行期间的资源占用验证（西门子验收阈值）。
@@ -772,8 +825,7 @@ class TestResourceThresholdUnderStress:
         for phase in range(6):
             # G 代码生成负载
             for _ in range(50):
-                gen.generate(operation_plan=plan, controller_type="siemens_840d",
-                             material_name="45#钢", safe_z=50.0)
+                gen.generate(operation_plan=plan, controller_type="siemens_840d", material_name="45#钢", safe_z=50.0)
             # 传感器负载
             for i in range(2000):
                 monitor.process_sample(_sensor_sample(i))
@@ -782,8 +834,9 @@ class TestResourceThresholdUnderStress:
             sys_mem_samples.append(psutil.virtual_memory().percent)
             rss_samples.append(process.memory_info().rss / 1024 / 1024)
             net_after = psutil.net_io_counters()
-            delta_bytes = (net_after.bytes_sent - net_before.bytes_sent) + \
-                          (net_after.bytes_recv - net_before.bytes_recv)
+            delta_bytes = (net_after.bytes_sent - net_before.bytes_sent) + (
+                net_after.bytes_recv - net_before.bytes_recv
+            )
             elapsed_s = 0.25
             net_samples.append(delta_bytes * 8 / (elapsed_s * 1_000_000))  # Mbps
             net_before = net_after
@@ -795,29 +848,40 @@ class TestResourceThresholdUnderStress:
         sys_mem_delta = max(sys_mem_samples) - baseline_sys_mem
         sys_mem_avg = statistics.mean(sys_mem_samples)
 
-        ok = (cpu_avg < self.CPU_THRESHOLD
-              and net_avg < self.NETWORK_THRESHOLD
-              and peak_rss < self.PROCESS_RSS_CEILING_MB
-              and sys_mem_delta < self.SYSTEM_MEM_DELTA_THRESHOLD)
+        ok = (
+            cpu_avg < self.CPU_THRESHOLD
+            and net_avg < self.NETWORK_THRESHOLD
+            and peak_rss < self.PROCESS_RSS_CEILING_MB
+            and sys_mem_delta < self.SYSTEM_MEM_DELTA_THRESHOLD
+        )
 
-        _record(stress_report, "满负荷资源阈值",
-                "PASS" if ok else "FAIL",
-                {"cpu_avg": round(cpu_avg, 1), "cpu_max": round(max(cpu_samples), 1),
-                 "sys_mem_avg": round(sys_mem_avg, 1),
-                 "sys_mem_delta": round(sys_mem_delta, 2),
-                 "baseline_sys_mem": round(baseline_sys_mem, 1),
-                 "app_peak_rss_mb": round(peak_rss, 1),
-                 "app_baseline_rss_mb": round(baseline_rss, 1),
-                 "net_avg_mbps": round(net_avg, 2), "net_max_mbps": round(max(net_samples), 2)},
-                {"cpu": self.CPU_THRESHOLD, "net": self.NETWORK_THRESHOLD,
-                 "app_rss_mb": self.PROCESS_RSS_CEILING_MB,
-                 "sys_mem_delta_pct": self.SYSTEM_MEM_DELTA_THRESHOLD},
-                "6相位混合负载；硬门禁为应用可归因指标，系统绝对占用仅参考")
+        _record(
+            stress_report,
+            "满负荷资源阈值",
+            "PASS" if ok else "FAIL",
+            {
+                "cpu_avg": round(cpu_avg, 1),
+                "cpu_max": round(max(cpu_samples), 1),
+                "sys_mem_avg": round(sys_mem_avg, 1),
+                "sys_mem_delta": round(sys_mem_delta, 2),
+                "baseline_sys_mem": round(baseline_sys_mem, 1),
+                "app_peak_rss_mb": round(peak_rss, 1),
+                "app_baseline_rss_mb": round(baseline_rss, 1),
+                "net_avg_mbps": round(net_avg, 2),
+                "net_max_mbps": round(max(net_samples), 2),
+            },
+            {
+                "cpu": self.CPU_THRESHOLD,
+                "net": self.NETWORK_THRESHOLD,
+                "app_rss_mb": self.PROCESS_RSS_CEILING_MB,
+                "sys_mem_delta_pct": self.SYSTEM_MEM_DELTA_THRESHOLD,
+            },
+            "6相位混合负载；硬门禁为应用可归因指标，系统绝对占用仅参考",
+        )
 
 
-# ---------------------------------------------------------------------------
 # 5. 错误率（Error Rate Under Stress）
-# ---------------------------------------------------------------------------
+
 
 class TestErrorRateUnderStress:
     """极限负载下的错误率：< 1%，无静默失败。"""
@@ -832,9 +896,9 @@ class TestErrorRateUnderStress:
         empty = 0
         for i in range(500):
             try:
-                result = gen.generate(operation_plan=plan,
-                                      controller_type=_CONTROLLER_TYPES[i % 4],
-                                      material_name="45#钢", safe_z=50.0)
+                result = gen.generate(
+                    operation_plan=plan, controller_type=_CONTROLLER_TYPES[i % 4], material_name="45#钢", safe_z=50.0
+                )
                 if not result.program_text:
                     empty += 1
             except Exception:
@@ -843,11 +907,14 @@ class TestErrorRateUnderStress:
         error_rate = (errors + empty) / 500 * 100
         ok = error_rate < ERROR_RATE_THRESHOLD_PCT
 
-        _record(stress_report, "G代码生成错误率",
-                "PASS" if ok else "FAIL",
-                {"error_rate_pct": round(error_rate, 3), "errors": errors, "empty": empty},
-                {"error_rate": ERROR_RATE_THRESHOLD_PCT},
-                "500次×4控制器")
+        _record(
+            stress_report,
+            "G代码生成错误率",
+            "PASS" if ok else "FAIL",
+            {"error_rate_pct": round(error_rate, 3), "errors": errors, "empty": empty},
+            {"error_rate": ERROR_RATE_THRESHOLD_PCT},
+            "500次×4控制器",
+        )
 
     def test_wakeup_queue_error_rate(self, stress_report, tmp_path):
         """心跳调度 2000 次 add_task/get/update：错误率 < 1%。"""
@@ -859,9 +926,15 @@ class TestErrorRateUnderStress:
             errors = 0
             for i in range(2000):
                 try:
-                    q.add_task(ScheduledTask(
-                        task_id=f"e_{i}", agent_id="agent_e",
-                        schedule="*/5 * * * *", task_type="stress", params={"i": i}))
+                    q.add_task(
+                        ScheduledTask(
+                            task_id=f"e_{i}",
+                            agent_id="agent_e",
+                            schedule="*/5 * * * *",
+                            task_type="stress",
+                            params={"i": i},
+                        )
+                    )
                     q.update_task_status(task_id=f"e_{i}", status=ScheduleStatus.COMPLETED)
                 except Exception:
                     errors += 1
@@ -869,11 +942,14 @@ class TestErrorRateUnderStress:
             error_rate = errors / 2000 * 100
             ok = error_rate < ERROR_RATE_THRESHOLD_PCT
 
-            _record(stress_report, "心跳调度错误率",
-                    "PASS" if ok else "FAIL",
-                    {"error_rate_pct": round(error_rate, 3), "errors": errors},
-                    {"error_rate": ERROR_RATE_THRESHOLD_PCT},
-                    "2000次add+update")
+            _record(
+                stress_report,
+                "心跳调度错误率",
+                "PASS" if ok else "FAIL",
+                {"error_rate_pct": round(error_rate, 3), "errors": errors},
+                {"error_rate": ERROR_RATE_THRESHOLD_PCT},
+                "2000次add+update",
+            )
         finally:
             q.close()
             CronParser.clear_cache()
@@ -902,18 +978,20 @@ class TestErrorRateUnderStress:
             error_rate = len(errors) / 1000 * 100
             ok = error_rate < ERROR_RATE_THRESHOLD_PCT
 
-            _record(stress_report, "并发预算检查错误率",
-                    "PASS" if ok else "FAIL",
-                    {"error_rate_pct": round(error_rate, 3), "errors": len(errors)},
-                    {"error_rate": ERROR_RATE_THRESHOLD_PCT},
-                    "10线程×100次")
+            _record(
+                stress_report,
+                "并发预算检查错误率",
+                "PASS" if ok else "FAIL",
+                {"error_rate_pct": round(error_rate, 3), "errors": len(errors)},
+                {"error_rate": ERROR_RATE_THRESHOLD_PCT},
+                "10线程×100次",
+            )
         finally:
             manager.close()
 
 
-# ---------------------------------------------------------------------------
 # 6. 过载恢复（Overload Recovery）
-# ---------------------------------------------------------------------------
+
 
 class TestOverloadRecovery:
     """过载尖峰后系统延迟恢复至基线水平（≤ 3× 基线）。"""
@@ -929,6 +1007,7 @@ class TestOverloadRecovery:
 
         # 过载尖峰：高并发突发
         burst_errors: list[Exception] = []
+
         def burst_worker():
             try:
                 for _ in range(500):
@@ -947,14 +1026,19 @@ class TestOverloadRecovery:
         ratio = recovered["p50"] / max(baseline["p50"], 1e-6)
         ok = ratio <= RECOVERY_MULTIPLIER and not burst_errors
 
-        _record(stress_report, "过载恢复(JWT)",
-                "PASS" if ok else "FAIL",
-                {"baseline_p50_ms": round(baseline["p50"], 4),
-                 "recovered_p50_ms": round(recovered["p50"], 4),
-                 "recovery_ratio": round(ratio, 2),
-                 "burst_errors": len(burst_errors)},
-                {"recovery_ratio": RECOVERY_MULTIPLIER},
-                "20线程×500次过载尖峰后串行测量")
+        _record(
+            stress_report,
+            "过载恢复(JWT)",
+            "PASS" if ok else "FAIL",
+            {
+                "baseline_p50_ms": round(baseline["p50"], 4),
+                "recovered_p50_ms": round(recovered["p50"], 4),
+                "recovery_ratio": round(ratio, 2),
+                "burst_errors": len(burst_errors),
+            },
+            {"recovery_ratio": RECOVERY_MULTIPLIER},
+            "20线程×500次过载尖峰后串行测量",
+        )
 
     def test_gcode_recovers_after_burst(self, stress_report):
         """G 代码生成：过载尖峰后单次延迟恢复至 ≤ 3× 基线。"""
@@ -964,8 +1048,7 @@ class TestOverloadRecovery:
         plan = _make_operation_plan(6)
 
         def _gen_once(i: int):
-            gen.generate(operation_plan=plan, controller_type="fanuc_0i",
-                         material_name="45#钢", safe_z=50.0)
+            gen.generate(operation_plan=plan, controller_type="fanuc_0i", material_name="45#钢", safe_z=50.0)
 
         baseline = _summarize(_measure_latencies(_gen_once, 100))
 
@@ -984,10 +1067,15 @@ class TestOverloadRecovery:
         ratio = recovered["p50"] / max(baseline["p50"], 1e-6)
         ok = ratio <= RECOVERY_MULTIPLIER
 
-        _record(stress_report, "过载恢复(G代码生成)",
-                "PASS" if ok else "FAIL",
-                {"baseline_p50_ms": round(baseline["p50"], 3),
-                 "recovered_p50_ms": round(recovered["p50"], 3),
-                 "recovery_ratio": round(ratio, 2)},
-                {"recovery_ratio": RECOVERY_MULTIPLIER},
-                "20线程×100次过载后串行测量")
+        _record(
+            stress_report,
+            "过载恢复(G代码生成)",
+            "PASS" if ok else "FAIL",
+            {
+                "baseline_p50_ms": round(baseline["p50"], 3),
+                "recovered_p50_ms": round(recovered["p50"], 3),
+                "recovery_ratio": round(ratio, 2),
+            },
+            {"recovery_ratio": RECOVERY_MULTIPLIER},
+            "20线程×100次过载后串行测量",
+        )

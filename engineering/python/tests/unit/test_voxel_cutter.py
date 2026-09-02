@@ -41,6 +41,7 @@ from app.simulation.voxel_cutter import (
     _apply_tool_mask_single,
     _infer_source_paths,
 )
+
 # 包重构后，部分函数位于子模块，按子模块路径导入
 from app.simulation.voxel_cutter.cutter import (
     _apply_tool_mask_batch,
@@ -58,9 +59,7 @@ from app.simulation.voxel_cutter.mesher import (
 )
 
 
-# =============================================================================
 # 工具函数与 Fixtures
-# =============================================================================
 
 
 @pytest.fixture
@@ -86,9 +85,7 @@ def make_segment(
     )
 
 
-# =============================================================================
 # 1. _infer_source_paths
-# =============================================================================
 
 
 class TestInferSourcePaths:
@@ -122,9 +119,7 @@ class TestInferSourcePaths:
         assert dxf in candidates
 
 
-# =============================================================================
-# 2. _generate_stl_from_step  (含 import 错误 / 解析错误 / 转换错误 / 复制错误)
-# =============================================================================
+# 2. _generate_stl_from_step (含 import 错误 / 解析错误 / 转换错误 / 复制错误)
 
 
 class TestGenerateStlFromStep:
@@ -161,11 +156,14 @@ class TestGenerateStlFromStep:
         step_converter_mod = types.ModuleType("app.step_import.step_converter")
         step_converter_mod.StepConverter = object
 
-        with mock.patch.dict(sys.modules, {
-            "app.step_import": types.ModuleType("app.step_import"),
-            "app.step_import.step_parser": step_parser_mod,
-            "app.step_import.step_converter": step_converter_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.step_import": types.ModuleType("app.step_import"),
+                "app.step_import.step_parser": step_parser_mod,
+                "app.step_import.step_converter": step_converter_mod,
+            },
+        ):
             result = _generate_stl_from_step(
                 step_path=tmp_dir / "in.step",
                 stl_target_path=tmp_dir / "out.stl",
@@ -195,11 +193,14 @@ class TestGenerateStlFromStep:
 
         step_converter_mod.StepConverter = _FakeConverter
 
-        with mock.patch.dict(sys.modules, {
-            "app.step_import": types.ModuleType("app.step_import"),
-            "app.step_import.step_parser": step_parser_mod,
-            "app.step_import.step_converter": step_converter_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.step_import": types.ModuleType("app.step_import"),
+                "app.step_import.step_parser": step_parser_mod,
+                "app.step_import.step_converter": step_converter_mod,
+            },
+        ):
             result = _generate_stl_from_step(
                 step_path=tmp_dir / "in.step",
                 stl_target_path=tmp_dir / "out.stl",
@@ -238,11 +239,14 @@ class TestGenerateStlFromStep:
         # 让 stl_target_path 与 generated_target 不同以触发 shutil.copy
         stl_target = tmp_dir / "subdir" / "out.stl"
 
-        with mock.patch.dict(sys.modules, {
-            "app.step_import": types.ModuleType("app.step_import"),
-            "app.step_import.step_parser": step_parser_mod,
-            "app.step_import.step_converter": step_converter_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.step_import": types.ModuleType("app.step_import"),
+                "app.step_import.step_parser": step_parser_mod,
+                "app.step_import.step_converter": step_converter_mod,
+            },
+        ):
             # Patch shutil.copy2 以触发 OSError
             with mock.patch("shutil.copy2", side_effect=OSError("disk full")):
                 result = _generate_stl_from_step(
@@ -283,11 +287,14 @@ class TestGenerateStlFromStep:
         # 让 stl_target_path 与 generated_target 相同，无需 copy
         stl_target = generated_target
 
-        with mock.patch.dict(sys.modules, {
-            "app.step_import": types.ModuleType("app.step_import"),
-            "app.step_import.step_parser": step_parser_mod,
-            "app.step_import.step_converter": step_converter_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.step_import": types.ModuleType("app.step_import"),
+                "app.step_import.step_parser": step_parser_mod,
+                "app.step_import.step_converter": step_converter_mod,
+            },
+        ):
             result = _generate_stl_from_step(
                 step_path=tmp_dir / "in.step",
                 stl_target_path=stl_target,
@@ -296,20 +303,21 @@ class TestGenerateStlFromStep:
         assert result == {"success": True, "error": None, "suggestion": None}
 
 
-# =============================================================================
 # 3. _generate_stl_from_dxf
-# =============================================================================
 
 
 class TestGenerateStlFromDxf:
     def test_returns_error_on_import_failure(self, tmp_dir):
-        with mock.patch.dict(sys.modules, {
-            "app.dxf": types.ModuleType("app.dxf"),
-            "app.dxf.dxf_parser": None,
-            "app.dxf.exceptions": None,
-            "app.dxf.feature_extractor": None,
-            "app.dxf.dxf_to_model": None,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.dxf": types.ModuleType("app.dxf"),
+                "app.dxf.dxf_parser": None,
+                "app.dxf.exceptions": None,
+                "app.dxf.feature_extractor": None,
+                "app.dxf.dxf_to_model": None,
+            },
+        ):
             result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
@@ -336,13 +344,16 @@ class TestGenerateStlFromDxf:
         cnv_mod = types.ModuleType("app.dxf.dxf_to_model")
         cnv_mod.DxfToModelConverter = object
 
-        with mock.patch.dict(sys.modules, {
-            "app.dxf": types.ModuleType("app.dxf"),
-            "app.dxf.dxf_parser": dxf_parser_mod,
-            "app.dxf.exceptions": exceptions_mod,
-            "app.dxf.feature_extractor": fe_mod,
-            "app.dxf.dxf_to_model": cnv_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.dxf": types.ModuleType("app.dxf"),
+                "app.dxf.dxf_parser": dxf_parser_mod,
+                "app.dxf.exceptions": exceptions_mod,
+                "app.dxf.feature_extractor": fe_mod,
+                "app.dxf.dxf_to_model": cnv_mod,
+            },
+        ):
             result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
@@ -374,13 +385,16 @@ class TestGenerateStlFromDxf:
         cnv_mod = types.ModuleType("app.dxf.dxf_to_model")
         cnv_mod.DxfToModelConverter = object
 
-        with mock.patch.dict(sys.modules, {
-            "app.dxf": types.ModuleType("app.dxf"),
-            "app.dxf.dxf_parser": dxf_parser_mod,
-            "app.dxf.exceptions": exceptions_mod,
-            "app.dxf.feature_extractor": fe_mod,
-            "app.dxf.dxf_to_model": cnv_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.dxf": types.ModuleType("app.dxf"),
+                "app.dxf.dxf_parser": dxf_parser_mod,
+                "app.dxf.exceptions": exceptions_mod,
+                "app.dxf.feature_extractor": fe_mod,
+                "app.dxf.dxf_to_model": cnv_mod,
+            },
+        ):
             result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
@@ -417,13 +431,16 @@ class TestGenerateStlFromDxf:
 
         cnv_mod.DxfToModelConverter = _FakeCnv
 
-        with mock.patch.dict(sys.modules, {
-            "app.dxf": types.ModuleType("app.dxf"),
-            "app.dxf.dxf_parser": dxf_parser_mod,
-            "app.dxf.exceptions": exceptions_mod,
-            "app.dxf.feature_extractor": fe_mod,
-            "app.dxf.dxf_to_model": cnv_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.dxf": types.ModuleType("app.dxf"),
+                "app.dxf.dxf_parser": dxf_parser_mod,
+                "app.dxf.exceptions": exceptions_mod,
+                "app.dxf.feature_extractor": fe_mod,
+                "app.dxf.dxf_to_model": cnv_mod,
+            },
+        ):
             result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
@@ -463,13 +480,16 @@ class TestGenerateStlFromDxf:
 
         cnv_mod.DxfToModelConverter = _FakeCnv
 
-        with mock.patch.dict(sys.modules, {
-            "app.dxf": types.ModuleType("app.dxf"),
-            "app.dxf.dxf_parser": dxf_parser_mod,
-            "app.dxf.exceptions": exceptions_mod,
-            "app.dxf.feature_extractor": fe_mod,
-            "app.dxf.dxf_to_model": cnv_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.dxf": types.ModuleType("app.dxf"),
+                "app.dxf.dxf_parser": dxf_parser_mod,
+                "app.dxf.exceptions": exceptions_mod,
+                "app.dxf.feature_extractor": fe_mod,
+                "app.dxf.dxf_to_model": cnv_mod,
+            },
+        ):
             result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
@@ -510,13 +530,16 @@ class TestGenerateStlFromDxf:
 
         cnv_mod.DxfToModelConverter = _FakeCnv
 
-        with mock.patch.dict(sys.modules, {
-            "app.dxf": types.ModuleType("app.dxf"),
-            "app.dxf.dxf_parser": dxf_parser_mod,
-            "app.dxf.exceptions": exceptions_mod,
-            "app.dxf.feature_extractor": fe_mod,
-            "app.dxf.dxf_to_model": cnv_mod,
-        }):
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "app.dxf": types.ModuleType("app.dxf"),
+                "app.dxf.dxf_parser": dxf_parser_mod,
+                "app.dxf.exceptions": exceptions_mod,
+                "app.dxf.feature_extractor": fe_mod,
+                "app.dxf.dxf_to_model": cnv_mod,
+            },
+        ):
             result = _generate_stl_from_dxf(
                 dxf_path=tmp_dir / "in.dxf",
                 stl_target_path=tmp_dir / "out.stl",
@@ -525,9 +548,7 @@ class TestGenerateStlFromDxf:
         assert result == {"success": True, "error": None, "suggestion": None}
 
 
-# =============================================================================
 # 4. ToolModel
-# =============================================================================
 
 
 class TestToolModelInit:
@@ -664,9 +685,7 @@ class TestToolModelVoxelMask:
         assert m_fine.shape[0] > m_coarse.shape[0]
 
 
-# =============================================================================
 # 5. CollisionInfo / VoxelSimulationResult
-# =============================================================================
 
 
 class TestCollisionInfo:
@@ -713,9 +732,7 @@ class TestVoxelSimulationResult:
         assert "collision" in d
 
 
-# =============================================================================
 # 6. _apply_tool_mask_single / _apply_tool_mask_batch
-# =============================================================================
 
 
 class TestApplyToolMaskSingle:
@@ -725,8 +742,15 @@ class TestApplyToolMaskSingle:
         mask[1, 1, 1] = True
         center = np.array([1, 1, 1])
         removed = _apply_tool_mask_single(
-            grid, mask, center, 5.0, 5.0, 5.0,
-            np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
+            grid,
+            mask,
+            center,
+            5.0,
+            5.0,
+            5.0,
+            np.array([0.0, 0.0, 0.0]),
+            1.0,
+            2.0,
         )
         assert removed >= 1
         # 网格中应有被去除的体素
@@ -737,8 +761,15 @@ class TestApplyToolMaskSingle:
         mask = np.zeros((3, 3, 3), dtype=bool)
         center = np.array([1, 1, 1])
         removed = _apply_tool_mask_single(
-            grid, mask, center, 5.0, 5.0, 5.0,
-            np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
+            grid,
+            mask,
+            center,
+            5.0,
+            5.0,
+            5.0,
+            np.array([0.0, 0.0, 0.0]),
+            1.0,
+            2.0,
         )
         assert removed == 0
         assert grid.sum() == 1000
@@ -749,8 +780,15 @@ class TestApplyToolMaskSingle:
         center = np.array([1, 1, 1])
         # 把 tool 移到极远位置，越界
         removed = _apply_tool_mask_single(
-            grid, mask, center, 100.0, 100.0, 100.0,
-            np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
+            grid,
+            mask,
+            center,
+            100.0,
+            100.0,
+            100.0,
+            np.array([0.0, 0.0, 0.0]),
+            1.0,
+            2.0,
         )
         assert removed == 0
 
@@ -760,14 +798,21 @@ class TestApplyToolMaskBatch:
         grid = np.ones((10, 10, 10), dtype=bool)
         mask = np.zeros((3, 3, 3), dtype=bool)
         mask[1, 1, 1] = True
-        points = np.array([
-            [3.0, 3.0, 3.0],
-            [5.0, 5.0, 5.0],
-            [7.0, 7.0, 7.0],
-        ])
+        points = np.array(
+            [
+                [3.0, 3.0, 3.0],
+                [5.0, 5.0, 5.0],
+                [7.0, 7.0, 7.0],
+            ]
+        )
 
         removed = _apply_tool_mask_batch(
-            grid, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
+            grid,
+            mask,
+            points,
+            np.array([0.0, 0.0, 0.0]),
+            1.0,
+            2.0,
         )
         assert removed > 0
         assert grid.sum() < 1000
@@ -775,20 +820,25 @@ class TestApplyToolMaskBatch:
     def test_batch_with_all_out_of_grid(self):
         grid = np.ones((5, 5, 5), dtype=bool)
         mask = np.ones((3, 3, 3), dtype=bool)
-        points = np.array([
-            [100.0, 100.0, 100.0],
-            [-100.0, -100.0, -100.0],
-        ])
+        points = np.array(
+            [
+                [100.0, 100.0, 100.0],
+                [-100.0, -100.0, -100.0],
+            ]
+        )
 
         removed = _apply_tool_mask_batch(
-            grid, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
+            grid,
+            mask,
+            points,
+            np.array([0.0, 0.0, 0.0]),
+            1.0,
+            2.0,
         )
         assert removed == 0
 
 
-# =============================================================================
 # 7. VoxelCutter 初始化 / STL 检查 / 仿真主流程
-# =============================================================================
 
 
 class TestVoxelCutterInit:
@@ -811,7 +861,9 @@ class TestEnsureStlFile:
         stl.write_bytes(b"fake")
         c = VoxelCutter()
         result = c._ensure_stl_file(
-            stl_path=stl, source_file_paths=None, output_dir=tmp_dir,
+            stl_path=stl,
+            source_file_paths=None,
+            output_dir=tmp_dir,
         )
         assert result["exists"] is True
         assert result["generated"] is False
@@ -821,7 +873,9 @@ class TestEnsureStlFile:
         stl = tmp_dir / "stock.stl"
         c = VoxelCutter()
         result = c._ensure_stl_file(
-            stl_path=stl, source_file_paths=None, output_dir=tmp_dir,
+            stl_path=stl,
+            source_file_paths=None,
+            output_dir=tmp_dir,
         )
         assert result["exists"] is False
         assert "未找到" in result["error"] or "STEP" in result["error"]
@@ -833,8 +887,11 @@ class TestEnsureStlFile:
         bad_src = tmp_dir / "stock.xyz"
         bad_src.write_bytes(b"data")
         result = c._ensure_stl_file(
-            stl_path=stl, source_file_paths=[bad_src], output_dir=tmp_dir,
-            max_retries=1, retry_interval=0.0,
+            stl_path=stl,
+            source_file_paths=[bad_src],
+            output_dir=tmp_dir,
+            max_retries=1,
+            retry_interval=0.0,
         )
         assert result["exists"] is False
         assert "无法生成有效的STL" in result["error"]
@@ -845,10 +902,13 @@ class TestEnsureStlFile:
         step = tmp_dir / "stock.step"
         step.write_bytes(b"data")
         result = c._ensure_stl_file(
-            stl_path=stl, source_file_paths=[step], output_dir=tmp_dir,
-            max_retries=1, retry_interval=0.0,
+            stl_path=stl,
+            source_file_paths=[step],
+            output_dir=tmp_dir,
+            max_retries=1,
+            retry_interval=0.0,
         )
-        # STEP 模块未安装 → _generate_stl_from_step 始终失败
+        # STEP 模块未安装 _generate_stl_from_step 始终失败
         assert result["exists"] is False
         assert "无法生成有效的STL" in result["error"]
 
@@ -858,8 +918,11 @@ class TestEnsureStlFile:
         dxf = tmp_dir / "stock.dxf"
         dxf.write_bytes(b"data")
         result = c._ensure_stl_file(
-            stl_path=stl, source_file_paths=[dxf], output_dir=tmp_dir,
-            max_retries=1, retry_interval=0.0,
+            stl_path=stl,
+            source_file_paths=[dxf],
+            output_dir=tmp_dir,
+            max_retries=1,
+            retry_interval=0.0,
         )
         assert result["exists"] is False
         assert "无法生成有效的STL" in result["error"]
@@ -870,15 +933,16 @@ class TestEnsureStlFile:
         # 不存在的源文件
         missing = tmp_dir / "missing.step"
         result = c._ensure_stl_file(
-            stl_path=stl, source_file_paths=[missing], output_dir=tmp_dir,
-            max_retries=1, retry_interval=0.0,
+            stl_path=stl,
+            source_file_paths=[missing],
+            output_dir=tmp_dir,
+            max_retries=1,
+            retry_interval=0.0,
         )
         assert result["exists"] is False
 
 
-# =============================================================================
 # 8. run_simulation
-# =============================================================================
 
 
 class TestRunSimulation:
@@ -902,10 +966,17 @@ class TestRunSimulation:
         parser = ToolpathParser()
         gcode = "G00 Z50.\nG00 X0. Y0.\nG01 Z-2. F500\nG01 X50. F800\nG00 Z50."
         segments = parser.parse_gcode(gcode)
-        with mock.patch.object(c, "_ensure_stl_file", return_value={
-            "exists": False, "generated": False, "error": "no stl",
-            "suggestion": None, "source_file": None,
-        }):
+        with mock.patch.object(
+            c,
+            "_ensure_stl_file",
+            return_value={
+                "exists": False,
+                "generated": False,
+                "error": "no stl",
+                "suggestion": None,
+                "source_file": None,
+            },
+        ):
             result = c.run_simulation(
                 stock_stl_path=tmp_dir / "no.stl",
                 tool=tool,
@@ -945,16 +1016,19 @@ class TestRunSimulation:
         tool = ToolModel(diameter=10.0, tool_type="flat")
 
         # 模拟 STL 存在但 trimesh 不可用
-        with mock.patch.object(c, "_ensure_stl_file", return_value={
-            "exists": True, "generated": False, "error": None,
-            "suggestion": None, "source_file": None,
-        }):
+        with mock.patch.object(
+            c,
+            "_ensure_stl_file",
+            return_value={
+                "exists": True,
+                "generated": False,
+                "error": None,
+                "suggestion": None,
+                "source_file": None,
+            },
+        ):
             # 强制 import trimesh 失败
-            real_import = (
-                __builtins__.__import__
-                if hasattr(__builtins__, "__import__")
-                else __import__
-            )
+            real_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
 
             def _fake_import(name, *args, **kwargs):
                 if name == "trimesh":
@@ -968,7 +1042,7 @@ class TestRunSimulation:
                     segments=[],
                     output_dir=tmp_dir / "out",
                 )
-        # 触发 trimesh 不可用 → fallback
+        # 触发 trimesh 不可用 fallback
         assert result is not None
 
     def test_trimesh_load_failure_fallback(self, tmp_dir):
@@ -978,14 +1052,14 @@ class TestRunSimulation:
         fake_stl = tmp_dir / "fake.stl"
         fake_stl.write_bytes(b"not a real stl")
 
-        # 直接调用，trimesh 加载会失败 → fallback
+        # 直接调用，trimesh 加载会失败 fallback
         result = c.run_simulation(
             stock_stl_path=fake_stl,
             tool=tool,
             segments=[],
             output_dir=tmp_dir / "out",
         )
-        # 真实 trimesh.load 失败但 trimesh 包存在 → 走 load 错误分支
+        # 真实 trimesh.load 失败但 trimesh 包存在 走 load 错误分支
         assert result is not None
 
     def test_task_id_explicit(self, tmp_dir):
@@ -1001,9 +1075,7 @@ class TestRunSimulation:
         assert result.task_id == "my_task"
 
 
-# =============================================================================
 # 9. _voxelize_mesh / _voxelize_contains
-# =============================================================================
 
 
 class TestVoxelizeMesh:
@@ -1045,9 +1117,7 @@ class TestVoxelizeContains:
         assert grid.sum() == 0
 
 
-# =============================================================================
 # 10. _discretize_segment
-# =============================================================================
 
 
 class TestDiscretizeSegment:
@@ -1095,9 +1165,7 @@ class TestDiscretizeSegment:
         np.testing.assert_allclose(pts, [[1, 2, 3]])
 
 
-# =============================================================================
 # 11. _check_rapid_collisions
-# =============================================================================
 
 
 class TestCheckRapidCollisions:
@@ -1124,9 +1192,7 @@ class TestCheckRapidCollisions:
         assert len(result.collision_segment_indices) == 1
 
 
-# =============================================================================
 # 12. _reconstruct_mesh / _reconstruct_mesh_fallback
-# =============================================================================
 
 
 class TestReconstructMesh:
@@ -1186,9 +1252,7 @@ class TestReconstructMeshFallback:
         assert m is not None
 
 
-# =============================================================================
 # 13. _generate_fallback_result
-# =============================================================================
 
 
 class TestGenerateFallbackResult:
@@ -1220,9 +1284,7 @@ class TestGenerateFallbackResult:
         assert result.toolpath_segment_count == len(segs)
 
 
-# =============================================================================
 # 14. VoxelCutter._apply_tool_mask 包装方法
-# =============================================================================
 
 
 class TestVoxelCutterApplyToolMask:
@@ -1233,7 +1295,14 @@ class TestVoxelCutterApplyToolMask:
         mask[1, 1, 1] = True
         center = np.array([1, 1, 1])
         removed = _apply_tool_mask_single(
-            grid, mask, center, 5.0, 5.0, 5.0,
-            np.array([0.0, 0.0, 0.0]), 1.0, 2.0,
+            grid,
+            mask,
+            center,
+            5.0,
+            5.0,
+            5.0,
+            np.array([0.0, 0.0, 0.0]),
+            1.0,
+            2.0,
         )
         assert removed >= 0

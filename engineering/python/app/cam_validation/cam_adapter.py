@@ -40,7 +40,7 @@
 
 from __future__ import annotations
 
-# ---- 从拆分子包 re-export 公开符号（向后兼容） ----
+# 从拆分子包 re-export 公开符号（向后兼容）
 from app.cam_validation.backends._common import (
     CamSoftwareReport,
     _BaseBackend,

@@ -34,9 +34,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
-# ---------------------------------------------------------------------------
 # 配置
-# ---------------------------------------------------------------------------
 
 PERF_DIR = Path(__file__).parent
 BASELINE_FILE = PERF_DIR / "baseline" / "BASELINE.json"
@@ -51,6 +49,7 @@ TEST_FILES = [
 # 回归阈值（%）：超过此值视为回归
 REGRESSION_THRESHOLD_PCT = 10.0
 
+
 # ANSI 颜色
 class Color:
     GREEN = "\033[92m"
@@ -61,9 +60,7 @@ class Color:
     RESET = "\033[0m"
 
 
-# ---------------------------------------------------------------------------
 # 测量值提取规则
-# ---------------------------------------------------------------------------
 # BASELINE.json 中 `metric` 字段到 print 输出正则的映射。
 # 顺序很重要：更具体的规则放在前面，避免被通用规则提前匹配。
 
@@ -74,12 +71,11 @@ METRIC_PATTERNS: List[Tuple[str, str, str, int]] = [
     # "per_call_first" 优先匹配 "首次:" 或 "首次关闭:"
     ("per_call_first", "首次调用延迟", r"首次(?:关闭)?:\s*([\d.]+)\s*ms", 0),
     # "single" 用于无标识的单次测量，回退到多种实际输出格式：
-    #   - "首次关闭:"   (test_*_close_latency 系列)
-    #   - "总时间:"     (test_concurrent_close_safety 等)
-    #   - "创建时间:"   (test_connection_pool_creation_time)
-    #   - "装配时间:"   (test_full_middleware_stack_assembly_time)
-    ("single", "单次延迟",
-     r"(?:首次关闭|总时间|创建时间|装配时间|中间件栈装配时间):\s*([\d.]+)\s*ms", 0),
+    # - "首次关闭:" (test_*_close_latency 系列)
+    # - "总时间:" (test_concurrent_close_safety 等)
+    # - "创建时间:" (test_connection_pool_creation_time)
+    # - "装配时间:" (test_full_middleware_stack_assembly_time)
+    ("single", "单次延迟", r"(?:首次关闭|总时间|创建时间|装配时间|中间件栈装配时间):\s*([\d.]+)\s*ms", 0),
     # "per_call_avg_*" 与 "per_call" 共享 "每次:" 关键词
     ("per_call_avg", "平均每次延迟", r"每次:\s*([\d.]+)\s*ms", 0),
     ("per_call", "每次延迟", r"每次:\s*([\d.]+)\s*ms", 0),
@@ -112,17 +108,13 @@ METRIC_PATTERNS: List[Tuple[str, str, str, int]] = [
     # per_log_growth — 每条日志内存增长（TestBatchOperationMemoryGrowth, KB）
     ("per_log_growth", "每条日志内存增长", r"每条增长:\s*([\d.]+)\s*KB", 0),
     # eviction_latency — 淘汰+写入延迟（TestEvictionPerformanceImpact）
-    ("eviction_latency", "淘汰写入延迟",
-     r"淘汰 \+ 写入延迟:\s*([\d.]+)\s*ms", 0),
+    ("eviction_latency", "淘汰写入延迟", r"淘汰 \+ 写入延迟:\s*([\d.]+)\s*ms", 0),
     # amortized_latency — 摊销开销（TestEvictionPerformanceImpact）
-    ("amortized_latency", "摊销延迟",
-     r"(?:命中路径平均延迟|平均延迟):\s*([\d.]+)\s*ms", 0),
+    ("amortized_latency", "摊销延迟", r"(?:命中路径平均延迟|平均延迟):\s*([\d.]+)\s*ms", 0),
 ]
 
 
-def extract_metric_from_output(
-    output_lines: List[str], metric_key: str
-) -> Optional[float]:
+def extract_metric_from_output(output_lines: List[str], metric_key: str) -> Optional[float]:
     """从测试 print 输出中提取指定 metric 的数值。
 
     Args:
@@ -160,9 +152,8 @@ def extract_metric_from_output(
     return None
 
 
-# ---------------------------------------------------------------------------
 # 运行性能测试
-# ---------------------------------------------------------------------------
+
 
 def run_perf_tests() -> Dict[str, Any]:
     """运行性能测试套件并解析输出
@@ -197,22 +188,27 @@ def run_perf_tests() -> Dict[str, Any]:
     print(f"{Color.CYAN}[INFO]{Color.RESET} 运行性能测试套件 ({len(TEST_FILES)} 个文件)...")
 
     cmd = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         *[str(PERF_DIR / f) for f in TEST_FILES],
         "-v",
         "-s",  # 不捕获 print 输出，让测量值出现在 stdout 中供 extract_metric_from_output 提取
         "--tb=short",
-        "-o", "addopts=",
+        "-o",
+        "addopts=",
         # 注意：不能加 -q，否则 pytest 只输出进度点而不打印每个测试的
         # ``node_id PASSED`` 行，_parse_pytest_output 将无法解析测试状态。
         # 禁用 anyio / pytest-asyncio 插件：它们通过 setuptools pytest11 入口点
         # 在 pytest 启动早期（``load_setuptools_entrypoints`` 阶段，早于 conftest.py
-        # 加载）触发 ``import asyncio`` → ``asyncio.windows_events`` →
+        # 加载）触发 ``import asyncio`` ``asyncio.windows_events``
         # OSError [WinError 10038]，导致整个 pytest 进程崩溃、LATEST.json 的 tests
         # 数组为空。性能测试不依赖 anyio/asyncio 插件，禁用它们可绕过 WinSock
         # 损坏问题。根本修复仍需 ``netsh winsock reset`` + 重启系统。
-        "-p", "no:anyio",
-        "-p", "no:asyncio",
+        "-p",
+        "no:anyio",
+        "-p",
+        "no:asyncio",
     ]
 
     start = datetime.now()
@@ -296,35 +292,37 @@ def parse_pytest_output(output: str) -> List[Dict[str, Any]]:
     for i, nm in enumerate(node_matches):
         node_id = nm.group("node_id")
         inline_status = nm.group("inline_status")
-        next_nm_start = (
-            node_matches[i + 1].start() if i + 1 < len(node_matches) else len(output)
-        )
-        block_after_node = output[nm.end():next_nm_start]
+        next_nm_start = node_matches[i + 1].start() if i + 1 < len(node_matches) else len(output)
+        block_after_node = output[nm.end() : next_nm_start]
 
         if inline_status:
             # 旧格式：状态与 node_id 在同一行
-            entries.append({
-                "node_id": node_id,
-                "status": inline_status,
-                "nm_start": nm.start(),
-                "nm_end": nm.end(),
-                "status_start": nm.start(),
-                "status_end": nm.end(),
-                "is_new_format": False,
-            })
+            entries.append(
+                {
+                    "node_id": node_id,
+                    "status": inline_status,
+                    "nm_start": nm.start(),
+                    "nm_end": nm.end(),
+                    "status_start": nm.start(),
+                    "status_end": nm.end(),
+                    "is_new_format": False,
+                }
+            )
         else:
             # 新格式：在 node_id 之后查找独立的状态行
             sm = status_re.search(block_after_node)
             if sm:
-                entries.append({
-                    "node_id": node_id,
-                    "status": sm.group(1),
-                    "nm_start": nm.start(),
-                    "nm_end": nm.end(),
-                    "status_start": nm.end() + sm.start(),
-                    "status_end": nm.end() + sm.end(),
-                    "is_new_format": True,
-                })
+                entries.append(
+                    {
+                        "node_id": node_id,
+                        "status": sm.group(1),
+                        "nm_start": nm.start(),
+                        "nm_end": nm.end(),
+                        "status_start": nm.end() + sm.start(),
+                        "status_end": nm.end() + sm.end(),
+                        "is_new_format": True,
+                    }
+                )
             # 未找到状态关键字的 node_id 行（如收集阶段噪声）跳过
 
     # 第二遍：提取 print 输出和失败详情
@@ -334,11 +332,11 @@ def parse_pytest_output(output: str) -> List[Dict[str, Any]]:
 
         if entry["is_new_format"]:
             # 新格式：print 输出在 node_id 行之后、状态行之前
-            output_block = output[entry["nm_end"]:entry["status_start"]]
+            output_block = output[entry["nm_end"] : entry["status_start"]]
         else:
             # 旧格式：print 输出在上一个测试状态行结束之后、当前 node_id 之前
             prev_status_end = entries[i - 1]["status_end"] if i > 0 else 0
-            output_block = output[prev_status_end:entry["nm_start"]]
+            output_block = output[prev_status_end : entry["nm_start"]]
 
         parts = node_id.split("::")
         file_path = parts[0] if parts else ""
@@ -347,7 +345,8 @@ def parse_pytest_output(output: str) -> List[Dict[str, Any]]:
         test_name = parts[2] if len(parts) >= 3 else class_name
 
         output_lines = [
-            line.strip() for line in output_block.splitlines()
+            line.strip()
+            for line in output_block.splitlines()
             if line.strip()
             and not line.strip().startswith("=")
             and not line.strip().startswith("-")
@@ -362,10 +361,8 @@ def parse_pytest_output(output: str) -> List[Dict[str, Any]]:
         # 失败时提取 traceback 摘要
         failure_excerpt = ""
         if status == "FAILED":
-            next_start = (
-                entries[i + 1]["nm_start"] if i + 1 < len(entries) else len(output)
-            )
-            fail_block = output[entry["status_end"]:next_start]
+            next_start = entries[i + 1]["nm_start"] if i + 1 < len(entries) else len(output)
+            fail_block = output[entry["status_end"] : next_start]
             err_match = re.search(
                 r"(AssertionError|TypeError|ValueError|AttributeError|KeyError|"
                 r"ImportError|RuntimeError)[^\n]*",
@@ -374,15 +371,17 @@ def parse_pytest_output(output: str) -> List[Dict[str, Any]]:
             if err_match:
                 failure_excerpt = err_match.group(0).strip()
 
-        tests.append({
-            "node_id": node_id,
-            "file": file_name,
-            "class_name": class_name,
-            "test_name": test_name,
-            "status": status,
-            "output_lines": output_lines[-30:],
-            "failure_excerpt": failure_excerpt,
-        })
+        tests.append(
+            {
+                "node_id": node_id,
+                "file": file_name,
+                "class_name": class_name,
+                "test_name": test_name,
+                "status": status,
+                "output_lines": output_lines[-30:],
+                "failure_excerpt": failure_excerpt,
+            }
+        )
 
     return tests
 
@@ -391,9 +390,8 @@ def parse_pytest_output(output: str) -> List[Dict[str, Any]]:
 _parse_pytest_output = parse_pytest_output
 
 
-# ---------------------------------------------------------------------------
 # 数值对比
-# ---------------------------------------------------------------------------
+
 
 def compute_regression_pct(actual: float, baseline: float, lower_is_better: bool = True) -> float:
     """计算回归百分比。
@@ -429,9 +427,7 @@ def is_lower_is_better(metric_key: str, unit: str) -> bool:
     return True
 
 
-def compare_metrics(
-    latest: Dict[str, Any], baseline: Dict[str, Any]
-) -> Dict[str, Any]:
+def compare_metrics(latest: Dict[str, Any], baseline: Dict[str, Any]) -> Dict[str, Any]:
     """对比 latest 与 baseline 中的数值指标。
 
     Returns:
@@ -479,59 +475,65 @@ def compare_metrics(
 
             # 跳过无数值项
             if baseline_value is None or metric in ("xfail", "n/a"):
-                comparisons.append({
-                    "class_name": class_name,
-                    "test_name": test_name,
-                    "metric": metric,
-                    "unit": unit,
-                    "baseline_value": baseline_value,
-                    "actual_value": None,
-                    "regression_pct": None,
-                    "is_regression": False,
-                    "is_improvement": False,
-                    "lower_is_better": True,
-                    "notes": notes,
-                    "status": "skipped",
-                })
+                comparisons.append(
+                    {
+                        "class_name": class_name,
+                        "test_name": test_name,
+                        "metric": metric,
+                        "unit": unit,
+                        "baseline_value": baseline_value,
+                        "actual_value": None,
+                        "regression_pct": None,
+                        "is_regression": False,
+                        "is_improvement": False,
+                        "lower_is_better": True,
+                        "notes": notes,
+                        "status": "skipped",
+                    }
+                )
                 continue
 
             # 找到对应测试
             key = f"{class_name}::{test_name}"
             test = tests_by_key.get(key)
             if test is None:
-                comparisons.append({
-                    "class_name": class_name,
-                    "test_name": test_name,
-                    "metric": metric,
-                    "unit": unit,
-                    "baseline_value": baseline_value,
-                    "actual_value": None,
-                    "regression_pct": None,
-                    "is_regression": False,
-                    "is_improvement": False,
-                    "lower_is_better": True,
-                    "notes": notes,
-                    "status": "missing_actual",
-                })
+                comparisons.append(
+                    {
+                        "class_name": class_name,
+                        "test_name": test_name,
+                        "metric": metric,
+                        "unit": unit,
+                        "baseline_value": baseline_value,
+                        "actual_value": None,
+                        "regression_pct": None,
+                        "is_regression": False,
+                        "is_improvement": False,
+                        "lower_is_better": True,
+                        "notes": notes,
+                        "status": "missing_actual",
+                    }
+                )
                 missing_actual_count += 1
                 continue
 
             # 测试失败时不提取数值
             if test["status"] != "PASSED":
-                comparisons.append({
-                    "class_name": class_name,
-                    "test_name": test_name,
-                    "metric": metric,
-                    "unit": unit,
-                    "baseline_value": baseline_value,
-                    "actual_value": None,
-                    "regression_pct": None,
-                    "is_regression": test["status"] in ("FAILED", "ERROR"),
-                    "is_improvement": False,
-                    "lower_is_better": True,
-                    "notes": f"test {test['status']}",
-                    "status": "missing_actual",
-                })
+                comparisons.append(
+                    {
+                        "class_name": class_name,
+                        "test_name": test_name,
+                        "metric": metric,
+                        "unit": unit,
+                        "baseline_value": baseline_value,
+                        "actual_value": None,
+                        "regression_pct": None,
+                        "is_regression": test["status"] in ("FAILED", "ERROR"),
+                        "is_improvement": False,
+                        "lower_is_better": True,
+                        "notes": f"test {test['status']}",
+                        "status": "missing_actual",
+                    }
+                )
                 if test["status"] in ("FAILED", "ERROR"):
                     regression_count += 1
                 else:
@@ -543,27 +545,27 @@ def compare_metrics(
             lower_is_better = is_lower_is_better(metric, unit)
 
             if actual_value is None:
-                comparisons.append({
-                    "class_name": class_name,
-                    "test_name": test_name,
-                    "metric": metric,
-                    "unit": unit,
-                    "baseline_value": baseline_value,
-                    "actual_value": None,
-                    "regression_pct": None,
-                    "is_regression": False,
-                    "is_improvement": False,
-                    "lower_is_better": lower_is_better,
-                    "notes": notes + " [未提取到数值]",
-                    "status": "missing_actual",
-                })
+                comparisons.append(
+                    {
+                        "class_name": class_name,
+                        "test_name": test_name,
+                        "metric": metric,
+                        "unit": unit,
+                        "baseline_value": baseline_value,
+                        "actual_value": None,
+                        "regression_pct": None,
+                        "is_regression": False,
+                        "is_improvement": False,
+                        "lower_is_better": lower_is_better,
+                        "notes": notes + " [未提取到数值]",
+                        "status": "missing_actual",
+                    }
+                )
                 missing_actual_count += 1
                 continue
 
             # 计算回归百分比
-            regression_pct = compute_regression_pct(
-                actual_value, float(baseline_value), lower_is_better
-            )
+            regression_pct = compute_regression_pct(actual_value, float(baseline_value), lower_is_better)
             is_regression = regression_pct >= REGRESSION_THRESHOLD_PCT
             is_improvement = regression_pct <= -REGRESSION_THRESHOLD_PCT
 
@@ -573,20 +575,22 @@ def compare_metrics(
                 improvement_count += 1
             matched_count += 1
 
-            comparisons.append({
-                "class_name": class_name,
-                "test_name": test_name,
-                "metric": metric,
-                "unit": unit,
-                "baseline_value": baseline_value,
-                "actual_value": actual_value,
-                "regression_pct": regression_pct,
-                "is_regression": is_regression,
-                "is_improvement": is_improvement,
-                "lower_is_better": lower_is_better,
-                "notes": notes,
-                "status": "matched",
-            })
+            comparisons.append(
+                {
+                    "class_name": class_name,
+                    "test_name": test_name,
+                    "metric": metric,
+                    "unit": unit,
+                    "baseline_value": baseline_value,
+                    "actual_value": actual_value,
+                    "regression_pct": regression_pct,
+                    "is_regression": is_regression,
+                    "is_improvement": is_improvement,
+                    "lower_is_better": lower_is_better,
+                    "notes": notes,
+                    "status": "matched",
+                }
+            )
 
     return {
         "comparisons": comparisons,
@@ -597,9 +601,8 @@ def compare_metrics(
     }
 
 
-# ---------------------------------------------------------------------------
 # 报告输出
-# ---------------------------------------------------------------------------
+
 
 def compare_with_baseline(latest: Dict[str, Any], baseline: Dict[str, Any]) -> int:
     """对比 latest 与 baseline，输出报告
@@ -608,20 +611,21 @@ def compare_with_baseline(latest: Dict[str, Any], baseline: Dict[str, Any]) -> i
         0 = 无回归
         1 = 有 ≥10% 回归
     """
-    print(f"\n{Color.BOLD}{'='*78}{Color.RESET}")
+    print(f"\n{Color.BOLD}{'=' * 78}{Color.RESET}")
     print(f"{Color.BOLD}性能基线回归报告{Color.RESET}")
-    print(f"{'='*78}")
+    print(f"{'=' * 78}")
     print(f"基线版本: {baseline.get('_meta', {}).get('version', 'unknown')}")
     print(f"基线日期: {baseline.get('_meta', {}).get('created_at', 'unknown')}")
     print(f"基线提交: {baseline.get('last_commit', 'unknown')}")
     print(f"运行时间: {latest.get('ran_at', 'unknown')}")
-    print(f"测试结果: {latest['passed']} passed, {latest['failed']} failed, "
-          f"{latest['skipped']} skipped, {latest['xfail']} xfail")
-    print(f"{'-'*78}")
+    print(
+        f"测试结果: {latest['passed']} passed, {latest['failed']} failed, "
+        f"{latest['skipped']} skipped, {latest['xfail']} xfail"
+    )
+    print(f"{'-' * 78}")
 
     if latest["failed"] > 0:
-        print(f"\n{Color.RED}[FAIL]{Color.RESET} 有 {latest['failed']} 个测试失败，"
-              f"需先修复后再对比基线。")
+        print(f"\n{Color.RED}[FAIL]{Color.RESET} 有 {latest['failed']} 个测试失败，需先修复后再对比基线。")
         print(f"\n最近输出:\n{latest.get('stdout_tail', '')}")
         return 1
 
@@ -636,16 +640,18 @@ def compare_with_baseline(latest: Dict[str, Any], baseline: Dict[str, Any]) -> i
     print(f"\n{Color.BOLD}阈值配置:{Color.RESET}")
     print(f"  默认上浮系数: {default_multiplier}x (基线 × {default_multiplier} = 测试阈值)")
     print(f"  回归告警阈值: ±{REGRESSION_THRESHOLD_PCT}%")
-    print(f"  对比结果: {comparison['matched_count']} matched, "
-          f"{comparison['missing_actual_count']} missing, "
-          f"{comparison['regression_count']} regressions, "
-          f"{comparison['improvement_count']} improvements")
+    print(
+        f"  对比结果: {comparison['matched_count']} matched, "
+        f"{comparison['missing_actual_count']} missing, "
+        f"{comparison['regression_count']} regressions, "
+        f"{comparison['improvement_count']} improvements"
+    )
 
     # 详细对比表
     print(f"\n{Color.BOLD}数值对比明细:{Color.RESET}")
-    print(f"{'-'*78}")
+    print(f"{'-' * 78}")
     print(f"{'测试':<50} {'基线':>10} {'实际':>10} {'回归%':>10}")
-    print(f"{'-'*78}")
+    print(f"{'-' * 78}")
 
     for c in comparisons:
         if c["status"] == "skipped":
@@ -672,52 +678,62 @@ def compare_with_baseline(latest: Dict[str, Any], baseline: Dict[str, Any]) -> i
             color = Color.RESET
 
         unit = c["unit"]
-        print(f"{test_label:<50} {baseline_str:>8}{unit:<2} "
-              f"{actual_str:>8}{unit:<2} {color}{regression_str:>10}{Color.RESET}")
+        print(
+            f"{test_label:<50} {baseline_str:>8}{unit:<2} "
+            f"{actual_str:>8}{unit:<2} {color}{regression_str:>10}{Color.RESET}"
+        )
 
-    print(f"{'-'*78}")
+    print(f"{'-' * 78}")
 
     # 回归告警
     if comparison["regression_count"] > 0:
-        print(f"\n{Color.RED}{Color.BOLD}[REGRESSION]{Color.RESET} "
-              f"检测到 {comparison['regression_count']} 项性能回归 "
-              f"(≥ +{REGRESSION_THRESHOLD_PCT}%):")
+        print(
+            f"\n{Color.RED}{Color.BOLD}[REGRESSION]{Color.RESET} "
+            f"检测到 {comparison['regression_count']} 项性能回归 "
+            f"(≥ +{REGRESSION_THRESHOLD_PCT}%):"
+        )
         for c in comparisons:
             if c["is_regression"]:
-                print(f"  {Color.RED}•{Color.RESET} "
-                      f"{c['class_name']}::{c['test_name']}: "
-                      f"基线 {c['baseline_value']:.4f}{c['unit']} → "
-                      f"实际 {c['actual_value']:.4f}{c['unit']} "
-                      f"(+{c['regression_pct']:.1f}%)")
-        print(f"\n{Color.YELLOW}[建议]{Color.RESET} "
-              f"使用 `git diff` 检查最近提交，定位性能回归根因。")
+                print(
+                    f"  {Color.RED}•{Color.RESET} "
+                    f"{c['class_name']}::{c['test_name']}: "
+                    f"基线 {c['baseline_value']:.4f}{c['unit']} → "
+                    f"实际 {c['actual_value']:.4f}{c['unit']} "
+                    f"(+{c['regression_pct']:.1f}%)"
+                )
+        print(f"\n{Color.YELLOW}[建议]{Color.RESET} 使用 `git diff` 检查最近提交，定位性能回归根因。")
         return 1
 
     # 改进提示
     if comparison["improvement_count"] > 0:
-        print(f"\n{Color.GREEN}[IMPROVEMENT]{Color.RESET} "
-              f"检测到 {comparison['improvement_count']} 项性能改进 "
-              f"(≤ -{REGRESSION_THRESHOLD_PCT}%):")
+        print(
+            f"\n{Color.GREEN}[IMPROVEMENT]{Color.RESET} "
+            f"检测到 {comparison['improvement_count']} 项性能改进 "
+            f"(≤ -{REGRESSION_THRESHOLD_PCT}%):"
+        )
         for c in comparisons:
             if c["is_improvement"]:
-                print(f"  {Color.GREEN}•{Color.RESET} "
-                      f"{c['class_name']}::{c['test_name']}: "
-                      f"基线 {c['baseline_value']:.4f}{c['unit']} → "
-                      f"实际 {c['actual_value']:.4f}{c['unit']} "
-                      f"({c['regression_pct']:.1f}%)")
-        print(f"\n{Color.YELLOW}[建议]{Color.RESET} "
-              f"建议更新 BASELINE.json 以反映新的性能水平。")
+                print(
+                    f"  {Color.GREEN}•{Color.RESET} "
+                    f"{c['class_name']}::{c['test_name']}: "
+                    f"基线 {c['baseline_value']:.4f}{c['unit']} → "
+                    f"实际 {c['actual_value']:.4f}{c['unit']} "
+                    f"({c['regression_pct']:.1f}%)"
+                )
+        print(f"\n{Color.YELLOW}[建议]{Color.RESET} 建议更新 BASELINE.json 以反映新的性能水平。")
 
     # 缺失项
     if comparison["missing_actual_count"] > 0:
-        print(f"\n{Color.YELLOW}[WARN]{Color.RESET} "
-              f"{comparison['missing_actual_count']} 项指标未能从测试输出中提取数值，"
-              f"建议检查 print 格式或扩展 extract_metric_from_output 规则。")
+        print(
+            f"\n{Color.YELLOW}[WARN]{Color.RESET} "
+            f"{comparison['missing_actual_count']} 项指标未能从测试输出中提取数值，"
+            f"建议检查 print 格式或扩展 extract_metric_from_output 规则。"
+        )
 
     print(f"\n{Color.GREEN}[OK]{Color.RESET} 性能基线对比完成，无回归。")
     print(f"  - LATEST 文件: {LATEST_FILE}")
     print(f"  - BASELINE 文件: {BASELINE_FILE}")
-    print(f"{'='*78}\n")
+    print(f"{'=' * 78}\n")
 
     return 0
 
@@ -726,9 +742,8 @@ def compare_with_baseline(latest: Dict[str, Any], baseline: Dict[str, Any]) -> i
 compute_metrics_comparison = compare_metrics
 
 
-# ---------------------------------------------------------------------------
 # 主入口
-# ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="性能基线回归对比工具")
@@ -767,7 +782,11 @@ def main():
             "ran_at": datetime.now().isoformat(timespec="seconds"),
             "python_version": sys.version.split()[0],
             "platform": sys.platform,
-            "passed": 0, "failed": 0, "skipped": 0, "xfail": 0, "error": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "xfail": 0,
+            "error": 0,
             "return_code": 0,
             "tests": [],
             "total_duration_sec": 0,

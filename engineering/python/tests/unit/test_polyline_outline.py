@@ -62,7 +62,7 @@ class TestPolylineOutlineProcessor:
         assert by_handle["hole"].is_hole is True
 
     def test_detached_polyline_ignored(self):
-        # 面积更大的独立轮廓在外轮廓外 → 忽略
+        # 面积更大的独立轮廓在外轮廓外 忽略
         outer = _poly([(0, 0), (10, 0), (10, 10), (0, 10)], handle="outer")
         detached = _poly([(50, 50), (60, 50), (60, 60), (50, 60)], handle="detached")
         outlines = self.p.extract_outlines([outer, detached])

@@ -87,9 +87,7 @@ class RLAgentPerfBenchmark:
         self._action_dim = 4
         self._model_uri = "model://rl_agent/bench/1.0.0"
 
-    # ------------------------------------------------------------------
     # 初始化
-    # ------------------------------------------------------------------
 
     def setup(self) -> None:
         """初始化策略/值网络 + SafetyShield + RL agent 插件.
@@ -124,9 +122,7 @@ class RLAgentPerfBenchmark:
             safety_strict=True,
         )
 
-    # ------------------------------------------------------------------
     # 基准 1：单次 RL 决策端到端延迟
-    # ------------------------------------------------------------------
 
     def run_single_decision(self, n_iterations: int = 50) -> dict[str, Any]:
         """单次 RL 决策端到端延迟（含 policy + value + shield + artifact）.
@@ -170,9 +166,7 @@ class RLAgentPerfBenchmark:
         self._results.update(result)
         return result
 
-    # ------------------------------------------------------------------
     # 基准 2：SafetyShield 过滤延迟（strict vs non-strict）
-    # ------------------------------------------------------------------
 
     def run_safety_shield_filter(self, n_iterations: int = 200) -> dict[str, Any]:
         """SafetyShield.filter() 纯过滤延迟.
@@ -242,9 +236,7 @@ class RLAgentPerfBenchmark:
         self._results.update(result)
         return result
 
-    # ------------------------------------------------------------------
     # 基准 3：批量决策吞吐
-    # ------------------------------------------------------------------
 
     def run_batch_decisions(self) -> dict[str, Any]:
         """批量决策吞吐：10/50/100 个不同状态向量.
@@ -290,9 +282,7 @@ class RLAgentPerfBenchmark:
         self._results.update(result)
         return result
 
-    # ------------------------------------------------------------------
     # 基准 4：策略缓存命中 vs 冷启动
-    # ------------------------------------------------------------------
 
     def run_policy_cache_hit(self, n_iterations: int = 20) -> dict[str, Any]:
         """策略缓存命中 vs 冷启动开销对比.
@@ -338,9 +328,7 @@ class RLAgentPerfBenchmark:
         self._results.update(result)
         return result
 
-    # ------------------------------------------------------------------
     # 基准 5：安全违反率统计
-    # ------------------------------------------------------------------
 
     def run_safety_violation_rate(self, n_samples: int = 1000) -> dict[str, Any]:
         """随机动作中触发 SafetyShield 过滤的比例统计.
@@ -393,9 +381,7 @@ class RLAgentPerfBenchmark:
         self._results.update(result)
         return result
 
-    # ------------------------------------------------------------------
     # 汇总与持久化
-    # ------------------------------------------------------------------
 
     def get_all_results(self) -> dict[str, Any]:
         """返回所有已测量的结果."""
@@ -446,9 +432,7 @@ class RLAgentPerfBenchmark:
         return output_path
 
 
-# ---------------------------------------------------------------------------
 # pytest-benchmark 集成
-# ---------------------------------------------------------------------------
 
 
 def bench_single_decision(benchmark: Any) -> None:

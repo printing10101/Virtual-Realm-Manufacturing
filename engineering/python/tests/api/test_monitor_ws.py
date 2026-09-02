@@ -58,7 +58,10 @@ class TestMonitorWS:
             assert msg["event_type"] == "data"
             data = msg["data"]
             assert set(data.keys()) == {
-                "spindle_speed", "spindle_load", "feedrate", "execution",
+                "spindle_speed",
+                "spindle_load",
+                "feedrate",
+                "execution",
             }
 
     def test_ws_heartbeat_event(self, client: TestClient) -> None:
@@ -80,9 +83,7 @@ class TestMonitorWS:
         assert s1.spindle_speed != s2.spindle_speed
 
 
-# ---------------------------------------------------------------------------
 # 告警规则（check_alerts 纯函数）
-# ---------------------------------------------------------------------------
 
 
 class TestCheckAlerts:
@@ -112,9 +113,7 @@ class TestCheckAlerts:
         assert "feed_anomaly" in types
 
 
-# ---------------------------------------------------------------------------
-# 模拟 Agent → WS 端到端（真实 HTTP + 告警推送）
-# ---------------------------------------------------------------------------
+# 模拟 Agent WS 端到端（真实 HTTP + 告警推送）
 
 
 class TestMonitorWSWithMockAgent:
@@ -130,7 +129,7 @@ class TestMonitorWSWithMockAgent:
                 # 首条应为 data 事件（默认 overload_cycle=20，前几帧无告警）
                 assert msg["event_type"] == "data"
                 data = msg["data"]
-                # 模拟 Agent base_spindle_speed=6000，±5% 波动 → 在 5500~6500 区间
+                # 模拟 Agent base_spindle_speed=6000，±5% 波动 在 5500~6500 区间
                 assert 5500 <= data["spindle_speed"] <= 6500
                 assert data["spindle_load"] is not None
                 assert data["feedrate"] is not None
@@ -151,7 +150,7 @@ class TestMonitorWSWithMockAgent:
             monkeypatch.setenv("MTCONNECT_AGENT_URL", agent.url)
             with client.websocket_connect("/monitor/ws") as ws:
                 first = ws.receive_json()
-                # 告警优先推送 → 首条为 spindle_overload
+                # 告警优先推送 首条为 spindle_overload
                 assert first["event_type"] == "alert"
                 assert first["alert_type"] == "spindle_overload"
                 assert first["actual_value"] > 80.0

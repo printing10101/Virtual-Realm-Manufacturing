@@ -1,5 +1,3 @@
-
-
 """
 任务分类准确率测试
 
@@ -15,10 +13,6 @@ from typing import Any
 import pytest
 
 from app.ai.process_understanding.task_classifier import (
-
-
-
-
     RuleBasedClassifier,
     TaskType,
     ClassificationResult,
@@ -27,12 +21,10 @@ from app.ai.process_understanding.task_classifier import (
 pytestmark = pytest.mark.skip_ci
 
 
-# ---------------------------------------------------------------------------
 # 测试样本集 - 覆盖各类任务类型与表述方式
-# ---------------------------------------------------------------------------
 
 TEST_CASES: list[dict[str, Any]] = [
-    # ======== A. 工艺咨询 ========
+    # A. 工艺咨询
     {"input": "45钢怎么加工？", "expected": TaskType.PROCESS_CONSULT},
     {"input": "加工6061铝合金用什么刀具好？", "expected": TaskType.PROCESS_CONSULT},
     {"input": "304不锈钢的切削参数推荐一下", "expected": TaskType.PROCESS_CONSULT},
@@ -53,8 +45,7 @@ TEST_CASES: list[dict[str, Any]] = [
     {"input": "背吃刀量一般取多少？", "expected": TaskType.PROCESS_CONSULT},
     {"input": "用什么材料的刀具加工不锈钢？", "expected": TaskType.PROCESS_CONSULT},
     {"input": "车削紫铜用什么切削液？", "expected": TaskType.PROCESS_CONSULT},
-
-    # ======== B. 故障诊断 ========
+    # B. 故障诊断
     {"input": "加工出来的工件表面有振纹，怎么回事？", "expected": TaskType.FAULT_DIAGNOSIS},
     {"input": "刀具磨损很快，是什么原因？", "expected": TaskType.FAULT_DIAGNOSIS},
     {"input": "机床主轴振动大，怎么办？", "expected": TaskType.FAULT_DIAGNOSIS},
@@ -75,8 +66,7 @@ TEST_CASES: list[dict[str, Any]] = [
     {"input": "工件报废了，帮我分析下原因", "expected": TaskType.FAULT_DIAGNOSIS},
     {"input": "声音不太对劲", "expected": TaskType.FAULT_DIAGNOSIS},
     {"input": "表面有划伤，怎么避免？", "expected": TaskType.FAULT_DIAGNOSIS},
-
-    # ======== C. 方案生成 ========
+    # C. 方案生成
     {"input": "帮我生成一个45钢轴类零件的加工工艺方案", "expected": TaskType.SOLUTION_GENERATION},
     {"input": "我需要一套完整的加工工艺路线", "expected": TaskType.SOLUTION_GENERATION},
     {"input": "帮我设计一个法兰盘的加工工艺", "expected": TaskType.SOLUTION_GENERATION},
@@ -92,8 +82,7 @@ TEST_CASES: list[dict[str, Any]] = [
     {"input": "生产一批轴承座怎么加工？", "expected": TaskType.SOLUTION_GENERATION},
     {"input": "需要从零开始设计加工方案", "expected": TaskType.SOLUTION_GENERATION},
     {"input": "这个零件怎么做出来？要完整的工艺", "expected": TaskType.SOLUTION_GENERATION},
-
-    # ======== D. 知识查询 ========
+    # D. 知识查询
     {"input": "GB/T 1804的公差是多少？", "expected": TaskType.KNOWLEDGE_QUERY},
     {"input": "什么是形位公差？", "expected": TaskType.KNOWLEDGE_QUERY},
     {"input": "IT8和IT7精度有什么区别？", "expected": TaskType.KNOWLEDGE_QUERY},
@@ -109,15 +98,13 @@ TEST_CASES: list[dict[str, Any]] = [
     {"input": "DIN标准和中国国标有什么区别？", "expected": TaskType.KNOWLEDGE_QUERY},
     {"input": "行业惯例中精加工公差一般控制在多少？", "expected": TaskType.KNOWLEDGE_QUERY},
     {"input": "加工中心有哪些常用G代码？", "expected": TaskType.KNOWLEDGE_QUERY},
-
-    # ======== E. 闲聊 ========
+    # E. 闲聊
     {"input": "你好", "expected": TaskType.CHITCHAT},
     {"input": "谢谢你的帮助", "expected": TaskType.CHITCHAT},
     {"input": "你能做什么？", "expected": TaskType.CHITCHAT},
     {"input": "再见", "expected": TaskType.CHITCHAT},
     {"input": "帮助", "expected": TaskType.CHITCHAT},
-
-    # ======== 边界情况 ========
+    # 边界情况
     {"input": "", "expected": TaskType.CHITCHAT},
     {"input": "   ", "expected": TaskType.CHITCHAT},
     {"input": "加工", "expected": TaskType.PROCESS_CONSULT},
@@ -125,8 +112,6 @@ TEST_CASES: list[dict[str, Any]] = [
     {"input": "方案", "expected": TaskType.SOLUTION_GENERATION},
     {"input": "标准", "expected": TaskType.KNOWLEDGE_QUERY},
 ]
-
-
 
 
 class TestRuleBasedClassifier:
@@ -148,8 +133,7 @@ class TestRuleBasedClassifier:
                 continue
 
             assert result.task_type == expected, (
-                f"分类错误: input='{input_text}', "
-                f"expected={expected.label}, got={result.task_type.label}"
+                f"分类错误: input='{input_text}', expected={expected.label}, got={result.task_type.label}"
             )
 
     def test_classification_coverage_rate(self, classifier: RuleBasedClassifier):
@@ -174,10 +158,7 @@ class TestRuleBasedClassifier:
                 if result.task_type == case["expected"]:
                     correct += 1
                 else:
-                    errors.append(
-                        f"'{case['input']}': expected={case['expected'].label}, "
-                        f"got={result.task_type.label}"
-                    )
+                    errors.append(f"'{case['input']}': expected={case['expected'].label}, got={result.task_type.label}")
 
         accuracy = correct / total_classified if total_classified > 0 else 0.0
         print(f"\n规则分类准确率: {correct}/{total_classified} = {accuracy:.1%}")

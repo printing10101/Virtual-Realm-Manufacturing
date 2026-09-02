@@ -23,9 +23,7 @@ def _make_mgr(tmp_path, **kw):
 
 def _state(agent_id="agent-1", **kw):
     s = AgentState(agent_id=agent_id)
-    s.memory = [
-        MemoryEntry(content=f"mem-{i}", importance=0.9 - i * 0.1) for i in range(3)
-    ]
+    s.memory = [MemoryEntry(content=f"mem-{i}", importance=0.9 - i * 0.1) for i in range(3)]
     return s
 
 
@@ -90,7 +88,7 @@ class TestCheckpointTier:
             s.set_checkpoint(Checkpoint(checkpoint_id="ck1", state_dict_path=str(weight_file)))
             await mgr.save_state(s)
             assert s.checkpoint.file_size_bytes > 0  # 权重已备份
-            # 清空内存层 → 无 Redis/DB 时元数据不可恢复（设计行为）
+            # 清空内存层 无 Redis/DB 时元数据不可恢复（设计行为）
             mgr._active_states.clear()
             assert await mgr.load_state("agent-1") is None
 
@@ -122,9 +120,7 @@ class TestContextAndMemory:
         mgr = _make_mgr(tmp_path)
 
         async def flow():
-            state = await mgr.update_context_increment(
-                "agent-1", {"task_description": "加工工艺"}
-            )
+            state = await mgr.update_context_increment("agent-1", {"task_description": "加工工艺"})
             assert state.session_context.task_description == "加工工艺"
             assert "context_incremental" in state.metadata or True
 

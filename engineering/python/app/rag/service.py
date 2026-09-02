@@ -41,7 +41,7 @@ def _get_rag_engine():
         from app.rag.rag_retrieval import RagRetrievalEngine
         from app.rag.signal_fusion_kb import get_signal_fusion_kb
 
-        # 集成点 2：显式注入 signal_fusion_kb，打通 RagRetrievalEngine ↔
+        # 集成点 2：显式注入 signal_fusion_kb，打通 RagRetrievalEngine
         # SignalFusionKnowledgeBase（之前仅通过共享 VectorStore 单例隐式耦合）
         _rag_engine_instance = RagRetrievalEngine(
             knowledge_base=kb,

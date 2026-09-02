@@ -4,14 +4,12 @@
 整合为单一自动化流水线。
 
 流水线阶段（6步）：
-┌──────────────────────────────────────────────────────────────┐
-│ Step 1: DXF解析 ──── 调用DxfParser提取几何实体和尺寸标注      │
-│ Step 2: 特征提取 ──── 调用FeatureExtractor识别加工特征        │
-│ Step 3: 3D模型转换 ── 调用DxfToModelConverter生成CadQuery模型  │
-│ Step 4: 数据组装 ──── 将特征转换为process_planning兼容格式     │
-│ Step 5: 工艺规划 ──── 调用ProcessPlanningPipeline              │
-│ Step 6: 结果验证 ──── 校验输出完整性和语法正确性               │
-└──────────────────────────────────────────────────────────────┘
+1. DXF解析：调用DxfParser提取几何实体和尺寸标注
+2. 特征提取：调用FeatureExtractor识别加工特征
+3. 3D模型转换：调用DxfToModelConverter生成CadQuery模型
+4. 数据组装：将特征转换为process_planning兼容格式
+5. 工艺规划：调用ProcessPlanningPipeline
+6. 结果验证：校验输出完整性和语法正确性
 
 数据流:
     DXF文件 ──▶ DxfParser ──▶ FeatureExtractor ──▶ DxfToModelConverter
@@ -186,7 +184,7 @@ class DxfProcessPipeline:
         result = DxfPipelineResult()
         stages: list[DxfPipelineStage] = []
 
-        # ===== Stage 1: DXF解析 =====
+        # Stage 1: DXF解析
         stage1_start = time.time()
         try:
             parse_result = self._dxf_parser.parse(file_path)
@@ -233,7 +231,7 @@ class DxfProcessPipeline:
             result.summary = f"DXF解析存在错误: {'; '.join(parse_result.errors)}"
             return result
 
-        # ===== Stage 2: 特征提取 =====
+        # Stage 2: 特征提取
         stage2_start = time.time()
         try:
             feature_result = self._feature_extractor.extract(parse_result)
@@ -275,7 +273,7 @@ class DxfProcessPipeline:
         stages.append(stage2)
         result.feature_result = feature_result
 
-        # ===== Stage 3: 3D模型转换 =====
+        # Stage 3: 3D模型转换
         stage3_start = time.time()
         try:
             model_result = self._model_converter.convert(feature_result)
@@ -320,7 +318,7 @@ class DxfProcessPipeline:
         stages.append(stage3)
         result.model_result = model_result
 
-        # ===== Stage 4: 数据组装(特征→process_planning格式) =====
+        # Stage 4: 数据组装(特征process_planning格式)
         stage4_start = time.time()
         try:
             part_description = self._build_part_description(feature_result, material, part_type)
@@ -353,7 +351,7 @@ class DxfProcessPipeline:
 
         stages.append(stage4)
 
-        # ===== Stage 5: 工艺规划 + G代码生成 =====
+        # Stage 5: 工艺规划 + G代码生成
         stage5_start = time.time()
         try:
             process_result = self._process_pipeline.run(
@@ -405,7 +403,7 @@ class DxfProcessPipeline:
         stages.append(stage5)
         result.process_result = process_result
 
-        # ===== 汇总 =====
+        # 汇总
         result.stages = stages
         result.success = all(s.status in ("success", "completed_with_errors") for s in stages)
         result.total_duration_ms = (time.time() - pipeline_start) * 1000

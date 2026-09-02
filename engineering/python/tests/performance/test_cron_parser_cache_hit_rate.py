@@ -1,5 +1,3 @@
-
-
 """CronParser 缓存命中率与性能曲线专项测试
 
 测试目标：
@@ -30,18 +28,10 @@ from app.heartbeat.heartbeat import CronParser
 pytestmark = pytest.mark.skip_ci
 
 
-
-
-
-
-
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
-
-
 def _isolate_cache():
     """每个测试前后清空缓存，避免跨测试污染。"""
     CronParser.clear_cache()
@@ -56,9 +46,8 @@ def _measure_parse_call(cron_expr: str) -> float:
     return (time.perf_counter() - start) * 1000
 
 
-# ---------------------------------------------------------------------------
 # 1. 冷启动 vs 热启动
-# ---------------------------------------------------------------------------
+
 
 class TestColdVsWarmStartup:
     """冷启动 vs 热启动延迟对比"""
@@ -74,9 +63,7 @@ class TestColdVsWarmStartup:
         warm_ms = _measure_parse_call(expr)
 
         # 冷启动至少应比热启动慢 3 倍（典型情况慢 10-50 倍）
-        assert cold_ms > warm_ms * 3, (
-            f"冷启动未明显慢于热启动: cold={cold_ms:.4f}ms, warm={warm_ms:.6f}ms"
-        )
+        assert cold_ms > warm_ms * 3, f"冷启动未明显慢于热启动: cold={cold_ms:.4f}ms, warm={warm_ms:.6f}ms"
 
         print("\n冷启动 vs 热启动:")
         print(f"  冷启动: {cold_ms:.4f}ms")
@@ -100,9 +87,8 @@ class TestColdVsWarmStartup:
         print(f"  P95: {p95:.6f}ms")
 
 
-# ---------------------------------------------------------------------------
 # 2. 批量插入场景缓存命中率
-# ---------------------------------------------------------------------------
+
 
 class TestBatchInsertHitRate:
     """批量 add_task 场景下的缓存命中率
@@ -131,9 +117,7 @@ class TestBatchInsertHitRate:
             hit_count = iterations - compute_count
             hit_rate = hit_count / iterations
 
-        assert hit_rate >= 0.995, (
-            f"批量插入缓存命中率过低: {hit_rate:.4f} (compute={compute_count}, hit={hit_count})"
-        )
+        assert hit_rate >= 0.995, f"批量插入缓存命中率过低: {hit_rate:.4f} (compute={compute_count}, hit={hit_count})"
 
         print(f"\n统一 cron_expr 批量插入 ({iterations}次):")
         print(f"  命中率: {hit_rate:.4%}")
@@ -175,9 +159,7 @@ class TestBatchInsertHitRate:
 
         # 10 种 expr 各 1 次冷启动 = 10 次 compute
         # 其余 190 次应命中缓存
-        assert hit_rate >= 0.90, (
-            f"多样化 cron_expr 命中率过低: {hit_rate:.4%}"
-        )
+        assert hit_rate >= 0.90, f"多样化 cron_expr 命中率过低: {hit_rate:.4%}"
 
         print(f"\n多样化 cron_expr 批量插入 ({total}次, {len(exprs)}种 expr):")
         print(f"  命中率: {hit_rate:.4%}")
@@ -208,9 +190,7 @@ class TestBatchInsertHitRate:
 
         # 所有规模下命中率应 ≥ 90%
         for scale, rate in zip(scales, hit_rates):
-            assert rate >= 0.90, (
-                f"规模 {scale} 时命中率过低: {rate:.4%}"
-            )
+            assert rate >= 0.90, f"规模 {scale} 时命中率过低: {rate:.4%}"
 
         # 规模越大，命中率应越高（或保持 100%）
         # 允许小规模因首次冷启动占比较大而略低
@@ -219,9 +199,8 @@ class TestBatchInsertHitRate:
             print(f"  scale={scale:4d}: {rate:.4%}")
 
 
-# ---------------------------------------------------------------------------
 # 3. 吞吐量提升对比
-# ---------------------------------------------------------------------------
+
 
 class TestThroughputImprovement:
     """验证缓存优化对吞吐量的提升"""
@@ -260,14 +239,13 @@ class TestThroughputImprovement:
         )
 
         print("\n吞吐量提升对比:")
-        print(f"  冷启动: {cold_per_call_ms:.4f}ms/次 (QPS={1000/cold_per_call_ms:.0f})")
-        print(f"  热启动: {warm_per_call_ms:.6f}ms/次 (QPS={1000/warm_per_call_ms:.0f})")
+        print(f"  冷启动: {cold_per_call_ms:.4f}ms/次 (QPS={1000 / cold_per_call_ms:.0f})")
+        print(f"  热启动: {warm_per_call_ms:.6f}ms/次 (QPS={1000 / warm_per_call_ms:.0f})")
         print(f"  加速比: {speedup:.1f}x")
 
 
-# ---------------------------------------------------------------------------
 # 4. 缓存淘汰对性能的影响
-# ---------------------------------------------------------------------------
+
 
 class TestEvictionPerformanceImpact:
     """验证缓存淘汰不会导致性能突降"""
@@ -287,7 +265,7 @@ class TestEvictionPerformanceImpact:
             current_bucket = int(time.time() // 60)
             for i in range(10):
                 # 使用未来 bucket 避免 TTL 淘汰
-                CronParser._CACHE[(f"*/{i+1} * * * *", current_bucket + i)] = [float(i)]
+                CronParser._CACHE[(f"*/{i + 1} * * * *", current_bucket + i)] = [float(i)]
 
             # 第 11 个 expr 触发容量淘汰
             # 使用合法 cron 表达式
@@ -302,9 +280,7 @@ class TestEvictionPerformanceImpact:
                 elapsed_ms = (time.perf_counter() - start) * 1000
 
             # 淘汰 + 写入应在 1ms 内完成
-            assert elapsed_ms < 1.0, (
-                f"容量淘汰触发时延迟突增: {elapsed_ms:.4f}ms"
-            )
+            assert elapsed_ms < 1.0, f"容量淘汰触发时延迟突增: {elapsed_ms:.4f}ms"
 
             print("\n容量淘汰性能影响:")
             print(f"  淘汰 + 写入延迟: {elapsed_ms:.4f}ms")
@@ -335,18 +311,15 @@ class TestEvictionPerformanceImpact:
         per_call_ms = elapsed_ms / 1000
 
         # 命中路径应 < 0.1ms，即使缓存中有过期条目
-        assert per_call_ms < 0.1, (
-            f"缓存命中路径受过期条目影响: {per_call_ms:.6f}ms"
-        )
+        assert per_call_ms < 0.1, f"缓存命中路径受过期条目影响: {per_call_ms:.6f}ms"
 
         print("\nTTL 淘汰摊销开销:")
         print(f"  命中路径平均延迟: {per_call_ms:.6f}ms")
         print("  过期条目数: 20")
 
 
-# ---------------------------------------------------------------------------
 # 5. 字段预编译性能验证
-# ---------------------------------------------------------------------------
+
 
 class TestFieldPrecompilePerformance:
     """验证 _compile_field 字段预编译的性能优势"""
@@ -381,10 +354,10 @@ class TestFieldPrecompilePerformance:
 
         # 预编译路径应至少快 2 倍
         assert speedup >= 2.0, (
-            f"预编译未带来性能提升: {speedup:.2f}x (old={old_elapsed*1000:.4f}ms, new={new_elapsed*1000:.4f}ms)"
+            f"预编译未带来性能提升: {speedup:.2f}x (old={old_elapsed * 1000:.4f}ms, new={new_elapsed * 1000:.4f}ms)"
         )
 
         print("\n字段预编译 vs 逐次匹配:")
-        print(f"  旧路径 (1000×60 _matches_field): {old_elapsed*1000:.4f}ms")
-        print(f"  新路径 (1000× compile+in):       {new_elapsed*1000:.4f}ms")
+        print(f"  旧路径 (1000×60 _matches_field): {old_elapsed * 1000:.4f}ms")
+        print(f"  新路径 (1000× compile+in):       {new_elapsed * 1000:.4f}ms")
         print(f"  加速比: {speedup:.2f}x")

@@ -118,10 +118,10 @@ class GraphPersistence:
                     session.query(KGNode).delete()
                     session.flush()
 
-                # --- 节点 ---
+                # 节点
                 # 内联 upsert 逻辑到同一会话，保证事务原子性
                 # （之前调用 self._repo.upsert_node 会开启独立会话并独立 commit，
-                #  导致 clear_first 回滚时已 commit 的 upsert 无法回滚）
+                # 导致 clear_first 回滚时已 commit 的 upsert 无法回滚）
                 for nid, data in graph._graph.nodes(data=True):
                     node_type = data.get("type", "")
                     properties = dict(data.get("properties", {}))
@@ -143,7 +143,7 @@ class GraphPersistence:
                         existing_node.properties = merged  # type: ignore[assignment]
                     nodes_written += 1
 
-                # --- 关系 ---
+                # 关系
                 # 同样内联 upsert 逻辑，避免独立会话破坏原子性
                 from sqlalchemy import and_, select
 

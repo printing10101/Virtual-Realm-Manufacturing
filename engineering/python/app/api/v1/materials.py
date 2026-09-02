@@ -22,9 +22,7 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
 # Pydantic schemas
-# ---------------------------------------------------------------------------
 
 
 class MaterialCreate(BaseModel):
@@ -63,9 +61,7 @@ class PurchaseRequest(BaseModel):
     supplier: str | None = Field(None, max_length=128, description="供应商")
 
 
-# ---------------------------------------------------------------------------
 # Endpoints
-# ---------------------------------------------------------------------------
 
 
 @router.get("/")
@@ -146,9 +142,7 @@ async def purchase_material(material_id: str, body: PurchaseRequest):
     return success(data=data, message="采购成功")
 
 
-# ---------------------------------------------------------------------------
 # Seed data
-# ---------------------------------------------------------------------------
 
 
 @router.post("/seed", dependencies=[Depends(require_role("admin"))])

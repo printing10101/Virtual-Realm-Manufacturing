@@ -201,7 +201,7 @@ class TaskExecutor:
             "status": "training_completed",
             "model_path": workspace_context.model_path,
             "dataset_path": workspace_context.dataset_path,
-            # 接口修复：get_metrics() → get_training_summary()
+            # 接口修复：get_metrics() get_training_summary()
             "metrics": trainer.get_training_summary(),
         }
 

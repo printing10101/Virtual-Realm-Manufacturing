@@ -39,9 +39,9 @@ logger = logging.getLogger(__name__)
 
 # 默认 cron 表达式：每天 03:00 执行
 # 选择 03:00 的原因：
-#   1. 凌晨低负载时段，不影响白天 LNN 推理/CAM 验证
-#   2. 跨日总结前一天的所有 Session（lookback_days=1 等价）
-#   3. 与项目 nightly 实验调度不冲突（实验通常 22:00-02:00）
+# 1. 凌晨低负载时段，不影响白天 LNN 推理/CAM 验证
+# 2. 跨日总结前一天的所有 Session（lookback_days=1 等价）
+# 3. 与项目 nightly 实验调度不冲突（实验通常 22:00-02:00）
 DEFAULT_DREAMING_CRON = "0 3 * * *"
 
 # 反思任务 ID（固定值，便于追踪与手动触发）

@@ -6,8 +6,8 @@
 为避免循环导入（Completer 依赖 VAE，VAE 定义在 encoder.py），此处从
 ``encoder.py`` 重新导出 ``PartPriorCompleter``，保持测试导入路径兼容：
 
-    from app.image_to_3d.part_prior.encoder import PartPriorCompleter  # ✓
-    from app.image_to_3d.part_prior.completer import PartPriorCompleter  # ✓
+    from app.image_to_3d.part_prior.encoder import PartPriorCompleter
+    from app.image_to_3d.part_prior.completer import PartPriorCompleter
 
 工程边界
 ========

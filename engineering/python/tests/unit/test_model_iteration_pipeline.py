@@ -46,15 +46,11 @@ from app.workflow.templates.loader import (
 from app.workflow.validator import WorkflowValidationError
 
 # 数据飞轮插件目录（python/plugins/data_flywheel）
-_PLUGIN_DIR = (
-    Path(__file__).resolve().parent.parent.parent / "plugins" / "data_flywheel"
-)
+_PLUGIN_DIR = Path(__file__).resolve().parent.parent.parent / "plugins" / "data_flywheel"
 _TEMPLATE_PATH = _PLUGIN_DIR / "templates" / "model_iteration_pipeline.yaml"
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -105,9 +101,7 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-# ---------------------------------------------------------------------------
 # YAML 模板文件存在性与可加载性
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -135,9 +129,7 @@ class TestModelIterationTemplateFile:
         assert "灰度" in template.description
 
 
-# ---------------------------------------------------------------------------
 # 模板结构完整性
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -186,9 +178,7 @@ class TestModelIterationTemplateStructure:
         assert meta.get("max_concurrent") == 1
 
 
-# ---------------------------------------------------------------------------
 # DAG 一致性校验（通过 template_to_spec 执行完整校验）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -223,17 +213,11 @@ class TestModelIterationDagValidation:
         spec = template_to_spec(template)
         node_id_set = {n.node_id for n in spec.nodes}
         for edge in spec.edges:
-            assert edge.upstream in node_id_set, (
-                f"边引用了不存在的上游节点: {edge.upstream}"
-            )
-            assert edge.downstream in node_id_set, (
-                f"边引用了不存在的下游节点: {edge.downstream}"
-            )
+            assert edge.upstream in node_id_set, f"边引用了不存在的上游节点: {edge.upstream}"
+            assert edge.downstream in node_id_set, f"边引用了不存在的下游节点: {edge.downstream}"
 
 
-# ---------------------------------------------------------------------------
 # 节点拓扑正确性（6 节点线性 DAG）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -266,9 +250,7 @@ class TestModelIterationNodeTopology:
             "canary_deploy",
         ]
         actual_ids = [n.node_id for n in spec.nodes]
-        assert sorted(actual_ids) == sorted(expected_ids), (
-            f"节点 id 不匹配: {actual_ids} vs {expected_ids}"
-        )
+        assert sorted(actual_ids) == sorted(expected_ids), f"节点 id 不匹配: {actual_ids} vs {expected_ids}"
 
     def test_linear_topology_edges(self):
         """5 条边构成线性拓扑（collect_feedback → prepare → train → eval → register → canary）."""
@@ -282,9 +264,7 @@ class TestModelIterationNodeTopology:
             ("register_model", "canary_deploy"),
         }
         actual_edges = {(e.upstream, e.downstream) for e in spec.edges}
-        assert actual_edges == expected_edges, (
-            f"边拓扑不匹配: {actual_edges} vs {expected_edges}"
-        )
+        assert actual_edges == expected_edges, f"边拓扑不匹配: {actual_edges} vs {expected_edges}"
 
     def test_canary_deploy_is_terminal_node(self):
         """canary_deploy 是终止节点（无下游边）."""
@@ -307,9 +287,7 @@ class TestModelIterationNodeTopology:
         assert "collect_feedback" not in downstreams
 
 
-# ---------------------------------------------------------------------------
 # task_type 声明（6 种 task_type，handler 在阶段 6 注册）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -331,8 +309,7 @@ class TestModelIterationTaskTypes:
         }
         for node in spec.nodes:
             assert node.task_type == expected[node.node_id], (
-                f"节点 {node.node_id} task_type 不匹配: "
-                f"{node.task_type} vs {expected[node.node_id]}"
+                f"节点 {node.node_id} task_type 不匹配: {node.task_type} vs {expected[node.node_id]}"
             )
 
     def test_task_types_are_distinct(self):
@@ -340,14 +317,10 @@ class TestModelIterationTaskTypes:
         template = load_template_from_file(_TEMPLATE_PATH)
         spec = template_to_spec(template)
         task_types = [n.task_type for n in spec.nodes]
-        assert len(task_types) == len(set(task_types)), (
-            f"task_type 存在重复: {task_types}"
-        )
+        assert len(task_types) == len(set(task_types)), f"task_type 存在重复: {task_types}"
 
 
-# ---------------------------------------------------------------------------
 # 参数与 plugin.yaml config_schema 对齐
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -407,9 +380,7 @@ class TestModelIterationParamsAlignment:
         assert params["track_experiment"] is True  # MLflow 追踪
 
 
-# ---------------------------------------------------------------------------
 # 节点 inputs 引用合法性
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -451,9 +422,7 @@ class TestModelIterationNodeInputs:
         assert node.inputs["eval_metrics"] == "${evaluate_model.metrics_artifact}"
 
 
-# ---------------------------------------------------------------------------
 # spec_dict 可往返转换为 WorkflowSpec
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -481,9 +450,7 @@ class TestModelIterationSpecRoundTrip:
         assert errors == [], f"spec_dict 重新构造后校验失败: {errors}"
 
 
-# ---------------------------------------------------------------------------
 # Plugin._handle_workflow_template_request 行为
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -502,17 +469,13 @@ class TestPluginWorkflowTemplateHandler:
 
     def test_handler_with_matching_template_name(self, loaded_plugin):
         """template_name 匹配时返回 status=ready."""
-        result = loaded_plugin._handle_workflow_template_request(
-            {"template_name": "model_iteration_pipeline"}
-        )
+        result = loaded_plugin._handle_workflow_template_request({"template_name": "model_iteration_pipeline"})
         assert result["status"] == "ready"
         assert result["spec"] is not None
 
     def test_handler_with_non_matching_template_name(self, loaded_plugin):
         """template_name 不匹配时返回 status=not_found + spec=None."""
-        result = loaded_plugin._handle_workflow_template_request(
-            {"template_name": "other_template"}
-        )
+        result = loaded_plugin._handle_workflow_template_request({"template_name": "other_template"})
         assert result["status"] == "not_found"
         assert result["spec"] is None
         assert result["template_name"] == "other_template"
@@ -540,9 +503,7 @@ class TestPluginWorkflowTemplateHandler:
         assert loaded_plugin._model_iteration_spec_loaded is True
 
 
-# ---------------------------------------------------------------------------
 # 通过 ExtensionRegistry.invoke 调用 WORKFLOW_TEMPLATE 扩展点
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -566,9 +527,7 @@ class TestModelIterationExtensionPointInvoke:
         assert len(result["spec"]["nodes"]) == 6
         assert len(result["spec"]["edges"]) == 5
 
-    def test_invoke_with_non_matching_name_returns_not_found(
-        self, loaded_plugin, fresh_registry
-    ):
+    def test_invoke_with_non_matching_name_returns_not_found(self, loaded_plugin, fresh_registry):
         """invoke 传入不匹配的 template_name 返回 not_found."""
         results = _run(
             fresh_registry.invoke(

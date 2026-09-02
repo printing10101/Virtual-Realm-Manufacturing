@@ -10,6 +10,7 @@
     2 = WinSock 已修复但 torch 安装失败
     3 = torch 已安装但验证测试失败
 """
+
 from __future__ import annotations
 
 import os
@@ -64,6 +65,7 @@ def step2_install_torch() -> bool:
     # 检查是否已安装 torch
     try:
         import torch  # noqa: F401
+
         print("[OK] torch 已安装，跳过安装步骤")
         return True
     except ImportError:
@@ -85,9 +87,7 @@ def step2_install_torch() -> bool:
     print(f"执行: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(
-            cmd, check=False, capture_output=True, text=True, timeout=1800
-        )
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=1800)
         print("STDOUT:")
         print(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout)
         if result.stderr:
@@ -171,7 +171,7 @@ def main() -> int:
     print("=" * 60)
     print()
 
-    # 步骤 1: 验证 WinSock
+    # 验证 WinSock
     if not step1_verify_winsock():
         print()
         print("=" * 60)
@@ -180,7 +180,7 @@ def main() -> int:
         print("=" * 60)
         return 1
 
-    # 步骤 2: 安装 torch
+    # 安装 torch
     if not step2_install_torch():
         print()
         print("=" * 60)
@@ -189,7 +189,7 @@ def main() -> int:
         print("=" * 60)
         return 2
 
-    # 步骤 3: 完整验证
+    # 完整验证
     if not step3_verify_torch_ready():
         print()
         print("=" * 60)

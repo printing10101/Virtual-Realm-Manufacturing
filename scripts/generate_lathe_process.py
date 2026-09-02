@@ -5,6 +5,7 @@
 根据图纸参数生成车削工艺路线、G 代码，并基于真实切削参数
 计算单件加工时间、换件/夹准辅助时间及日产量。
 """
+
 from __future__ import annotations
 
 import json
@@ -31,9 +32,7 @@ from app.process_planning.operation_sequencer import (  # noqa: E402
 )
 
 
-# ========================================================================
 # 图纸参数（可辨识 + 工程合理假设）
-# ========================================================================
 PART_INFO = {
     "name": "后端盖轴承钢套",
     "drawing_no": "M0033",
@@ -46,7 +45,7 @@ PART_INFO = {
         "bar_length": 6000.0,  # 标准棒料长度 6m
         "bar_end_loss": 50.0,  # 每根棒料两端料头损耗
         "steel_density_kg_cm3": 0.00785,  # 45# 钢密度 g/mm³ → kg/cm³
-        "material_price_yuan_kg": 3.5,    # 批量采购参考价，需按实际询价调整
+        "material_price_yuan_kg": 3.5,  # 批量采购参考价，需按实际询价调整
     },
     "dimensions": {
         "outer_diameter": 76.0,
@@ -66,23 +65,22 @@ PART_INFO = {
 }
 
 
-# ========================================================================
 # 时间测算常数（基于数控车床人工上下料 + 三爪卡盘装夹）
-# ========================================================================
 TIME_CONSTANTS = {
-    "clamp_align_min": 2.0,       # 夹准时间：装夹 + 找正 + 关防护门 / 件
-    "part_swap_min": 1.0,         # 换件时间：松开卡盘、取件、放新毛坯 / 件
-    "tool_change_min": 0.5,       # 换刀/换刀补时间 / 次
-    "shift_hours": 8.0,           # 每班工时
-    "utilization": 0.85,          # 设备综合利用率（含对刀、抽检、短暂停顿）
-    "setup_batch_min": 15.0,      # 每批首件对刀、程序调用、检具准备
-    "batch_size_for_setup": 1000, # 多少件分摊一次批量准备
+    "clamp_align_min": 2.0,  # 夹准时间：装夹 + 找正 + 关防护门 / 件
+    "part_swap_min": 1.0,  # 换件时间：松开卡盘、取件、放新毛坯 / 件
+    "tool_change_min": 0.5,  # 换刀/换刀补时间 / 次
+    "shift_hours": 8.0,  # 每班工时
+    "utilization": 0.85,  # 设备综合利用率（含对刀、抽检、短暂停顿）
+    "setup_batch_min": 15.0,  # 每批首件对刀、程序调用、检具准备
+    "batch_size_for_setup": 1000,  # 多少件分摊一次批量准备
 }
 
 
 @dataclass
 class LatheOperationTime:
     """单道工序的详细时间拆解。"""
+
     name: str
     method: str
     diameter_mm: float
@@ -159,40 +157,42 @@ def build_features(part_info: dict[str, Any]) -> list[MachiningFeature]:
 
     # 内孔：每个孔分粗/精两道
     for idx, bore in enumerate(part_info["dimensions"]["bores"], start=1):
-        features.extend([
-            MachiningFeature(
-                name=f"内孔{idx}-粗镗-Ø{int(bore['diameter'])}",
-                type="inner_bore",
-                geometric_type="cylinder",
-                tolerance_grade="IT10",
-                surface_roughness_ra=6.3,
-                is_datum_candidate=False,
-                machining_method="boring",
-                priority="medium",
-                surface="A",
-                dimensions={
-                    "diameter": bore["diameter"],
-                    "depth": bore["length"],
-                },
-                tolerances={"diameter": bore["tolerance"]},
-            ),
-            MachiningFeature(
-                name=f"内孔{idx}-精镗-Ø{int(bore['diameter'])}",
-                type="inner_bore",
-                geometric_type="cylinder",
-                tolerance_grade="IT7",
-                surface_roughness_ra=bore["ra"],
-                is_datum_candidate=False,
-                machining_method="boring",
-                priority="medium",
-                surface="A",
-                dimensions={
-                    "diameter": bore["diameter"],
-                    "depth": bore["length"],
-                },
-                tolerances={"diameter": bore["tolerance"]},
-            ),
-        ])
+        features.extend(
+            [
+                MachiningFeature(
+                    name=f"内孔{idx}-粗镗-Ø{int(bore['diameter'])}",
+                    type="inner_bore",
+                    geometric_type="cylinder",
+                    tolerance_grade="IT10",
+                    surface_roughness_ra=6.3,
+                    is_datum_candidate=False,
+                    machining_method="boring",
+                    priority="medium",
+                    surface="A",
+                    dimensions={
+                        "diameter": bore["diameter"],
+                        "depth": bore["length"],
+                    },
+                    tolerances={"diameter": bore["tolerance"]},
+                ),
+                MachiningFeature(
+                    name=f"内孔{idx}-精镗-Ø{int(bore['diameter'])}",
+                    type="inner_bore",
+                    geometric_type="cylinder",
+                    tolerance_grade="IT7",
+                    surface_roughness_ra=bore["ra"],
+                    is_datum_candidate=False,
+                    machining_method="boring",
+                    priority="medium",
+                    surface="A",
+                    dimensions={
+                        "diameter": bore["diameter"],
+                        "depth": bore["length"],
+                    },
+                    tolerances={"diameter": bore["tolerance"]},
+                ),
+            ]
+        )
 
     # 倒角
     features.append(
@@ -229,13 +229,13 @@ def estimate_turning_time(
     """
     # 45#钢调质车削基础参数
     if is_rough:
-        vc = 110.0          # m/min
-        feed = 0.20         # mm/rev
-        depth = 2.0         # mm（单边切深）
+        vc = 110.0  # m/min
+        feed = 0.20  # mm/rev
+        depth = 2.0  # mm（单边切深）
     else:
-        vc = 130.0          # m/min
-        feed = 0.08         # mm/rev
-        depth = 0.3         # mm（单边精车切深）
+        vc = 130.0  # m/min
+        feed = 0.08  # mm/rev
+        depth = 0.3  # mm（单边精车切深）
 
     # 转速 n = 1000 * Vc / (π * D)
     rpm = int(1000.0 * vc / (math.pi * max(diameter, 1.0)))
@@ -264,7 +264,7 @@ def estimate_turning_time(
     else:
         effective_length = length
 
-    # 每转进给 → 进给速度 mm/min
+    # 每转进给 进给速度 mm/min
     feed_mm_min = feed * rpm
     if feed_mm_min <= 0:
         feed_mm_min = 50.0
@@ -356,12 +356,7 @@ def generate_report(
     # 单件时间
     clamp_align = TIME_CONSTANTS["clamp_align_min"]
     part_swap = TIME_CONSTANTS["part_swap_min"]
-    per_piece_time = (
-        total_cutting
-        + total_tool_change
-        + clamp_align
-        + part_swap
-    )
+    per_piece_time = total_cutting + total_tool_change + clamp_align + part_swap
 
     # 批量准备时间分摊
     setup_amortized = TIME_CONSTANTS["setup_batch_min"] / TIME_CONSTANTS["batch_size_for_setup"]
@@ -403,9 +398,10 @@ def generate_report(
         lines.append(f"- 内孔：Ø{bore['diameter']}{bore['tolerance']} × {bore['length']} mm，Ra{bore['ra']}")
     lines.append(f"- 倒角：C{PART_INFO['dimensions']['chamfer']}")
     lines.append("")
-    lines.append("> **图纸辨识说明**：图纸左侧部分小尺寸（20.6 / 6.6 等）分辨率不足，"
-                "已按套筒常规结构假设为 Ø46×26 + Ø26×54 两段内孔。若实际尺寸不同，"
-                "可修改 `scripts/generate_lathe_process.py` 中 `PART_INFO` 重新生成。"
+    lines.append(
+        "> **图纸辨识说明**：图纸左侧部分小尺寸（20.6 / 6.6 等）分辨率不足，"
+        "已按套筒常规结构假设为 Ø46×26 + Ø26×54 两段内孔。若实际尺寸不同，"
+        "可修改 `scripts/generate_lathe_process.py` 中 `PART_INFO` 重新生成。"
     )
     lines.append("")
 
@@ -437,8 +433,12 @@ def generate_report(
 
     lines.append("## 3. 真实切削时间测算")
     lines.append("")
-    lines.append("| 工序 | 直径(mm) | 行程(mm) | 转速(rpm) | 进给(mm/rev) | 切深(mm) | 余量(mm) | 走刀次数 | 切削时间(min) |")
-    lines.append("|------|----------|----------|-----------|--------------|----------|----------|----------|---------------|")
+    lines.append(
+        "| 工序 | 直径(mm) | 行程(mm) | 转速(rpm) | 进给(mm/rev) | 切深(mm) | 余量(mm) | 走刀次数 | 切削时间(min) |"
+    )
+    lines.append(
+        "|------|----------|----------|-----------|--------------|----------|----------|----------|---------------|"
+    )
     for t in times:
         lines.append(
             f"| {t.name} | {t.diameter_mm:.1f} | {t.length_mm:.1f} | {t.spindle_rpm} | "
@@ -460,7 +460,7 @@ def generate_report(
     lines.append("## 5. 日产量与总工期")
     lines.append("")
     lines.append(f"- **班制**：{TIME_CONSTANTS['shift_hours']:.0f} h/班")
-    lines.append(f"- **设备利用率**：{TIME_CONSTANTS['utilization']*100:.0f}%")
+    lines.append(f"- **设备利用率**：{TIME_CONSTANTS['utilization'] * 100:.0f}%")
     lines.append(f"- **每班可用加工时间**：{available_min:.0f} min")
     lines.append(f"- **日产量（单班，人工上下料）**：约 **{daily_output} 件/天**")
     lines.append(f"- **70,000 件总机加工时间**：约 {total_hours:.0f} h（{total_days:.0f} 个工作日，单班）")
@@ -483,9 +483,7 @@ def generate_report(
         machines = extra[0] if extra else 1
         daily *= machines
         days = math.ceil(PART_INFO["quantity"] / daily)
-        lines.append(
-            f"| {scenario} | {swap_time:.1f} | {util*100:.0f}% | {daily} | {days} | {desc} |"
-        )
+        lines.append(f"| {scenario} | {swap_time:.1f} | {util * 100:.0f}% | {daily} | {days} | {desc} |")
     lines.append("")
 
     lines.append("## 6. 毛坯与下料建议")
@@ -497,10 +495,9 @@ def generate_report(
         f"- **每棒料头损耗**：约 {bar_end_waste_mm:.0f} mm "
         f"（含 {blank['bar_end_loss']:.0f} mm 两端锯口；净余料约 {ideal_waste_mm:.0f} mm，控制在 ≤60 mm）"
     )
-    lines.append("> 按舅舅要求：角料（料头）直径与毛坯一致 **Ø{:.0f} mm**；通过 Ø78×81 mm 下料，"
-                "6m 棒料可切 74 件，净余料仅 {:.0f} mm，满足料头控制要求。".format(
-                    blank["diameter"], ideal_waste_mm
-                )
+    lines.append(
+        "> 按舅舅要求：角料（料头）直径与毛坯一致 **Ø{:.0f} mm**；通过 Ø78×81 mm 下料，"
+        "6m 棒料可切 74 件，净余料仅 {:.0f} mm，满足料头控制要求。".format(blank["diameter"], ideal_waste_mm)
     )
     lines.append("")
 
@@ -525,10 +522,11 @@ def generate_report(
     break_even_price = 9.0 / blank_weight_kg if blank_weight_kg > 0 else 0.0
     lines.append(f"- **材料盈亏平衡价**：≤ {break_even_price:.2f} 元/kg（仅覆盖毛坯材料，无加工利润）")
     lines.append("")
-    lines.append("> **重要提示**：9.0 元/件包工包料价格偏低，单件毛利空间仅约 {:.2f} 元。"
-                "实际能否盈利强烈取决于 45# 钢批量采购价、刀具寿命、设备利用率。"
-                "建议先小批量试制验证真实刀耗和工时；若材料采购价无法压至 {:.2f} 元/kg 以下，"
-                "需重新评估报价。".format(9.0 - material_cost, break_even_price)
+    lines.append(
+        "> **重要提示**：9.0 元/件包工包料价格偏低，单件毛利空间仅约 {:.2f} 元。"
+        "实际能否盈利强烈取决于 45# 钢批量采购价、刀具寿命、设备利用率。"
+        "建议先小批量试制验证真实刀耗和工时；若材料采购价无法压至 {:.2f} 元/kg 以下，"
+        "需重新评估报价。".format(9.0 - material_cost, break_even_price)
     )
     lines.append("")
 
@@ -553,11 +551,19 @@ def generate_report(
 
     lines.append("## 10. 风险提示与假设说明")
     lines.append("")
-    lines.append("1. **图纸尺寸不确定性**：图纸左侧部分小尺寸（20.6 / 6.6 等）分辨率不足，内孔结构按 Ø46×26 + Ø26×54 假设。实际投产前请用高清图纸或 STEP 模型复核。")
-    lines.append("2. **预钻孔假设**：内孔镗削按已预钻 Ø20 mm 底孔计算。若毛坯中心未预钻孔，需增加中心钻 + 钻孔工序（约 +0.5~1.5 min/件）。")
+    lines.append(
+        "1. **图纸尺寸不确定性**：图纸左侧部分小尺寸（20.6 / 6.6 等）分辨率不足，内孔结构按 Ø46×26 + Ø26×54 假设。实际投产前请用高清图纸或 STEP 模型复核。"
+    )
+    lines.append(
+        "2. **预钻孔假设**：内孔镗削按已预钻 Ø20 mm 底孔计算。若毛坯中心未预钻孔，需增加中心钻 + 钻孔工序（约 +0.5~1.5 min/件）。"
+    )
     lines.append("3. **调质处理**：20-24HRC 建议外协，不计入机加工时间；调质后硬度会显著影响刀具寿命和切削参数。")
-    lines.append("4. **G 代码说明**：本报告 G 代码由项目通用后处理器生成，数控车床实际使用前需按具体机床（Fanuc/Siemens/广数等）和车削循环（G71/G72/G70 等）调整。")
-    lines.append(f"5. **产能瓶颈**：单台单班约 {daily_output} 件/天，70000 件约需 {total_days:.0f} 个工作日。大批量交付必须采用自动送料、双主轴或多机并行。")
+    lines.append(
+        "4. **G 代码说明**：本报告 G 代码由项目通用后处理器生成，数控车床实际使用前需按具体机床（Fanuc/Siemens/广数等）和车削循环（G71/G72/G70 等）调整。"
+    )
+    lines.append(
+        f"5. **产能瓶颈**：单台单班约 {daily_output} 件/天，70000 件约需 {total_days:.0f} 个工作日。大批量交付必须采用自动送料、双主轴或多机并行。"
+    )
     lines.append("")
 
     report_path.write_text("\n".join(lines), encoding="utf-8")

@@ -26,9 +26,7 @@ import pytest
 from app.middleware.input_validator import validate_file_path
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -56,9 +54,7 @@ def outside_file(tmp_path):
     return secret
 
 
-# ---------------------------------------------------------------------------
 # 基础白名单测试
-# ---------------------------------------------------------------------------
 
 
 class TestWhitelistAllowed:
@@ -87,9 +83,7 @@ class TestWhitelistAllowed:
         assert errors == []
 
 
-# ---------------------------------------------------------------------------
 # 路径遍历攻击向量
-# ---------------------------------------------------------------------------
 
 
 class TestPathTraversal:
@@ -158,10 +152,7 @@ class TestPathTraversal:
         else:
             assert isinstance(errors, list)
             # 若被拒绝，至少有一条消息说明原因
-            assert any(
-                "不在允许的访问范围内" in e or "不存在" in e or "无法解析" in e
-                for e in errors
-            )
+            assert any("不在允许的访问范围内" in e or "不存在" in e or "无法解析" in e for e in errors)
 
     def test_long_path_attack(self, allowed_root, tmp_path):
         # 创建深嵌套，构造一个超长但仍在白名单内的合法路径
@@ -223,9 +214,7 @@ class TestPathTraversal:
         assert errors == []
 
 
-# ---------------------------------------------------------------------------
 # 边界与平台兼容
-# ---------------------------------------------------------------------------
 
 
 class TestPathEdgeCases:

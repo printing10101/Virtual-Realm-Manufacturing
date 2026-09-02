@@ -24,9 +24,7 @@ from unittest.mock import patch
 import pytest
 
 
-# =============================================================================
 # 模块导入测试
-# =============================================================================
 
 
 class TestModuleImport:
@@ -87,9 +85,7 @@ class TestModuleImport:
         assert not missing, f"缺失端点: {missing}"
 
 
-# =============================================================================
 # 精度告知机制测试
-# =============================================================================
 
 
 class TestPrecisionDisclaimer:
@@ -138,9 +134,7 @@ class TestPrecisionDisclaimer:
         )
         # 警告消息必须明确告知无量纲输出 + 不允许进入工艺仿真链路
         msg = disclaimer.warning_message
-        assert "无量纲" in msg or "未标定" in msg or "不可" in msg, (
-            f"无标定块警告消息未明确告知风险: {msg}"
-        )
+        assert "无量纲" in msg or "未标定" in msg or "不可" in msg, f"无标定块警告消息未明确告知风险: {msg}"
 
     def test_precision_disclaimer_calibrated_warning(self):
         """T06: 有标定块时仍要求 CAM 二次校验。"""
@@ -169,21 +163,11 @@ class TestPrecisionDisclaimer:
 
         # 工业硬门槛必须覆盖：良品率 / 公差 / 持证操作员 / 签字保险 / CAM 校验 / 工程师助手定位
         all_gates_text = " ".join(gates)
-        assert "良品率" in all_gates_text or "0 缺陷" in all_gates_text, (
-            f"工业硬门槛未提及良品率: {gates}"
-        )
-        assert "0.01" in all_gates_text or "配合面" in all_gates_text, (
-            f"工业硬门槛未提及配合面公差: {gates}"
-        )
-        assert "持证" in all_gates_text or "操作员" in all_gates_text, (
-            f"工业硬门槛未提及 CNC 持证操作员: {gates}"
-        )
-        assert "CAM" in all_gates_text or "校验" in all_gates_text, (
-            f"工业硬门槛未提及 CAM 二次校验: {gates}"
-        )
-        assert "工程师助手" in all_gates_text or "助手" in all_gates_text, (
-            f"工业硬门槛未明确系统定位: {gates}"
-        )
+        assert "良品率" in all_gates_text or "0 缺陷" in all_gates_text, f"工业硬门槛未提及良品率: {gates}"
+        assert "0.01" in all_gates_text or "配合面" in all_gates_text, f"工业硬门槛未提及配合面公差: {gates}"
+        assert "持证" in all_gates_text or "操作员" in all_gates_text, f"工业硬门槛未提及 CNC 持证操作员: {gates}"
+        assert "CAM" in all_gates_text or "校验" in all_gates_text, f"工业硬门槛未提及 CAM 二次校验: {gates}"
+        assert "工程师助手" in all_gates_text or "助手" in all_gates_text, f"工业硬门槛未明确系统定位: {gates}"
 
     def test_three_precision_tiers(self):
         """T08: 三档精度规格声明齐全 + 当前档 specs 完整。
@@ -215,9 +199,7 @@ class TestPrecisionDisclaimer:
         assert "配合面" in text or "0.01" in text or "H7" in text
 
 
-# =============================================================================
 # 尺度归一化逻辑测试（不依赖 trimesh）
-# =============================================================================
 
 
 class TestScaleNormalizationLogic:
@@ -238,10 +220,9 @@ class TestScaleNormalizationLogic:
         assert disclaimer.scale_factor == 1.0
         # 警告消息必须明确告知不可用于工艺仿真
         msg = disclaimer.warning_message
-        assert any(
-            keyword in msg
-            for keyword in ["工艺仿真", "无量纲", "不可", "不允许", "未标定"]
-        ), f"无标定块警告未明确告知不可进入工艺仿真链路: {msg}"
+        assert any(keyword in msg for keyword in ["工艺仿真", "无量纲", "不可", "不允许", "未标定"]), (
+            f"无标定块警告未明确告知不可进入工艺仿真链路: {msg}"
+        )
 
     def test_calibrated_output_still_requires_cam_validation(self):
         """T12: 有标定块时 calibrated=True，但仍需 CAM 二次校验。"""
@@ -314,9 +295,7 @@ class TestScaleNormalizationLogic:
         assert "无量纲" in result.message or "未提供标定块" in result.message
 
 
-# =============================================================================
 # 任务状态机测试
-# =============================================================================
 
 
 class TestTaskStateMachine:
@@ -335,9 +314,7 @@ class TestTaskStateMachine:
             "failed",
             "timeout",
         }
-        assert expected.issubset(statuses), (
-            f"任务状态枚举不完整，缺失: {expected - statuses}"
-        )
+        assert expected.issubset(statuses), f"任务状态枚举不完整，缺失: {expected - statuses}"
 
     def test_task_store_singleton(self):
         """T16: get_task_store 返回单例。"""
@@ -415,14 +392,10 @@ class TestTaskStateMachine:
             "total_duration_seconds",
             "error_message",
         }
-        assert required.issubset(set(d.keys())), (
-            f"ReconstructionResult.to_dict 缺失字段: {required - set(d.keys())}"
-        )
+        assert required.issubset(set(d.keys())), f"ReconstructionResult.to_dict 缺失字段: {required - set(d.keys())}"
 
 
-# =============================================================================
 # API 端点契约测试（不触发实际重建）
-# =============================================================================
 
 
 class TestAPIContract:
@@ -530,9 +503,7 @@ class TestAPIContract:
         assert data.get("code") != 0
 
 
-# =============================================================================
 # 条件导入与启动安全测试
-# =============================================================================
 
 
 class TestConditionalImport:
@@ -544,16 +515,12 @@ class TestConditionalImport:
         # 这里只检查源码中是否包含条件导入块
         main_py_path = Path(__file__).resolve().parent.parent / "app" / "main.py"
         content = main_py_path.read_text(encoding="utf-8")
-        assert "_IMAGE_TO_3D_AVAILABLE" in content, (
-            "main.py 中未发现 _IMAGE_TO_3D_AVAILABLE 条件导入标志"
-        )
+        assert "_IMAGE_TO_3D_AVAILABLE" in content, "main.py 中未发现 _IMAGE_TO_3D_AVAILABLE 条件导入标志"
         # 重构后（V2.7.0）路由经 router_registry 集中注册：
         # adr_pipeline.py 通过 conditional_include 条件挂载 image_to_3d 路由
         adr_path = Path(__file__).resolve().parent.parent / "app" / "api" / "routers" / "adr_pipeline.py"
         adr_content = adr_path.read_text(encoding="utf-8")
-        assert "image_to_3d" in adr_content, (
-            "router_registry 中未发现 image_to_3d 路由注册（adr_pipeline.py）"
-        )
+        assert "image_to_3d" in adr_content, "router_registry 中未发现 image_to_3d 路由注册（adr_pipeline.py）"
 
     def test_requirements_contains_trimesh(self):
         """T27: requirements.txt 包含 trimesh（尺度归一化核心依赖）。"""
@@ -565,16 +532,9 @@ class TestConditionalImport:
     def test_no_pycolmap_dependency_required(self):
         """T28: 模块不依赖 pycolmap（采用 subprocess 外部二进制模式）。"""
         # colmap_runner.py 应使用 subprocess 调用外部二进制，而非 pycolmap 绑定
-        colmap_runner_path = (
-            Path(__file__).resolve().parent.parent
-            / "app"
-            / "image_to_3d"
-            / "colmap_runner.py"
-        )
+        colmap_runner_path = Path(__file__).resolve().parent.parent / "app" / "image_to_3d" / "colmap_runner.py"
         content = colmap_runner_path.read_text(encoding="utf-8")
         # 不应出现 import pycolmap
-        assert "import pycolmap" not in content, (
-            "colmap_runner.py 不应依赖 pycolmap（采用 subprocess 外部二进制模式）"
-        )
+        assert "import pycolmap" not in content, "colmap_runner.py 不应依赖 pycolmap（采用 subprocess 外部二进制模式）"
         # 应使用 subprocess 调用外部二进制
         assert "subprocess" in content, "colmap_runner.py 应使用 subprocess 调用 COLMAP 二进制"

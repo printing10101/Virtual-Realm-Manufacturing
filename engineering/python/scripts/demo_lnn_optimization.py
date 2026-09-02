@@ -41,9 +41,7 @@ from app.ai.lnn.inference.predictor import LNNPredictor
 from app.ai.lnn.inference.registry import LNNModelRegistry
 
 
-# ---------------------------------------------------------------------------
 # 数据模型
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -72,9 +70,7 @@ class ScenarioResult:
     error: str | None = None
 
 
-# ---------------------------------------------------------------------------
 # 三种切削方案（基于 XM-100 能力与 45 钢加工经验）
-# ---------------------------------------------------------------------------
 
 
 SCENARIOS: list[CuttingScenario] = [
@@ -111,9 +107,7 @@ SCENARIOS: list[CuttingScenario] = [
 ]
 
 
-# ---------------------------------------------------------------------------
 # 核心展示逻辑
-# ---------------------------------------------------------------------------
 
 
 def build_predictor() -> LNNPredictor:
@@ -215,18 +209,13 @@ def print_comparison_table(results: list[ScenarioResult]) -> None:
     print("XM-100 LNN 切削参数优化对比（45 钢 / φ10 立铣刀 / 方肩铣削）")
     print("=" * 92)
     print(
-        f"{'方案':<14}{'转速(RPM)':<12}{'进给(mm/min)':<14}{'切深(mm)':<10}"
-        f"{'预测力':<12}{'推理(ms)':<10}{'综合分':<10}"
+        f"{'方案':<14}{'转速(RPM)':<12}{'进给(mm/min)':<14}{'切深(mm)':<10}{'预测力':<12}{'推理(ms)':<10}{'综合分':<10}"
     )
     print("-" * 92)
     for r in results:
         s = r.scenario
         eval_ = evaluate_scenario(r)
-        pred_str = (
-            f"{eval_['predicted_force']:.2f}"
-            if eval_["predicted_force"] is not None
-            else "N/A"
-        )
+        pred_str = f"{eval_['predicted_force']:.2f}" if eval_["predicted_force"] is not None else "N/A"
         print(
             f"{s.name:<14}{s.spindle_speed:<12}{s.feed_rate:<14}{s.depth_of_cut:<10}"
             f"{pred_str:<12}{r.inference_time_ms:<10.2f}{eval_['total_score']:<10.2f}"
@@ -278,18 +267,12 @@ def write_reports(results: list[ScenarioResult], output_dir: str) -> None:
         f.write("- **工序**: 方肩铣削\n")
         f.write(f"- **生成时间**: {report_data['timestamp']}\n\n")
         f.write("## 方案对比\n\n")
-        f.write(
-            "| 方案 | 描述 | 转速(RPM) | 进给(mm/min) | 切深(mm) | 预测力 | 综合分 |\n"
-        )
+        f.write("| 方案 | 描述 | 转速(RPM) | 进给(mm/min) | 切深(mm) | 预测力 | 综合分 |\n")
         f.write("|------|------|-----------|--------------|----------|--------|--------|\n")
         for r in results:
             s = r.scenario
             eval_ = evaluate_scenario(r)
-            pred_str = (
-                f"{eval_['predicted_force']:.2f}"
-                if eval_["predicted_force"] is not None
-                else "N/A"
-            )
+            pred_str = f"{eval_['predicted_force']:.2f}" if eval_["predicted_force"] is not None else "N/A"
             f.write(
                 f"| {s.name} | {s.description} | {s.spindle_speed} | {s.feed_rate} | "
                 f"{s.depth_of_cut} | {pred_str} | {eval_['total_score']:.2f} |\n"
@@ -308,9 +291,7 @@ def write_reports(results: list[ScenarioResult], output_dir: str) -> None:
             f.write(f"- **进给**: {s.feed_rate} mm/min\n")
             f.write(f"- **切深**: {s.depth_of_cut} mm\n")
             f.write(f"- **相对 MRR**: {eval_['mrr_relative']}\n")
-            f.write(
-                f"- **预测力**: {eval_['predicted_force'] if eval_['predicted_force'] is not None else 'N/A'}\n"
-            )
+            f.write(f"- **预测力**: {eval_['predicted_force'] if eval_['predicted_force'] is not None else 'N/A'}\n")
             f.write(f"- **推理耗时**: {r.inference_time_ms:.3f} ms\n")
             f.write(f"- **置信度**: {r.confidence:.4f}\n")
             f.write(f"- **综合评分**: {eval_['total_score']:.2f} / 100\n")
@@ -345,10 +326,7 @@ def main() -> int:
         if r.error:
             print(f"    ✗ {s.name} 失败: {r.error}")
         else:
-            print(
-                f"    ✓ {s.name} 完成，耗时 {r.inference_time_ms:.2f} ms，"
-                f"置信度 {r.confidence:.4f}"
-            )
+            print(f"    ✓ {s.name} 完成，耗时 {r.inference_time_ms:.2f} ms，置信度 {r.confidence:.4f}")
         results.append(r)
 
     print("\n[4/4] 生成对比报告...")

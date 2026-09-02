@@ -1,4 +1,4 @@
-﻿"""数据集 / 版本 / 血缘 / 实验快照集成测试.
+"""数据集 / 版本 / 血缘 / 实验快照集成测试.
 
 对应 ADR-005 阶段 2 验收标准（core-contracts-design.md 第 1260-1263 行）：
     - 同一 snapshot 在干净环境复现，关键指标差异 < 1%
@@ -15,6 +15,7 @@
 
 CI 标记：@pytest.mark.integration（被 ci.yml Job 2 `pytest tests/integration/ -m integration` 收集）。
 """
+
 from __future__ import annotations
 
 import json
@@ -42,9 +43,7 @@ from app.data.lineage_store import LineageStore, make_lineage_record
 from app.observability.snapshot import SnapshotStore
 
 
-# ---------------------------------------------------------------------------
 # 辅助构造
-# ---------------------------------------------------------------------------
 
 
 def _make_schema() -> DatasetSchema:
@@ -90,9 +89,7 @@ def _make_lineage(
     )
 
 
-# ---------------------------------------------------------------------------
 # 数据库 + 存储目录 fixture
-# ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture
@@ -108,15 +105,18 @@ async def dataset_store(monkeypatch, tmp_path):
 
     # 清空单例，使下次 get_sessionmaker 重新基于新 DB_URL 创建
     from app.database import connection as _conn
+
     _conn._singletons._engine = None
     _conn._singletons._sessionmaker = None
 
     # 创建全部表（dataset / dataset_versions / lineage_records / experiment_snapshots 等）
     from app.database.models.training_task import init_db
+
     await init_db()
 
     # 重置 store 单例（强制下次 get_dataset_store 用新实例）
     import app.data.dataset_store as _ds_mod
+
     _ds_mod._singleton = None
 
     store = DatasetStore()
@@ -133,13 +133,16 @@ async def lineage_store(monkeypatch):
     """提供基于内存 SQLite 的 LineageStore（与 dataset_store 共享 DB_URL）."""
     monkeypatch.setenv("DB_URL", "sqlite+aiosqlite:///:memory:")
     from app.database import connection as _conn
+
     _conn._singletons._engine = None
     _conn._singletons._sessionmaker = None
 
     from app.database.models.training_task import init_db
+
     await init_db()
 
     import app.data.lineage_store as _ls_mod
+
     _ls_mod._singleton = None
 
     store = LineageStore()
@@ -155,13 +158,16 @@ async def snapshot_store(monkeypatch):
     """提供基于内存 SQLite 的 SnapshotStore."""
     monkeypatch.setenv("DB_URL", "sqlite+aiosqlite:///:memory:")
     from app.database import connection as _conn
+
     _conn._singletons._engine = None
     _conn._singletons._sessionmaker = None
 
     from app.database.models.training_task import init_db
+
     await init_db()
 
     import app.observability.snapshot as _ss_mod
+
     _ss_mod._snapshot_store = None
 
     store = SnapshotStore()
@@ -182,15 +188,18 @@ async def integrated_stores(monkeypatch, tmp_path):
     monkeypatch.setenv("DATASET_STORE_DIR", str(tmp_path / "datasets"))
 
     from app.database import connection as _conn
+
     _conn._singletons._engine = None
     _conn._singletons._sessionmaker = None
 
     from app.database.models.training_task import init_db
+
     await init_db()
 
     import app.data.dataset_store as _ds_mod
     import app.data.lineage_store as _ls_mod
     import app.observability.snapshot as _ss_mod
+
     _ds_mod._singleton = None
     _ls_mod._singleton = None
     _ss_mod._snapshot_store = None
@@ -208,9 +217,7 @@ async def integrated_stores(monkeypatch, tmp_path):
     _conn._singletons._sessionmaker = None
 
 
-# ---------------------------------------------------------------------------
 # 测试用例：DatasetStore
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -238,28 +245,20 @@ class TestDatasetStoreCrud:
     async def test_create_dataset_rejects_duplicate_name(self, dataset_store):
         """重名创建应抛 ValueError."""
         schema = _make_schema()
-        await dataset_store.create(
-            name="dup_name", schema=schema, owner_id="u1"
-        )
+        await dataset_store.create(name="dup_name", schema=schema, owner_id="u1")
         with pytest.raises(ValueError, match="已存在"):
-            await dataset_store.create(
-                name="dup_name", schema=schema, owner_id="u2"
-            )
+            await dataset_store.create(name="dup_name", schema=schema, owner_id="u2")
 
     @pytest.mark.asyncio
     async def test_create_dataset_rejects_empty_name(self, dataset_store):
         """空 name 应抛 ValueError."""
         with pytest.raises(ValueError, match="name 不能为空"):
-            await dataset_store.create(
-                name="", schema=_make_schema(), owner_id="u1"
-            )
+            await dataset_store.create(name="", schema=_make_schema(), owner_id="u1")
 
     @pytest.mark.asyncio
     async def test_commit_version_auto_increments_patch(self, dataset_store):
         """version=None 自动递增 patch：0.0.1 → 0.0.2 → 0.0.3."""
-        ds_id = await dataset_store.create(
-            name="auto_inc", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="auto_inc", schema=_make_schema(), owner_id="u1")
 
         v1 = await dataset_store.commit_version(ds_id, _make_records(3, seed=0))
         assert v1.version == "0.0.1"
@@ -275,23 +274,15 @@ class TestDatasetStoreCrud:
     @pytest.mark.asyncio
     async def test_commit_version_explicit_version_conflict(self, dataset_store):
         """显式指定已存在版本号应抛 ValueError."""
-        ds_id = await dataset_store.create(
-            name="conflict_v", schema=_make_schema(), owner_id="u1"
-        )
-        await dataset_store.commit_version(
-            ds_id, _make_records(2), version="1.0.0"
-        )
+        ds_id = await dataset_store.create(name="conflict_v", schema=_make_schema(), owner_id="u1")
+        await dataset_store.commit_version(ds_id, _make_records(2), version="1.0.0")
         with pytest.raises(ValueError, match="版本已存在"):
-            await dataset_store.commit_version(
-                ds_id, _make_records(2), version="1.0.0"
-            )
+            await dataset_store.commit_version(ds_id, _make_records(2), version="1.0.0")
 
     @pytest.mark.asyncio
     async def test_commit_version_promotes_draft_to_published(self, dataset_store):
         """首次 commit 后 dataset 状态从 DRAFT → PUBLISHED."""
-        ds_id = await dataset_store.create(
-            name="promote", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="promote", schema=_make_schema(), owner_id="u1")
         detail_before = await dataset_store.get_dataset(ds_id)
         assert detail_before["status"] == DatasetStatus.DRAFT.value
 
@@ -301,13 +292,9 @@ class TestDatasetStoreCrud:
         assert detail_after["status"] == DatasetStatus.PUBLISHED.value
 
     @pytest.mark.asyncio
-    async def test_get_version_returns_latest_when_version_none(
-        self, dataset_store
-    ):
+    async def test_get_version_returns_latest_when_version_none(self, dataset_store):
         """get_version(version=None) 返回最新版本."""
-        ds_id = await dataset_store.create(
-            name="get_latest", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="get_latest", schema=_make_schema(), owner_id="u1")
         await dataset_store.commit_version(ds_id, _make_records(2, seed=0))
         await dataset_store.commit_version(ds_id, _make_records(2, seed=10))
 
@@ -317,9 +304,7 @@ class TestDatasetStoreCrud:
     @pytest.mark.asyncio
     async def test_get_version_specific_version(self, dataset_store):
         """get_version(version="0.0.1") 返回指定版本."""
-        ds_id = await dataset_store.create(
-            name="get_specific", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="get_specific", schema=_make_schema(), owner_id="u1")
         await dataset_store.commit_version(ds_id, _make_records(2, seed=0))
         await dataset_store.commit_version(ds_id, _make_records(2, seed=10))
 
@@ -329,9 +314,7 @@ class TestDatasetStoreCrud:
     @pytest.mark.asyncio
     async def test_get_version_nonexistent_raises(self, dataset_store):
         """不存在版本号应抛 ValueError."""
-        ds_id = await dataset_store.create(
-            name="get_404", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="get_404", schema=_make_schema(), owner_id="u1")
         await dataset_store.commit_version(ds_id, _make_records(2))
 
         with pytest.raises(ValueError, match="版本不存在"):
@@ -340,9 +323,7 @@ class TestDatasetStoreCrud:
     @pytest.mark.asyncio
     async def test_read_returns_records_in_batches(self, dataset_store):
         """read 流式返回 records，按 batch_size 分批."""
-        ds_id = await dataset_store.create(
-            name="read_batch", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="read_batch", schema=_make_schema(), owner_id="u1")
         records = _make_records(7)
         await dataset_store.commit_version(ds_id, records)
 
@@ -350,7 +331,7 @@ class TestDatasetStoreCrud:
         async for batch in dataset_store.read(ds_id, batch_size=3):
             batches.append(batch)
 
-        # 7 条 / batch_size=3 → 3 批 (3 + 3 + 1)
+        # 7 条 / batch_size=3 3 批 (3 + 3 + 1)
         assert len(batches) == 3
         assert len(batches[0]) == 3
         assert len(batches[1]) == 3
@@ -363,13 +344,9 @@ class TestDatasetStoreCrud:
         assert all_records[-1]["tool_wear"] == records[-1]["tool_wear"]
 
     @pytest.mark.asyncio
-    async def test_list_versions_descending_by_created_at(
-        self, dataset_store
-    ):
+    async def test_list_versions_descending_by_created_at(self, dataset_store):
         """list_versions 按创建时间倒序."""
-        ds_id = await dataset_store.create(
-            name="list_v", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="list_v", schema=_make_schema(), owner_id="u1")
         await dataset_store.commit_version(ds_id, _make_records(1, seed=0))
         await dataset_store.commit_version(ds_id, _make_records(1, seed=1))
         await dataset_store.commit_version(ds_id, _make_records(1, seed=2))
@@ -383,9 +360,7 @@ class TestDatasetStoreCrud:
     @pytest.mark.asyncio
     async def test_deprecate_published_version(self, dataset_store):
         """PUBLISHED → DEPRECATED 合法转换."""
-        ds_id = await dataset_store.create(
-            name="deprecate", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="deprecate", schema=_make_schema(), owner_id="u1")
         await dataset_store.commit_version(ds_id, _make_records(2))
 
         await dataset_store.deprecate(ds_id, "0.0.1")
@@ -396,9 +371,7 @@ class TestDatasetStoreCrud:
     @pytest.mark.asyncio
     async def test_deprecate_nonexistent_version_raises(self, dataset_store):
         """deprecate 不存在版本应抛 ValueError."""
-        ds_id = await dataset_store.create(
-            name="deprecate_404", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="deprecate_404", schema=_make_schema(), owner_id="u1")
         with pytest.raises(ValueError, match="版本不存在"):
             await dataset_store.deprecate(ds_id, "9.9.9")
 
@@ -410,7 +383,7 @@ class TestDatasetStoreCrud:
         ds2 = await dataset_store.create(name="ds_b", schema=schema, owner_id="bob")
         ds3 = await dataset_store.create(name="ds_c", schema=schema, owner_id="alice")
 
-        # alice 创建 ds1 后提交版本 → PUBLISHED
+        # alice 创建 ds1 后提交版本 PUBLISHED
         await dataset_store.commit_version(ds1, _make_records(1))
 
         # 按 owner 过滤
@@ -423,9 +396,7 @@ class TestDatasetStoreCrud:
         assert bob_items[0]["name"] == "ds_b"
 
         # 按 status 过滤（published 只有 ds1）
-        published = await dataset_store.list_datasets(
-            status=DatasetStatus.PUBLISHED
-        )
+        published = await dataset_store.list_datasets(status=DatasetStatus.PUBLISHED)
         assert len(published) == 1
         assert published[0]["name"] == "ds_a"
 
@@ -436,9 +407,7 @@ class TestDatasetStoreCrud:
         assert len(rest_items) == 1
 
 
-# ---------------------------------------------------------------------------
 # 测试用例：内容寻址 hash 去重
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -448,28 +417,18 @@ class TestContentAddressedStorage:
     @pytest.mark.asyncio
     async def test_identical_records_produce_same_hash(self, dataset_store):
         """相同 records → 相同 content_hash."""
-        ds_id = await dataset_store.create(
-            name="hash_same", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="hash_same", schema=_make_schema(), owner_id="u1")
         records = _make_records(5, seed=42)
 
         v1 = await dataset_store.commit_version(ds_id, records)
-        v2 = await dataset_store.commit_version(
-            ds_id, list(records), version="0.0.2"
-        )
+        v2 = await dataset_store.commit_version(ds_id, list(records), version="0.0.2")
 
-        assert v1.content_hash == v2.content_hash, (
-            "相同 records 必须产生相同 content_hash"
-        )
+        assert v1.content_hash == v2.content_hash, "相同 records 必须产生相同 content_hash"
 
     @pytest.mark.asyncio
-    async def test_different_records_produce_different_hash(
-        self, dataset_store
-    ):
+    async def test_different_records_produce_different_hash(self, dataset_store):
         """不同 records → 不同 content_hash."""
-        ds_id = await dataset_store.create(
-            name="hash_diff", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="hash_diff", schema=_make_schema(), owner_id="u1")
         v1 = await dataset_store.commit_version(ds_id, _make_records(5, seed=0))
         v2 = await dataset_store.commit_version(ds_id, _make_records(5, seed=1))
 
@@ -489,15 +448,11 @@ class TestContentAddressedStorage:
     @pytest.mark.asyncio
     async def test_storage_file_deduplicated(self, dataset_store, monkeypatch):
         """相同 hash 的文件不重复写入（_write_records 幂等）."""
-        ds_id = await dataset_store.create(
-            name="dedup", schema=_make_schema(), owner_id="u1"
-        )
+        ds_id = await dataset_store.create(name="dedup", schema=_make_schema(), owner_id="u1")
         records = _make_records(3, seed=100)
 
         v1 = await dataset_store.commit_version(ds_id, records)
-        v2 = await dataset_store.commit_version(
-            ds_id, list(records), version="0.0.2"
-        )
+        v2 = await dataset_store.commit_version(ds_id, list(records), version="0.0.2")
 
         # 两个版本指向同一物理文件
         assert v1.storage_uri == v2.storage_uri
@@ -507,12 +462,11 @@ class TestContentAddressedStorage:
         assert path.exists(), "内容寻址文件应存在"
         # 再次写入同一 hash 不报错（幂等）
         from app.data.dataset_store import _write_records
+
         _write_records(v1.content_hash, list(records))
 
 
-# ---------------------------------------------------------------------------
 # 测试用例：LineageStore
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -530,7 +484,7 @@ class TestLineageStore:
     @pytest.mark.asyncio
     async def test_get_upstream_one_hop(self, lineage_store):
         """单跳上游查询：target ← inputs."""
-        # lineage: artifact://raw → dataset://ds/v1
+        # lineage: artifact://raw dataset://ds/v1
         rec = make_lineage_record(
             target="dataset://ds/v1",
             source_type="task",
@@ -573,7 +527,7 @@ class TestLineageStore:
         await lineage_store.record(rec1)
         await lineage_store.record(rec2)
 
-        # 从 model://ltc/1.0 反查上游 → 应找到 rec2 + rec1
+        # 从 model://ltc/1.0 反查上游 应找到 rec2 + rec1
         upstream = await lineage_store.get_upstream("model://ltc/1.0", depth=5)
         assert len(upstream) == 2
         ids = {r.record_id for r in upstream}
@@ -602,9 +556,7 @@ class TestLineageStore:
         await lineage_store.record(rec1)
         await lineage_store.record(rec2)
 
-        downstream = await lineage_store.get_downstream(
-            "artifact://raw/data.csv", depth=5
-        )
+        downstream = await lineage_store.get_downstream("artifact://raw/data.csv", depth=5)
         assert len(downstream) == 2
         ids = {r.record_id for r in downstream}
         assert rec1.record_id in ids
@@ -616,9 +568,7 @@ class TestLineageStore:
         rec = _make_lineage()
         await lineage_store.record(rec)
 
-        result = await lineage_store.get_upstream(
-            "dataset://test-ds/0.0.1", depth=0
-        )
+        result = await lineage_store.get_upstream("dataset://test-ds/0.0.1", depth=0)
         assert result == []
 
     @pytest.mark.asyncio
@@ -662,9 +612,7 @@ class TestLineageStore:
         assert len(graph["edges"]) >= 1
 
 
-# ---------------------------------------------------------------------------
 # 测试用例：SnapshotStore
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -739,12 +687,18 @@ class TestSnapshotStore:
     async def test_list_filter_by_created_by(self, snapshot_store):
         """list 按 created_by 过滤."""
         await snapshot_store.create(
-            config={}, dataset_versions=[], model_uri="m://1",
-            metrics={}, created_by="alice",
+            config={},
+            dataset_versions=[],
+            model_uri="m://1",
+            metrics={},
+            created_by="alice",
         )
         await snapshot_store.create(
-            config={}, dataset_versions=[], model_uri="m://2",
-            metrics={}, created_by="bob",
+            config={},
+            dataset_versions=[],
+            model_uri="m://2",
+            metrics={},
+            created_by="bob",
         )
 
         alice_only = await snapshot_store.list(filters={"created_by": "alice"})
@@ -755,17 +709,21 @@ class TestSnapshotStore:
     async def test_list_filter_by_model_uri(self, snapshot_store):
         """list 按 model_uri 精确匹配过滤."""
         await snapshot_store.create(
-            config={}, dataset_versions=[], model_uri="model://ltc/1.0.0",
-            metrics={}, created_by="u1",
+            config={},
+            dataset_versions=[],
+            model_uri="model://ltc/1.0.0",
+            metrics={},
+            created_by="u1",
         )
         await snapshot_store.create(
-            config={}, dataset_versions=[], model_uri="model://ltc/2.0.0",
-            metrics={}, created_by="u1",
+            config={},
+            dataset_versions=[],
+            model_uri="model://ltc/2.0.0",
+            metrics={},
+            created_by="u1",
         )
 
-        filtered = await snapshot_store.list(
-            filters={"model_uri": "model://ltc/1.0.0"}
-        )
+        filtered = await snapshot_store.list(filters={"model_uri": "model://ltc/1.0.0"})
         assert len(filtered) == 1
         assert filtered[0].model_uri == "model://ltc/1.0.0"
 
@@ -776,9 +734,7 @@ class TestSnapshotStore:
             await snapshot_store.reproduce("nonexistent-id-99999")
 
     @pytest.mark.asyncio
-    async def test_reproduce_without_workflow_spec_raises_notimplemented(
-        self, snapshot_store
-    ):
+    async def test_reproduce_without_workflow_spec_raises_notimplemented(self, snapshot_store):
         """config 无 workflow_spec 字段 → NotImplementedError."""
         snap = await snapshot_store.create(
             config={"hyperparams": {"lr": 0.001}},  # 无 workflow_spec
@@ -792,9 +748,7 @@ class TestSnapshotStore:
             await snapshot_store.reproduce(snap.snapshot_id)
 
     @pytest.mark.asyncio
-    async def test_reproduce_with_workflow_spec_invokes_runner(
-        self, snapshot_store, monkeypatch
-    ):
+    async def test_reproduce_with_workflow_spec_invokes_runner(self, snapshot_store, monkeypatch):
         """config 含 workflow_spec → 调用 WorkflowRunner.run，返回 workflow_run_id."""
 
         # Mock WorkflowRunner：捕获 spec + owner_id，返回固定 run_id
@@ -812,6 +766,7 @@ class TestSnapshotStore:
 
         # 延迟导入，patch reproduce 内部调用
         import app.observability.snapshot as _ss_mod
+
         # reproduce 内部 `from app.workflow.runner import get_workflow_runner`
         # 通过 sys.modules 注入 mock 模块
         import sys
@@ -848,9 +803,7 @@ class TestSnapshotStore:
         assert captured["owner_id"] == "system:reproduce"
 
 
-# ---------------------------------------------------------------------------
 # 测试用例：集成场景（dataset + lineage + snapshot）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -863,9 +816,7 @@ class TestIntegratedReproducibility:
     """
 
     @pytest.mark.asyncio
-    async def test_full_pipeline_dataset_to_snapshot(
-        self, integrated_stores
-    ):
+    async def test_full_pipeline_dataset_to_snapshot(self, integrated_stores):
         """完整流水线：创建数据集 → 提交版本 → 记录血缘 → 创建快照 → 查询."""
         ds_store: IDatasetStore = integrated_stores["dataset"]
         lin_store: ILineageStore = integrated_stores["lineage"]
@@ -881,7 +832,7 @@ class TestIntegratedReproducibility:
         records = _make_records(10, seed=0)
         version = await ds_store.commit_version(ds_id, records)
 
-        # 2. 记录血缘：raw → dataset → model
+        # 2. 记录血缘：raw dataset model
         dataset_uri = f"dataset://integrated_ds/{version.version}"
         model_uri = f"model://ltc/{version.version}"
 
@@ -913,8 +864,7 @@ class TestIntegratedReproducibility:
                     "name": "ltc-train-pipeline",
                     "version": "1.0.0",
                     "nodes": [
-                        {"node_id": "train", "task_type": "ltc_train",
-                         "params": {"epochs": 50, "lr": 0.001}},
+                        {"node_id": "train", "task_type": "ltc_train", "params": {"epochs": 50, "lr": 0.001}},
                     ],
                     "edges": [],
                     "outputs": {"model": "${train.model}"},
@@ -946,9 +896,7 @@ class TestIntegratedReproducibility:
         node_ids = {n["id"] for n in graph["nodes"]}
         assert model_uri in node_ids, "血缘图应含模型节点"
         assert dataset_uri in node_ids, "血缘图应含数据集节点"
-        assert "artifact://raw/phm2010.csv" in node_ids, (
-            "血缘图应含原始数据节点（反查到训练数据源）"
-        )
+        assert "artifact://raw/phm2010.csv" in node_ids, "血缘图应含原始数据节点（反查到训练数据源）"
 
         # 6. 从 dataset 也能反查到 raw
         upstream_of_ds = await lin_store.get_upstream(dataset_uri, depth=5)
@@ -956,17 +904,13 @@ class TestIntegratedReproducibility:
         assert upstream_of_ds[0].operation == "preprocess"
 
         # 7. 验收点 3：相同 data_hash + config 在干净环境可复现
-        #    （模拟"同一 snapshot 复现"——此处验证 hash 稳定性即可）
+        # （模拟"同一 snapshot 复现"——此处验证 hash 稳定性即可）
         same_records = _make_records(10, seed=0)
         same_hash = _compute_content_hash(same_records)
-        assert same_hash == version.content_hash, (
-            "相同 records 必须产生相同 hash（可复现性基础）"
-        )
+        assert same_hash == version.content_hash, "相同 records 必须产生相同 hash（可复现性基础）"
 
     @pytest.mark.asyncio
-    async def test_snapshot_list_query_by_git_sha(
-        self, integrated_stores
-    ):
+    async def test_snapshot_list_query_by_git_sha(self, integrated_stores):
         """快照列表支持按 git_sha 过滤查询."""
         snap_store: ISnapshotStore = integrated_stores["snapshot"]
 
@@ -985,18 +929,16 @@ class TestIntegratedReproducibility:
         assert len(items) == 3
         git_sha = items[0].git_sha
 
-        # 按 git_sha 过滤 → 应返回全部 3 个（同环境）
+        # 按 git_sha 过滤 应返回全部 3 个（同环境）
         filtered = await snap_store.list(filters={"git_sha": git_sha})
         assert len(filtered) == 3
 
-        # 查一个不存在的 git_sha → 空
+        # 查一个不存在的 git_sha 空
         empty = await snap_store.list(filters={"git_sha": "nonexistent-sha-xxx"})
         assert empty == []
 
 
-# ---------------------------------------------------------------------------
 # 契约接口合规性（实现类确实是契约子类）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration

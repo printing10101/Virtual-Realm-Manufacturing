@@ -43,7 +43,7 @@ FORCE_DIRECTION_RATIOS: dict[str, float] = {
     "Fy_ratio": 0.4,  # 径向力 / 主切削力
 }
 
-# 材料名规范化：中文名 / materials.json ID / 常见别名 → 标准系数表 ID
+# 材料名规范化：中文名 / materials.json ID / 常见别名 标准系数表 ID
 # （真实输入常为中文材料名或数据库 ID，如 "45#钢"、"steel_45"、"TC4"）
 MATERIAL_ALIASES: dict[str, str] = {
     # 碳钢

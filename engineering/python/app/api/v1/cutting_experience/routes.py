@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/experience", tags=["cutting-experience"])
 
-#: 单次批量采集上限（超过应走 CSV 导入的持久化管道）
+#: : 单次批量采集上限（超过应走 CSV 导入的持久化管道）
 BATCH_LIMIT = 1000
 
 

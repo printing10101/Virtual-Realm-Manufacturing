@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class _CostQueryMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _conn: Any
 
     def get_task_costs(self, task_id: str) -> list[dict[str, Any]]:

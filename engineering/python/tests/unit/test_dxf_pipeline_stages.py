@@ -18,9 +18,7 @@ from app.dxf._pipeline_stages import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 阶段声明对齐
-# ---------------------------------------------------------------------------
 
 
 class TestStageDeclaration:
@@ -90,7 +88,7 @@ class TestShouldAbort:
         assert should_abort_after(StageKey.VALIDATION, failed=True) is True
 
     def test_degradable_stage_failure_continues(self) -> None:
-        # pipeline.py：3D模型转换失败 → 降级继续
+        # pipeline.py：3D模型转换失败 降级继续
         assert should_abort_after(StageKey.MODEL_CONVERT, failed=True) is False
 
 

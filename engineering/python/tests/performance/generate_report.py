@@ -54,9 +54,7 @@ from compare_baseline import (  # noqa: E402
 )
 
 
-# ---------------------------------------------------------------------------
 # 配置
-# ---------------------------------------------------------------------------
 
 PERF_DIR = Path(__file__).parent
 BASELINE_FILE = PERF_DIR / "baseline" / "BASELINE.json"
@@ -75,9 +73,8 @@ TEST_FILES = [
 REGRESSION_THRESHOLD_PCT = CMP_REGRESSION_THRESHOLD_PCT
 
 
-# ---------------------------------------------------------------------------
 # 运行测试
-# ---------------------------------------------------------------------------
+
 
 def run_perf_tests() -> Dict[str, Any]:
     """运行所有性能测试套件，返回结构化结果。
@@ -106,23 +103,28 @@ def run_perf_tests() -> Dict[str, Any]:
     print(f"[INFO] 运行性能测试套件 ({len(TEST_FILES)} 个文件)...")
 
     cmd = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         *[str(PERF_DIR / f) for f in TEST_FILES],
         "-v",
         "-s",  # 不捕获 print 输出，让测量值（如 "P95: 3.2ms"）出现在 stdout 中，
-               # 供 _parse_pytest_output 提取为 output_lines，用于数值回归对比。
+        # 供 _parse_pytest_output 提取为 output_lines，用于数值回归对比。
         "--tb=short",
-        "-o", "addopts=",
+        "-o",
+        "addopts=",
         # 注意：不能加 -q，否则 pytest 只输出进度点而不打印每个测试的
         # ``node_id PASSED`` 行，_parse_pytest_output 将无法解析测试状态。
         # 禁用 anyio / pytest-asyncio 插件：它们通过 setuptools pytest11 入口点
         # 在 pytest 启动早期（``load_setuptools_entrypoints`` 阶段，早于 conftest.py
-        # 加载）触发 ``import asyncio`` → ``asyncio.windows_events`` →
+        # 加载）触发 ``import asyncio`` ``asyncio.windows_events``
         # OSError [WinError 10038]，导致整个 pytest 进程崩溃、LATEST.json 的 tests
         # 数组为空。性能测试不依赖 anyio/asyncio 插件，禁用它们可绕过 WinSock
         # 损坏问题。根本修复仍需 ``netsh winsock reset`` + 重启系统。
-        "-p", "no:anyio",
-        "-p", "no:asyncio",
+        "-p",
+        "no:anyio",
+        "-p",
+        "no:asyncio",
     ]
 
     start = datetime.now()
@@ -168,9 +170,8 @@ def _parse_pytest_output(output: str) -> List[Dict[str, Any]]:
     return parse_pytest_output(output)
 
 
-# ---------------------------------------------------------------------------
 # 对比基线
-# ---------------------------------------------------------------------------
+
 
 def compare_with_baseline(latest: Dict[str, Any], baseline: Dict[str, Any]) -> Dict[str, Any]:
     """对比最新结果与基线，识别回归 / 新增 / 移除。
@@ -202,10 +203,7 @@ def compare_with_baseline(latest: Dict[str, Any], baseline: Dict[str, Any]) -> D
 
     # 假设基线中所有测试都是 PASS（BASELINE.json 不存储状态，只存储阈值）
     # 回归定义：本次 FAILED/ERROR
-    regressions = [
-        key for key in (latest_tests & baseline_tests)
-        if latest_status[key] in ("FAILED", "ERROR")
-    ]
+    regressions = [key for key in (latest_tests & baseline_tests) if latest_status[key] in ("FAILED", "ERROR")]
 
     # 新增测试：本次有但基线没有
     new_tests = sorted(latest_tests - baseline_tests)
@@ -231,9 +229,8 @@ def compare_with_baseline(latest: Dict[str, Any], baseline: Dict[str, Any]) -> D
     }
 
 
-# ---------------------------------------------------------------------------
 # 生成 Markdown 报告
-# ---------------------------------------------------------------------------
+
 
 def generate_markdown_report(
     latest: Dict[str, Any],
@@ -275,7 +272,7 @@ def generate_markdown_report(
         )
     lines.append("")
 
-    # ----- 摘要 -----
+    # 摘要
     lines.append("## 摘要")
     lines.append("")
     lines.append("| 指标 | 值 |")
@@ -299,7 +296,7 @@ def generate_markdown_report(
     lines.append(status_badge)
     lines.append("")
 
-    # ----- 回归告警 -----
+    # 回归告警
     lines.append("## 回归分析")
     lines.append("")
     regressions = comparison["regressions"]
@@ -345,10 +342,7 @@ def generate_markdown_report(
                 reg_str = "n/a"
             else:
                 reg_str = f"+{c['regression_pct']:.1f}%"
-            lines.append(
-                f"| `{test_label}` | {c['metric']} | "
-                f"{base_str} | {actual_str} | {reg_str} |"
-            )
+            lines.append(f"| `{test_label}` | {c['metric']} | {base_str} | {actual_str} | {reg_str} |")
         lines.append("")
         lines.append(
             "> 建议使用 `git diff` 检查最近提交，定位性能回归根因。"
@@ -379,14 +373,9 @@ def generate_markdown_report(
                 imp_str = "n/a"
             else:
                 imp_str = f"{c['regression_pct']:.1f}%"
-            lines.append(
-                f"| `{test_label}` | {c['metric']} | "
-                f"{base_str} | {actual_str} | {imp_str} |"
-            )
+            lines.append(f"| `{test_label}` | {c['metric']} | {base_str} | {actual_str} | {imp_str} |")
         lines.append("")
-        lines.append(
-            "> 建议更新 `BASELINE.json` 以反映新的性能水平。"
-        )
+        lines.append("> 建议更新 `BASELINE.json` 以反映新的性能水平。")
         lines.append("")
 
     if new_tests:
@@ -409,7 +398,7 @@ def generate_markdown_report(
             lines.append(f"- `{r}`")
         lines.append("")
 
-    # ----- 测试矩阵 -----
+    # 测试矩阵
     lines.append("## 测试矩阵")
     lines.append("")
     lines.append("按测试类分组的状态详情：")
@@ -436,7 +425,7 @@ def generate_markdown_report(
             lines.append(f"| `{t['test_name']}` | {status_icon} {t['status']} | {failure_escaped} |")
         lines.append("")
 
-    # ----- 性能指标锚点 -----
+    # 性能指标锚点
     lines.append("## 性能指标锚点")
     lines.append("")
     lines.append("以下数据来自 `BASELINE.json`，作为回归检测的基准：")
@@ -461,13 +450,10 @@ def generate_markdown_report(
             notes = info.get("notes", "")
             # 转义管道符
             notes_escaped = notes.replace("|", "\\|")
-            lines.append(
-                f"| {class_name} | `{test_name}` | {metric} | "
-                f"{value_str} | {unit} | {notes_escaped} |"
-            )
+            lines.append(f"| {class_name} | `{test_name}` | {metric} | {value_str} | {unit} | {notes_escaped} |")
     lines.append("")
 
-    # ----- 数值对比明细 -----
+    # 数值对比明细
     if metric_comparison is not None:
         lines.append("## 数值对比明细")
         lines.append("")
@@ -524,12 +510,10 @@ def generate_markdown_report(
                     f"{base_str} | {actual_str} | {reg_str} | {direction} | {notes} |"
                 )
             lines.append("")
-            lines.append(
-                "> 状态图标: ✅ 正常 / ⚠️ 回归 / 🎉 改进 / ❓ 未提取到数值 / ⏭️ 跳过"
-            )
+            lines.append("> 状态图标: ✅ 正常 / ⚠️ 回归 / 🎉 改进 / ❓ 未提取到数值 / ⏭️ 跳过")
             lines.append("")
 
-    # ----- 失败项详情 -----
+    # 失败项详情
     failed_tests = [t for t in latest.get("tests", []) if t["status"] == "FAILED"]
     if failed_tests:
         lines.append("## 失败项详情")
@@ -548,7 +532,7 @@ def generate_markdown_report(
                 lines.append("  ```")
             lines.append("")
 
-    # ----- 阈值配置 -----
+    # 阈值配置
     threshold_multipliers = baseline.get("threshold_multipliers", {})
     if threshold_multipliers:
         lines.append("## 阈值配置")
@@ -560,29 +544,23 @@ def generate_markdown_report(
             lines.append(f"| {k} | {v_str} |")
         lines.append("")
 
-    # ----- 改进建议 -----
+    # 改进建议
     # 使用动态计数器避免条件分支导致编号不连续
     lines.append("## 改进建议")
     lines.append("")
     suggestions: List[str] = []
 
     if summary["failed"] > 0:
-        suggestions.append(
-            f"**优先修复 {summary['failed']} 个失败项**：参见上方『失败项详情』。"
-        )
+        suggestions.append(f"**优先修复 {summary['failed']} 个失败项**：参见上方『失败项详情』。")
     if summary["error"] > 0:
-        suggestions.append(
-            f"**排查 {summary['error']} 个错误项**：可能是导入错误或 fixture 失败。"
-        )
+        suggestions.append(f"**排查 {summary['error']} 个错误项**：可能是导入错误或 fixture 失败。")
     if regressions:
         suggestions.append(
             f"**状态回归根因分析**：{len(regressions)} 项测试由 PASS 变为 FAILED/ERROR，"
             f"建议 `git diff` 检查最近提交是否影响功能。"
         )
     if metric_regressions:
-        reg_names = ", ".join(
-            f"`{r.get('test_name', 'unknown')}`" for r in metric_regressions[:5]
-        )
+        reg_names = ", ".join(f"`{r.get('test_name', 'unknown')}`" for r in metric_regressions[:5])
         more = f" 等 {len(metric_regressions)} 项" if len(metric_regressions) > 5 else ""
         suggestions.append(
             f"**数值回归根因分析**：{reg_names}{more} 数值指标超出 ±{REGRESSION_THRESHOLD_PCT:.0f}% 阈值，"
@@ -590,8 +568,7 @@ def generate_markdown_report(
         )
     if new_tests:
         suggestions.append(
-            f"**更新 BASELINE.json**：有 {len(new_tests)} 个新测试未纳入基线，"
-            f"建议运行后手动采样 P95 值并添加到基线。"
+            f"**更新 BASELINE.json**：有 {len(new_tests)} 个新测试未纳入基线，建议运行后手动采样 P95 值并添加到基线。"
         )
     if metric_improvements:
         suggestions.append(
@@ -601,19 +578,14 @@ def generate_markdown_report(
 
     if not suggestions:
         suggestions.append("**状态健康**：所有测试通过，无回归，无数值告警。")
-        suggestions.append(
-            "**定期更新基线**：每次性能优化提交后，更新 BASELINE.json 中的锚点值。"
-        )
-        suggestions.append(
-            "**CI 集成**：将 `compare_baseline.py` 加入 CI 流水线，"
-            "在 PR 合并前自动检测回归。"
-        )
+        suggestions.append("**定期更新基线**：每次性能优化提交后，更新 BASELINE.json 中的锚点值。")
+        suggestions.append("**CI 集成**：将 `compare_baseline.py` 加入 CI 流水线，在 PR 合并前自动检测回归。")
 
     for idx, s in enumerate(suggestions, 1):
         lines.append(f"{idx}. {s}")
     lines.append("")
 
-    # ----- 元信息 -----
+    # 元信息
     lines.append("## 元信息")
     lines.append("")
     lines.append("- **报告生成器**: `tests/performance/generate_report.py`")
@@ -678,9 +650,8 @@ def _regression_icon(c: Dict[str, Any]) -> str:
     return "⏭️"
 
 
-# ---------------------------------------------------------------------------
 # 主入口
-# ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Markdown 性能报告生成器")
@@ -729,9 +700,7 @@ def main():
     metric_comparison = compare_metrics(latest, baseline)
 
     # 生成报告
-    report = generate_markdown_report(
-        latest, baseline, comparison, metric_comparison=metric_comparison
-    )
+    report = generate_markdown_report(latest, baseline, comparison, metric_comparison=metric_comparison)
 
     # 输出文件
     if args.output:
@@ -754,9 +723,11 @@ def main():
     summary = latest["summary"]
     print(f"\n{'=' * 60}")
     print("性能测试摘要:")
-    print(f"  通过: {summary['passed']}, 失败: {summary['failed']}, "
-          f"跳过: {summary['skipped']}, xfail: {summary['xfail']}, "
-          f"错误: {summary['error']}")
+    print(
+        f"  通过: {summary['passed']}, 失败: {summary['failed']}, "
+        f"跳过: {summary['skipped']}, xfail: {summary['xfail']}, "
+        f"错误: {summary['error']}"
+    )
     if comparison["regressions"]:
         print(f"  失败回归: {len(comparison['regressions'])} 项")
         for r in comparison["regressions"]:
@@ -780,23 +751,16 @@ def main():
                         reg_str = "n/a"
                     else:
                         reg_str = f"+{c['regression_pct']:.1f}%"
-                    print(
-                        f"    - {test_label} [{c['metric']}]: "
-                        f"{base_str} -> {actual_str} "
-                        f"({reg_str})"
-                    )
+                    print(f"    - {test_label} [{c['metric']}]: {base_str} -> {actual_str} ({reg_str})")
     if comparison["new_tests"]:
         print(f"  新增测试: {len(comparison['new_tests'])} 项（建议更新基线）")
     print(f"{'=' * 60}")
 
     # 退出码（用于 CI 卡点）：
-    #   0 = 全部通过且无数值回归
-    #   1 = 测试失败/错误 或 存在 ≥ 阈值% 的数值回归
+    # 0 = 全部通过且无数值回归
+    # 1 = 测试失败/错误 或 存在 ≥ 阈值% 的数值回归
     has_test_failure = summary["failed"] > 0 or summary["error"] > 0
-    has_metric_regression = (
-        metric_comparison is not None
-        and metric_comparison.get("regression_count", 0) > 0
-    )
+    has_metric_regression = metric_comparison is not None and metric_comparison.get("regression_count", 0) > 0
     if has_test_failure or has_metric_regression:
         return 1
     return 0

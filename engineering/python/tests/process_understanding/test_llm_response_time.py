@@ -1,5 +1,3 @@
-
-
 """
 响应性能测试
 
@@ -14,8 +12,6 @@ import time
 import pytest
 
 from app.ai.process_understanding.task_classifier import (
-
-
     RuleBasedClassifier,
     TaskType,
 )
@@ -23,10 +19,7 @@ from app.ai.process_understanding.task_classifier import (
 pytestmark = pytest.mark.skip_ci
 
 
-
-# ---------------------------------------------------------------------------
 # 性能基准配置
-# ---------------------------------------------------------------------------
 
 # 最大允许延迟 (ms)
 
@@ -126,9 +119,7 @@ class TestClassificationPerformance:
 
             avg = sum(latencies) / len(latencies)
             print(f"  {task_type.label}: avg={avg:.2f}ms")
-            assert avg < MAX_CLASSIFICATION_LATENCY_MS, (
-                f"{task_type.label} 分类延迟 {avg:.2f}ms 超限"
-            )
+            assert avg < MAX_CLASSIFICATION_LATENCY_MS, f"{task_type.label} 分类延迟 {avg:.2f}ms 超限"
 
 
 class TestFallbackPerformance:
@@ -141,16 +132,12 @@ class TestFallbackPerformance:
         latencies = []
         for _ in range(50):
             start = time.perf_counter()
-            SolutionGenerator._create_fallback_solution(
-                "45钢", "IT8", "单件", "CNC加工中心"
-            )
+            SolutionGenerator._create_fallback_solution("45钢", "IT8", "单件", "CNC加工中心")
             latencies.append((time.perf_counter() - start) * 1000)
 
         avg = sum(latencies) / len(latencies)
         print(f"\n降级方案生成: avg={avg:.2f}ms")
-        assert avg < MAX_FALLBACK_LATENCY_MS, (
-            f"降级方案生成延迟 {avg:.2f}ms 超过 {MAX_FALLBACK_LATENCY_MS}ms"
-        )
+        assert avg < MAX_FALLBACK_LATENCY_MS, f"降级方案生成延迟 {avg:.2f}ms 超过 {MAX_FALLBACK_LATENCY_MS}ms"
 
     def test_fallback_explanation_generation_latency(self):
         """降级解释生成延迟 < 100ms。"""
@@ -176,9 +163,7 @@ class TestFallbackPerformance:
 
         avg = sum(latencies) / len(latencies)
         print(f"降级解释生成: avg={avg:.2f}ms")
-        assert avg < MAX_EXPLANATION_LATENCY_MS, (
-            f"降级解释生成延迟 {avg:.2f}ms 超过 {MAX_EXPLANATION_LATENCY_MS}ms"
-        )
+        assert avg < MAX_EXPLANATION_LATENCY_MS, f"降级解释生成延迟 {avg:.2f}ms 超过 {MAX_EXPLANATION_LATENCY_MS}ms"
 
     def test_entity_extraction_latency(self):
         """实体提取解析延迟 < 50ms。"""
@@ -228,9 +213,7 @@ class TestStressPerformance:
         avg = total_ms / len(test_cases)
 
         print(f"\n并发分类压力测试: {len(test_cases)}cases, avg={avg:.2f}ms, total={total_ms:.0f}ms")
-        assert avg < STRESS_TEST_MAX_AVG_LATENCY_MS, (
-            f"压力测试平均延迟 {avg:.2f}ms 超限"
-        )
+        assert avg < STRESS_TEST_MAX_AVG_LATENCY_MS, f"压力测试平均延迟 {avg:.2f}ms 超限"
 
     def test_memory_stability(self):
         """内存稳定性测试 - 大量分类后不应泄漏。"""
@@ -258,9 +241,7 @@ class TestDataStructurePerformance:
         """ProcessSolution.to_dict() 性能。"""
         from app.ai.process_understanding.solution_generator import SolutionGenerator
 
-        solution = SolutionGenerator._create_fallback_solution(
-            "45钢", "IT8", "单件", "CNC加工中心"
-        )
+        solution = SolutionGenerator._create_fallback_solution("45钢", "IT8", "单件", "CNC加工中心")
 
         latencies = []
         for _ in range(100):
@@ -275,8 +256,6 @@ class TestDataStructurePerformance:
     def test_explanation_to_dict_performance(self):
         """PredictionExplanation.to_dict() 性能。"""
         from app.ai.process_understanding.prediction_explainer import (
-
-
             PredictionExplainer,
             PredictionData,
         )

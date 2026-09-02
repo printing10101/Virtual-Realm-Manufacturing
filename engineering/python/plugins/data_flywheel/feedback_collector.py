@@ -41,6 +41,7 @@ Schema
     notes              str      用户备注
     metadata           dict     扩展元数据
 """
+
 from __future__ import annotations
 
 import logging
@@ -59,17 +60,15 @@ from app.contracts.dataset import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 常量与 Schema
-# ---------------------------------------------------------------------------
 
-#: 反馈数据集名称（全局唯一，多次实例化复用同一数据集）
+#: : 反馈数据集名称（全局唯一，多次实例化复用同一数据集）
 FEEDBACK_DATASET_NAME = "feedback_records"
 
-#: 三种合法反馈类型
+#: : 三种合法反馈类型
 VALID_FEEDBACK_TYPES = frozenset({"annotation", "adoption", "correction"})
 
-#: 反馈数据集 schema（与 DatasetSchema.validate 兼容）
+#: : 反馈数据集 schema（与 DatasetSchema.validate 兼容）
 FEEDBACK_DATASET_SCHEMA = DatasetSchema(
     fields={
         "feedback_id": {
@@ -136,9 +135,7 @@ FEEDBACK_DATASET_SCHEMA = DatasetSchema(
 )
 
 
-# ---------------------------------------------------------------------------
 # 默认配置（与 plugin.yaml 的 feedback_collection section 对齐）
-# ---------------------------------------------------------------------------
 
 _DEFAULT_CONFIG = {
     "window_hours": 24,
@@ -147,9 +144,7 @@ _DEFAULT_CONFIG = {
 }
 
 
-# ---------------------------------------------------------------------------
 # FeedbackCollector
-# ---------------------------------------------------------------------------
 
 
 class FeedbackCollector:
@@ -197,14 +192,9 @@ class FeedbackCollector:
         self._total_flushed = 0
 
         if self._store is None:
-            logger.warning(
-                "FeedbackCollector 初始化时 dataset_store=None，"
-                "反馈将仅记录日志不落盘（降级模式）"
-            )
+            logger.warning("FeedbackCollector 初始化时 dataset_store=None，反馈将仅记录日志不落盘（降级模式）")
 
-    # ------------------------------------------------------------------
     # 属性
-    # ------------------------------------------------------------------
 
     @property
     def config(self) -> dict[str, Any]:
@@ -232,9 +222,7 @@ class FeedbackCollector:
         """累计已落盘的反馈数."""
         return self._total_flushed
 
-    # ------------------------------------------------------------------
     # 公开 API：三种反馈类型
-    # ------------------------------------------------------------------
 
     async def record_annotation(
         self,
@@ -303,9 +291,7 @@ class FeedbackCollector:
             feedback_id
         """
         if not isinstance(accepted, bool):
-            raise ValueError(
-                f"accepted 必须为 bool 类型，收到: {type(accepted).__name__}"
-            )
+            raise ValueError(f"accepted 必须为 bool 类型，收到: {type(accepted).__name__}")
         return await self._record(
             feedback_type="adoption",
             user_id=user_id,
@@ -362,9 +348,7 @@ class FeedbackCollector:
             metadata=metadata,
         )
 
-    # ------------------------------------------------------------------
     # 内部：通用记录逻辑
-    # ------------------------------------------------------------------
 
     async def _record(
         self,
@@ -381,9 +365,7 @@ class FeedbackCollector:
     ) -> str:
         """通用记录入口：构造反馈记录并入缓冲区，必要时触发 flush."""
         if feedback_type not in VALID_FEEDBACK_TYPES:
-            raise ValueError(
-                f"feedback_type 不合法: {feedback_type}，合法值: {VALID_FEEDBACK_TYPES}"
-            )
+            raise ValueError(f"feedback_type 不合法: {feedback_type}，合法值: {VALID_FEEDBACK_TYPES}")
         if not user_id:
             raise ValueError("user_id 不能为空")
 
@@ -438,9 +420,7 @@ class FeedbackCollector:
             )
         return feedback_id
 
-    # ------------------------------------------------------------------
     # flush：批量提交到 IDatasetStore
-    # ------------------------------------------------------------------
 
     async def flush(self) -> Optional[DatasetVersion]:
         """将缓冲区中的反馈批量提交为一个新版本.
@@ -458,9 +438,7 @@ class FeedbackCollector:
             RuntimeError: dataset_store 未注入
         """
         if self._store is None:
-            raise RuntimeError(
-                "FeedbackCollector.dataset_store 为 None，无法 flush（降级模式）"
-            )
+            raise RuntimeError("FeedbackCollector.dataset_store 为 None，无法 flush（降级模式）")
 
         with self._flush_lock:
             # 取出缓冲区快照（在锁内操作，避免并发 flush 拿到不同切片）
@@ -482,8 +460,7 @@ class FeedbackCollector:
                 self._last_flush_at = datetime.now(timezone.utc)
                 self._total_flushed += len(records_to_flush)
                 logger.info(
-                    "FeedbackCollector flush 成功: dataset_id=%s version=%s "
-                    "rows=%d total_flushed=%d",
+                    "FeedbackCollector flush 成功: dataset_id=%s version=%s rows=%d total_flushed=%d",
                     dataset_id,
                     version.version,
                     len(records_to_flush),
@@ -515,9 +492,7 @@ class FeedbackCollector:
                 name=FEEDBACK_DATASET_NAME,
                 schema=FEEDBACK_DATASET_SCHEMA,
                 owner_id=self._owner_id,
-                description=(
-                    "数据飞轮反馈采集层数据集（用户标注/采纳/修正记录）"
-                ),
+                description=("数据飞轮反馈采集层数据集（用户标注/采纳/修正记录）"),
             )
             self._dataset_id = new_id
             logger.info(
@@ -526,14 +501,12 @@ class FeedbackCollector:
                 FEEDBACK_DATASET_NAME,
             )
         except Exception as e:  # noqa: BLE001
-            # name 唯一约束冲突 → 复用稳定 ID（与 TrainingDataLakeAdapter 一致）。
+            # name 唯一约束冲突 复用稳定 ID（与 TrainingDataLakeAdapter 一致）。
             # 前提：store 已按同一稳定规则存在 fb- 数据集（另一实例创建），
             # 否则 flush 会提交失败并放回缓冲区（ERROR 日志，数据不丢）。
             import hashlib
 
-            stable_id = "fb-" + hashlib.sha256(
-                FEEDBACK_DATASET_NAME.encode("utf-8")
-            ).hexdigest()[:16]
+            stable_id = "fb-" + hashlib.sha256(FEEDBACK_DATASET_NAME.encode("utf-8")).hexdigest()[:16]
             logger.warning(
                 "FeedbackCollector create 失败（%s），复用 stable_id=%s",
                 e,
@@ -555,19 +528,13 @@ class FeedbackCollector:
             metadata={
                 "record_count": record_count,
                 "owner_id": self._owner_id,
-                "feedback_types_collected": list(
-                    {r["feedback_type"] for r in self._buffer}
-                ),
+                "feedback_types_collected": list({r["feedback_type"] for r in self._buffer}),
             },
         )
 
-    # ------------------------------------------------------------------
     # 读取：供 p4-4 飞轮指标使用
-    # ------------------------------------------------------------------
 
-    async def get_recent_feedback(
-        self, *, hours: Optional[int] = None
-    ) -> list[dict[str, Any]]:
+    async def get_recent_feedback(self, *, hours: Optional[int] = None) -> list[dict[str, Any]]:
         """读取最近 N 小时内的反馈记录.
 
         从最新版本的反馈数据集中读取全部记录，按 timestamp 过滤时间窗口。

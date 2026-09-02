@@ -42,30 +42,22 @@ def _make_record(**overrides) -> CuttingExperience:
     return CuttingExperience(**base)
 
 
-# ---------------------------------------------------------------------------
 # Contract validation
-# ---------------------------------------------------------------------------
 
 
 class TestCuttingParameters:
     def test_valid_parameters(self) -> None:
-        p = CuttingParameters(
-            depth_of_cut_mm=1.5, feed_mm_per_rev=0.15, spindle_rpm=6000
-        )
+        p = CuttingParameters(depth_of_cut_mm=1.5, feed_mm_per_rev=0.15, spindle_rpm=6000)
         assert p.depth_of_cut_mm == 1.5
         assert p.coolant == CoolantMode.FLOOD  # default
 
     def test_zero_depth_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            CuttingParameters(
-                depth_of_cut_mm=0, feed_mm_per_rev=0.15, spindle_rpm=6000
-            )
+            CuttingParameters(depth_of_cut_mm=0, feed_mm_per_rev=0.15, spindle_rpm=6000)
 
     def test_negative_feed_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            CuttingParameters(
-                depth_of_cut_mm=1.0, feed_mm_per_rev=-0.1, spindle_rpm=6000
-            )
+            CuttingParameters(depth_of_cut_mm=1.0, feed_mm_per_rev=-0.1, spindle_rpm=6000)
 
     def test_extra_field_forbidden(self) -> None:
         with pytest.raises(ValidationError):
@@ -112,9 +104,7 @@ class TestCuttingExperience:
             CuttingExperience(
                 machine_id="M1",
                 tool_id="T1",
-                parameters=CuttingParameters(
-                    depth_of_cut_mm=1.0, feed_mm_per_rev=0.1, spindle_rpm=5000
-                ),
+                parameters=CuttingParameters(depth_of_cut_mm=1.0, feed_mm_per_rev=0.1, spindle_rpm=5000),
                 results=CuttingResults(cycle_time_s=10),
                 bogus=1,
             )
@@ -173,9 +163,7 @@ class TestExperienceStats:
             ExperienceStats(total_records=1, ok_rate=1.5)
 
 
-# ---------------------------------------------------------------------------
 # ORM conversion
-# ---------------------------------------------------------------------------
 
 
 class TestCuttingExperienceRecord:
@@ -186,9 +174,7 @@ class TestCuttingExperienceRecord:
             tags={"batch": "b1", "recommended": True},
             operator="张三",
             source="mtconnect",
-            anomalies=[
-                MachiningAnomaly(anomaly_type="overload", severity=5, message="过载")
-            ],
+            anomalies=[MachiningAnomaly(anomaly_type="overload", severity=5, message="过载")],
         )
         model = CuttingExperienceRecord.from_contract(rec)
         assert model.machine_id == "VM-001"

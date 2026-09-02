@@ -59,9 +59,7 @@ from app.tasks.registry import get_task_registry
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 内部辅助：状态/进度转换
-# ---------------------------------------------------------------------------
 
 _INTERNAL_TO_CONTRACT_STATUS: dict[InternalTaskStatus, ContractTaskStatus] = {
     InternalTaskStatus.PENDING: ContractTaskStatus.PENDING,
@@ -164,7 +162,7 @@ def _parse_sse_event(raw: str) -> tuple[str | None, dict | None]:
     return event_type, data
 
 
-# 内部 SSE event_type → (契约 TaskStatus, progress_hint)
+# 内部 SSE event_type (契约 TaskStatus, progress_hint)
 # progress_hint 为 None 表示保留上一进度（不更新）
 _EVENT_TO_STATUS: dict[str, tuple[ContractTaskStatus, float | None]] = {
     "queued": (ContractTaskStatus.QUEUED, 0.0),
@@ -176,9 +174,7 @@ _EVENT_TO_STATUS: dict[str, tuple[ContractTaskStatus, float | None]] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # ITaskExecutor 实现
-# ---------------------------------------------------------------------------
 
 
 class AsyncTaskManagerAdapter(ITaskExecutor):
@@ -398,9 +394,7 @@ class AsyncTaskManagerAdapter(ITaskExecutor):
             self._manager.unsubscribe(job_id, queue)
 
 
-# ---------------------------------------------------------------------------
 # 单例访问
-# ---------------------------------------------------------------------------
 
 _adapter: AsyncTaskManagerAdapter | None = None
 # [H2] asyncio.Lock 懒初始化：模块级创建会绑定到导入时的事件循环，

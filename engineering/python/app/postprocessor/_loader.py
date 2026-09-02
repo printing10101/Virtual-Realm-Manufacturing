@@ -287,7 +287,7 @@ def create_limiter(config: dict) -> ConfigLimiter:
     return ConfigLimiter(config)
 
 
-# --- 常量（自 config_loader 迁移） ---
+# 常量（自 config_loader 迁移）
 CONTROLLER_FULL_ID_MAP = {
     "fanuc_0i": "fanuc",
     "siemens_840d": "siemens",

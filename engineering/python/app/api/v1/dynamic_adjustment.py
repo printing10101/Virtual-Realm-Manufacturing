@@ -14,7 +14,7 @@
 """
 
 # 注意：不可加 from __future__ import annotations！
-# 该 import + @safe_endpoint 装饰器 + 本地 Pydantic 模型参数 → Pydantic 前向引用
+# 该 import + @safe_endpoint 装饰器 + 本地 Pydantic 模型参数 Pydantic 前向引用
 # 解析失败（PydanticUndefinedAnnotation: name 'X' is not defined），详见运维手册。
 
 import logging
@@ -42,9 +42,7 @@ router = APIRouter(
 )
 
 
-# =====================================================================
 # 请求 / 响应模型
-# =====================================================================
 
 
 class WearStateRequest(BaseModel):
@@ -180,9 +178,7 @@ class CalibrateWearRequest(BaseModel):
     )
 
 
-# =====================================================================
 # 辅助函数
-# =====================================================================
 
 
 def _to_wear_state(req: WearStateRequest) -> WearState:
@@ -226,9 +222,7 @@ def _machine_caps_to_dict(
     return result or None
 
 
-# =====================================================================
 # 1. 参数调整决策
-# =====================================================================
 
 
 @router.post("/decide", dependencies=[Depends(require_permission("adjust:read"))])
@@ -244,7 +238,7 @@ async def decide_adjustment(req: DecideRequest):
     current = _to_current_params(req.current)
     caps = _machine_caps_to_dict(req.machine_capabilities)
 
-    # 集成点 1：可选实时校正入参 → EWMA 校正闭环
+    # 集成点 1：可选实时校正入参 EWMA 校正闭环
     calibration_kwargs: dict[str, Any] = {}
     if req.calibration is not None:
         calibration_kwargs = {
@@ -281,9 +275,7 @@ async def decide_adjustment(req: DecideRequest):
     )
 
 
-# =====================================================================
 # 2. NC 代码改写
-# =====================================================================
 
 
 @router.post("/rewrite-nc", dependencies=[Depends(require_permission("adjust:write"))])
@@ -335,9 +327,7 @@ async def rewrite_nc_code(req: RewriteNCRequest):
     )
 
 
-# =====================================================================
 # 3. 端到端闭环
-# =====================================================================
 
 
 @router.post("/closed-loop", dependencies=[Depends(require_permission("adjust:write"))])
@@ -352,7 +342,7 @@ async def closed_loop_adjustment(req: ClosedLoopRequest):
     current = _to_current_params(req.current)
     caps = _machine_caps_to_dict(req.machine_capabilities)
 
-    # 集成点 1：可选实时校正入参 → EWMA 校正闭环
+    # 集成点 1：可选实时校正入参 EWMA 校正闭环
     calibration_kwargs: dict[str, Any] = {}
     if req.calibration is not None:
         calibration_kwargs = {
@@ -361,7 +351,7 @@ async def closed_loop_adjustment(req: ClosedLoopRequest):
             "elapsed_time": req.calibration.elapsed_time,
         }
 
-    # Step 1: 决策（含可选 EWMA 校正）
+    # 决策（含可选 EWMA 校正）
     decision = orchestrator.decide_adjustment(
         wear=wear,
         current=current,
@@ -370,7 +360,7 @@ async def closed_loop_adjustment(req: ClosedLoopRequest):
         **calibration_kwargs,
     )
 
-    # Step 2: NC 改写
+    # NC 改写
     rewrite = orchestrator.rewrite_nc_code(
         gcode_text=req.nc_code,
         decision=decision,
@@ -394,9 +384,7 @@ async def closed_loop_adjustment(req: ClosedLoopRequest):
     )
 
 
-# =====================================================================
 # 4. 实时磨损校正
-# =====================================================================
 
 
 @router.post("/calibrate-wear", dependencies=[Depends(require_permission("adjust:write"))])
@@ -420,9 +408,7 @@ async def calibrate_wear(req: CalibrateWearRequest):
     )
 
 
-# =====================================================================
 # 5. 健康检查
-# =====================================================================
 
 
 @router.get("/health")

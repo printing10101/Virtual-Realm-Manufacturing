@@ -21,9 +21,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# ---------------------------------------------------------------------------
 # 枚举
-# ---------------------------------------------------------------------------
 
 
 class MachiningType(str, Enum):
@@ -55,9 +53,7 @@ class MachiningResult(str, Enum):
     SCRAP = "scrap"
 
 
-# ---------------------------------------------------------------------------
 # 参数与结果
-# ---------------------------------------------------------------------------
 
 
 class CuttingParameters(BaseModel):
@@ -88,9 +84,7 @@ class CuttingResults(BaseModel):
     result: MachiningResult = Field(default=MachiningResult.OK, description="加工结果")
 
 
-# ---------------------------------------------------------------------------
 # 异常记录
-# ---------------------------------------------------------------------------
 
 
 class MachiningAnomaly(BaseModel):
@@ -106,9 +100,7 @@ class MachiningAnomaly(BaseModel):
     occurred_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="发生时间")
 
 
-# ---------------------------------------------------------------------------
 # 主记录
-# ---------------------------------------------------------------------------
 
 
 class CuttingExperience(BaseModel):
@@ -140,9 +132,7 @@ class CuttingExperience(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="更新时间")
 
 
-# ---------------------------------------------------------------------------
 # 查询与统计
-# ---------------------------------------------------------------------------
 
 
 class ExperienceQuery(BaseModel):

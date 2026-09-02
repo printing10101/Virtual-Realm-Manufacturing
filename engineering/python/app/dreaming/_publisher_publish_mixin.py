@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class _PublisherPublishMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _check_demotion_thresholds: Callable[..., Any]
     _get_applicator: Callable[..., Any]
     _get_audit_recorder: Callable[..., Any]

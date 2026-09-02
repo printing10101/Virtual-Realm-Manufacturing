@@ -79,9 +79,7 @@ from app.services._package_io import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 自定义异常层级（与 ResourceCardService / ProjectSyncService 对齐）
-# ---------------------------------------------------------------------------
 
 
 class ProjectPackageError(RuntimeError):
@@ -112,9 +110,7 @@ class PackageConflictError(ProjectPackageError):
     """冲突策略 fail 触发（目标已存在同 URI 资源）."""
 
 
-# ---------------------------------------------------------------------------
 # 单例
-# ---------------------------------------------------------------------------
 
 
 def get_project_package_service() -> "ProjectPackageService":
@@ -127,9 +123,7 @@ def reset_project_package_service() -> None:
     ProjectPackageService.reset_instance()
 
 
-# ---------------------------------------------------------------------------
 # 服务实现
-# ---------------------------------------------------------------------------
 
 
 class ProjectPackageService(BaseSingletonService):

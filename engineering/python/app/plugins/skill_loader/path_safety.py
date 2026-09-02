@@ -12,7 +12,7 @@ import re
 
 
 class PathSafetyMixin:
-    # ---- 宿主契约：由主类 SkillLoader 提供 ----
+    # 宿主契约：由主类 SkillLoader 提供
     skills_base: str
     """路径净化 Mixin - 提供路径段净化与路径遍历检测。
 

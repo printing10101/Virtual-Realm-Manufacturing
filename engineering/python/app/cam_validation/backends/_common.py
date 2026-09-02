@@ -28,9 +28,7 @@ from typing import Any
 logger = logging.getLogger("app.cam_validation.cam_adapter")
 
 
-# =============================================================================
 # 常量
-# =============================================================================
 
 # 合法 CAM 后端集合（与 CamValidationConfig.__post_init__ 对齐）
 _VALID_BACKENDS: frozenset[str] = frozenset(
@@ -61,16 +59,14 @@ _VALID_STATUSES: frozenset[str] = frozenset(
 
 # NX Open / PowerMill subprocess 输出 JSON 报告的字段名约定
 # 子后端 subprocess 协议：
-#   argv = [executable, gcode_file_path, controller_type]
-#   stdout 输出 JSON：{"status": "pass"/"fail"/"error", "collisions": [...], "messages": [...]}
+# argv = [executable, gcode_file_path, controller_type]
+# stdout 输出 JSON：{"status": "pass"/"fail"/"error", "collisions": [...], "messages": [...]}
 _JSON_STATUS_FIELD: str = "status"
 _JSON_COLLISIONS_FIELD: str = "collisions"
 _JSON_MESSAGES_FIELD: str = "messages"
 
 
-# =============================================================================
 # CamSoftwareReport：CAM 软件校验结果归一化
-# =============================================================================
 
 
 @dataclass
@@ -142,9 +138,7 @@ class CamSoftwareReport:
         return self.status in {"skipped", "pass", "manual_pending"}
 
 
-# =============================================================================
 # 子后端抽象基类
-# =============================================================================
 
 
 class _BaseBackend:

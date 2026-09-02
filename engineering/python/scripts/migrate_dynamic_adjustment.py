@@ -1,16 +1,17 @@
 """Migrate dynamic_adjustment.py endpoints to @safe_endpoint decorator."""
+
 from pathlib import Path
 
 TARGET = Path(__file__).resolve().parent.parent / "app" / "api" / "v1" / "dynamic_adjustment.py"
 content = TARGET.read_text(encoding="utf-8")
 
-# Step 1: Replace import
+# Replace import
 content = content.replace(
     "from app.core.safe_errors import safe_error_message\n",
     "from app.core.endpoint_handler import safe_endpoint\n",
 )
 
-# Step 2: Replace each endpoint
+# Replace each endpoint
 replacements = [
     # (old_try_start, new_decorator, old_except_block)
     (

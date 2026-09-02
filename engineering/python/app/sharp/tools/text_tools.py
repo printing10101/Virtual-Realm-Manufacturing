@@ -19,9 +19,7 @@ from app.sharp.tools.base import BaseTool
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 工具实现
-# ---------------------------------------------------------------------------
 
 
 class TextRetrieveTool(BaseTool):

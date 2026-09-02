@@ -10,7 +10,7 @@ from app.process_planning._tool_models import HoleProcessPlan, MatchedTool
 
 
 class _MatchingMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _build_match_reason: Callable[..., Any]
     _calculate_suitability: Callable[..., Any]
     _estimate_drilling_time: Callable[..., Any]
@@ -45,7 +45,7 @@ class _MatchingMixin:
         if not process_name or not process_name.strip():
             raise QueryError("加工工序名称不能为空")
 
-        # Step 1: 查询该工序适用的所有刀具
+        # 查询该工序适用的所有刀具
         all_tools = self._data.get_tools_by_material_and_process(
             material_category,
             process_name,
@@ -66,27 +66,27 @@ class _MatchingMixin:
                 warnings=["建议向知识库添加该组合的专用刀具数据"],
             )
 
-        # Step 2: 按直径匹配最佳刀具
+        # 按直径匹配最佳刀具
         # 选择直径最接近hole_diameter的刀具（优先选择大于等于孔直径的，其次选最大的）
         best_tool = self._select_best_diameter(all_tools, hole_diameter)
 
-        # Step 3: 查询该材料+刀具系列的切削参数
+        # 查询该材料+刀具系列的切削参数
         cutting_params = None
         cp_list = self._data.get_cutting_parameters(material_id, best_tool.series)
         if cp_list:
             cutting_params = cp_list[0]  # 取第一个匹配的参数组
 
-        # Step 4: 计算适用度评分
+        # 计算适用度评分
         score = self._calculate_suitability(
             best_tool,
             hole_diameter,
             cutting_params,
         )
 
-        # Step 5: 生成匹配说明
+        # 生成匹配说明
         match_reason = self._build_match_reason(best_tool, hole_diameter, cutting_params)
 
-        # Step 6: 生成使用注意事项
+        # 生成使用注意事项
         warnings = self._generate_warnings(best_tool, hole_diameter, cutting_params)
 
         return MatchedTool(

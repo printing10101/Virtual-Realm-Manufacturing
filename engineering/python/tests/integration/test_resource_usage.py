@@ -20,9 +20,7 @@ from typing import Any
 import pytest
 
 
-# ---------------------------------------------------------------------------
 # 资源监控工具
-# ---------------------------------------------------------------------------
 
 
 class ResourceMonitor:
@@ -47,26 +45,31 @@ class ResourceMonitor:
         """获取CPU使用率（模拟/实际）."""
         try:
             import psutil
+
             return psutil.cpu_percent(interval=0.1)
         except ImportError:
             # 无psutil时返回模拟值
             import random
+
             return 45.0 + random.uniform(-5, 5)
 
     def _get_memory_usage(self) -> float:
         """获取内存使用率."""
         try:
             import psutil
+
             mem = psutil.virtual_memory()
             return mem.percent
         except ImportError:
             import random
+
             return 55.0 + random.uniform(-3, 3)
 
     def _get_gpu_memory_usage(self) -> float:
         """获取显存使用率."""
         try:
             import pynvml
+
             pynvml.nvmlInit()
             handle = pynvml.nvmlDeviceGetHandleByIndex(0)
             info = pynvml.nvmlDeviceGetMemoryInfo(handle)
@@ -78,6 +81,7 @@ class ResourceMonitor:
         """获取网络带宽占用(Mbps)."""
         try:
             import psutil
+
             net = psutil.net_io_counters()
             time.sleep(0.1)
             net2 = psutil.net_io_counters()
@@ -86,6 +90,7 @@ class ResourceMonitor:
             return (bytes_sent + bytes_recv) * 8 / (0.1 * 1_000_000)  # Mbps
         except ImportError:
             import random
+
             return random.uniform(5, 15)
 
     def get_statistics(self) -> dict[str, Any]:
@@ -125,9 +130,7 @@ class ResourceMonitor:
         }
 
 
-# ---------------------------------------------------------------------------
 # 资源使用测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -144,7 +147,7 @@ class TestResourceUsage:
     def setup_method(self):
         self.monitor = ResourceMonitor()
 
-    # ---------- 场景1资源使用 ----------
+    # 场景1资源使用
 
     def test_scenario1_resource_usage(self, temp_dir):
         """场景1（三视图到NC转换）资源使用测试."""
@@ -159,12 +162,14 @@ class TestResourceUsage:
 
         stats = self.monitor.get_statistics()
 
-        assert stats["cpu"]["avg"] < self.CPU_THRESHOLD, \
+        assert stats["cpu"]["avg"] < self.CPU_THRESHOLD, (
             f"CPU平均使用率{stats['cpu']['avg']:.1f}% >= {self.CPU_THRESHOLD}%"
-        assert stats["memory"]["avg"] < self.MEMORY_THRESHOLD, \
+        )
+        assert stats["memory"]["avg"] < self.MEMORY_THRESHOLD, (
             f"内存平均使用率{stats['memory']['avg']:.1f}% >= {self.MEMORY_THRESHOLD}%"
+        )
 
-    # ---------- 场景2资源使用 ----------
+    # 场景2资源使用
 
     def test_scenario2_resource_usage(self, normal_sensor_stream):
         """场景2（实时监控）资源使用测试."""
@@ -193,15 +198,17 @@ class TestResourceUsage:
         stats = self.monitor.get_statistics()
 
         # CPU应保持在阈值以下
-        assert stats["cpu"]["avg"] < self.CPU_THRESHOLD, \
+        assert stats["cpu"]["avg"] < self.CPU_THRESHOLD, (
             f"CPU平均使用率{stats['cpu']['avg']:.1f}% >= {self.CPU_THRESHOLD}%"
+        )
 
         # 内存不应持续增长（标准差不显著大于平均值）
         if stats["memory"]["avg"] > 1.0:
-            assert stats["memory"]["std"] < stats["memory"]["avg"] * 0.3, \
+            assert stats["memory"]["std"] < stats["memory"]["avg"] * 0.3, (
                 f"内存使用波动过大: std={stats['memory']['std']:.1f}%, avg={stats['memory']['avg']:.1f}%"
+            )
 
-    # ---------- 场景3资源使用 ----------
+    # 场景3资源使用
 
     def test_scenario3_resource_usage(self):
         """场景3（工艺方案咨询）资源使用测试."""
@@ -212,10 +219,11 @@ class TestResourceUsage:
 
         stats = self.monitor.get_statistics()
 
-        assert stats["memory"]["avg"] < self.MEMORY_THRESHOLD, \
+        assert stats["memory"]["avg"] < self.MEMORY_THRESHOLD, (
             f"内存平均使用率{stats['memory']['avg']:.1f}% >= {self.MEMORY_THRESHOLD}%"
+        )
 
-    # ---------- 满负荷测试 ----------
+    # 满负荷测试
 
     def test_full_load_resource_usage(self, normal_sensor_stream, temp_dir):
         """满负荷运行时资源使用测试."""
@@ -229,6 +237,7 @@ class TestResourceUsage:
 
             # 模拟传感器数据处理
             from tests.integration.test_scenario2_realtime_monitoring import RealtimeMonitorSimulator
+
             monitor = RealtimeMonitorSimulator()
             for sample in normal_sensor_stream[:200]:
                 sensor_dict = {
@@ -248,12 +257,14 @@ class TestResourceUsage:
         stats = self.monitor.get_statistics()
 
         # 满负荷下资源使用应在阈值内
-        assert stats["cpu"]["avg"] < self.CPU_THRESHOLD, \
+        assert stats["cpu"]["avg"] < self.CPU_THRESHOLD, (
             f"满负荷CPU平均使用率{stats['cpu']['avg']:.1f}% >= {self.CPU_THRESHOLD}%"
-        assert stats["memory"]["avg"] < self.MEMORY_THRESHOLD, \
+        )
+        assert stats["memory"]["avg"] < self.MEMORY_THRESHOLD, (
             f"满负荷内存平均使用率{stats['memory']['avg']:.1f}% >= {self.MEMORY_THRESHOLD}%"
+        )
 
-    # ---------- 资源稳定性 ----------
+    # 资源稳定性
 
     def test_resource_stability_and_no_growth(self, temp_dir):
         """资源使用稳定，无持续增长或突增现象."""
@@ -271,31 +282,30 @@ class TestResourceUsage:
         # 检查是否有持续增长趋势
         if len(self.monitor.snapshots) >= 10:
             first_half = self.monitor.snapshots[: len(self.monitor.snapshots) // 2]
-            second_half = self.monitor.snapshots[len(self.monitor.snapshots) // 2:]
+            second_half = self.monitor.snapshots[len(self.monitor.snapshots) // 2 :]
 
             first_avg_mem = statistics.mean(s["memory_percent"] for s in first_half)
             second_avg_mem = statistics.mean(s["memory_percent"] for s in second_half)
 
             # 后半段内存不应显著高于前半段
             growth = (second_avg_mem - first_avg_mem) / max(first_avg_mem, 0.1) * 100
-            assert growth < 20.0, \
+            assert growth < 20.0, (
                 f"内存出现持续增长: {growth:.1f}% (前半段:{first_avg_mem:.1f}%, 后半段:{second_avg_mem:.1f}%)"
+            )
 
         # 突增检测：相邻采样点不应有极端跳变（除首次外）
         spike_count = 0
         for i in range(1, len(self.monitor.snapshots)):
-            cpu_diff = abs(
-                self.monitor.snapshots[i]["cpu_percent"]
-                - self.monitor.snapshots[i - 1]["cpu_percent"]
-            )
+            cpu_diff = abs(self.monitor.snapshots[i]["cpu_percent"] - self.monitor.snapshots[i - 1]["cpu_percent"])
             if cpu_diff > 40:
                 spike_count += 1
 
         # 允许少量突增（如首次加载等），但不应频繁
-        assert spike_count <= len(self.monitor.snapshots) * 0.1, \
+        assert spike_count <= len(self.monitor.snapshots) * 0.1, (
             f"检测到过多CPU突增事件: {spike_count}次 (总快照{len(self.monitor.snapshots)}次)"
+        )
 
-    # ---------- 网络资源 ----------
+    # 网络资源
 
     def test_network_bandwidth_within_limit(self):
         """网络带宽占用 < 50Mbps."""
@@ -304,10 +314,11 @@ class TestResourceUsage:
             self.monitor.take_snapshot()
 
         stats = self.monitor.get_statistics()
-        assert stats["network"]["avg"] < self.NETWORK_THRESHOLD, \
+        assert stats["network"]["avg"] < self.NETWORK_THRESHOLD, (
             f"网络带宽平均占用{stats['network']['avg']:.1f}Mbps >= {self.NETWORK_THRESHOLD}Mbps"
+        )
 
-    # ---------- GPU资源 ----------
+    # GPU资源
 
     def test_gpu_memory_usage(self):
         """显存使用率 < 85%（如有GPU）."""
@@ -318,21 +329,21 @@ class TestResourceUsage:
             gpu_available = False
             try:
                 import pynvml
+
                 pynvml.nvmlInit()
                 gpu_available = pynvml.nvmlDeviceGetCount() > 0
             except Exception:
                 pass
 
             if gpu_available:
-                assert stats["gpu_memory"]["avg"] < self.GPU_MEMORY_THRESHOLD, \
+                assert stats["gpu_memory"]["avg"] < self.GPU_MEMORY_THRESHOLD, (
                     f"显存平均使用率{stats['gpu_memory']['avg']:.1f}% >= {self.GPU_MEMORY_THRESHOLD}%"
+                )
         except Exception:
             pytest.skip("GPU资源检查不可用")
 
 
-# ---------------------------------------------------------------------------
 # 内存泄漏检测
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -345,6 +356,7 @@ class TestMemoryLeakDetection:
         gc_enabled = True
         try:
             import gc
+
             gc.collect()
         except ImportError:
             gc_enabled = False
@@ -360,11 +372,13 @@ class TestMemoryLeakDetection:
 
             if gc_enabled:
                 import gc
+
                 gc.collect()
 
             # 获取内存状态
             try:
                 import psutil
+
                 process = psutil.Process()
                 mem = process.memory_info().rss / (1024 * 1024)  # MB
                 snapshots.append(mem)
@@ -376,5 +390,4 @@ class TestMemoryLeakDetection:
             first_5_avg = statistics.mean(snapshots[:5])
             last_5_avg = statistics.mean(snapshots[-5:])
             growth = (last_5_avg - first_5_avg) / max(first_5_avg, 1) * 100
-            assert growth < 15.0, \
-                f"检测到内存泄漏: 增长{growth:.1f}%"
+            assert growth < 15.0, f"检测到内存泄漏: 增长{growth:.1f}%"

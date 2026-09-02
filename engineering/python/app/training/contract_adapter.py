@@ -75,9 +75,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         self._owner_id = owner_id
         self._dataset_id: str | None = None  # 懒注册
 
-    # ------------------------------------------------------------------
     # 内部：懒注册 dataset
-    # ------------------------------------------------------------------
 
     async def _ensure_dataset(self) -> str:
         """确保 dataset 已注册（懒创建），返回 dataset_id."""
@@ -121,7 +119,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
                 self._dataset_name,
             )
         except Exception as e:
-            # unique 约束冲突 → 复用 stable_id
+            # unique 约束冲突 复用 stable_id
             logger.warning(
                 "TrainingDataLakeAdapter: create 失败（%s），复用 stable_id=%s",
                 e,
@@ -130,9 +128,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
             self._dataset_id = stable_id
         return self._dataset_id
 
-    # ------------------------------------------------------------------
     # IDatasetStore 实现
-    # ------------------------------------------------------------------
 
     async def create(
         self,
@@ -194,9 +190,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         """废弃版本（委托）."""
         await self._store.deprecate(dataset_id, version)
 
-    # ------------------------------------------------------------------
     # 便捷方法（非契约）
-    # ------------------------------------------------------------------
 
     async def snapshot_lake(
         self,
@@ -233,9 +227,7 @@ class TrainingDataLakeAdapter(IDatasetStore):
         return self._dataset_id
 
 
-# ---------------------------------------------------------------------------
 # 单例
-# ---------------------------------------------------------------------------
 
 
 _adapter: TrainingDataLakeAdapter | None = None

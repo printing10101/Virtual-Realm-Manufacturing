@@ -54,9 +54,7 @@ from app.pipelines.converter import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------------------
 
 
 # 默认 MTConnect Agent URL。
@@ -123,9 +121,7 @@ class CollectorConfig:
         )
 
 
-# ---------------------------------------------------------------------------
 # Stats
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -160,9 +156,7 @@ class CollectorStats:
         return d
 
 
-# ---------------------------------------------------------------------------
 # Persistence sinks (typed for DI / testing)
-# ---------------------------------------------------------------------------
 
 
 RecordSink = Callable[[Sequence[MachiningRecordCreate]], Awaitable[int]]
@@ -239,9 +233,7 @@ async def tdengine_sink(
     return int(written) if written is not None else 0
 
 
-# ---------------------------------------------------------------------------
 # Core collector
-# ---------------------------------------------------------------------------
 
 
 class MachiningCollector:
@@ -599,9 +591,7 @@ class MachiningCollector:
         }
 
 
-# ---------------------------------------------------------------------------
 # Singleton façade for external callers (CLI, FastAPI, tests)
-# ---------------------------------------------------------------------------
 
 
 _collector_singleton: MachiningCollector | None = None

@@ -7,6 +7,7 @@
 - 前 30 页取程序起始部分，后 30 页取程序结尾部分
 - 不含第三方代码与版权声明头（本仓库头部无版权声明，已探查确认）
 """
+
 import os
 import sys
 from collections import Counter
@@ -29,8 +30,21 @@ INCLUDE_DIRS = [
     r"engineering\src-tauri",
     r"rust",
 ]
-EXCLUDE_DIR_PARTS = ("__pycache__", "node_modules", "dist", "build", ".venv", "venv", ".git",
-                     "target", ".cargo", "coverage", ".vite", ".idea", ".vs")
+EXCLUDE_DIR_PARTS = (
+    "__pycache__",
+    "node_modules",
+    "dist",
+    "build",
+    ".venv",
+    "venv",
+    ".git",
+    "target",
+    ".cargo",
+    "coverage",
+    ".vite",
+    ".idea",
+    ".vs",
+)
 EXCLUDE_FILE_PARTS = (".pyc", ".pyo", ".map", ".min.js")
 EXCLUDE_DIR_NAMES = ("tests", "test", "__tests__", "migrations", "assets", "public", "static", "icons")
 CODE_EXTS = {".py", ".ts", ".vue", ".rs", ".js", ".tsx", ".jsx", ".css", ".html"}
@@ -48,8 +62,7 @@ def collect_files():
         if not os.path.isdir(base_path):
             continue
         for dirpath, dirnames, filenames in os.walk(base_path):
-            dirnames[:] = [d for d in dirnames
-                           if d not in EXCLUDE_DIR_PARTS and d not in EXCLUDE_DIR_NAMES]
+            dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIR_PARTS and d not in EXCLUDE_DIR_NAMES]
             for fn in filenames:
                 if fn.endswith(EXCLUDE_FILE_PARTS):
                     continue
@@ -59,7 +72,7 @@ def collect_files():
                 full = os.path.join(dirpath, fn)
                 rel = os.path.relpath(full, ROOT).replace("\\", "/")
                 files.append((rel, full))
-    # 目录块顺序：后端 → 前端 → 桌面壳 → rust；块内按路径排序；入口文件提到块首
+    # 目录块顺序：后端 前端 桌面壳 rust；块内按路径排序；入口文件提到块首
     block_order = {d: i for i, d in enumerate(INCLUDE_DIRS)}
 
     def key(item):
@@ -119,7 +132,7 @@ def draw_page(c, page_no, page_lines, font_name, font_size, line_h, top_margin, 
             w2 = pdfmetrics.stringWidth(line, font_name, reduced)
             if w2 > usable_w:
                 keep = int(len(line) * usable_w / w2) - 3
-                line = line[:max(keep, 1)] + "…"
+                line = line[: max(keep, 1)] + "…"
                 w2 = pdfmetrics.stringWidth(line, font_name, reduced)
             c.setFont(font_name, reduced)
             c.drawString(2 * cm, y, line)
@@ -134,7 +147,9 @@ def main():
     files = collect_files()
     print(f"收集文件: {len(files)}")
 
-    by_block = Counter(rel.split("/")[0] + "/" + (rel.split("/")[1] if len(rel.split("/")) > 1 else "") for rel, _ in files)
+    by_block = Counter(
+        rel.split("/")[0] + "/" + (rel.split("/")[1] if len(rel.split("/")) > 1 else "") for rel, _ in files
+    )
     for d, c in sorted(by_block.items()):
         print(f"  {d}: {c}")
 
@@ -145,10 +160,11 @@ def main():
     if len(lines) < total:
         print(f"[error] 源码总行数不足 {total} 行，无法生成 60 页文档")
         return 1
-    head = lines[:PAGES * LINES_PER_PAGE]
-    tail = lines[-PAGES * LINES_PER_PAGE:]
-    all_pages = [head[i * LINES_PER_PAGE:(i + 1) * LINES_PER_PAGE] for i in range(PAGES)] + \
-                [tail[i * LINES_PER_PAGE:(i + 1) * LINES_PER_PAGE] for i in range(PAGES)]
+    head = lines[: PAGES * LINES_PER_PAGE]
+    tail = lines[-PAGES * LINES_PER_PAGE :]
+    all_pages = [head[i * LINES_PER_PAGE : (i + 1) * LINES_PER_PAGE] for i in range(PAGES)] + [
+        tail[i * LINES_PER_PAGE : (i + 1) * LINES_PER_PAGE] for i in range(PAGES)
+    ]
     assert len(all_pages) == 60
 
     font_name = register_fonts()

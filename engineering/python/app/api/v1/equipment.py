@@ -32,13 +32,11 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
 # [P1] Pydantic 请求模型替换 body: dict 弱验证
 # service 层已有白名单校验，此处添加 schema 用于：
-#   1. 自动生成 OpenAPI 文档，前端可类型推导
-#   2. 请求阶段即拒绝非法字段（422），而非等到 service 层
-#   3. 统一 API 契约
-# ---------------------------------------------------------------------------
+# 1. 自动生成 OpenAPI 文档，前端可类型推导
+# 2. 请求阶段即拒绝非法字段（422），而非等到 service 层
+# 3. 统一 API 契约
 
 
 class EquipmentUpdateRequest(BaseModel):
@@ -79,9 +77,7 @@ class MaintenancePlanUpdateRequest(BaseModel):
     status: str | None = Field(None, description="计划状态")
 
 
-# ---------------------------------------------------------------------------
 # Endpoints
-# ---------------------------------------------------------------------------
 
 
 @router.get("")
@@ -144,9 +140,7 @@ async def update_equipment(equipment_id: str, body: EquipmentUpdateRequest):
     return success(data=data, message=f"设备已更新: {', '.join(updated)}")
 
 
-# ---------------------------------------------------------------------------
 # Alarm endpoints
-# ---------------------------------------------------------------------------
 
 
 @router.get("/alarms/")
@@ -190,9 +184,7 @@ async def update_alarm_status(alarm_id: str, body: AlarmStatusUpdateRequest):
     return success(data=data, message="告警状态已更新")
 
 
-# ---------------------------------------------------------------------------
 # Maintenance endpoints
-# ---------------------------------------------------------------------------
 
 
 @router.get("/maintenance/")
@@ -236,9 +228,7 @@ async def update_maintenance_plan(plan_id: str, body: MaintenancePlanUpdateReque
     return success(data=data, message=f"维护计划已更新: {', '.join(updated)}")
 
 
-# ---------------------------------------------------------------------------
 # Seed endpoint
-# ---------------------------------------------------------------------------
 
 
 @router.post("/seed", dependencies=[Depends(require_role("admin"))])

@@ -69,9 +69,7 @@ class ProcessExplainer:
     ) -> None:
         self._store = session_store or get_session_store()
 
-    # ------------------------------------------------------------------
     # 公开接口
-    # ------------------------------------------------------------------
 
     async def explain_process(
         self,
@@ -223,9 +221,7 @@ class ProcessExplainer:
         """清空会话。"""
         return await self._store.clear_session(session_id)
 
-    # ------------------------------------------------------------------
     # 内部实现
-    # ------------------------------------------------------------------
 
     async def _ensure_session(self, session_id: str | None) -> str:
         """确保 session_id 有效，None 则创建新会话。"""

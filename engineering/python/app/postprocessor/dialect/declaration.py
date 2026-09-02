@@ -121,13 +121,13 @@ class DialectDeclaration:
 
         base_dir = yaml_path.parent
 
-        # --- 必填字段 ---
+        # 必填字段
         for key in ("id", "name", "version"):
             value = raw.get(key)
             if not value or not isinstance(value, str):
                 raise DialectDeclarationError(f"方言声明缺少必填字符串字段 '{key}': {yaml_path}")
 
-        # --- extends：可选，但若声明必须在白名单内 ---
+        # extends：可选，但若声明必须在白名单内
         extends = raw.get("extends")
         if extends is not None:
             if not isinstance(extends, str) or extends not in BUILTIN_BASE_DIALECTS:
@@ -136,7 +136,7 @@ class DialectDeclaration:
                     f"（可选值: {sorted(BUILTIN_BASE_DIALECTS)}）"
                 )
 
-        # --- templates：方法白名单 + 模板文件存在性 ---
+        # templates：方法白名单 + 模板文件存在性
         templates: dict[str, Path] = {}
         raw_templates = raw.get("templates") or {}
         if not isinstance(raw_templates, dict):
@@ -153,7 +153,7 @@ class DialectDeclaration:
                 raise DialectDeclarationError(f"方言 '{raw['id']}' 模板文件不存在: {template_path}")
             templates[method] = template_path
 
-        # --- hooks：可选，格式校验（module.path:ClassName） ---
+        # hooks：可选，格式校验（module.path:ClassName）
         hooks = raw.get("hooks")
         if hooks is not None:
             if not isinstance(hooks, str) or ":" not in hooks:
@@ -161,7 +161,7 @@ class DialectDeclaration:
                     f"方言 '{raw['id']}' 的 hooks 格式错误（应为 module.path:ClassName）: {hooks}"
                 )
 
-        # --- params：可选，必须是映射 ---
+        # params：可选，必须是映射
         params = raw.get("params") or {}
         if not isinstance(params, dict):
             raise DialectDeclarationError(f"方言 '{raw['id']}' 的 params 必须是映射: {yaml_path}")

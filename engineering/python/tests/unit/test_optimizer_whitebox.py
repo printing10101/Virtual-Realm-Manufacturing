@@ -23,9 +23,7 @@ from app.optimizer.recommender import (
 )
 
 
-# ---------------------------------------------------------------------------
 # baseline
-# ---------------------------------------------------------------------------
 
 
 class TestBaseline:
@@ -77,9 +75,7 @@ class TestBaseline:
         assert len(lib.entries) == len(DEFAULT_BASELINE)
 
 
-# ---------------------------------------------------------------------------
 # recommender
-# ---------------------------------------------------------------------------
 
 
 class TestClamp:
@@ -117,9 +113,7 @@ class TestParameterRecommender:
                 "sample_count": 8,
             }
 
-        rec = ParameterRecommender(stats_callback=fake_stats).recommend(
-            "AL6061", "milling"
-        )
+        rec = ParameterRecommender(stats_callback=fake_stats).recommend("AL6061", "milling")
         assert rec is not None
         assert rec.strategy == RecommendationStrategy.L1_STATISTICAL
         assert rec.depth_of_cut_mm == 1.2
@@ -131,9 +125,7 @@ class TestParameterRecommender:
         def fake_stats(material: str, tool_id: str, mtype: str) -> dict | None:
             return {"depth_of_cut_mm": 1.0, "feed_mm_per_rev": 0.1, "spindle_rpm": 5000}
 
-        rec = ParameterRecommender(stats_callback=fake_stats).recommend(
-            "UNKNOWN-XYZ", "milling"
-        )
+        rec = ParameterRecommender(stats_callback=fake_stats).recommend("UNKNOWN-XYZ", "milling")
         assert rec is not None
         assert rec.strategy == RecommendationStrategy.L1_STATISTICAL
 
@@ -141,32 +133,24 @@ class TestParameterRecommender:
         def broken_stats(material: str, tool_id: str, mtype: str) -> dict | None:
             raise RuntimeError("stats unavailable")
 
-        rec = ParameterRecommender(stats_callback=broken_stats).recommend(
-            "AL6061", "milling"
-        )
+        rec = ParameterRecommender(stats_callback=broken_stats).recommend("AL6061", "milling")
         assert rec is not None
         assert rec.strategy == RecommendationStrategy.L0_BASELINE
 
     def test_recommend_target_cycle_time(self) -> None:
-        rec = ParameterRecommender().recommend(
-            "AL6061", "milling", target=OptimizationTarget.CYCLE_TIME
-        )
+        rec = ParameterRecommender().recommend("AL6061", "milling", target=OptimizationTarget.CYCLE_TIME)
         assert rec is not None
         assert rec.feed_mm_per_rev > 0.2  # 0.2 * 1.2 = 0.24
         assert rec.spindle_rpm > 8000  # 8000 * 1.1 = 8800
 
     def test_recommend_target_tool_life(self) -> None:
-        rec = ParameterRecommender().recommend(
-            "AL6061", "milling", target=OptimizationTarget.TOOL_LIFE
-        )
+        rec = ParameterRecommender().recommend("AL6061", "milling", target=OptimizationTarget.TOOL_LIFE)
         assert rec is not None
         assert rec.feed_mm_per_rev < 0.2  # 0.2 * 0.8 = 0.16
         assert rec.spindle_rpm < 8000
 
     def test_recommend_target_surface(self) -> None:
-        rec = ParameterRecommender().recommend(
-            "AL6061", "milling", target=OptimizationTarget.SURFACE
-        )
+        rec = ParameterRecommender().recommend("AL6061", "milling", target=OptimizationTarget.SURFACE)
         assert rec is not None
         assert rec.feed_mm_per_rev < 0.2  # 0.2 * 0.7 = 0.14
 
@@ -179,16 +163,12 @@ class TestParameterRecommender:
         assert "basis" in d and "confidence" in d
 
 
-# ---------------------------------------------------------------------------
 # evaluator
-# ---------------------------------------------------------------------------
 
 
 class TestEvaluator:
     def test_perfect_result_scores_high(self) -> None:
-        result = evaluate_recommendation(
-            cycle_time_s=100.0, tool_wear_percent=10.0, surface_roughness_ra=1.0
-        )
+        result = evaluate_recommendation(cycle_time_s=100.0, tool_wear_percent=10.0, surface_roughness_ra=1.0)
         assert result.score > 0.9
         assert result.result_ok and result.cycle_time_ok
 
@@ -207,9 +187,7 @@ class TestEvaluator:
         assert result.cycle_time_ok is False
 
     def test_threshold_overrides(self) -> None:
-        result = evaluate_recommendation(
-            cycle_time_s=500.0, tool_wear_percent=10.0, surface_roughness_ra=1.0
-        )
+        result = evaluate_recommendation(cycle_time_s=500.0, tool_wear_percent=10.0, surface_roughness_ra=1.0)
         assert result.cycle_time_ok is False  # 500 > 300 默认阈值
 
 

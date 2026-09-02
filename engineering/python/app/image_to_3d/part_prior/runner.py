@@ -124,7 +124,7 @@ class PartPriorRunner:
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 1. 加载稀疏点云（PLY → torch.Tensor）
+        # 1. 加载稀疏点云（PLY torch.Tensor）
         sparse_points = self._load_ply_points(sparse_points_path, torch)
         num_input = sparse_points.shape[0]
         logger.info("part_prior[%s] 加载稀疏点云: %d 点", task_id, num_input)
@@ -149,7 +149,7 @@ class PartPriorRunner:
         except ImportError:
             logger.warning("numpy 不可用，跳过 dense_voxel.npy 保存")
 
-        # 4. marching cubes → mesh
+        # 4. marching cubes mesh
         output_mesh_path = output_dir / "output_part_prior.ply"
         self._voxel_to_mesh(dense_voxel, output_mesh_path, torch)
 

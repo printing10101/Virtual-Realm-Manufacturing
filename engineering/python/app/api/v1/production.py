@@ -15,9 +15,7 @@ from app.core.response import ErrorCode, error, success
 from app.services import production_service
 
 
-# ---------------------------------------------------------------------------
 # Pydantic schemas
-# ---------------------------------------------------------------------------
 
 
 class WorkOrderUpdate(BaseModel):
@@ -30,9 +28,7 @@ class WorkOrderUpdate(BaseModel):
     due_date: date | None = None
 
 
-# ---------------------------------------------------------------------------
 # Router
-# ---------------------------------------------------------------------------
 
 router = APIRouter(
     prefix="/api/v1/production",

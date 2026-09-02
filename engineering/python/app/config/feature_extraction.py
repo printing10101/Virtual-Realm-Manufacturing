@@ -41,7 +41,7 @@ class FeatureExtractionConfig:
     # 任务历史保留时长（小时）：比拍照重建长，因为工程师审核需要时间
     task_retention_hours: int = field(default_factory=lambda: _int_env("LNN_FE_TASK_RETENTION_HOURS", 168))
 
-    # --------- 平面提取参数（RANSAC） ---------
+    # 平面提取参数（RANSAC）
     # RANSAC 距离阈值（mm）：顶点到平面的距离小于此值才算内点
     # 越小越严格，但太小会导致噪声干扰；标准档位 0.5mm 较合理
     plane_ransac_threshold_mm: float = field(
@@ -52,20 +52,20 @@ class FeatureExtractionConfig:
     # 最多提取多少个平面（避免过拟合噪声）
     plane_max_features: int = field(default_factory=lambda: _int_env("LNN_FE_PLANE_MAX_FEATURES", 20))
 
-    # --------- 圆柱提取参数 ---------
+    # 圆柱提取参数
     # 圆柱半径范围（mm）：超出此范围的圆柱被丢弃
     cylinder_min_radius_mm: float = field(default_factory=lambda: _float_env("LNN_FE_CYLINDER_MIN_RADIUS_MM", 1.0))
     cylinder_max_radius_mm: float = field(default_factory=lambda: _float_env("LNN_FE_CYLINDER_MAX_RADIUS_MM", 100.0))
     cylinder_min_inliers: int = field(default_factory=lambda: _int_env("LNN_FE_CYLINDER_MIN_INLIERS", 500))
     cylinder_max_features: int = field(default_factory=lambda: _int_env("LNN_FE_CYLINDER_MAX_FEATURES", 10))
 
-    # --------- 孔/凸台检测参数 ---------
+    # 孔/凸台检测参数
     # 孔半径范围（mm）：超出此范围的孔被丢弃
     hole_min_radius_mm: float = field(default_factory=lambda: _float_env("LNN_FE_HOLE_MIN_RADIUS_MM", 0.5))
     hole_max_radius_mm: float = field(default_factory=lambda: _float_env("LNN_FE_HOLE_MAX_RADIUS_MM", 50.0))
     hole_max_features: int = field(default_factory=lambda: _int_env("LNN_FE_HOLE_MAX_FEATURES", 30))
 
-    # --------- mesh 预处理参数 ---------
+    # mesh 预处理参数
     # 大 mesh 降采样目标顶点数：避免 RANSAC 在百万顶点 mesh 上过慢
     mesh_decimation_target_vertices: int = field(
         default_factory=lambda: _int_env("LNN_FE_MESH_DECIMATION_TARGET", 50000)

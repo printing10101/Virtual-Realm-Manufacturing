@@ -53,13 +53,11 @@ from app.startup_hooks import (
 )
 from app.version import VERSION as PY_VERSION
 
-# =============================================================================
 # 阶段 1 装配拆分：路由注册与中间件装配已迁移至独立模块
-# =============================================================================
 # - router_registry.register_routers: 集中管理 60+ 个 include_router 调用
 # - middleware_stack.register_middleware_stack: 集中管理 6 个中间件的注册顺序
 # - 条件导入标志位（_OLLAMA_AVAILABLE 等）在 router_registry 中定义，
-#   此处重新导出以保持向后兼容（部分测试文件直接 from app.main import _FLAG）
+# 此处重新导出以保持向后兼容（部分测试文件直接 from app.main import _FLAG）
 from app.router_registry import (
     register_routers,
     _OLLAMA_AVAILABLE,
@@ -109,9 +107,7 @@ configure_logging(
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
 # 运行期共享对象（metrics / ring_log / state_file_path）
-# =============================================================================
 # 这些对象在 startup 之前就需要存在（中间件装配依赖），因此放在模块级初始化。
 metrics = get_metrics_collector()
 ring_log = get_ring_log_buffer(base_dir=config.paths.gstack_dir)
@@ -132,9 +128,7 @@ def get_state_file_path() -> str:
     return STATE_FILE_PATH
 
 
-# =============================================================================
 # 应用实例创建
-# =============================================================================
 # P2-1 修复：生产环境关闭 docs_url/redoc_url/openapi_url，避免接口暴露
 # 通过 LNN_ENVIRONMENT / ENVIRONMENT 控制：production 时关闭，其他环境开启
 _LNN_ENV = os.environ.get("LNN_ENVIRONMENT", os.environ.get("ENVIRONMENT", "development")).lower()
@@ -163,9 +157,7 @@ _IDLE_AUTO_SHUTDOWN_ENABLED = os.environ.get("LNN_IDLE_AUTO_SHUTDOWN", "true").l
 IDLE_TIMEOUT_SECONDS = 1800
 
 
-# =============================================================================
 # 生命周期事件
-# =============================================================================
 @app.on_event("startup")
 async def startup_event():
     # CORS 安全配置验证：通配符 * 与 allow_credentials=True 同时使用属于
@@ -206,14 +198,14 @@ async def startup_event():
     from app.tasks.task_system import AsyncTaskManager
     from app.dependencies import get_redis
 
-    # --- Step 1: 确保默认 SQLite 数据库目录存在 ---
+    # 确保默认 SQLite 数据库目录存在
     # DB_URL 环境变量不再由 main.py 设置，统一由 config.database.db_url 管理
     _db_url = config.database.db_url
     if _db_url.startswith("sqlite"):
         _db_file = _db_url.split("///", 1)[-1]
         Path(_db_file).parent.mkdir(parents=True, exist_ok=True)
 
-    # --- Step 2: Initialize async DB tables + seed RBAC ---
+    # Initialize async DB tables + seed RBAC
     # 修复：init_db 失败（非 "already exists" 的 OperationalError，如磁盘满、
     # 权限不足、schema 损坏）原实现会让 uvicorn 以非零码退出，但此时
     # ring_log 已启动，FastAPI startup 失败不会触发 shutdown_event，
@@ -236,7 +228,7 @@ async def startup_event():
     # 实现已迁移至 ``app.startup_hooks.run_alembic_upgrade``，便于独立测试
     await run_alembic_upgrade(logger)
 
-    # --- Step 3: Redis (optional, returns None if not configured) ---
+    # Redis (optional, returns None if not configured)
     # Redis 已在 get_redis() 内部对 ConnectionError/TimeoutError 做降级
     # 到内存缓存，但为防御 ImportError 等未预期异常，外层再加 try/except。
     logger.info("[startup] Calling get_redis() ...")
@@ -257,7 +249,7 @@ async def startup_event():
     # 实现已迁移至 ``app.startup_hooks.verify_critical_dependencies``，便于独立测试
     await verify_critical_dependencies(logger)
 
-    # --- Step 4: Task manager ---
+    # Task manager
     # 修复：AsyncTaskManager.initialize 失败原实现未捕获，若内部创建线程池
     # 或注册定时器失败会导致 startup 直接 raise。现改为 try/except 让
     # 应用以降级模式启动（无后台任务执行能力但 API 仍可响应）。
@@ -273,10 +265,10 @@ async def startup_event():
         )
     logger.info("[startup] AsyncTaskManager step done")
 
-    # --- Step 5: 插件系统接线（P4 完整接线第一步）---
+    # 插件系统接线（P4 完整接线第一步）
     # 2026-08-19 修复：init_plugin_system() 此前全仓库无调用点，导致
     # get_plugin_manager() 抛 RuntimeError、插件 API 永远返回空。
-    # 无参初始化：plugin_dirs 为空 → 发现 0 个插件（不触发 torch 依赖插件），
+    # 无参初始化：plugin_dirs 为空 发现 0 个插件（不触发 torch 依赖插件），
     # 但管理器被初始化，插件 API 返回空而非异常，前端插件页不再死数据。
     # 后续接入业务插件时再配置 plugin_dirs（见 init_plugin_system 参数）。
     # 失败仅告警不阻断启动（与现有容错策略一致）。
@@ -294,7 +286,7 @@ async def startup_event():
         )
     logger.info("[startup] Plugin system step done")
 
-    # --- Step 6: Agent 状态持久化（/agents 端点依赖）---
+    # Agent 状态持久化（/agents 端点依赖）
     # 修复：set_persistence_manager 此前全仓库无调用点，导致 agent_state API
     # 一律返回 503 "State persistence not initialized"。现于启动时创建
     # StatePersistenceManager 并注入；失败仅告警（不影响核心图纸/工艺/NC 链路）。
@@ -345,14 +337,14 @@ async def shutdown_event():
     from app.ai.llm_client import close_shared_http_client
     from app.core.logging_config import shutdown_logging
 
-    # ---- 关闭顺序设计（P2-3 优化） ----
-    # 关闭顺序遵循"调度层先停 → 执行层停 → 业务模块停 → 基础设施停"原则：
-    #   1) HeartbeatScheduler（调度层）：停止提交新任务到 AsyncTaskManager
-    #   2) AsyncTaskManager（执行层）：取消已运行任务，拒绝新任务
-    #   3) 业务模块（Budget/Cost/Rule/Goal/Audit）：归还 SQLite 连接
-    #   4) Redis / HTTP Client（外部依赖）：关闭网络连接
-    #   5) DB / VectorStore（持久化层）：关闭文件句柄
-    #   6) Logging（最底层）：最后关闭
+    # 关闭顺序设计（P2-3 优化）
+    # 关闭顺序遵循"调度层先停 执行层停 业务模块停 基础设施停"原则：
+    # 1) HeartbeatScheduler（调度层）：停止提交新任务到 AsyncTaskManager
+    # 2) AsyncTaskManager（执行层）：取消已运行任务，拒绝新任务
+    # 3) 业务模块（Budget/Cost/Rule/Goal/Audit）：归还 SQLite 连接
+    # 4) Redis / HTTP Client（外部依赖）：关闭网络连接
+    # 5) DB / VectorStore（持久化层）：关闭文件句柄
+    # 6) Logging（最底层）：最后关闭
     # 这样可避免调度器在执行层关闭后仍提交新任务（虽 P2-2 已加 _shutdown
     # 标志位保护，但语义上仍应调度层先停）。
 
@@ -369,7 +361,7 @@ async def shutdown_event():
     await task_mgr.shutdown()
 
     # 3) 业务模块：归还 SQLite 连接池连接，避免连接泄漏与 Windows 文件句柄锁定。
-    #    各模块独立 try/except，避免一处失败影响其他资源的释放。
+    # 各模块独立 try/except，避免一处失败影响其他资源的释放。
     try:
         from app.dependencies import get_budget_manager
 
@@ -442,9 +434,7 @@ async def shutdown_event():
     logger.info("FastAPI shutdown event completed")
 
 
-# =============================================================================
 # 中间件链装配（委托给 middleware_stack.py）
-# =============================================================================
 # 注册顺序与期望执行顺序的对应关系、CORS 与 UnifiedAuth 的位置约束等
 # 关键设计决策均在 ``app.middleware_stack`` 模块顶部注释中详细说明。
 register_middleware_stack(
@@ -457,9 +447,7 @@ register_middleware_stack(
 )
 
 
-# =============================================================================
 # 路由注册（委托给 router_registry.py）
-# =============================================================================
 # 所有 60+ 个 include_router 调用集中在此处，按域分组（LNN / RAG / 模拟 /
 # 制造 / CAM / DNC / MES / 插件 / ADR 阶段 1-8）。条件路由（依赖可选库）
 # 最后注册，失败仅告警不阻断启动。

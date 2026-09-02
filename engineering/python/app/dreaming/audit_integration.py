@@ -248,9 +248,7 @@ class DreamingAuditRecorder:
         except Exception as e:
             logger.error("规则应用决策写入审计日志失败：%s", e, exc_info=True)
 
-    # ------------------------------------------------------------------
     # 内部工具
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _compute_confidence(llm_model: str | None, insight_count: int, session_count: int) -> float:

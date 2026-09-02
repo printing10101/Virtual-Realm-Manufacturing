@@ -107,7 +107,7 @@ class TestReadTemplate:
         assert "O{{" in data["content"]  # Jinja2 模板内容
 
     def test_read_undeclared_method(self, client):
-        # KND 未声明 format_footer（继承基类）→ 404
+        # KND 未声明 format_footer（继承基类） 404
         resp = client.post(
             "/api/v1/postprocessor/dialects/template",
             json={"dialect_id": "knd_1000_2000_3000", "method": "format_footer"},
@@ -179,10 +179,8 @@ class TestPreviewDialect:
         assert "G75 Z0." in data["output"]
 
 
-# ---------------------------------------------------------------------------
 # 写路径：新建 / 保存模板 / 删除（工艺员自由度闭环）
 # 使用 tmp_path + patch _default_plugin_root，不污染真实插件目录
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.api
@@ -399,9 +397,7 @@ class TestDialectParams:
 
         from app.postprocessor.dialect import DialectCompiler, DialectDeclaration
 
-        decl = DialectDeclaration.from_yaml(
-            param_client._plugin_root / "params3" / "dialect.yaml"
-        )
+        decl = DialectDeclaration.from_yaml(param_client._plugin_root / "params3" / "dialect.yaml")
         cls = DialectCompiler().compile(decl)
         pp = cls()
         assert pp.safe_z_height == 100.0

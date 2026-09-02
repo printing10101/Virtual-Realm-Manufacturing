@@ -154,9 +154,7 @@ class DAGStore:
             runs = result.scalars().all()
             return [r.to_dict() for r in runs]
 
-    # ------------------------------------------------------------------
     # Node state operations
-    # ------------------------------------------------------------------
 
     async def init_node_states(
         self,

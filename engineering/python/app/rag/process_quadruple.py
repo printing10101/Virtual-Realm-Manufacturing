@@ -146,7 +146,7 @@ class ProcessQuadrupleIndex:
         self._last_flush_time = 0.0
         # 5s flush 间隔：平衡 IO 压力与崩溃恢复数据丢失风险
         # （30s 间隔在进程崩溃时最多丢失 30s 写入，对工艺决策四元组这种
-        #   低频但高价值数据不可接受；5s 已足够规避高频 IO）
+        # 低频但高价值数据不可接受；5s 已足够规避高频 IO）
         self._flush_interval = 5.0
 
         if persist_dir:
@@ -168,9 +168,7 @@ class ProcessQuadrupleIndex:
         with self._lock:
             self._knowledge_base = knowledge_base
 
-    # ------------------------------------------------------------------
     # 写入
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _extract_entities(quad: ProcessQuadruple) -> list[str]:
@@ -333,9 +331,7 @@ class ProcessQuadrupleIndex:
             )
             return 0
 
-    # ------------------------------------------------------------------
     # 查询：核心决策接口
-    # ------------------------------------------------------------------
 
     def recommend_process(
         self,
@@ -452,9 +448,7 @@ class ProcessQuadrupleIndex:
                 "tool_count": len({q.tool for q in self._all}),
             }
 
-    # ------------------------------------------------------------------
     # 持久化
-    # ------------------------------------------------------------------
 
     def flush(self, force: bool = False) -> bool:
         if not self._persist_path:
@@ -507,7 +501,7 @@ class ProcessQuadrupleIndex:
 
         # 集成点 4：磁盘恢复后回填 EntityIndex，保证索引完整性
         # （磁盘文件只保存四元组本身，EntityIndex 有自己的持久化，
-        #   但若 EntityIndex 持久化丢失或被清理，需从四元组重建关联）
+        # 但若 EntityIndex 持久化丢失或被清理，需从四元组重建关联）
         if self._entity_index is not None:
             try:
                 synced = self.rebuild_entity_index_links()
@@ -523,9 +517,7 @@ class ProcessQuadrupleIndex:
                     exc_info=True,
                 )
 
-    # ------------------------------------------------------------------
     # 集成点 4：反向查询 helper
-    # ------------------------------------------------------------------
 
     def get_related_documents(
         self,
@@ -580,10 +572,10 @@ class ProcessQuadrupleIndex:
 
         # 扩展查找：通过 EntityIndex 找到与 [feature, material] 关联的 chunk
         # 检索模式选择：
-        #   - intersection（默认）：所有实体都匹配的 chunk（高精度，低召回）
-        #     避免 union 模式返回任一实体匹配的 chunk 引入无关文档噪音
-        #   - union 降级：当 intersection 返回空且实体数 > 1 时降级到 union
-        #     覆盖罕见实体组合场景（如 "titanium" + "pocket" 在索引中无共现）
+        # - intersection（默认）：所有实体都匹配的 chunk（高精度，低召回）
+        # 避免 union 模式返回任一实体匹配的 chunk 引入无关文档噪音
+        # - union 降级：当 intersection 返回空且实体数 > 1 时降级到 union
+        # 覆盖罕见实体组合场景（如 "titanium" + "pocket" 在索引中无共现）
         extended_chunk_ids: list[str] = []
         extended_mode_used: str = "none"
         if self._entity_index is not None:
@@ -666,9 +658,7 @@ class ProcessQuadrupleIndex:
         }
 
 
-# =====================================================================
 # 全局单例
-# =====================================================================
 
 _singleton: ProcessQuadrupleIndex | None = None
 _singleton_lock = threading.Lock()
@@ -722,9 +712,7 @@ def get_process_quadruple_index(
     return _singleton
 
 
-# =====================================================================
 # 默认工艺知识库（覆盖常见特征的典型工艺方案）
-# =====================================================================
 
 DEFAULT_QUADRUPLES: list[dict] = [
     # ── 型腔加工 ──────────────────────────────────────────

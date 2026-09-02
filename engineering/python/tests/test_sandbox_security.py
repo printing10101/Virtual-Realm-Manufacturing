@@ -1,4 +1,4 @@
-﻿"""
+"""
 沙箱安全测试套件 - 验证 skill_loader.py 沙箱逃逸漏洞修复效果
 
 测试覆盖：
@@ -50,9 +50,7 @@ def run_tests():
     results = TestResult()
     loader = SkillLoader()
 
-    # =========================================================================
     # 测试组 1: 直接导入攻击
-    # =========================================================================
     print("\n--- 测试组 1: 直接导入攻击 ---")
 
     # 测试 1.1: __import__ 直接调用
@@ -85,9 +83,7 @@ def run_tests():
     except Exception as e:
         results.record("from import 语句", True, f"执行层拦截: {type(e).__name__}")
 
-    # =========================================================================
     # 测试组 2: 类层次遍历攻击（经典沙箱逃逸路径）
-    # =========================================================================
     print("\n--- 测试组 2: 类层次遍历攻击 ---")
 
     # 测试 2.1: type().__bases__[0].__subclasses__() 经典逃逸
@@ -140,9 +136,7 @@ def run_tests():
     except Exception as e:
         results.record("__builtins__ 访问", True, f"执行层拦截: {type(e).__name__}")
 
-    # =========================================================================
     # 测试组 3: 属性访问绕过
-    # =========================================================================
     print("\n--- 测试组 3: 属性访问绕过 ---")
 
     # 测试 3.1: getattr 绕过
@@ -185,13 +179,11 @@ def run_tests():
     except Exception as e:
         results.record("hasattr 探测", True, f"执行层拦截: {type(e).__name__}")
 
-    # =========================================================================
     # 测试组 4: 代码执行攻击
-    # =========================================================================
     print("\n--- 测试组 4: 代码执行攻击 ---")
 
     # 测试 4.1: exec 调用
-    code = 'exec("import os; os.system(\'echo hacked\')")'
+    code = "exec(\"import os; os.system('echo hacked')\")"
     try:
         loader._compile_code(code, "test_exec")
         results.record("exec 调用", False, "应该被拦截但未被拦截")
@@ -201,7 +193,7 @@ def run_tests():
         results.record("exec 调用", True, f"执行层拦截: {type(e).__name__}")
 
     # 测试 4.2: eval 调用
-    code = 'eval("__import__(\'os\').system(\'echo hacked\')")'
+    code = "eval(\"__import__('os').system('echo hacked')\")"
     try:
         loader._compile_code(code, "test_eval")
         results.record("eval 调用", False, "应该被拦截但未被拦截")
@@ -220,9 +212,7 @@ def run_tests():
     except Exception as e:
         results.record("compile 调用", True, f"执行层拦截: {type(e).__name__}")
 
-    # =========================================================================
     # 测试组 5: 文件 I/O 攻击
-    # =========================================================================
     print("\n--- 测试组 5: 文件 I/O 攻击 ---")
 
     # 测试 5.1: open 文件读取
@@ -245,9 +235,7 @@ def run_tests():
     except Exception as e:
         results.record("input 交互", True, f"执行层拦截: {type(e).__name__}")
 
-    # =========================================================================
     # 测试组 6: 模块导入攻击
-    # =========================================================================
     print("\n--- 测试组 6: 模块导入攻击 ---")
 
     # 测试 6.1: os 模块
@@ -280,9 +268,7 @@ def run_tests():
     except Exception as e:
         results.record("pickle 模块引用", True, f"执行层拦截: {type(e).__name__}")
 
-    # =========================================================================
     # 测试组 7: 其他绕过技巧
-    # =========================================================================
     print("\n--- 测试组 7: 其他绕过技巧 ---")
 
     # 测试 7.1: __code__ 访问
@@ -315,9 +301,7 @@ def run_tests():
     except Exception as e:
         results.record("load_module 绕过", True, f"执行层拦截: {type(e).__name__}")
 
-    # =========================================================================
     # 测试组 8: 正常功能测试（确保安全代码仍可执行）
-    # =========================================================================
     print("\n--- 测试组 8: 正常功能测试 ---")
 
     # 测试 8.1: 基本数学运算
@@ -475,9 +459,7 @@ def execute():
     except SecurityError:
         results.record("ValueError 不可用", True, "代码审计层拦截成功")
 
-    # =========================================================================
     # 测试组 9: _SAFE_BUILTINS 完整性审计
-    # =========================================================================
     print("\n--- 测试组 9: _SAFE_BUILTINS 完整性审计 ---")
 
     forbidden_in_safe = [
@@ -531,9 +513,23 @@ def execute():
 
     # 验证必要的安全函数仍然存在
     required_safe = [
-        "abs", "len", "range", "str", "int", "float", "sum",
-        "min", "max", "pow", "round", "sorted", "any", "all",
-        "True", "False", "None",
+        "abs",
+        "len",
+        "range",
+        "str",
+        "int",
+        "float",
+        "sum",
+        "min",
+        "max",
+        "pow",
+        "round",
+        "sorted",
+        "any",
+        "all",
+        "True",
+        "False",
+        "None",
     ]
     for func_name in required_safe:
         if func_name in safe_builtins:

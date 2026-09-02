@@ -52,9 +52,7 @@ class ToolWearPredictor:
         self._compensation_recommender = CompensationRecommender()
         self._ml_trainer = WearMLTrainer(self._curve_predictor)
 
-    # ------------------------------------------------------------------
     # 磨损曲线预测（委托 WearCurvePredictor）
-    # ------------------------------------------------------------------
 
     def predict_wear_curve(self, input_parameters: dict):
         return self._curve_predictor.predict_wear_curve(input_parameters)
@@ -68,16 +66,12 @@ class ToolWearPredictor:
     def get_supported_models(self) -> list[dict[str, Any]]:
         return self._curve_predictor.get_supported_models()
 
-    # ------------------------------------------------------------------
     # 参数建议（委托 ParameterAdvisor）
-    # ------------------------------------------------------------------
 
     def suggest_parameter_adjustment(self, current_wear: float, remaining_life: float, current_parameters: dict):
         return self._param_advisor.suggest_parameter_adjustment(current_wear, remaining_life, current_parameters)
 
-    # ------------------------------------------------------------------
     # 磨损标定（委托 WearCalibrator）
-    # ------------------------------------------------------------------
 
     def calibrate_with_measurement(
         self, measured_wear: float, elapsed_time: float, input_parameters: dict
@@ -98,9 +92,7 @@ class ToolWearPredictor:
             input_parameters,
         )
 
-    # ------------------------------------------------------------------
     # 补偿推荐（委托 CompensationRecommender）
-    # ------------------------------------------------------------------
 
     def get_compensation_recommendations(
         self,
@@ -112,9 +104,7 @@ class ToolWearPredictor:
             current_wear, input_parameters, machine_capabilities
         )
 
-    # ------------------------------------------------------------------
     # ML 训练与推理（委托 WearMLTrainer）
-    # ------------------------------------------------------------------
 
     def train_with_bosch_data(
         self,

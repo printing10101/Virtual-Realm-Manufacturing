@@ -32,9 +32,7 @@ from unittest.mock import patch
 import pytest
 
 
-# =============================================================================
 # 模块导入测试
-# =============================================================================
 
 
 class TestModuleImport:
@@ -60,12 +58,20 @@ class TestModuleImport:
         )
 
         for obj in [
-            ParametricGeometryTask, ParametricGeometryTaskStatus,
-            ReviewedFeatureRef, StepReviewStatus,
-            TaskStore, generate_task_id, get_task_store,
-            StepDisclaimer, build_step_disclaimer,
-            ParametricGeometryPipeline, ParametricGeometryResult,
-            ParametricGeometryError, StepReviewError, FeaturesLoadError,
+            ParametricGeometryTask,
+            ParametricGeometryTaskStatus,
+            ReviewedFeatureRef,
+            StepReviewStatus,
+            TaskStore,
+            generate_task_id,
+            get_task_store,
+            StepDisclaimer,
+            build_step_disclaimer,
+            ParametricGeometryPipeline,
+            ParametricGeometryResult,
+            ParametricGeometryError,
+            StepReviewError,
+            FeaturesLoadError,
         ]:
             assert obj is not None, f"{obj} 导入失败"
 
@@ -75,10 +81,7 @@ class TestModuleImport:
 
         assert hasattr(pg_routes_pkg, "routes")
         assert pg_routes_pkg.routes.router is not None
-        assert (
-            pg_routes_pkg.routes.router.prefix
-            == "/api/v1/parametric_geometry"
-        )
+        assert pg_routes_pkg.routes.router.prefix == "/api/v1/parametric_geometry"
 
     def test_ten_endpoints_registered(self):
         """T03: 10 个 API 端点全部注册。"""
@@ -110,18 +113,14 @@ class TestModuleImport:
         from app.api.v1.parametric_geometry import routes as pg_routes
 
         tags = pg_routes.router.tags
-        assert any("Engineer-Assisted" in t for t in tags), (
-            f"路由 tags 未标注工程师辅助定位: {tags}"
-        )
+        assert any("Engineer-Assisted" in t for t in tags), f"路由 tags 未标注工程师辅助定位: {tags}"
 
         # 顶层 dependencies 必须包含权限依赖
         deps = pg_routes.router.dependencies
         assert len(deps) > 0, "路由未挂载任何 dependencies（权限校验缺失）"
 
 
-# =============================================================================
 # 精度告知机制测试
-# =============================================================================
 
 
 class TestStepDisclaimer:
@@ -174,12 +173,8 @@ class TestStepDisclaimer:
         )
         msg = disclaimer.warning_message
         # 必须明确告知无法生成 STEP + 给出修复建议
-        assert "无可用" in msg or "不可用" in msg, (
-            f"无引擎警告未明确告知无法生成 STEP: {msg}"
-        )
-        assert "pythonocc" in msg.lower() or "freecad" in msg.lower(), (
-            f"无引擎警告未给出依赖修复建议: {msg}"
-        )
+        assert "无可用" in msg or "不可用" in msg, f"无引擎警告未明确告知无法生成 STEP: {msg}"
+        assert "pythonocc" in msg.lower() or "freecad" in msg.lower(), f"无引擎警告未给出依赖修复建议: {msg}"
 
     def test_disclaimer_uncalibrated_mesh_warning(self):
         """T07: mesh 未标定时警告明确告知「无量纲」。"""
@@ -194,12 +189,8 @@ class TestStepDisclaimer:
         )
         msg = disclaimer.warning_message
         # 未标定 mesh 必须明确告知「无量纲」+「不可用于工艺仿真」
-        assert "无量纲" in msg or "未标定" in msg, (
-            f"未标定警告未告知无量纲: {msg}"
-        )
-        assert "工艺仿真" in msg or "不可" in msg, (
-            f"未标定警告未告知不可用于工艺仿真: {msg}"
-        )
+        assert "无量纲" in msg or "未标定" in msg, f"未标定警告未告知无量纲: {msg}"
+        assert "工艺仿真" in msg or "不可" in msg, f"未标定警告未告知不可用于工艺仿真: {msg}"
 
     def test_disclaimer_calibrated_still_requires_review(self):
         """T08: 即便 mesh 已标定，仍强制工程师审核 + CAM 二次校验。"""
@@ -230,9 +221,7 @@ class TestStepDisclaimer:
         )
         # 每个说明必须非空
         for engine, note in _ENGINE_PRECISION_NOTES.items():
-            assert note and isinstance(note, str), (
-                f"引擎 {engine} 精度说明为空: {note!r}"
-            )
+            assert note and isinstance(note, str), f"引擎 {engine} 精度说明为空: {note!r}"
 
     def test_unknown_engine_precision_note(self):
         """T10: 未知引擎时精度说明回退为「未知引擎」。"""
@@ -260,33 +249,21 @@ class TestStepDisclaimer:
 
         all_gates_text = " ".join(gates)
 
-        # mesh → CAD 自动转换未解决
-        assert "CAD" in all_gates_text or "自动转换" in all_gates_text, (
-            f"硬门槛未提及 mesh→CAD 未解决: {gates}"
-        )
+        # mesh CAD 自动转换未解决
+        assert "CAD" in all_gates_text or "自动转换" in all_gates_text, f"硬门槛未提及 mesh→CAD 未解决: {gates}"
         # 良品率 0 缺陷容忍
-        assert "良品率" in all_gates_text or "0 缺陷" in all_gates_text, (
-            f"硬门槛未提及良品率: {gates}"
-        )
+        assert "良品率" in all_gates_text or "0 缺陷" in all_gates_text, f"硬门槛未提及良品率: {gates}"
         # 配合面公差 0.01mm 不可达
-        assert "0.01" in all_gates_text or "公差" in all_gates_text, (
-            f"硬门槛未提及公差: {gates}"
-        )
+        assert "0.01" in all_gates_text or "公差" in all_gates_text, f"硬门槛未提及公差: {gates}"
         # CNC 操作资质
-        assert "持证" in all_gates_text or "操作资质" in all_gates_text, (
-            f"硬门槛未提及持证操作员: {gates}"
-        )
+        assert "持证" in all_gates_text or "操作资质" in all_gates_text, f"硬门槛未提及持证操作员: {gates}"
         # CAM 二次校验
         assert "CAM" in all_gates_text, f"硬门槛未提及 CAM 二次校验: {gates}"
         # 工程师助手定位
-        assert "工程师助手" in all_gates_text, (
-            f"硬门槛未提及工程师助手定位: {gates}"
-        )
+        assert "工程师助手" in all_gates_text, f"硬门槛未提及工程师助手定位: {gates}"
 
 
-# =============================================================================
 # 枚举完整性测试
-# =============================================================================
 
 
 class TestEnums:
@@ -297,8 +274,13 @@ class TestEnums:
         from app.parametric_geometry import ParametricGeometryTaskStatus
 
         expected = {
-            "pending", "running", "step_generated",
-            "reviewed", "succeeded", "failed", "cancelled",
+            "pending",
+            "running",
+            "step_generated",
+            "reviewed",
+            "succeeded",
+            "failed",
+            "cancelled",
         }
         actual = {s.value for s in ParametricGeometryTaskStatus}
         assert actual == expected, f"任务状态枚举不匹配: {actual - expected}"
@@ -323,9 +305,7 @@ class TestEnums:
         assert StepReviewStatus.CONFIRMED == "confirmed"
 
 
-# =============================================================================
 # effective_params 测试
-# =============================================================================
 
 
 class TestEffectiveParams:
@@ -346,9 +326,7 @@ class TestEffectiveParams:
         assert effective == {"radius_mm": 5.0, "height_mm": 10.0}
         # 修改返回值不应影响 source_params
         effective["radius_mm"] = 999.0
-        assert ref.source_params["radius_mm"] == 5.0, (
-            "effective_params() 未返回副本，污染了 source_params"
-        )
+        assert ref.source_params["radius_mm"] == 5.0, "effective_params() 未返回副本，污染了 source_params"
 
     def test_confirmed_returns_source_params(self):
         """T16: confirmed 状态返回 source_params 副本。"""
@@ -363,9 +341,7 @@ class TestEffectiveParams:
         effective = ref.effective_params()
 
         assert effective == ref.source_params
-        assert effective is not ref.source_params, (
-            "confirmed 状态应返回副本，不应返回原 dict 引用"
-        )
+        assert effective is not ref.source_params, "confirmed 状态应返回副本，不应返回原 dict 引用"
 
     def test_rejected_returns_source_params(self):
         """T17: rejected 状态返回 source_params 副本（feature_to_brep 会跳过 rejected）。"""
@@ -395,12 +371,8 @@ class TestEffectiveParams:
         effective = ref.effective_params()
 
         # edited_params 优先：radius_mm 被覆盖，新增 center 字段
-        assert effective["radius_mm"] == 7.5, (
-            f"edited_params 未覆盖 source_params: {effective}"
-        )
-        assert effective["height_mm"] == 10.0, (
-            f"source_params 中未编辑的字段丢失: {effective}"
-        )
+        assert effective["radius_mm"] == 7.5, f"edited_params 未覆盖 source_params: {effective}"
+        assert effective["height_mm"] == 10.0, f"source_params 中未编辑的字段丢失: {effective}"
         assert effective["axis"] == [0, 0, 1]
         assert effective["center"] == [1.0, 2.0, 3.0]
 
@@ -421,9 +393,7 @@ class TestEffectiveParams:
         assert effective == {"radius_mm": 4.0, "height_mm": 8.0}
 
 
-# =============================================================================
 # 工程师审核流程测试
-# =============================================================================
 
 
 class TestEngineerReview:
@@ -451,16 +421,18 @@ class TestEngineerReview:
         # 构造 confirmed_features.json
         features = []
         for i in range(feature_count):
-            features.append({
-                "feature_id": f"feat_cyl_{i:03d}",
-                "feature_type": "cylinder",
-                "params": {
-                    "axis": [0, 0, 1],
-                    "center": [0, 0, 0],
-                    "radius_mm": 5.0 + i,
-                    "height_mm": 10.0,
-                },
-            })
+            features.append(
+                {
+                    "feature_id": f"feat_cyl_{i:03d}",
+                    "feature_type": "cylinder",
+                    "params": {
+                        "axis": [0, 0, 1],
+                        "center": [0, 0, 0],
+                        "radius_mm": 5.0 + i,
+                        "height_mm": 10.0,
+                    },
+                }
+            )
         features_json = Path(self.cfg.output_dir) / "confirmed_features.json"
         features_json.parent.mkdir(parents=True, exist_ok=True)
         features_json.write_text(
@@ -477,9 +449,8 @@ class TestEngineerReview:
 
         # mock write_step_with_fallback 避免触发真实 STEP 引擎
         from app.parametric_geometry.step_writer import StepWriteResult
-        with patch(
-            "app.parametric_geometry.pipeline.write_step_with_fallback"
-        ) as mock_write:
+
+        with patch("app.parametric_geometry.pipeline.write_step_with_fallback") as mock_write:
             mock_write.return_value = StepWriteResult(
                 success=True,
                 output_path=str(Path(task.workspace_dir) / "mock.step"),
@@ -487,6 +458,7 @@ class TestEngineerReview:
                 shape_count=feature_count,
             )
             import asyncio
+
             asyncio.run(pipeline.run_pipeline(task.task_id))
         return pipeline.get_task(task.task_id)
 
@@ -515,9 +487,7 @@ class TestEngineerReview:
 
         # 仅审核 1 个特征，任务状态不应转 REVIEWED
         updated = pipeline.get_task(task.task_id)
-        assert updated.status == "step_generated", (
-            f"未全部审核完就转 REVIEWED: {updated.status}"
-        )
+        assert updated.status == "step_generated", f"未全部审核完就转 REVIEWED: {updated.status}"
 
     def test_review_all_confirmed_transitions_to_reviewed(self):
         """T21: 全部特征审核完毕 → 状态自动转 REVIEWED。"""
@@ -541,9 +511,7 @@ class TestEngineerReview:
         )
 
         updated = pipeline.get_task(task.task_id)
-        assert updated.status == "reviewed", (
-            f"全部审核完未转 REVIEWED: {updated.status}"
-        )
+        assert updated.status == "reviewed", f"全部审核完未转 REVIEWED: {updated.status}"
 
     def test_review_rejected(self):
         """T22: rejected 审核动作正确（feature_to_brep 会自动跳过 rejected）。"""
@@ -608,9 +576,7 @@ class TestEngineerReview:
                 review_status=StepReviewStatus.EDITED.value,
                 edited_params=None,
             )
-        assert "edited_params" in str(exc_info.value), (
-            f"异常消息未说明缺 edited_params: {exc_info.value}"
-        )
+        assert "edited_params" in str(exc_info.value), f"异常消息未说明缺 edited_params: {exc_info.value}"
 
     def test_review_invalid_status_raises(self):
         """T25: 非法 review_status 抛 StepReviewError。"""
@@ -688,9 +654,7 @@ class TestEngineerReview:
             )
 
 
-# =============================================================================
-# 特征 → B-rep 转换测试
-# =============================================================================
+# 特征 B-rep 转换测试
 
 
 class TestFeatureToBrep:
@@ -716,9 +680,7 @@ class TestFeatureToBrep:
         assert shape.operation == "add"
         assert shape.source_feature_id == "feat_plane_001"
         # 平面边界按 sqrt(area) 估算为正方形
-        assert abs(shape.params["width_mm"] - 10.0) < 0.01, (
-            f"plane 边界估算错误: {shape.params['width_mm']}"
-        )
+        assert abs(shape.params["width_mm"] - 10.0) < 0.01, f"plane 边界估算错误: {shape.params['width_mm']}"
         assert shape.params["area_mm2"] == 100.0
 
     def test_convert_cylinder(self):
@@ -805,13 +767,13 @@ class TestFeatureToBrep:
             ReviewedFeatureRef(
                 feature_id="feat_keep",
                 feature_type="cylinder",
-                source_params={"radius_mm": 5.0, "height_mm": 10.0, "axis": [0,0,1], "center": [0,0,0]},
+                source_params={"radius_mm": 5.0, "height_mm": 10.0, "axis": [0, 0, 1], "center": [0, 0, 0]},
                 review_status=StepReviewStatus.PENDING.value,
             ),
             ReviewedFeatureRef(
                 feature_id="feat_reject",
                 feature_type="hole",
-                source_params={"radius_mm": 2.0, "depth_mm": 5.0, "normal": [0,0,1], "center": [0,0,0]},
+                source_params={"radius_mm": 2.0, "depth_mm": 5.0, "normal": [0, 0, 1], "center": [0, 0, 0]},
                 review_status=StepReviewStatus.REJECTED.value,
             ),
         ]
@@ -848,8 +810,10 @@ class TestFeatureToBrep:
             feature_id="feat_edited",
             feature_type="cylinder",
             source_params={
-                "radius_mm": 5.0, "height_mm": 10.0,
-                "axis": [0, 0, 1], "center": [0, 0, 0],
+                "radius_mm": 5.0,
+                "height_mm": 10.0,
+                "axis": [0, 0, 1],
+                "center": [0, 0, 0],
             },
             review_status=StepReviewStatus.EDITED.value,
             edited_params={"radius_mm": 8.0},
@@ -857,9 +821,7 @@ class TestFeatureToBrep:
         result = convert_features_to_brep([feature])
 
         shape = result.shapes[0]
-        assert shape.params["radius_mm"] == 8.0, (
-            f"edited_params 未覆盖 source_params: {shape.params['radius_mm']}"
-        )
+        assert shape.params["radius_mm"] == 8.0, f"edited_params 未覆盖 source_params: {shape.params['radius_mm']}"
         assert shape.params["height_mm"] == 10.0  # 未编辑字段保留
 
     def test_convert_radius_floor(self):
@@ -871,31 +833,34 @@ class TestFeatureToBrep:
             feature_id="feat_zero",
             feature_type="cylinder",
             source_params={
-                "radius_mm": 0.0, "height_mm": -5.0,
-                "axis": [0, 0, 1], "center": [0, 0, 0],
+                "radius_mm": 0.0,
+                "height_mm": -5.0,
+                "axis": [0, 0, 1],
+                "center": [0, 0, 0],
             },
             review_status=StepReviewStatus.PENDING.value,
         )
         result = convert_features_to_brep([feature])
 
         shape = result.shapes[0]
-        assert shape.params["radius_mm"] == 0.1, (
-            f"radius=0 未回退为 0.1: {shape.params['radius_mm']}"
-        )
+        assert shape.params["radius_mm"] == 0.1, f"radius=0 未回退为 0.1: {shape.params['radius_mm']}"
         assert shape.params["height_mm"] == 0.1
 
 
-# =============================================================================
 # 装配器测试
-# =============================================================================
 
 
 class TestAssemblyBuilder:
     """装配器测试：base 选择 + add 排序 + subtract 排序 + 毛坯 bbox 估算。"""
 
     def _make_shape(
-        self, shape_id, shape_type, operation,
-        origin=None, direction=None, params=None,
+        self,
+        shape_id,
+        shape_type,
+        operation,
+        origin=None,
+        direction=None,
+        params=None,
     ):
         from app.parametric_geometry.feature_to_brep import BrepShape
 
@@ -915,11 +880,15 @@ class TestAssemblyBuilder:
 
         shapes = [
             self._make_shape(
-                "brep_plane_001", "plane", "add",
+                "brep_plane_001",
+                "plane",
+                "add",
                 params={"width_mm": 20.0, "height_mm": 20.0},
             ),
             self._make_shape(
-                "brep_cyl_001", "cylinder", "add",
+                "brep_cyl_001",
+                "cylinder",
+                "add",
                 params={"radius_mm": 5.0, "height_mm": 10.0},
             ),
         ]
@@ -940,12 +909,16 @@ class TestAssemblyBuilder:
         shapes = [
             # 小圆柱（volume 小）
             self._make_shape(
-                "brep_small", "cylinder", "add",
+                "brep_small",
+                "cylinder",
+                "add",
                 params={"radius_mm": 2.0, "height_mm": 5.0},  # V ≈ 62.8
             ),
             # 大圆柱（volume 大）
             self._make_shape(
-                "brep_large", "cylinder", "add",
+                "brep_large",
+                "cylinder",
+                "add",
                 params={"radius_mm": 5.0, "height_mm": 10.0},  # V ≈ 785.4
             ),
         ]
@@ -963,15 +936,21 @@ class TestAssemblyBuilder:
 
         shapes = [
             self._make_shape(
-                "brep_hole_002", "cylinder", "subtract",
+                "brep_hole_002",
+                "cylinder",
+                "subtract",
                 params={"radius_mm": 2.0, "height_mm": 5.0},
             ),
             self._make_shape(
-                "brep_hole_001", "cylinder", "subtract",
+                "brep_hole_001",
+                "cylinder",
+                "subtract",
                 params={"radius_mm": 3.0, "height_mm": 8.0},
             ),
             self._make_shape(
-                "brep_hole_003", "cylinder", "subtract",
+                "brep_hole_003",
+                "cylinder",
+                "subtract",
                 params={"radius_mm": 1.0, "height_mm": 4.0},
             ),
         ]
@@ -980,9 +959,7 @@ class TestAssemblyBuilder:
         assert len(plan.subtract_shapes) == 3
         # 按 shape_id 字典序
         ids = [s.shape_id for s in plan.subtract_shapes]
-        assert ids == ["brep_hole_001", "brep_hole_002", "brep_hole_003"], (
-            f"subtract 未按 shape_id 稳定排序: {ids}"
-        )
+        assert ids == ["brep_hole_001", "brep_hole_002", "brep_hole_003"], f"subtract 未按 shape_id 稳定排序: {ids}"
 
     def test_blank_bbox_includes_margin(self):
         """T40: 毛坯 bbox = add 形状 bbox 并集 + blank_margin_mm。"""
@@ -990,7 +967,9 @@ class TestAssemblyBuilder:
 
         shapes = [
             self._make_shape(
-                "brep_cyl_001", "cylinder", "add",
+                "brep_cyl_001",
+                "cylinder",
+                "add",
                 origin=[10.0, 0.0, 0.0],
                 direction=[0, 0, 1],
                 params={"radius_mm": 5.0, "height_mm": 10.0},
@@ -1004,8 +983,7 @@ class TestAssemblyBuilder:
         # 仅断言 margin 生效（bbox 大于无 margin）
         plan_no_margin = build_assembly_plan(shapes, blank_margin_mm=0.0)
         assert plan.blank_bbox.size_x >= plan_no_margin.blank_bbox.size_x, (
-            f"毛坯 margin 未生效: with_margin={plan.blank_bbox.size_x}, "
-            f"no_margin={plan_no_margin.blank_bbox.size_x}"
+            f"毛坯 margin 未生效: with_margin={plan.blank_bbox.size_x}, no_margin={plan_no_margin.blank_bbox.size_x}"
         )
 
     def test_no_plane_no_base(self):
@@ -1018,7 +996,9 @@ class TestAssemblyBuilder:
 
         shapes = [
             self._make_shape(
-                "brep_cyl_001", "cylinder", "add",
+                "brep_cyl_001",
+                "cylinder",
+                "add",
                 params={"radius_mm": 5.0, "height_mm": 10.0},
             ),
         ]
@@ -1039,11 +1019,15 @@ class TestAssemblyBuilder:
 
         shapes = [
             self._make_shape(
-                "brep_plane_001", "plane", "add",
+                "brep_plane_001",
+                "plane",
+                "add",
                 params={"width_mm": 20.0, "height_mm": 20.0},
             ),
             self._make_shape(
-                "brep_hole_001", "cylinder", "subtract",
+                "brep_hole_001",
+                "cylinder",
+                "subtract",
                 params={"radius_mm": 2.0, "height_mm": 5.0},
             ),
         ]
@@ -1051,10 +1035,17 @@ class TestAssemblyBuilder:
         summary = get_assembly_summary(plan)
 
         required_keys = {
-            "has_base", "base_shape_type", "base_shape_id",
-            "add_count", "subtract_count", "auxiliary_count",
-            "total_shape_count", "has_solid",
-            "blank_size_mm", "blank_center_mm", "assembly_order",
+            "has_base",
+            "base_shape_type",
+            "base_shape_id",
+            "add_count",
+            "subtract_count",
+            "auxiliary_count",
+            "total_shape_count",
+            "has_solid",
+            "blank_size_mm",
+            "blank_center_mm",
+            "assembly_order",
         }
         missing = required_keys - set(summary.keys())
         assert not missing, f"装配摘要缺字段: {missing}"
@@ -1068,31 +1059,33 @@ class TestAssemblyBuilder:
 
         shapes = [
             self._make_shape(
-                "brep_plane_001", "plane", "add",
+                "brep_plane_001",
+                "plane",
+                "add",
                 params={"width_mm": 20.0, "height_mm": 20.0},
             ),
             # 多余 plane 作为 auxiliary
             self._make_shape(
-                "brep_plane_002", "plane", "add",
+                "brep_plane_002",
+                "plane",
+                "add",
                 params={"width_mm": 10.0, "height_mm": 10.0},
             ),
             self._make_shape(
-                "brep_hole_001", "cylinder", "subtract",
+                "brep_hole_001",
+                "cylinder",
+                "subtract",
                 params={"radius_mm": 2.0, "height_mm": 5.0},
             ),
         ]
         plan = build_assembly_plan(shapes)
 
         # 1 base + 0 add + 1 subtract + 1 auxiliary = 3
-        assert plan.total_shape_count == 3, (
-            f"total_shape_count 计算错误: {plan.total_shape_count}"
-        )
+        assert plan.total_shape_count == 3, f"total_shape_count 计算错误: {plan.total_shape_count}"
         assert len(plan.auxiliary_shapes) == 1  # 第二个 plane 作为 auxiliary
 
 
-# =============================================================================
 # STEP 写入器降级测试
-# =============================================================================
 
 
 class TestStepWriter:
@@ -1145,17 +1138,19 @@ class TestStepWriter:
         d = result.to_dict()
 
         required_keys = {
-            "success", "output_path", "engine_used",
-            "shape_count", "error_message", "notes",
+            "success",
+            "output_path",
+            "engine_used",
+            "shape_count",
+            "error_message",
+            "notes",
         }
         assert set(d.keys()) == required_keys
         assert d["success"] is True
         assert d["notes"] == ["降级到模板引擎"]
 
 
-# =============================================================================
 # Pipeline 状态机测试
-# =============================================================================
 
 
 class TestPipeline:
@@ -1180,16 +1175,18 @@ class TestPipeline:
         """构造 confirmed_features.json。"""
         features = []
         for i in range(feature_count):
-            features.append({
-                "feature_id": f"feat_cyl_{i:03d}",
-                "feature_type": "cylinder",
-                "params": {
-                    "axis": [0, 0, 1],
-                    "center": [0, 0, 0],
-                    "radius_mm": 5.0 + i,
-                    "height_mm": 10.0,
-                },
-            })
+            features.append(
+                {
+                    "feature_id": f"feat_cyl_{i:03d}",
+                    "feature_type": "cylinder",
+                    "params": {
+                        "axis": [0, 0, 1],
+                        "center": [0, 0, 0],
+                        "radius_mm": 5.0 + i,
+                        "height_mm": 10.0,
+                    },
+                }
+            )
         features_json = Path(self.cfg.output_dir) / "confirmed_features.json"
         features_json.parent.mkdir(parents=True, exist_ok=True)
         features_json.write_text(
@@ -1201,6 +1198,7 @@ class TestPipeline:
     def _mock_step_write_success(self, task):
         """mock write_step_with_fallback 返回成功。"""
         from app.parametric_geometry.step_writer import StepWriteResult
+
         return patch(
             "app.parametric_geometry.pipeline.write_step_with_fallback",
             return_value=StepWriteResult(
@@ -1253,6 +1251,7 @@ class TestPipeline:
 
         with self._mock_step_write_success(task):
             import asyncio
+
             result = asyncio.run(pipeline.run_pipeline(task.task_id))
 
         assert result.status == ParametricGeometryTaskStatus.STEP_GENERATED.value
@@ -1279,13 +1278,13 @@ class TestPipeline:
         )
 
         import asyncio
+
         result = asyncio.run(pipeline.run_pipeline(task.task_id))
 
         assert result.status == ParametricGeometryTaskStatus.FAILED.value
         assert result.error_message is not None
         # 失败状态可重试（再调用 run_pipeline）
-        assert pipeline.get_task(task.task_id).status == \
-            ParametricGeometryTaskStatus.FAILED.value
+        assert pipeline.get_task(task.task_id).status == ParametricGeometryTaskStatus.FAILED.value
 
     def test_run_pipeline_step_write_failure(self):
         """T49: STEP 写入失败 → 状态转 FAILED。"""
@@ -1311,6 +1310,7 @@ class TestPipeline:
             ),
         ):
             import asyncio
+
             result = asyncio.run(pipeline.run_pipeline(task.task_id))
 
         assert result.status == ParametricGeometryTaskStatus.FAILED.value
@@ -1334,11 +1334,13 @@ class TestPipeline:
         # 先让任务进入 STEP_GENERATED
         with self._mock_step_write_success(task):
             import asyncio
+
             asyncio.run(pipeline.run_pipeline(task.task_id))
 
         # 再次调用应抛异常
         with pytest.raises(ParametricGeometryError):
             import asyncio
+
             asyncio.run(pipeline.run_pipeline(task.task_id))
 
     def test_run_pipeline_nonexistent_task_raises(self):
@@ -1350,6 +1352,7 @@ class TestPipeline:
 
         pipeline = ParametricGeometryPipeline(cfg=self.cfg)
         import asyncio
+
         with pytest.raises(ParametricGeometryError):
             asyncio.run(pipeline.run_pipeline("pg_nonexistent"))
 
@@ -1372,6 +1375,7 @@ class TestPipeline:
         # 第一轮：生成 STEP
         with self._mock_step_write_success(task):
             import asyncio
+
             asyncio.run(pipeline.run_pipeline(task.task_id))
 
         # 第二轮：审核
@@ -1381,8 +1385,7 @@ class TestPipeline:
             review_status=StepReviewStatus.CONFIRMED.value,
         )
         # 此时状态应为 REVIEWED
-        assert pipeline.get_task(task.task_id).status == \
-            ParametricGeometryTaskStatus.REVIEWED.value
+        assert pipeline.get_task(task.task_id).status == ParametricGeometryTaskStatus.REVIEWED.value
 
         # 第三轮：finalize_step 生成最终 STEP
         with patch(
@@ -1419,6 +1422,7 @@ class TestPipeline:
         )
         # 任务保持 PENDING，直接 finalize 应抛异常
         import asyncio
+
         with pytest.raises(ParametricGeometryError):
             asyncio.run(pipeline.finalize_step(task.task_id))
 
@@ -1539,9 +1543,7 @@ class TestPipeline:
         assert tasks[1].task_id == t1.task_id
 
 
-# =============================================================================
 # 配置校验测试
-# =============================================================================
 
 
 class TestParametricGeometryConfig:
@@ -1567,9 +1569,7 @@ class TestParametricGeometryConfig:
         monkeypatch.setenv("LNN_PG_PRECISION_TIER", "ultra_precision")
         cfg = ParametricGeometryConfig(output_dir=str(tmp_path))
 
-        assert cfg.precision_tier == "standard", (
-            f"非法 precision_tier 未回退: {cfg.precision_tier}"
-        )
+        assert cfg.precision_tier == "standard", f"非法 precision_tier 未回退: {cfg.precision_tier}"
 
     def test_invalid_blank_margin_falls_back(self, tmp_path, monkeypatch):
         """T62: blank_margin_mm <= 0 回退为 2.0。"""
@@ -1578,9 +1578,7 @@ class TestParametricGeometryConfig:
         monkeypatch.setenv("LNN_PG_BLANK_MARGIN_MM", "-5.0")
         cfg = ParametricGeometryConfig(output_dir=str(tmp_path))
 
-        assert cfg.blank_margin_mm == 2.0, (
-            f"非法 blank_margin_mm 未回退: {cfg.blank_margin_mm}"
-        )
+        assert cfg.blank_margin_mm == 2.0, f"非法 blank_margin_mm 未回退: {cfg.blank_margin_mm}"
 
     def test_invalid_max_concurrent_falls_back(self, tmp_path, monkeypatch):
         """T63: max_concurrent < 1 回退为 1（串行）。"""
@@ -1589,9 +1587,7 @@ class TestParametricGeometryConfig:
         monkeypatch.setenv("LNN_PG_MAX_CONCURRENT", "0")
         cfg = ParametricGeometryConfig(output_dir=str(tmp_path))
 
-        assert cfg.max_concurrent == 1, (
-            f"非法 max_concurrent 未回退: {cfg.max_concurrent}"
-        )
+        assert cfg.max_concurrent == 1, f"非法 max_concurrent 未回退: {cfg.max_concurrent}"
 
     def test_invalid_task_timeout_falls_back(self, tmp_path, monkeypatch):
         """T64: task_timeout_seconds < 60 回退为 600。"""
@@ -1600,9 +1596,7 @@ class TestParametricGeometryConfig:
         monkeypatch.setenv("LNN_PG_TASK_TIMEOUT", "10")
         cfg = ParametricGeometryConfig(output_dir=str(tmp_path))
 
-        assert cfg.task_timeout_seconds == 600, (
-            f"非法 task_timeout_seconds 未回退: {cfg.task_timeout_seconds}"
-        )
+        assert cfg.task_timeout_seconds == 600, f"非法 task_timeout_seconds 未回退: {cfg.task_timeout_seconds}"
 
     def test_large_blank_margin_warns_but_kept(self, tmp_path, monkeypatch):
         """T65: blank_margin_mm > 20 仅警告不回退（保留用户配置）。"""
@@ -1612,14 +1606,10 @@ class TestParametricGeometryConfig:
         cfg = ParametricGeometryConfig(output_dir=str(tmp_path))
 
         # > 20 仅警告，值仍保留（不强制回退）
-        assert cfg.blank_margin_mm == 30.0, (
-            f">20mm 的 blank_margin 被强制回退: {cfg.blank_margin_mm}"
-        )
+        assert cfg.blank_margin_mm == 30.0, f">20mm 的 blank_margin 被强制回退: {cfg.blank_margin_mm}"
 
 
-# =============================================================================
 # main.py 集成测试
-# =============================================================================
 
 
 class TestMainAppIntegration:
@@ -1643,10 +1633,11 @@ class TestMainAppIntegration:
 
         # 至少 precision_info 应已注册（若模块未启用，则不应包含任何 pg 路由）
         from app.config import config
+
         if config.parametric_geometry.enabled:
-            assert any(
-                "/api/v1/parametric_geometry" in p for p in all_paths
-            ), f"parametric_geometry 路由未注册: {all_paths}"
+            assert any("/api/v1/parametric_geometry" in p for p in all_paths), (
+                f"parametric_geometry 路由未注册: {all_paths}"
+            )
 
     def test_router_prefix_correct(self):
         """T68: 路由 prefix 与 API 规范一致。"""
@@ -1659,14 +1650,10 @@ class TestMainAppIntegration:
         from app.api.v1.parametric_geometry import routes as pg_routes
 
         # 至少有 1 个 dependency（require_permission）
-        assert len(pg_routes.router.dependencies) >= 1, (
-            "路由未挂载权限校验 dependency"
-        )
+        assert len(pg_routes.router.dependencies) >= 1, "路由未挂载权限校验 dependency"
 
 
-# =============================================================================
 # 上游 mesh 标定状态追溯测试
-# =============================================================================
 
 
 class TestResolveUpstreamCalibrated:
@@ -1707,9 +1694,7 @@ class TestResolveUpstreamCalibrated:
         assert isinstance(result[1], str)
 
 
-# =============================================================================
 # 项目记忆硬约束测试
-# =============================================================================
 
 
 class TestProjectMemoryHardConstraints:
@@ -1718,6 +1703,7 @@ class TestProjectMemoryHardConstraints:
     @pytest.fixture(autouse=True)
     def setup(self):
         from app.config import config
+
         self.config = config
 
     def test_mesh_to_cad_unsolved_warning(self):
@@ -1731,10 +1717,8 @@ class TestProjectMemoryHardConstraints:
             engine_used="pythonocc",
         )
         gates_text = " ".join(disclaimer.industrial_hard_gates)
-        # 必须明确提及 mesh → CAD 自动转换未解决
-        assert "CAD" in gates_text, (
-            f"硬门槛未提及 CAD: {disclaimer.industrial_hard_gates}"
-        )
+        # 必须明确提及 mesh CAD 自动转换未解决
+        assert "CAD" in gates_text, f"硬门槛未提及 CAD: {disclaimer.industrial_hard_gates}"
         assert "未解决" in gates_text or "算法建议" in gates_text, (
             f"硬门槛未明确告知 mesh→CAD 未解决: {disclaimer.industrial_hard_gates}"
         )
@@ -1749,9 +1733,7 @@ class TestProjectMemoryHardConstraints:
             engine_used="template",
         )
         gates_text = " ".join(disclaimer.industrial_hard_gates)
-        assert "工程师助手" in gates_text, (
-            f"硬门槛未提及工程师助手定位: {disclaimer.industrial_hard_gates}"
-        )
+        assert "工程师助手" in gates_text, f"硬门槛未提及工程师助手定位: {disclaimer.industrial_hard_gates}"
 
     def test_cam_validation_required_always_true(self):
         """T75: requires_cam_validation 始终为 True（即便用 pythonOCC）。"""
@@ -1763,9 +1745,7 @@ class TestProjectMemoryHardConstraints:
                 mesh_calibrated=True,
                 engine_used=engine,
             )
-            assert disclaimer.requires_cam_validation is True, (
-                f"engine={engine} 时 requires_cam_validation 应为 True"
-            )
+            assert disclaimer.requires_cam_validation is True, f"engine={engine} 时 requires_cam_validation 应为 True"
 
     def test_engineer_review_required_always_true(self):
         """T76: requires_engineer_review 始终为 True。"""
@@ -1777,18 +1757,14 @@ class TestProjectMemoryHardConstraints:
                 mesh_calibrated=True,
                 engine_used=engine,
             )
-            assert disclaimer.requires_engineer_review is True, (
-                f"engine={engine} 时 requires_engineer_review 应为 True"
-            )
+            assert disclaimer.requires_engineer_review is True, f"engine={engine} 时 requires_engineer_review 应为 True"
 
     def test_two_round_review_workflow(self):
         """T77: 两轮审核流程在 precision_info 端点中明确告知。"""
         from app.api.v1.parametric_geometry import routes as pg_routes
 
         # 验证 routes 模块中 _disclaimer_dict 函数存在（用于响应注入）
-        assert hasattr(pg_routes, "_disclaimer_dict"), (
-            "routes 模块未实现 _disclaimer_dict（精度告知注入）"
-        )
+        assert hasattr(pg_routes, "_disclaimer_dict"), "routes 模块未实现 _disclaimer_dict（精度告知注入）"
         # 验证 routes 模块中 _resolve_upstream_calibrated 函数存在
         assert hasattr(pg_routes, "_resolve_upstream_calibrated"), (
             "routes 模块未实现 _resolve_upstream_calibrated（精度继承链追溯）"
@@ -1819,13 +1795,14 @@ class TestProjectMemoryHardConstraints:
 
         # 5 个响应模型都必须包含 step_disclaimer 字段
         for model_cls in [
-            TaskCreateResponse, TaskStatusResponse, TaskResultResponse,
-            ReviewResponse, FinalizeResponse,
+            TaskCreateResponse,
+            TaskStatusResponse,
+            TaskResultResponse,
+            ReviewResponse,
+            FinalizeResponse,
         ]:
             fields = model_cls.model_fields
-            assert "step_disclaimer" in fields, (
-                f"{model_cls.__name__} 缺 step_disclaimer 字段"
-            )
+            assert "step_disclaimer" in fields, f"{model_cls.__name__} 缺 step_disclaimer 字段"
 
     def test_cam_validation_required_field_in_task(self):
         """T80: ParametricGeometryTask.cam_validation_required 始终为 True。"""
@@ -1837,6 +1814,4 @@ class TestProjectMemoryHardConstraints:
             input_features_path="/tmp/test.json",
         )
         # 默认 cam_validation_required 必须为 True
-        assert task.cam_validation_required is True, (
-            "新建任务 cam_validation_required 必须为 True（项目记忆硬约束）"
-        )
+        assert task.cam_validation_required is True, "新建任务 cam_validation_required 必须为 True（项目记忆硬约束）"

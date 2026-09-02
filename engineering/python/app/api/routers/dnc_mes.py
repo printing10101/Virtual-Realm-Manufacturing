@@ -15,8 +15,8 @@ from app.integrations.mes import api as mes_api
 
 def register(app: FastAPI) -> None:
     """注册通信域路由."""
-    # === DNC 机床通信 ===
+    # DNC 机床通信
     app.include_router(dnc_routes.router)
 
-    # === MES/ERP 集成 ===
+    # MES/ERP 集成
     app.include_router(mes_api.router)

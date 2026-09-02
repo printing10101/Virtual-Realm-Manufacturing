@@ -13,26 +13,29 @@
 
 用法: python generate_orthogonal.py
 """
+
 import os
 import math
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "orthogonal_cut.inp")
+
 
 def _chunk(text):
     """把逗号分隔的数值列表按每行 ≤16 项分行（CalculiX 行条目限制）。"""
     items = [s for s in text.split(", ") if s.strip()]
     lines = []
     for i in range(0, len(items), 16):
-        lines.append(", ".join(items[i:i + 16]) + "\n")
+        lines.append(", ".join(items[i : i + 16]) + "\n")
     return "".join(lines)
 
-# ============ 几何参数（mm, N, s 单位制） ============
-WX, WY = 2.5, 1.0            # 工件 2.5×1.0mm
-DX = DY = 0.05               # 网格尺寸（快速版 0.05，细网格版 0.03）
-NX = int(WX / DX)            # 50 列
-NY_WORK = 18                 # 工件本体行数（y∈[0,0.9]）
-CUT_ROWS = 2                 # 切屑层行数（y∈[0.9,1.0]，2×0.05=0.1=h）
-H_CUT = CUT_ROWS * DY        # 切屑层厚度 0.1mm = h
+
+# 几何参数（mm, N, s 单位制）
+WX, WY = 2.5, 1.0  # 工件 2.5×1.0mm
+DX = DY = 0.05  # 网格尺寸（快速版 0.05，细网格版 0.03）
+NX = int(WX / DX)  # 50 列
+NY_WORK = 18  # 工件本体行数（y∈[0,0.9]）
+CUT_ROWS = 2  # 切屑层行数（y∈[0.9,1.0]，2×0.05=0.1=h）
+H_CUT = CUT_ROWS * DY  # 切屑层厚度 0.1mm = h
 assert H_CUT >= 0.1
 
 # 刀具（rake=0°, clearance=7°；刀尖在顶面下方 h=0.1 处）
@@ -40,22 +43,22 @@ assert H_CUT >= 0.1
 # clearance 面=右下方斜线（已加工区上方，后角 7°），刀具主体在 rake 面右侧。
 RAKE_ANGLE = 0.0
 CLEAR_ANGLE = 7.0
-TOOL_X_R = 2.05              # 初始 rake 面 x = 刀尖 x（贴着切屑层右端）
-TOOL_Y_TIP = 0.9             # 刀尖 y = 顶面 - 切削深度(0.1mm)
-TOOL_HT = 0.7                # 刀具高度
-TOOL_WD = 0.7                # 刀具宽度
-TDX = 0.1                    # 刀具网格
-VC = 1666.0                  # 切削速度 mm/s（100 m/min，降低冲击）
-CUT_TIME = 1.8e-4            # 总仿真时间 s（走 0.3mm）
-TOOL_STROKE = 0.3            # 刀具行程 mm
-MU_FRICTION = 0.9            # 缝面摩擦系数（增强切屑层约束，防止整体滑脱）
-CHIP_J0 = int((TOOL_X_R - 0.55) / DX) + 1   # 切屑层起始列（加宽，滑动全程有约束）
-CHIP_J1 = round(TOOL_X_R / DX)               # 切屑层右端列（必须=rake 面 x，浮点用 round）
+TOOL_X_R = 2.05  # 初始 rake 面 x = 刀尖 x（贴着切屑层右端）
+TOOL_Y_TIP = 0.9  # 刀尖 y = 顶面 - 切削深度(0.1mm)
+TOOL_HT = 0.7  # 刀具高度
+TOOL_WD = 0.7  # 刀具宽度
+TDX = 0.1  # 刀具网格
+VC = 1666.0  # 切削速度 mm/s（100 m/min，降低冲击）
+CUT_TIME = 1.8e-4  # 总仿真时间 s（走 0.3mm）
+TOOL_STROKE = 0.3  # 刀具行程 mm
+MU_FRICTION = 0.9  # 缝面摩擦系数（增强切屑层约束，防止整体滑脱）
+CHIP_J0 = int((TOOL_X_R - 0.55) / DX) + 1  # 切屑层起始列（加宽，滑动全程有约束）
+CHIP_J1 = round(TOOL_X_R / DX)  # 切屑层右端列（必须=rake 面 x，浮点用 round）
 
-# ============ 材料参数 ============
+# 材料参数
 # 45 钢 / AISI 1045 (Jaspers & Dautzenberg 2002)
 E_STEEL, NU_STEEL = 210000.0, 0.3
-RHO_STEEL = 7.85e-9          # t/mm³
+RHO_STEEL = 7.85e-9  # t/mm³
 JC_A, JC_B, JC_N = 553.1, 600.8, 0.234
 JC_C, JC_M = 0.0134, 1.0
 TMELT, TROOM = 1800.0, 293.0
@@ -63,18 +66,20 @@ TMELT, TROOM = 1800.0, 293.0
 E_TOOL, NU_TOOL = 600000.0, 0.22
 RHO_TOOL = 1.5e-8
 
-# ============ 节点/单元生成 ============
+# 节点/单元生成
 node_id = 0
 nodes = []
-work_top = []        # 工件顶面节点行（y=0.9，缝面 master 用）
-chip_bot = []        # 切屑层底面节点行（y=0.9，缝面 slave 用）
+work_top = []  # 工件顶面节点行（y=0.9，缝面 master 用）
+chip_bot = []  # 切屑层底面节点行（y=0.9，缝面 slave 用）
 tool_top = []
+
 
 def add_node(x, y):
     global node_id
     node_id += 1
     nodes.append((node_id, x, y))
     return node_id
+
 
 # 工件网格：x∈[0,2.49], y∈[0,0.90]，30 行
 work_nodes = [[0] * (NX + 1) for _ in range(NY_WORK + 1)]
@@ -91,11 +96,11 @@ for i in range(CUT_ROWS + 1):
 chip_bot = chip_nodes[0]
 
 # 刀具网格：rake 面在左边界（x=TOOL_X_R），向右延伸，clearance 斜线向右上翘
-ncol = int(TOOL_WD / TDX) + 1   # 8 列
-nrow = int(TOOL_HT / TDX) + 1   # 8 行
+ncol = int(TOOL_WD / TDX) + 1  # 8 列
+nrow = int(TOOL_HT / TDX) + 1  # 8 行
 tan7 = math.tan(math.radians(CLEAR_ANGLE))
 tool_nodes = [[0] * ncol for _ in range(nrow)]
-for k in range(ncol):            # k=0 在 rake 面（x=TOOL_X_R），k 增大 x 增大
+for k in range(ncol):  # k=0 在 rake 面（x=TOOL_X_R），k 增大 x 增大
     x = TOOL_X_R + k * TDX
     y_bottom = TOOL_Y_TIP + (x - TOOL_X_R) * tan7
     for r in range(nrow):
@@ -105,6 +110,7 @@ tool_top = [tool_nodes[nrow - 1][k] for k in range(ncol)]
 # 单元
 el_id = 0
 work_elems, chip_elems, tool_elems = [], [], []
+
 
 def add_elem(eset, n1, n2, n3, n4):
     global el_id
@@ -116,6 +122,7 @@ def add_elem(eset, n1, n2, n3, n4):
     else:
         tool_elems.append((el_id, n1, n2, n3, n4))
     return el_id
+
 
 for i in range(NY_WORK):
     for j in range(NX):
@@ -133,7 +140,7 @@ for i in range(CUT_ROWS):
         add_elem("CUTLAYER", a, b, c, d)
 for r in range(nrow - 1):
     for k in range(ncol - 1):
-        # k 增大 → x 增大，逆时针: (r,k)→(r,k+1)→(r+1,k+1)→(r+1,k)
+        # k 增大 x 增大，逆时针: (r,k)(r,k+1)(r+1,k+1)(r+1,k)
         a = tool_nodes[r][k]
         b = tool_nodes[r][k + 1]
         c = tool_nodes[r + 1][k + 1]
@@ -181,7 +188,7 @@ with open(OUT, "w", encoding="utf-8") as f:
 
     # 边界
     f.write("*BOUNDARY\n")
-    f.write(f"1, {node_id}, 3, 3\n")   # 全部节点 z 固定（平面应变）
+    f.write(f"1, {node_id}, 3, 3\n")  # 全部节点 z 固定（平面应变）
     f.write("*NSET, NSET=WBOT\n")
     f.write(_chunk(", ".join(str(work_nodes[0][j]) for j in range(NX + 1)) + "\n"))
     f.write("*BOUNDARY\n")
@@ -204,11 +211,11 @@ with open(OUT, "w", encoding="utf-8") as f:
     # TOOLS: 刀具外表面（rake 面=列0 单元 S4；clearance=行0 单元 S1；顶=行7 单元 S3；左端=列7 单元 S4）
     f.write("*SURFACE, NAME=TOOLS, TYPE=ELEMENT\n")
     for r in range(nrow - 1):
-        f.write(f"{tool_start + r}, S4\n")     # rake 面（列 0，左边界）
+        f.write(f"{tool_start + r}, S4\n")  # rake 面（列 0，左边界）
         f.write(f"{tool_start + r + (ncol - 2) * (nrow - 1)}, S2\n")  # 右边界（列 ncol-2）
     for k in range(ncol - 1):
-        f.write(f"{tool_start + k * (nrow - 1)}, S1\n")              # clearance 面（行 0）
-        f.write(f"{tool_start + k * (nrow - 1) + (nrow - 2)}, S3\n") # 顶面（行 7）
+        f.write(f"{tool_start + k * (nrow - 1)}, S1\n")  # clearance 面（行 0）
+        f.write(f"{tool_start + k * (nrow - 1) + (nrow - 2)}, S3\n")  # 顶面（行 7）
     # WPS_CHIP: 切屑层外表面（顶 S3 + 右端 S2 + 左端 S4，不含底面 S1=缝面）
     f.write("*SURFACE, NAME=WPS_CHIP, TYPE=ELEMENT\n")
     chip_ids = [e[0] for e in chip_elems]
@@ -216,8 +223,8 @@ with open(OUT, "w", encoding="utf-8") as f:
     for eid in chip_ids:
         f.write(f"{eid}, S3\n")
     for i in range(CUT_ROWS):
-        f.write(f"{chip_ids[i * nw_chip + (nw_chip - 1)]}, S2\n")   # 右端列
-        f.write(f"{chip_ids[i * nw_chip + 0]}, S4\n")               # 左端列
+        f.write(f"{chip_ids[i * nw_chip + (nw_chip - 1)]}, S2\n")  # 右端列
+        f.write(f"{chip_ids[i * nw_chip + 0]}, S4\n")  # 左端列
     # WPS_SEAM: 切屑层底面（缝面）
     f.write("*SURFACE, NAME=WPS_SEAM, TYPE=ELEMENT\n")
     for eid in chip_ids:

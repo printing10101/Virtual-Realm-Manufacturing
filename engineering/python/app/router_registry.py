@@ -35,14 +35,12 @@ from app.api.routers import register_all_domain_routers
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
 # 条件导入标志位
-# =============================================================================
 
-# --- Ollama：桌面版可能未安装 ollama 包，且 config.hardware.skip_ollama 可显式跳过 ---
+# Ollama：桌面版可能未安装 ollama 包，且 config.hardware.skip_ollama 可显式跳过
 # [U-P0-2] 防复发：尊重 config.hardware.skip_ollama 标志
-#   - 轻量模式 / minimal 档位下显式跳过 Ollama 加载，降低内存占用
-#   - 避免 Ollama 启动探测失败导致应用卡死（老旧硬件常见问题）
+# - 轻量模式 / minimal 档位下显式跳过 Ollama 加载，降低内存占用
+# - 避免 Ollama 启动探测失败导致应用卡死（老旧硬件常见问题）
 _OLLAMA_AVAILABLE = False
 if config.hardware.skip_ollama:
     logging.info(
@@ -62,7 +60,7 @@ else:
             "修复: 请安装 ollama Python 包，运行 'pip install ollama'"
         )
 
-# --- ADR 阶段 1-7 条件模块标志位 ---
+# ADR 阶段 1-7 条件模块标志位
 # 初始为 False，在 ``register_routers`` 调用后由
 # ``register_all_domain_routers`` 返回的 flags dict 回填实际值。
 # 此处仅占位定义，确保 ``from app.router_registry import _FLAG`` 在

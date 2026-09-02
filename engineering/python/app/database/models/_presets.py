@@ -8,7 +8,7 @@ from __future__ import annotations
 # 权限码完全一致，否则 RBAC 校验会因权限码不在 PRESET_PERMISSIONS 中而始终失败。
 # 新增 API 端点时，若引入新的 require_permission 码，必须同步追加到此处。
 PRESET_PERMISSIONS = [
-    # --- 原有 12 个权限码 ---
+    # 原有 12 个权限码
     {"code": "system:config", "name": "系统配置管理", "description": "修改系统全局配置参数"},
     {"code": "user:manage", "name": "用户管理", "description": "查看、创建、修改、禁用用户账号"},
     {"code": "project:create", "name": "项目创建", "description": "创建新的加工项目"},
@@ -21,7 +21,7 @@ PRESET_PERMISSIONS = [
     {"code": "model:predict", "name": "模型预测", "description": "使用模型进行预测推理"},
     {"code": "rule:edit", "name": "规则编辑", "description": "编辑加工规则"},
     {"code": "toolpath:edit", "name": "刀路编辑", "description": "编辑刀具路径"},
-    # --- 补充：与 API 路由 require_permission() 调用对齐的缺失权限码 ---
+    # 补充：与 API 路由 require_permission() 调用对齐的缺失权限码
     # LNN 模型模块
     {"code": "lnn:read", "name": "LNN查询", "description": "查询LNN模型列表、预测结果、任务状态"},
     {"code": "lnn:write", "name": "LNN写入", "description": "执行LNN预测、保存结果、清理缓存、模型量化"},
@@ -75,7 +75,7 @@ PRESET_PERMISSIONS = [
     {"code": "agents:read", "name": "Agent状态查询", "description": "查询Agent状态与记忆"},
     {"code": "agents:write", "name": "Agent状态写入", "description": "修改Agent状态、记忆与检查点"},
     {"code": "agents:admin", "name": "Agent管理", "description": "Agent高级管理操作（重置、导出等）"},
-    # --- 第二轮复查补全：与 API 路由 require_permission() 调用对齐的缺失权限码 ---
+    # 第二轮复查补全：与 API 路由 require_permission() 调用对齐的缺失权限码
     # 目标对齐
     {"code": "goal:read", "name": "目标对齐查询", "description": "查询目标对齐数据与任务状态"},
     {"code": "goal:write", "name": "目标对齐写入", "description": "创建、更新、删除目标与任务及状态推进"},
@@ -169,7 +169,7 @@ PRESET_PERMISSIONS = [
     {"code": "world_model:write", "name": "世界模型预测", "description": "执行世界模型轨迹预测（不走工作流）"},
     {"code": "rl_agent:read", "name": "RL策略查询", "description": "查询RL策略版本、版本详情、训练状态"},
     {"code": "rl_agent:write", "name": "RL决策与训练", "description": "执行RL决策、启动训练Workflow、停止训练"},
-    # CAM 校验（ADR-018 阶段 7：G 代码→InternalValidator→CamAdapter→审核→CAM 校验报告）
+    # CAM 校验（ADR-018 阶段 7：G 代码InternalValidatorCamAdapter审核CAM 校验报告）
     {
         "code": "cam_validation:read",
         "name": "CAM校验查询",
@@ -200,7 +200,7 @@ PRESET_PERMISSIONS = [
     # --- 第三轮复查补全（2026-08-23 发布前全量审计）---
     # 依据：审计脚本扫描全部 require_permission("xxx") 调用，与预设/角色权限对比，
     # 补齐此前新模块遗漏登记的权限码，避免 RBAC 因权限码未注册而始终 403。
-    # 图纸→3D→工艺→NC 核心链路模块：
+    # 图纸3D工艺NC 核心链路模块：
     {"code": "image_to_3d:read", "name": "图像转3D查询", "description": "查询图像转3D任务状态与结果"},
     {"code": "parametric_geometry:read", "name": "参数化几何查询", "description": "查询参数化几何任务状态与结果"},
     {"code": "feature_extraction:read", "name": "特征提取查询", "description": "查询特征提取任务状态与结果"},

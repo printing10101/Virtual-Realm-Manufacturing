@@ -31,9 +31,7 @@ class DialectCompileError(Exception):
     """方言编译失败。"""
 
 
-# ---------------------------------------------------------------------------
 # 内置基类方言映射（extends 解析用）
-# ---------------------------------------------------------------------------
 
 
 def _load_builtin_dialect_classes() -> dict[str, type[BasePostProcessor]]:
@@ -82,9 +80,7 @@ class DialectCompiler:
         self._env.filters["fmt"] = _fmt_filter
         self._env.filters["comment"] = _comment_filter
 
-    # ------------------------------------------------------------------
     # 编译入口
-    # ------------------------------------------------------------------
 
     def compile(self, declaration: DialectDeclaration) -> type[BasePostProcessor]:
         """编译声明为方言类。
@@ -247,9 +243,7 @@ class DialectCompiler:
             raise DialectCompileError(f"方言 '{declaration.id}' 的 hooks 类 '{class_name}' 未定义任何 format_* 方法。")
         return hook_methods
 
-    # ------------------------------------------------------------------
     # 模板渲染器构造
-    # ------------------------------------------------------------------
 
     def _create_renderer(
         self,
@@ -308,9 +302,7 @@ class DialectCompiler:
         return None
 
 
-# ---------------------------------------------------------------------------
 # 模板上下文与白名单过滤器
-# ---------------------------------------------------------------------------
 
 
 def _build_template_context(

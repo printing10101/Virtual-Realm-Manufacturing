@@ -75,9 +75,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
 from lomo.client import DEFAULT_BASE_URL, DEFAULT_TIMEOUT, LomoClient
 from lomo.exceptions import LomoError
 
-# ---------------------------------------------------------------------------
 # 常量与配置文件
-# ---------------------------------------------------------------------------
 
 CONFIG_DIR = Path.home() / ".lomo"
 CONFIG_FILE = CONFIG_DIR / "config.toml"
@@ -106,20 +104,16 @@ def _save_config_file(base_url: Optional[str], token: Optional[str]) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
     if base_url is not None:
-        lines.append(f'base_url = {_toml_string(base_url)}')
+        lines.append(f"base_url = {_toml_string(base_url)}")
     if token is not None:
-        lines.append(f'token = {_toml_string(token)}')
+        lines.append(f"token = {_toml_string(token)}")
     CONFIG_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _toml_string(value: str) -> str:
     """将字符串转义为 TOML 基本字符串字面量。"""
     escaped = (
-        value.replace("\\", "\\\\")
-        .replace('"', '\\"')
-        .replace("\n", "\\n")
-        .replace("\r", "\\r")
-        .replace("\t", "\\t")
+        value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
     )
     return f'"{escaped}"'
 
@@ -133,9 +127,7 @@ def _mask_token(token: Optional[str]) -> str:
     return token[:4] + "*" * (len(token) - 8) + token[-4:]
 
 
-# ---------------------------------------------------------------------------
 # 输出渲染
-# ---------------------------------------------------------------------------
 
 
 def _print_data(data: Any, output_format: str) -> None:
@@ -246,9 +238,7 @@ def _read_spec_file(path: str) -> dict[str, Any]:
         try:
             import yaml  # type: ignore[import-untyped]
         except ModuleNotFoundError as e:
-            raise typer.BadParameter(
-                "读取 YAML 需要 PyYAML（已声明在 requirements.txt）"
-            ) from e
+            raise typer.BadParameter("读取 YAML 需要 PyYAML（已声明在 requirements.txt）") from e
         try:
             with p.open("r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
@@ -260,9 +250,7 @@ def _read_spec_file(path: str) -> dict[str, Any]:
     raise typer.BadParameter(f"不支持的 spec 文件格式: {suffix}（仅支持 .json/.yaml/.yml）")
 
 
-# ---------------------------------------------------------------------------
 # 全局状态与客户端构造
-# ---------------------------------------------------------------------------
 
 
 class _State:
@@ -282,12 +270,7 @@ class _State:
     def resolve(self) -> tuple[Optional[str], Optional[str]]:
         """解析最终 base_url / token（环境变量 > 命令行选项 > 配置文件 > 默认值）。"""
         cfg = _load_config_file()
-        base_url = (
-            os.getenv("LOMO_BASE_URL")
-            or self.base_url
-            or cfg.get("base_url")
-            or DEFAULT_BASE_URL
-        )
+        base_url = os.getenv("LOMO_BASE_URL") or self.base_url or cfg.get("base_url") or DEFAULT_BASE_URL
         token = os.getenv("LOMO_TOKEN") or self.token or cfg.get("token")
         return base_url, token
 
@@ -315,9 +298,7 @@ def _handle_lomo_error(e: LomoError) -> None:
     raise typer.Exit(code=EXIT_BUSINESS_ERROR)
 
 
-# ---------------------------------------------------------------------------
 # 主 app 与子命令组
-# ---------------------------------------------------------------------------
 
 app = typer.Typer(
     name="lomo",
@@ -370,16 +351,27 @@ app.add_typer(predict_app, name="predict")
 def _main_callback(
     ctx: typer.Context,
     base_url: Optional[str] = typer.Option(
-        None, "--base-url", "-B", help="后端服务地址（覆盖配置文件与环境变量）",
+        None,
+        "--base-url",
+        "-B",
+        help="后端服务地址（覆盖配置文件与环境变量）",
     ),
     token: Optional[str] = typer.Option(
-        None, "--token", "-T", help="Bearer token（覆盖配置文件与环境变量）",
+        None,
+        "--token",
+        "-T",
+        help="Bearer token（覆盖配置文件与环境变量）",
     ),
     output: str = typer.Option(
-        "table", "--output", "-o", help="输出格式：table | json | raw",
+        "table",
+        "--output",
+        "-o",
+        help="输出格式：table | json | raw",
     ),
     timeout: float = typer.Option(
-        DEFAULT_TIMEOUT, "--timeout", help="请求超时秒数",
+        DEFAULT_TIMEOUT,
+        "--timeout",
+        help="请求超时秒数",
     ),
 ) -> None:
     """全局选项。可置于任意子命令前。"""
@@ -391,9 +383,7 @@ def _main_callback(
     ctx.obj = state
 
 
-# ---------------------------------------------------------------------------
 # config 子命令
-# ---------------------------------------------------------------------------
 
 
 @config_app.command("show")
@@ -434,9 +424,7 @@ def config_path() -> None:
     typer.echo(str(CONFIG_FILE))
 
 
-# ---------------------------------------------------------------------------
 # workflow 子命令
-# ---------------------------------------------------------------------------
 
 
 @workflow_app.command("validate")
@@ -559,9 +547,7 @@ def workflow_subscribe(
         _handle_lomo_error(e)
 
 
-# ---------------------------------------------------------------------------
 # dataset 子命令
-# ---------------------------------------------------------------------------
 
 
 @dataset_app.command("list")
@@ -595,9 +581,7 @@ def dataset_create(
     schema_data = _read_json_file(schema)
     try:
         with state.make_client() as client:
-            data = client.datasets.create(
-                name=name, schema=schema_data, owner_id=owner, description=description
-            )
+            data = client.datasets.create(name=name, schema=schema_data, owner_id=owner, description=description)
         _print_data(data, state.output)
     except LomoError as e:
         _handle_lomo_error(e)
@@ -712,9 +696,7 @@ def dataset_lineage(
         _handle_lomo_error(e)
 
 
-# ---------------------------------------------------------------------------
 # snapshot 子命令
-# ---------------------------------------------------------------------------
 
 
 @snapshot_app.command("list")
@@ -729,9 +711,7 @@ def snapshot_list(
     state: _State = ctx.obj
     try:
         with state.make_client() as client:
-            data = client.snapshots.list(
-                created_by=created_by, git_sha=git_sha, model_uri=model_uri, detail=detail
-            )
+            data = client.snapshots.list(created_by=created_by, git_sha=git_sha, model_uri=model_uri, detail=detail)
         _print_data(data, state.output)
     except LomoError as e:
         _handle_lomo_error(e)
@@ -797,9 +777,7 @@ def snapshot_reproduce(
         _handle_lomo_error(e)
 
 
-# ---------------------------------------------------------------------------
-# 高级命令 train / predict：封装 dataset → workflow → snapshot 全流程
-# ---------------------------------------------------------------------------
+# 高级命令 train / predict：封装 dataset workflow snapshot 全流程
 
 # 工作流终态事件（与后端 WorkflowEvent.event_type 枚举对齐）
 _WORKFLOW_TERMINAL_EVENTS = (
@@ -840,8 +818,7 @@ def _subscribe_until_terminal(
             from lomo.exceptions import LomoTimeoutError
 
             raise LomoTimeoutError(
-                f"等待工作流 {run_id} 完成超时（{wait_timeout}s）；"
-                f"可用 `lomo workflow status {run_id}` 查看当前状态"
+                f"等待工作流 {run_id} 完成超时（{wait_timeout}s）；可用 `lomo workflow status {run_id}` 查看当前状态"
             )
 
         ev_type = ev.get("event") if isinstance(ev, dict) else None
@@ -870,9 +847,7 @@ def _subscribe_until_terminal(
     return final_event_type, final_event_data
 
 
-def _extract_model_uri(
-    workflow_status: dict[str, Any], output_key: str
-) -> Optional[str]:
+def _extract_model_uri(workflow_status: dict[str, Any], output_key: str) -> Optional[str]:
     """从 workflow status 的 outputs 中提取 model_uri。
 
     支持两种结构:
@@ -909,36 +884,52 @@ def _extract_model_uri(
 def train_run(
     ctx: typer.Context,
     spec: str = typer.Option(
-        ..., "--spec", "-s",
+        ...,
+        "--spec",
+        "-s",
         help="训练 WorkflowSpec 文件路径（.json / .yaml / .yml）",
     ),
     owner: str = typer.Option(
-        ..., "--owner", "-O", help="发起人 ID（同时作为默认快照创建者）",
+        ...,
+        "--owner",
+        "-O",
+        help="发起人 ID（同时作为默认快照创建者）",
     ),
     inputs: Optional[str] = typer.Option(
-        None, "--inputs", "-i",
+        None,
+        "--inputs",
+        "-i",
         help="工作流输入文件路径（.json / .yaml / .yml），对应 workflow.run(inputs=...)",
     ),
     notes: str = typer.Option(
-        "", "--notes", "-n", help="快照备注（仅在自动创建快照时生效）",
+        "",
+        "--notes",
+        "-n",
+        help="快照备注（仅在自动创建快照时生效）",
     ),
     by: Optional[str] = typer.Option(
-        None, "--by", help="快照创建者（默认与 --owner 相同）",
+        None,
+        "--by",
+        help="快照创建者（默认与 --owner 相同）",
     ),
     no_snapshot: bool = typer.Option(
-        False, "--no-snapshot",
+        False,
+        "--no-snapshot",
         help="跳过自动快照创建（仅跑工作流，不产出 snapshot）",
     ),
     model_uri_key: str = typer.Option(
-        "model_uri", "--model-uri-key",
+        "model_uri",
+        "--model-uri-key",
         help="从工作流 outputs 提取 model_uri 的字段名（默认 'model_uri'）",
     ),
     wait_timeout: float = typer.Option(
-        3600.0, "--wait-timeout",
+        3600.0,
+        "--wait-timeout",
         help="等待工作流完成的最长秒数（默认 3600s；超时后事件流订阅会被中断）",
     ),
     validate_only: bool = typer.Option(
-        False, "--validate-only",
+        False,
+        "--validate-only",
         help="仅校验 spec，不提交运行",
     ),
 ) -> None:
@@ -987,20 +978,15 @@ def train_run(
             typer.echo(f"订阅事件流（超时 {wait_timeout}s）...")
 
             # 3. 等待终态
-            final_event, _final_data = _subscribe_until_terminal(
-                client, run_id, state.output, wait_timeout
-            )
+            final_event, _final_data = _subscribe_until_terminal(client, run_id, state.output, wait_timeout)
 
             # 4. 拉取最终 status
             status = client.workflows.get_status(run_id)
-            overall_status = (
-                status.get("status") if isinstance(status, dict) else final_event
-            )
+            overall_status = status.get("status") if isinstance(status, dict) else final_event
 
             if final_event != "workflow_completed":
                 typer.echo(
-                    f"工作流未成功完成：final_event={final_event or '(stream closed)'} "
-                    f"status={overall_status}",
+                    f"工作流未成功完成：final_event={final_event or '(stream closed)'} status={overall_status}",
                     err=True,
                 )
                 typer.echo(
@@ -1008,8 +994,7 @@ def train_run(
                     err=True,
                 )
                 _print_data(
-                    {"workflow_run_id": run_id, "final_event": final_event,
-                     "status": overall_status},
+                    {"workflow_run_id": run_id, "final_event": final_event, "status": overall_status},
                     state.output,
                 )
                 raise typer.Exit(code=EXIT_BUSINESS_ERROR)
@@ -1020,8 +1005,7 @@ def train_run(
             if no_snapshot:
                 typer.echo("已跳过快照创建（--no-snapshot）")
                 _print_data(
-                    {"workflow_run_id": run_id, "status": overall_status,
-                     "snapshot_id": None},
+                    {"workflow_run_id": run_id, "status": overall_status, "snapshot_id": None},
                     state.output,
                 )
                 return
@@ -1034,8 +1018,7 @@ def train_run(
                     err=True,
                 )
                 _print_data(
-                    {"workflow_run_id": run_id, "status": overall_status,
-                     "snapshot_id": None, "model_uri": None},
+                    {"workflow_run_id": run_id, "status": overall_status, "snapshot_id": None, "model_uri": None},
                     state.output,
                 )
                 raise typer.Exit(code=EXIT_BUSINESS_ERROR)
@@ -1045,9 +1028,7 @@ def train_run(
                 created_by=snapshot_by,
                 notes=notes or f"由 train run 自动创建 (run_id={run_id})",
             )
-            snapshot_id = (
-                snapshot.get("snapshot_id") if isinstance(snapshot, dict) else None
-            )
+            snapshot_id = snapshot.get("snapshot_id") if isinstance(snapshot, dict) else None
             typer.echo(f"已创建快照：snapshot_id={snapshot_id}")
 
             _print_data(
@@ -1067,27 +1048,37 @@ def train_run(
 def predict_run(
     ctx: typer.Context,
     owner: str = typer.Option(
-        ..., "--owner", "-O", help="发起人 ID",
+        ...,
+        "--owner",
+        "-O",
+        help="发起人 ID",
     ),
     snapshot_id: Optional[str] = typer.Option(
-        None, "--snapshot-id",
+        None,
+        "--snapshot-id",
         help="实验快照 ID（与 --model-uri 二选一；提供时从快照取 model_uri）",
     ),
     model_uri: Optional[str] = typer.Option(
-        None, "--model-uri", "-m",
+        None,
+        "--model-uri",
+        "-m",
         help="直接指定 model_uri（与 --snapshot-id 二选一）",
     ),
     spec: Optional[str] = typer.Option(
-        None, "--spec", "-s",
-        help="预测 WorkflowSpec 文件路径（.json / .yaml / .yml）；"
-             "不提供时使用 snapshot.reproduce 内置 spec",
+        None,
+        "--spec",
+        "-s",
+        help="预测 WorkflowSpec 文件路径（.json / .yaml / .yml）；不提供时使用 snapshot.reproduce 内置 spec",
     ),
     input_file: Optional[str] = typer.Option(
-        None, "--input-file", "-i",
+        None,
+        "--input-file",
+        "-i",
         help="预测输入数据文件路径（.json / .yaml / .yml），对应 workflow.run(inputs=...)",
     ),
     wait_timeout: float = typer.Option(
-        1800.0, "--wait-timeout",
+        1800.0,
+        "--wait-timeout",
         help="等待工作流完成的最长秒数（默认 1800s）",
     ),
 ) -> None:
@@ -1125,9 +1116,8 @@ def predict_run(
                 assert snapshot_id is not None  # 由上面参数校验保证
                 snapshot = client.snapshots.get(snapshot_id)
                 if isinstance(snapshot, dict):
-                    effective_model_uri = (
-                        snapshot.get("model_uri")
-                        or (snapshot.get("config", {}) or {}).get("model_uri")
+                    effective_model_uri = snapshot.get("model_uri") or (snapshot.get("config", {}) or {}).get(
+                        "model_uri"
                     )
                 if not effective_model_uri:
                     typer.echo(
@@ -1142,9 +1132,7 @@ def predict_run(
             if spec:
                 spec_data = _read_spec_file(spec)
                 inputs_data = _read_json_file(input_file) if input_file else None
-                run_id = client.workflows.run(
-                    spec=spec_data, inputs=inputs_data, owner_id=owner
-                )
+                run_id = client.workflows.run(spec=spec_data, inputs=inputs_data, owner_id=owner)
             else:
                 if not snapshot_id:
                     typer.echo(
@@ -1154,8 +1142,7 @@ def predict_run(
                     raise typer.Exit(code=EXIT_PARAM_ERROR)
                 if input_file:
                     typer.echo(
-                        "警告：未提供 --spec 时使用 snapshot.reproduce 内置 spec，"
-                        "--input-file 将被忽略",
+                        "警告：未提供 --spec 时使用 snapshot.reproduce 内置 spec，--input-file 将被忽略",
                         err=True,
                     )
                 run_id = client.snapshots.reproduce(snapshot_id)
@@ -1168,23 +1155,16 @@ def predict_run(
             typer.echo(f"订阅事件流（超时 {wait_timeout}s）...")
 
             # 3. 等待终态
-            final_event, _final_data = _subscribe_until_terminal(
-                client, run_id, state.output, wait_timeout
-            )
+            final_event, _final_data = _subscribe_until_terminal(client, run_id, state.output, wait_timeout)
 
             # 4. 拉取最终 status（含 outputs）
             status = client.workflows.get_status(run_id)
-            overall_status = (
-                status.get("status") if isinstance(status, dict) else final_event
-            )
-            outputs = (
-                status.get("outputs", {}) if isinstance(status, dict) else {}
-            )
+            overall_status = status.get("status") if isinstance(status, dict) else final_event
+            outputs = status.get("outputs", {}) if isinstance(status, dict) else {}
 
             if final_event != "workflow_completed":
                 typer.echo(
-                    f"预测工作流未成功完成：final_event={final_event or '(stream closed)'} "
-                    f"status={overall_status}",
+                    f"预测工作流未成功完成：final_event={final_event or '(stream closed)'} status={overall_status}",
                     err=True,
                 )
                 typer.echo(
@@ -1192,8 +1172,12 @@ def predict_run(
                     err=True,
                 )
                 _print_data(
-                    {"workflow_run_id": run_id, "final_event": final_event,
-                     "status": overall_status, "outputs": outputs},
+                    {
+                        "workflow_run_id": run_id,
+                        "final_event": final_event,
+                        "status": overall_status,
+                        "outputs": outputs,
+                    },
                     state.output,
                 )
                 raise typer.Exit(code=EXIT_BUSINESS_ERROR)
@@ -1212,9 +1196,7 @@ def predict_run(
         _handle_lomo_error(e)
 
 
-# ---------------------------------------------------------------------------
 # 入口
-# ---------------------------------------------------------------------------
 
 
 def main() -> None:

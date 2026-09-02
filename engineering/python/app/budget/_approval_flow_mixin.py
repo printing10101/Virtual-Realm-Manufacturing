@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class _ApprovalFlowMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _get_request: Callable[..., Any]
     _log_audit: Callable[..., Any]
     _save_request: Callable[..., Any]

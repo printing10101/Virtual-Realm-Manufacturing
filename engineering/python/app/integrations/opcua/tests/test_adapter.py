@@ -21,9 +21,7 @@ from app.integrations.opcua.adapter import (
 from app.integrations.opcua.parser import Sample, parse_opcua_data
 
 
-# ---------------------------------------------------------------------------
 # Parser tests
-# ---------------------------------------------------------------------------
 
 
 class TestParser:
@@ -177,9 +175,7 @@ class TestSample:
         assert row["execution"] is None
 
 
-# ---------------------------------------------------------------------------
 # Adapter configuration tests
-# ---------------------------------------------------------------------------
 
 
 class TestAdapterConfig:
@@ -224,9 +220,7 @@ class TestAdapterConfig:
         assert config.endpoint == "opc.tcp://localhost:4840"
 
 
-# ---------------------------------------------------------------------------
 # TDS URL parsing tests
-# ---------------------------------------------------------------------------
 
 
 class TestParseTdsUrl:
@@ -260,9 +254,7 @@ class TestParseTdsUrl:
             parse_tds_url("invalid")
 
 
-# ---------------------------------------------------------------------------
 # Adapter tests
-# ---------------------------------------------------------------------------
 
 
 class TestOPCUAAdapter:
@@ -378,9 +370,7 @@ class TestOPCUAAdapter:
         assert row[4] == "ACTIVE"
 
 
-# ---------------------------------------------------------------------------
 # Build table DDL tests
-# ---------------------------------------------------------------------------
 
 
 class TestBuildTableDdl:
@@ -398,9 +388,7 @@ class TestBuildTableDdl:
         assert "execution BINARY(32)" in ddl[4]
 
 
-# ---------------------------------------------------------------------------
 # CLI tests
-# ---------------------------------------------------------------------------
 
 
 class TestCLI:
@@ -468,9 +456,7 @@ class TestCLI:
         assert args.dry_run is True
 
 
-# ---------------------------------------------------------------------------
 # Integration tests (mocked)
-# ---------------------------------------------------------------------------
 
 
 class TestAdapterIntegration:

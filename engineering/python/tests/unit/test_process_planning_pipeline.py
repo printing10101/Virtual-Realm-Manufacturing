@@ -43,9 +43,7 @@ from app.process_planning.plane_recognizer import PlaneFeature
 from app.process_planning.tool_param_matcher import HoleProcessPlan
 
 
-# =============================================================================
 # Fixtures
-# =============================================================================
 
 
 @pytest.fixture
@@ -180,9 +178,7 @@ def minimal_part_description() -> dict[str, Any]:
     }
 
 
-# =============================================================================
 # PipelineStage & PipelineResult 基础测试
-# =============================================================================
 
 
 class TestPipelineStage:
@@ -241,9 +237,7 @@ class TestPipelineResult:
         assert "operation_plan" not in d
         assert "gcode" not in d
 
-    def test_to_dict_full(
-        self, successful_hole_result, successful_operation_plan, successful_gcode_result
-    ):
+    def test_to_dict_full(self, successful_hole_result, successful_operation_plan, successful_gcode_result):
         stage = PipelineStage(name="s1", status="success", duration_ms=5.0)
         r = PipelineResult(
             success=True,
@@ -275,17 +269,13 @@ class TestPipelineResult:
         assert d["gcode"]["program_text"] == successful_gcode_result.program_text
 
 
-# =============================================================================
 # 初始化
-# =============================================================================
 
 
 class TestPipelineInit:
     def test_init_success(self, mock_data_manager):
         """正常初始化：知识库加载成功。"""
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         assert p._data_valid is True
         assert p._data_manager is mock_data_manager
@@ -320,65 +310,49 @@ class TestPipelineInit:
         assert p._data_manager is None
 
 
-# =============================================================================
 # _validate_input
-# =============================================================================
 
 
 class TestValidateInput:
     def test_none_input(self, mock_data_manager):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         stage = p._validate_input(None)
         assert stage.status == "failed"
         assert "None" in stage.errors[0]
 
     def test_non_dict_input(self, mock_data_manager):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         stage = p._validate_input([1, 2, 3])
         assert stage.status == "failed"
         assert "list" in stage.errors[0]
 
     def test_empty_dict_input(self, mock_data_manager):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         stage = p._validate_input({})
         assert stage.status == "failed"
         assert any("空字典" in e for e in stage.errors)
 
     def test_missing_material(self, mock_data_manager):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         stage = p._validate_input({"holes": []})
         assert stage.status == "failed"
         assert any("material" in e for e in stage.errors)
 
     def test_holes_not_list(self, mock_data_manager):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         stage = p._validate_input({"material": "45#钢", "holes": "not a list"})
         assert stage.status == "failed"
         assert any("holes" in e for e in stage.errors)
 
     def test_valid_input(self, mock_data_manager):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        stage = p._validate_input(
-            {"material": "45#钢", "holes": [{"id": "H1"}]}
-        )
+        stage = p._validate_input({"material": "45#钢", "holes": [{"id": "H1"}]})
         assert stage.status == "success"
         assert stage.errors == []
         assert "45#钢" in stage.input_summary
@@ -386,13 +360,9 @@ class TestValidateInput:
 
     def test_features_field_used_as_holes(self, mock_data_manager):
         """当没有 holes 但有 features 时，应兼容使用 features 字段。"""
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        stage = p._validate_input(
-            {"material": "45#钢", "features": [{"a": 1}, {"b": 2}]}
-        )
+        stage = p._validate_input({"material": "45#钢", "features": [{"a": 1}, {"b": 2}]})
         assert stage.status == "success"
         assert "2" in stage.input_summary
 
@@ -409,9 +379,7 @@ class TestValidateInput:
         assert any("知识库" in w for w in stage.warnings)
 
 
-# =============================================================================
 # run: 完整流水线
-# =============================================================================
 
 
 class TestPipelineRunSuccess:
@@ -424,21 +392,17 @@ class TestPipelineRunSuccess:
         successful_gcode_result,
         successful_tool_plan,
     ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
 
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=successful_hole_result
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", return_value=successful_operation_plan
-        ), mock.patch.object(
-            p._gcode_generator, "generate", return_value=successful_gcode_result
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=successful_hole_result),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan),
+            mock.patch.object(p._operation_sequencer, "plan_operations", return_value=successful_operation_plan),
+            mock.patch.object(p._gcode_generator, "generate", return_value=successful_gcode_result),
         ):
             result = p.run(minimal_part_description, controller_type="fanuc_0i")
 
@@ -474,19 +438,16 @@ class TestPipelineRunSuccess:
             errors=[],
             accuracy_metrics={"overall": 1.0},
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
 
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=empty_hr
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", return_value=successful_operation_plan
-        ), mock.patch.object(
-            p._gcode_generator, "generate", return_value=successful_gcode_result
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=empty_hr),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._operation_sequencer, "plan_operations", return_value=successful_operation_plan),
+            mock.patch.object(p._gcode_generator, "generate", return_value=successful_gcode_result),
         ):
             result = p.run(
                 {"material": "45#钢", "part_type": "plate", "holes": []},
@@ -504,9 +465,7 @@ class TestPipelineRunSuccess:
 class TestPipelineRunFailures:
     def test_input_validation_failure(self, mock_data_manager):
         """输入验证阶段失败：整体 success=False，仅有输入验证阶段。"""
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         result = p.run(None)
         assert result.success is False
@@ -524,9 +483,7 @@ class TestPipelineRunFailures:
             errors=["识别失败"],
             accuracy_metrics={"overall": 0.0},
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         with mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=hr):
             result = p.run(minimal_part_description)
@@ -537,14 +494,11 @@ class TestPipelineRunFailures:
         assert "孔识别" in result.summary
 
     def test_material_not_found(self, mock_data_manager, minimal_part_description, successful_hole_result):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=successful_hole_result
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=None
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=successful_hole_result),
+            mock.patch.object(p._tool_matcher, "get_material_info", return_value=None),
         ):
             result = p.run(minimal_part_description)
         assert result.success is False
@@ -560,9 +514,7 @@ class TestPipelineRunFailures:
         successful_gcode_result,
     ):
         """刀具匹配抛出 QueryError 时应使用默认方案，流水线继续。"""
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
 
         call_count = {"n": 0}
@@ -571,16 +523,14 @@ class TestPipelineRunFailures:
             call_count["n"] += 1
             raise QueryError(f"未找到孔径 {args[2] if len(args) > 2 else 'x'}mm 的刀具")
 
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=successful_hole_result
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._tool_matcher, "plan_for_hole", side_effect=side_effect_plan
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", return_value=successful_operation_plan
-        ), mock.patch.object(
-            p._gcode_generator, "generate", return_value=successful_gcode_result
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=successful_hole_result),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._tool_matcher, "plan_for_hole", side_effect=side_effect_plan),
+            mock.patch.object(p._operation_sequencer, "plan_operations", return_value=successful_operation_plan),
+            mock.patch.object(p._gcode_generator, "generate", return_value=successful_gcode_result),
         ):
             result = p.run(minimal_part_description)
 
@@ -610,9 +560,7 @@ class TestPipelineRunFailures:
             errors=[],
             accuracy_metrics={"overall": 1.0},
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         # 验证 _build_features 在空输入下仍能返回基准面 MachiningFeature
         features = p._build_features(empty_hr, [], {})
@@ -627,18 +575,15 @@ class TestPipelineRunFailures:
         successful_tool_plan,
     ):
         """工序规划抛出异常时的处理: 该路径目前会让异常向上冒,我们仅验证不崩溃。"""
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=successful_hole_result
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", side_effect=RuntimeError("sequencer crashed")
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=successful_hole_result),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan),
+            mock.patch.object(p._operation_sequencer, "plan_operations", side_effect=RuntimeError("sequencer crashed")),
         ):
             with pytest.raises(RuntimeError, match="sequencer crashed"):
                 p.run(minimal_part_description)
@@ -651,20 +596,16 @@ class TestPipelineRunFailures:
         successful_operation_plan,
         successful_tool_plan,
     ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=successful_hole_result
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", return_value=successful_operation_plan
-        ), mock.patch.object(
-            p._gcode_generator, "generate", side_effect=RuntimeError("gcode boom")
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=successful_hole_result),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan),
+            mock.patch.object(p._operation_sequencer, "plan_operations", return_value=successful_operation_plan),
+            mock.patch.object(p._gcode_generator, "generate", side_effect=RuntimeError("gcode boom")),
         ):
             result = p.run(minimal_part_description)
         assert result.success is False
@@ -689,20 +630,16 @@ class TestPipelineRunFailures:
             tool_count=0,
             estimated_cycle_time_min=0.0,
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=successful_hole_result
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", return_value=successful_operation_plan
-        ), mock.patch.object(
-            p._gcode_generator, "generate", return_value=bad_gcode
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=successful_hole_result),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan),
+            mock.patch.object(p._operation_sequencer, "plan_operations", return_value=successful_operation_plan),
+            mock.patch.object(p._gcode_generator, "generate", return_value=bad_gcode),
         ):
             result = p.run(minimal_part_description)
 
@@ -735,20 +672,16 @@ class TestPipelineRunFailures:
             setups=[],
             estimated_time_min=1.0,
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=successful_hole_result
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", return_value=plan_no_setup
-        ), mock.patch.object(
-            p._gcode_generator, "generate", return_value=successful_gcode_result
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=successful_hole_result),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan),
+            mock.patch.object(p._operation_sequencer, "plan_operations", return_value=plan_no_setup),
+            mock.patch.object(p._gcode_generator, "generate", return_value=successful_gcode_result),
         ):
             result = p.run(minimal_part_description)
         validation_stage = next(s for s in result.stages if s.name == "结果验证")
@@ -771,18 +704,15 @@ class TestPipelineRunFailures:
             errors=[],
             accuracy_metrics={"overall": 0.8},
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=hr
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", return_value=successful_operation_plan
-        ), mock.patch.object(
-            p._gcode_generator, "generate", return_value=successful_gcode_result
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=hr),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._operation_sequencer, "plan_operations", return_value=successful_operation_plan),
+            mock.patch.object(p._gcode_generator, "generate", return_value=successful_gcode_result),
         ):
             result = p.run(minimal_part_description)
         validation_stage = next(s for s in result.stages if s.name == "结果验证")
@@ -807,38 +737,28 @@ class TestPipelineRunFailures:
             estimated_cycle_time_min=5.0,
             errors=["语法警告"],
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        with mock.patch.object(
-            p._hole_recognizer, "recognize_holes", return_value=successful_hole_result
-        ), mock.patch.object(
-            p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
-        ), mock.patch.object(
-            p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan
-        ), mock.patch.object(
-            p._operation_sequencer, "plan_operations", return_value=successful_operation_plan
-        ), mock.patch.object(
-            p._gcode_generator, "generate", return_value=gcode_with_errors
+        with (
+            mock.patch.object(p._hole_recognizer, "recognize_holes", return_value=successful_hole_result),
+            mock.patch.object(
+                p._tool_matcher, "get_material_info", return_value=mock_data_manager.get_material_info.return_value
+            ),
+            mock.patch.object(p._tool_matcher, "plan_for_hole", return_value=successful_tool_plan),
+            mock.patch.object(p._operation_sequencer, "plan_operations", return_value=successful_operation_plan),
+            mock.patch.object(p._gcode_generator, "generate", return_value=gcode_with_errors),
         ):
             result = p.run(minimal_part_description)
         gcode_stage = next(s for s in result.stages if s.name == "G代码生成")
         assert gcode_stage.status == "completed_with_errors"
 
 
-# =============================================================================
 # _build_features
-# =============================================================================
 
 
 class TestBuildFeatures:
-    def test_build_features_only_datum(
-        self, mock_data_manager, successful_hole_result
-    ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+    def test_build_features_only_datum(self, mock_data_manager, successful_hole_result):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         empty_plans: list[HoleProcessPlan] = []
         features = p._build_features(successful_hole_result, empty_plans, {})
@@ -847,16 +767,11 @@ class TestBuildFeatures:
         assert features[0].name == "基准面A-上表面"
         assert features[0].is_datum_candidate is True
 
-    def test_build_features_with_holes(
-        self, mock_data_manager, successful_hole_result, successful_tool_plan
-    ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+    def test_build_features_with_holes(self, mock_data_manager, successful_hole_result, successful_tool_plan):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         plans = [
-            HoleProcessPlan(hole_id=h.hole_id, hole_type=h.type,
-                            operations=["钻孔"], tools=[], estimated_time_min=1.0)
+            HoleProcessPlan(hole_id=h.hole_id, hole_type=h.type, operations=["钻孔"], tools=[], estimated_time_min=1.0)
             for h in successful_hole_result.holes
         ]
         features = p._build_features(successful_hole_result, plans, {})
@@ -867,9 +782,7 @@ class TestBuildFeatures:
         assert hole_features[0].name == "H001"
         assert hole_features[0].type in ("through_hole", "blind_hole")
 
-    def test_build_features_with_cavity_dict(
-        self, mock_data_manager, successful_hole_result
-    ):
+    def test_build_features_with_cavity_dict(self, mock_data_manager, successful_hole_result):
         cavity_dict = {
             "name": "C001",
             "type": "blind_pocket",
@@ -883,18 +796,14 @@ class TestBuildFeatures:
             "parent_feature": "",
             "tolerances": {},
         }
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         features = p._build_features(successful_hole_result, [], {"cavities": [cavity_dict]})
         names = [f.name for f in features]
         assert "基准面A-上表面" in names
         assert "C001" in names
 
-    def test_build_features_with_cavity_object(
-        self, mock_data_manager, successful_hole_result
-    ):
+    def test_build_features_with_cavity_object(self, mock_data_manager, successful_hole_result):
         cavity = CavityFeature(
             cavity_id="C002",
             type="through_pocket",
@@ -904,17 +813,13 @@ class TestBuildFeatures:
             center_x=10.0,
             center_y=5.0,
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         features = p._build_features(successful_hole_result, [], {"cavities": [cavity]})
         names = [f.name for f in features]
         assert "C002" in names
 
-    def test_build_features_with_boss_dict(
-        self, mock_data_manager, successful_hole_result
-    ):
+    def test_build_features_with_boss_dict(self, mock_data_manager, successful_hole_result):
         boss_dict = {
             "name": "B001",
             "type": "circular_boss",
@@ -928,16 +833,12 @@ class TestBuildFeatures:
             "parent_feature": "",
             "tolerances": {},
         }
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         features = p._build_features(successful_hole_result, [], {"bosses": [boss_dict]})
         assert any(f.name == "B001" for f in features)
 
-    def test_build_features_with_boss_object(
-        self, mock_data_manager, successful_hole_result
-    ):
+    def test_build_features_with_boss_object(self, mock_data_manager, successful_hole_result):
         boss = BossFeature(
             boss_id="B002",
             type="rectangular_boss",
@@ -947,16 +848,12 @@ class TestBuildFeatures:
             center_x=0.0,
             center_y=0.0,
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         features = p._build_features(successful_hole_result, [], {"bosses": [boss]})
         assert any(f.name == "B002" for f in features)
 
-    def test_build_features_with_plane_dict(
-        self, mock_data_manager, successful_hole_result
-    ):
+    def test_build_features_with_plane_dict(self, mock_data_manager, successful_hole_result):
         plane_dict = {
             "name": "P001",
             "type": "top_plane",
@@ -970,16 +867,12 @@ class TestBuildFeatures:
             "parent_feature": "",
             "tolerances": {},
         }
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         features = p._build_features(successful_hole_result, [], {"planes": [plane_dict]})
         assert any(f.name == "P001" for f in features)
 
-    def test_build_features_with_plane_object(
-        self, mock_data_manager, successful_hole_result
-    ):
+    def test_build_features_with_plane_object(self, mock_data_manager, successful_hole_result):
         plane = PlaneFeature(
             plane_id="P002",
             type="top_plane",
@@ -990,31 +883,21 @@ class TestBuildFeatures:
             center_x=0.0,
             center_y=0.0,
         )
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         features = p._build_features(successful_hole_result, [], {"planes": [plane]})
         assert any(f.name == "P002" for f in features)
 
-    def test_build_features_skips_unknown_types(
-        self, mock_data_manager, successful_hole_result
-    ):
+    def test_build_features_skips_unknown_types(self, mock_data_manager, successful_hole_result):
         """不是 CavityFeature / dict 的项会被跳过。"""
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
-        features = p._build_features(
-            successful_hole_result, [], {"cavities": ["invalid_string", 123]}
-        )
+        features = p._build_features(successful_hole_result, [], {"cavities": ["invalid_string", 123]})
         # 仅基准面
         assert len(features) == 1
 
 
-# =============================================================================
 # _validate_pipeline_output
-# =============================================================================
 
 
 class TestValidateOutput:
@@ -1025,9 +908,7 @@ class TestValidateOutput:
         successful_operation_plan,
         successful_gcode_result,
     ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         result = PipelineResult(
             hole_recognition=successful_hole_result,
@@ -1039,12 +920,8 @@ class TestValidateOutput:
         # 由于 recognition accuracy = 0.99,可靠;operation_plan.setups 为空触发 warning
         assert isinstance(warnings, list)
 
-    def test_missing_operation_plan(
-        self, mock_data_manager, successful_hole_result, successful_gcode_result
-    ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+    def test_missing_operation_plan(self, mock_data_manager, successful_hole_result, successful_gcode_result):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         result = PipelineResult(
             hole_recognition=successful_hole_result,
@@ -1053,12 +930,8 @@ class TestValidateOutput:
         errors, _ = p._validate_pipeline_output(result)
         assert any("缺少工序规划" in e for e in errors)
 
-    def test_empty_operation_plan(
-        self, mock_data_manager, successful_hole_result, successful_gcode_result
-    ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+    def test_empty_operation_plan(self, mock_data_manager, successful_hole_result, successful_gcode_result):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         empty_plan = OperationPlan(operations=[], setups=[], estimated_time_min=0.0)
         result = PipelineResult(
@@ -1069,12 +942,8 @@ class TestValidateOutput:
         errors, _ = p._validate_pipeline_output(result)
         assert any("工序规划结果为空" in e for e in errors)
 
-    def test_missing_gcode(
-        self, mock_data_manager, successful_hole_result, successful_operation_plan
-    ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+    def test_missing_gcode(self, mock_data_manager, successful_hole_result, successful_operation_plan):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         result = PipelineResult(
             hole_recognition=successful_hole_result,
@@ -1083,12 +952,8 @@ class TestValidateOutput:
         errors, _ = p._validate_pipeline_output(result)
         assert any("缺少G代码" in e for e in errors)
 
-    def test_gcode_too_short(
-        self, mock_data_manager, successful_hole_result, successful_operation_plan
-    ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+    def test_gcode_too_short(self, mock_data_manager, successful_hole_result, successful_operation_plan):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         short_gc = GCodeResult(
             controller_type="fanuc_0i",
@@ -1107,12 +972,8 @@ class TestValidateOutput:
         errors, _ = p._validate_pipeline_output(result)
         assert any("过短" in e for e in errors)
 
-    def test_gcode_zero_tool_count_warning(
-        self, mock_data_manager, successful_hole_result, successful_operation_plan
-    ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+    def test_gcode_zero_tool_count_warning(self, mock_data_manager, successful_hole_result, successful_operation_plan):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         gc = GCodeResult(
             controller_type="fanuc_0i",
@@ -1131,12 +992,8 @@ class TestValidateOutput:
         _, warnings = p._validate_pipeline_output(result)
         assert any("未使用任何刀具" in w for w in warnings)
 
-    def test_gcode_with_errors(
-        self, mock_data_manager, successful_hole_result, successful_operation_plan
-    ):
-        with mock.patch.object(
-            pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager
-        ):
+    def test_gcode_with_errors(self, mock_data_manager, successful_hole_result, successful_operation_plan):
+        with mock.patch.object(pipeline_module, "ProcessPlanningDataManager", return_value=mock_data_manager):
             p = ProcessPlanningPipeline()
         gc = GCodeResult(
             controller_type="fanuc_0i",

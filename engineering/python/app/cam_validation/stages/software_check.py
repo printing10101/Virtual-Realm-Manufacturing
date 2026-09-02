@@ -45,7 +45,7 @@ from ._common import (
 
 
 class SoftwareCheckMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _build_result: Callable[..., Any]
     _adapter: Any
     _loader: Any
@@ -66,9 +66,7 @@ class SoftwareCheckMixin:
         - CAM 软件调用使用 _cam_call_lock 串行化，防止 NX/PowerMill 并发崩溃
     """
 
-    # -------------------------------------------------------------------------
     # 执行流水线（异步）
-    # -------------------------------------------------------------------------
 
     async def run_pipeline(self, task_id: str):
         """异步执行 G 代码加载 + 内部预校验 + CAM 软件二次校验。
@@ -151,9 +149,7 @@ class SoftwareCheckMixin:
         )
         return self._build_result(task)
 
-    # -------------------------------------------------------------------------
     # 内部辅助：执行双层校验
-    # -------------------------------------------------------------------------
 
     async def _execute_validation(self, task: CamValidationTask) -> None:
         """执行 G 代码加载 + 内部预校验 + CAM 软件二次校验。
@@ -263,9 +259,7 @@ class SoftwareCheckMixin:
             cam_report.status,
         )
 
-    # -------------------------------------------------------------------------
     # 内部辅助：构建 FeatureValidationResult 列表
-    # -------------------------------------------------------------------------
 
     def _build_feature_results(
         self,

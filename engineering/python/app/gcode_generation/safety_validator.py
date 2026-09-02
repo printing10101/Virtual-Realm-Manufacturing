@@ -25,9 +25,7 @@ from app.gcode_generation.gcode_store import SAFETY_MARGIN_RATIO
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
 # 默认机床能力配置（与 postprocessor ConfigLimiter 默认值一致）
-# ---------------------------------------------------------------------------
 DEFAULT_MACHINE_CONFIG: dict[str, Any] = {
     "spindle": {"min_rpm": 50, "max_rpm": 24000},
     "feed": {"min_rate": 10.0, "max_rate": 20000.0},
@@ -42,9 +40,7 @@ DEFAULT_MACHINE_CONFIG: dict[str, Any] = {
     },
 }
 
-# ---------------------------------------------------------------------------
 # G/M 代码白名单（按控制器族；未知代码仅告警不阻断）
-# ---------------------------------------------------------------------------
 _BASE_G_CODES = {
     0,
     1,
@@ -217,9 +213,7 @@ def _finite(value: Any) -> bool:
         return False
 
 
-# ---------------------------------------------------------------------------
 # 校验器
-# ---------------------------------------------------------------------------
 class SafetyValidator:
     """统一多层安全校验器。
 
@@ -250,9 +244,7 @@ class SafetyValidator:
         self._y_max = float(axis.get("y_max", 1000.0))
         self._controller_type = controller_type
 
-    # ------------------------------------------------------------------
     # L1 + L3 + L4：单特征参数校验
-    # ------------------------------------------------------------------
     def validate_feature(self, feat: Any) -> list[SafetyIssue]:
         """对单个颤振预测特征执行参数级安全校验。"""
         issues: list[SafetyIssue] = []
@@ -290,7 +282,7 @@ class SafetyValidator:
                 )
             )
         else:
-            # 切深超过极限切深 → error（进入不稳定区）
+            # 切深超过极限切深 error（进入不稳定区）
             if limit is not None and _finite(limit) and limit > 0 and axial > limit:
                 issues.append(
                     SafetyIssue(
@@ -300,7 +292,7 @@ class SafetyValidator:
                         {"feature_id": fid, "axial_depth_mm": axial, "limit_depth_mm": limit},
                     )
                 )
-            # 安全裕度不足（> 0.8 × limit）→ warning（与阶段 6 既有逻辑一致）
+            # 安全裕度不足（> 0.8 × limit） warning（与阶段 6 既有逻辑一致）
             elif limit is not None and _finite(limit) and limit > 0 and axial > SAFETY_MARGIN_RATIO * limit:
                 issues.append(
                     SafetyIssue(
@@ -358,9 +350,7 @@ class SafetyValidator:
             report.issues.extend(self.validate_feature(feat))
         return report
 
-    # ------------------------------------------------------------------
     # L2：关键 Z 坐标软限位
-    # ------------------------------------------------------------------
     def _validate_axis(self, axis: str, position: float | None, label: str) -> list[SafetyIssue]:
         if not self._axis_enabled or position is None or not _finite(position):
             return []
@@ -387,9 +377,7 @@ class SafetyValidator:
             ]
         return []
 
-    # ------------------------------------------------------------------
     # L5 + L6：G 代码文本校验
-    # ------------------------------------------------------------------
     def validate_gcode_text(self, gcode_text: str, controller_type: str | None = None) -> SafetyReport:
         """对 G 代码文本做语法合规（L5）+ 结构完整性（L6）校验。"""
         report = SafetyReport()
@@ -453,9 +441,7 @@ class SafetyValidator:
 
         return report
 
-    # ------------------------------------------------------------------
     # 汇总入口
-    # ------------------------------------------------------------------
     def validate_all(
         self,
         chatter_results: list[Any],
@@ -473,9 +459,7 @@ class SafetyValidator:
             report.issues.extend(gcode_report.issues)
         return report
 
-    # ------------------------------------------------------------------
     # clamp 建议
-    # ------------------------------------------------------------------
     def get_clamped_parameters(self, feat: Any) -> dict[str, float]:
         """返回该特征越界参数的 clamp 建议值（未越界返回原值）。"""
         rpm = getattr(feat, "spindle_rpm", 0.0) or 0.0

@@ -41,7 +41,7 @@ logger = logging.getLogger("app.audit.audit_log")
 
 
 class ArchiverMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _compute_entry_hash: Callable[..., Any]
     _get_all_log_files: Callable[..., Any]
     _get_current_log_file: Callable[..., Any]
@@ -97,17 +97,17 @@ class ArchiverMixin:
             archive_path = log_file.with_name(f"audit.log.archived.{archive_timestamp}")
 
             # H15 修复：先创建新的空日志文件（临时名），确保归档后立即有可用日志。
-            # 这样即使 os.replace(旧→归档) 成功但后续步骤失败，
+            # 这样即使 os.replace(旧归档) 成功但后续步骤失败，
             # 下次 log_decision 仍能正常写入（旧日志已归档，新日志已就位）。
             new_log_tmp = log_file.with_name(f"{log_file.name}.rotating")
             # 以 "w" 模式打开确保文件为空（若残留上次失败的 .rotating 文件）
             with open(new_log_tmp, "w", encoding="utf-8") as f:
                 pass  # 创建空文件
 
-            # 原子重命名1：旧日志 → 归档文件（保持 append-only 语义，旧日志不可修改）
+            # 原子重命名1：旧日志 归档文件（保持 append-only 语义，旧日志不可修改）
             os.replace(str(log_file), str(archive_path))
 
-            # 原子重命名2：空临时文件 → audit.log
+            # 原子重命名2：空临时文件 audit.log
             # 至此，audit.log 已是空文件，后续 log_decision 可正常写入
             os.replace(str(new_log_tmp), str(log_file))
 

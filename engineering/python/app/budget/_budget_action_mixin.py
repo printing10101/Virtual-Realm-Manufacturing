@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class _BudgetActionMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _task_canceller: Any
     _agent_suspender: Any
     _conn: Any

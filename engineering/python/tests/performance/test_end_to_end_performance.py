@@ -1,5 +1,3 @@
-
-
 """端到端关键路径性能测试
 
 测试目标：
@@ -33,21 +31,16 @@ from app.core.request_id import RequestIdMiddleware
 pytestmark = pytest.mark.skip_ci
 
 
-
-
-
-# ---------------------------------------------------------------------------
 # WinSock 损坏环境检测
-# ---------------------------------------------------------------------------
 # 背景：
 # - 当前 Windows 环境 WinSock 损坏，``import asyncio`` 在 conftest.py 中通过
-#   stub 注入绕过，但 stub 无法支持真实的 TestClient / asyncio.run。
+# stub 注入绕过，但 stub 无法支持真实的 TestClient / asyncio.run。
 # - 端到端测试需要真实事件循环（创建 socket pair、调度协程），
-#   在 stub 环境下必然失败，应跳过而非报 FAIL。
+# 在 stub 环境下必然失败，应跳过而非报 FAIL。
 # - 检测方式：尝试 ``asyncio.new_event_loop()`` 并立即关闭；
-#   - 真实 asyncio：返回事件循环对象，可 close()
-#   - stub：返回 None，close() 会抛 AttributeError
-#   - WinSock 损坏：抛 OSError [WinError 10038]
+# - 真实 asyncio：返回事件循环对象，可 close()
+# - stub：返回 None，close() 会抛 AttributeError
+# - WinSock 损坏：抛 OSError [WinError 10038]
 
 
 def _check_real_asyncio_available() -> bool:
@@ -69,9 +62,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def perf_app() -> FastAPI:
@@ -83,7 +75,6 @@ def perf_app() -> FastAPI:
     """
     try:
         from enum import StrEnum  # noqa: F401
-
 
     except ImportError:
         pytest.skip("StrEnum requires Python 3.11+; skip on 3.10")
@@ -130,9 +121,8 @@ def perf_client(perf_app) -> TestClient:
     return client
 
 
-# ---------------------------------------------------------------------------
 # 1. 端到端延迟基线
-# ---------------------------------------------------------------------------
+
 
 class TestEndToEndLatencyBaseline:
     """端到端延迟基线测试
@@ -224,9 +214,7 @@ class TestEndToEndLatencyBaseline:
         health_stats = self._stats(health_times)
 
         # 错误路径 P95 应在 35ms 内
-        assert error_stats["p95"] < 35.0, (
-            f"/error P95 过高: {error_stats['p95']:.3f}ms"
-        )
+        assert error_stats["p95"] < 35.0, f"/error P95 过高: {error_stats['p95']:.3f}ms"
 
         # 错误路径不应比健康路径慢 2 倍以上
         ratio = error_stats["p95"] / max(health_stats["p95"], 0.001)
@@ -252,9 +240,8 @@ class TestEndToEndLatencyBaseline:
             print(f"  {k}: {v:.3f}ms")
 
 
-# ---------------------------------------------------------------------------
 # 2. 尾部延迟分析
-# ---------------------------------------------------------------------------
+
 
 class TestTailLatency:
     """尾部延迟分析
@@ -286,9 +273,7 @@ class TestTailLatency:
 
         # P99/P50 比值应 < 5（尾部延迟可控）
         tail_ratio = p99 / max(p50, 0.001)
-        assert tail_ratio < 5.0, (
-            f"尾部延迟突增: P99={p99:.3f}ms, P50={p50:.3f}ms, ratio={tail_ratio:.2f}x"
-        )
+        assert tail_ratio < 5.0, f"尾部延迟突增: P99={p99:.3f}ms, P50={p50:.3f}ms, ratio={tail_ratio:.2f}x"
 
         print("\n/health 尾部延迟分析 (1000次):")
         print(f"  P50:  {p50:.3f}ms")
@@ -298,9 +283,8 @@ class TestTailLatency:
         print(f"  P99/P50: {tail_ratio:.2f}x")
 
 
-# ---------------------------------------------------------------------------
 # 3. 长时间运行性能稳定性
-# ---------------------------------------------------------------------------
+
 
 class TestLongRunStability:
     """长时间运行性能稳定性
@@ -341,19 +325,17 @@ class TestLongRunStability:
 
         # 性能退化应 < 30%（允许 GC 抖动）
         assert drift_pct < 30.0, (
-            f"性能漂移过大: first_p95={first_p95:.3f}ms, "
-            f"last_p95={last_p95:.3f}ms, drift={drift_pct:.1f}%"
+            f"性能漂移过大: first_p95={first_p95:.3f}ms, last_p95={last_p95:.3f}ms, drift={drift_pct:.1f}%"
         )
 
         print(f"\n长时间运行性能稳定性 ({segment_count}×{segment_size}次):")
         for i, p95 in enumerate(segment_p95s):
-            print(f"  段{i+1} P95: {p95:.3f}ms")
+            print(f"  段{i + 1} P95: {p95:.3f}ms")
         print(f"  漂移: {drift_pct:.1f}%")
 
 
-# ---------------------------------------------------------------------------
 # 4. 异步并发性能（asyncio）
-# ---------------------------------------------------------------------------
+
 
 class TestAsyncConcurrencyPerformance:
     """异步并发请求性能
@@ -368,6 +350,7 @@ class TestAsyncConcurrencyPerformance:
 
         绕过 TestClient 的 socket 层，测试纯 ASGI 中间件 + 路由的并发性能。
         """
+
         async def call_app(scope):
             """单次 ASGI 调用"""
             received = []
@@ -410,9 +393,7 @@ class TestAsyncConcurrencyPerformance:
 
         # 200 个并发 ASGI 调用应在 500ms 内完成
         # 阈值依据：纯事件循环调度 + 中间件链路 + 路由匹配
-        assert elapsed_ms < 500.0, (
-            f"并发 ASGI 调用过慢: {count}次 in {elapsed_ms:.3f}ms"
-        )
+        assert elapsed_ms < 500.0, f"并发 ASGI 调用过慢: {count}次 in {elapsed_ms:.3f}ms"
 
         qps = count / (elapsed_ms / 1000)
         print(f"\n异步并发 ASGI 吞吐量 ({count}次):")

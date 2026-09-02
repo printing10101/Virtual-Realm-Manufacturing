@@ -14,7 +14,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-# mcp_server.tools 模块导入会触发 token 强度校验 → 测试环境用 dev 模式
+# mcp_server.tools 模块导入会触发 token 强度校验 测试环境用 dev 模式
 os.environ.setdefault("LINGJING_MCP_DEV", "1")
 os.environ.setdefault("LINGJING_AGENT_TOKEN", "x" * 40)
 

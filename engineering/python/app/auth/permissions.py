@@ -228,9 +228,9 @@ async def _get_role_permissions_from_db(role_code: str) -> set[str]:
 
 # 自助注册用户与访客的默认权限策略（2026-08-23 注册/访客功能落地）：
 # - 自助注册用户默认角色为 "user"，而 DB 预设角色仅含 admin/engineer/operator，
-#   若不加处理将导致注册用户权限为空、所有 require_permission 端点返回 403。
+# 若不加处理将导致注册用户权限为空、所有 require_permission 端点返回 403。
 # - 访客（guest）为临时身份，不落用户存储（username 形如 guest_<hex>），
-#   同样需要覆盖全部功能权限。
+# 同样需要覆盖全部功能权限。
 # 二者统一授予全部功能权限码（与 PRESET_PERMISSIONS 保持同步），
 # 保证「注册 / 访客可用全部功能」；敏感能力（T 级机床执行、系统配置等）
 # 仍由 PaperOnlyGuard（LNN_LIVE_EXECUTION_ENABLED）与 require_role("admin")
@@ -418,7 +418,7 @@ def require_role(*roles: str):
 
 
 # [F-P0-4] 防复发：T 级操作敏感字段脱敏白名单
-#   NC 程序内容、API Key、密码等不得写入审计日志或普通日志
+# NC 程序内容、API Key、密码等不得写入审计日志或普通日志
 _SENSITIVE_FIELDS: tuple[str, ...] = (
     "api_key",
     "password",
@@ -433,8 +433,8 @@ _SENSITIVE_FIELDS: tuple[str, ...] = (
 )
 
 # [F-P0-4] 防复发：T 级操作机床安全前置状态字段
-#   依据 ISO 10218 工业机器人安全标准 + 用户三方评估 F-P0-4
-#   实模式执行前必须校验所有物理安全信号
+# 依据 ISO 10218 工业机器人安全标准 + 用户三方评估 F-P0-4
+# 实模式执行前必须校验所有物理安全信号
 REQUIRED_MACHINE_SAFETY_FIELDS: tuple[str, ...] = (
     "emergency_stop_active",  # 急停是否触发（True=危险，必须阻止）
     "guard_door_closed",  # 防护门是否关闭
@@ -543,7 +543,7 @@ class PaperOnlyGuard:
         )
 
         # 2. 写入审计日志（延迟导入避免循环依赖）
-        #    即使是模拟操作也必须留痕，满足 FDA 21 CFR Part 11 合规要求
+        # 即使是模拟操作也必须留痕，满足 FDA 21 CFR Part 11 合规要求
         try:
             from app.audit.audit_log import (
                 AuditLog,
@@ -595,9 +595,7 @@ class PaperOnlyGuard:
 paper_only_guard = PaperOnlyGuard()
 
 
-# ============================================================
 # Unified auth path definitions (moved from unified_auth.py)
-# ============================================================
 # Public path definitions (merged from all three middlewares)
 
 PUBLIC_PATHS: set[str] = {
@@ -676,9 +674,7 @@ AUTH_PUBLIC_PREFIXES = [
 ]
 
 
-# ============================================================
 # Agent Auth permission mapping (from AgentAuthMiddleware)
-# ============================================================
 
 AGENT_ENDPOINT_PERMISSIONS: dict[str, PermissionLevel] = {
     "GET /api/agent/v1/health": PermissionLevel.R,

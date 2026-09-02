@@ -45,9 +45,7 @@ from app.feature_extraction.feature_store import ExtractedFeature
 pytestmark = pytest.mark.unit
 
 
-# =============================================================================
 # validate_offset / validate_threshold
-# =============================================================================
 
 
 class TestValidateOffset:
@@ -99,36 +97,34 @@ class TestValidateThreshold:
             validate_threshold(None)
 
 
-# =============================================================================
 # classify_hole_or_boss 判定规则
-# =============================================================================
 
 
 class TestClassifyHoleOrBoss:
     def test_depressed_is_hole(self):
-        # offset < -threshold → HOLE
+        # offset < -threshold HOLE
         assert classify_hole_or_boss(-2.0, 1.0) == FEATURE_HOLE
 
     def test_raised_is_boss(self):
-        # offset > +threshold → BOSS
+        # offset > +threshold BOSS
         assert classify_hole_or_boss(2.0, 1.0) == FEATURE_BOSS
 
     def test_within_threshold_defaults_hole(self):
-        # |offset| <= threshold → 默认 HOLE
+        # |offset| <= threshold 默认 HOLE
         assert classify_hole_or_boss(0.5, 1.0) == FEATURE_HOLE
         assert classify_hole_or_boss(0.0, 1.0) == FEATURE_HOLE
         assert classify_hole_or_boss(-0.5, 1.0) == FEATURE_HOLE
 
     def test_exact_boundary_negative_is_hole(self):
-        # offset == -threshold → < 不成立，落入边界 → 默认 HOLE
+        # offset == -threshold < 不成立，落入边界 默认 HOLE
         assert classify_hole_or_boss(-1.0, 1.0) == FEATURE_HOLE
 
     def test_exact_boundary_positive_default(self):
-        # offset == +threshold → > 不成立 → 默认 HOLE
+        # offset == +threshold > 不成立 默认 HOLE
         assert classify_hole_or_boss(1.0, 1.0) == FEATURE_HOLE
 
     def test_default_type_boss(self):
-        # 无法判定时若指定 default=BOSS → BOSS
+        # 无法判定时若指定 default=BOSS BOSS
         assert classify_hole_or_boss(0.0, 1.0, default_type=FEATURE_BOSS) == FEATURE_BOSS
 
     def test_invalid_default_type_raises(self):
@@ -149,9 +145,7 @@ class TestClassifyHoleOrBoss:
         assert offset == pytest.approx(-2.0)
 
 
-# =============================================================================
 # 辅助判定函数
-# =============================================================================
 
 
 class TestHelperPredicates:
@@ -206,9 +200,7 @@ class TestValidateFeatureParams:
             validate_feature_params("hole", {"inlier_count": "abc"})
 
 
-# =============================================================================
 # FeatureReviewStateMachine 审核状态机
-# =============================================================================
 
 
 class TestReviewStateMachineTaskPredicates:
@@ -269,31 +261,19 @@ class TestReviewStateMachineReviewSemantics:
         assert FeatureReviewStateMachine.all_features_reviewed([]) is True
 
     def test_all_features_reviewed(self):
-        assert FeatureReviewStateMachine.all_features_reviewed(
-            ["confirmed", "rejected", "edited"]
-        ) is True
+        assert FeatureReviewStateMachine.all_features_reviewed(["confirmed", "rejected", "edited"]) is True
 
     def test_all_features_reviewed_false_when_pending(self):
-        assert FeatureReviewStateMachine.all_features_reviewed(
-            ["confirmed", "pending"]
-        ) is False
+        assert FeatureReviewStateMachine.all_features_reviewed(["confirmed", "pending"]) is False
 
     def test_all_features_reviewed_any_pending_false(self):
-        assert FeatureReviewStateMachine.all_features_reviewed(
-            ["confirmed", "edited", "pending"]
-        ) is False
+        assert FeatureReviewStateMachine.all_features_reviewed(["confirmed", "edited", "pending"]) is False
 
     def test_next_state_after_all_reviewed_with_features(self):
-        assert (
-            FeatureReviewStateMachine.next_state_after_all_reviewed(has_features=True)
-            == STATUS_REVIEWED
-        )
+        assert FeatureReviewStateMachine.next_state_after_all_reviewed(has_features=True) == STATUS_REVIEWED
 
     def test_next_state_after_all_reviewed_without_features(self):
-        assert (
-            FeatureReviewStateMachine.next_state_after_all_reviewed(has_features=False)
-            == STATUS_REVIEWED
-        )
+        assert FeatureReviewStateMachine.next_state_after_all_reviewed(has_features=False) == STATUS_REVIEWED
 
     def test_idempotent_all_reviewed(self):
         """幂等：相同输入重复判定 → 相同输出。"""
@@ -314,9 +294,7 @@ class TestReviewStateMachineReviewSemantics:
         assert STATUS_CANCELLED == FeatureExtractionTaskStatus.CANCELLED.value
 
 
-# =============================================================================
 # Pipeline 集成回归：状态机委托路径（绕过 torch 环境，直接驱动真实 store）
-# =============================================================================
 
 
 def _feature(fid, ftype="plane", review="pending", params=None) -> ExtractedFeature:

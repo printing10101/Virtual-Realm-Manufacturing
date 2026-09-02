@@ -281,9 +281,7 @@ def _resolve_dialect_class(dialect_id: str):
         return None
 
 
-# ---------------------------------------------------------------------------
 # 写路径：新建 / 保存模板 / 删除（工艺员自由度闭环；写操作需 plugin:config:update）
-# ---------------------------------------------------------------------------
 
 
 class CreateDialectRequest(BaseModel):
@@ -560,9 +558,7 @@ def delete_dialect(dialect_id: str) -> dict[str, Any]:
     return success(data={"id": dialect_id}, message=f"方言 '{dialect_id}' 已删除")
 
 
-# ---------------------------------------------------------------------------
 # 参数读写（遗留项⑤：工艺员在页面调参数，而非改 YAML）
-# ---------------------------------------------------------------------------
 
 
 class SaveParamsRequest(BaseModel):

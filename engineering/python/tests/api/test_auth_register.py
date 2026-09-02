@@ -23,6 +23,8 @@ def _reset_rate_limiter():
     permission_checker._rate_limiter.clear()
     yield
     permission_checker._rate_limiter.clear()
+
+
 from app.config import config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -35,9 +37,7 @@ from app.models import user as user_module
 from app.models.user import UserStore
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -106,9 +106,7 @@ def reset_rate_limiter() -> Generator[None, None, None]:
         pass
 
 
-# ---------------------------------------------------------------------------
 # 注册功能测试
-# ---------------------------------------------------------------------------
 
 
 class TestRegisterOpenRegistration:
@@ -218,9 +216,7 @@ class TestRegisterSuccess:
         assert "用户名已存在" in body["message"]
 
 
-# ---------------------------------------------------------------------------
 # 速率限制测试
-# ---------------------------------------------------------------------------
 
 
 class TestRegisterRateLimitEndpoint:
@@ -232,9 +228,7 @@ class TestRegisterRateLimitEndpoint:
     2. 响应中包含 ``Retry-After`` 头。
     """
 
-    def test_fourth_request_returns_429_with_retry_after(
-        self, client, monkeypatch
-    ):
+    def test_fourth_request_returns_429_with_retry_after(self, client, monkeypatch):
         """同一 IP 在 1 小时内连续 4 次注册，第 4 次返回 429 且响应头有 Retry-After。"""
         monkeypatch.setenv("LNN_REGISTRATION_CODE", "SECRET-1234")
         # 使用不同的用户名避免 409 干扰
@@ -264,9 +258,7 @@ class TestRegisterRateLimitEndpoint:
         assert 0 < retry_after <= 3600
 
 
-# ---------------------------------------------------------------------------
 # 响应格式一致性测试
-# ---------------------------------------------------------------------------
 
 
 class TestResponseFormat:

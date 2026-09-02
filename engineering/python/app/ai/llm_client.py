@@ -31,13 +31,10 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY = 1.0
 
 
-# ---------------------------------------------------------------------------
 # 共享 httpx.AsyncClient 单例（连接池复用，避免每次调用都新建客户端）
-# ---------------------------------------------------------------------------
 # 原实现每次 chat_completion 都 `async with httpx.AsyncClient(...)` 新建客户端，
 # 导致 TLS 握手重复、连接无法复用。改为共享单例后，所有 LLM 调用复用同一连接池。
 # 单次请求的 timeout 仍在 post() 调用级别通过 timeout=self.timeout 覆盖。
-# ---------------------------------------------------------------------------
 
 _shared_http_client: httpx.AsyncClient | None = None
 # [H1] asyncio.Lock 懒初始化：模块级创建会绑定到导入时的事件循环，

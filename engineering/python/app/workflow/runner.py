@@ -59,9 +59,7 @@ from app.workflow.validator import validate_or_raise
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 默认配置常量
-# ---------------------------------------------------------------------------
 
 DEFAULT_MAX_CONCURRENT_NODES: int = 4
 DEFAULT_NODE_TIMEOUT_SECONDS: int = 3600
@@ -71,9 +69,7 @@ SUBSCRIBER_QUEUE_MAXSIZE: int = 256
 SUBSCRIBER_HEARTBEAT_TIMEOUT_SEC: float = 30.0
 
 
-# ---------------------------------------------------------------------------
 # 辅助函数
-# ---------------------------------------------------------------------------
 
 
 def _serialize(obj: Any) -> Any:
@@ -152,9 +148,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# ---------------------------------------------------------------------------
 # WorkflowRunner 实现
-# ---------------------------------------------------------------------------
 
 
 class WorkflowRunner(IWorkflowRunner):
@@ -170,17 +164,15 @@ class WorkflowRunner(IWorkflowRunner):
     ) -> None:
         self._store: DAGStore = dag_store or get_dag_store()
         self._registry = registry
-        # 每个 workflow_run_id → list[asyncio.Queue]（订阅者列表）
+        # 每个 workflow_run_id list[asyncio.Queue]（订阅者列表）
         self._subscribers: dict[str, list[asyncio.Queue]] = {}
-        # 每个 workflow_run_id → asyncio.Event（取消信号）
+        # 每个 workflow_run_id asyncio.Event（取消信号）
         self._cancel_events: dict[str, asyncio.Event] = {}
         self._lock = asyncio.Lock()
         # [H7] 保存 create_task 引用防止 GC 回收导致工作流被静默取消
         self._pending_exec_tasks: set = set()
 
-    # ------------------------------------------------------------------
     # 公共属性
-    # ------------------------------------------------------------------
 
     @property
     def registry(self):
@@ -188,9 +180,7 @@ class WorkflowRunner(IWorkflowRunner):
             self._registry = get_task_registry()
         return self._registry
 
-    # ------------------------------------------------------------------
     # IWorkflowRunner 实现
-    # ------------------------------------------------------------------
 
     async def run(
         self,
@@ -366,9 +356,7 @@ class WorkflowRunner(IWorkflowRunner):
                 if queue in subs:
                     subs.remove(queue)
 
-    # ------------------------------------------------------------------
     # 内部：工作流执行主循环
-    # ------------------------------------------------------------------
 
     async def _execute_workflow(
         self,
@@ -883,9 +871,7 @@ class WorkflowRunner(IWorkflowRunner):
                 result[out_name] = _serialize(art)
         return result
 
-    # ------------------------------------------------------------------
     # 事件广播
-    # ------------------------------------------------------------------
 
     async def _emit(self, workflow_run_id: str, event: WorkflowEvent) -> None:
         """向所有订阅者推送事件。"""
@@ -926,9 +912,7 @@ class WorkflowRunner(IWorkflowRunner):
                     pass
 
 
-# ---------------------------------------------------------------------------
 # 单例访问
-# ---------------------------------------------------------------------------
 
 _runner: WorkflowRunner | None = None
 # [A-H17] 懒初始化 asyncio.Lock，避免模块导入时绑定到错误的事件循环

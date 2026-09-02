@@ -22,9 +22,7 @@ from app.auth.security import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 密码哈希测试
-# ---------------------------------------------------------------------------
 
 
 class TestPasswordHashing:
@@ -55,9 +53,7 @@ class TestPasswordHashing:
         assert verify_password("WrongPass", hashed) is False
 
 
-# ---------------------------------------------------------------------------
 # JWT Token 测试
-# ---------------------------------------------------------------------------
 
 
 class TestJWTTokens:
@@ -120,9 +116,7 @@ class TestJWTTokens:
         assert result["sub"] == "alice"
 
 
-# ---------------------------------------------------------------------------
 # TokenBanList 测试
-# ---------------------------------------------------------------------------
 
 
 class TestTokenBanList:
@@ -134,6 +128,7 @@ class TestTokenBanList:
         monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
 
         from app.auth import security as security_module
+
         monkeypatch.setattr(security_module, "_token_ban_list", None)
 
         ban_list = get_token_ban_list()
@@ -149,6 +144,7 @@ class TestTokenBanList:
         monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
 
         from app.auth import security as security_module
+
         monkeypatch.setattr(security_module, "_token_ban_list", None)
 
         ban_list = get_token_ban_list()
@@ -166,6 +162,7 @@ class TestTokenBanList:
         monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
 
         from app.auth import security as security_module
+
         monkeypatch.setattr(security_module, "_token_ban_list", None)
 
         ban_list_1 = get_token_ban_list()
@@ -178,9 +175,7 @@ class TestTokenBanList:
         assert ban_list_2.is_banned(token) is True
 
 
-# ---------------------------------------------------------------------------
 # Token 撤销与登出流程测试
-# ---------------------------------------------------------------------------
 
 
 class TestTokenRevocationFlow:
@@ -192,6 +187,7 @@ class TestTokenRevocationFlow:
         monkeypatch.setenv("LNN_BANNED_TOKENS_FILE", str(ban_file))
 
         from app.auth import security as security_module
+
         monkeypatch.setattr(security_module, "_token_ban_list", None)
 
         ban_list = get_token_ban_list()

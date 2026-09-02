@@ -67,9 +67,7 @@ def _gcode_result(**kw) -> GCodeResult:
     )
 
 
-# ==============================================================================
 # load_operation_plan
-# ==============================================================================
 
 
 def _op_plan_dict(**kw) -> dict:
@@ -150,9 +148,7 @@ class TestLoadOperationPlan:
         assert plan.setups == []
 
 
-# ==============================================================================
 # _compute_safety_margin
-# ==============================================================================
 
 
 class TestComputeSafetyMargin:
@@ -166,14 +162,16 @@ class TestComputeSafetyMargin:
         assert GeneratorAdapter._compute_safety_margin(1.0, -2.0) == -1.0
 
 
-# ==============================================================================
 # _build_feature_operation_map
-# ==============================================================================
 
 
 class TestBuildFeatureOperationMap:
     def test_maps_feature_to_op_indices(self):
-        plan = _plan(_operation(seq=1, feature_name="f1"), _operation(seq=2, feature_name="f2"), _operation(seq=3, feature_name="f1"))
+        plan = _plan(
+            _operation(seq=1, feature_name="f1"),
+            _operation(seq=2, feature_name="f2"),
+            _operation(seq=3, feature_name="f1"),
+        )
         mapping = GeneratorAdapter._build_feature_operation_map(plan)
         assert mapping == {"f1": [0, 2], "f2": [1]}
 
@@ -181,9 +179,7 @@ class TestBuildFeatureOperationMap:
         assert GeneratorAdapter._build_feature_operation_map(_plan()) == {}
 
 
-# ==============================================================================
 # _build_feature_line_ranges
-# ==============================================================================
 
 
 class TestBuildFeatureLineRanges:
@@ -213,14 +209,12 @@ class TestBuildFeatureLineRanges:
             ],
         )
         ranges = GeneratorAdapter._build_feature_line_ranges(result, _plan())
-        # f1 合并为 [1, 5]，f2 为 [3, 3]（下一个 checkpoint 是 f1 的 line=4 → end=3）
+        # f1 合并为 [1, 5]，f2 为 [3, 3]（下一个 checkpoint 是 f1 的 line=4 end=3）
         assert ranges["f1"] == (1, 5)
         assert ranges["f2"] == (3, 3)
 
 
-# ==============================================================================
 # _extract_feature_gcode_lines
-# ==============================================================================
 
 
 class TestExtractFeatureGcodeLines:
@@ -239,9 +233,7 @@ class TestExtractFeatureGcodeLines:
         assert GeneratorAdapter._extract_feature_gcode_lines(lines, (0, 99)) == ["L0", "L1"]
 
 
-# ==============================================================================
 # adapt
-# ==============================================================================
 
 
 class TestAdapt:

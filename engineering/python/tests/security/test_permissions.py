@@ -29,9 +29,7 @@ from app.auth.permissions import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 枚举与常量
-# ---------------------------------------------------------------------------
 
 
 class TestPermissionEnums:
@@ -48,19 +46,13 @@ class TestPermissionEnums:
         assert set(PERMISSION_HIERARCHY.keys()) == set(PermissionLevel)
 
     def test_T_is_highest(self):
-        assert PERMISSION_HIERARCHY[PermissionLevel.T] == max(
-            PERMISSION_HIERARCHY.values()
-        )
+        assert PERMISSION_HIERARCHY[PermissionLevel.T] == max(PERMISSION_HIERARCHY.values())
 
     def test_R_is_lowest(self):
-        assert PERMISSION_HIERARCHY[PermissionLevel.R] == min(
-            PERMISSION_HIERARCHY.values()
-        )
+        assert PERMISSION_HIERARCHY[PermissionLevel.R] == min(PERMISSION_HIERARCHY.values())
 
 
-# ---------------------------------------------------------------------------
 # PermissionChecker - 端点级权限检查
-# ---------------------------------------------------------------------------
 
 
 class TestEndpointPermissions:
@@ -75,19 +67,10 @@ class TestEndpointPermissions:
 
     def test_unknown_endpoint_uses_default(self, checker):
         # 未在 ENDPOINT_PERMISSIONS 中注册的端点应使用默认策略
-        # 默认：GET→R, POST→W, DELETE→C
-        assert (
-            checker.get_required_permission("GET", "/api/v1/unknown")
-            == PermissionLevel.R
-        )
-        assert (
-            checker.get_required_permission("POST", "/api/v1/unknown")
-            == PermissionLevel.W
-        )
-        assert (
-            checker.get_required_permission("DELETE", "/api/v1/unknown")
-            == PermissionLevel.C
-        )
+        # 默认：GETR, POSTW, DELETEC
+        assert checker.get_required_permission("GET", "/api/v1/unknown") == PermissionLevel.R
+        assert checker.get_required_permission("POST", "/api/v1/unknown") == PermissionLevel.W
+        assert checker.get_required_permission("DELETE", "/api/v1/unknown") == PermissionLevel.C
 
     def test_post_to_wear_predict_is_R(self, checker):
         level = checker.get_required_permission("POST", "/api/v1/wear/predict")
@@ -102,9 +85,7 @@ class TestEndpointPermissions:
             ("/api/v1/config", "PUT"),
         ]:
             level = checker.get_required_permission(method, path)
-            assert level == PermissionLevel.C, (
-                f"{method} {path} 应需要 C，实际为 {level}"
-            )
+            assert level == PermissionLevel.C, f"{method} {path} 应需要 C，实际为 {level}"
 
     def test_T_endpoints_require_T(self, checker):
         for path, method in [
@@ -113,9 +94,7 @@ class TestEndpointPermissions:
             ("/api/v1/machine/{machine_id}/params", "PUT"),
         ]:
             level = checker.get_required_permission(method, path)
-            assert level == PermissionLevel.T, (
-                f"{method} {path} 应需要 T，实际为 {level}"
-            )
+            assert level == PermissionLevel.T, f"{method} {path} 应需要 T，实际为 {level}"
 
     def test_B_endpoints_require_B(self, checker):
         for path, method in [
@@ -137,55 +116,20 @@ class TestEndpointPermissions:
 
     def test_check_permission_with_sufficient_level(self, checker):
         # R 端点：持有 R 或更高权限应放行
-        assert (
-            checker.has_permission(
-                PermissionLevel.R, "/api/v1/lnn/predict", "GET"
-            )
-            is True
-        )
-        assert (
-            checker.has_permission(
-                PermissionLevel.C, "/api/v1/lnn/predict", "GET"
-            )
-            is True
-        )
-        assert (
-            checker.has_permission(
-                PermissionLevel.T, "/api/v1/lnn/predict", "GET"
-            )
-            is True
-        )
+        assert checker.has_permission(PermissionLevel.R, "/api/v1/lnn/predict", "GET") is True
+        assert checker.has_permission(PermissionLevel.C, "/api/v1/lnn/predict", "GET") is True
+        assert checker.has_permission(PermissionLevel.T, "/api/v1/lnn/predict", "GET") is True
 
     def test_check_permission_with_insufficient_level(self, checker):
         # T 端点：R 应当被拒
-        assert (
-            checker.has_permission(
-                PermissionLevel.R, "/api/v1/machine/execute", "POST"
-            )
-            is False
-        )
+        assert checker.has_permission(PermissionLevel.R, "/api/v1/machine/execute", "POST") is False
         # C 端点：R 应当被拒
-        assert (
-            checker.has_permission(
-                PermissionLevel.R, "/api/v1/api-keys", "POST"
-            )
-            is False
-        )
+        assert checker.has_permission(PermissionLevel.R, "/api/v1/api-keys", "POST") is False
 
     def test_check_permission_exact_match(self, checker):
         # B 端点：B 通过，R 拒绝
-        assert (
-            checker.has_permission(
-                PermissionLevel.B, "/api/v1/lnn/train", "POST"
-            )
-            is True
-        )
-        assert (
-            checker.has_permission(
-                PermissionLevel.R, "/api/v1/lnn/train", "POST"
-            )
-            is False
-        )
+        assert checker.has_permission(PermissionLevel.B, "/api/v1/lnn/train", "POST") is True
+        assert checker.has_permission(PermissionLevel.R, "/api/v1/lnn/train", "POST") is False
 
     def test_rate_limit_default_allows(self, checker):
         # 默认配置下首次访问应通过
@@ -206,9 +150,7 @@ class TestEndpointPermissions:
         assert checker.check_rate_limit("t-2") is True
 
 
-# ---------------------------------------------------------------------------
 # 速率限制状态机
-# ---------------------------------------------------------------------------
 
 
 class TestRateLimitState:
@@ -250,45 +192,35 @@ class TestRateLimitState:
         assert s2.is_allowed(cfg) is True
 
 
-# ---------------------------------------------------------------------------
 # PaperOnlyGuard
-# ---------------------------------------------------------------------------
 
 
 class TestPaperOnlyGuard:
     def test_paper_only_mode_blocks_real_dispatch(self, monkeypatch):
         monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "false")
         guard = PaperOnlyGuard()
-        ok, msg = guard.check_t_operation(
-            has_t_permission=True, ui_confirmed=True
-        )
+        ok, msg = guard.check_t_operation(has_t_permission=True, ui_confirmed=True)
         assert ok is False
         assert "Paper-Only" in msg
 
     def test_paper_only_blocks_even_with_ui_confirmed(self, monkeypatch):
         monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "false")
         guard = PaperOnlyGuard()
-        ok, msg = guard.check_t_operation(
-            has_t_permission=True, ui_confirmed=True
-        )
+        ok, msg = guard.check_t_operation(has_t_permission=True, ui_confirmed=True)
         assert ok is False
         assert "Paper-Only" in msg
 
     def test_live_mode_requires_t_permission(self, monkeypatch):
         monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "true")
         guard = PaperOnlyGuard()
-        ok, msg = guard.check_t_operation(
-            has_t_permission=False, ui_confirmed=True
-        )
+        ok, msg = guard.check_t_operation(has_t_permission=False, ui_confirmed=True)
         assert ok is False
         assert "T-level" in msg
 
     def test_live_mode_requires_ui_confirmed(self, monkeypatch):
         monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "true")
         guard = PaperOnlyGuard()
-        ok, msg = guard.check_t_operation(
-            has_t_permission=True, ui_confirmed=False
-        )
+        ok, msg = guard.check_t_operation(has_t_permission=True, ui_confirmed=False)
         assert ok is False
         assert "UI confirmation" in msg
 
@@ -361,9 +293,7 @@ class TestPaperOnlyGuard:
     def test_simulate_t_operation_returns_simulated_status(self, monkeypatch):
         monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "false")
         guard = PaperOnlyGuard()
-        result = guard.simulate_t_operation(
-            {"machine": "M-01", "params": {"rpm": 1200}}
-        )
+        result = guard.simulate_t_operation({"machine": "M-01", "params": {"rpm": 1200}})
         assert result["status"] == "simulated"
         assert "Paper-Only" in result["message"]
         assert result["operation"] == {
@@ -395,9 +325,7 @@ class TestPaperOnlyGuard:
         assert PaperOnlyGuard().is_live_execution_allowed() is True
 
 
-# ---------------------------------------------------------------------------
 # permission_required 装饰器
-# ---------------------------------------------------------------------------
 
 
 class TestCheckPermissionDecorator:
@@ -428,9 +356,7 @@ class TestCheckPermissionDecorator:
         assert getattr(create_view, "_required_permission") == "project:create"
 
 
-# ---------------------------------------------------------------------------
 # require_permission 依赖注入工厂
-# ---------------------------------------------------------------------------
 
 
 class TestRequirePermissionDependency:

@@ -105,9 +105,7 @@ def register_middleware_stack(
     # 6. RequestIdMiddleware（最外层，最先执行，生成 X-Request-ID）
     app.add_middleware(RequestIdMiddleware)
 
-    # =============================================================================
     # Rate limiting with slowapi
-    # =============================================================================
     if config.security.rate_limit_enabled:
         app.state.limiter = limiter
         # RateLimitExceeded 是 Exception 子类；starlette 泛型签名不接受更具体的

@@ -443,7 +443,7 @@ class ConfigValidator:
                         )
 
 
-# --- 常量（自 config_loader 迁移） ---
+# 常量（自 config_loader 迁移）
 REQUIRED_TOP_KEYS = ("base", "controllers")
 REQUIRED_BASE_KEYS = (
     "decimal_places",

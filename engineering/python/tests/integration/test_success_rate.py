@@ -16,9 +16,7 @@ import json
 import pytest
 
 
-# ---------------------------------------------------------------------------
 # 场景1成功率测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -47,8 +45,9 @@ class TestScenario1SuccessRate:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
+        assert success_rate >= self.TARGET_RATE, (
             f"G-code验证成功率{success_rate:.1f}% < {self.TARGET_RATE}%\n失败: {failures[:3]}"
+        )
 
     def test_process_card_generation_success_rate(self, sample_process_card):
         """工艺卡片生成成功率."""
@@ -73,8 +72,7 @@ class TestScenario1SuccessRate:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
-            f"工艺卡片生成成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
+        assert success_rate >= self.TARGET_RATE, f"工艺卡片生成成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
 
     def test_3d_model_integrity_success_rate(self, temp_dir):
         """3D模型完整性检查成功率."""
@@ -97,13 +95,10 @@ class TestScenario1SuccessRate:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
-            f"3D模型完整性成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
+        assert success_rate >= self.TARGET_RATE, f"3D模型完整性成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
 
 
-# ---------------------------------------------------------------------------
 # 场景2成功率测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -145,8 +140,7 @@ class TestScenario2SuccessRate:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
-            f"监控数据处理成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
+        assert success_rate >= self.TARGET_RATE, f"监控数据处理成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
 
     def test_anomaly_detection_success_rate(self, anomaly_sensor_stream):
         """异常检测成功率."""
@@ -180,8 +174,7 @@ class TestScenario2SuccessRate:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
-            f"异常检测成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
+        assert success_rate >= self.TARGET_RATE, f"异常检测成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
 
     def test_false_positive_suppression_success_rate(self, normal_sensor_stream):
         """误报抑制成功率."""
@@ -216,13 +209,10 @@ class TestScenario2SuccessRate:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
-            f"误报抑制成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
+        assert success_rate >= self.TARGET_RATE, f"误报抑制成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
 
 
-# ---------------------------------------------------------------------------
 # 场景3成功率测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -257,8 +247,7 @@ class TestScenario3SuccessRate:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
-            f"参数验证成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
+        assert success_rate >= self.TARGET_RATE, f"参数验证成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
 
     def test_invalid_parameter_detection_success_rate(self):
         """无效参数检测成功率."""
@@ -270,18 +259,19 @@ class TestScenario3SuccessRate:
 
         for i in range(self.NUM_ITERATIONS):
             try:
-                result = validator.validate_tc4_parameters({
-                    "cutting_speed": 500.0,  # 明显超范围
-                    "feed_rate": 1.0,
-                })
+                result = validator.validate_tc4_parameters(
+                    {
+                        "cutting_speed": 500.0,  # 明显超范围
+                        "feed_rate": 1.0,
+                    }
+                )
                 assert not result["is_valid"], "超范围参数应被拒绝"
                 successes += 1
             except Exception as e:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
-            f"无效参数检测成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
+        assert success_rate >= self.TARGET_RATE, f"无效参数检测成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
 
     def test_route_coverage_success_rate(self):
         """工艺路线覆盖率成功率."""
@@ -301,23 +291,17 @@ class TestScenario3SuccessRate:
                     {"step": 5, "operation": "精车削"},
                     {"step": 6, "operation": "检验"},
                 ]
-                result = validator.validate_process_route_coverage(
-                    route, ["下料", "车削", "铣削", "钻孔", "检验"]
-                )
-                assert result["meets_threshold"], \
-                    f"覆盖率不足: {result['coverage_pct']:.0f}%"
+                result = validator.validate_process_route_coverage(route, ["下料", "车削", "铣削", "钻孔", "检验"])
+                assert result["meets_threshold"], f"覆盖率不足: {result['coverage_pct']:.0f}%"
                 successes += 1
             except Exception as e:
                 failures.append(f"第{i + 1}次: {e}")
 
         success_rate = successes / self.NUM_ITERATIONS * 100
-        assert success_rate >= self.TARGET_RATE, \
-            f"路线覆盖率成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
+        assert success_rate >= self.TARGET_RATE, f"路线覆盖率成功率{success_rate:.1f}% < {self.TARGET_RATE}%"
 
 
-# ---------------------------------------------------------------------------
 # 整体成功率汇总
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -340,8 +324,7 @@ class TestOverallSuccessRate:
         total_success = sum(r["success"] for r in scenario_results.values())
         overall_rate = total_success / total_tests * 100
 
-        assert overall_rate >= 98.0, \
-            f"整体成功率{overall_rate:.1f}% < 98%"
+        assert overall_rate >= 98.0, f"整体成功率{overall_rate:.1f}% < 98%"
 
     def test_individual_scenario_success_rates(self):
         """各场景单独成功率 > 95%."""

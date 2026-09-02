@@ -23,12 +23,13 @@ from pathlib import Path
 from typing import Any
 
 
-# ===================== 数据模型定义 =====================
+# 数据模型定义
 
 
 @dataclass
 class ParameterInfo:
     """路由参数信息"""
+
     name: str
     param_type: str
     is_required: bool
@@ -40,6 +41,7 @@ class ParameterInfo:
 @dataclass
 class ResponseInfo:
     """响应信息"""
+
     status_code: int
     description: str
     model_name: str = ""
@@ -49,6 +51,7 @@ class ResponseInfo:
 @dataclass
 class RouteInfo:
     """路由完整信息"""
+
     method: str
     path: str
     summary: str = ""
@@ -63,6 +66,7 @@ class RouteInfo:
 @dataclass
 class ModelFieldInfo:
     """Pydantic 模型字段信息"""
+
     name: str
     field_type: str
     is_required: bool
@@ -75,18 +79,19 @@ class ModelFieldInfo:
 @dataclass
 class PydanticModelInfo:
     """Pydantic 模型完整信息"""
+
     name: str
     fields: list[ModelFieldInfo] = field(default_factory=list)
     description: str = ""
     file_path: str = ""
 
 
-# ===================== AST 解析器 =====================
+# AST 解析器
 
 
 class FastAPIRouteExtractor(ast.NodeVisitor):
     """FastAPI 路由提取器
-    
+
     遍历 AST，识别 @router.get/post/put/delete 等装饰器，
     提取路由路径、参数、请求体、响应模型等信息。
     """
@@ -126,10 +131,7 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
                             prefix = self._extract_string(kw.value) or ""
                         elif kw.arg == "tags":
                             if isinstance(kw.value, ast.List):
-                                tags = [
-                                    self._extract_string(elt) or ""
-                                    for elt in kw.value.elts
-                                ]
+                                tags = [self._extract_string(elt) or "" for elt in kw.value.elts]
                     self._routers[target.id] = {"prefix": prefix, "tags": tags}
         self.generic_visit(node)
 
@@ -225,7 +227,7 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
 
     def resolve(self):
         """传播 include_router 前缀，生成全部路由。"""
-        # 迭代传播直到稳定（父 → 子 → 孙 链）
+        # 迭代传播直到稳定（父 子 孙 链）
         guard = 0
         changed = True
         while changed and guard < 10:
@@ -293,9 +295,7 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
                 route_info.description = self._extract_string(kw.value) or ""
             elif kw.arg == "tags":
                 if isinstance(kw.value, ast.List):
-                    route_info.tags = [
-                        self._extract_string(elt) or "" for elt in kw.value.elts
-                    ]
+                    route_info.tags = [self._extract_string(elt) or "" for elt in kw.value.elts]
 
         if not route_info.summary and node.body:
             docstring = ast.get_docstring(node)
@@ -307,9 +307,7 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
 
         return route_info
 
-    def _extract_parameters(
-        self, node: ast.AsyncFunctionDef | ast.FunctionDef, route_info: RouteInfo
-    ):
+    def _extract_parameters(self, node: ast.AsyncFunctionDef | ast.FunctionDef, route_info: RouteInfo):
         """从函数参数中提取路由参数信息"""
         for arg in node.args.args:
             arg_name = arg.arg
@@ -421,10 +419,7 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
         if isinstance(node, ast.Subscript):
             base = self._type_annotation_to_str(node.value)
             if isinstance(node.slice, ast.Tuple):
-                args = ", ".join(
-                    self._type_annotation_to_str(elt) or "?"
-                    for elt in node.slice.elts
-                )
+                args = ", ".join(self._type_annotation_to_str(elt) or "?" for elt in node.slice.elts)
                 return f"{base}[{args}]"
             arg = self._type_annotation_to_str(node.slice) or "?"
             return f"{base}[{arg}]"
@@ -442,7 +437,7 @@ class FastAPIRouteExtractor(ast.NodeVisitor):
 
 class PydanticModelExtractor(ast.NodeVisitor):
     """Pydantic 模型提取器
-    
+
     遍历 AST，识别继承自 BaseModel 的类定义，
     提取字段名称、类型、默认值、约束等信息。
     """
@@ -494,9 +489,7 @@ class PydanticModelExtractor(ast.NodeVisitor):
         constraints: list[str] = []
 
         if node.value:
-            is_required, default_value, description, constraints = self._parse_field_value(
-                node.value
-            )
+            is_required, default_value, description, constraints = self._parse_field_value(node.value)
 
         return ModelFieldInfo(
             name=field_name,
@@ -507,9 +500,7 @@ class PydanticModelExtractor(ast.NodeVisitor):
             constraints=constraints,
         )
 
-    def _parse_field_value(
-        self, value_node: ast.AST
-    ) -> tuple[bool, str, str, list[str]]:
+    def _parse_field_value(self, value_node: ast.AST) -> tuple[bool, str, str, list[str]]:
         """解析字段值（处理 Field() 调用）"""
         if isinstance(value_node, ast.Call):
             func = value_node.func
@@ -517,13 +508,11 @@ class PydanticModelExtractor(ast.NodeVisitor):
                 return self._parse_field_call(value_node)
             if isinstance(func, ast.Attribute) and func.attr == "Field":
                 return self._parse_field_call(value_node)
-        
+
         default_str = self._extract_default_value(value_node)
         return False, default_str, "", []
 
-    def _parse_field_call(
-        self, call_node: ast.Call
-    ) -> tuple[bool, str, str, list[str]]:
+    def _parse_field_call(self, call_node: ast.Call) -> tuple[bool, str, str, list[str]]:
         """解析 Field() 调用"""
         is_required = True
         default_value = ""
@@ -618,10 +607,7 @@ class PydanticModelExtractor(ast.NodeVisitor):
         if isinstance(node, ast.Subscript):
             base = self._type_annotation_to_str(node.value)
             if isinstance(node.slice, ast.Tuple):
-                args = ", ".join(
-                    self._type_annotation_to_str(elt) or "?"
-                    for elt in node.slice.elts
-                )
+                args = ", ".join(self._type_annotation_to_str(elt) or "?" for elt in node.slice.elts)
                 return f"{base}[{args}]"
             arg = self._type_annotation_to_str(node.slice) or "?"
             return f"{base}[{arg}]"
@@ -637,12 +623,12 @@ class PydanticModelExtractor(ast.NodeVisitor):
         return None
 
 
-# ===================== 文档生成器 =====================
+# 文档生成器
 
 
 class APIDocumentGenerator:
     """API 文档生成器
-    
+
     将提取的路由和模型信息填充至 Markdown 模板，
     生成完整的 API 参考文档。
     """
@@ -827,7 +813,7 @@ Content-Type: application/json
     def _format_route(self, route: RouteInfo) -> str:
         """格式化单个路由为 Markdown"""
         lines: list[str] = []
-        
+
         badge_color = self._get_method_color(route.method)
         lines.append(f"### `{route.method}` `{route.path}`")
         lines.append("")
@@ -847,7 +833,9 @@ Content-Type: application/json
                 lines.append("| 参数名 | 类型 | 必填 | 说明 |")
                 lines.append("|--------|------|------|------|")
                 for p in path_params:
-                    lines.append(f"| `{p.name}` | `{p.param_type}` | {'是' if p.is_required else '否'} | {p.description} |")
+                    lines.append(
+                        f"| `{p.name}` | `{p.param_type}` | {'是' if p.is_required else '否'} | {p.description} |"
+                    )
                 lines.append("")
 
             if query_params:
@@ -857,7 +845,9 @@ Content-Type: application/json
                 lines.append("|--------|------|--------|------|------|")
                 for p in query_params:
                     default = p.default_value if p.default_value else "-"
-                    lines.append(f"| `{p.name}` | `{p.param_type}` | `{default}` | {'是' if p.is_required else '否'} | {p.description} |")
+                    lines.append(
+                        f"| `{p.name}` | `{p.param_type}` | `{default}` | {'是' if p.is_required else '否'} | {p.description} |"
+                    )
                 lines.append("")
 
             if body_params:
@@ -867,7 +857,9 @@ Content-Type: application/json
                 lines.append("|--------|------|--------|------|------|")
                 for p in body_params:
                     default = p.default_value if p.default_value else "-"
-                    lines.append(f"| `{p.name}` | `{p.param_type}` | `{default}` | {'是' if p.is_required else '否'} | {p.description} |")
+                    lines.append(
+                        f"| `{p.name}` | `{p.param_type}` | `{default}` | {'是' if p.is_required else '否'} | {p.description} |"
+                    )
                 lines.append("")
 
             if route.request_body_model:
@@ -956,7 +948,7 @@ Content-Type: application/json
 *本文档由 API 文档自动生成系统生成，如有疑问请联系开发团队。*"""
 
 
-# ===================== 主程序 =====================
+# 主程序
 
 
 def _module_name(file_path: Path, app_root: Path) -> str:
@@ -1134,25 +1126,25 @@ def generate_document(
         print("[警告] 未找到任何 API 路由定义", file=sys.stderr)
 
     generator = APIDocumentGenerator(routes, models)
-    
+
     if use_template and template_path and template_path.exists():
         template_content = load_template(template_path)
         auto_content = generator.generate_auto_content()
-        
+
         if APIDocumentGenerator.MARKER_START in template_content:
             start_idx = template_content.index(APIDocumentGenerator.MARKER_START)
             end_marker = APIDocumentGenerator.MARKER_END
             if end_marker in template_content:
                 end_idx = template_content.index(end_marker)
                 result = (
-                    template_content[:start_idx + len(APIDocumentGenerator.MARKER_START)]
+                    template_content[: start_idx + len(APIDocumentGenerator.MARKER_START)]
                     + "\n"
                     + auto_content
                     + "\n"
                     + template_content[end_idx:]
                 )
                 return result
-        
+
         return generator.generate()
     else:
         return generator.generate()
@@ -1161,9 +1153,9 @@ def generate_document(
 def validate_document(project_root: Path, output_path: Path) -> bool:
     """验证文档是否已与代码同步"""
     print("[验证] 正在生成临时文档...")
-    
+
     template_path = project_root / "docs" / "api-reference.md.tmpl"
-    
+
     try:
         temp_doc = generate_document(project_root, template_path)
     except Exception as e:
@@ -1195,9 +1187,9 @@ def validate_document(project_root: Path, output_path: Path) -> bool:
 def dry_run(project_root: Path) -> None:
     """Dry run 模式：生成文档但不覆盖"""
     print("[Dry Run] 正在生成文档（不保存）...")
-    
+
     doc_content = generate_document(project_root)
-    
+
     print(f"[Dry Run] 文档生成完成，共 {len(doc_content.splitlines())} 行")
     print()
     print("文档预览（前 50 行）:")
@@ -1259,14 +1251,14 @@ def main():
     try:
         print("[生成] 正在扫描 API 文件...")
         doc_content = generate_document(project_root, template_path)
-        
+
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(doc_content, encoding="utf-8")
-        
+
         print(f"[生成] 文档已生成: {output_path}")
         print(f"[生成] 共 {len(doc_content.splitlines())} 行")
         print("[生成] 完成")
-        
+
     except FileNotFoundError as e:
         print(f"[错误] {e}", file=sys.stderr)
         sys.exit(1)

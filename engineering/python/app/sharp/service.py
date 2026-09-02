@@ -47,9 +47,7 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 默认配置（M6 会通过 config.py 注入运行时配置）
-# ---------------------------------------------------------------------------
 
 DEFAULT_MAX_REACT_STEPS: int = 8
 DEFAULT_CONFIDENCE_THRESHOLD: float = 0.85
@@ -60,9 +58,7 @@ DEFAULT_LLM_TEMPERATURE: float = 0.3
 VALID_ABLATION_MODES: frozenset[str | None] = frozenset({None, "no_schema", "no_memory", "no_react", "no_toolset"})
 
 
-# ---------------------------------------------------------------------------
 # SHARP 服务
-# ---------------------------------------------------------------------------
 
 
 class SharpService:
@@ -77,9 +73,7 @@ class SharpService:
     _singleton: "SharpService" | None = None
     _lock = threading.Lock()
 
-    # ------------------------------------------------------------------
     # 单例入口
-    # ------------------------------------------------------------------
 
     @classmethod
     def instance(cls) -> "SharpService":
@@ -121,9 +115,7 @@ class SharpService:
         # 从 AppConfig.sharp 读取运行时配置（容错：失败则沿用模块级默认值）
         self._load_config()
 
-    # ------------------------------------------------------------------
     # 配置加载
-    # ------------------------------------------------------------------
 
     def _load_config(self) -> None:
         """从 ``AppConfig.sharp`` 读取运行时配置覆盖默认值。
@@ -184,9 +176,7 @@ class SharpService:
             return "no_schema"
         return None
 
-    # ------------------------------------------------------------------
     # 依赖加载
-    # ------------------------------------------------------------------
 
     def _ensure_dependencies(self) -> None:
         """懒加载所有重型依赖（线程安全）。"""
@@ -291,9 +281,7 @@ class SharpService:
             self._react_loop is not None,
         )
 
-    # ------------------------------------------------------------------
     # 配置管理
-    # ------------------------------------------------------------------
 
     def set_ablation_mode(self, mode: str | None) -> None:
         """切换消融模式并重建 pipeline。"""
@@ -334,9 +322,7 @@ class SharpService:
             "trajectory_count": (self._trajectory_store.count() if self._trajectory_store else 0),
         }
 
-    # ------------------------------------------------------------------
     # 验证入口
-    # ------------------------------------------------------------------
 
     async def verify(
         self,
@@ -557,9 +543,7 @@ class SharpService:
                 results.append((idx, None, str(e)))  # type: ignore[arg-type]
         return results
 
-    # ------------------------------------------------------------------
     # 轨迹管理
-    # ------------------------------------------------------------------
 
     def list_trajectories(
         self,

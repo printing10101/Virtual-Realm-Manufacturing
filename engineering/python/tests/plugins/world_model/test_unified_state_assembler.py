@@ -15,6 +15,7 @@ P0-2（GeometryFeaturesDeriver）产出 → ``UnifiedState`` 的组装链路，
 - ``WorldModelPlugin._try_assemble_unified_state`` 从半成品 metadata 组装
 - 向后兼容：无原料时回退到传统 ``np.ndarray`` 路径
 """
+
 from __future__ import annotations
 
 import pytest
@@ -46,9 +47,7 @@ from app.plugins.world_model.unified_state_assembler import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 测试 fixtures
-# ---------------------------------------------------------------------------
 
 
 def _make_plane(
@@ -88,10 +87,14 @@ def _make_box_vertices(
     """构造长方体 8 顶点（用于 bbox 派生）."""
     lx, ly, lz = size
     return [
-        [0.0, 0.0, 0.0], [lx, 0.0, 0.0],
-        [0.0, ly, 0.0], [lx, ly, 0.0],
-        [0.0, 0.0, lz], [lx, 0.0, lz],
-        [0.0, ly, lz], [lx, ly, lz],
+        [0.0, 0.0, 0.0],
+        [lx, 0.0, 0.0],
+        [0.0, ly, 0.0],
+        [lx, ly, 0.0],
+        [0.0, 0.0, lz],
+        [lx, 0.0, lz],
+        [0.0, ly, lz],
+        [lx, ly, lz],
     ]
 
 
@@ -99,22 +102,16 @@ def _make_box_vertices(
 def complete_geometry_result() -> DerivationResult:
     """完整几何派生结果（有 vertices + 1 plane 特征）."""
     features = [_make_plane(area_mm2=500.0, confidence=0.95)]
-    return GeometryFeaturesDeriver.from_feature_extraction(
-        features, _make_box_vertices()
-    )
+    return GeometryFeaturesDeriver.from_feature_extraction(features, _make_box_vertices())
 
 
 @pytest.fixture
 def complete_dynamics_result() -> BridgeResult:
     """完整动力学桥接结果（6 字段齐全）."""
-    return DynamicsStateBridge.from_current_state(
-        _make_complete_current_state()
-    )
+    return DynamicsStateBridge.from_current_state(_make_complete_current_state())
 
 
-# ---------------------------------------------------------------------------
 # AssemblerResult 诊断聚合
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -128,9 +125,7 @@ class TestAssemblerResultDiagnostics:
         complete_dynamics_result: BridgeResult,
     ):
         """两侧完整 → should_degrade=False / is_complete=True."""
-        result = UnifiedStateAssembler.assemble_from_results(
-            complete_geometry_result, complete_dynamics_result
-        )
+        result = UnifiedStateAssembler.assemble_from_results(complete_geometry_result, complete_dynamics_result)
         assert result.should_degrade is False
         assert result.is_complete is True
         assert result.completeness_ratio == 1.0
@@ -142,13 +137,12 @@ class TestAssemblerResultDiagnostics:
         """几何侧降级（vertices=None → bbox defaulted）→ should_degrade=True."""
         features = [_make_plane()]
         geo_result = GeometryFeaturesDeriver.from_feature_extraction(
-            features, vertices=None  # vertices 缺失 → bbox defaulted
+            features,
+            vertices=None,  # vertices 缺失 → bbox defaulted
         )
         assert GeometryFeaturesDeriver.should_degrade(geo_result) is True
 
-        result = UnifiedStateAssembler.assemble_from_results(
-            geo_result, complete_dynamics_result
-        )
+        result = UnifiedStateAssembler.assemble_from_results(geo_result, complete_dynamics_result)
         assert result.geometry_degraded is True
         assert result.dynamics_degraded is False
         assert result.should_degrade is True  # 任一侧降级
@@ -159,14 +153,12 @@ class TestAssemblerResultDiagnostics:
         complete_geometry_result: DerivationResult,
     ):
         """动力学侧降级（>=3 字段缺失）→ should_degrade=True."""
-        # 只提供 1 个字段，5 个缺失 → defaulted=5 >= DEGRADE_THRESHOLD(3)
+        # 只提供 1 个字段，5 个缺失 defaulted=5 >= DEGRADE_THRESHOLD(3)
         sparse_state = {StateField.SPINDLE_SPEED: 8000.0}
         dyn_result = DynamicsStateBridge.from_current_state(sparse_state)
         assert DynamicsStateBridge.should_degrade(dyn_result) is True
 
-        result = UnifiedStateAssembler.assemble_from_results(
-            complete_geometry_result, dyn_result
-        )
+        result = UnifiedStateAssembler.assemble_from_results(complete_geometry_result, dyn_result)
         assert result.geometry_degraded is False
         assert result.dynamics_degraded is True
         assert result.should_degrade is True
@@ -177,7 +169,7 @@ class TestAssemblerResultDiagnostics:
         complete_geometry_result: DerivationResult,
     ):
         """completeness_ratio = (几何 + 动力学) / 2."""
-        # 动力学 6 字段中 2 个缺失 → real=4/6 ≈ 0.667
+        # 动力学 6 字段中 2 个缺失 real=4/6 ≈ 0.667
         sparse_state = {
             StateField.SPINDLE_SPEED: 8000.0,
             StateField.FEED_RATE: 1200.0,
@@ -186,16 +178,12 @@ class TestAssemblerResultDiagnostics:
             # VIBRATION_RMS / TEMPERATURE 缺失
         }
         dyn_result = DynamicsStateBridge.from_current_state(sparse_state)
-        result = UnifiedStateAssembler.assemble_from_results(
-            complete_geometry_result, dyn_result
-        )
+        result = UnifiedStateAssembler.assemble_from_results(complete_geometry_result, dyn_result)
         expected = (1.0 + 4 / 6) / 2.0
         assert result.completeness_ratio == pytest.approx(expected, rel=1e-6)
 
 
-# ---------------------------------------------------------------------------
 # assemble 纯组装
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -226,9 +214,7 @@ class TestAssemblePure:
         assert unified.fused_embedding is None  # 由 FusionLayer 填充
 
 
-# ---------------------------------------------------------------------------
 # assemble_from_sources 端到端组装
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -261,9 +247,7 @@ class TestAssembleFromSources:
     def test_end_to_end_no_vertices_degrades(self):
         """vertices=None → bbox defaulted → should_degrade=True."""
         features = [_make_plane()]
-        result = UnifiedStateAssembler.assemble_from_sources(
-            features, None, _make_complete_current_state()
-        )
+        result = UnifiedStateAssembler.assemble_from_sources(features, None, _make_complete_current_state())
         assert result.geometry_degraded is True
         assert result.dynamics_degraded is False
         assert result.should_degrade is True
@@ -276,11 +260,9 @@ class TestAssembleFromSources:
         sparse_state = {
             StateField.SPINDLE_SPEED: 8000.0,
             StateField.FEED_RATE: 1200.0,
-            # 缺 4 个 → defaulted=4 >= 3
+            # 缺 4 个 defaulted=4 >= 3
         }
-        result = UnifiedStateAssembler.assemble_from_sources(
-            features, _make_box_vertices(), sparse_state
-        )
+        result = UnifiedStateAssembler.assemble_from_sources(features, _make_box_vertices(), sparse_state)
         assert result.geometry_degraded is False
         assert result.dynamics_degraded is True
         assert result.should_degrade is True
@@ -312,9 +294,7 @@ class TestAssembleFromSources:
         complete_dynamics_result: BridgeResult,
     ):
         """to_dict 序列化含全部诊断字段."""
-        result = UnifiedStateAssembler.assemble_from_results(
-            complete_geometry_result, complete_dynamics_result
-        )
+        result = UnifiedStateAssembler.assemble_from_results(complete_geometry_result, complete_dynamics_result)
         d = result.to_dict()
         assert "unified_state" in d
         assert "geometry_result" in d
@@ -327,9 +307,7 @@ class TestAssembleFromSources:
         assert unified.geometry.bbox_dimensions == (10.0, 20.0, 30.0)
 
 
-# ---------------------------------------------------------------------------
 # WorldModelPlugin 自动组装路径
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -479,9 +457,7 @@ class TestPluginAutoAssemble:
         assert plugin._try_load_unified_state(artifact) is None
 
 
-# ---------------------------------------------------------------------------
-# WorldModelPlugin execute 端到端（融合模式自动组装 → 预测）
-# ---------------------------------------------------------------------------
+# WorldModelPlugin execute 端到端（融合模式自动组装 预测）
 
 
 @pytest.mark.unit

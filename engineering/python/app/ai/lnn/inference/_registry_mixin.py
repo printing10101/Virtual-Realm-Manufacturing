@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class _RegistryMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
 
     @classmethod
     def from_registry(

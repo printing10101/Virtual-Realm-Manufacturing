@@ -169,7 +169,7 @@ def _extract_key_path(target_uri: str, upstream_records: list) -> list[str]:
     if not upstream_records:
         return [target_uri]
 
-    # 构造上游邻接表：target → inputs
+    # 构造上游邻接表：target inputs
     adjacency: dict[str, list[str]] = {}
     for rec in upstream_records:
         for input_uri in rec.inputs:

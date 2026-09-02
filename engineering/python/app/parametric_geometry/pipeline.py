@@ -80,9 +80,7 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # 异常类
-# =============================================================================
 
 
 class ParametricGeometryError(Exception):
@@ -97,9 +95,7 @@ class StepReviewError(ParametricGeometryError):
     """工程师审核操作失败。"""
 
 
-# =============================================================================
 # 结果数据类
-# =============================================================================
 
 
 @dataclass
@@ -136,9 +132,7 @@ class ParametricGeometryResult:
         }
 
 
-# =============================================================================
 # 流水线
-# =============================================================================
 
 
 class ParametricGeometryPipeline:
@@ -157,9 +151,7 @@ class ParametricGeometryPipeline:
         self._cfg = cfg
         self._store = get_task_store()
 
-    # -------------------------------------------------------------------------
     # 创建任务
-    # -------------------------------------------------------------------------
 
     def create_task(
         self,
@@ -200,9 +192,7 @@ class ParametricGeometryPipeline:
         )
         return task
 
-    # -------------------------------------------------------------------------
     # 执行流水线（异步）
-    # -------------------------------------------------------------------------
 
     async def run_pipeline(self, task_id: str) -> ParametricGeometryResult:
         """异步执行特征→B-rep→装配→STEP 流水线。
@@ -238,7 +228,7 @@ class ParametricGeometryPipeline:
             if not features:
                 raise FeaturesLoadError(f"阶段 2 confirmed_features.json 中无任何特征: {task.input_features_path}")
 
-            # 2. 特征 → BrepShape
+            # 2. 特征 BrepShape
             brep_result = convert_features_to_brep(features)
             if not brep_result.shapes:
                 raise ParametricGeometryError(
@@ -325,9 +315,7 @@ class ParametricGeometryPipeline:
                 error_message=safe.get("message"),
             )
 
-    # -------------------------------------------------------------------------
     # 工程师审核
-    # -------------------------------------------------------------------------
 
     def review_step_feature(
         self,
@@ -405,9 +393,7 @@ class ParametricGeometryPipeline:
         )
         return target
 
-    # -------------------------------------------------------------------------
     # 最终化 STEP（基于审核结果重新生成）
-    # -------------------------------------------------------------------------
 
     async def finalize_step(self, task_id: str) -> ParametricGeometryResult:
         """基于工程师审核结果重新生成最终 STEP 文件。
@@ -499,9 +485,7 @@ class ParametricGeometryPipeline:
             )
             raise ParametricGeometryError(safe.get("message", "未知错误")) from e
 
-    # -------------------------------------------------------------------------
     # 取消任务
-    # -------------------------------------------------------------------------
 
     def cancel_task(self, task_id: str) -> ParametricGeometryTask:
         """取消任务。
@@ -533,9 +517,7 @@ class ParametricGeometryPipeline:
         assert updated is not None, "刚 update 完任务不应消失"
         return updated
 
-    # -------------------------------------------------------------------------
     # 查询
-    # -------------------------------------------------------------------------
 
     def get_task(self, task_id: str) -> ParametricGeometryTask | None:
         return self._store.get(task_id)
@@ -585,9 +567,7 @@ class ParametricGeometryPipeline:
             engine_used=engine_used,
         )
 
-    # -------------------------------------------------------------------------
     # 内部工具
-    # -------------------------------------------------------------------------
 
     def _load_input_features(self, input_features_path: str) -> list[ReviewedFeatureRef]:
         """加载阶段 2 confirmed_features.json。

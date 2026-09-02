@@ -36,9 +36,7 @@ from typing import Any
 from app.parametric_geometry.step_store import ReviewedFeatureRef
 
 
-# =============================================================================
 # BrepShape 数据结构
-# =============================================================================
 
 
 @dataclass
@@ -71,18 +69,14 @@ class BrepShape:
         }
 
 
-# =============================================================================
 # 转换异常
-# =============================================================================
 
 
 class FeatureToBrepError(Exception):
     """特征 → B-rep 转换异常。"""
 
 
-# =============================================================================
 # 工具函数
-# =============================================================================
 
 
 def _normalize_vector(v: list[float]) -> list[float]:
@@ -114,9 +108,7 @@ def _safe_list(value: Any, length: int = 3, default: float = 0.0) -> list[float]
     return result
 
 
-# =============================================================================
 # 各特征类型转换函数
-# =============================================================================
 
 
 def _convert_plane(feature: ReviewedFeatureRef) -> BrepShape:
@@ -142,7 +134,7 @@ def _convert_plane(feature: ReviewedFeatureRef) -> BrepShape:
     # 估算平面边界（假设正方形，边长 = sqrt(area)）
     side_mm = math.sqrt(max(area_mm2, 1.0))
 
-    # 平面 origin = -offset * normal（normal·x = offset → x = offset*normal）
+    # 平面 origin = -offset * normal（normal·x = offset x = offset*normal）
     origin = [-offset * n for n in normal]
 
     return BrepShape(
@@ -286,12 +278,10 @@ def _convert_boss(feature: ReviewedFeatureRef) -> BrepShape:
     )
 
 
-# =============================================================================
 # 主入口：批量转换
-# =============================================================================
 
 
-# 特征类型 → 转换函数映射
+# 特征类型 转换函数映射
 _FEATURE_CONVERTERS = {
     "plane": _convert_plane,
     "cylinder": _convert_cylinder,

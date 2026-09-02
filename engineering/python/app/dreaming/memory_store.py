@@ -105,9 +105,7 @@ class LocalMemoryStore:
         # 默认只跟踪知识图谱数据目录，避免把无关文件纳入版本
         self.watch_paths = [str(p) for p in (watch_paths or ["python/app/knowledge_graph/"])]
 
-    # ------------------------------------------------------------------
     # 读取
-    # ------------------------------------------------------------------
 
     def read_all(self) -> list[dict[str, Any]]:
         """读取全部 Dreaming memory 条目。
@@ -128,9 +126,7 @@ class LocalMemoryStore:
         all_entries = self.read_all()
         return [e for e in all_entries if e["properties"].get("entity") == entity_id]
 
-    # ------------------------------------------------------------------
     # 写入
-    # ------------------------------------------------------------------
 
     def add_observation(
         self,
@@ -227,9 +223,7 @@ class LocalMemoryStore:
 
         return self.graph.update_node_properties(node_id, props)
 
-    # ------------------------------------------------------------------
     # 版本管理（Git 不可变快照）
-    # ------------------------------------------------------------------
 
     def commit_version(
         self,
@@ -371,9 +365,7 @@ class LocalMemoryStore:
             pass
         return None
 
-    # ------------------------------------------------------------------
     # 清理（对应 Anthropic 的 "直接丢弃" 选项）
-    # ------------------------------------------------------------------
 
     def discard_version(self, version: str) -> bool:
         """丢弃指定版本（git revert，不删除历史）。

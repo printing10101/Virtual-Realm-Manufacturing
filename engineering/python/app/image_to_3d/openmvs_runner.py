@@ -133,7 +133,7 @@ def run_dense_reconstruction(
     workspace_dir.mkdir(parents=True, exist_ok=True)
     scene_mvs = workspace_dir / "scene.mvs"
 
-    # 第一步：从 COLMAP 稀疏模型导入到 OpenMVS 工程文件
+    # 从 COLMAP 稀疏模型导入到 OpenMVS 工程文件
     # OpenMVS 提供 InterColmapToOpenMVS / DensifyMesh 都可读 COLMAP 输出，
     # 这里直接用 DensifyMesh 的 --import-path 选项（兼容 COLMAP TXT 输出）
     resolution_level = cfg.precision_specs["openmvs_resolution_level"]
@@ -173,7 +173,7 @@ def run_dense_reconstruction(
                 "可能原因：1) 稀疏模型相机数不足；2) OpenMVS 版本不兼容。"
             )
 
-    # 第二步：精度 high 档位启用 RefineMesh（耗时较长）
+    # 精度 high 档位启用 RefineMesh（耗时较长）
     if cfg.precision_tier == "high":
         refined_ply = workspace_dir / "scene_dense_mesh_refine.ply"
         try:

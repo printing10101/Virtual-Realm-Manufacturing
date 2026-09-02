@@ -64,9 +64,7 @@ class BaseSingletonService:
         if "_service_singleton" not in cls.__dict__:
             cls._service_singleton = None
 
-    # ------------------------------------------------------------------
     # 单例管理
-    # ------------------------------------------------------------------
 
     @classmethod
     def get_instance(cls) -> "BaseSingletonService":
@@ -101,9 +99,7 @@ class BaseSingletonService:
         with cls._service_lock:
             cls._service_singleton = None
 
-    # ------------------------------------------------------------------
     # 数据库 Session 默认实现
-    # ------------------------------------------------------------------
 
     async def _get_session(self):
         """获取 ``AsyncSession``（每段独立 commit）.

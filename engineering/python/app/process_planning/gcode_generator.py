@@ -153,7 +153,7 @@ class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
 
         lines: list[str] = []
 
-        # ========== 程序头 ==========
+        # 程序头
         header = postprocessor.format_header(program_number)
         lines.append(header)
 
@@ -167,12 +167,12 @@ class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
             lines.append(postprocessor._comment("五轴加工模式: A/C轴联动"))
         lines.append("")
 
-        # ========== 安全设置 ==========
+        # 安全设置
         lines.append(postprocessor._comment("安全设置"))
         lines.append("G17 G21 G40 G49 G80 G90")  # XY平面, 公制, 取消补偿, 取消固定循环
         lines.append(f"G00 Z{safe_z:.3f}")  # Z轴抬至安全高度
 
-        # ========== 控制器特性方言接入 ==========
+        # 控制器特性方言接入
         # 根据控制器类型启用对应的特殊功能模式
         if controller_type == "fanuc_0i":
             # Fanuc: 启用高精度加工模式 (G05.1 Q1)
@@ -190,7 +190,7 @@ class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
                 lines.append(postprocessor._comment("启用高精度加工模式 M128"))
                 lines.append(postprocessor.format_high_precision_mode(enable=True))
 
-        # ========== 刀具清单汇总表 ==========
+        # 刀具清单汇总表
         # 收集刀具信息：刀具类型 -> {直径, 加工方法, 关联工序}
         tool_info: dict[str, dict[str, Any]] = {}
         for op in operation_plan.operations:
@@ -231,7 +231,7 @@ class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
         lines.append(postprocessor._comment("=" * 50))
         lines.append("")
 
-        # ========== 逐工序生成G代码 ==========
+        # 逐工序生成G代码
         _current_tool = ""
         tool_index = 0
         tool_registry: dict[str, int] = {}
@@ -322,7 +322,7 @@ class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
                 coolant_off = postprocessor.format_coolant("off")
                 lines.append(coolant_off)
 
-        # ========== 程序尾 ==========
+        # 程序尾
         lines.append("")
         lines.append(postprocessor._comment("程序结束"))
         footer = postprocessor.format_footer()
@@ -334,7 +334,7 @@ class GCodeGenerator(_FeatureCodeMixin, _HoleDrillingMixin, _PreviewMixin):
         # 计算总行数
         total_lines = len(lines)
 
-        # ========== 语法校验 ==========
+        # 语法校验
         syntax_errors = self._validate_syntax(program_text, controller_type)
         if syntax_errors:
             errors.extend(syntax_errors)

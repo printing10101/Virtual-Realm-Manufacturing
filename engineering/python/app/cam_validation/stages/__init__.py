@@ -33,10 +33,10 @@ ArchiverMixin 一致）：
 
 from __future__ import annotations
 
-# ---- 公开 API re-export ----
+# 公开 API re-export
 from ._common import CamValidationResult
 
-# ---- 内部 mixin re-export（供 pipeline.py 组合，也便于测试 / 内省） ----
+# 内部 mixin re-export（供 pipeline.py 组合，也便于测试 / 内省）
 from .merge_report import MergeReportMixin
 from .pre_check import PreCheckMixin
 from .software_check import SoftwareCheckMixin

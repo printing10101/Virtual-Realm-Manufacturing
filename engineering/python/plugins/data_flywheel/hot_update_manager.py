@@ -25,6 +25,7 @@
 
 不依赖 torch / sklearn / fastapi，可在单元测试环境独立运行。
 """
+
 from __future__ import annotations
 
 import logging
@@ -39,9 +40,7 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 枚举与数据类
-# ---------------------------------------------------------------------------
 
 
 class ModelStage(str, Enum):
@@ -98,17 +97,11 @@ class DeploymentRecord:
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.canary_ratio <= 1.0:
-            raise ValueError(
-                f"canary_ratio 必须在 [0,1]，当前: {self.canary_ratio}"
-            )
+            raise ValueError(f"canary_ratio 必须在 [0,1]，当前: {self.canary_ratio}")
         if self.observation_hours <= 0:
-            raise ValueError(
-                f"observation_hours 必须为正数: {self.observation_hours}"
-            )
+            raise ValueError(f"observation_hours 必须为正数: {self.observation_hours}")
         if not 0.0 <= self.rollback_metric_drop <= 1.0:
-            raise ValueError(
-                f"rollback_metric_drop 必须在 [0,1]，当前: {self.rollback_metric_drop}"
-            )
+            raise ValueError(f"rollback_metric_drop 必须在 [0,1]，当前: {self.rollback_metric_drop}")
 
     @property
     def observation_ends_at(self) -> datetime:
@@ -140,9 +133,7 @@ class DeploymentRecord:
         }
 
 
-# ---------------------------------------------------------------------------
 # 决策结果
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -169,9 +160,7 @@ class ObservationDecision:
         }
 
 
-# ---------------------------------------------------------------------------
 # HotUpdateManager
-# ---------------------------------------------------------------------------
 
 
 class HotUpdateManager:
@@ -224,9 +213,7 @@ class HotUpdateManager:
                 "canary_deploy 将仅记录 DeploymentRecord 不实际注册模型"
             )
 
-    # ------------------------------------------------------------------
     # 公开属性
-    # ------------------------------------------------------------------
 
     @property
     def config(self) -> dict[str, Any]:
@@ -246,9 +233,7 @@ class HotUpdateManager:
         """是否处于降级模式（无 model_registry_service）."""
         return self._model_registry_service is None
 
-    # ------------------------------------------------------------------
     # 灰度部署入口
-    # ------------------------------------------------------------------
 
     async def canary_deploy(
         self,
@@ -295,25 +280,17 @@ class HotUpdateManager:
         if not baseline_model_uri:
             raise ValueError("baseline_model_uri 不能为空")
         if new_model_uri == baseline_model_uri:
-            raise ValueError(
-                "new_model_uri 与 baseline_model_uri 不能相同（无意义部署）"
-            )
+            raise ValueError("new_model_uri 与 baseline_model_uri 不能相同（无意义部署）")
         if not eval_metrics:
             raise ValueError("eval_metrics 不能为空（至少需要一个评估指标）")
 
         ratio = self._resolve_config("canary_ratio", canary_ratio, 0.1)
-        obs_hours = self._resolve_config(
-            "observation_hours", observation_hours, 24
-        )
-        rb_on_fail = self._resolve_config(
-            "rollback_on_failure", rollback_on_failure, True
-        )
-        rb_drop = self._resolve_config(
-            "rollback_metric_drop", rollback_metric_drop, 0.05
-        )
+        obs_hours = self._resolve_config("observation_hours", observation_hours, 24)
+        rb_on_fail = self._resolve_config("rollback_on_failure", rollback_on_failure, True)
+        rb_drop = self._resolve_config("rollback_metric_drop", rollback_metric_drop, 0.05)
 
         with self._lock:
-            # 同名模型已有进行中的 canary → 拒绝（防止同时灰度两个版本）
+            # 同名模型已有进行中的 canary 拒绝（防止同时灰度两个版本）
             existing_canary = self._find_active_canary(model_name)
             if existing_canary is not None:
                 raise ValueError(
@@ -374,9 +351,7 @@ class HotUpdateManager:
             )
             return record
 
-    # ------------------------------------------------------------------
     # 观察期决策
-    # ------------------------------------------------------------------
 
     async def observe_deployment(
         self,
@@ -413,9 +388,7 @@ class HotUpdateManager:
                 DeploymentStatus.ROLLED_BACK,
                 DeploymentStatus.FAILED,
             ):
-                raise ValueError(
-                    f"部署已处于终态 ({record.status.value})，无法继续观察"
-                )
+                raise ValueError(f"部署已处于终态 ({record.status.value})，无法继续观察")
 
             now_dt = now or datetime.utcnow()
             eval_metric = record.eval_metric
@@ -443,11 +416,7 @@ class HotUpdateManager:
                     drop = 0.0
 
             # 决策 1：是否回滚（指标退化超过阈值）
-            if (
-                record.rollback_on_failure
-                and drop is not None
-                and drop > record.rollback_metric_drop
-            ):
+            if record.rollback_on_failure and drop is not None and drop > record.rollback_metric_drop:
                 reason = (
                     f"canary 指标 {eval_metric} 退化 {drop:.2%} "
                     f"(>{record.rollback_metric_drop:.2%})，"
@@ -473,10 +442,7 @@ class HotUpdateManager:
             if now_dt >= record.observation_ends_at:
                 # 观察期结束且未退化
                 if record.promote_on_success:
-                    reason = (
-                        f"观察期 {record.observation_hours}h 结束，"
-                        f"canary 未退化 (drop={drop})"
-                    )
+                    reason = f"观察期 {record.observation_hours}h 结束，canary 未退化 (drop={drop})"
                     logger.info(
                         "HotUpdateManager.observe: deployment=%s 触发晋升 (%s)",
                         deployment_id,
@@ -493,10 +459,7 @@ class HotUpdateManager:
                     )
                 # promote_on_success=False：观察期结束但不自动晋升，返回 continue
                 # 由外部调用方决定
-                reason = (
-                    f"观察期 {record.observation_hours}h 结束，"
-                    "promote_on_success=False，等待外部晋升决策"
-                )
+                reason = f"观察期 {record.observation_hours}h 结束，promote_on_success=False，等待外部晋升决策"
                 return ObservationDecision(
                     decision="continue",
                     reason=reason,
@@ -508,13 +471,8 @@ class HotUpdateManager:
                 )
 
             # 决策 3：仍在观察期，继续
-            remaining_hours = (
-                record.observation_ends_at - now_dt
-            ).total_seconds() / 3600.0
-            reason = (
-                f"观察期内，剩余 {remaining_hours:.1f}h "
-                f"(drop={drop}, 阈值={record.rollback_metric_drop})"
-            )
+            remaining_hours = (record.observation_ends_at - now_dt).total_seconds() / 3600.0
+            reason = f"观察期内，剩余 {remaining_hours:.1f}h (drop={drop}, 阈值={record.rollback_metric_drop})"
             return ObservationDecision(
                 decision="continue",
                 reason=reason,
@@ -525,9 +483,7 @@ class HotUpdateManager:
                 deployment_status=record.status,
             )
 
-    # ------------------------------------------------------------------
     # 晋升 / 回滚
-    # ------------------------------------------------------------------
 
     async def promote(self, deployment_id: str) -> DeploymentRecord:
         """将 canary 升级为 PRODUCTION，原 PRODUCTION 归档.
@@ -548,9 +504,7 @@ class HotUpdateManager:
                 raise KeyError(f"deployment 不存在: {deployment_id}")
 
             if record.status != DeploymentStatus.OBSERVING:
-                raise ValueError(
-                    f"部署状态非 OBSERVING (当前: {record.status.value})，无法 promote"
-                )
+                raise ValueError(f"部署状态非 OBSERVING (当前: {record.status.value})，无法 promote")
 
             now = datetime.utcnow()
             record.status = DeploymentStatus.PROMOTED
@@ -566,8 +520,7 @@ class HotUpdateManager:
             stages.pop(ModelStage.CANARY, None)
 
             logger.info(
-                "HotUpdateManager.promote: deployment=%s model=%s "
-                "new_production=%s archived=%s",
+                "HotUpdateManager.promote: deployment=%s model=%s new_production=%s archived=%s",
                 deployment_id,
                 record.model_name,
                 record.new_model_uri,
@@ -604,9 +557,7 @@ class HotUpdateManager:
                 DeploymentStatus.ROLLED_BACK,
                 DeploymentStatus.FAILED,
             ):
-                raise ValueError(
-                    f"部署已处于终态 ({record.status.value})，无法 rollback"
-                )
+                raise ValueError(f"部署已处于终态 ({record.status.value})，无法 rollback")
 
             now = datetime.utcnow()
             record.status = DeploymentStatus.ROLLED_BACK
@@ -630,9 +581,7 @@ class HotUpdateManager:
             )
             return record
 
-    # ------------------------------------------------------------------
     # 查询 API
-    # ------------------------------------------------------------------
 
     async def get_deployment(self, deployment_id: str) -> DeploymentRecord:
         """按 ID 取部署记录.
@@ -665,9 +614,7 @@ class HotUpdateManager:
             result.sort(key=lambda r: r.started_at, reverse=True)
             return result
 
-    # ------------------------------------------------------------------
     # 流量分配
-    # ------------------------------------------------------------------
 
     def select_model_for_request(
         self,
@@ -741,13 +688,9 @@ class HotUpdateManager:
                 ModelStage.ARCHIVED.value: stages.get(ModelStage.ARCHIVED),
             }
 
-    # ------------------------------------------------------------------
     # 内部辅助
-    # ------------------------------------------------------------------
 
-    def _resolve_config(
-        self, key: str, explicit: Optional[Any], default: Any
-    ) -> Any:
+    def _resolve_config(self, key: str, explicit: Optional[Any], default: Any) -> Any:
         """解析配置：显式参数 > config > 默认值."""
         if explicit is not None:
             return explicit
@@ -756,10 +699,7 @@ class HotUpdateManager:
     def _find_active_canary(self, model_name: str) -> Optional[DeploymentRecord]:
         """查找模型当前进行中的 canary 部署（OBSERVING 状态）."""
         for record in self._deployments.values():
-            if (
-                record.model_name == model_name
-                and record.status == DeploymentStatus.OBSERVING
-            ):
+            if record.model_name == model_name and record.status == DeploymentStatus.OBSERVING:
                 return record
         return None
 
@@ -799,24 +739,20 @@ class HotUpdateManager:
                 pass  # 检查失败不影响主流程
             # 不主动构造 ModelInfo 注册（缺字段会失败），仅记录日志
             logger.info(
-                "HotUpdateManager: 模型 %s (%s) 注册由 train_model 节点完成，"
-                "canary_deploy 仅记录 stage 转换",
+                "HotUpdateManager: 模型 %s (%s) 注册由 train_model 节点完成，canary_deploy 仅记录 stage 转换",
                 model_name,
                 model_uri,
             )
         except Exception:  # noqa: BLE001
             logger.warning(
-                "HotUpdateManager: 注册 canary 到 ModelRegistryService 失败 "
-                "(model=%s uri=%s)，部署继续",
+                "HotUpdateManager: 注册 canary 到 ModelRegistryService 失败 (model=%s uri=%s)，部署继续",
                 model_name,
                 model_uri,
                 exc_info=True,
             )
 
 
-# ---------------------------------------------------------------------------
 # 全局单例
-# ---------------------------------------------------------------------------
 
 
 _hot_update_manager: Optional[HotUpdateManager] = None

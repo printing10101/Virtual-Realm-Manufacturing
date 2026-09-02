@@ -81,7 +81,7 @@ class UnifiedMachineStatus:
 class MachineAdapter(abc.ABC):
     """机床协议适配器抽象基类。"""
 
-    # 底层协议客户端（MTConnectAdapter → MTConnectClient，OPCUAAdapter → OPCUAClient）。
+    # 底层协议客户端（MTConnectAdapter MTConnectClient，OPCUAAdapter OPCUAClient）。
     # 声明为 Any：各具体子类类型不同，统一在 ABC 层暴露只读访问。
     client: Any
 
@@ -429,9 +429,7 @@ class UnifiedDNCAdapter:
         return "none"
 
 
-# =====================================================================
 # 资产发现：扫描局域网内 MTConnect/OPC UA 服务
-# =====================================================================
 
 
 async def discover_machines(
@@ -512,9 +510,7 @@ def _socket_check(ip: str, port: int, timeout: float) -> bool:
         return False
 
 
-# =====================================================================
 # 辅助函数
-# =====================================================================
 
 
 def _safe_float(value: Any) -> float | None:

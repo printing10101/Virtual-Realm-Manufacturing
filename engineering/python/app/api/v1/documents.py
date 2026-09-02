@@ -12,9 +12,7 @@ from app.core.response import ErrorCode, error, success
 from app.services import documents_service
 
 
-# ---------------------------------------------------------------------------
 # Pydantic schemas
-# ---------------------------------------------------------------------------
 
 
 class DocumentCreate(BaseModel):
@@ -37,9 +35,7 @@ class DocumentUpdate(BaseModel):
     status: str | None = None
 
 
-# ---------------------------------------------------------------------------
 # Router
-# ---------------------------------------------------------------------------
 
 router = APIRouter(
     prefix="/api/v1/documents",

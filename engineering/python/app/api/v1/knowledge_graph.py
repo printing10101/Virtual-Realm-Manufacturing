@@ -41,9 +41,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/knowledge-graph", tags=["knowledge-graph"])
 
 
-# ---------------------------------------------------------------------------
 # 进程内单例（懒加载 + 后台预热）
-# ---------------------------------------------------------------------------
 
 
 _query_api_singleton: KnowledgeGraphQueryAPI | None = None
@@ -132,9 +130,7 @@ def _get_query_api() -> KnowledgeGraphQueryAPI:
         return _query_api_singleton
 
 
-# ---------------------------------------------------------------------------
 # Pydantic 请求模型
-# ---------------------------------------------------------------------------
 
 
 class GraphQueryRequest(BaseModel):
@@ -169,9 +165,7 @@ _VALID_QUERY_TYPES: frozenset[str] = frozenset(
 _PARAM_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-# ---------------------------------------------------------------------------
 # 端点
-# ---------------------------------------------------------------------------
 
 
 @router.get("/stats", dependencies=[Depends(require_permission("kg:read"))])

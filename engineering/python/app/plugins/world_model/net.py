@@ -260,10 +260,10 @@ if HAS_TORCH:
                 hidden_dim=config.hidden_dim,
             )
 
-            # 状态预测头：hidden → state
+            # 状态预测头：hidden state
             self.state_head = nn.Linear(config.hidden_dim, config.state_dim)
 
-            # 轨迹指标预测头：hidden → metrics（颤振峰值/最大磨损等）
+            # 轨迹指标预测头：hidden metrics（颤振峰值/最大磨损等）
             self.metrics_head = nn.Linear(config.hidden_dim, 3)
 
             self._init_weights()
@@ -291,7 +291,7 @@ if HAS_TORCH:
                 融合 embedding，shape ``[batch, T, fused_dim]``。
             """
             geometry_tensor, dynamics_tensor = unified_states
-            # (batch, T, input_dim) → (batch*T, input_dim) 以复用 MLP
+            # (batch, T, input_dim) (batch*T, input_dim) 以复用 MLP
             batch, T, _ = geometry_tensor.shape
             geo_emb = self.geometry_encoder(geometry_tensor.reshape(batch * T, -1))
             dyn_emb = self.dynamics_encoder(dynamics_tensor.reshape(batch * T, -1))
@@ -361,7 +361,7 @@ if HAS_TORCH:
             metrics_accumulator: list["torch.Tensor"] = []
             # 初始 prev_state：
             # - 融合模式：从 LSTM 上下文投影（state_head(h)），避免依赖
-            #   未传入的 states，纯融合路径
+            # 未传入的 states，纯融合路径
             # - 非融合模式：取历史最后一个状态（向后兼容）
             if self.config.use_fusion:
                 prev_state = self.state_head(h)  # [batch, state_dim]

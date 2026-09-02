@@ -36,9 +36,7 @@ class ClosedLoopAgent:
         self._parts_done = 0
         self._actions_taken: list[str] = []
 
-    # ------------------------------------------------------------------
     # 闭环四步
-    # ------------------------------------------------------------------
     def perceive(self) -> dict[str, Any]:
         """感知层：读取全量状态。"""
         return self.factory.get_status()
@@ -89,9 +87,7 @@ class ClosedLoopAgent:
         self.factory.step()
         return self.factory.get_kpis()
 
-    # ------------------------------------------------------------------
     # 闭环主循环
-    # ------------------------------------------------------------------
     def run_production_cycle(self, n_parts: int, max_ticks: int = 500) -> dict[str, Any]:
         """闭环生产 n 件零件，返回 KPI 报告。
 

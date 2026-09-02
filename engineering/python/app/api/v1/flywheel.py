@@ -29,9 +29,7 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
 # Response schemas
-# ---------------------------------------------------------------------------
 
 
 class MetricDefinition(BaseModel):
@@ -74,9 +72,7 @@ class MetricDefinitionsResponse(BaseModel):
     metrics: list[MetricDefinition]
 
 
-# ---------------------------------------------------------------------------
 # Endpoints
-# ---------------------------------------------------------------------------
 
 
 @router.get(
@@ -244,9 +240,7 @@ async def get_metric_definitions() -> MetricDefinitionsResponse:
     return MetricDefinitionsResponse(metrics=definitions)
 
 
-# ---------------------------------------------------------------------------
 # 模型热更新部署记录
-# ---------------------------------------------------------------------------
 
 # 候选模型存储目录（相对工作目录），依次扫描
 _MODEL_STORAGE_CANDIDATES: tuple[Path, ...] = (

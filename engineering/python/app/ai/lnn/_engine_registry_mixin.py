@@ -23,7 +23,7 @@ DEFAULT_PRIOR_CONFIDENCE = 0.6
 
 
 class _EngineRegistryMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _custom_models: Any
     _lnn_predictors: Any
     _streaming_predictors: Any

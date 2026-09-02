@@ -52,7 +52,7 @@ class Workflow:
     def __init__(self, client: LomoClient) -> None:
         self._client = client
 
-    # -- 校验与运行 ---------------------------------------------------------
+    # 校验与运行
 
     def validate(self, spec: dict[str, Any]) -> dict[str, Any]:
         """仅校验 WorkflowSpec，不启动运行。
@@ -109,11 +109,9 @@ class Workflow:
             body["inputs"] = inputs
         if owner_id is not None:
             body["owner_id"] = owner_id
-        return self._client.post(
-            f"/workflows/{workflow_run_id}/resume", json=body
-        )
+        return self._client.post(f"/workflows/{workflow_run_id}/resume", json=body)
 
-    # -- 状态查询与控制 -----------------------------------------------------
+    # 状态查询与控制
 
     def get_status(self, workflow_run_id: str) -> dict[str, Any]:
         """获取工作流运行状态（含每个节点的 status / 起止时间 / 错误信息）。"""
@@ -146,7 +144,7 @@ class Workflow:
             params["status"] = status
         return self._client.get("/workflows", params=params)
 
-    # -- 事件流订阅 ---------------------------------------------------------
+    # 事件流订阅
 
     def subscribe(self, workflow_run_id: str) -> Iterator[dict[str, Any]]:
         """订阅工作流事件流（SSE）。
@@ -165,13 +163,9 @@ class Workflow:
                 elif ev["event"] == "workflow_completed":
                     break
         """
-        stream = self._client.get(
-            f"/workflows/{workflow_run_id}/stream", stream=True
-        )
+        stream = self._client.get(f"/workflows/{workflow_run_id}/stream", stream=True)
         if not isinstance(stream, SSEEventStream):
-            raise TypeError(
-                f"subscribe 期望 SSEEventStream，实际得到 {type(stream).__name__}"
-            )
+            raise TypeError(f"subscribe 期望 SSEEventStream，实际得到 {type(stream).__name__}")
         return iter(stream)
 
 

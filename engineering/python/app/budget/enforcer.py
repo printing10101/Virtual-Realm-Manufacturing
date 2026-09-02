@@ -153,9 +153,7 @@ class BudgetEnforcer(_BudgetPolicyMixin, _BudgetCoreMixin, _BudgetAlertMixin, _B
             # 析构时数据库连接已关闭或对象处于无效状态属于正常 GC 路径
             logger.debug("Cleanup during deallocation skipped: %s", e)
 
-    # ------------------------------------------------------------------
     # 单例生命周期扩展
-    # ------------------------------------------------------------------
 
     @classmethod
     def init(cls, db_path: str | None = None) -> "BudgetEnforcer":

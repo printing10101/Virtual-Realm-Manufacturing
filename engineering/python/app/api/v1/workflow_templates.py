@@ -53,9 +53,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/workflow-templates", tags=["Workflow Templates"])
 
 
-# ---------------------------------------------------------------------------
 # Pydantic 请求模型
-# ---------------------------------------------------------------------------
 
 
 class WorkflowSpecModel(BaseModel):
@@ -92,9 +90,7 @@ class RateRequestModel(BaseModel):
     rating: float = Field(..., ge=1.0, le=5.0, description="评分（1.0-5.0）", examples=[4.5])
 
 
-# ---------------------------------------------------------------------------
 # 端点实现
-# ---------------------------------------------------------------------------
 
 
 @router.post(

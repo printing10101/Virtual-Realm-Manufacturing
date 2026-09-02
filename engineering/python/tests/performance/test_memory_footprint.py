@@ -1,5 +1,3 @@
-
-
 """真实内存占用性能测试
 
 测试目标：
@@ -27,13 +25,7 @@ import pytest
 pytestmark = pytest.mark.skip_ci
 
 
-
-
-
-# ---------------------------------------------------------------------------
 # 1. 模块级内存占用基线
-# ---------------------------------------------------------------------------
-
 
 
 class TestModuleMemoryFootprint:
@@ -75,14 +67,10 @@ class TestModuleMemoryFootprint:
         """BudgetManager 实例内存占用应 < 5 MB"""
         from app.budget.budget import BudgetManager
 
-        result = self._measure_memory(
-            BudgetManager, db_path=str(tmp_path / "budget_mem.db")
-        )
+        result = self._measure_memory(BudgetManager, db_path=str(tmp_path / "budget_mem.db"))
         result["instance"].close()
 
-        assert result["current_mb"] < 5.0, (
-            f"BudgetManager 内存占用过高: {result['current_mb']:.3f}MB"
-        )
+        assert result["current_mb"] < 5.0, f"BudgetManager 内存占用过高: {result['current_mb']:.3f}MB"
 
         print("\nBudgetManager 内存占用:")
         print(f"  当前: {result['current_mb']:.3f} MB")
@@ -93,14 +81,10 @@ class TestModuleMemoryFootprint:
         """MultiDimensionCostTracker 实例内存占用应 < 5 MB"""
         from app.budget.cost_tracker import MultiDimensionCostTracker
 
-        result = self._measure_memory(
-            MultiDimensionCostTracker, db_path=str(tmp_path / "cost_mem.db")
-        )
+        result = self._measure_memory(MultiDimensionCostTracker, db_path=str(tmp_path / "cost_mem.db"))
         result["instance"].close()
 
-        assert result["current_mb"] < 5.0, (
-            f"CostTracker 内存占用过高: {result['current_mb']:.3f}MB"
-        )
+        assert result["current_mb"] < 5.0, f"CostTracker 内存占用过高: {result['current_mb']:.3f}MB"
 
         print("\nCostTracker 内存占用:")
         print(f"  当前: {result['current_mb']:.3f} MB")
@@ -111,14 +95,10 @@ class TestModuleMemoryFootprint:
         """WakeupQueue 实例内存占用应 < 5 MB"""
         from app.heartbeat.heartbeat import WakeupQueue
 
-        result = self._measure_memory(
-            WakeupQueue, db_path=str(tmp_path / "wakeup_mem.db")
-        )
+        result = self._measure_memory(WakeupQueue, db_path=str(tmp_path / "wakeup_mem.db"))
         result["instance"].close()
 
-        assert result["current_mb"] < 5.0, (
-            f"WakeupQueue 内存占用过高: {result['current_mb']:.3f}MB"
-        )
+        assert result["current_mb"] < 5.0, f"WakeupQueue 内存占用过高: {result['current_mb']:.3f}MB"
 
         print("\nWakeupQueue 内存占用:")
         print(f"  当前: {result['current_mb']:.3f} MB")
@@ -129,14 +109,10 @@ class TestModuleMemoryFootprint:
         """RuleDatabase 实例内存占用应 < 5 MB"""
         from app.database.rule_db import RuleDatabase
 
-        result = self._measure_memory(
-            RuleDatabase, db_path=str(tmp_path / "rule_mem.db")
-        )
+        result = self._measure_memory(RuleDatabase, db_path=str(tmp_path / "rule_mem.db"))
         result["instance"].close()
 
-        assert result["current_mb"] < 5.0, (
-            f"RuleDatabase 内存占用过高: {result['current_mb']:.3f}MB"
-        )
+        assert result["current_mb"] < 5.0, f"RuleDatabase 内存占用过高: {result['current_mb']:.3f}MB"
 
         print("\nRuleDatabase 内存占用:")
         print(f"  当前: {result['current_mb']:.3f} MB")
@@ -144,9 +120,8 @@ class TestModuleMemoryFootprint:
         print(f"  内存块: {result['blocks']}")
 
 
-# ---------------------------------------------------------------------------
 # 2. 资源释放验证
-# ---------------------------------------------------------------------------
+
 
 class TestResourceReleaseMemory:
     """验证资源 close() 后内存被正确释放
@@ -166,7 +141,7 @@ class TestResourceReleaseMemory:
     """
 
     RELEASE_RATIO_THRESHOLD_PCT = 30.0  # 大对象释放率阈值
-    SMALL_OBJECT_THRESHOLD_KB = 50.0   # 小对象判定阈值
+    SMALL_OBJECT_THRESHOLD_KB = 50.0  # 小对象判定阈值
     SMALL_OBJECT_GROWTH_TOLERANCE = 2.0  # 小对象允许的增长倍数
 
     def _assert_release(self, allocated_kb: float, released_kb: float, resource_name: str):
@@ -194,8 +169,7 @@ class TestResourceReleaseMemory:
                 f"allocated={allocated_kb:.2f}KB, leaked={leaked_kb:.2f}KB, "
                 f"growth_ratio={growth_ratio:.2f}×"
             )
-            print(f"  判定: 小对象场景 (< {self.SMALL_OBJECT_THRESHOLD_KB}KB), "
-                  f"泄漏 {leaked_kb:.2f}KB 在容忍范围内")
+            print(f"  判定: 小对象场景 (< {self.SMALL_OBJECT_THRESHOLD_KB}KB), 泄漏 {leaked_kb:.2f}KB 在容忍范围内")
         else:
             # 大对象场景：要求释放率达到阈值
             assert release_ratio >= self.RELEASE_RATIO_THRESHOLD_PCT, (
@@ -203,8 +177,7 @@ class TestResourceReleaseMemory:
                 f"allocated={allocated_kb:.2f}KB, released={released_kb:.2f}KB, "
                 f"ratio={release_ratio:.1f}% < {self.RELEASE_RATIO_THRESHOLD_PCT}%"
             )
-            print(f"  判定: 大对象场景 (≥ {self.SMALL_OBJECT_THRESHOLD_KB}KB), "
-                  f"释放率 {release_ratio:.1f}% 达标")
+            print(f"  判定: 大对象场景 (≥ {self.SMALL_OBJECT_THRESHOLD_KB}KB), 释放率 {release_ratio:.1f}% 达标")
 
     def test_budget_manager_release_after_close(self, tmp_path):
         """BudgetManager.close() 后内存应被正确释放（无泄漏）"""
@@ -252,9 +225,8 @@ class TestResourceReleaseMemory:
         self._assert_release(allocated, released, "WakeupQueue")
 
 
-# ---------------------------------------------------------------------------
 # 3. 批量操作内存增长
-# ---------------------------------------------------------------------------
+
 
 class TestBatchOperationMemoryGrowth:
     """批量操作下的内存增长"""
@@ -300,14 +272,12 @@ class TestBatchOperationMemoryGrowth:
 
         # 1000 个任务的内存增长应 < 2 MB
         # （任务数据通过 SQLite 持久化，不应驻留 Python 堆）
-        assert batch_growth_mb < 2.0, (
-            f"批量添加任务后内存增长过大: {batch_growth_mb:.3f}MB"
-        )
+        assert batch_growth_mb < 2.0, f"批量添加任务后内存增长过大: {batch_growth_mb:.3f}MB"
 
         print("\n批量添加 1000 个任务内存增长:")
-        print(f"  初始化后: {(current_after_init - current_before)/1024:.2f} KB")
+        print(f"  初始化后: {(current_after_init - current_before) / 1024:.2f} KB")
         print(f"  批量后增长: {batch_growth_kb:.2f} KB ({batch_growth_mb:.3f} MB)")
-        print(f"  每任务增长: {batch_growth_kb/1000:.3f} KB")
+        print(f"  每任务增长: {batch_growth_kb / 1000:.3f} KB")
 
     def test_audit_log_memory_growth(self, tmp_path):
         """写入 1000 条审计日志后内存增长应 < 2 MB
@@ -315,8 +285,6 @@ class TestBatchOperationMemoryGrowth:
         场景：审计日志通过文件持久化，验证无日志条目驻留堆
         """
         from app.agent.middleware import AgentAuditLog
-
-
 
         log_path = tmp_path / "audit_mem.log"
 
@@ -346,11 +314,9 @@ class TestBatchOperationMemoryGrowth:
         batch_growth_kb = (current_after_batch - current_after_init) / 1024
         batch_growth_mb = batch_growth_kb / 1024
 
-        assert batch_growth_mb < 2.0, (
-            f"批量写入日志后内存增长过大: {batch_growth_mb:.3f}MB"
-        )
+        assert batch_growth_mb < 2.0, f"批量写入日志后内存增长过大: {batch_growth_mb:.3f}MB"
 
         print("\n批量写入 1000 条审计日志内存增长:")
-        print(f"  初始化后: {(current_after_init - current_before)/1024:.2f} KB")
+        print(f"  初始化后: {(current_after_init - current_before) / 1024:.2f} KB")
         print(f"  批量后增长: {batch_growth_kb:.2f} KB ({batch_growth_mb:.3f} MB)")
-        print(f"  每条增长: {batch_growth_kb/1000:.3f} KB")
+        print(f"  每条增长: {batch_growth_kb / 1000:.3f} KB")

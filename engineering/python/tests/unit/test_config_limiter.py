@@ -22,9 +22,8 @@ from app.postprocessor.config_loader import (
 pytestmark = pytest.mark.unit
 
 
-# ---------------------------------------------------------------------------
 # ConfigLimiter（安全关键限幅器）
-# ---------------------------------------------------------------------------
+
 
 class TestConfigLimiter:
     def test_defaults(self):
@@ -56,14 +55,15 @@ class TestConfigLimiter:
         assert limiter.limit_axis_position("x", 50) == 50
 
     def test_limit_axis_y_z(self):
-        limiter = ConfigLimiter({"axis_limits": {"enabled": True, "y_min": -50, "y_max": 50, "z_min": -10, "z_max": 10}})
+        limiter = ConfigLimiter(
+            {"axis_limits": {"enabled": True, "y_min": -50, "y_max": 50, "z_min": -10, "z_max": 10}}
+        )
         assert limiter.limit_axis_position("y", -999) == -50
         assert limiter.limit_axis_position("z", 999) == 10
 
 
-# ---------------------------------------------------------------------------
 # ConfigValidator
-# ---------------------------------------------------------------------------
+
 
 class TestConfigValidator:
     def test_valid_config_no_errors(self):
@@ -95,9 +95,8 @@ class TestConfigValidator:
         assert v._check_positive_float("f", -0.5) is False
 
 
-# ---------------------------------------------------------------------------
 # _deep_merge
-# ---------------------------------------------------------------------------
+
 
 class TestDeepMerge:
     def test_merge_scalars(self):
@@ -120,9 +119,8 @@ class TestDeepMerge:
         assert _deep_merge(base, override) == {"a": 1, "b": 2}
 
 
-# ---------------------------------------------------------------------------
 # ConfigLoader
-# ---------------------------------------------------------------------------
+
 
 class TestConfigLoader:
     def test_load_missing_file_raises(self, tmp_path):

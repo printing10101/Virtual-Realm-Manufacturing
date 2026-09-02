@@ -96,9 +96,7 @@ class EffectivenessMetricsCollector(_SamplesMixin, _ComputeMixin):
         self._samples: dict[str, list[OutcomeSample]] = {}
         self._load_samples()
 
-    # ------------------------------------------------------------------
     # 延迟依赖
-    # ------------------------------------------------------------------
 
     def _get_audit_recorder(self):
         from app.dreaming.audit_integration import get_audit_recorder
@@ -110,9 +108,8 @@ class EffectivenessMetricsCollector(_SamplesMixin, _ComputeMixin):
 
         return get_audit_log()
 
-    # ------------------------------------------------------------------
-    # 样本持久化
-    # ------------------------------------------------------------------
+
+# 样本持久化
 
 
 def collect_rule_metrics(

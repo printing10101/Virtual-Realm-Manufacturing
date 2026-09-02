@@ -39,9 +39,7 @@ from typing import Any
 import pytest
 
 
-# =============================================================================
 # 辅助：构造最小 CamValidationTask 实例（绕过异步 run_pipeline）
-# =============================================================================
 
 
 def _build_minimal_task(
@@ -68,7 +66,7 @@ def _build_minimal_task(
     feature_types = ["plane", "cylinder", "hole", "boss"]
     features = [
         FeatureValidationResult(
-            feature_id=f"feat_{i+1:03d}",
+            feature_id=f"feat_{i + 1:03d}",
             feature_type=feature_types[i % len(feature_types)],
             line_range=(i * 10 + 1, (i + 1) * 10),
             internal_check_passed=True,
@@ -165,9 +163,7 @@ def _build_minimal_gcode_report_json(
     return str(json_path)
 
 
-# =============================================================================
 # 1. 模块导入测试
-# =============================================================================
 
 
 class TestCamValidationModuleImport:
@@ -225,29 +221,38 @@ class TestCamValidationModuleImport:
         import app.cam_validation as _cv_mod
 
         expected_all = {
-            "CamValidationTaskStatus", "CamReviewStatus",
-            "SAFETY_MARGIN_RATIO", "PENDING_CALIBRATION_MATERIALS",
+            "CamValidationTaskStatus",
+            "CamReviewStatus",
+            "SAFETY_MARGIN_RATIO",
+            "PENDING_CALIBRATION_MATERIALS",
             "VALID_CAM_BACKENDS",
-            "CamValidationError", "GCodeReportLoadError",
-            "InternalValidationError", "CamAdapterError",
-            "ReviewError", "CamValidationPipelineError",
-            "FeatureValidationResult", "CamValidationTask",
-            "generate_task_id", "get_task_store",
-            "is_valid_cam_backend", "CamTaskStore",
-            "INDUSTRIAL_HARD_GATES", "CamDisclaimer", "build_cam_disclaimer",
+            "CamValidationError",
+            "GCodeReportLoadError",
+            "InternalValidationError",
+            "CamAdapterError",
+            "ReviewError",
+            "CamValidationPipelineError",
+            "FeatureValidationResult",
+            "CamValidationTask",
+            "generate_task_id",
+            "get_task_store",
+            "is_valid_cam_backend",
+            "CamTaskStore",
+            "INDUSTRIAL_HARD_GATES",
+            "CamDisclaimer",
+            "build_cam_disclaimer",
             "GCodeLoader",
             "InternalValidator",
             "CamAdapter",
-            "CamValidationPipeline", "CamValidationResult",
+            "CamValidationPipeline",
+            "CamValidationResult",
         }
         actual_all = set(getattr(_cv_mod, "__all__", []))
         missing = expected_all - actual_all
         assert not missing, f"__all__ 缺失: {missing}"
 
 
-# =============================================================================
 # 2. 枚举与常量完整性测试
-# =============================================================================
 
 
 class TestCamValidationEnums:
@@ -258,8 +263,14 @@ class TestCamValidationEnums:
         from app.cam_validation import CamValidationTaskStatus
 
         expected = {
-            "pending", "running", "validated", "reviewed",
-            "succeeded", "failed", "timeout", "cancelled",
+            "pending",
+            "running",
+            "validated",
+            "reviewed",
+            "succeeded",
+            "failed",
+            "timeout",
+            "cancelled",
         }
         actual = {s.value for s in CamValidationTaskStatus}
         assert actual == expected, f"actual={actual}, expected={expected}"
@@ -295,7 +306,10 @@ class TestCamValidationEnums:
         from app.cam_validation import PENDING_CALIBRATION_MATERIALS
 
         expected_subset = {
-            "steel_hrc52", "hrc52", "hrc_52", "hardened_steel_hrc52",
+            "steel_hrc52",
+            "hrc52",
+            "hrc_52",
+            "hardened_steel_hrc52",
         }
         assert set(PENDING_CALIBRATION_MATERIALS) >= expected_subset
 
@@ -304,7 +318,11 @@ class TestCamValidationEnums:
         from app.cam_validation import VALID_CAM_BACKENDS
 
         expected = {
-            "internal_only", "pycam", "nx_open", "powermill", "manual",
+            "internal_only",
+            "pycam",
+            "nx_open",
+            "powermill",
+            "manual",
         }
         assert set(VALID_CAM_BACKENDS) == expected
 
@@ -329,9 +347,7 @@ class TestCamValidationEnums:
         assert len(tid) > 10
 
 
-# =============================================================================
 # 3. 配置契约测试
-# =============================================================================
 
 
 class TestCamValidationConfigContract:
@@ -400,9 +416,7 @@ class TestCamValidationConfigContract:
             os.environ.pop(key, None)
 
 
-# =============================================================================
 # 4. 任务创建测试
-# =============================================================================
 
 
 class TestCamValidationTaskCreation:
@@ -474,9 +488,7 @@ class TestCamValidationTaskCreation:
             )
 
 
-# =============================================================================
 # 5. 状态机契约测试
-# =============================================================================
 
 
 class TestCamValidationStateMachine:
@@ -559,9 +571,7 @@ class TestCamValidationStateMachine:
             pipeline.confirm_task(task_id="cam_nonexistent")
 
 
-# =============================================================================
 # 6. 工程师审核流程测试
-# =============================================================================
 
 
 class TestCamValidationReviewFlow:
@@ -595,7 +605,7 @@ class TestCamValidationReviewFlow:
         task_partial = pipeline._store.get_task("cam_rf_001")
         assert task_partial.status == CamValidationTaskStatus.VALIDATED.value
 
-        # 审核第二个特征 → 全部完成 → REVIEWED
+        # 审核第二个特征 全部完成 REVIEWED
         pipeline.review_task(
             task_id="cam_rf_001",
             feature_id="feat_002",
@@ -652,7 +662,7 @@ class TestCamValidationReviewFlow:
         )
         pipeline._store.add_task(task)
 
-        # edited 不提供 edited_params → 抛错
+        # edited 不提供 edited_params 抛错
         with pytest.raises(ReviewError):
             pipeline.review_task(
                 task_id="cam_rf_003",
@@ -740,9 +750,7 @@ class TestCamValidationReviewFlow:
             )
 
 
-# =============================================================================
 # 7. SUCCEEDED 禁删硬约束测试
-# =============================================================================
 
 
 class TestCamValidationSucceededNoDelete:
@@ -842,9 +850,7 @@ class TestCamValidationSucceededNoDelete:
             pipeline.delete_task("cam_sd_005")
 
 
-# =============================================================================
 # 8. 双 JSON 导出测试
-# =============================================================================
 
 
 class TestCamValidationDoubleJsonExport:
@@ -879,7 +885,7 @@ class TestCamValidationDoubleJsonExport:
         task.reviewed_at = time.time()
         pipeline._store.add_task(task)
 
-        # confirm_task → SUCCEEDED + 导出双 JSON
+        # confirm_task SUCCEEDED + 导出双 JSON
         result = pipeline.confirm_task(task_id="cam_ex_001", reviewer="engineer_a")
 
         # 验证状态转为 SUCCEEDED
@@ -939,9 +945,7 @@ class TestCamValidationDoubleJsonExport:
             pipeline.confirm_task(task_id="cam_ex_002")
 
 
-# =============================================================================
 # 9. CAM 后端降级测试
-# =============================================================================
 
 
 class TestCamValidationCamBackendFallback:
@@ -1013,9 +1017,7 @@ class TestCamValidationCamBackendFallback:
         assert d["cam_backend_fallback_reason"] == ""
 
 
-# =============================================================================
 # 10. 项目记忆硬约束测试（disclaimer 工程师助手定位 + 不直接接口 CNC）
-# =============================================================================
 
 
 class TestCamValidationProjectHardConstraints:
@@ -1049,16 +1051,10 @@ class TestCamValidationProjectHardConstraints:
         # 工程师回填机制）+ warning_message 兜底提示中
         hard_gates_text = " ".join(d["industrial_hard_gates"])
         assert (
-            "工程师助手" in hard_gates_text
-            or "工程师回填" in hard_gates_text
-            or "手动校验流程" in hard_gates_text
-        ), (
-            f"industrial_hard_gates 未体现工程师助手定位: {hard_gates_text}"
-        )
+            "工程师助手" in hard_gates_text or "工程师回填" in hard_gates_text or "手动校验流程" in hard_gates_text
+        ), f"industrial_hard_gates 未体现工程师助手定位: {hard_gates_text}"
         # warning_message 必须非空（兜底含 CAM 校验强制硬门槛）
-        assert d["warning_message"], (
-            f"warning_message 不应为空: {d['warning_message']}"
-        )
+        assert d["warning_message"], f"warning_message 不应为空: {d['warning_message']}"
 
     def test_disclaimer_no_direct_cnc_interface(self):
         """T40: disclaimer 标注「绝不直接接口 CNC 控制器」（项目记忆硬约束）。"""
@@ -1066,18 +1062,14 @@ class TestCamValidationProjectHardConstraints:
 
         # INDUSTRIAL_HARD_GATES 应包含「绝不直接接口 CNC」相关硬门槛
         hard_gates_text = " ".join(INDUSTRIAL_HARD_GATES)
-        assert "绝不直接接口 CNC" in hard_gates_text, (
-            "INDUSTRIAL_HARD_GATES 未标注「绝不直接接口 CNC 控制器」"
-        )
+        assert "绝不直接接口 CNC" in hard_gates_text, "INDUSTRIAL_HARD_GATES 未标注「绝不直接接口 CNC 控制器」"
 
     def test_disclaimer_terminates_at_cam_report_json(self):
         """T41: disclaimer 标注阶段 7 终止于「CAM 校验报告 JSON」。"""
         from app.cam_validation import INDUSTRIAL_HARD_GATES
 
         hard_gates_text = " ".join(INDUSTRIAL_HARD_GATES)
-        assert "CAM 校验报告 JSON" in hard_gates_text, (
-            "INDUSTRIAL_HARD_GATES 未标注阶段 7 终止于 CAM 校验报告 JSON"
-        )
+        assert "CAM 校验报告 JSON" in hard_gates_text, "INDUSTRIAL_HARD_GATES 未标注阶段 7 终止于 CAM 校验报告 JSON"
 
     def test_disclaimer_cam_validation_required_always_true(self):
         """T42: requires_cam_validation 始终 True（不可由参数关闭）。"""
@@ -1105,13 +1097,9 @@ class TestCamValidationProjectHardConstraints:
         d = disclaimer.to_dict()
 
         # 项目记忆硬约束：cam_validation_required 始终 True
-        assert d["requires_cam_validation"] is True, (
-            "requires_cam_validation 应始终 True（项目记忆硬约束）"
-        )
+        assert d["requires_cam_validation"] is True, "requires_cam_validation 应始终 True（项目记忆硬约束）"
         # requires_engineer_review 始终 True（human-in-the-loop）
-        assert d["requires_engineer_review"] is True, (
-            "requires_engineer_review 应始终 True（human-in-the-loop）"
-        )
+        assert d["requires_engineer_review"] is True, "requires_engineer_review 应始终 True（human-in-the-loop）"
 
     def test_disclaimer_hrc52_pending_calibration(self):
         """T43: HRC52 pending_calibration 在 disclaimer 中标注。"""
@@ -1170,14 +1158,10 @@ class TestCamValidationProjectHardConstraints:
 
         assert d["ltc_experiment_used"] is True
         # warning_message 应标注实验性
-        assert "实验" in d["warning_message"], (
-            f"warning_message 未标注 LTC 实验性: {d['warning_message']}"
-        )
+        assert "实验" in d["warning_message"], f"warning_message 未标注 LTC 实验性: {d['warning_message']}"
 
 
-# =============================================================================
 # 11. GCodeLoader 测试
-# =============================================================================
 
 
 class TestCamValidationGCodeLoader:
@@ -1227,9 +1211,7 @@ class TestCamValidationGCodeLoader:
             "cam_validation_required": True,
             "feature_results": [],
         }
-        Path(tmp_path / "test.nc").write_text(
-            "G01 X10 Y20 Z30 F500\n", encoding="utf-8"
-        )
+        Path(tmp_path / "test.nc").write_text("G01 X10 Y20 Z30 F500\n", encoding="utf-8")
         json_path = tmp_path / "gcode_report_missing.json"
         json_path.write_text(
             json.dumps(data, ensure_ascii=False, indent=2),
@@ -1246,9 +1228,7 @@ class TestCamValidationGCodeLoader:
 
         # 构造 task_status != succeeded 的 report.json
         gcode_path = str(tmp_path / "test.nc")
-        Path(gcode_path).write_text(
-            "G01 X10 Y20 Z30 F500\n", encoding="utf-8"
-        )
+        Path(gcode_path).write_text("G01 X10 Y20 Z30 F500\n", encoding="utf-8")
         data = {
             "task_id": "gcode_test_003",
             "task_status": "pending",  # 未 succeeded

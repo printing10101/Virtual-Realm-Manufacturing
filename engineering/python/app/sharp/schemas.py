@@ -20,9 +20,7 @@ from pydantic import BaseModel, Field
 from app.sharp.schema.domain_schema import EntityType, RelationType
 
 
-# ---------------------------------------------------------------------------
 # 共享子模型
-# ---------------------------------------------------------------------------
 
 
 class EntityRef(BaseModel):
@@ -73,9 +71,7 @@ class TripleRequest(BaseModel):
         }
 
 
-# ---------------------------------------------------------------------------
 # 验证请求
-# ---------------------------------------------------------------------------
 
 
 class VerifyRequest(BaseModel):
@@ -126,9 +122,7 @@ class BatchVerifyRequest(BaseModel):
     )
 
 
-# ---------------------------------------------------------------------------
 # 验证响应
-# ---------------------------------------------------------------------------
 
 
 class EvidenceItem(BaseModel):
@@ -235,9 +229,7 @@ class BatchVerifyResponse(BaseModel):
     results: list[BatchVerifyItem] = Field(..., description="逐条验证结果")
 
 
-# ---------------------------------------------------------------------------
 # 轨迹查询与消融配置
-# ---------------------------------------------------------------------------
 
 
 class TrajectoryRecord(BaseModel):

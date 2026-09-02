@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class _GitOpsMixin:
-    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类提供（mypy 需要显式声明）
     _project_locks: dict[str, Any]
     _project_locks_guard: Any
     _git_available: bool | None

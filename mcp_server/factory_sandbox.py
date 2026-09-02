@@ -110,9 +110,7 @@ class SimulatedFactory:
         self._machine_commanded = False  # agent 是否已下达加工指令
         self.kpis = FactoryKpis()
 
-    # ------------------------------------------------------------------
     # 事件总线（MQTT 风格 topic）
-    # ------------------------------------------------------------------
     def subscribe(self, topic: str, handler: Callable[[str, dict[str, Any]], None]) -> None:
         self._bus.setdefault(topic, []).append(handler)
 
@@ -129,9 +127,7 @@ class SimulatedFactory:
         self._event_queue.clear()
         return events
 
-    # ------------------------------------------------------------------
     # 物理耦合：依据机床状态合成传感器信号
-    # ------------------------------------------------------------------
     def _synthesize_sensor(self) -> None:
         spindle_rpm = float(self.cnc.read_signal("spindle_rpm"))
         # 物理语义：转速 > 0 即主轴旋转（spindle_on 布尔信号由 execute 的 stop/start 维护）
@@ -151,9 +147,7 @@ class SimulatedFactory:
             self.kpis.chatter_events += 1
             self.publish("factory/chatter/high", {"vibration_peak": peak, "tick": self._clock})
 
-    # ------------------------------------------------------------------
     # 生产推进
-    # ------------------------------------------------------------------
     def enqueue_parts(self, n: int) -> None:
         self._queued_parts += n
         self.kpis.parts_requested += n
@@ -171,7 +165,7 @@ class SimulatedFactory:
         self._clock += 1
         self.kpis.ticks += 1
 
-        # 生产：有排队件且（已在下达加工态或正在加工）→ 推进加工
+        # 生产：有排队件且（已在下达加工态或正在加工） 推进加工
         if self.machine_busy:
             self._busy_ticks -= 1
             if self._busy_ticks == 0:
@@ -179,7 +173,7 @@ class SimulatedFactory:
         elif self._machine_commanded and self._queued_parts > 0:
             self._busy_ticks = self._process_ticks
         elif self._machine_commanded and self._queued_parts == 0:
-            # 无料 → 停机（待料）
+            # 无料 停机（待料）
             self.kpis.downtime_ticks += 1
 
         self._synthesize_sensor()
@@ -190,9 +184,10 @@ class SimulatedFactory:
         defect = self._rng.random() < self._defect_rate
         if defect:
             self.kpis.defect_count += 1
-        self.publish("factory/part/complete", {"part": self.kpis.parts_completed, "defect": defect, "tick": self._clock})
+        self.publish(
+            "factory/part/complete", {"part": self.kpis.parts_completed, "defect": defect, "tick": self._clock}
+        )
 
-    # ------------------------------------------------------------------
     def execute(self, device_id: str, op_name: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """向设备执行能力（agent 动作通道）。"""
         device = self.devices.get(device_id)

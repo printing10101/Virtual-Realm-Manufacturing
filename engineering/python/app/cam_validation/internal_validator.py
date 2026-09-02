@@ -45,9 +45,7 @@ from app.simulation.toolpath_parser import ToolpathParser
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
 # 常量
-# =============================================================================
 
 # 5-axis 模式内部预校验不支持（需 tool_vectors，阶段 7 不实现）
 # 5-axis 校验应通过 CamAdapter 调用 NX/PowerMill
@@ -63,9 +61,7 @@ _UNATTRIBUTED_WARNING_PREFIX: str = (
 )
 
 
-# =============================================================================
 # InternalValidationReport：聚合 CollisionReport + 特征归因结果
-# =============================================================================
 
 
 @dataclass
@@ -125,9 +121,7 @@ class InternalValidationReport:
         return self.collision_report.safe and not self.unattributed_events
 
 
-# =============================================================================
 # InternalValidator：组合 ToolpathParser + CollisionDetector
-# =============================================================================
 
 
 class InternalValidator:
@@ -261,11 +255,11 @@ class InternalValidator:
         # 5. 构建 StockModel + CollisionDetector
         # 语义转换：
         # - validate() 接收的 safe_z 是「安全 Z 平面的绝对坐标」（mm）
-        #   来自阶段 6 GCodeReport.safe_z（如 80.0 表示 Z=80 是安全平面）
+        # 来自阶段 6 GCodeReport.safe_z（如 80.0 表示 Z=80 是安全平面）
         # - CollisionDetector.safe_z_height 期望「stock 顶面以上的安全余量」（mm）
-        #   内部计算：safe_z_plane = stock_z_top + safe_z_height
+        # 内部计算：safe_z_plane = stock_z_top + safe_z_height
         # - 转换公式：safe_z_height_margin = safe_z - stock_top_z
-        #   即把绝对坐标的安全平面换算为相对毛坯顶面的余量
+        # 即把绝对坐标的安全平面换算为相对毛坯顶面的余量
         if safe_z <= stock_top_z:
             raise InternalValidationError(
                 f"safe_z={safe_z}mm 必须大于 stock_top_z={stock_top_z}mm，"

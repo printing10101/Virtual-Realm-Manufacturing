@@ -18,6 +18,7 @@ plugin 层在纯 numpy 环境下也能完成 URI → path 解析。
 - 不注入桩模块：直接调用真实 WorldModelPlugin 实例
 - 不依赖 ModelRegistry 注册：验证"约定式解析"回退路径
 """
+
 from __future__ import annotations
 
 import os
@@ -29,17 +30,13 @@ from app.plugins.world_model.net import WorldModelConfig
 from app.plugins.world_model.plugin import WorldModelPlugin
 
 
-# ---------------------------------------------------------------------------
 # fixtures
-# ---------------------------------------------------------------------------
 def _make_plugin() -> WorldModelPlugin:
     """构造 WorldModelPlugin 实例（不需要 torch）."""
     return WorldModelPlugin(config=WorldModelConfig())
 
 
-# ---------------------------------------------------------------------------
-# 用例 1：ModelRegistry 未命中 + checkpoint 存在 → 返回路径
-# ---------------------------------------------------------------------------
+# 用例 1：ModelRegistry 未命中 + checkpoint 存在 返回路径
 @pytest.mark.unit
 def test_resolve_weights_path_returns_checkpoint_path(tmp_path: Path) -> None:
     """训练产出的 checkpoint 应被 _resolve_weights_path 解析到（P1 闭环核心）.
@@ -77,9 +74,7 @@ def test_resolve_weights_path_returns_checkpoint_path(tmp_path: Path) -> None:
     assert os.path.abspath(resolved) == os.path.abspath(checkpoint_path)
 
 
-# ---------------------------------------------------------------------------
-# 用例 2：checkpoint 不存在 → 返回 None（随机初始化）
-# ---------------------------------------------------------------------------
+# 用例 2：checkpoint 不存在 返回 None（随机初始化）
 @pytest.mark.unit
 def test_resolve_weights_path_returns_none_when_no_checkpoint(tmp_path: Path) -> None:
     """checkpoint 文件不存在时应返回 None（保持 "None = random init" 契约）."""
@@ -98,9 +93,7 @@ def test_resolve_weights_path_returns_none_when_no_checkpoint(tmp_path: Path) ->
     assert resolved is None
 
 
-# ---------------------------------------------------------------------------
-# 用例 3：非 world_model URI → 返回 None（交由其他解析路径）
-# ---------------------------------------------------------------------------
+# 用例 3：非 world_model URI 返回 None（交由其他解析路径）
 @pytest.mark.unit
 def test_resolve_weights_path_non_world_model_uri() -> None:
     """非 model://world_model/ 前缀的 URI 应返回 None."""
@@ -117,9 +110,7 @@ def test_resolve_weights_path_non_world_model_uri() -> None:
         assert resolved is None, f"URI={uri} 应返回 None，实际={resolved}"
 
 
-# ---------------------------------------------------------------------------
-# 用例 4：非法版本字符串 → 降级为 None + 警告（不抛错）
-# ---------------------------------------------------------------------------
+# 用例 4：非法版本字符串 降级为 None + 警告（不抛错）
 @pytest.mark.unit
 def test_resolve_weights_path_unsafe_version_degrades_to_none(tmp_path: Path) -> None:
     """URI 版本字符串非法时应降级为 None（不抛 WeightsResolutionError）.
@@ -145,9 +136,7 @@ def test_resolve_weights_path_unsafe_version_degrades_to_none(tmp_path: Path) ->
         resolver_module.DEFAULT_MODELS_DIR = original_default
 
 
-# ---------------------------------------------------------------------------
-# 用例 5：端到端闭环 — 训练器写入 → plugin 解析读取
-# ---------------------------------------------------------------------------
+# 用例 5：端到端闭环 — 训练器写入 plugin 解析读取
 @pytest.mark.unit
 def test_end_to_end_train_save_resolve_loop(tmp_path: Path) -> None:
     """端到端闭环：build_canonical_weights_path 写入 → plugin._resolve_weights_path 读取.
@@ -167,9 +156,15 @@ def test_end_to_end_train_save_resolve_loop(tmp_path: Path) -> None:
 
     # 训练器侧：构造 + 保存（无需真正训练，只验证 save_checkpoint 路径）
     cfg = WorldModelConfig(
-        state_dim=8, action_dim=4, hidden_dim=8,
-        num_lstm_layers=1, num_ltc_layers=1,
-        use_fusion=True, feature_dim=8, d_model=16, fused_dim=16,
+        state_dim=8,
+        action_dim=4,
+        hidden_dim=8,
+        num_lstm_layers=1,
+        num_ltc_layers=1,
+        use_fusion=True,
+        feature_dim=8,
+        d_model=16,
+        fused_dim=16,
         seed=42,
     )
     net = WorldModelNet(cfg)

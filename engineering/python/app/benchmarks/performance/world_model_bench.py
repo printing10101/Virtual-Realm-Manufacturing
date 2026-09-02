@@ -83,9 +83,7 @@ class WorldModelPerfBenchmark:
         )
         self._plugin = WorldModelPlugin(config=config)
 
-    # ------------------------------------------------------------------
     # 纯推理路径基准
-    # ------------------------------------------------------------------
 
     def run_single_prediction(self, n_iterations: int = 50) -> dict[str, float]:
         """单次轨迹预测延迟（horizon=10）."""
@@ -172,9 +170,7 @@ class WorldModelPerfBenchmark:
         self._results.update(result)
         return result
 
-    # ------------------------------------------------------------------
     # 端到端插件路径基准
-    # ------------------------------------------------------------------
 
     def run_plugin_execute(self, n_iterations: int = 20) -> dict[str, float]:
         """端到端插件执行基准（含 artifact 解析 + 模型缓存查找）.
@@ -285,9 +281,7 @@ class WorldModelPerfBenchmark:
         self._results.update(result)
         return result
 
-    # ------------------------------------------------------------------
     # 结果汇总
-    # ------------------------------------------------------------------
 
     def get_all_results(self) -> dict[str, Any]:
         return dict(self._results)

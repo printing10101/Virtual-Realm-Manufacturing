@@ -23,9 +23,7 @@ import pytest
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
 # 基准测试配置
-# =============================================================================
 
 
 @dataclass
@@ -44,9 +42,7 @@ ACCEPTANCE_TOOL_DIAMETER = 10.0
 ACCEPTANCE_CUT_POINTS = 2000
 
 
-# =============================================================================
 # 工具函数
-# =============================================================================
 
 
 def _build_solid_grid(size: int) -> np.ndarray:
@@ -91,16 +87,12 @@ def _bench_rust_path(
 ) -> tuple[int, float]:
     """执行 Rust 路径批量切削，返回 (removed, elapsed_ms)。"""
     t0 = time.perf_counter()
-    removed = voxel_cutter._apply_tool_mask_batch(
-        grid, tool_mask, points, bbox_min, voxel_size, padding
-    )
+    removed = voxel_cutter._apply_tool_mask_batch(grid, tool_mask, points, bbox_min, voxel_size, padding)
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     return removed, elapsed_ms
 
 
-# =============================================================================
 # 基础基准测试（轻量，CI 友好）
-# =============================================================================
 
 
 class TestLightweightBenchmark:
@@ -115,9 +107,7 @@ class TestLightweightBenchmark:
         from app.simulation.voxel_cutter import ToolModel
 
         grid = _build_solid_grid(small_config.grid_size)
-        points = _build_random_cut_points(
-            small_config.n_cut_points, small_config.grid_size, small_config.seed
-        )
+        points = _build_random_cut_points(small_config.n_cut_points, small_config.grid_size, small_config.seed)
         # 显式指定 shank_diameter = diameter 以满足 ``shank_diameter <= diameter * 2`` 约束
         tool = ToolModel(
             diameter=small_config.tool_diameter,
@@ -126,18 +116,14 @@ class TestLightweightBenchmark:
         )
         return grid, tool, points
 
-    def test_python_baseline_runs(
-        self, voxel_cutter_class, prepared_data
-    ) -> None:
+    def test_python_baseline_runs(self, voxel_cutter_class, prepared_data) -> None:
         """Python 回退路径必须可执行并产生结果。"""
         grid, tool, points = prepared_data
         cutter = voxel_cutter_class(voxel_size=1.0)
         mask = cutter._build_tool_mask(tool)
 
         g = grid.copy()
-        removed, elapsed_ms = _bench_python_path(
-            g, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 1.0
-        )
+        removed, elapsed_ms = _bench_python_path(g, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 1.0)
         assert removed >= 0
         assert elapsed_ms >= 0
         logger.info(
@@ -146,9 +132,7 @@ class TestLightweightBenchmark:
             elapsed_ms,
         )
 
-    def test_rust_or_fallback_runs(
-        self, voxel_cutter_class, prepared_data
-    ) -> None:
+    def test_rust_or_fallback_runs(self, voxel_cutter_class, prepared_data) -> None:
         """VoxelCutter 路径（Rust 或 Python 回退）必须可执行。"""
         grid, tool, points = prepared_data
         cutter = voxel_cutter_class(voxel_size=1.0)
@@ -174,9 +158,7 @@ class TestLightweightBenchmark:
             stats.used_rust,
         )
 
-    def test_speedup_when_rust_available(
-        self, voxel_cutter_class, rust_engine_module, prepared_data
-    ) -> None:
+    def test_speedup_when_rust_available(self, voxel_cutter_class, rust_engine_module, prepared_data) -> None:
         """Rust 可用时，Rust 路径应比 Python 回退路径更快（>= 30% 提升）。
 
         阈值采用较保守的 30% 而非任务说明的 50%，以适配不同 CI 硬件。
@@ -217,9 +199,7 @@ class TestLightweightBenchmark:
             rust_times.append(t_rust)
 
             g2 = grid.copy()
-            _, t_py = _bench_python_path(
-                g2, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 1.0
-            )
+            _, t_py = _bench_python_path(g2, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 1.0)
             py_times.append(t_py)
 
         rust_median = float(np.median(rust_times))
@@ -232,14 +212,10 @@ class TestLightweightBenchmark:
             py_median,
             speedup * 100,
         )
-        assert speedup >= 0.30, (
-            f"Rust 加速比 {speedup*100:.1f}% 低于 30% 阈值"
-        )
+        assert speedup >= 0.30, f"Rust 加速比 {speedup * 100:.1f}% 低于 30% 阈值"
 
 
-# =============================================================================
 # 验收规模基准测试
-# =============================================================================
 
 
 class TestAcceptanceBenchmark:
@@ -283,9 +259,7 @@ class TestAcceptanceBenchmark:
 
         # Python 路径
         g_py = grid.copy()
-        py_removed, py_ms = _bench_python_path(
-            g_py, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 1.0
-        )
+        py_removed, py_ms = _bench_python_path(g_py, mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 1.0)
 
         # VoxelCutter 路径（Rust 或 Python 回退）
         g_vc = grid.copy()
@@ -322,21 +296,16 @@ class TestAcceptanceBenchmark:
         assert vc_removed >= 0
         # 允许小幅差异（边界采样）
         if py_removed > 0:
-            assert (
-                abs(py_removed - vc_removed) / py_removed < 0.20
-            ), f"结果差异过大: py={py_removed} vc={vc_removed}"
+            assert abs(py_removed - vc_removed) / py_removed < 0.20, f"结果差异过大: py={py_removed} vc={vc_removed}"
 
         # 当 Rust 可用时，断言加速比
         if rust_engine_module.is_rust_available():
             assert speedup >= 0.30, (
-                f"Rust 加速比 {speedup*100:.1f}% 低于 30% 验收阈值 "
-                f"(py={py_ms:.2f}ms, rust={vc_ms:.2f}ms)"
+                f"Rust 加速比 {speedup * 100:.1f}% 低于 30% 验收阈值 (py={py_ms:.2f}ms, rust={vc_ms:.2f}ms)"
             )
 
 
-# =============================================================================
 # 单元级 micro-bench
-# =============================================================================
 
 
 class TestMicroBenchmarks:
@@ -374,16 +343,12 @@ class TestMicroBenchmarks:
         points = _build_random_cut_points(100, 20, seed=7)
 
         # 暖机
-        cutter._apply_tool_mask_batch(
-            grid.copy(), mask, points[:1], np.array([0.0, 0.0, 0.0]), 1.0, 1.0
-        )
+        cutter._apply_tool_mask_batch(grid.copy(), mask, points[:1], np.array([0.0, 0.0, 0.0]), 1.0, 1.0)
 
         times = []
         for _ in range(3):
             t0 = time.perf_counter()
-            cutter._apply_tool_mask_batch(
-                grid.copy(), mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 1.0
-            )
+            cutter._apply_tool_mask_batch(grid.copy(), mask, points, np.array([0.0, 0.0, 0.0]), 1.0, 1.0)
             times.append((time.perf_counter() - t0) * 1000.0)
         median = float(np.median(times))
         logger.info("apply_tool_mask_batch median=%.2fms", median)

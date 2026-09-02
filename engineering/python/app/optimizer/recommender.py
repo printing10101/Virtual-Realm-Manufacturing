@@ -121,7 +121,7 @@ class ParameterRecommender:
         Returns:
             Recommendation；材料/加工类型无基线且无统计时返回 None。
         """
-        # ---- L0: 查基线 ----
+        # L0: 查基线
         entry = self._baseline_lookup(material, machining_type)
         if entry is None:
             # 尝试 L1 统计（即使无基线也可能有历史数据）
@@ -135,7 +135,7 @@ class ParameterRecommender:
         if stats is not None:
             return self._build_from_stats(stats, material, machining_type, tool_id)
 
-        # ---- L0 基线推荐 ----
+        # L0 基线推荐
         depth, clamped_depth = clamp_to_safe_bounds(entry.depth_of_cut_mm, entry.depth_min, entry.depth_max)
         feed, clamped_feed = clamp_to_safe_bounds(entry.feed_mm_per_rev, entry.feed_min, entry.feed_max)
         rpm, clamped_rpm = clamp_to_safe_bounds(entry.spindle_rpm, entry.rpm_min, entry.rpm_max)
@@ -155,9 +155,7 @@ class ParameterRecommender:
             clamped=clamped,
         )
 
-    # ------------------------------------------------------------------
     # 内部
-    # ------------------------------------------------------------------
 
     def _try_stats(self, material: str, machining_type: str, tool_id: str) -> dict[str, float] | None:
         """尝试获取统计均值（L1）。"""

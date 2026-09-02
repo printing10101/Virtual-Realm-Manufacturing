@@ -39,7 +39,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-# ---- 从拆分子模块 re-export 公开符号（向后兼容） ----
+# 从拆分子模块 re-export 公开符号（向后兼容）
 from app.audit.chain import (
     ChainMixin,
     AuditLogEntry,
@@ -106,9 +106,7 @@ class AuditLog(ChainMixin, WriterMixin, ReaderMixin, ArchiverMixin):
         self._load_chain_state()
 
 
-# ============================================================
 # 全局单例工厂（P0-17 修复）
-# ============================================================
 # 多个模块直接 ``AuditLog()`` 创建各自实例会导致 _last_hash / _chain_seq
 # 不同步，并发写入时哈希链会断裂。本工厂通过双重检查锁提供进程级单例，
 # 所有安全审计调用方应优先使用 ``get_audit_log()`` 而非直接实例化。

@@ -9,7 +9,7 @@ from app.process_planning._boss_models import BossFeature, BossRecognitionResult
 
 
 class _BossRecognizeMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     COAXIAL_THRESHOLD: Any
     MIN_BOSS_DIAMETER: Any
 

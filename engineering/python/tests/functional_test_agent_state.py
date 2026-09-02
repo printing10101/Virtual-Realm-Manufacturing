@@ -1,4 +1,4 @@
-﻿"""
+"""
 Functional Test Suite: Agent State Management
 ==============================================
 Aligns with the 9-category test plan:
@@ -53,9 +53,7 @@ def _make_state_dict(data: bytes) -> bytes:
     return data
 
 
-# ============================================================================
 # Test 1 – Training Interruption Recovery
-# ============================================================================
 
 
 class TestTrainingInterruptionRecovery:
@@ -104,12 +102,8 @@ class TestTrainingInterruptionRecovery:
                 best_loss = simulated_loss
 
             fake_weights = f"MODEL_WEIGHTS_EPOCH_{epoch}".encode() * 512
-            weights_path = persistence._checkpoint_manager.get_checkpoint_path(
-                agent_id, f"train_ckpt_e{epoch}"
-            )
-            persistence._checkpoint_manager.save_checkpoint_file(
-                agent_id, f"train_ckpt_e{epoch}", fake_weights
-            )
+            weights_path = persistence._checkpoint_manager.get_checkpoint_path(agent_id, f"train_ckpt_e{epoch}")
+            persistence._checkpoint_manager.save_checkpoint_file(agent_id, f"train_ckpt_e{epoch}", fake_weights)
 
             ckpt = Checkpoint(
                 checkpoint_id=f"train_ckpt_e{epoch}",
@@ -134,9 +128,7 @@ class TestTrainingInterruptionRecovery:
         # ── 1c. Verify state persisted to file-system (checkpoint files exist) ──
         chk_dir = persistence._checkpoint_manager.get_agent_checkpoint_dir(agent_id)
         pt_files = sorted(chk_dir.glob("*.pt"))
-        assert len(pt_files) >= net_epochs, (
-            f"Expected ≥{net_epochs} .pt files, found {len(pt_files)}"
-        )
+        assert len(pt_files) >= net_epochs, f"Expected ≥{net_epochs} .pt files, found {len(pt_files)}"
 
         # ── 1d. Recover agent ──
         async def task_loader(tid):
@@ -205,9 +197,7 @@ class TestTrainingInterruptionRecovery:
         assert result["action"] == "restarted_without_checkpoint"
 
 
-# ============================================================================
 # Test 2 – Database State Verification
-# ============================================================================
 
 
 class TestDatabaseStateVerification:
@@ -280,9 +270,7 @@ class TestDatabaseStateVerification:
         await mgr.stop()
 
 
-# ============================================================================
 # Test 3 – File System Check
-# ============================================================================
 
 
 class TestFileSystemCheck:
@@ -313,9 +301,7 @@ class TestFileSystemCheck:
             )
             fake_weights = os.urandom(8192)  # ~8KB random binary
             original_weights[f"ckpt_fs_e{ep}"] = fake_weights
-            persistence._checkpoint_manager.save_checkpoint_file(
-                agent_id, ckpt.checkpoint_id, fake_weights
-            )
+            persistence._checkpoint_manager.save_checkpoint_file(agent_id, ckpt.checkpoint_id, fake_weights)
             state.set_checkpoint(ckpt)
             await persistence.save_state(state, trigger="checkpoint")
 
@@ -334,29 +320,21 @@ class TestFileSystemCheck:
         # ── 3c. Verify file size is reasonable (compressed, non-zero) ──
         for f in pt_files:
             size = f.stat().st_size
-            assert size > 100, (
-                f"File {f.name} too small ({size} bytes) – likely corrupted"
-            )
+            assert size > 100, f"File {f.name} too small ({size} bytes) – likely corrupted"
             assert size < 50_000, f"File {f.name} unexpectedly large ({size} bytes)"
 
         # ── 3d. Checksum verification (SHA-256) ──
         checksums = {}
         for f in pt_files:
             checksums[f.name] = hashlib.sha256(f.read_bytes()).hexdigest()
-        assert len(set(checksums.values())) == 3, (
-            "Identical checksums across different epochs!"
-        )
+        assert len(set(checksums.values())) == 3, "Identical checksums across different epochs!"
 
         # Reload and verify round-trip integrity
         for ep in [1, 2, 3]:
             ckpt_id = f"ckpt_fs_e{ep}"
-            raw = persistence._checkpoint_manager.load_checkpoint_file(
-                agent_id, ckpt_id
-            )
+            raw = persistence._checkpoint_manager.load_checkpoint_file(agent_id, ckpt_id)
             assert raw is not None, f"Failed to load {ckpt_id}"
-            assert raw == original_weights[ckpt_id], (
-                f"Round-trip mismatch for {ckpt_id}"
-            )
+            assert raw == original_weights[ckpt_id], f"Round-trip mismatch for {ckpt_id}"
 
     @pytest.mark.asyncio
     async def test_agent_isolation_in_filesystem(self, persistence):
@@ -366,9 +344,7 @@ class TestFileSystemCheck:
         for aid in [a1, a2]:
             state = AgentState(agent_id=aid)
             await persistence.save_state(state)
-            persistence._checkpoint_manager.save_checkpoint_file(
-                aid, f"{aid}_ckpt1", f"data_{aid}".encode()
-            )
+            persistence._checkpoint_manager.save_checkpoint_file(aid, f"{aid}_ckpt1", f"data_{aid}".encode())
 
         d1 = persistence._checkpoint_manager.get_agent_checkpoint_dir(a1)
         d2 = persistence._checkpoint_manager.get_agent_checkpoint_dir(a2)
@@ -376,9 +352,7 @@ class TestFileSystemCheck:
         assert (d1 / f"{a2}_ckpt1.pt").exists() is False
 
 
-# ============================================================================
 # Test 4 – Auto-Save Verification
-# ============================================================================
 
 
 class TestAutoSaveVerification:
@@ -447,9 +421,7 @@ class TestAutoSaveVerification:
         await mgr.stop()
 
 
-# ============================================================================
 # Test 5 – State Rollback
-# ============================================================================
 
 
 class TestStateRollback:
@@ -457,9 +429,7 @@ class TestStateRollback:
 
     @pytest_asyncio.fixture
     async def persistence(self, tmp_path):
-        mgr = StatePersistenceManager(
-            checkpoint_base_dir=str(tmp_path / "chk_rollback")
-        )
+        mgr = StatePersistenceManager(checkpoint_base_dir=str(tmp_path / "chk_rollback"))
         await mgr.start()
         return mgr
 
@@ -549,9 +519,7 @@ class TestStateRollback:
         assert "corrupted" not in restored.metadata
 
 
-# ============================================================================
 # Test 6 – State Cloning
-# ============================================================================
 
 
 class TestStateCloning:
@@ -605,18 +573,11 @@ class TestStateCloning:
         assert len(cloned.memory) == len(source.memory)
         for i, (s_mem, c_mem) in enumerate(zip(source.memory, cloned.memory)):
             assert c_mem.content == s_mem.content, f"Memory {i} content differs"
-            assert c_mem.importance == s_mem.importance, (
-                f"Memory {i} importance differs"
-            )
+            assert c_mem.importance == s_mem.importance, f"Memory {i} importance differs"
 
         # 6e. Context complete
-        assert (
-            cloned.session_context.task_description
-            == source.session_context.task_description
-        )
-        assert (
-            cloned.session_context.current_stage == source.session_context.current_stage
-        )
+        assert cloned.session_context.task_description == source.session_context.task_description
+        assert cloned.session_context.current_stage == source.session_context.current_stage
 
         # 6f. Independent execution – modify clone, source unchanged
         cloned.session_context.current_stage = "evaluating"
@@ -641,28 +602,23 @@ class TestStateCloning:
         assert result is None
 
 
-# ============================================================================
 # Test 7 – Frontend Verification
-# ============================================================================
 # This test category requires browser automation.
 # Steps to verify manually:
-#   7a. Login → 7b. navigate to /agents/:id →
-#   7c. verify status matches backend (use GET /api/v1/agents/:id) →
-#   7d. check task_id, progress, checkpoint epoch displayed correctly →
-#   7e. refresh repeatedly during agent operation, confirm real-time updates.
+# 7a. Login 7b. navigate to /agents/:id
+# 7c. verify status matches backend (use GET /api/v1/agents/:id)
+# 7d. check task_id, progress, checkpoint epoch displayed correctly
+# 7e. refresh repeatedly during agent operation, confirm real-time updates.
 #
 # Automated coverage: The Pinia store (src/stores/agents.ts) and the API layer
 # (python/app/api/v1/agent_state.py) are already tested through the integration
 # tests above. The Vue components can be validated with:
-#   npx vitest --ui  (once component tests are added)
+# npx vitest --ui (once component tests are added)
 # or via Playwright E2E:
-#   npx playwright test tests/e2e/agent_state.spec.ts
-# ============================================================================
+# npx playwright test tests/e2e/agent_state.spec.ts
 
 
-# ============================================================================
 # Test 8 – Manual State Management
-# ============================================================================
 
 
 class TestManualStateManagement:
@@ -714,9 +670,7 @@ class TestManualStateManagement:
         modified = await persistence.load_state(agent_id)
         modified.session_context.current_stage = "mesh_generation"
         modified.session_context.goal_chain = ["wrong_stage"]
-        modified.memory.append(
-            MemoryEntry(content="wrong modification", importance=0.1)
-        )
+        modified.memory.append(MemoryEntry(content="wrong modification", importance=0.1))
         modified.metadata["temp_change"] = True
         await persistence.save_state(modified)
 
@@ -775,9 +729,7 @@ class TestManualStateManagement:
         assert loaded.checkpoint.metadata.get("saved_by") == "user_admin"
 
 
-# ============================================================================
 # Test 9 – Concurrent State Save
-# ============================================================================
 
 
 class TestConcurrentStateSave:
@@ -812,9 +764,7 @@ class TestConcurrentStateSave:
         # 9c. Trigger all concurrent saves
         async def concurrent_save(aid, extra):
             state = await mgr.load_state(aid)
-            state.memory.append(
-                MemoryEntry(content=f"conc_mem_{extra}", importance=0.7)
-            )
+            state.memory.append(MemoryEntry(content=f"conc_mem_{extra}", importance=0.7))
             state.metadata["concurrent"] = True
             await mgr.save_state(state, trigger="concurrent_test")
 
@@ -822,9 +772,7 @@ class TestConcurrentStateSave:
 
         # 9d. Verify all agents saved
         all_agents = await mgr.list_all_agent_states()
-        conc_ids = [
-            a["agent_id"] for a in all_agents if a["agent_id"].startswith("conc_")
-        ]
+        conc_ids = [a["agent_id"] for a in all_agents if a["agent_id"].startswith("conc_")]
         assert len(conc_ids) == N
 
         # 9e. Verify no corruption: each agent has exactly its own data
@@ -844,9 +792,7 @@ class TestConcurrentStateSave:
             for mem in loaded.memory:
                 if "conc_mem" in mem.content:
                     cid = int(mem.content.split("_")[-1])
-                    assert cid == i, (
-                        f"Cross-contamination: {aid} has memory from agent {cid}"
-                    )
+                    assert cid == i, f"Cross-contamination: {aid} has memory from agent {cid}"
 
         await mgr.stop()
 
@@ -869,9 +815,7 @@ class TestConcurrentStateSave:
                 async def cycle(a=aid, round_num=r):
                     s = await mgr.load_state(a)
                     s.metadata["round"] = round_num
-                    s.memory.append(
-                        MemoryEntry(content=f"r{round_num}", importance=0.5)
-                    )
+                    s.memory.append(MemoryEntry(content=f"r{round_num}", importance=0.5))
                     await mgr.save_state(s, trigger="stress")
 
                 tasks.append(cycle())
@@ -885,9 +829,7 @@ class TestConcurrentStateSave:
         await mgr.stop()
 
 
-# ============================================================================
 # Supplementary – Graceful Shutdown & Lifecycle
-# ============================================================================
 
 
 class TestGracefulShutdown:
@@ -903,9 +845,7 @@ class TestGracefulShutdown:
             await mgr.save_state(state)
 
         # Capture statuses before stop clears memory
-        statuses_before = {
-            aid: mgr._active_states[aid].status for aid in mgr._active_states
-        }
+        statuses_before = {aid: mgr._active_states[aid].status for aid in mgr._active_states}
         assert all(s == AgentStatus.BUSY for s in statuses_before.values())
 
         await mgr.stop()

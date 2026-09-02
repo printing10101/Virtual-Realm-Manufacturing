@@ -44,7 +44,7 @@ from app.dreaming.rule_validator import RuleValidator
 
 logger = logging.getLogger(__name__)
 
-# 规则应用状态机：draft → validated → applied → deprecated（或 rejected）
+# 规则应用状态机：draft validated applied deprecated（或 rejected）
 # 回滚后规则状态变为 deprecated，保留审计记录但不生效
 RULE_STATUS_APPLIED = "applied"
 RULE_STATUS_DEPRECATED = "deprecated"

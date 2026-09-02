@@ -25,7 +25,7 @@ from mcp_server.device_registry import (
 
 logger = logging.getLogger("lingjing-mcp")
 
-# param_schema type → Python 类型注解（FastMCP 生成 JSON Schema 用）
+# param_schema type Python 类型注解（FastMCP 生成 JSON Schema 用）
 _PY_TYPE_MAP = {
     "number": "float",
     "integer": "int",

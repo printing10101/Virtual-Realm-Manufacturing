@@ -36,9 +36,7 @@ from app.core.request_id import get_request_id
 logger = logging.getLogger(__name__)
 
 
-# ============================================================
 # 错误类型分类
-# ============================================================
 
 
 class ErrorType(str, Enum):
@@ -63,9 +61,7 @@ class ErrorSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-# ============================================================
 # 错误码到分类的映射
-# ============================================================
 
 _CODE_TO_ERROR_TYPE: dict[int, ErrorType] = {}
 
@@ -146,9 +142,7 @@ def classify_severity(http_status: int | None = None, code: int | str | None = N
     return ErrorSeverity.ERROR
 
 
-# ============================================================
 # 错误码到字符串标识的映射
-# ============================================================
 
 _NUMERIC_TO_STRING_CODE: dict[int, str] = {
     1001: "BIZ_NOT_FOUND",
@@ -181,9 +175,7 @@ def get_string_error_code(numeric_code: int) -> str:
     return _NUMERIC_TO_STRING_CODE.get(numeric_code, f"ERR_{numeric_code}")
 
 
-# ============================================================
 # 结构化错误响应构建
-# ============================================================
 
 
 def build_error_response(
@@ -319,9 +311,7 @@ def build_error_response_from_exception(
     )
 
 
-# ============================================================
 # 错误上下文收集（用于诊断信息）
-# ============================================================
 
 
 class ErrorContext:
@@ -424,9 +414,7 @@ class ErrorContext:
         return "\n".join(lines)
 
 
-# ============================================================
 # 错误日志增强
-# ============================================================
 
 
 def log_error(

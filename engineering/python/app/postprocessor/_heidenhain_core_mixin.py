@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class _HeidenhainCoreMixin:
-    # ---- 宿主契约：由兄弟 mixin / 基类提供（mypy 需要显式声明） ----
+    # 宿主契约：由兄弟 mixin / 基类提供（mypy 需要显式声明）
     _block_counter: int
     _last_program_number: int
     _next_block: Callable[[], int]

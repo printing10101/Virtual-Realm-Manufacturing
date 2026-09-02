@@ -61,9 +61,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/project-sync", tags=["Project Sync"])
 
 
-# ---------------------------------------------------------------------------
 # Pydantic 请求模型
-# ---------------------------------------------------------------------------
 
 
 class CreateProjectRequest(BaseModel):
@@ -113,9 +111,7 @@ class AddResourceRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, description="附加元数据")
 
 
-# ---------------------------------------------------------------------------
 # 辅助函数
-# ---------------------------------------------------------------------------
 
 
 def _handle_service_exception(e: Exception, *, action: str):
@@ -170,9 +166,7 @@ def _handle_service_exception(e: Exception, *, action: str):
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点实现
-# ---------------------------------------------------------------------------
 
 
 @router.post(

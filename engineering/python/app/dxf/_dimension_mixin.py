@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class _DimensionMixin:
-    # ---- 宿主契约：由主类提供 ----
+    # 宿主契约：由主类提供
     DEFAULT_PLATE_THICKNESS: float
     DEFAULT_DEPTH_RATIO: float
     MIN_DEPTH: float
@@ -38,7 +38,7 @@ class _DimensionMixin:
         # 基于正确的几何信息。
         result.overall_length = extents.get("width", 100.0)
         result.overall_width = extents.get("height", 80.0)
-        # 注：经复查，原赋值实际是正确的（width→length, height→width 符合
+        # 注：经复查，原赋值实际是正确的（widthlength, heightwidth 符合
         # DXF 坐标系约定）。但下游消费者存在两种解读，因此显式标注映射关系，
         # 避免后续误改。如确实需要反转，请同步更新所有下游消费者。
 

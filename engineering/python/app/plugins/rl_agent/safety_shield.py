@@ -246,9 +246,7 @@ class SafetyShield:
     def is_strict(self) -> bool:
         return self._strict
 
-    # ------------------------------------------------------------------
     # 内部方法
-    # ------------------------------------------------------------------
 
     def _check_bounds(self, action: np.ndarray) -> list[str]:
         """检查动作各维度的绝对边界.

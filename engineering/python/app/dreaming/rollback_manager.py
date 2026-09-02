@@ -111,9 +111,7 @@ class RollbackManager(_CooldownMixin, _DetectMixin, _ExecuteMixin):
         self._load_history()
 
 
-# -----------------------------------------------------------------------------
 # 便捷函数
-# -----------------------------------------------------------------------------
 
 
 def rollback_rule(rule_id: str, reason: str) -> RollbackExecutionResult:

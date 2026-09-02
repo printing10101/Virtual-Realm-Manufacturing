@@ -58,9 +58,7 @@ from app.knowledge_graph.importer.rule_parser import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 测试夹具：临时 JSON 数据
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -180,9 +178,7 @@ def sample_data_set(
     }
 
 
-# ---------------------------------------------------------------------------
 # _slugify_id / _material_id_from_name
-# ---------------------------------------------------------------------------
 
 
 class TestSlugify:
@@ -210,9 +206,7 @@ class TestSlugify:
         assert _material_id_from_name("") == "material-x"
 
 
-# ---------------------------------------------------------------------------
 # _retry_with_backoff
-# ---------------------------------------------------------------------------
 
 
 class TestRetry:
@@ -248,9 +242,7 @@ class TestRetry:
             _retry_with_backoff(_bad, retries=3, base_delay_s=0.0)
 
 
-# ---------------------------------------------------------------------------
 # Dedupers
-# ---------------------------------------------------------------------------
 
 
 class TestMaterialDeduper:
@@ -324,9 +316,7 @@ class TestMachineDeduper:
         assert not is_dup
 
 
-# ---------------------------------------------------------------------------
 # RuleParser
-# ---------------------------------------------------------------------------
 
 
 class TestRuleParser:
@@ -421,9 +411,7 @@ class TestRuleParser:
         assert any(f.name == "测试特征" for f in rule.features)
 
 
-# ---------------------------------------------------------------------------
 # import_materials
-# ---------------------------------------------------------------------------
 
 
 class TestImportMaterials:
@@ -450,9 +438,7 @@ class TestImportMaterials:
         assert g.node_count(NODE_TYPE_MATERIAL) == 2
 
 
-# ---------------------------------------------------------------------------
 # import_tools
-# ---------------------------------------------------------------------------
 
 
 class TestImportTools:
@@ -476,9 +462,7 @@ class TestImportTools:
         assert any(e["target_id"] == "feature-hole" for e in edges)
 
 
-# ---------------------------------------------------------------------------
 # import_machines
-# ---------------------------------------------------------------------------
 
 
 class TestImportMachines:
@@ -500,9 +484,7 @@ class TestImportMachines:
         assert g.node_count(NODE_TYPE_MACHINE) == 2
 
 
-# ---------------------------------------------------------------------------
 # import_process_rules
-# ---------------------------------------------------------------------------
 
 
 class TestImportProcessRules:
@@ -526,9 +508,7 @@ class TestImportProcessRules:
         assert all(n["node_id"].startswith("process-") for n in nodes)
 
 
-# ---------------------------------------------------------------------------
 # import_all
-# ---------------------------------------------------------------------------
 
 
 class TestImportAll:
@@ -583,9 +563,7 @@ class TestImportAll:
         assert "process_rules" in d["files"]
 
 
-# ---------------------------------------------------------------------------
 # 端到端：使用真实数据文件验证 30 节点 / 50 关系阈值
-# ---------------------------------------------------------------------------
 
 
 class TestEndToEndRealData:
@@ -639,9 +617,7 @@ class TestEndToEndRealData:
         assert r2.process_rules.duplicate > 0 or r2.process_rules.success == 0
 
 
-# ---------------------------------------------------------------------------
 # load_graph_from_repository
-# ---------------------------------------------------------------------------
 
 
 class TestLoadFromRepository:

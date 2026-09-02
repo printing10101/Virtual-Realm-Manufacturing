@@ -114,9 +114,8 @@ class RuleValidator(_ChecksMixin, _TestMixin):
             validator_version=self._validator_version,
         )
 
-    # ------------------------------------------------------------------
-    # 阶段 1：硬约束校验
-    # ------------------------------------------------------------------
+
+# 阶段 1：硬约束校验
 
 
 def validate_rule(rule: RuleDraft) -> ValidationResult:

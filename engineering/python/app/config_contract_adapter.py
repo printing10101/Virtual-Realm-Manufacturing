@@ -39,9 +39,7 @@ from typing import Any
 from app.contracts.config import IConfigSource
 
 
-# ---------------------------------------------------------------------------
 # EnvConfigSource
-# ---------------------------------------------------------------------------
 
 
 class EnvConfigSource(IConfigSource):
@@ -141,9 +139,7 @@ class EnvConfigSource(IConfigSource):
         return raw
 
 
-# ---------------------------------------------------------------------------
 # DictConfigSource
-# ---------------------------------------------------------------------------
 
 
 class DictConfigSource(IConfigSource):
@@ -173,9 +169,7 @@ class DictConfigSource(IConfigSource):
         return list(self._data.keys())
 
 
-# ---------------------------------------------------------------------------
 # 多源合并工具
-# ---------------------------------------------------------------------------
 
 
 def merge_sources(sources: list[IConfigSource]) -> dict[str, Any]:

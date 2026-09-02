@@ -116,7 +116,7 @@ class AuditLogEntry:
 
 
 class ChainMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _chain_lock: Any
     _chain_state_file: Any
     _log_root: Any
@@ -137,7 +137,7 @@ class ChainMixin:
     ``ReaderMixin``。
     """
 
-    # ========== 哈希链管理 ==========
+    # 哈希链管理
 
     def _load_chain_state(self) -> None:
         """启动时从 chain_state.json 加载 _last_hash 和 _chain_seq。"""

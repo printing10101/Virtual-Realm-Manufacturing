@@ -50,9 +50,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/sharp", tags=["SHARP 三元组验证"])
 
 
-# ---------------------------------------------------------------------------
 # 异常包装（与项目其他 API 风格一致）
-# ---------------------------------------------------------------------------
 
 
 def _raise_internal(
@@ -71,9 +69,7 @@ def _raise_internal(
     raise HTTPException(status_code=status_code, detail=detail, headers=headers)
 
 
-# ---------------------------------------------------------------------------
 # 验证端点
-# ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -191,9 +187,7 @@ async def verify_batch(request: BatchVerifyRequest) -> BatchVerifyResponse:
         _raise_internal(e, context="sharp.verify_batch", fallback="批量验证失败")
 
 
-# ---------------------------------------------------------------------------
 # 状态端点
-# ---------------------------------------------------------------------------
 
 
 @router.get(
@@ -218,9 +212,7 @@ async def get_status() -> StatusResponse:
         _raise_internal(e, context="sharp.status", fallback="获取状态失败")
 
 
-# ---------------------------------------------------------------------------
 # 轨迹端点
-# ---------------------------------------------------------------------------
 
 
 @router.get(
@@ -287,9 +279,7 @@ async def clear_trajectories() -> dict[str, Any]:
         _raise_internal(e, context="sharp.trajectory_clear", fallback="清空轨迹失败")
 
 
-# ---------------------------------------------------------------------------
 # 消融配置端点
-# ---------------------------------------------------------------------------
 
 
 @router.get(

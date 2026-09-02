@@ -17,6 +17,7 @@
 本测试不依赖 fastapi 路由实际启动、不依赖 SQLite/SQLAlchemy、不依赖网络。
 通过 ``app.observability.snapshot`` 的全局单例替换实现 ``ISnapshotStore`` 注入。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -43,6 +44,8 @@ def _bump_patch(version: str) -> str:
     """semver patch 自增（如 1.0.0 → 1.0.1）."""
     major, minor, patch = (int(x) for x in version.split("."))
     return f"{major}.{minor}.{patch + 1}"
+
+
 from app.contracts.observability import ExperimentSnapshot, ISnapshotStore
 from app.contracts.plugin import PluginContext
 from app.metrics.flywheel_metrics import (
@@ -59,9 +62,7 @@ from app.plugins.extension_registry import (
 _PLUGIN_DIR = Path(__file__).resolve().parents[2] / "plugins" / "data_flywheel"
 
 
-# ---------------------------------------------------------------------------
 # 测试替身：InMemoryDatasetStore（与 test_feedback_collector.py 对齐）
-# ---------------------------------------------------------------------------
 
 
 class InMemoryDatasetStore(IDatasetStore):
@@ -120,9 +121,7 @@ class InMemoryDatasetStore(IDatasetStore):
             raise KeyError(f"dataset 不存在: {dataset_id}")
         if version is None:
             existing = self._versions[dataset_id]
-            version = (
-                _bump_patch(existing[-1].version) if existing else "1.0.0"
-            )
+            version = _bump_patch(existing[-1].version) if existing else "1.0.0"
         content = repr(sorted(records, key=lambda r: str(r.get("feedback_id", ""))))
         content_hash = "sha256:" + hashlib.sha256(content.encode()).hexdigest()
         v = DatasetVersion(
@@ -145,9 +144,7 @@ class InMemoryDatasetStore(IDatasetStore):
             self._lineages.append(lineage)
         return v
 
-    async def get_version(
-        self, dataset_id: str, version: Optional[str] = None
-    ) -> DatasetVersion:
+    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersion:
         if self.get_version_should_fail:
             self.get_version_should_fail = False
             raise RuntimeError("模拟 get_version 失败")
@@ -175,9 +172,7 @@ class InMemoryDatasetStore(IDatasetStore):
         for i in range(0, len(records), batch_size):
             yield records[i : i + batch_size]
 
-    async def list_versions(
-        self, dataset_id: str
-    ) -> list[DatasetVersion]:
+    async def list_versions(self, dataset_id: str) -> list[DatasetVersion]:
         return list(self._versions.get(dataset_id, []))
 
     async def deprecate(self, dataset_id: str) -> None:
@@ -198,9 +193,7 @@ class InMemoryDatasetStore(IDatasetStore):
             )
 
 
-# ---------------------------------------------------------------------------
 # 测试替身：InMemorySnapshotStore（与 test_flywheel_metrics_real_sources.py 对齐）
-# ---------------------------------------------------------------------------
 
 
 class InMemorySnapshotStore(ISnapshotStore):
@@ -242,9 +235,7 @@ class InMemorySnapshotStore(ISnapshotStore):
             raise KeyError(f"快照不存在: {snapshot_id}")
         return self._snapshots[snapshot_id]
 
-    async def list(
-        self, *, filters: Optional[dict[str, Any]] = None
-    ) -> list[ExperimentSnapshot]:
+    async def list(self, *, filters: Optional[dict[str, Any]] = None) -> list[ExperimentSnapshot]:
         if self.list_should_fail:
             self.list_should_fail = False
             raise RuntimeError("模拟 list 失败")
@@ -256,9 +247,7 @@ class InMemorySnapshotStore(ISnapshotStore):
         return f"reproduce-run-{snapshot_id}"
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -301,9 +290,7 @@ def _mock_resolve_snapshot_store(snapshot_store, monkeypatch, request):
         return
     from plugins.data_flywheel.main import Plugin
 
-    monkeypatch.setattr(
-        Plugin, "_resolve_snapshot_store", lambda self: snapshot_store
-    )
+    monkeypatch.setattr(Plugin, "_resolve_snapshot_store", lambda self: snapshot_store)
     yield
 
 
@@ -326,9 +313,7 @@ def _make_context(store: Optional[IDatasetStore] = None) -> PluginContext:
     )
 
 
-# ---------------------------------------------------------------------------
 # 测试类：on_load 注入
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -351,9 +336,7 @@ class TestPluginOnLoadConfiguresFlywheelCollector:
         await plugin.on_unload()
 
     @pytest.mark.asyncio
-    async def test_on_load_injects_snapshot_store(
-        self, store, snapshot_store, fresh_registry
-    ):
+    async def test_on_load_injects_snapshot_store(self, store, snapshot_store, fresh_registry):
         """on_load 后全局采集器的 snapshot_store 等于 _resolve_snapshot_store 返回值."""
         from plugins.data_flywheel.main import Plugin
 
@@ -383,9 +366,7 @@ class TestPluginOnLoadConfiguresFlywheelCollector:
         await plugin.on_unload()
 
 
-# ---------------------------------------------------------------------------
 # 测试类：反馈提交触发 dataset_id 注入
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -394,9 +375,7 @@ class TestFeedbackSubmissionInjectsDatasetId:
     """反馈提交后 dataset_id 自动注入到全局 FlywheelMetricsCollector."""
 
     @pytest.mark.asyncio
-    async def test_adoption_submission_with_auto_flush_injects_dataset_id(
-        self, store, fresh_registry
-    ):
+    async def test_adoption_submission_with_auto_flush_injects_dataset_id(self, store, fresh_registry):
         """batch_size=2 时，提交 2 条反馈触发自动 flush，dataset_id 自动注入.
 
         流程：
@@ -444,9 +423,7 @@ class TestFeedbackSubmissionInjectsDatasetId:
         await plugin.on_unload()
 
     @pytest.mark.asyncio
-    async def test_dataset_id_injection_is_idempotent(
-        self, store, fresh_registry
-    ):
+    async def test_dataset_id_injection_is_idempotent(self, store, fresh_registry):
         """重复反馈提交不会重复调用 set_feedback_dataset_id（幂等）."""
         from plugins.data_flywheel.main import Plugin
 
@@ -469,9 +446,7 @@ class TestFeedbackSubmissionInjectsDatasetId:
         assert first_dataset_id is not None
 
         # mock set_feedback_dataset_id 验证不会被再次调用
-        with patch.object(
-            collector, "set_feedback_dataset_id"
-        ) as mock_set:
+        with patch.object(collector, "set_feedback_dataset_id") as mock_set:
             await plugin._handle_feedback_submission(
                 {
                     "feedback_type": "adoption",
@@ -484,9 +459,7 @@ class TestFeedbackSubmissionInjectsDatasetId:
         await plugin.on_unload()
 
     @pytest.mark.asyncio
-    async def test_on_unload_flush_injects_dataset_id(
-        self, store, fresh_registry
-    ):
+    async def test_on_unload_flush_injects_dataset_id(self, store, fresh_registry):
         """on_unload 时 flush 剩余缓冲区后，dataset_id 也被注入."""
         from plugins.data_flywheel.main import Plugin
 
@@ -512,9 +485,7 @@ class TestFeedbackSubmissionInjectsDatasetId:
         assert collector.feedback_dataset_id is not None
 
 
-# ---------------------------------------------------------------------------
-# 测试类：端到端闭环（FeedbackCollector → FlywheelMetricsCollector）
-# ---------------------------------------------------------------------------
+# 测试类：端到端闭环（FeedbackCollector FlywheelMetricsCollector）
 
 
 @pytest.mark.unit
@@ -523,9 +494,7 @@ class TestEndToEndFeedbackToMetrics:
     """端到端：反馈提交 → flush → 飞轮指标采集读到真实数据."""
 
     @pytest.mark.asyncio
-    async def test_feedback_submission_makes_metrics_nonzero(
-        self, store, snapshot_store, fresh_registry
-    ):
+    async def test_feedback_submission_makes_metrics_nonzero(self, store, snapshot_store, fresh_registry):
         """提交反馈后，飞轮指标的 data_volume 应该非零."""
         from plugins.data_flywheel.main import Plugin
 
@@ -564,9 +533,7 @@ class TestEndToEndFeedbackToMetrics:
         await plugin.on_unload()
 
 
-# ---------------------------------------------------------------------------
 # 测试类：_resolve_snapshot_store 降级
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -575,9 +542,7 @@ class TestResolveSnapshotStoreDegradation:
     """_resolve_snapshot_store 在 observability 不可用时降级返回 None."""
 
     @pytest.mark.asyncio
-    async def test_resolve_returns_none_when_observability_unavailable(
-        self, store, fresh_registry, monkeypatch
-    ):
+    async def test_resolve_returns_none_when_observability_unavailable(self, store, fresh_registry, monkeypatch):
         """observability 模块导入失败时，_resolve_snapshot_store 返回 None."""
         from plugins.data_flywheel.main import Plugin
 

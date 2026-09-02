@@ -37,9 +37,7 @@ from app.sharp.tools.text_tools import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 工具注册中心
-# ---------------------------------------------------------------------------
 
 
 class ToolRegistry:
@@ -62,9 +60,7 @@ class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, BaseTool] = {}
 
-    # ------------------------------------------------------------------
     # 注册与查找
-    # ------------------------------------------------------------------
 
     def register(self, tool: BaseTool) -> None:
         """注册工具实例。重复注册将覆盖。"""
@@ -93,9 +89,7 @@ class ToolRegistry:
     def size(self) -> int:
         return len(self._tools)
 
-    # ------------------------------------------------------------------
     # Prompt 生成
-    # ------------------------------------------------------------------
 
     def to_prompt_text(self, tool_names: list[str] | None = None) -> str:
         """生成工具集描述文本，用于 LLM prompt 注入。
@@ -108,9 +102,7 @@ class ToolRegistry:
         lines = [self._tools[n].to_prompt_text() for n in tool_names if n in self._tools]
         return "\n".join(lines)
 
-    # ------------------------------------------------------------------
     # 工厂方法
-    # ------------------------------------------------------------------
 
     @classmethod
     def create_default_registry(

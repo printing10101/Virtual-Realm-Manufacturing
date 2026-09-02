@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class VersionControlMixin:
-    # ---- 宿主契约：由兄弟 mixin 提供（PathSafetyMixin/SkillDiscoveryMixin） ----
+    # 宿主契约：由兄弟 mixin 提供（PathSafetyMixin/SkillDiscoveryMixin）
     _sanitize_path_segment: Callable[..., str]
     _resolve_safe_subpath: Callable[..., str]
     _load_skill_from_file: Callable[..., Any]

@@ -30,7 +30,7 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
 
     lines = program_text.strip().splitlines()
 
-    # ========== 1. 基础语法检查 ==========
+    # 1. 基础语法检查
     if controller_type == "fanuc_0i":
         if not any(line.strip().startswith("O") or line.strip().startswith(":") for line in lines):
             errors.append("Fanuc: 缺少程序号(Oxxxx)")
@@ -47,7 +47,7 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
         if "END PGM" not in last_line:
             errors.append("Heidenhain: 缺少END PGM标记")
 
-    # ========== 2. 机床行程极限验证 ==========
+    # 2. 机床行程极限验证
     # 定义典型机床行程限制（可根据实际机床配置调整）
     MACHINE_LIMITS = {
         "x_min": -500.0,
@@ -91,7 +91,7 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
                     f"第{line_num}行: Z坐标{z_val:.3f}超出机床行程范围[{MACHINE_LIMITS['z_min']}, {MACHINE_LIMITS['z_max']}]"
                 )
 
-    # ========== 3. 切削参数物理约束验证 ==========
+    # 3. 切削参数物理约束验证
     # 典型机床参数限制
     SPINDLE_LIMITS = {"min_rpm": 50, "max_rpm": 24000}
     FEED_LIMITS = {"min_rate": 10.0, "max_rate": 20000.0}
@@ -119,7 +119,7 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
                     f"第{line_num}行: 进给速度{feed:.1f}mm/min超出安全范围[{FEED_LIMITS['min_rate']}, {FEED_LIMITS['max_rate']}]"
                 )
 
-    # ========== 4. 快速移动碰撞检测 ==========
+    # 4. 快速移动碰撞检测
     for line_num, line in enumerate(lines, 1):
         stripped = line.strip()
         if stripped.startswith("G00") or stripped.startswith("G0 "):
@@ -130,7 +130,7 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
                 if z_val < 0:
                     errors.append(f"第{line_num}行: G00快速移动到Z{z_val:.3f}，可能导致碰撞")
 
-    # ========== 5. 刀具半径补偿正确性检查 ==========
+    # 5. 刀具半径补偿正确性检查
     g_codes: list[str] = []
     for line in lines:
         stripped = line.strip()
@@ -140,7 +140,7 @@ def validate_gcode_syntax(program_text: str, controller_type: str) -> list[str]:
     if ("G41" in g_codes or "G42" in g_codes) and "G40" not in g_codes:
         errors.append("刀具半径补偿未取消：G41/G42缺少对应的G40取消指令")
 
-    # ========== 6. 坐标系有效性验证 ==========
+    # 6. 坐标系有效性验证
     valid_wcs = {"G54", "G55", "G56", "G57", "G58", "G59"}
     for line_num, line in enumerate(lines, 1):
         stripped = line.strip()

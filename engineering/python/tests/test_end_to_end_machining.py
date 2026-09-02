@@ -59,9 +59,7 @@ from app.simulation.stock_model import StockModel
 from app.simulation.toolpath_parser import ToolpathParser, ToolpathSegment
 
 
-# ============================================================================
 # 辅助函数：构建工序规划
-# ============================================================================
 
 
 def _build_simple_milling_plan(
@@ -200,9 +198,7 @@ def _build_collision_toolpath_segments() -> list[ToolpathSegment]:
     ]
 
 
-# ============================================================================
 # 测试1：典型零件加工完整流程
-# ============================================================================
 
 
 @pytest.mark.e2e
@@ -274,9 +270,7 @@ class TestTypicalMachiningWorkflow:
 
         # 4. G代码语法验证
         validation = validate_gcode(result.program_text)
-        assert validation["valid"], (
-            f"G代码语法验证失败: {validation['errors']}"
-        )
+        assert validation["valid"], f"G代码语法验证失败: {validation['errors']}"
 
         # 5. 刀具路径解析
         parser = ToolpathParser(controller_type="fanuc")
@@ -292,13 +286,8 @@ class TestTypicalMachiningWorkflow:
         report = detector.check_segments(segments)
         # 生成的G代码不应有碰撞（如果检测到，需要审视生成器安全逻辑）
         # 但这里我们允许 warnings（边界接近警告），只断言无致命碰撞
-        fatal_collisions = [
-            c for c in report.collisions if c.severity == "high"
-        ]
-        assert len(fatal_collisions) == 0, (
-            f"生成的G代码检测到致命碰撞: "
-            f"{[c.message for c in fatal_collisions]}"
-        )
+        fatal_collisions = [c for c in report.collisions if c.severity == "high"]
+        assert len(fatal_collisions) == 0, f"生成的G代码检测到致命碰撞: {[c.message for c in fatal_collisions]}"
 
     def test_aluminum_6061_drilling_workflow(self):
         """6061铝钻孔流程：验证参数计算与G代码生成。"""
@@ -348,9 +337,7 @@ class TestTypicalMachiningWorkflow:
         assert 0.0 < curve.confidence <= 1.0, "置信度应在(0, 1]区间"
 
         # 剩余寿命预测
-        remaining = predictor.predict_remaining_life(
-            current_wear=0.1, input_parameters=input_params
-        )
+        remaining = predictor.predict_remaining_life(current_wear=0.1, input_parameters=input_params)
         assert remaining >= 0, "剩余寿命不应为负"
 
         # G代码生成
@@ -364,9 +351,7 @@ class TestTypicalMachiningWorkflow:
         assert result.is_valid
 
 
-# ============================================================================
 # 测试2：极端工况安全校验
-# ============================================================================
 
 
 @pytest.mark.e2e
@@ -391,9 +376,7 @@ class TestExtremeConditionsSafety:
             operation="milling",
         )
         # 应有警告或错误
-        assert len(result["warnings"]) > 0 or not result["valid"], (
-            "超大切深未被检测到，存在机床损坏风险"
-        )
+        assert len(result["warnings"]) > 0 or not result["valid"], "超大切深未被检测到，存在机床损坏风险"
 
     def test_high_speed_titanium_force_check(self):
         """钛合金高速加工的切削力校验。"""
@@ -453,9 +436,7 @@ class TestExtremeConditionsSafety:
             )
 
 
-# ============================================================================
 # 测试3：多控制器兼容性
-# ============================================================================
 
 
 @pytest.mark.e2e
@@ -479,9 +460,7 @@ class TestMultiControllerCompatibility:
             ("heidenhain_tnc", ["M30", "BEGIN PGM", "END PGM"]),
         ],
     )
-    def test_controller_specific_syntax(
-        self, sample_plan, controller_type, expected_tokens
-    ):
+    def test_controller_specific_syntax(self, sample_plan, controller_type, expected_tokens):
         """验证各控制器生成代码包含必要语法元素。"""
         generator = GCodeGenerator()
         result = generator.generate(
@@ -490,13 +469,9 @@ class TestMultiControllerCompatibility:
             material_name="45#钢",
             program_number=2001,
         )
-        assert result.is_valid, (
-            f"{controller_type} G代码生成失败: {result.errors}"
-        )
+        assert result.is_valid, f"{controller_type} G代码生成失败: {result.errors}"
         for token in expected_tokens:
-            assert token in result.program_text, (
-                f"{controller_type} 缺少必要语法元素: {token}"
-            )
+            assert token in result.program_text, f"{controller_type} 缺少必要语法元素: {token}"
 
     def test_all_controllers_generate_valid_gcode(self, sample_plan):
         """所有控制器生成的G代码都应通过语法验证。"""
@@ -507,14 +482,10 @@ class TestMultiControllerCompatibility:
                 controller_type=controller,
                 material_name="45#钢",
             )
-            assert result.is_valid, (
-                f"{controller} 生成失败: {result.errors}"
-            )
+            assert result.is_valid, f"{controller} 生成失败: {result.errors}"
             validation = validate_gcode(result.program_text)
             # 至少不应有 errors
-            assert len(validation["errors"]) == 0, (
-                f"{controller} G代码语法错误: {validation['errors']}"
-            )
+            assert len(validation["errors"]) == 0, f"{controller} G代码语法错误: {validation['errors']}"
 
     def test_invalid_controller_type_rejected(self, sample_plan):
         """无效控制器类型应被拒绝。"""
@@ -536,9 +507,7 @@ class TestMultiControllerCompatibility:
             )
 
 
-# ============================================================================
 # 测试4：碰撞检测压力测试
-# ============================================================================
 
 
 @pytest.mark.e2e
@@ -556,9 +525,7 @@ class TestCollisionDetectionStress:
         detector = CollisionDetector(stock=stock, safe_z_height=10.0)
         segments = _build_safe_toolpath_segments()
         report = detector.check_segments(segments)
-        assert report.safe, (
-            f"安全路径被误判为碰撞: {[c.message for c in report.collisions]}"
-        )
+        assert report.safe, f"安全路径被误判为碰撞: {[c.message for c in report.collisions]}"
 
     def test_rapid_into_stock_detected(self):
         """G00快速进入毛坯应被检测为碰撞。"""
@@ -589,9 +556,7 @@ class TestCollisionDetectionStress:
         ]
         report = detector.check_segments(segments)
         # 应有警告或碰撞
-        assert len(report.warnings) > 0 or len(report.collisions) > 0, (
-            "超程切削未被检测到"
-        )
+        assert len(report.warnings) > 0 or len(report.collisions) > 0, "超程切削未被检测到"
 
     def test_empty_segments_handled_gracefully(self):
         """空刀具路径列表应被优雅处理。"""
@@ -613,9 +578,12 @@ class TestCollisionDetectionStress:
         """5轴模式工作空间限制校验。"""
         stock = StockModel(length=100, width=100, height=50)
         workspace = WorkspaceLimits(
-            x_min=-200, x_max=200,
-            y_min=-200, y_max=200,
-            z_min=-150, z_max=150,
+            x_min=-200,
+            x_max=200,
+            y_min=-200,
+            y_max=200,
+            z_min=-150,
+            z_max=150,
         )
         detector = CollisionDetector(
             stock=stock,
@@ -628,9 +596,7 @@ class TestCollisionDetectionStress:
         assert report.total_segments == len(segments)
 
 
-# ============================================================================
 # 测试5：刀具磨损全流程测试
-# ============================================================================
 
 
 @pytest.mark.e2e
@@ -665,8 +631,7 @@ class TestToolWearFullWorkflow:
             prev = curve.data_points[i - 1]
             curr = curve.data_points[i]
             assert curr.wear >= prev.wear - 1e-6, (
-                f"磨损曲线非单调递增: t={prev.time} wear={prev.wear} -> "
-                f"t={curr.time} wear={curr.wear}"
+                f"磨损曲线非单调递增: t={prev.time} wear={prev.wear} -> t={curr.time} wear={curr.wear}"
             )
 
     def test_wear_phases_progression(self, predictor, standard_params):
@@ -675,14 +640,9 @@ class TestToolWearFullWorkflow:
         params = standard_params.copy()
         params["max_time"] = 300.0
         curve = predictor.predict_wear_curve(params)
-        phases = {
-            (p.metadata.get("phase") if p.metadata else None)
-            for p in curve.data_points
-        }
+        phases = {(p.metadata.get("phase") if p.metadata else None) for p in curve.data_points}
         # 至少应该有 initial 和 steady（WearPhase 中定义为小写）
-        assert "initial" in phases or "steady" in phases, (
-            f"未识别出磨损阶段: {phases}"
-        )
+        assert "initial" in phases or "steady" in phases, f"未识别出磨损阶段: {phases}"
 
     def test_real_time_calibration_with_sensors(self, predictor, standard_params):
         """实时传感器数据校正磨损预测。"""
@@ -722,13 +682,9 @@ class TestToolWearFullWorkflow:
             input_parameters=standard_params,
         )
         # 应该有调整原因（异常信号触发）
-        assert len(result["adjustment_reasons"]) > 0, (
-            "异常传感器信号未触发调整原因"
-        )
+        assert len(result["adjustment_reasons"]) > 0, "异常传感器信号未触发调整原因"
         # 传感器调整因子应>1（加速磨损）
-        assert result["sensor_adjustment"] > 1.0, (
-            f"异常信号下调整因子应>1: {result['sensor_adjustment']}"
-        )
+        assert result["sensor_adjustment"] > 1.0, f"异常信号下调整因子应>1: {result['sensor_adjustment']}"
 
     def test_compensation_recommendation_no_adjustment(self, predictor, standard_params):
         """低磨损时无需参数调整。"""
@@ -775,26 +731,16 @@ class TestToolWearFullWorkflow:
         soft_threshold = predictor.get_replacement_threshold("aluminum_6061")
         # 硬材料（钛合金）阈值应较低
         hard_threshold = predictor.get_replacement_threshold("titanium_tc4")
-        assert soft_threshold >= hard_threshold, (
-            f"软材料阈值({soft_threshold})应>=硬材料阈值({hard_threshold})"
-        )
+        assert soft_threshold >= hard_threshold, f"软材料阈值({soft_threshold})应>=硬材料阈值({hard_threshold})"
 
     def test_remaining_life_decreases_with_wear(self, predictor, standard_params):
         """剩余寿命应随磨损增加而减少。"""
-        life_at_low_wear = predictor.predict_remaining_life(
-            current_wear=0.05, input_parameters=standard_params
-        )
-        life_at_high_wear = predictor.predict_remaining_life(
-            current_wear=0.20, input_parameters=standard_params
-        )
-        assert life_at_high_wear < life_at_low_wear, (
-            f"高磨损剩余寿命({life_at_high_wear})应<低磨损({life_at_low_wear})"
-        )
+        life_at_low_wear = predictor.predict_remaining_life(current_wear=0.05, input_parameters=standard_params)
+        life_at_high_wear = predictor.predict_remaining_life(current_wear=0.20, input_parameters=standard_params)
+        assert life_at_high_wear < life_at_low_wear, f"高磨损剩余寿命({life_at_high_wear})应<低磨损({life_at_low_wear})"
 
 
-# ============================================================================
 # 测试6：跨模块数据完整性
-# ============================================================================
 
 
 @pytest.mark.e2e
@@ -849,9 +795,7 @@ class TestCrossModuleIntegrity:
         for seg in segments:
             # 每个段的坐标都应是有限数值
             for coord in seg.start_point + seg.end_point:
-                assert math.isfinite(coord), (
-                    f"段{seg.block_number}坐标包含非有限值: {seg}"
-                )
+                assert math.isfinite(coord), f"段{seg.block_number}坐标包含非有限值: {seg}"
 
     def test_toolpath_to_collision_detector_data_flow(self):
         """刀具路径解析器 -> 碰撞检测器的数据流。"""
@@ -901,9 +845,7 @@ M30
         assert "urgency" in compensation
 
 
-# ============================================================================
 # 主入口：支持直接运行查看完整报告
-# ============================================================================
 
 
 def run_e2e_tests() -> dict[str, Any]:
@@ -948,20 +890,20 @@ def run_e2e_tests() -> dict[str, Any]:
             report["passed"] += 1
         elif r.failed:
             report["failed"] += 1
-            report["failures"].append({
-                "test": r.nodeid,
-                "duration": r.duration,
-                "longrepr": str(r.longrepr)[:500] if r.longrepr else "",
-            })
+            report["failures"].append(
+                {
+                    "test": r.nodeid,
+                    "duration": r.duration,
+                    "longrepr": str(r.longrepr)[:500] if r.longrepr else "",
+                }
+            )
         elif r.skipped:
             report["skipped"] += 1
         else:
             report["errors"] += 1
 
     report["exit_code"] = int(exit_code)
-    report["pass_rate"] = (
-        report["passed"] / report["total"] if report["total"] > 0 else 0.0
-    )
+    report["pass_rate"] = report["passed"] / report["total"] if report["total"] > 0 else 0.0
     return report
 
 

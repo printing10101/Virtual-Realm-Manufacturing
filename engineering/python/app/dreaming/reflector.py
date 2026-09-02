@@ -83,9 +83,7 @@ class DreamReflector(_DedupMixin, _UpdateMixin, _InsightsMixin):
             self._llm_router = None
         return self._llm_router
 
-    # ------------------------------------------------------------------
     # 主入口
-    # ------------------------------------------------------------------
 
     async def reflect(
         self,
@@ -149,6 +147,5 @@ class DreamReflector(_DedupMixin, _UpdateMixin, _InsightsMixin):
 
         return result
 
-    # ------------------------------------------------------------------
-    # 阶段 1：去重
-    # ------------------------------------------------------------------
+
+# 阶段 1：去重

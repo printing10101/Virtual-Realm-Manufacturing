@@ -18,9 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 
-# ---------------------------------------------------------------------------
 # asyncio stub 注入
-# ---------------------------------------------------------------------------
 # Windows + Python 3.10.11 下 asyncio 模块导入可能因 WinError 10038 失败
 # （asyncio/windows_events.py 在非套接字上尝试操作）。
 # P3 验证只调用 close()/stop() 方法，不触发 asyncio.sleep 等运行时调用，
@@ -137,9 +135,7 @@ class CallRecorder:
         return self._return_value
 
     def assert_called_once(self) -> None:
-        assert self.call_count == 1, (
-            f"{self._name}: expected 1 call, got {self.call_count}"
-        )
+        assert self.call_count == 1, f"{self._name}: expected 1 call, got {self.call_count}"
 
     def assert_called_once_with(self, *args) -> None:
         self.assert_called_once()
@@ -147,9 +143,7 @@ class CallRecorder:
         assert actual == args, f"{self._name}: expected {args}, got {actual}"
 
     def assert_not_called(self) -> None:
-        assert self.call_count == 0, (
-            f"{self._name}: expected 0 calls, got {self.call_count}"
-        )
+        assert self.call_count == 0, f"{self._name}: expected 0 calls, got {self.call_count}"
 
 
 def section(title: str) -> None:
@@ -162,9 +156,8 @@ def assert_true(cond: bool, msg: str) -> None:
     print(f"  PASS: {msg}")
 
 
-# ---------------------------------------------------------------------------
 # 1. BudgetManager.close() 幂等性
-# ---------------------------------------------------------------------------
+
 
 def test_budget_manager_close_idempotent() -> None:
     section("BudgetManager.close() 幂等性")
@@ -178,30 +171,24 @@ def test_budget_manager_close_idempotent() -> None:
 
     # 首次 close
     manager.close()
-    assert_true(manager._pool.return_connection.call_count == 1,
-                "首次 close 调用 return_connection 一次")
+    assert_true(manager._pool.return_connection.call_count == 1, "首次 close 调用 return_connection 一次")
     assert_true(manager._conn is None, "首次 close 后 _conn 为 None")
     assert_true(manager._closed is True, "首次 close 后 _closed 为 True")
 
     # 二次 close 应为 no-op
     manager.close()
-    assert_true(manager._pool.return_connection.call_count == 1,
-                "二次 close 不再调用 return_connection")
+    assert_true(manager._pool.return_connection.call_count == 1, "二次 close 不再调用 return_connection")
 
     # 静态契约
     init_src = inspect.getsource(BudgetManager.__init__)
     close_src = inspect.getsource(BudgetManager.close)
-    assert_true("self._closed = False" in init_src,
-                "__init__ 初始化 self._closed = False")
-    assert_true("if self._closed:" in close_src,
-                "close 方法以 if self._closed: 开头")
-    assert_true("self._closed = True" in close_src,
-                "close 方法设置 self._closed = True")
+    assert_true("self._closed = False" in init_src, "__init__ 初始化 self._closed = False")
+    assert_true("if self._closed:" in close_src, "close 方法以 if self._closed: 开头")
+    assert_true("self._closed = True" in close_src, "close 方法设置 self._closed = True")
 
 
-# ---------------------------------------------------------------------------
 # 2. MultiDimensionCostTracker.close() 幂等性
-# ---------------------------------------------------------------------------
+
 
 def test_cost_tracker_close_idempotent() -> None:
     section("MultiDimensionCostTracker.close() 幂等性")
@@ -214,14 +201,12 @@ def test_cost_tracker_close_idempotent() -> None:
     tracker._closed = False
 
     tracker.close()
-    assert_true(tracker._pool.return_connection.call_count == 1,
-                "首次 close 调用 return_connection 一次")
+    assert_true(tracker._pool.return_connection.call_count == 1, "首次 close 调用 return_connection 一次")
     assert_true(tracker._conn is None, "首次 close 后 _conn 为 None")
     assert_true(tracker._closed is True, "首次 close 后 _closed 为 True")
 
     tracker.close()
-    assert_true(tracker._pool.return_connection.call_count == 1,
-                "二次 close 不再调用 return_connection")
+    assert_true(tracker._pool.return_connection.call_count == 1, "二次 close 不再调用 return_connection")
 
     # fallback 路径：无 _pool 时回退到 conn.close()
     tracker2 = MultiDimensionCostTracker.__new__(MultiDimensionCostTracker)
@@ -231,23 +216,19 @@ def test_cost_tracker_close_idempotent() -> None:
     tracker2._closed = False
 
     tracker2.close()
-    assert_true(mock_conn2.close.call_count == 1,
-                "无 _pool 时回退到 conn.close()")
+    assert_true(mock_conn2.close.call_count == 1, "无 _pool 时回退到 conn.close()")
     assert_true(tracker2._closed is True, "fallback close 后 _closed 为 True")
 
     # 静态契约
     init_src = inspect.getsource(MultiDimensionCostTracker.__init__)
     close_src = inspect.getsource(MultiDimensionCostTracker.close)
-    assert_true("self._closed = False" in init_src,
-                "__init__ 初始化 self._closed = False")
+    assert_true("self._closed = False" in init_src, "__init__ 初始化 self._closed = False")
     assert_true("if self._closed:" in close_src, "close 方法包含 if self._closed:")
-    assert_true("self._closed = True" in close_src,
-                "close 方法设置 self._closed = True")
+    assert_true("self._closed = True" in close_src, "close 方法设置 self._closed = True")
 
 
-# ---------------------------------------------------------------------------
 # 3. RuleDatabase.close() 幂等性
-# ---------------------------------------------------------------------------
+
 
 def test_rule_database_close_idempotent() -> None:
     section("RuleDatabase.close() 幂等性")
@@ -260,18 +241,14 @@ def test_rule_database_close_idempotent() -> None:
     db._closed = False
 
     db.close()
-    assert_true(db._pool.return_connection.call_count == 1,
-                "首次 close 调用 return_connection 一次")
-    assert_true(db._pool.close_all.call_count == 1,
-                "首次 close 调用 close_all 一次")
+    assert_true(db._pool.return_connection.call_count == 1, "首次 close 调用 return_connection 一次")
+    assert_true(db._pool.close_all.call_count == 1, "首次 close 调用 close_all 一次")
     assert_true(db._conn is None, "首次 close 后 _conn 为 None")
     assert_true(db._closed is True, "首次 close 后 _closed 为 True")
 
     db.close()
-    assert_true(db._pool.close_all.call_count == 1,
-                "二次 close 不再调用 close_all（关键幂等性）")
-    assert_true(db._pool.return_connection.call_count == 1,
-                "二次 close 不再调用 return_connection")
+    assert_true(db._pool.close_all.call_count == 1, "二次 close 不再调用 close_all（关键幂等性）")
+    assert_true(db._pool.return_connection.call_count == 1, "二次 close 不再调用 return_connection")
 
     # close_all 抛异常不应阻断 close 流程
     db2 = RuleDatabase.__new__(RuleDatabase)
@@ -281,22 +258,18 @@ def test_rule_database_close_idempotent() -> None:
     db2._closed = False
 
     db2.close()  # 不应抛出
-    assert_true(db2._closed is True,
-                "close_all 抛异常时 _closed 仍被置位")
+    assert_true(db2._closed is True, "close_all 抛异常时 _closed 仍被置位")
 
     # 静态契约
     init_src = inspect.getsource(RuleDatabase.__init__)
     close_src = inspect.getsource(RuleDatabase.close)
-    assert_true("self._closed = False" in init_src,
-                "__init__ 初始化 self._closed = False")
+    assert_true("self._closed = False" in init_src, "__init__ 初始化 self._closed = False")
     assert_true("if self._closed:" in close_src, "close 方法以 if self._closed: 开头")
-    assert_true("self._closed = True" in close_src,
-                "close 方法设置 self._closed = True")
+    assert_true("self._closed = True" in close_src, "close 方法设置 self._closed = True")
 
 
-# ---------------------------------------------------------------------------
 # 4. WakeupQueue.close() 幂等性
-# ---------------------------------------------------------------------------
+
 
 def test_wakeup_queue_close_idempotent() -> None:
     section("WakeupQueue.close() 幂等性")
@@ -309,34 +282,29 @@ def test_wakeup_queue_close_idempotent() -> None:
     queue._closed = False
 
     queue.close()
-    assert_true(queue._pool.return_connection.call_count == 1,
-                "首次 close 调用 return_connection 一次")
+    assert_true(queue._pool.return_connection.call_count == 1, "首次 close 调用 return_connection 一次")
     assert_true(queue._conn is None, "首次 close 后 _conn 为 None")
     assert_true(queue._closed is True, "首次 close 后 _closed 为 True")
 
     queue.close()
-    assert_true(queue._pool.return_connection.call_count == 1,
-                "二次 close 不再调用 return_connection")
+    assert_true(queue._pool.return_connection.call_count == 1, "二次 close 不再调用 return_connection")
 
     # 静态契约
     init_src = inspect.getsource(WakeupQueue.__init__)
     close_src = inspect.getsource(WakeupQueue.close)
-    assert_true("self._closed = False" in init_src,
-                "__init__ 初始化 self._closed = False")
+    assert_true("self._closed = False" in init_src, "__init__ 初始化 self._closed = False")
     assert_true("if self._closed:" in close_src, "close 方法以 if self._closed: 开头")
-    assert_true("self._closed = True" in close_src,
-                "close 方法设置 self._closed = True")
+    assert_true("self._closed = True" in close_src, "close 方法设置 self._closed = True")
 
 
-# ---------------------------------------------------------------------------
 # 5. VectorStore.close() 幂等性（重点：原 AttributeError 修复验证）
-# ---------------------------------------------------------------------------
+
 
 def test_vector_store_close_idempotent() -> None:
     section("VectorStore.close() 幂等性（修复 AttributeError）")
     from app.rag.vector_store import VectorStore
 
-    # --- 场景 1：首次 close 调用 client.close() ---
+    # 场景 1：首次 close 调用 client.close()
     store = VectorStore.__new__(VectorStore)
     store._client = CallRecorder("client")
     store._collection = CallRecorder("collection")
@@ -346,13 +314,12 @@ def test_vector_store_close_idempotent() -> None:
     original_close = store._client.close
 
     store.close()
-    assert_true(original_close.call_count == 1,
-                "首次 close 调用 client.close() 一次")
+    assert_true(original_close.call_count == 1, "首次 close 调用 client.close() 一次")
     assert_true(store._client is None, "首次 close 后 _client 为 None")
     assert_true(store._collection is None, "首次 close 后 _collection 为 None")
     assert_true(store._closed is True, "首次 close 后 _closed 为 True")
 
-    # --- 场景 2：二次 close 为 no-op ---
+    # 场景 2：二次 close 为 no-op
     store2 = VectorStore.__new__(VectorStore)
     store2._client = CallRecorder("client2")
     store2._collection = CallRecorder("collection2")
@@ -361,11 +328,10 @@ def test_vector_store_close_idempotent() -> None:
 
     store2.close()
     store2.close()  # 二次调用前 client 已为 None，应直接返回
-    assert_true(original_close2.call_count == 1,
-                "二次 close 不再调用 client.close()")
+    assert_true(original_close2.call_count == 1, "二次 close 不再调用 client.close()")
     assert_true(store2._closed is True, "二次 close 后 _closed 仍为 True")
 
-    # --- 场景 3：client.close() 抛异常时 _closed 仍被置位 ---
+    # 场景 3：client.close() 抛异常时 _closed 仍被置位
     store3 = VectorStore.__new__(VectorStore)
     store3._client = CallRecorder("client3")
     store3._client.close._side_effect = RuntimeError("client broken")
@@ -374,16 +340,13 @@ def test_vector_store_close_idempotent() -> None:
     original_close3 = store3._client.close
 
     store3.close()  # 不应抛出异常
-    assert_true(store3._closed is True,
-                "client.close() 抛异常时 _closed 仍被置位（finally 块）")
-    assert_true(original_close3.call_count == 1,
-                "异常路径下 client.close() 仍只被调用一次")
+    assert_true(store3._closed is True, "client.close() 抛异常时 _closed 仍被置位（finally 块）")
+    assert_true(original_close3.call_count == 1, "异常路径下 client.close() 仍只被调用一次")
 
     store3.close()  # 二次调用应为 no-op
-    assert_true(original_close3.call_count == 1,
-                "异常路径后二次 close 不再触发 client.close()")
+    assert_true(original_close3.call_count == 1, "异常路径后二次 close 不再触发 client.close()")
 
-    # --- 场景 4：无 client 时 close 安全执行 ---
+    # 场景 4：无 client 时 close 安全执行
     store4 = VectorStore.__new__(VectorStore)
     store4._client = None
     store4._collection = None
@@ -395,16 +358,13 @@ def test_vector_store_close_idempotent() -> None:
     # 静态契约
     init_src = inspect.getsource(VectorStore.__init__)
     close_src = inspect.getsource(VectorStore.close)
-    assert_true("self._closed = False" in init_src,
-                "__init__ 初始化 self._closed = False")
+    assert_true("self._closed = False" in init_src, "__init__ 初始化 self._closed = False")
     assert_true("if self._closed:" in close_src, "close 方法以 if self._closed: 开头")
-    assert_true("self._closed = True" in close_src,
-                "close 方法设置 self._closed = True")
+    assert_true("self._closed = True" in close_src, "close 方法设置 self._closed = True")
 
 
-# ---------------------------------------------------------------------------
 # 6. HeartbeatScheduler.stop() 静态契约（asyncio 测试因环境问题跳过运行时验证）
-# ---------------------------------------------------------------------------
+
 
 def test_heartbeat_scheduler_static_contract() -> None:
     section("HeartbeatScheduler.stop() 静态契约（asyncio 环境问题，仅静态验证）")
@@ -413,16 +373,13 @@ def test_heartbeat_scheduler_static_contract() -> None:
     init_src = inspect.getsource(HeartbeatScheduler.__init__)
     stop_src = inspect.getsource(HeartbeatScheduler.stop)
 
-    assert_true("self._stopped = False" in init_src,
-                "__init__ 初始化 self._stopped = False")
+    assert_true("self._stopped = False" in init_src, "__init__ 初始化 self._stopped = False")
     assert_true("if self._stopped:" in stop_src, "stop 方法以 if self._stopped: 开头")
-    assert_true("self._stopped = True" in stop_src,
-                "stop 方法设置 self._stopped = True")
+    assert_true("self._stopped = True" in stop_src, "stop 方法设置 self._stopped = True")
 
 
-# ---------------------------------------------------------------------------
 # 7. 测试文件本身：验证修复后的测试用例不再访问 None.close
-# ---------------------------------------------------------------------------
+
 
 def test_test_file_fix_correct() -> None:
     section("验证 test_p3_idempotent_close.py 修复正确")
@@ -432,31 +389,26 @@ def test_test_file_fix_correct() -> None:
 
     # 检查 test_first_close_calls_client_close 是否保存了 original_close
     assert_true(
-        "original_close = store._client.close" in src and
-        "original_close.assert_called_once()" in src,
-        "test_first_close_calls_client_close 保存了 original_close 引用"
+        "original_close = store._client.close" in src and "original_close.assert_called_once()" in src,
+        "test_first_close_calls_client_close 保存了 original_close 引用",
     )
 
     # 检查 test_close_sets_closed_even_on_exception 是否保存了 original_close
     assert_true(
-        "original_close = store._client.close" in src and
-        "original_close.side_effect = RuntimeError" in src and
-        "original_close.call_count == 1" in src,
-        "test_close_sets_closed_even_on_exception 保存了 original_close 引用"
+        "original_close = store._client.close" in src
+        and "original_close.side_effect = RuntimeError" in src
+        and "original_close.call_count == 1" in src,
+        "test_close_sets_closed_even_on_exception 保存了 original_close 引用",
     )
 
     # 确保不再有 store._client.close.assert_called_once() 这种危险调用
     # （这种调用在 _client 被 close() 置 None 后会抛 AttributeError）
     dangerous_pattern = "store._client.close.assert_called_once()"
-    assert_true(
-        dangerous_pattern not in src,
-        f"测试文件中不再包含危险调用: {dangerous_pattern}"
-    )
+    assert_true(dangerous_pattern not in src, f"测试文件中不再包含危险调用: {dangerous_pattern}")
 
 
-# ---------------------------------------------------------------------------
 # 主入口
-# ---------------------------------------------------------------------------
+
 
 def main() -> int:
     print(f"Python: {sys.version.split()[0]}")

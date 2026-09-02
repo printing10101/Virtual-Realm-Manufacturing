@@ -52,9 +52,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-# =====================================================================
 # 常量
-# =====================================================================
 
 SIGNAL_FUSION_SOURCE = "signal_fusion"
 
@@ -67,7 +65,7 @@ SUPPORTED_SIGNAL_TYPES = (
     "current",  # 电流（扩展，无对应 sensor_feature 字段）
 )
 
-# 信号类型 → sensor_features 字段映射
+# 信号类型 sensor_features 字段映射
 SIGNAL_TYPE_TO_SENSOR_FIELD: dict[str, str | None] = {
     "vibration": "vibration_rms",
     "cutting_force": "cutting_force",
@@ -90,9 +88,7 @@ FEATURE_NAMES: tuple[str, ...] = (
 )
 
 
-# =====================================================================
 # 数据类
-# =====================================================================
 
 
 @dataclass
@@ -255,9 +251,7 @@ class ChatterCorrelation:
         return asdict(self)
 
 
-# =====================================================================
 # 知识库主类
-# =====================================================================
 
 
 class SignalFusionKnowledgeBase:
@@ -277,9 +271,7 @@ class SignalFusionKnowledgeBase:
         self._weighted_fusion: Any = None  # lazy
         self._attention_fusion: Any = None  # lazy
 
-    # ------------------------------------------------------------------
     # 懒加载依赖（避免在 import 时触发 ChromaDB / 模型加载）
-    # ------------------------------------------------------------------
 
     def _get_vector_store(self):
         if self._vector_store is None:
@@ -321,9 +313,7 @@ class SignalFusionKnowledgeBase:
             self._attention_fusion = CrossModalAttentionFusion(cfg)
         return self._attention_fusion
 
-    # ------------------------------------------------------------------
     # 写入
-    # ------------------------------------------------------------------
 
     def register_sample(self, sample: SignalSample) -> str:
         """注册一个信号样本到知识库。
@@ -383,9 +373,7 @@ class SignalFusionKnowledgeBase:
         logger.info("批量注册 %d 个信号样本", len(samples))
         return ids
 
-    # ------------------------------------------------------------------
     # 检索
-    # ------------------------------------------------------------------
 
     def retrieve_similar(
         self,
@@ -486,9 +474,7 @@ class SignalFusionKnowledgeBase:
                 logger.warning("反序列化样本失败: %s", e)
         return samples[offset : offset + limit]
 
-    # ------------------------------------------------------------------
     # 融合
-    # ------------------------------------------------------------------
 
     def fuse_signals(
         self,
@@ -543,9 +529,7 @@ class SignalFusionKnowledgeBase:
             dimension=len(fused),
         )
 
-    # ------------------------------------------------------------------
     # 关联：磨损
-    # ------------------------------------------------------------------
 
     def correlate_with_wear(
         self,
@@ -602,9 +586,7 @@ class SignalFusionKnowledgeBase:
             notes=notes,
         )
 
-    # ------------------------------------------------------------------
     # 关联：颤振
-    # ------------------------------------------------------------------
 
     def correlate_with_chatter(
         self,
@@ -662,9 +644,7 @@ class SignalFusionKnowledgeBase:
             notes=notes,
         )
 
-    # ------------------------------------------------------------------
     # 统计 / 删除
-    # ------------------------------------------------------------------
 
     def stats(self) -> dict[str, Any]:
         """返回知识库统计信息。
@@ -771,7 +751,7 @@ class SignalFusionKnowledgeBase:
         documents = result.get("documents", [])
         metadatas = result.get("metadatas", [])
 
-        # 构建 id → (doc, meta) 映射，保证输出顺序与输入一致
+        # 构建 id (doc, meta) 映射，保证输出顺序与输入一致
         id_to_doc_meta: dict[str, tuple[str, dict]] = {}
         for i, cid in enumerate(ids):
             doc = documents[i] if i < len(documents) else ""
@@ -824,9 +804,7 @@ class SignalFusionKnowledgeBase:
             )
 
 
-# =====================================================================
 # 单例
-# =====================================================================
 
 
 class _SingletonHolder:

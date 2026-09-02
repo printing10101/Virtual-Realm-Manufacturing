@@ -42,9 +42,7 @@ from app.gcode_generation.gcode_store import (
 pytestmark = pytest.mark.unit
 
 
-# ==============================================================================
 # gcode_store
-# ==============================================================================
 
 
 @pytest.fixture(autouse=True)
@@ -235,9 +233,7 @@ class TestGetFileExtension:
         assert get_file_extension(controller) == ext
 
 
-# ==============================================================================
 # gcode_disclaimer
-# ==============================================================================
 
 
 def _disclaimer_kwargs(**kw) -> dict:
@@ -263,7 +259,7 @@ class TestGCodeDisclaimer:
         d = build_gcode_disclaimer(**_disclaimer_kwargs())
         assert d.requires_cam_validation is True
         assert d.requires_engineer_review is True
-        # 兜底 CAM 校验警告永远存在 → warning_message 永远非空
+        # 兜底 CAM 校验警告永远存在 warning_message 永远非空
         assert "CAM" in d.warning_message
 
     def test_pending_calibration_warning(self):
@@ -292,9 +288,7 @@ class TestGCodeDisclaimer:
         assert d.to_dict()["gcode_file_exported"] is True
 
 
-# ==============================================================================
 # chatter_report_loader
-# ==============================================================================
 
 
 def _feature_dict(feature_id="f1", **kw) -> dict:
@@ -331,7 +325,10 @@ def _write_report(tmp_path, data) -> str:
 
 class TestChatterReportLoader:
     def test_load_success(self, tmp_path):
-        path = _write_report(tmp_path, _report_dict(feature_results=[_feature_dict("f1", stable=True), _feature_dict("f2", stable=False)]))
+        path = _write_report(
+            tmp_path,
+            _report_dict(feature_results=[_feature_dict("f1", stable=True), _feature_dict("f2", stable=False)]),
+        )
         report = ChatterReportLoader().load(path)
         assert isinstance(report, LoadedChatterReport)
         assert report.total_features == 2
@@ -382,7 +379,9 @@ class TestChatterReportLoader:
             ChatterReportLoader().load(path)
 
     def test_detect_pending_calibration_via_material_id(self, tmp_path):
-        path = _write_report(tmp_path, _report_dict(material_id="hrc52", feature_results=[_feature_dict("f1", material_id="steel")]))
+        path = _write_report(
+            tmp_path, _report_dict(material_id="hrc52", feature_results=[_feature_dict("f1", material_id="steel")])
+        )
         report = ChatterReportLoader().load(path)
         assert report.pending_calibration is True
 

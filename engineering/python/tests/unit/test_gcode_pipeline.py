@@ -26,7 +26,7 @@ from app.gcode_generation.gcode_store import (
 )
 from app.gcode_generation.pipeline import (
     GCodeGenerationPipeline,
-GCodeGenerationResult,
+    GCodeGenerationResult,
     GCodeReviewError,
 )
 from app.process_planning.gcode_generator import GCodeResult
@@ -70,7 +70,7 @@ def _fgcr(feature_id="f1", status=GCodeReviewStatus.PENDING.value, **kw) -> Feat
     )
     r.review_status = status
     r.gcode_lines = kw.get("gcode_lines", ["G01 X0 Y0"])
-    r.line_range = kw.get("line_range", (0, 0)),
+    r.line_range = (kw.get("line_range", (0, 0)),)
     return r
 
 
@@ -131,9 +131,7 @@ def _make_pipeline(adapter=None, output_dir=None):
     return p
 
 
-# ==============================================================================
 # create_task
-# ==============================================================================
 
 
 class TestCreateTask:
@@ -156,9 +154,7 @@ class TestCreateTask:
         assert task.task_id.startswith("gc_")
 
 
-# ==============================================================================
 # run_pipeline
-# ==============================================================================
 
 
 class TestRunPipeline:
@@ -190,7 +186,9 @@ class TestRunPipeline:
         TaskStore().add_task(_task(status=GCodeGenerationTaskStatus.PENDING.value))
         adapter = _FakeAdapter(_base_result(is_valid=False), [_fgcr(stable=False)])
         p = _make_pipeline(adapter=adapter)
-        p._loader.load.return_value = _fake_report(features=[_feature(stable=False)], unstable_features=1, stable_features=0)
+        p._loader.load.return_value = _fake_report(
+            features=[_feature(stable=False)], unstable_features=1, stable_features=0
+        )
         with patch("app.gcode_generation.pipeline.load_operation_plan", return_value=OperationPlan()):
             result = await p.run_pipeline("gc-1")
         assert result.status == GCodeGenerationTaskStatus.FAILED.value
@@ -214,14 +212,13 @@ class TestRunPipeline:
         TaskStore().add_task(_task(status=GCodeGenerationTaskStatus.PENDING.value))
         p = _make_pipeline()
         from app.gcode_generation.gcode_store import ChatterReportLoadError
+
         p._loader.load.side_effect = ChatterReportLoadError("boom")
         result = await p.run_pipeline("gc-1")
         assert result.status == GCodeGenerationTaskStatus.FAILED.value
 
 
-# ==============================================================================
 # review_feature
-# ==============================================================================
 
 
 class TestReviewFeature:
@@ -267,7 +264,9 @@ class TestReviewFeature:
         TaskStore().add_task(_task(status=GCodeGenerationTaskStatus.GENERATED.value, features=[_fgcr("f1")]))
         p = _make_pipeline()
         result = p.review_feature(
-            "gc-1", "f1", GCodeReviewStatus.EDITED.value,
+            "gc-1",
+            "f1",
+            GCodeReviewStatus.EDITED.value,
             edited_params={"axial_depth_mm": 0.5, "stable": False},
             engineer_notes="注意",
         )
@@ -277,21 +276,26 @@ class TestReviewFeature:
         assert result.edited_params["engineer_notes"] == "注意"
 
     def test_partial_review_keeps_generated(self):
-        TaskStore().add_task(_task(status=GCodeGenerationTaskStatus.GENERATED.value, features=[_fgcr("f1"), _fgcr("f2")]))
+        TaskStore().add_task(
+            _task(status=GCodeGenerationTaskStatus.GENERATED.value, features=[_fgcr("f1"), _fgcr("f2")])
+        )
         p = _make_pipeline()
         p.review_feature("gc-1", "f1", GCodeReviewStatus.CONFIRMED.value)
         task = TaskStore().get_task("gc-1")
         assert task.status == GCodeGenerationTaskStatus.GENERATED.value
 
 
-# ==============================================================================
 # confirm_task
-# ==============================================================================
 
 
 class TestConfirmTask:
     def test_status_not_allowed(self):
-        TaskStore().add_task(_task(status=GCodeGenerationTaskStatus.GENERATED.value, features=[_fgcr(status=GCodeReviewStatus.CONFIRMED.value)]))
+        TaskStore().add_task(
+            _task(
+                status=GCodeGenerationTaskStatus.GENERATED.value,
+                features=[_fgcr(status=GCodeReviewStatus.CONFIRMED.value)],
+            )
+        )
         p = _make_pipeline()
         with pytest.raises(GCodeGenerationPipelineError, match="状态不允许"):
             p.confirm_task("gc-1")
@@ -322,9 +326,7 @@ class TestConfirmTask:
         assert len(data["feature_results"]) == 1
 
 
-# ==============================================================================
 # export_gcode / delete_task
-# ==============================================================================
 
 
 class TestExportAndDelete:
@@ -360,9 +362,7 @@ class TestExportAndDelete:
         assert TaskStore().list_tasks() == []
 
 
-# ==============================================================================
 # _build_result / _build_disclaimer
-# ==============================================================================
 
 
 class TestBuildResult:
@@ -386,7 +386,11 @@ class TestBuildResult:
         assert d["disclaimer"] is not None
 
     def test_build_disclaimer_neural_network(self):
-        t = _task(status=GCodeGenerationTaskStatus.GENERATED.value, prediction_method="neural_network", pending_calibration=True)
+        t = _task(
+            status=GCodeGenerationTaskStatus.GENERATED.value,
+            prediction_method="neural_network",
+            pending_calibration=True,
+        )
         p = _make_pipeline()
         d = p._build_disclaimer(t, gcode_file_exported=False)
         assert d.ltc_experiment_used is True

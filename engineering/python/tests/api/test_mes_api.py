@@ -36,9 +36,7 @@ from app.integrations.mes.api import get_mes_client
 from app.integrations.mes.client import MESClient
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -85,9 +83,7 @@ def _sync_result(message: str, data_id: str):
     )
 
 
-# ---------------------------------------------------------------------------
 # 工单同步测试
-# ---------------------------------------------------------------------------
 
 
 class TestWorkOrderSync:
@@ -95,9 +91,7 @@ class TestWorkOrderSync:
 
     def test_sync_work_order_success(self, client, mock_mes_client):
         """测试工单同步成功"""
-        mock_mes_client.sync_work_order = AsyncMock(
-            return_value=_sync_result("工单同步成功", "WO-001")
-        )
+        mock_mes_client.sync_work_order = AsyncMock(return_value=_sync_result("工单同步成功", "WO-001"))
         cleanup = _override(mock_mes_client)
         try:
             response = client.post(
@@ -150,9 +144,7 @@ class TestWorkOrderSync:
             cleanup()
 
 
-# ---------------------------------------------------------------------------
 # 生产数据上报测试
-# ---------------------------------------------------------------------------
 
 
 class TestProductionReport:
@@ -160,9 +152,7 @@ class TestProductionReport:
 
     def test_report_production_success(self, client, mock_mes_client):
         """测试生产数据上报成功"""
-        mock_mes_client.report_production = AsyncMock(
-            return_value=_sync_result("生产数据上报成功", "PROD-001")
-        )
+        mock_mes_client.report_production = AsyncMock(return_value=_sync_result("生产数据上报成功", "PROD-001"))
         cleanup = _override(mock_mes_client)
         try:
             response = client.post(
@@ -183,9 +173,7 @@ class TestProductionReport:
         """测试合格数量超过总数：由 MES 客户端校验拒绝 → 路由映射为 400"""
         # 数量合法性校验在 MES 客户端侧（真实服务），这里 mock 客户端
         # 对「合格数 > 总数」抛 ValueError，验证路由正确映射为 400。
-        mock_mes_client.report_production = AsyncMock(
-            side_effect=ValueError("qualified exceeds quantity")
-        )
+        mock_mes_client.report_production = AsyncMock(side_effect=ValueError("qualified exceeds quantity"))
         cleanup = _override(mock_mes_client)
         try:
             response = client.post(
@@ -202,9 +190,7 @@ class TestProductionReport:
             cleanup()
 
 
-# ---------------------------------------------------------------------------
 # 物料查询测试
-# ---------------------------------------------------------------------------
 
 
 class TestMaterialQuery:
@@ -247,9 +233,7 @@ class TestMaterialQuery:
             cleanup()
 
 
-# ---------------------------------------------------------------------------
 # 质量数据上报测试
-# ---------------------------------------------------------------------------
 
 
 class TestQualityReport:
@@ -257,9 +241,7 @@ class TestQualityReport:
 
     def test_report_quality_success(self, client, mock_mes_client):
         """测试质量数据上报成功"""
-        mock_mes_client.report_quality = AsyncMock(
-            return_value=_sync_result("质量数据上报成功", "QUAL-001")
-        )
+        mock_mes_client.report_quality = AsyncMock(return_value=_sync_result("质量数据上报成功", "QUAL-001"))
         cleanup = _override(mock_mes_client)
         try:
             response = client.post(
@@ -283,9 +265,7 @@ class TestQualityReport:
             cleanup()
 
 
-# ---------------------------------------------------------------------------
 # 健康检查测试
-# ---------------------------------------------------------------------------
 
 
 class TestHealthCheck:
@@ -317,9 +297,7 @@ class TestHealthCheck:
             cleanup()
 
 
-# ---------------------------------------------------------------------------
 # 配置验证测试
-# ---------------------------------------------------------------------------
 
 
 class TestConfiguration:

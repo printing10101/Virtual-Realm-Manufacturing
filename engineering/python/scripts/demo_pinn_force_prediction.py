@@ -37,9 +37,7 @@ from app.simulation.cutting_force.predictor import predict_cutting_force
 from app.simulation.cutting_force.kienzle import compute_cutting_forces
 
 
-# ---------------------------------------------------------------------------
 # 数据模型
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -58,9 +56,7 @@ class ForcePrediction:
     elapsed_ms: float
 
 
-# ---------------------------------------------------------------------------
 # 展示场景
-# ---------------------------------------------------------------------------
 
 
 # 场景1：多材料对比（XM-100 典型工况）
@@ -80,9 +76,7 @@ SPEED_SWEEP = [(s, 800, 1.0) for s in [2000, 4000, 6000, 8000, 10000]]
 DEPTH_SWEEP = [(6000, 800, d) for d in [0.2, 0.5, 1.0, 1.5, 2.0, 3.0]]
 
 
-# ---------------------------------------------------------------------------
 # 核心展示逻辑
-# ---------------------------------------------------------------------------
 
 
 def run_prediction(
@@ -96,9 +90,7 @@ def run_prediction(
     """执行一次切削力预测。"""
     params = {"speed": speed, "feed": feed, "depth": depth}
     start = time.perf_counter()
-    result = predict_cutting_force(
-        material=material, tool=tool, params=params, use_pinn=use_pinn
-    )
+    result = predict_cutting_force(material=material, tool=tool, params=params, use_pinn=use_pinn)
     elapsed_ms = (time.perf_counter() - start) * 1000
     return ForcePrediction(
         material=material,
@@ -126,9 +118,7 @@ def run_kienzle_only(
     chip_thickness = max(depth * 0.1, 0.001)
     width = max(depth, 0.01)
     start = time.perf_counter()
-    result = compute_cutting_forces(
-        material=material, width=width, chip_thickness=chip_thickness
-    )
+    result = compute_cutting_forces(material=material, width=width, chip_thickness=chip_thickness)
     elapsed_ms = (time.perf_counter() - start) * 1000
     return ForcePrediction(
         material=material,
@@ -227,30 +217,21 @@ def write_reports(
         for method in ["pinn", "kienzle"]:
             for r in pinn_vs_kienzle[method]:
                 res = (r.fx**2 + r.fy**2 + r.fz**2) ** 0.5
-                f.write(
-                    f"| {r.method} | {r.fx:.2f} | {r.fy:.2f} | {r.fz:.2f} | "
-                    f"{res:.2f} | {r.elapsed_ms:.3f} |\n"
-                )
+                f.write(f"| {r.method} | {r.fx:.2f} | {r.fy:.2f} | {r.fz:.2f} | {res:.2f} | {r.elapsed_ms:.3f} |\n")
 
         f.write("\n## 3. 转速扫描（45钢，进给800mm/min，切深1.0mm）\n\n")
         f.write("| 转速(RPM) | Fx(N) | Fy(N) | Fz(N) | 合力(N) | 方法 |\n")
         f.write("|-----------|-------|-------|-------|---------|------|\n")
         for r in speed_sweep:
             res = (r.fx**2 + r.fy**2 + r.fz**2) ** 0.5
-            f.write(
-                f"| {r.speed:.0f} | {r.fx:.2f} | {r.fy:.2f} | {r.fz:.2f} | "
-                f"{res:.2f} | {r.method} |\n"
-            )
+            f.write(f"| {r.speed:.0f} | {r.fx:.2f} | {r.fy:.2f} | {r.fz:.2f} | {res:.2f} | {r.method} |\n")
 
         f.write("\n## 4. 切深扫描（45钢，转速6000RPM，进给800mm/min）\n\n")
         f.write("| 切深(mm) | Fx(N) | Fy(N) | Fz(N) | 合力(N) | 方法 |\n")
         f.write("|----------|-------|-------|-------|---------|------|\n")
         for r in depth_sweep:
             res = (r.fx**2 + r.fy**2 + r.fz**2) ** 0.5
-            f.write(
-                f"| {r.depth:.2f} | {r.fx:.2f} | {r.fy:.2f} | {r.fz:.2f} | "
-                f"{res:.2f} | {r.method} |\n"
-            )
+            f.write(f"| {r.depth:.2f} | {r.fx:.2f} | {r.fy:.2f} | {r.fz:.2f} | {res:.2f} | {r.method} |\n")
 
         f.write("\n## 说明\n\n")
         f.write("- **PINN**: 物理信息神经网络，3→64→64→32→3 残差学习架构\n")

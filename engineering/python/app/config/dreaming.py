@@ -47,18 +47,18 @@ class DreamingConfig:
               RollbackManager / ClosedLoop
     """
 
-    # --------- 总开关 ---------
+    # 总开关
     # 桌面轻量档位下可关闭，避免 GraphStore + ChromaDB 加载开销
     enabled: bool = field(default_factory=lambda: _bool_env("LNN_DREAM_ENABLED", True))
 
-    # --------- 反思调度（P1 DreamingSchedulerAdapter） ---------
+    # 反思调度（P1 DreamingSchedulerAdapter）
     # HeartbeatScheduler cron 表达式：默认每天凌晨 02:00 触发反思
     # 生产环境应避开加工时段，避免与 CAM 校验任务竞争资源
     dream_cron_expression: str = field(default_factory=lambda: _env("LNN_DREAM_CRON", "0 2 * * *"))
     # 单次反思任务超时（秒）：GraphStore 遍历 + 洞察提取 + 规则合成约 5-30 分钟
     dream_task_timeout_seconds: int = field(default_factory=lambda: _int_env("LNN_DREAM_TASK_TIMEOUT", 1800))
 
-    # --------- Memory Store（P0 LocalMemoryStore） ---------
+    # Memory Store（P0 LocalMemoryStore）
     # GraphStore + 反思历史持久化目录
     memory_store_dir: str = field(
         default_factory=lambda: _path("LNN_DREAM_MEMORY_DIR", os.path.join("output", "dreaming", "memory"))
@@ -68,7 +68,7 @@ class DreamingConfig:
         default_factory=lambda: _path("LNN_DREAM_GIT_DIR", os.path.join("output", "dreaming", "git"))
     )
 
-    # --------- Session 提取（P0 SessionExtractor） ---------
+    # Session 提取（P0 SessionExtractor）
     # MLflow tracking URI（Session 数据源之一）
     mlflow_tracking_uri: str = field(
         default_factory=lambda: _env(
@@ -98,7 +98,7 @@ class DreamingConfig:
         )
     )
 
-    # --------- Reflector（P0 DreamReflector） ---------
+    # Reflector（P0 DreamReflector）
     # 最少触发反思的 Session 数：低于此值不触发反思（避免数据不足）
     min_sessions_for_dream: int = field(default_factory=lambda: _int_env("LNN_DREAM_MIN_SESSIONS", 5))
     # 洞察去重相似度阈值（0-1，余弦相似度）
@@ -106,7 +106,7 @@ class DreamingConfig:
     # 单次反思最多提取的洞察数
     max_insights_per_dream: int = field(default_factory=lambda: _int_env("LNN_DREAM_MAX_INSIGHTS", 20))
 
-    # --------- Rule Synthesizer（P0 RuleSynthesizer） ---------
+    # Rule Synthesizer（P0 RuleSynthesizer）
     # 规则草稿输出目录
     rule_output_dir: str = field(
         default_factory=lambda: _path("LNN_DREAM_RULE_DIR", os.path.join("output", "dreaming", "rules"))
@@ -114,7 +114,7 @@ class DreamingConfig:
     # 单次反思最多合成的规则数
     max_rules_per_dream: int = field(default_factory=lambda: _int_env("LNN_DREAM_MAX_RULES", 10))
 
-    # --------- Rule Validator（P1 RuleValidator） ---------
+    # Rule Validator（P1 RuleValidator）
     # 沙箱验证工作目录
     sandbox_validation_dir: str = field(
         default_factory=lambda: _path(
@@ -125,7 +125,7 @@ class DreamingConfig:
     # 单条规则沙箱验证超时（秒）
     validation_timeout_seconds: int = field(default_factory=lambda: _int_env("LNN_DREAM_VALIDATION_TIMEOUT", 120))
 
-    # --------- Progressive Publisher（P2） ---------
+    # Progressive Publisher（P2）
     # 灰度发布记录持久化目录
     publication_records_dir: str = field(
         default_factory=lambda: _path(
@@ -141,7 +141,7 @@ class DreamingConfig:
     # 降级阈值：准确率低于此值触发降级
     demote_accuracy_threshold: float = field(default_factory=lambda: _float_env("LNN_DREAM_DEMOTE_ACC", 0.45))
 
-    # --------- Effectiveness Metrics（P2） ---------
+    # Effectiveness Metrics（P2）
     # 度量样本持久化目录
     metrics_samples_dir: str = field(
         default_factory=lambda: _path(
@@ -154,7 +154,7 @@ class DreamingConfig:
     # 最小样本数（低于此值标记 insufficient_data，不阻断发布但置信度低）
     metrics_min_sample_size: int = field(default_factory=lambda: _int_env("LNN_DREAM_MIN_SAMPLES", 10))
 
-    # --------- Rollback Manager（P2） ---------
+    # Rollback Manager（P2）
     # 回滚历史持久化目录
     rollback_history_dir: str = field(
         default_factory=lambda: _path(
@@ -173,7 +173,7 @@ class DreamingConfig:
         default_factory=lambda: _float_env("LNN_DREAM_PROD_ERROR_RATE", 0.25)
     )
 
-    # --------- Closed Loop（P2，DempsterShaferFusion + TaskRouter） ---------
+    # Closed Loop（P2，DempsterShaferFusion + TaskRouter）
     # 闭环状态持久化目录
     closed_loop_state_dir: str = field(
         default_factory=lambda: _path(
@@ -190,14 +190,14 @@ class DreamingConfig:
     # 规则效果滚动窗口大小（每条规则最多保留的 outcome 样本数）
     rule_outcome_window_size: int = field(default_factory=lambda: _int_env("LNN_DREAM_RULE_WINDOW", 64))
 
-    # --------- 硬约束（__post_init__ 强制，不可被环境变量关闭） ---------
+    # 硬约束（__post_init__ 强制，不可被环境变量关闭）
     # CAM 二次校验强制（始终 True，不被反思规则绕过）
     cam_validation_required: bool = field(default_factory=lambda: _bool_env("LNN_DREAM_CAM_VALIDATION_REQUIRED", True))
     # SUCCEEDED 任务禁删（始终 False，避免追溯链断裂）
     allow_delete_succeeded: bool = field(default_factory=lambda: _bool_env("LNN_DREAM_ALLOW_DELETE_SUCCEEDED", False))
     # HRC52 pending_calibration 置信度惩罚系数（0-1，规则触发 HRC52 时强制乘以此值）
     hrc52_pending_calibration_penalty: float = field(default_factory=lambda: _float_env("LNN_DREAM_HRC52_PENALTY", 0.5))
-    # K_s → cutting_force_coeff 直接传递（始终 True，不二次拟合）
+    # K_s cutting_force_coeff 直接传递（始终 True，不二次拟合）
     k_s_direct_passthrough: bool = field(default_factory=lambda: _bool_env("LNN_DREAM_KS_DIRECT_PASSTHROUGH", True))
 
     def __post_init__(self) -> None:
@@ -287,7 +287,7 @@ class DreamingConfig:
             )
             self.min_sessions_for_dream = 5
 
-        # ========== 项目记忆硬约束（不可被环境变量绕过） ==========
+        # 项目记忆硬约束（不可被环境变量绕过）
 
         # 硬约束 1：CAM 二次校验始终 True（不被反思规则绕过）
         if not self.cam_validation_required:
@@ -306,7 +306,7 @@ class DreamingConfig:
             )
             self.allow_delete_succeeded = False
 
-        # 硬约束 3：K_s → cutting_force_coeff 直接传递（始终 True，不二次拟合）
+        # 硬约束 3：K_s cutting_force_coeff 直接传递（始终 True，不二次拟合）
         if not self.k_s_direct_passthrough:
             logger.warning(
                 "LNN_DREAM_KS_DIRECT_PASSTHROUGH=false 违反项目记忆硬约束"

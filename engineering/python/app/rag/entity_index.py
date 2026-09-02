@@ -61,9 +61,7 @@ class EntityIndex:
             self._persist_path = os.path.join(persist_dir, "entity_index.json")
             self._load_from_disk()
 
-    # ------------------------------------------------------------------
     # 索引操作
-    # ------------------------------------------------------------------
 
     def add(self, chunk_id: str, entities: list[str]) -> None:
         """将 chunk_id 关联到一组实体。
@@ -204,9 +202,7 @@ class EntityIndex:
         self._dirty = True
         return len(entities)
 
-    # ------------------------------------------------------------------
     # 持久化
-    # ------------------------------------------------------------------
 
     def flush(self, force: bool = False) -> bool:
         """将索引落盘。
@@ -295,9 +291,7 @@ class EntityIndex:
                 exc_info=True,
             )
 
-    # ------------------------------------------------------------------
     # 统计与诊断
-    # ------------------------------------------------------------------
 
     def get_stats(self) -> dict[str, Any]:
         """获取索引统计信息。"""
@@ -328,9 +322,7 @@ class EntityIndex:
             self._dirty = True
 
 
-# ---------------------------------------------------------------------------
 # 单例 holder
-# ---------------------------------------------------------------------------
 
 _entity_index_instance: EntityIndex | None = None
 _entity_index_lock = threading.Lock()

@@ -116,7 +116,7 @@ class FanucPostProcessor(BasePostProcessor):
     ) -> str:
         # pecking 参数与基类签名对齐：True 用啄钻循环，False 用普通循环
         # When a dwell is requested, use the high-speed peck drill
-        # cycle G73 (small retract for chip breaking).  Without a
+        # cycle G73 (small retract for chip breaking). Without a
         # dwell the deep-hole peck cycle G83 (full retract) is used.
         cycle_code = "G73" if dwell > 0 else "G83"
         cfg = self.get_cycle_config("drilling", cycle_code)

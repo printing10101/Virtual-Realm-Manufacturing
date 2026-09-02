@@ -29,6 +29,7 @@ CI 标记：@pytest.mark.unit（与 ci.yml `pytest -m unit` 对齐）。
     - 字段类型断言用 `typing.get_type_hints()` 防止类型漂移
     - 数值映射断言用硬编码期望值，任何重新编号都会立即失败
 """
+
 from __future__ import annotations
 
 import inspect
@@ -37,9 +38,7 @@ from typing import get_type_hints
 
 import pytest
 
-# ---------------------------------------------------------------------------
 # 契约层导入
-# ---------------------------------------------------------------------------
 from app.contracts import CONTRACTS_VERSION
 from app.contracts.dataset import (
     DatasetSchema,
@@ -64,9 +63,7 @@ from app.core.response import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 1. 契约层 dataclass 字段稳定性
-# ---------------------------------------------------------------------------
 
 
 def _field_names(cls: type) -> set[str]:
@@ -101,17 +98,13 @@ class TestContractFieldStability:
             "timeout_seconds",
         }
         actual = _field_names(WorkflowNode)
-        assert actual == expected, (
-            f"WorkflowNode 字段集合漂移：期望 {expected}，实际 {actual}。"
-        )
+        assert actual == expected, f"WorkflowNode 字段集合漂移：期望 {expected}，实际 {actual}。"
 
     def test_workflow_edge_fields(self):
         """WorkflowEdge 必须包含 2 个字段."""
         expected = {"upstream", "downstream"}
         actual = _field_names(WorkflowEdge)
-        assert actual == expected, (
-            f"WorkflowEdge 字段集合漂移：期望 {expected}，实际 {actual}。"
-        )
+        assert actual == expected, f"WorkflowEdge 字段集合漂移：期望 {expected}，实际 {actual}。"
 
     def test_artifact_fields(self):
         """Artifact 必须包含 4 个字段."""
@@ -123,9 +116,7 @@ class TestContractFieldStability:
         """DatasetSchema 必须包含 3 个字段."""
         expected = {"fields", "primary_key", "metadata"}
         actual = _field_names(DatasetSchema)
-        assert actual == expected, (
-            f"DatasetSchema 字段集合漂移：期望 {expected}，实际 {actual}。"
-        )
+        assert actual == expected, f"DatasetSchema 字段集合漂移：期望 {expected}，实际 {actual}。"
 
     def test_dataset_version_fields(self):
         """DatasetVersion 必须包含 11 个字段."""
@@ -143,9 +134,7 @@ class TestContractFieldStability:
             "lineage",
         }
         actual = _field_names(DatasetVersion)
-        assert actual == expected, (
-            f"DatasetVersion 字段集合漂移：期望 {expected}，实际 {actual}。"
-        )
+        assert actual == expected, f"DatasetVersion 字段集合漂移：期望 {expected}，实际 {actual}。"
 
     def test_lineage_record_fields(self):
         """LineageRecord 必须包含 9 个字段."""
@@ -161,9 +150,7 @@ class TestContractFieldStability:
             "metadata",
         }
         actual = _field_names(LineageRecord)
-        assert actual == expected, (
-            f"LineageRecord 字段集合漂移：期望 {expected}，实际 {actual}。"
-        )
+        assert actual == expected, f"LineageRecord 字段集合漂移：期望 {expected}，实际 {actual}。"
 
     def test_experiment_snapshot_fields(self):
         """ExperimentSnapshot 必须包含 13 个字段."""
@@ -183,22 +170,16 @@ class TestContractFieldStability:
             "notes",
         }
         actual = _field_names(ExperimentSnapshot)
-        assert actual == expected, (
-            f"ExperimentSnapshot 字段集合漂移：期望 {expected}，实际 {actual}。"
-        )
+        assert actual == expected, f"ExperimentSnapshot 字段集合漂移：期望 {expected}，实际 {actual}。"
 
     def test_dataset_status_enum_values(self):
         """DatasetStatus 必须包含 4 个枚举值，且字符串值稳定."""
         expected = {"draft", "published", "deprecated", "archived"}
         actual = {member.value for member in DatasetStatus}
-        assert actual == expected, (
-            f"DatasetStatus 枚举值漂移：期望 {expected}，实际 {actual}。"
-        )
+        assert actual == expected, f"DatasetStatus 枚举值漂移：期望 {expected}，实际 {actual}。"
 
 
-# ---------------------------------------------------------------------------
 # 2. 响应信封规范
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -209,8 +190,7 @@ class TestResponseEnvelopeContract:
         """success() 必须返回恰好 4 个键：code/message/data/request_id."""
         result = success()
         assert set(result.keys()) == {"code", "message", "data", "request_id"}, (
-            f"success() 键集合漂移：{set(result.keys())}。"
-            f"契约要求恰好 4 个键，新增字段必须走 ADR 流程。"
+            f"success() 键集合漂移：{set(result.keys())}。契约要求恰好 4 个键，新增字段必须走 ADR 流程。"
         )
 
     def test_success_code_is_zero(self):
@@ -229,9 +209,7 @@ class TestResponseEnvelopeContract:
         """error() 必须包含 code/message/request_id 三个必需键."""
         result = error(ErrorCode.NOT_FOUND)
         required = {"code", "message", "request_id"}
-        assert required.issubset(set(result.keys())), (
-            f"error() 缺少必需键：{required - set(result.keys())}"
-        )
+        assert required.issubset(set(result.keys())), f"error() 缺少必需键：{required - set(result.keys())}"
 
     def test_error_code_is_numeric(self):
         """error() 的 code 必须为整数（数值码，非字符串枚举）."""
@@ -331,9 +309,7 @@ class TestErrorCodeNumericMapping:
         assert "request_id" in result
 
 
-# ---------------------------------------------------------------------------
 # 3. API 路由静态契约
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -385,8 +361,7 @@ class TestAPIRouteStaticContract:
         # 8 个端点，但 GET /workflows 和 GET /workflows/{id} 和 GET /workflows/{id}/stream 是 GET
         # 实际端点数应 >= 8（允许向后兼容扩展，但不能减少）
         assert len(endpoint_keys) >= 8, (
-            f"workflows 端点数 < 8：实际 {len(endpoint_keys)} 个端点。"
-            f"端点减少属于 breaking change，必须新开 ADR。"
+            f"workflows 端点数 < 8：实际 {len(endpoint_keys)} 个端点。端点减少属于 breaking change，必须新开 ADR。"
         )
 
     def test_datasets_endpoint_count(self):
@@ -398,9 +373,7 @@ class TestAPIRouteStaticContract:
             for route in router.routes
             for method in getattr(route, "methods", set())
         }
-        assert len(endpoint_keys) >= 9, (
-            f"datasets 端点数 < 9：实际 {len(endpoint_keys)} 个端点。"
-        )
+        assert len(endpoint_keys) >= 9, f"datasets 端点数 < 9：实际 {len(endpoint_keys)} 个端点。"
 
     def test_snapshots_endpoint_count(self):
         """snapshots 路由必须注册 4 个端点（list/create/get/reproduce）."""
@@ -411,9 +384,7 @@ class TestAPIRouteStaticContract:
             for route in router.routes
             for method in getattr(route, "methods", set())
         }
-        assert len(endpoint_keys) >= 4, (
-            f"snapshots 端点数 < 4：实际 {len(endpoint_keys)} 个端点。"
-        )
+        assert len(endpoint_keys) >= 4, f"snapshots 端点数 < 4：实际 {len(endpoint_keys)} 个端点。"
 
     def test_workflow_spec_model_fields_snake_case(self):
         """WorkflowSpecModel 字段必须为 snake_case，且与契约层 WorkflowSpec 对齐."""
@@ -427,9 +398,7 @@ class TestAPIRouteStaticContract:
         )
         # snake_case 校验：所有字段名不应包含 camelCase 大写字母
         for fname in model_fields:
-            assert fname == fname.lower() or "_" in fname, (
-                f"字段名 {fname} 不符合 snake_case 命名规范"
-            )
+            assert fname == fname.lower() or "_" in fname, f"字段名 {fname} 不符合 snake_case 命名规范"
 
     def test_workflow_node_model_fields_snake_case(self):
         """WorkflowNodeModel 字段必须为 snake_case，且与契约层 WorkflowNode 对齐."""
@@ -444,9 +413,7 @@ class TestAPIRouteStaticContract:
             "retry",
             "timeout_seconds",
         }
-        assert expected.issubset(model_fields), (
-            f"WorkflowNodeModel 缺少字段：{expected - model_fields}"
-        )
+        assert expected.issubset(model_fields), f"WorkflowNodeModel 缺少字段：{expected - model_fields}"
 
     def test_workflow_edge_model_fields_snake_case(self):
         """WorkflowEdgeModel 字段必须为 snake_case，且与契约层 WorkflowEdge 对齐."""
@@ -454,9 +421,7 @@ class TestAPIRouteStaticContract:
 
         model_fields = set(WorkflowEdgeModel.model_fields.keys())
         expected = {"upstream", "downstream"}
-        assert expected.issubset(model_fields), (
-            f"WorkflowEdgeModel 缺少字段：{expected - model_fields}"
-        )
+        assert expected.issubset(model_fields), f"WorkflowEdgeModel 缺少字段：{expected - model_fields}"
 
     def test_create_dataset_request_fields(self):
         """CreateDatasetRequest 必须包含 name/schema/owner_id 字段（schema 为输入别名）."""
@@ -464,9 +429,7 @@ class TestAPIRouteStaticContract:
 
         model_fields = set(CreateDatasetRequest.model_fields.keys())
         expected = {"name", "dataset_schema", "owner_id"}
-        assert expected.issubset(model_fields), (
-            f"CreateDatasetRequest 缺少字段：{expected - model_fields}"
-        )
+        assert expected.issubset(model_fields), f"CreateDatasetRequest 缺少字段：{expected - model_fields}"
         # schema 作为输入别名必须可用（契约标准字段名）
         assert CreateDatasetRequest.model_fields["dataset_schema"].alias == "schema", (
             "dataset_schema 字段必须带 schema 别名以兼容契约标准输入名"
@@ -485,9 +448,7 @@ class TestAPIRouteStaticContract:
             "created_by",
             "notes",
         }
-        assert expected.issubset(model_fields), (
-            f"CreateSnapshotRequest 缺少字段：{expected - model_fields}"
-        )
+        assert expected.issubset(model_fields), f"CreateSnapshotRequest 缺少字段：{expected - model_fields}"
 
     def test_workflow_spec_model_field_naming_matches_contract(self):
         """WorkflowSpecModel 字段名必须与契约层 WorkflowSpec 完全一致（snake_case 对齐）."""
@@ -497,8 +458,7 @@ class TestAPIRouteStaticContract:
         contract_fields = _field_names(WorkflowSpec)
         # API 模型字段必须是契约字段的超集（允许 API 增加 Pydantic 配置字段，但不能少）
         assert contract_fields.issubset(api_fields), (
-            f"API WorkflowSpecModel 缺少契约字段：{contract_fields - api_fields}。"
-            f"API 模型必须覆盖契约层所有字段。"
+            f"API WorkflowSpecModel 缺少契约字段：{contract_fields - api_fields}。API 模型必须覆盖契约层所有字段。"
         )
 
     def test_create_snapshot_request_field_naming_matches_contract(self):
@@ -520,14 +480,11 @@ class TestAPIRouteStaticContract:
         }
         user_provided_contract_fields = contract_fields - system_generated
         assert user_provided_contract_fields.issubset(api_fields), (
-            f"CreateSnapshotRequest 缺少用户可提供字段："
-            f"{user_provided_contract_fields - api_fields}"
+            f"CreateSnapshotRequest 缺少用户可提供字段：{user_provided_contract_fields - api_fields}"
         )
 
 
-# ---------------------------------------------------------------------------
 # 4. 契约版本稳定性
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -554,14 +511,11 @@ class TestContractVersionStability:
         from app.contracts import __version__
 
         assert __version__ == CONTRACTS_VERSION, (
-            f"__version__ ({__version__}) 与 CONTRACTS_VERSION ({CONTRACTS_VERSION}) 不一致。"
-            f"两者必须同步维护。"
+            f"__version__ ({__version__}) 与 CONTRACTS_VERSION ({CONTRACTS_VERSION}) 不一致。两者必须同步维护。"
         )
 
 
-# ---------------------------------------------------------------------------
 # 5. WorkflowSpec.validate() 行为一致性
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -647,9 +601,7 @@ class TestWorkflowSpecValidateConsistency:
         assert len(errors) > 0, "边引用不存在节点必须被检测"
 
 
-# ---------------------------------------------------------------------------
-# 6. 契约层 ↔ API 层字段命名风格一致性
-# ---------------------------------------------------------------------------
+# 6. 契约层 API 层字段命名风格一致性
 
 
 @pytest.mark.unit
@@ -678,8 +630,7 @@ class TestFieldNamingStyleConsistency:
         for cls in contract_classes:
             for field_name in _field_names(cls):
                 assert snake_case_re.match(field_name), (
-                    f"{cls.__name__}.{field_name} 不符合 snake_case 命名规范。"
-                    f"契约层字段必须全部为 snake_case。"
+                    f"{cls.__name__}.{field_name} 不符合 snake_case 命名规范。契约层字段必须全部为 snake_case。"
                 )
 
     def test_api_pydantic_model_fields_are_snake_case(self):
@@ -704,9 +655,7 @@ class TestFieldNamingStyleConsistency:
         ]
         for model in api_models:
             for field_name in model.model_fields.keys():
-                assert snake_case_re.match(field_name), (
-                    f"{model.__name__}.{field_name} 不符合 snake_case 命名规范。"
-                )
+                assert snake_case_re.match(field_name), f"{model.__name__}.{field_name} 不符合 snake_case 命名规范。"
 
 
 if __name__ == "__main__":

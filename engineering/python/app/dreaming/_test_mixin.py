@@ -91,9 +91,7 @@ class _TestMixin:
 
         return cases
 
-    # ------------------------------------------------------------------
     # 阶段 4：模拟执行
-    # ------------------------------------------------------------------
 
     def _simulate_execution(self, rule: RuleDraft) -> list[ValidationTestCase]:
         """使用合成数据模拟规则执行。

@@ -214,6 +214,4 @@ class MaintenancePlan(Base):
         return f"<MaintenancePlan(id={self.id}, title={self.title}, status={self.status})>"
 
 
-# ---------------------------------------------------------------------------
 # Quality Inspection Models (quality_records / quality_anomalies)
-# ---------------------------------------------------------------------------

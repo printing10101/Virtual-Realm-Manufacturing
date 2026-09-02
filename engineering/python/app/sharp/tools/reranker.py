@@ -28,9 +28,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 来源权重（基于 ontology-v1.md RelationSource 枚举与领域经验）
-# ---------------------------------------------------------------------------
 
 SOURCE_WEIGHTS: dict[str, float] = {
     # KG 来源（已持久化的关系）
@@ -56,7 +54,7 @@ SOURCE_WEIGHTS: dict[str, float] = {
     "unknown": 0.5,
 }
 
-# 工具名 → 来源标签 映射
+# 工具名 来源标签 映射
 TOOL_TO_SOURCE: dict[str, str] = {
     "kg.query_entity": "kg",
     "kg.query_relation": "kg",
@@ -69,9 +67,7 @@ TOOL_TO_SOURCE: dict[str, str] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # 证据结构
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -112,9 +108,7 @@ class Evidence:
         }
 
 
-# ---------------------------------------------------------------------------
 # 重排序器
-# ---------------------------------------------------------------------------
 
 
 class EvidenceReranker:
@@ -142,9 +136,7 @@ class EvidenceReranker:
         self.source_weights = source_weights or SOURCE_WEIGHTS
         self.default_top_k = default_top_k
 
-    # ------------------------------------------------------------------
     # 证据收集
-    # ------------------------------------------------------------------
 
     def collect_from_tool_results(
         self,
@@ -313,9 +305,7 @@ class EvidenceReranker:
 
         return evidences
 
-    # ------------------------------------------------------------------
     # 重排序
-    # ------------------------------------------------------------------
 
     def rerank(
         self,
@@ -361,15 +351,13 @@ class EvidenceReranker:
             return self.source_weights.get("unknown", 0.5)
         if source in self.source_weights:
             return self.source_weights[source]
-        # 前缀匹配（如 "uniwear-phm2010-chunk-xxx" → "uniwear-phm2010"）
+        # 前缀匹配（如 "uniwear-phm2010-chunk-xxx" "uniwear-phm2010"）
         for prefix, weight in self.source_weights.items():
             if source.startswith(prefix):
                 return weight
         return self.source_weights.get("unknown", 0.5)
 
-    # ------------------------------------------------------------------
     # 聚合置信度
-    # ------------------------------------------------------------------
 
     def aggregate_confidence(
         self,

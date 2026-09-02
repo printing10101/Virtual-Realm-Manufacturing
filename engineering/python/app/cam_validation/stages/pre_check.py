@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 
 class PreCheckMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _cfg: Any
     _store: Any
 
@@ -61,9 +61,7 @@ class PreCheckMixin:
         - 系统绝不直接接口 CNC 控制器
     """
 
-    # -------------------------------------------------------------------------
     # 创建任务
-    # -------------------------------------------------------------------------
 
     def create_task(
         self,
@@ -145,9 +143,7 @@ class PreCheckMixin:
         )
         return task
 
-    # -------------------------------------------------------------------------
     # 删除任务（委托给 CamTaskStore，SUCCEEDED 禁删硬约束已实现）
-    # -------------------------------------------------------------------------
 
     def delete_task(self, task_id: str) -> None:
         """删除任务。
@@ -162,9 +158,7 @@ class PreCheckMixin:
         """
         self._store.delete_task(task_id, allow_delete_succeeded=False)
 
-    # -------------------------------------------------------------------------
     # 任务查询
-    # -------------------------------------------------------------------------
 
     def get_task(self, task_id: str) -> CamValidationTask:
         """获取任务详情。
@@ -184,10 +178,8 @@ class PreCheckMixin:
         """列出任务（可选状态过滤，按创建时间倒序）。"""
         return self._store.list_tasks(status_filter=status_filter)
 
-    # -------------------------------------------------------------------------
     # 内部辅助：构建结果摘要 + disclaimer（供 SoftwareCheckMixin /
     # MergeReportMixin 共享调用）
-    # -------------------------------------------------------------------------
 
     def _build_result(
         self,
@@ -258,9 +250,7 @@ class PreCheckMixin:
             cam_report_exported=cam_report_exported,
         )
 
-    # -------------------------------------------------------------------------
     # 内部辅助：解析输出目录
-    # -------------------------------------------------------------------------
 
     def _resolve_output_dir(self) -> Path:
         """解析输出目录。cfg 为 None 时使用默认 outputs/cam_validation。"""

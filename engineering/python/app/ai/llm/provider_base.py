@@ -168,9 +168,7 @@ class LLMProvider:
     def latency_ms(self) -> float | None:
         return self._last_latency_ms
 
-    # ------------------------------------------------------------------
     # 抽象方法（子类必须实现）
-    # ------------------------------------------------------------------
 
     async def detect(self) -> bool:
         """探测该 Provider 是否在当前主机可用。
@@ -217,9 +215,7 @@ class LLMProvider:
         """
         raise NotImplementedError
 
-    # ------------------------------------------------------------------
     # 共享工具方法
-    # ------------------------------------------------------------------
 
     async def _http_get(self, url: str, headers: dict[str, str] | None = None) -> httpx.Response:
         """发起 GET 请求（复用共享连接池）。"""

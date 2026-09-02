@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class _UpdateMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _llm_reflect: Callable[..., Any]
     _prepare_session_summaries: Callable[..., Any]
     _rule_based_insights: Callable[..., Any]

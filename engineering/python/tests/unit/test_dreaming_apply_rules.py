@@ -41,7 +41,7 @@ class TestRuleApplicator:
         graph = GraphStore(auto_load=False)
         applier = RuleApplicator(output_dir=str(tmp_path), graph_store=graph)
         applier.apply(_make_draft(), skip_validation=True)
-        # 二次应用 → 更新而非新增
+        # 二次应用 更新而非新增
         draft2 = _make_draft(description="更新后的描述")
         result = applier.apply(draft2, skip_validation=True)
         assert result.success is True
@@ -104,7 +104,7 @@ class TestRuleApplicator:
         from app.dreaming.rule_validator import RuleValidator
 
         v = RuleValidator()
-        # dict action 含 delete → SUCCEEDED 边界应失败
+        # dict action 含 delete SUCCEEDED 边界应失败
         delete_draft = RuleDraft(
             rule_id="r-del",
             rule_type="parameter_adjustment",
@@ -114,7 +114,7 @@ class TestRuleApplicator:
             confidence=0.8,
         )
         assert v._simulate_apply(delete_draft, {"status": "SUCCEEDED"}) is False
-        # dict action 不含 delete → 通过
+        # dict action 不含 delete 通过
         safe_draft = RuleDraft(
             rule_id="r-safe",
             rule_type="parameter_adjustment",

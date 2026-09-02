@@ -54,9 +54,7 @@ from app.plugins.plugin_system import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# 状态枚举映射：legacy PluginStatus → 契约友好字符串
-# ---------------------------------------------------------------------------
+# 状态枚举映射：legacy PluginStatus 契约友好字符串
 
 
 class PluginStatusMapper:
@@ -90,9 +88,7 @@ class PluginStatusMapper:
         return ["installed", "enabled", "disabled", "error", "uninstalled"]
 
 
-# ---------------------------------------------------------------------------
-# 扩展点命名映射：core.ui.workspace_panel ↔ workspace.panel
-# ---------------------------------------------------------------------------
+# 扩展点命名映射：core.ui.workspace_panel workspace.panel
 
 
 class ExtensionPointNameMapper:
@@ -136,9 +132,7 @@ class ExtensionPointNameMapper:
         return list(cls._BACKEND_TO_FRONTEND.keys())
 
 
-# ---------------------------------------------------------------------------
-# Manifest 适配：legacy PluginMetadata → 契约 PluginManifest
-# ---------------------------------------------------------------------------
+# Manifest 适配：legacy PluginMetadata 契约 PluginManifest
 
 
 def _legacy_entrypoint_to_contract(plugin_id: str, legacy_entry: str) -> str:
@@ -198,9 +192,7 @@ def adapt_metadata_to_manifest(metadata: PluginMetadata) -> PluginManifest:
     )
 
 
-# ---------------------------------------------------------------------------
-# 插件实例适配：legacy 插件实例 → 契约 IPlugin
-# ---------------------------------------------------------------------------
+# 插件实例适配：legacy 插件实例 契约 IPlugin
 
 
 class LegacyPluginInstanceAdapter(IPlugin):
@@ -352,9 +344,7 @@ class LegacyPluginInstanceAdapter(IPlugin):
         return self._loaded
 
 
-# ---------------------------------------------------------------------------
 # PluginContext 构造：从核心基础设施构造 PluginContext
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -397,9 +387,7 @@ class PluginContextFactory:
         return str(Path(".plugin_data") / plugin_id)
 
 
-# ---------------------------------------------------------------------------
 # PluginLifecycleManagerAdapter：顶层契约入口
-# ---------------------------------------------------------------------------
 
 
 class PluginLifecycleManagerAdapter:
@@ -430,7 +418,7 @@ class PluginLifecycleManagerAdapter:
         self._adapter_cache: dict[str, LegacyPluginInstanceAdapter] = {}
         self._lock = threading.Lock()
 
-    # ----- 查询接口 -----
+    # 查询接口
 
     def list_manifests(self, *, include_uninstalled: bool = False) -> list[PluginManifest]:
         """列出所有插件的 manifest（契约视图）."""
@@ -490,7 +478,7 @@ class PluginLifecycleManagerAdapter:
             "disabled_at": metadata.disabled_at,
         }
 
-    # ----- 加载/卸载（契约入口） -----
+    # 加载/卸载（契约入口）
 
     def load_plugin_as_contract(self, plugin_id: str) -> IPlugin:
         """以契约 IPlugin 形式加载插件.
@@ -553,7 +541,7 @@ class PluginLifecycleManagerAdapter:
 
         return True
 
-    # ----- 安装/卸载（透传 legacy） -----
+    # 安装/卸载（透传 legacy）
 
     def install(self, metadata: PluginMetadata) -> None:
         """注册新插件到 registry（不触发加载）."""
@@ -606,7 +594,7 @@ class PluginLifecycleManagerAdapter:
 
         self._mgr.uninstall_plugin(plugin_id)
 
-    # ----- 内部辅助 -----
+    # 内部辅助
 
     def _get_or_create_adapter(
         self,
@@ -636,9 +624,7 @@ class PluginLifecycleManagerAdapter:
             self._adapter_cache.clear()
 
 
-# ---------------------------------------------------------------------------
 # 模块级单例访问（与 legacy get_plugin_manager 对齐）
-# ---------------------------------------------------------------------------
 
 
 _adapter_singleton: PluginLifecycleManagerAdapter | None = None

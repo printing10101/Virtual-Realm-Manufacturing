@@ -10,7 +10,7 @@ from app.process_planning.operation_sequencer import Operation
 
 
 class _FeatureCodeMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _config_limiter: Any
     _five_axis_planner: Any
 
@@ -65,7 +65,7 @@ class _FeatureCodeMixin:
         is_five_axis = controller_type == "xmachine_xm100"
 
         if "钻" in method:
-            # === 钻孔类工序 ===
+            # 钻孔类工序
             lines.append(postprocessor._comment(f"钻孔: {op.feature_name}"))
 
             # 从数据库获取切削参数
@@ -123,7 +123,7 @@ class _FeatureCodeMixin:
                 lines.append(postprocessor.format_rtcp_off())
 
         elif "铣" in method:
-            # === 铣削类工序 ===
+            # 铣削类工序
             lines.append(postprocessor._comment(f"铣削: {op.feature_name}"))
 
             # 从数据库获取切削参数
@@ -235,7 +235,7 @@ class _FeatureCodeMixin:
                 lines.append(postprocessor._comment("取消刀具半径补偿"))
 
         elif "车" in method:
-            # === 车削类工序 ===
+            # 车削类工序
             lines.append(postprocessor._comment(f"车削: {op.feature_name}"))
 
             # 从数据库获取切削参数
@@ -302,7 +302,7 @@ class _FeatureCodeMixin:
             lines.append("G80")
 
         elif "五轴" in method or "3+2" in method or "联动" in method:
-            # === 五轴专用工序 ===
+            # 五轴专用工序
             lines.append(postprocessor._comment(f"五轴加工: {op.feature_name}"))
 
             # 从数据库获取切削参数（五轴使用铣削参数）
@@ -377,7 +377,7 @@ class _FeatureCodeMixin:
                 lines.append(f"G01 Z{work_depth:.3f} F{feed_rate}")
 
         else:
-            # === 通用工序 ===
+            # 通用工序
             lines.append(postprocessor._comment(f"加工: {op.feature_name} ({op.machining_method})"))
 
         # 工序结束后抬刀至安全高度

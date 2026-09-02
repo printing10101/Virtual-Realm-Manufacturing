@@ -134,9 +134,7 @@ class TaskRouter:
     def ml_weight(self) -> float:
         return self._ml_weight
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
     def route(self, task: TaskInput) -> RoutingDecision:
         """Produce a routing decision for ``task``.
@@ -270,9 +268,7 @@ class TaskRouter:
         for eng in EngineType:
             self._engine_success[eng].clear()
 
-    # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
 
     def _rule_scores(
         self,

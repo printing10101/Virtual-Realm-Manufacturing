@@ -47,9 +47,7 @@ from app.services._shared.service_base import BaseSingletonService
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 单例服务
-# ---------------------------------------------------------------------------
 
 
 def get_workflow_template_service() -> "WorkflowTemplateService":
@@ -57,9 +55,7 @@ def get_workflow_template_service() -> "WorkflowTemplateService":
     return WorkflowTemplateService.get_instance()  # type: ignore[return-value]
 
 
-# ---------------------------------------------------------------------------
 # 自定义异常
-# ---------------------------------------------------------------------------
 
 
 class TemplateNotFoundError(LookupError):
@@ -78,9 +74,7 @@ class InvalidVersionError(ValueError):
     """版本号不递增或格式错误."""
 
 
-# ---------------------------------------------------------------------------
 # 服务实现
-# ---------------------------------------------------------------------------
 
 
 class WorkflowTemplateService(BaseSingletonService):
@@ -96,10 +90,10 @@ class WorkflowTemplateService(BaseSingletonService):
         # read-modify-write 操作需要应用层加锁，否则会丢失更新
         self._stats_lock = threading.Lock()
 
-    # ---- session 辅助 ----
+    # session 辅助
     # ``_get_session`` 由 ``BaseSingletonService`` 提供。
 
-    # ---- 发布 ----
+    # 发布
 
     async def publish(
         self,
@@ -249,7 +243,7 @@ class WorkflowTemplateService(BaseSingletonService):
                     "published_at": now.isoformat(),
                 }
 
-    # ---- 列表 ----
+    # 列表
 
     async def list_templates(
         self,
@@ -316,7 +310,7 @@ class WorkflowTemplateService(BaseSingletonService):
                 "offset": offset,
             }
 
-    # ---- 搜索 ----
+    # 搜索
 
     async def search(
         self,
@@ -350,7 +344,7 @@ class WorkflowTemplateService(BaseSingletonService):
             items = [row.to_dict() for row in result.scalars().all()]
             return {"items": items, "total": len(items), "query": query}
 
-    # ---- 详情 ----
+    # 详情
 
     async def get_template(
         self,
@@ -395,7 +389,7 @@ class WorkflowTemplateService(BaseSingletonService):
                 "manifest": version_orm.manifest_snapshot,
             }
 
-    # ---- 下载 ----
+    # 下载
 
     async def download(
         self,
@@ -440,7 +434,7 @@ class WorkflowTemplateService(BaseSingletonService):
         )
         return detail
 
-    # ---- 评分 ----
+    # 评分
 
     async def rate(
         self,
@@ -499,7 +493,7 @@ class WorkflowTemplateService(BaseSingletonService):
             "rating_count": new_count,
         }
 
-    # ---- 下架 ----
+    # 下架
 
     async def unpublish(self, template_id: str) -> dict[str, Any]:
         """下架模板（status -> unpublished，不删除数据）.
@@ -523,7 +517,7 @@ class WorkflowTemplateService(BaseSingletonService):
         logger.info("Unpublished workflow template: %s", template_id)
         return {"template_id": template_id, "status": "unpublished"}
 
-    # ---- 版本列表 ----
+    # 版本列表
 
     async def list_versions(self, template_id: str) -> dict[str, Any]:
         """列出某模板的所有版本（按创建时间倒序）.
@@ -552,7 +546,7 @@ class WorkflowTemplateService(BaseSingletonService):
                 "versions": versions,
             }
 
-    # ---- 市场统计 ----
+    # 市场统计
 
     async def market_stats(self) -> dict[str, Any]:
         """市场全局统计（模板总数 / 总下载 / 平均评分）."""

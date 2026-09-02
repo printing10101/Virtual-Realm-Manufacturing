@@ -80,9 +80,7 @@ async def ensure_table(database: str, table: str) -> bool:
         return False
 
 
-# ---------------------------------------------------------------------------
 # Entry point
-# ---------------------------------------------------------------------------
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -173,7 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         max_retries=args.max_retries,
     )
 
-    # Resolve database / table from the TDS URL.  We do this *before*
+    # Resolve database / table from the TDS URL. We do this *before*
     # wiring the TDengine client so the table-creation step uses the
     # right name.
     host, port, database = parse_tds_url(args.output)
@@ -187,7 +185,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "TDengine client could not be initialised; continuing in read-only mode (no rows will be persisted)."
             )
         else:
-            # Ensure table exists.  This is a best-effort step.
+            # Ensure table exists. This is a best-effort step.
             import asyncio
 
             try:
@@ -211,7 +209,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stderr.flush()
         return 2
 
-    # 2) Run the polling loop.  ``format_sample`` is the live printer.
+    # 2) Run the polling loop. ``format_sample`` is the live printer.
     ingested: int = 0
     try:
         ingested = adapter.run(duration=args.duration, on_sample=_print_sample)

@@ -72,9 +72,7 @@ class Nl2CadLLMResult:
             self.feedback_used = []
 
 
-# ---------------------------------------------------------------------------
 # Prompt / 代码提取
-# ---------------------------------------------------------------------------
 def build_user_prompt(description: str, feedback: str | None = None) -> str:
     prompt = _USER_TEMPLATE.format(description=description)
     if feedback:
@@ -106,9 +104,7 @@ def _run_ast_audit(script: str) -> None:
     _CadQueryScriptValidator().visit(tree)
 
 
-# ---------------------------------------------------------------------------
 # Provider 适配
-# ---------------------------------------------------------------------------
 def make_llm_call_from_provider(provider: Any) -> LLMCall:
     """把 LLMProvider.chat_completion 适配为 prompt→text 的 async callable。"""
 
@@ -146,9 +142,7 @@ def _get_default_llm_call() -> LLMCall:
         raise Nl2CadLLMNotConfigured(f"无法初始化 LLM Provider: {e}") from e
 
 
-# ---------------------------------------------------------------------------
 # 主入口：生成 + 校验 + 重生成闭环
-# ---------------------------------------------------------------------------
 async def generate_cadquery_script(
     natural_language: str,
     llm_call: LLMCall | None = None,
@@ -233,9 +227,7 @@ async def generate_cadquery_script(
     )
 
 
-# ---------------------------------------------------------------------------
 # 兼容层（与并行会话早期接口对齐）：DummyLlmClient + 同步包装
-# ---------------------------------------------------------------------------
 class DummyLlmClient:
     """免密钥 mock LLM 客户端（演示/测试用，返回固定脚本或回显 prompt）。"""
 

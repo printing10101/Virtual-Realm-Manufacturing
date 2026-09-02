@@ -211,7 +211,7 @@ class _HandlersMixin:
             },
         )
 
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     solution_generator: Any
     explainer: Any
     _get_llm_client: Callable[..., Any]

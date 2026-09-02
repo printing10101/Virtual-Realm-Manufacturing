@@ -54,9 +54,7 @@ def agent():
     a.stop()
 
 
-# ---------------------------------------------------------------------------
 # XML 构造纯函数
-# ---------------------------------------------------------------------------
 
 
 class TestXMLBuilders:
@@ -89,9 +87,7 @@ class TestXMLBuilders:
         assert parsed.spindle_speed == sample["spindle_speed"]
 
 
-# ---------------------------------------------------------------------------
 # MachineSimulator 状态机
-# ---------------------------------------------------------------------------
 
 
 class TestMachineSimulator:
@@ -115,9 +111,7 @@ class TestMachineSimulator:
         assert max(loads) > 80.0  # 至少一帧超过过载阈值
 
 
-# ---------------------------------------------------------------------------
 # 真实 HTTP 端点 + 两套解析器集成
-# ---------------------------------------------------------------------------
 
 
 class TestHTTPAgentEndpoints:
@@ -153,9 +147,7 @@ class TestHTTPAgentEndpoints:
         assert exc_info.value.code == 404
 
 
-# ---------------------------------------------------------------------------
 # 与 DNC MTConnectClient 的真实协议级连接
-# ---------------------------------------------------------------------------
 
 
 class TestDNCClientIntegration:
@@ -185,9 +177,7 @@ class TestDNCClientIntegration:
             await client.disconnect()
 
 
-# ---------------------------------------------------------------------------
 # 与 MTConnectAdapter 采集管道的真实协议级连接
-# ---------------------------------------------------------------------------
 
 
 class TestAdapterIntegration:
@@ -220,9 +210,7 @@ class TestAdapterIntegration:
             adapter.close()
 
 
-# ---------------------------------------------------------------------------
-# 端到端：MachiningCollector 整链路（拉取 → 聚合 → 双存储 sink）
-# ---------------------------------------------------------------------------
+# 端到端：MachiningCollector 整链路（拉取 聚合 双存储 sink）
 
 
 class TestMachiningCollectorPipeline:
@@ -278,9 +266,7 @@ class TestMachiningCollectorPipeline:
         assert first.material == "45号钢"
 
 
-# ---------------------------------------------------------------------------
 # 生命周期 / 端口复用
-# ---------------------------------------------------------------------------
 
 
 class TestLifecycle:

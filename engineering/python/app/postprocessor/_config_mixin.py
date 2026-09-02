@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class _ConfigMixin:
-    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类提供（mypy 需要显式声明）
     config: dict[str, Any]
     limiter: Any
 

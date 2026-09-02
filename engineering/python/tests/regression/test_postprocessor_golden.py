@@ -58,9 +58,7 @@ FIXED_DATE = "2026-01-01"
 @pytest.mark.regression
 @pytest.mark.parametrize("controller_id", list(CONTROLLERS.keys()))
 def test_golden_output_matches(controller_id: str, monkeypatch):
-    monkeypatch.setattr(
-        BasePostProcessor, "_date_string", staticmethod(lambda: FIXED_DATE)
-    )
+    monkeypatch.setattr(BasePostProcessor, "_date_string", staticmethod(lambda: FIXED_DATE))
     processor = CONTROLLERS[controller_id]()
     output = build_standard_program(processor)
     golden_path = GOLDEN_DIR / f"{controller_id}.nc"
@@ -83,9 +81,7 @@ def test_golden_output_matches(controller_id: str, monkeypatch):
     )
 
 
-# ---------------------------------------------------------------------------
 # 扩展序列：覆盖各方言全部能力（方言声明化 P0 行为基线）
-# ---------------------------------------------------------------------------
 
 
 def build_extended_program(processor: BasePostProcessor) -> str:
@@ -114,34 +110,28 @@ def build_extended_program(processor: BasePostProcessor) -> str:
 
     # 圆弧（顺/逆时针各一）
     if hasattr(processor, "format_arc"):
-        emit(
-            processor.format_arc(
-                (15.0, 25.0, 20.0), (25.0, 35.0, 20.0), (20.0, 30.0, 20.0), clockwise=True
-            )
-        )
-        emit(
-            processor.format_arc(
-                (25.0, 35.0, 20.0), (15.0, 25.0, 20.0), (20.0, 30.0, 20.0), clockwise=False
-            )
-        )
+        emit(processor.format_arc((15.0, 25.0, 20.0), (25.0, 35.0, 20.0), (20.0, 30.0, 20.0), clockwise=True))
+        emit(processor.format_arc((25.0, 35.0, 20.0), (15.0, 25.0, 20.0), (20.0, 30.0, 20.0), clockwise=False))
 
     # 固定循环：钻孔 / 攻丝 / 镗孔 / 螺纹 / 切槽 / 螺纹车削
     if hasattr(processor, "format_cycle_drill"):
         emit(processor.format_cycle_drill(x=20.0, y=30.0, z=20.0, depth=10.0, dwell=0.3))
     if hasattr(processor, "format_cycle_tapping"):
-        emit(
-            processor.format_cycle_tapping(
-                x=30.0, y=20.0, z=20.0, depth=12.0, pitch=1.5, spindle_rpm=800.0
-            )
-        )
+        emit(processor.format_cycle_tapping(x=30.0, y=20.0, z=20.0, depth=12.0, pitch=1.5, spindle_rpm=800.0))
     if hasattr(processor, "format_cycle_boring"):
         emit(processor.format_cycle_boring(x=40.0, y=20.0, z=20.0, depth=8.0, cycle_type="G86", dwell=0.4))
     if hasattr(processor, "format_cycle_threading"):
         emit(
             processor.format_cycle_threading(
-                x=10.0, y=10.0, depth=15.0, lead=1.5,
-                passes=4, depth_cut_first=0.3, depth_cut_last=0.1,
-                finishing_passes=1, tool_angle=55.0,
+                x=10.0,
+                y=10.0,
+                depth=15.0,
+                lead=1.5,
+                passes=4,
+                depth_cut_first=0.3,
+                depth_cut_last=0.1,
+                finishing_passes=1,
+                tool_angle=55.0,
             )
         )
     if hasattr(processor, "format_cycle_groove"):
@@ -149,8 +139,13 @@ def build_extended_program(processor: BasePostProcessor) -> str:
     if hasattr(processor, "format_cycle_thread_turning"):
         emit(
             processor.format_cycle_thread_turning(
-                x=30.0, z=25.0, depth=2.0, pitch=2.0,
-                passes=4, first_depth=0.4, last_depth=0.1,
+                x=30.0,
+                z=25.0,
+                depth=2.0,
+                pitch=2.0,
+                passes=4,
+                first_depth=0.4,
+                last_depth=0.1,
             )
         )
 
@@ -178,11 +173,7 @@ def build_extended_program(processor: BasePostProcessor) -> str:
     if hasattr(processor, "format_workspace_check"):
         emit(processor.format_workspace_check(x=20.0, y=20.0, z=20.0))
     if hasattr(processor, "format_probe_cycle"):
-        emit(
-            processor.format_probe_cycle(
-                probe_number=1, x_pos=25.0, y_pos=25.0, z_depth=-5.0
-            )
-        )
+        emit(processor.format_probe_cycle(probe_number=1, x_pos=25.0, y_pos=25.0, z_depth=-5.0))
     if hasattr(processor, "format_surface_normal_compensation"):
         emit(processor.format_surface_normal_compensation(enable=True))
 
@@ -196,9 +187,7 @@ def build_extended_program(processor: BasePostProcessor) -> str:
 @pytest.mark.parametrize("controller_id", list(CONTROLLERS.keys()))
 def test_golden_extended_matches(controller_id: str, monkeypatch):
     """扩展序列黄金比对：覆盖各方言全部能力（方言声明化 P0 基线）。"""
-    monkeypatch.setattr(
-        BasePostProcessor, "_date_string", staticmethod(lambda: FIXED_DATE)
-    )
+    monkeypatch.setattr(BasePostProcessor, "_date_string", staticmethod(lambda: FIXED_DATE))
     processor = CONTROLLERS[controller_id]()
     output = build_extended_program(processor)
     golden_path = GOLDEN_DIR / f"{controller_id}_extended.nc"

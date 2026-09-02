@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class _ApprovalEmergencyMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _emergency_audit_callback: Any
     _log_audit: Callable[..., Any]
     _conn: Any

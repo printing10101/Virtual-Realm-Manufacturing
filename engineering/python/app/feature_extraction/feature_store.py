@@ -285,9 +285,7 @@ class FeatureStore:
             )
 
 
-# =============================================================================
 # 全局单例（双重检查锁，参考 image_to_3d/task_store.py 的模式）
-# =============================================================================
 
 _feature_store: FeatureStore | None = None
 _singleton_lock = threading.Lock()

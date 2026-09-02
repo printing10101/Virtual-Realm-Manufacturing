@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-# ---------- 工具函数 ----------
+# 工具函数
 PASS = "[PASS]"
 FAIL = "[FAIL]"
 INFO = "[INFO]"
@@ -74,9 +74,7 @@ def test_api_functional():
     client = TestClient(test_app)
 
     # T1.1: 生成并上传STEP文件
-    step_path = _generate_test_step(
-        PROJECT_ROOT / "output/step_import/test_api_100x50x30.step"
-    )
+    step_path = _generate_test_step(PROJECT_ROOT / "output/step_import/test_api_100x50x30.step")
     file_size = step_path.stat().st_size
     print(f"  {INFO} 测试模型: {step_path.name}, 大小={file_size} bytes")
 
@@ -100,9 +98,7 @@ def test_api_functional():
     volume_ok = volume is not None and isinstance(volume, (int, float)) and volume > 0
     # 期望体积: 100*50*30 - pi*5^2*30 = 150000 - 2356.2 = 147643.8
     expected_volume = 100 * 50 * 30 - 3.14159 * 5**2 * 30
-    volume_close = (
-        abs(volume - expected_volume) / expected_volume < 0.05 if volume_ok else False
-    )
+    volume_close = abs(volume - expected_volume) / expected_volume < 0.05 if volume_ok else False
     result(
         f"体积(volume) > 0, 约 {expected_volume:.2f} mm^3",
         volume_ok,
@@ -127,9 +123,7 @@ def test_api_functional():
             abs(bbox["length"] - 100) < 2,
             f"实际={bbox['length']}",
         )
-        result(
-            "包围盒.width ~ 50mm", abs(bbox["width"] - 50) < 2, f"实际={bbox['width']}"
-        )
+        result("包围盒.width ~ 50mm", abs(bbox["width"] - 50) < 2, f"实际={bbox['width']}")
         result(
             "包围盒.height ~ 30mm",
             abs(bbox["height"] - 30) < 2,
@@ -316,14 +310,10 @@ G00 Z10
         result("碰撞检测完成", True)
 
         # T4.5: 验证输出STL文件
-        output_stl = (
-            Path(sim_result.stock_stl_url) if sim_result.stock_stl_url else None
-        )
+        output_stl = Path(sim_result.stock_stl_url) if sim_result.stock_stl_url else None
         if output_stl and output_stl.exists():
             out_mesh = trimesh.load(str(output_stl))
-            result(
-                f"输出STL顶点数: {len(out_mesh.vertices)}", len(out_mesh.vertices) > 0
-            )
+            result(f"输出STL顶点数: {len(out_mesh.vertices)}", len(out_mesh.vertices) > 0)
             result(f"输出STL面数: {len(out_mesh.faces)}", len(out_mesh.faces) > 0)
 
             # T4.6: 验证几何坐标偏差 < 0.1mm
@@ -331,9 +321,7 @@ G00 Z10
                 orig_bbox = mesh.bounds
                 out_bbox = out_mesh.bounds
                 if orig_bbox is not None and out_bbox is not None:
-                    max_diff = max(
-                        abs(orig_bbox[1][i] - out_bbox[1][i]) for i in range(3)
-                    )
+                    max_diff = max(abs(orig_bbox[1][i] - out_bbox[1][i]) for i in range(3))
                     result(
                         f"坐标偏差(max): {max_diff:.3f}mm < 0.1mm",
                         max_diff < 0.1,
@@ -413,7 +401,7 @@ def test_frontend_validation():
         result("类型含ModelInfo", has_model_info)
 
 
-# ---------- 主入口 ----------
+# 主入口
 async def main():
     print(f"\n{'#' * 60}")
     print("#  STEP导入功能端到端验证")
@@ -453,7 +441,7 @@ async def main():
 
         traceback.print_exc()
 
-    # ---------- 汇总 ----------
+    # 汇总
     print(f"\n{'=' * 60}")
     print("  测试汇总")
     print(f"{'=' * 60}")

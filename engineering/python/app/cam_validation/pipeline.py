@@ -65,15 +65,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-# ---- 公开 API re-export（向后兼容） ----
+# 公开 API re-export（向后兼容）
 from app.cam_validation.stages._common import CamValidationResult
 
-# ---- mixin 导入（用于多重继承组合） ----
+# mixin 导入（用于多重继承组合）
 from app.cam_validation.stages.merge_report import MergeReportMixin
 from app.cam_validation.stages.pre_check import PreCheckMixin
 from app.cam_validation.stages.software_check import SoftwareCheckMixin
 
-# ---- __init__ 所需的依赖注入类 ----
+# __init__ 所需的依赖注入类
 from app.cam_validation.cam_adapter import CamAdapter
 from app.cam_validation.cam_store import get_task_store
 from app.cam_validation.gcode_loader import GCodeLoader
@@ -88,9 +88,7 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # CamValidationPipeline：3 个 mixin 的多重继承组合点
-# =============================================================================
 
 
 class CamValidationPipeline(
@@ -157,7 +155,7 @@ class CamValidationPipeline(
         else:
             # cfg 为 None 的测试场景：构造一个最小可用 config
             # （InternalValidator 需要 config.precision_tier 等字段，
-            #  此分支仅用于单元测试注入 validator 时跳过构造）
+            # 此分支仅用于单元测试注入 validator 时跳过构造）
             self._validator = validator
 
         if adapter is not None:

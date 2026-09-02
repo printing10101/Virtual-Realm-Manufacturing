@@ -52,9 +52,7 @@ router = APIRouter(prefix="/api/rag", tags=["RAG 知识库"])
 kb = get_knowledge_base()
 
 
-# ---------------------------------------------------------------------------
 # v2 增强：懒加载单例（避免在导入时初始化重型组件）
-# ---------------------------------------------------------------------------
 
 _rag_engine_instance = None
 _rag_engine_lock = threading.Lock()
@@ -165,12 +163,9 @@ async def cleanup_orphaned():
     return await cleanup_orphaned_service()
 
 
-# ===========================================================================
 # v2 增强 API 端点
-# ===========================================================================
 # 以下端点暴露 RAG pipeline 的诊断、评估与 ablation study 能力，
 # 便于运维与研发团队量化各增强模块的贡献度。
-# ---------------------------------------------------------------------------
 
 
 @router.get("/v2/enhancement/status", dependencies=[Depends(get_current_user)])
@@ -297,11 +292,9 @@ def generate_comparison_report(
     return generate_comparison_report_service(top_k, category, difficulty, run_ablation)
 
 
-# ===========================================================================
 # 工艺决策四元组 API（CAMWorks TechDB 思路落地）
-# ===========================================================================
-# 落地竞品分析识别的核心补强点：Feature → Process → Tool → Parameter 四元组建模。
-# 通过 chunk_ids 字段与 EntityIndex 互查，实现 quadruple → 原始文档溯源。
+# 落地竞品分析识别的核心补强点：Feature Process Tool Parameter 四元组建模。
+# 通过 chunk_ids 字段与 EntityIndex 互查，实现 quadruple 原始文档溯源。
 
 
 @router.post("/process/recommend", dependencies=[Depends(require_permission("rag:write"))])

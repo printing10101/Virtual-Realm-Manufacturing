@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class _FormatMixin:
-    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类提供（mypy 需要显式声明）
     decimal_places: int
     get_feed_rate: Callable[..., float]
 
@@ -93,9 +93,7 @@ class _FormatMixin:
         """
         return "M00"
 
-    # ------------------------------------------------------------------
     # 通用直线/快速移动与 RTCP 接口
-    # ------------------------------------------------------------------
     # 背景：gcode_generator 在三轴与五轴模式下均会调用 format_linear_move，
     # 因此必须在基类提供默认实现；format_rapid_move / format_rtcp_on/off
     # 仅在五轴模式下调用（已用 hasattr 保护），仍提供默认实现以便子类按需覆盖。

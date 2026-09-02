@@ -13,7 +13,7 @@ except ImportError:
 
 
 class _ValidationMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     REQUIRED_LNN_KEYS: Any
     REQUIRED_MODEL_KEYS: Any
     REQUIRED_THRESHOLD_KEYS: Any

@@ -40,9 +40,7 @@ from app.sharp.schema.domain_schema import Triple
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 相似度分数
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -83,9 +81,7 @@ class SimilarityScore:
         }
 
 
-# ---------------------------------------------------------------------------
 # 权重常量
-# ---------------------------------------------------------------------------
 
 WEIGHT_RELATION: float = 0.4
 WEIGHT_ENTITY_HEAD: float = 0.15
@@ -97,9 +93,7 @@ DEFAULT_MIN_SCORE: float = 0.3
 DEFAULT_TOP_K: int = 3
 
 
-# ---------------------------------------------------------------------------
 # 相似度检索器
-# ---------------------------------------------------------------------------
 
 
 class SimilarityRetriever:
@@ -127,9 +121,7 @@ class SimilarityRetriever:
         self.min_score = max(0.0, min(1.0, min_score))
         self.top_k = max(1, top_k)
 
-    # ------------------------------------------------------------------
     # 公共接口
-    # ------------------------------------------------------------------
 
     def retrieve(
         self,
@@ -171,9 +163,7 @@ class SimilarityRetriever:
         scored.sort(key=lambda x: x[1].total_score, reverse=True)
         return scored[:k]
 
-    # ------------------------------------------------------------------
     # 相似度计算
-    # ------------------------------------------------------------------
 
     def _compute_similarity(self, triple: Triple, record: StoredTrajectory) -> SimilarityScore:
         """计算单个历史轨迹与当前三元组的相似度。"""

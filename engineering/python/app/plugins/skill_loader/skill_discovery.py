@@ -43,7 +43,7 @@ class SkillDiscoveryMixin:
     以及 ``self.skills_base`` / ``self.registry`` 属性。
     """
 
-    # ---- 宿主契约：由兄弟 mixin 提供（PathSafetyMixin/SkillCompilerMixin） ----
+    # 宿主契约：由兄弟 mixin 提供（PathSafetyMixin/SkillCompilerMixin）
     _compute_content_hash: Callable[..., str]
     _compile_code: Callable[..., Any]
     _resolve_safe_subpath: Callable[..., str]

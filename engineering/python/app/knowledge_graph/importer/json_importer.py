@@ -30,7 +30,7 @@
 
 from __future__ import annotations
 
-# --- 共享基础设施：常量 / 数据类 / 去重器 / 辅助函数 / 路径定义 ---------
+# 共享基础设施：常量 / 数据类 / 去重器 / 辅助函数 / 路径定义
 from app.knowledge_graph.importer.importers._common import (
     # 路径常量
     MATERIALS_JSON,
@@ -52,7 +52,7 @@ from app.knowledge_graph.importer.importers._common import (
     # logger（历史代码可能依赖 json_importer.logger）
 )
 
-# --- 4 个导入器函数 --------------------------------------------------
+# 4 个导入器函数
 from app.knowledge_graph.importer.importers.machine_importer import (
     import_machines,
 )
@@ -66,7 +66,7 @@ from app.knowledge_graph.importer.importers.tool_importer import (
     import_tools,
 )
 
-# --- 协调器：import_all / load_graph_from_repository / main -----------
+# 协调器：import_all / load_graph_from_repository / main
 from app.knowledge_graph.importer.coordinator import (
     import_all,
     load_graph_from_repository,

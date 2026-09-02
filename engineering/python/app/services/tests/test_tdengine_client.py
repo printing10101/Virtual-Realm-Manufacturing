@@ -55,9 +55,7 @@ if str(_PYTHON_DIR) not in sys.path:
 from app.services import tdengine_client
 
 
-# ---------------------------------------------------------------------------
 # 条件跳过：未安装 taospy 或服务不可达时跳过
-# ---------------------------------------------------------------------------
 
 
 _HAS_TAOS = importlib.util.find_spec("taos") is not None
@@ -86,9 +84,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="module")
@@ -159,9 +155,7 @@ def _run(coro: Any) -> Any:
     return asyncio.run(coro)
 
 
-# ---------------------------------------------------------------------------
 # 单元测试
-# ---------------------------------------------------------------------------
 
 
 class TestTDengineConfig:
@@ -297,7 +291,7 @@ class TestInsertAndQuery:
             database=test_database,
             limit=100,
         )
-        # 起点 ts=base（含），终点 ts=base+10ms（含） → 2 行（i=0 与 i=1）
+        # 起点 ts=base（含），终点 ts=base+10ms（含） 2 行（i=0 与 i=1）
         assert len(result) == 2, f"expected 2 rows, got {len(result)}"
 
     @pytest.mark.asyncio
@@ -533,9 +527,7 @@ class TestTimestampLiteralValidation:
             tdengine_client._validate_timestamp_literal("")
 
 
-# ---------------------------------------------------------------------------
 # 集成测试执行时间 sanity check
-# ---------------------------------------------------------------------------
 
 
 class TestExecutionTime:

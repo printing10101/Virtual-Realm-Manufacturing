@@ -39,9 +39,7 @@ from app.simulation.cutting_force.trainer import (
 )
 
 
-# ============================================================
 # Kienzle 模块测试
-# ============================================================
 
 
 class TestKienzleCoefficients:
@@ -172,9 +170,7 @@ class TestSpecificCuttingForce:
         assert abs(result - expected) < 1e-6
 
 
-# ============================================================
 # PINN 模型测试
-# ============================================================
 
 
 class TestResidualBlock:
@@ -270,9 +266,7 @@ class TestPINNLoss:
         assert "physics_loss" in losses
 
 
-# ============================================================
 # 训练器测试
-# ============================================================
 
 
 class TestSyntheticDataset:
@@ -329,9 +323,7 @@ class TestCuttingForceTrainer:
         assert all(np.isfinite(v) for v in history["val_loss"])
 
 
-# ============================================================
 # 推理接口测试
-# ============================================================
 
 
 class TestPredictor:

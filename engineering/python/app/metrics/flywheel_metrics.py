@@ -47,29 +47,25 @@ from app.contracts.observability import ISnapshotStore
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 常量
-# ---------------------------------------------------------------------------
 
-#: feedback_records 数据集名称（与 feedback_collector.FEEDBACK_DATASET_NAME 对齐）
+#: : feedback_records 数据集名称（与 feedback_collector.FEEDBACK_DATASET_NAME 对齐）
 FEEDBACK_DATASET_NAME = "feedback_records"
 
-#: 反馈记录中标识 adoption 类型的 feedback_type 值
+#: : 反馈记录中标识 adoption 类型的 feedback_type 值
 ADOPTION_FEEDBACK_TYPE = "adoption"
 
-#: 反馈记录 metadata 中存放预测时间戳的键名（用于计算 feedback_delay）
+#: : 反馈记录 metadata 中存放预测时间戳的键名（用于计算 feedback_delay）
 PREDICTION_TIMESTAMP_KEY = "prediction_timestamp"
 
-#: snapshot.metrics 中模型质量键名
+#: : snapshot.metrics 中模型质量键名
 MODEL_QUALITY_METRIC_KEY = "model_quality"
 
-#: snapshot.metrics 中不确定性均值键名
+#: : snapshot.metrics 中不确定性均值键名
 UNCERTAINTY_MEAN_METRIC_KEY = "uncertainty_mean"
 
 
-# ---------------------------------------------------------------------------
 # FlywheelMetrics 数据类
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -92,9 +88,7 @@ class FlywheelMetrics:
         return asdict(self)
 
 
-# ---------------------------------------------------------------------------
 # FlywheelMetricsCollector
-# ---------------------------------------------------------------------------
 
 
 class FlywheelMetricsCollector:
@@ -140,9 +134,7 @@ class FlywheelMetricsCollector:
         self._cache: dict[str, FlywheelMetrics] = {}
         self._cache_lock = threading.Lock()
 
-    # ------------------------------------------------------------------
     # 依赖注入 API
-    # ------------------------------------------------------------------
 
     @property
     def dataset_store(self) -> IDatasetStore | None:
@@ -172,9 +164,7 @@ class FlywheelMetricsCollector:
             self._feedback_dataset_id = dataset_id
         logger.info("feedback_dataset_id 已注入: %s", dataset_id)
 
-    # ------------------------------------------------------------------
     # 异步采集：真实数据源
-    # ------------------------------------------------------------------
 
     async def collect_current_metrics_async(self) -> FlywheelMetrics:
         """异步采集当前飞轮指标（全部来自真实数据源）.
@@ -249,9 +239,7 @@ class FlywheelMetricsCollector:
         historical.sort(key=lambda m: m.timestamp, reverse=True)
         return historical
 
-    # ------------------------------------------------------------------
     # 同步 fallback（deprecated，返回零值或基于缓存）
-    # ------------------------------------------------------------------
 
     def collect_current_metrics(self) -> FlywheelMetrics:
         """同步采集当前指标（deprecated，返回零值）.
@@ -286,9 +274,7 @@ class FlywheelMetricsCollector:
         )
         return []
 
-    # ------------------------------------------------------------------
     # 周报生成（异步）
-    # ------------------------------------------------------------------
 
     async def generate_weekly_report_async(self) -> dict[str, Any]:
         """异步生成每周飞轮报告.
@@ -345,9 +331,7 @@ class FlywheelMetricsCollector:
             "summary": self._generate_summary(current, trends),
         }
 
-    # ------------------------------------------------------------------
     # 内部：5 个指标的真实数据采集
-    # ------------------------------------------------------------------
 
     async def _get_data_volume_async(self) -> int:
         """获取加工记录数（feedback_records 最新版本 row_count）."""
@@ -433,9 +417,7 @@ class FlywheelMetricsCollector:
             return 0.0
         return round(sum(delays) / len(delays), 2)
 
-    # ------------------------------------------------------------------
     # 内部：辅助
-    # ------------------------------------------------------------------
 
     async def _get_latest_snapshot_async(self) -> Any | None:
         """获取最新实验快照（按 created_at 降序的第一个）."""
@@ -474,9 +456,7 @@ class FlywheelMetricsCollector:
             )
             return []
 
-    # ------------------------------------------------------------------
     # 纯函数：趋势与摘要计算（保持向后兼容）
-    # ------------------------------------------------------------------
 
     def _calculate_trends(self, historical: list[FlywheelMetrics]) -> dict[str, Any]:
         """计算指标趋势."""
@@ -612,9 +592,7 @@ class FlywheelMetricsCollector:
         return recommendations
 
 
-# ---------------------------------------------------------------------------
 # 辅助函数
-# ---------------------------------------------------------------------------
 
 
 def _parse_iso8601(ts: str) -> datetime.datetime | None:
@@ -639,9 +617,7 @@ def _parse_iso8601(ts: str) -> datetime.datetime | None:
     return dt
 
 
-# ---------------------------------------------------------------------------
 # 报告保存
-# ---------------------------------------------------------------------------
 
 
 def save_report_to_file(report: dict[str, Any], output_dir: str | Path) -> Path:
@@ -668,9 +644,7 @@ def save_report_to_file(report: dict[str, Any], output_dir: str | Path) -> Path:
     return filepath
 
 
-# ---------------------------------------------------------------------------
 # 全局单例
-# ---------------------------------------------------------------------------
 
 _collector: FlywheelMetricsCollector | None = None
 _collector_lock = threading.Lock()
@@ -726,9 +700,7 @@ def reset_flywheel_collector() -> None:
         _collector = None
 
 
-# ---------------------------------------------------------------------------
 # CLI
-# ---------------------------------------------------------------------------
 
 
 if __name__ == "__main__":

@@ -1,5 +1,3 @@
-
-
 """
 知识检索准确率测试
 
@@ -22,13 +20,7 @@ from app.ai.process_understanding.task_classifier import TaskType
 pytestmark = pytest.mark.skip_ci
 
 
-
-
-
-# ---------------------------------------------------------------------------
 # 典型工艺问题测试集
-# ---------------------------------------------------------------------------
-
 
 
 TYPICAL_QUERIES = [
@@ -89,9 +81,7 @@ class RetrievalRelevanceEvaluator:
     """检索相关性评估器"""
 
     @staticmethod
-    def calculate_relevance(
-        document: RetrievalDocument, expected_keywords: list[str]
-    ) -> float:
+    def calculate_relevance(document: RetrievalDocument, expected_keywords: list[str]) -> float:
         """计算文档与预期关键词的相关性得分。"""
         doc_text = document.content.lower() if document.content else ""
         if not doc_text:
@@ -130,9 +120,7 @@ class RetrievalRelevanceEvaluator:
         relevances = []
 
         for doc in top_k_docs:
-            relevance = RetrievalRelevanceEvaluator.calculate_relevance(
-                doc, expected_keywords
-            )
+            relevance = RetrievalRelevanceEvaluator.calculate_relevance(doc, expected_keywords)
             relevances.append(relevance)
 
         # Top-K 中至少有一个高相关 (>0.5) 即为通过
@@ -236,9 +224,7 @@ class TestDelegationMapping:
         )
 
         for task_type in TaskType:
-            assert task_type in TASK_TYPE_TO_QUERY_INTENT, (
-                f"{task_type} 缺少 QueryIntent 映射"
-            )
+            assert task_type in TASK_TYPE_TO_QUERY_INTENT, f"{task_type} 缺少 QueryIntent 映射"
             assert isinstance(TASK_TYPE_TO_QUERY_INTENT[task_type], str)
 
     def test_all_task_types_have_pipeline_level(self):
@@ -249,12 +235,8 @@ class TestDelegationMapping:
 
         valid_levels = {"fast", "standard", "full"}
         for task_type in TaskType:
-            assert task_type in TASK_TYPE_TO_PIPELINE_LEVEL, (
-                f"{task_type} 缺少 pipeline_level 配置"
-            )
-            assert TASK_TYPE_TO_PIPELINE_LEVEL[task_type] in valid_levels, (
-                f"{task_type} pipeline_level 无效"
-            )
+            assert task_type in TASK_TYPE_TO_PIPELINE_LEVEL, f"{task_type} 缺少 pipeline_level 配置"
+            assert TASK_TYPE_TO_PIPELINE_LEVEL[task_type] in valid_levels, f"{task_type} pipeline_level 无效"
 
     def test_all_task_types_have_default_top_k(self):
         """确保所有任务类型都有默认 top_k 配置。"""
@@ -263,17 +245,13 @@ class TestDelegationMapping:
         )
 
         for task_type in TaskType:
-            assert task_type in TASK_TYPE_DEFAULT_TOP_K, (
-                f"{task_type} 缺少默认 top_k 配置"
-            )
+            assert task_type in TASK_TYPE_DEFAULT_TOP_K, f"{task_type} 缺少默认 top_k 配置"
             assert isinstance(TASK_TYPE_DEFAULT_TOP_K[task_type], int)
             assert TASK_TYPE_DEFAULT_TOP_K[task_type] > 0
 
     def test_chitchat_uses_fast_pipeline(self):
         """闲聊任务应使用 fast pipeline 以降低延迟。"""
         from app.ai.process_understanding.knowledge_retriever import (
-
-
             TASK_TYPE_TO_PIPELINE_LEVEL,
         )
 

@@ -10,9 +10,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-# =============================================================================
 # 请求 / 响应模型
-# =============================================================================
 
 
 class TaskCreateRequest(BaseModel):

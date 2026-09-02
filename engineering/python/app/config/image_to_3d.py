@@ -113,9 +113,9 @@ class ImageTo3DConfig:
     calibration_block_mm: float = field(default_factory=lambda: _float_env("LNN_I2T3D_CALIBRATION_BLOCK_MM", 30.0))
 
     # 精度档位：影响 COLMAP SfM 的特征点数量阈值与 OpenMVS 网格密度
-    #   coarse  : 快，0.5-2mm，适合工艺理解/可视化
-    #   standard: 默认，0.1-1mm，适合非配合面尺寸复核
-    #   high    : 慢，0.1-0.5mm，小零件细节，仍达不到配合面公差
+    # coarse : 快，0.5-2mm，适合工艺理解/可视化
+    # standard: 默认，0.1-1mm，适合非配合面尺寸复核
+    # high : 慢，0.1-0.5mm，小零件细节，仍达不到配合面公差
     precision_tier: str = field(default_factory=lambda: _env("LNN_I2T3D_PRECISION_TIER", "standard"))
 
     # 并发约束：重建任务重 IO+CPU，桌面模式默认串行

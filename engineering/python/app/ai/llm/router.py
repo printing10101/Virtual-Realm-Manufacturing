@@ -28,9 +28,7 @@ from app.ai.llm._router_models import (  # noqa: F401
     RoutingStrategy,
 )
 
-# ---------------------------------------------------------------------------
 # 全局单例
-# ---------------------------------------------------------------------------
 
 _router: ProviderRouter | None = None
 _router_lock = threading.Lock()

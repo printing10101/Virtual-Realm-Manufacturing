@@ -16,6 +16,7 @@
   供本地测试与 CI 环境使用。content_hash 计算与真实 DatasetStore 一致
   （sha256 of canonical_json）。
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -40,9 +41,7 @@ from plugins.data_flywheel.feedback_collector import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 测试替身：InMemoryDatasetStore
-# ---------------------------------------------------------------------------
 
 
 def _compute_content_hash(records: list[dict[str, Any]]) -> str:
@@ -143,9 +142,7 @@ class InMemoryDatasetStore(IDatasetStore):
             self._lineages.append(lineage)
         return v
 
-    async def get_version(
-        self, dataset_id: str, version: Optional[str] = None
-    ) -> DatasetVersion:
+    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersion:
         versions = self._versions.get(dataset_id, [])
         if not versions:
             raise KeyError(f"dataset 无版本: {dataset_id}")
@@ -178,9 +175,7 @@ class InMemoryDatasetStore(IDatasetStore):
         raise KeyError(f"版本不存在: {dataset_id}/{version}")
 
 
-# ---------------------------------------------------------------------------
 # fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -203,9 +198,7 @@ def small_batch_collector(store: InMemoryDatasetStore) -> FeedbackCollector:
     )
 
 
-# ---------------------------------------------------------------------------
 # 测试：常量与 Schema
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -217,9 +210,7 @@ class TestFeedbackCollectorConstants:
         assert FEEDBACK_DATASET_NAME == "feedback_records"
 
     def test_valid_feedback_types(self):
-        assert VALID_FEEDBACK_TYPES == frozenset(
-            {"annotation", "adoption", "correction"}
-        )
+        assert VALID_FEEDBACK_TYPES == frozenset({"annotation", "adoption", "correction"})
 
     def test_feedback_dataset_schema_valid(self):
         """schema 自身合法性（DatasetSchema.validate 应无错误）."""
@@ -240,9 +231,7 @@ class TestFeedbackCollectorConstants:
         assert FEEDBACK_DATASET_SCHEMA.primary_key == ["feedback_id"]
 
 
-# ---------------------------------------------------------------------------
 # 测试：构造与配置
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -291,9 +280,7 @@ class TestFeedbackCollectorConstruction:
         assert any("降级模式" in r.message for r in caplog.records)
 
 
-# ---------------------------------------------------------------------------
 # 测试：record_annotation
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -331,9 +318,7 @@ class TestRecordAnnotation:
             await collector.record_annotation(user_id="")
 
 
-# ---------------------------------------------------------------------------
 # 测试：record_adoption
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -370,9 +355,7 @@ class TestRecordAdoption:
             await collector.record_adoption(user_id="u-1", accepted=1)  # type: ignore[arg-type]
 
 
-# ---------------------------------------------------------------------------
 # 测试：record_correction
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -410,9 +393,7 @@ class TestRecordCorrection:
             )
 
 
-# ---------------------------------------------------------------------------
 # 测试：缓冲区与自动 flush
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -439,16 +420,14 @@ class TestBufferAndAutoFlush:
         store.commit_should_fail = True
         # 第 1 条
         await small_batch_collector.record_annotation(user_id="u-1")
-        # 第 2 条触发 flush，但 commit 失败 → 记录放回缓冲区
+        # 第 2 条触发 flush，但 commit 失败 记录放回缓冲区
         await small_batch_collector.record_annotation(user_id="u-2")
         # 缓冲区应保留 2 条（flush 失败回滚）
         assert small_batch_collector.buffer_size == 2
         assert small_batch_collector.total_flushed == 0
 
 
-# ---------------------------------------------------------------------------
 # 测试：flush
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -501,7 +480,7 @@ class TestFlush:
         lineage = store._lineages[0]
         assert lineage.source_type == "manual"
         assert lineage.operation == "feedback_collection"
-        # owner_id="test"（collector fixture）→ source_ref 不带 plugin: 前缀
+        # owner_id="test"（collector fixture） source_ref 不带 plugin: 前缀
         assert lineage.source_ref == "test:feedback_collector"
         assert lineage.target.startswith("dataset://")
 
@@ -531,17 +510,13 @@ class TestFlush:
             await c.flush()
 
     @pytest.mark.asyncio
-    async def test_flush_stable_id_fallback_on_duplicate_name(
-        self, store, monkeypatch
-    ):
+    async def test_flush_stable_id_fallback_on_duplicate_name(self, store, monkeypatch):
         """create 失败（name 冲突）时回退到 stable_id."""
         import hashlib
 
         # 预置 stable 数据集（模拟另一实例已按稳定 id 规则创建同名数据集），
         # 使 create 因 name 冲突失败后可复用 stable_id 完成 flush。
-        stable_id = "fb-" + hashlib.sha256(
-            FEEDBACK_DATASET_NAME.encode("utf-8")
-        ).hexdigest()[:16]
+        stable_id = "fb-" + hashlib.sha256(FEEDBACK_DATASET_NAME.encode("utf-8")).hexdigest()[:16]
         store._datasets[stable_id] = {
             "name": FEEDBACK_DATASET_NAME,
             "schema": FEEDBACK_DATASET_SCHEMA,
@@ -562,9 +537,7 @@ class TestFlush:
         assert c.dataset_id.startswith("fb-")
 
 
-# ---------------------------------------------------------------------------
 # 测试：get_recent_feedback
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -590,9 +563,7 @@ class TestGetRecentFeedback:
         assert records == []
 
     @pytest.mark.asyncio
-    async def test_get_recent_feedback_filters_by_time_window(
-        self, collector, monkeypatch
-    ):
+    async def test_get_recent_feedback_filters_by_time_window(self, collector, monkeypatch):
         """时间窗口外的记录被过滤."""
         # 注入旧时间戳的记录
         old_ts = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
@@ -602,12 +573,12 @@ class TestGetRecentFeedback:
         await collector.record_annotation(user_id="u-2")  # 新记录
         await collector.flush()
 
-        # 24 小时窗口 → 只有 1 条新记录
+        # 24 小时窗口 只有 1 条新记录
         recent = await collector.get_recent_feedback(hours=24)
         assert len(recent) == 1
         assert recent[0]["user_id"] == "u-2"
 
-        # 72 小时窗口 → 2 条
+        # 72 小时窗口 2 条
         all_recent = await collector.get_recent_feedback(hours=72)
         assert len(all_recent) == 2
 
@@ -618,9 +589,7 @@ class TestGetRecentFeedback:
             await c.get_recent_feedback()
 
 
-# ---------------------------------------------------------------------------
 # 测试：get_stats
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -651,9 +620,7 @@ class TestGetStats:
         assert stats["last_flush_at"] is not None
 
 
-# ---------------------------------------------------------------------------
 # 测试：降级模式
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -690,9 +657,7 @@ class TestDegradedMode:
         assert c.buffer_size == 1
 
 
-# ---------------------------------------------------------------------------
 # 测试：Plugin 集成（main.py）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -871,9 +836,7 @@ class TestPluginIntegration:
         await plugin.on_load(ctx)
 
         with pytest.raises(ValueError, match="feedback_type"):
-            await plugin._handle_feedback_submission(
-                {"feedback_type": "invalid", "user_id": "u-1"}
-            )
+            await plugin._handle_feedback_submission({"feedback_type": "invalid", "user_id": "u-1"})
 
         await plugin.on_unload()
         reset_extension_registry()
@@ -889,9 +852,7 @@ class TestPluginIntegration:
         await plugin.on_load(ctx)
 
         with pytest.raises(ValueError, match="accepted"):
-            await plugin._handle_feedback_submission(
-                {"feedback_type": "adoption", "user_id": "u-1", "accepted": "yes"}
-            )
+            await plugin._handle_feedback_submission({"feedback_type": "adoption", "user_id": "u-1", "accepted": "yes"})
 
         await plugin.on_unload()
         reset_extension_registry()
@@ -907,17 +868,13 @@ class TestPluginIntegration:
         await plugin.on_load(ctx)
 
         with pytest.raises(ValueError, match="original_output.*corrected_output"):
-            await plugin._handle_feedback_submission(
-                {"feedback_type": "correction", "user_id": "u-1"}
-            )
+            await plugin._handle_feedback_submission({"feedback_type": "correction", "user_id": "u-1"})
 
         await plugin.on_unload()
         reset_extension_registry()
 
 
-# ---------------------------------------------------------------------------
-# 测试：端到端闭环（反馈 → flush → 读取）
-# ---------------------------------------------------------------------------
+# 测试：端到端闭环（反馈 flush 读取）
 
 
 @pytest.mark.unit
@@ -959,15 +916,11 @@ class TestEndToEndFeedbackLoop:
     @pytest.mark.asyncio
     async def test_adoption_rate_calculation_source(self, collector):
         """验证 adoption_rate 指标的数据源（p4-4 飞轮指标使用）."""
-        # 7 采纳 + 3 拒绝 → adoption_rate = 70%
+        # 7 采纳 + 3 拒绝 adoption_rate = 70%
         for i in range(7):
-            await collector.record_adoption(
-                user_id=f"u-{i}", accepted=True, prediction_id=f"p-{i}"
-            )
+            await collector.record_adoption(user_id=f"u-{i}", accepted=True, prediction_id=f"p-{i}")
         for i in range(3):
-            await collector.record_adoption(
-                user_id=f"u-{i + 7}", accepted=False, prediction_id=f"p-{i + 7}"
-            )
+            await collector.record_adoption(user_id=f"u-{i + 7}", accepted=False, prediction_id=f"p-{i + 7}")
         await collector.flush()
 
         records = await collector.get_recent_feedback(hours=24)

@@ -1,5 +1,3 @@
-
-
 """思路 2（零件专属先验模型）单元测试。
 
 对应 ADR-020 第 2.8 节测试方案 / app/image_to_3d/part_prior/encoder.py 等。
@@ -18,6 +16,7 @@
 - torch 不可用时通过 pytest.importorskip 自然跳过，不注入桩模块伪装通过
 - 不依赖外部预训练权重，仅验证前向链路形状与值域
 """
+
 from __future__ import annotations
 
 import pytest
@@ -25,13 +24,8 @@ import pytest
 pytestmark = pytest.mark.skip_ci
 
 
-
-
-
-# ---------------------------------------------------------------------------
 # 固定随机种子（D-2 学术诚信硬约束：torch.manual_seed + cudnn.deterministic）
 # 在每个 torch 用例内部独立设置，避免模块加载期依赖 torch。
-# ---------------------------------------------------------------------------
 
 
 SEED = 42
@@ -58,15 +52,9 @@ def test_vae_forward_shapes():
     with torch.no_grad():
         recon, mu, logvar = vae(x)
 
-    assert recon.shape == (2, 1, 64, 64, 64), (
-        f"recon shape 不匹配：期望 (2,1,64,64,64)，实际 {tuple(recon.shape)}"
-    )
-    assert mu.shape == (2, 256), (
-        f"mu shape 不匹配：期望 (2,256)，实际 {tuple(mu.shape)}"
-    )
-    assert logvar.shape == (2, 256), (
-        f"logvar shape 不匹配：期望 (2,256)，实际 {tuple(logvar.shape)}"
-    )
+    assert recon.shape == (2, 1, 64, 64, 64), f"recon shape 不匹配：期望 (2,1,64,64,64)，实际 {tuple(recon.shape)}"
+    assert mu.shape == (2, 256), f"mu shape 不匹配：期望 (2,256)，实际 {tuple(mu.shape)}"
+    assert logvar.shape == (2, 256), f"logvar shape 不匹配：期望 (2,256)，实际 {tuple(logvar.shape)}"
 
 
 def test_vae_output_range():
@@ -89,12 +77,8 @@ def test_vae_output_range():
     with torch.no_grad():
         recon, _, _ = vae(x)
 
-    assert recon.min().item() >= 0.0, (
-        f"recon 最小值越界：{recon.min().item()} < 0.0"
-    )
-    assert recon.max().item() <= 1.0, (
-        f"recon 最大值越界：{recon.max().item()} > 1.0"
-    )
+    assert recon.min().item() >= 0.0, f"recon 最小值越界：{recon.min().item()} < 0.0"
+    assert recon.max().item() <= 1.0, f"recon 最大值越界：{recon.max().item()} > 1.0"
 
 
 def test_completer_accepts_sparse_points():
@@ -111,8 +95,6 @@ def test_completer_accepts_sparse_points():
 
     from app.image_to_3d.part_prior.encoder import PartPriorCompleter, PartPriorVAE
 
-
-
     vae = PartPriorVAE(voxel_dim=64, latent_dim=256, base_channels=32)
     completer = PartPriorCompleter(vae, voxel_dim=64)
 
@@ -122,10 +104,6 @@ def test_completer_accepts_sparse_points():
 
     dense_voxel = completer.complete(points, bbox)
 
-    assert dense_voxel.shape == (64, 64, 64), (
-        f"稠密体素 shape 不匹配：期望 (64,64,64)，实际 {tuple(dense_voxel.shape)}"
-    )
+    assert dense_voxel.shape == (64, 64, 64), f"稠密体素 shape 不匹配：期望 (64,64,64)，实际 {tuple(dense_voxel.shape)}"
     # 补全后的体素值应在 [0, 1]（VAE Sigmoid 输出）
-    assert dense_voxel.min().item() >= 0.0 and dense_voxel.max().item() <= 1.0, (
-        "稠密体素值域越界 [0, 1]"
-    )
+    assert dense_voxel.min().item() >= 0.0 and dense_voxel.max().item() <= 1.0, "稠密体素值域越界 [0, 1]"

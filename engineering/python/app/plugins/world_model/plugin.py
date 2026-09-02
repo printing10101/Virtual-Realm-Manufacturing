@@ -72,12 +72,10 @@ class WorldModelPlugin:
         self._config = config or WorldModelConfig()
         self._predictor: TrajectoryPredictor | None = None
         self._predictor_lock = __import__("threading").Lock()
-        # 缓存已加载的模型 uri → predictor 映射，避免重复加载
+        # 缓存已加载的模型 uri predictor 映射，避免重复加载
         self._predictor_cache: dict[str, TrajectoryPredictor] = {}
 
-    # ------------------------------------------------------------------
     # TaskHandler 协议实现
-    # ------------------------------------------------------------------
 
     def name(self) -> str:
         """任务类型名称."""
@@ -276,10 +274,10 @@ class WorldModelPlugin:
             predictor = self._get_or_load_predictor(model_uri)
 
             # 4. 执行预测（含 ADR-020 P3 降级兜底）
-            #    融合模式：current_state 是 UnifiedState，predictor 内部走融合路径
-            #    传统模式：current_state 是 np.ndarray，predictor 走原 LSTM 输入路径
-            #    降级兜底：融合路径抛 RuntimeError 时（torch 不可用 / 权重不可用 /
-            #    数据不完整），自动降级到 legacy 路径重新预测，保证生产路径不崩溃。
+            # 融合模式：current_state 是 UnifiedState，predictor 内部走融合路径
+            # 传统模式：current_state 是 np.ndarray，predictor 走原 LSTM 输入路径
+            # 降级兜底：融合路径抛 RuntimeError 时（torch 不可用 / 权重不可用 /
+            # 数据不完整），自动降级到 legacy 路径重新预测，保证生产路径不崩溃。
             prediction = None
             degraded_to_legacy = False
             if input_mode in ("fusion", "fusion_assembled"):
@@ -384,9 +382,7 @@ class WorldModelPlugin:
                 },
             )
 
-    # ------------------------------------------------------------------
     # 插件生命周期辅助方法
-    # ------------------------------------------------------------------
 
     def register(self, registry: Any) -> None:
         """注册到任务注册表.
@@ -404,9 +400,7 @@ class WorldModelPlugin:
             registry.unregister(self.TASK_TYPE)
         logger.info("世界模型插件已注销: task_type=%s", self.TASK_TYPE)
 
-    # ------------------------------------------------------------------
     # 内部辅助方法
-    # ------------------------------------------------------------------
 
     def _get_or_load_predictor(self, model_uri: str) -> TrajectoryPredictor:
         """获取或加载预测器（带缓存）.
@@ -485,8 +479,8 @@ class WorldModelPlugin:
                 exc,
             )
 
-        # 2. 约定式 URI → path 解析（torch-free，让训练产出的 checkpoint
-        #    能被加载，无需手动注册到 ModelRegistry）
+        # 2. 约定式 URI path 解析（torch-free，让训练产出的 checkpoint
+        # 能被加载，无需手动注册到 ModelRegistry）
         try:
             from app.plugins.world_model.training import (
                 resolve_world_model_weights_path,
@@ -503,8 +497,8 @@ class WorldModelPlugin:
         except (ImportError, RuntimeError) as exc:
             # ImportError: training 模块加载失败（不应发生，防御性捕获）
             # RuntimeError: WeightsResolutionError（URI 版本字符串非法），
-            #   降级为随机初始化 + 警告，保持 _resolve_weights_path 既有
-            #   "None = random init" 契约，不引入新失败路径
+            # 降级为随机初始化 + 警告，保持 _resolve_weights_path 既有
+            # "None = random init" 契约，不引入新失败路径
             logger.warning(
                 "world_model 约定式权重路径解析失败，使用随机初始化: uri=%s err=%s",
                 model_uri,
@@ -577,7 +571,7 @@ class WorldModelPlugin:
         metadata = getattr(artifact, "metadata", None) or {}
         us_dict = metadata.get("unified_state")
         if not isinstance(us_dict, dict):
-            # metadata 中无 unified_state 或类型不对 → 传统模式
+            # metadata 中无 unified_state 或类型不对 传统模式
             return None
 
         try:

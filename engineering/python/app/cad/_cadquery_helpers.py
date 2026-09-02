@@ -27,16 +27,13 @@ from PIL import Image, ImageFilter, ImageOps  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # CadQuery 临时输出目录的进程级清理
-# ---------------------------------------------------------------------------
 # 历史问题：execute_and_export / generate_3d_model / generate_with_features
 # 三处使用固定名称的临时目录（cadquery_output / cadquery_models），产物文件
 # 永不回收，高频建模场景下数日内即可耗尽 /tmp 磁盘。
 # 修复策略：模块级维护已创建目录集合，atexit 退出时统一清理。
 # 不能使用 TemporaryDirectory 上下文管理器，因为返回的 output_path 会被
 # 后续步骤（NL2CAD pipeline / API 响应）读取，必须保留到进程退出。
-# ---------------------------------------------------------------------------
 _CADQUERY_TEMP_DIRS: set[Path] = set()
 
 
@@ -339,7 +336,7 @@ def _async_raise_thread(thread: threading.Thread, exc_type: type) -> None:
     if tid is None:
         return
     try:
-        # _async_raise(exc_type) → set async exception
+        # _async_raise(exc_type) set async exception
         # PyThreadState_SetAsyncExc(tid, exc_type) 返回线程数
         # 0 表示线程已退出；>1 表示异常状态异常（罕见，重置为 0）
         ret = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), ctypes.py_object(exc_type))

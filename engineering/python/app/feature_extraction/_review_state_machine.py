@@ -34,7 +34,7 @@ from app.feature_extraction._feature_classifier import (
     is_valid_review_action,
 )
 
-# ---- 任务状态常量（与 feature_store.FeatureExtractionTaskStatus 对齐） ----
+# 任务状态常量（与 feature_store.FeatureExtractionTaskStatus 对齐）
 STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
 STATUS_FEATURES_EXTRACTED = "features_extracted"
@@ -60,7 +60,7 @@ class FeatureReviewStateMachine:
     # 允许导出的任务状态
     EXPORTABLE_STATES = frozenset({STATUS_FEATURES_EXTRACTED, STATUS_REVIEWED})
 
-    # -- 任务级判定 -------------------------------------------------------
+    # 任务级判定
 
     @staticmethod
     def can_review(task_status: str) -> bool:
@@ -101,7 +101,7 @@ class FeatureReviewStateMachine:
         """审核动作是否必须在 edited_params 上强制校验（仅 edited 需要）。"""
         return action == ACTION_EDITED
 
-    # -- 特征级判定 -------------------------------------------------------
+    # 特征级判定
 
     @staticmethod
     def is_feature_pending(review_status: str) -> bool:

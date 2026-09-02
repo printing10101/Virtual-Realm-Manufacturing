@@ -20,9 +20,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
 # 白名单
-# ---------------------------------------------------------------------------
 _DEVICE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _OP_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _SIGNAL_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -74,7 +72,6 @@ class DeviceDescriptor:
     signals: list[DeviceSignal] = field(default_factory=list)
     metadata: dict[str, str] = field(default_factory=dict)
 
-    # ------------------------------------------------------------------
     def validate(self) -> None:
         """元数据合法性校验（fail-closed）。
 
@@ -82,18 +79,14 @@ class DeviceDescriptor:
             DeviceDescriptorError: 任一字段非法。
         """
         if not self.device_id or not _DEVICE_ID_RE.match(self.device_id):
-            raise DeviceDescriptorError(
-                f"device_id 非法: {self.device_id!r}（须 ^[a-z0-9][a-z0-9_-]{{0,63}}$）"
-            )
+            raise DeviceDescriptorError(f"device_id 非法: {self.device_id!r}（须 ^[a-z0-9][a-z0-9_-]{{0,63}}$）")
         if not self.name or len(self.name) > 128:
             raise DeviceDescriptorError(f"设备 name 非法: {self.name!r}（1~128 字符）")
 
         seen_ops: set[str] = set()
         for op in self.operations:
             if not op.name or not _OP_NAME_RE.match(op.name):
-                raise DeviceDescriptorError(
-                    f"operation 名非法: {op.name!r}（须 ^[a-z][a-z0-9_]{{0,63}}$）"
-                )
+                raise DeviceDescriptorError(f"operation 名非法: {op.name!r}（须 ^[a-z][a-z0-9_]{{0,63}}$）")
             if op.name in seen_ops:
                 raise DeviceDescriptorError(f"operation 名重复: {op.name}")
             seen_ops.add(op.name)
@@ -101,21 +94,16 @@ class DeviceDescriptor:
                 raise DeviceDescriptorError(f"operation {op.name} description 非法")
             for pname, pmeta in op.param_schema.items():
                 if not _OP_NAME_RE.match(pname):
-                    raise DeviceDescriptorError(
-                        f"operation {op.name} 参数名非法: {pname!r}"
-                    )
+                    raise DeviceDescriptorError(f"operation {op.name} 参数名非法: {pname!r}")
                 ptype = pmeta.get("type")
                 if ptype not in _ALLOWED_PARAM_TYPES:
                     raise DeviceDescriptorError(
-                        f"operation {op.name} 参数 {pname} type 非法: {ptype!r}"
-                        f"（允许: {sorted(_ALLOWED_PARAM_TYPES)}）"
+                        f"operation {op.name} 参数 {pname} type 非法: {ptype!r}（允许: {sorted(_ALLOWED_PARAM_TYPES)}）"
                     )
                 if ptype in ("number", "integer"):
                     lo, hi = pmeta.get("min"), pmeta.get("max")
                     if lo is not None and hi is not None and lo > hi:
-                        raise DeviceDescriptorError(
-                            f"operation {op.name} 参数 {pname} min>max（{lo}>{hi}）"
-                        )
+                        raise DeviceDescriptorError(f"operation {op.name} 参数 {pname} min>max（{lo}>{hi}）")
 
         seen_sigs: set[str] = set()
         for sig in self.signals:
@@ -127,15 +115,12 @@ class DeviceDescriptor:
             if len(sig.unit) > 32:
                 raise DeviceDescriptorError(f"信号 {sig.name} unit 过长")
 
-    # ------------------------------------------------------------------
     def tool_prefix(self) -> str:
         """MCP 工具名前缀（device_id 直接可用，白名单已保证安全）。"""
         return self.device_id
 
 
-# =============================================================================
 # 仿真设备后端（用户确认：闭环走仿真，无真实产线）
-# =============================================================================
 class SimulatedDevice:
     """内存状态机设备后端：让元数据驱动的工具在本机可执行可回读。
 
@@ -156,7 +141,6 @@ class SimulatedDevice:
             else:
                 self._state[sig.name] = 0.0
 
-    # ------------------------------------------------------------------
     def _validate_params(self, op: DeviceOperation, params: dict[str, Any]) -> dict[str, Any]:
         """按 op.param_schema 校验并规范化参数（fail-closed）。"""
         cleaned: dict[str, Any] = {}
@@ -185,20 +169,15 @@ class SimulatedDevice:
                 lo = pmeta.get("min")
                 hi = pmeta.get("max")
                 if lo is not None and val < lo:
-                    raise ValueError(
-                        f"{op.name}: 参数 {pname}={val} 低于下限 {lo}（fail-closed 拒绝）"
-                    )
+                    raise ValueError(f"{op.name}: 参数 {pname}={val} 低于下限 {lo}（fail-closed 拒绝）")
                 if hi is not None and val > hi:
-                    raise ValueError(
-                        f"{op.name}: 参数 {pname}={val} 超过上限 {hi}（fail-closed 拒绝）"
-                    )
+                    raise ValueError(f"{op.name}: 参数 {pname}={val} 超过上限 {hi}（fail-closed 拒绝）")
             # 字符串长度
             if ptype == "string" and len(val) > 256:
                 raise ValueError(f"{op.name}: 参数 {pname} 超过 256 字符")
             cleaned[pname] = val
         return cleaned
 
-    # ------------------------------------------------------------------
     def execute(self, op_name: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """执行设备能力（模拟）。
 
@@ -279,9 +258,7 @@ class SimulatedDevice:
         }
 
 
-# =============================================================================
 # 演示设备注册表（Phase 2 演示 + 测试用；Phase 3b 仿真工厂将扩展）
-# =============================================================================
 def build_cnc_milling_descriptor() -> DeviceDescriptor:
     """一台仿真数控铣床（fanuc_0i）。"""
     return DeviceDescriptor(
@@ -293,9 +270,7 @@ def build_cnc_milling_descriptor() -> DeviceDescriptor:
             DeviceOperation(
                 name="start_spindle",
                 description="启动主轴旋转（S 值由 spindle_rpm 指定）",
-                param_schema={
-                    "spindle_rpm": {"type": "number", "min": 50.0, "max": 24000.0, "required": True}
-                },
+                param_schema={"spindle_rpm": {"type": "number", "min": 50.0, "max": 24000.0, "required": True}},
                 returns="主轴启动确认 + 当前转速",
             ),
             DeviceOperation(
@@ -317,9 +292,7 @@ def build_cnc_milling_descriptor() -> DeviceDescriptor:
             DeviceOperation(
                 name="set_feed_rate",
                 description="设置进给速度（mm/min）",
-                param_schema={
-                    "feed_rate": {"type": "number", "min": 10.0, "max": 20000.0, "required": True}
-                },
+                param_schema={"feed_rate": {"type": "number", "min": 10.0, "max": 20000.0, "required": True}},
                 returns="进给速度确认",
             ),
         ],

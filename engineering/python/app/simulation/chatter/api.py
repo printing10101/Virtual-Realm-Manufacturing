@@ -47,9 +47,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chatter", tags=["Chatter"])
 
 
-# =====================================================================
 # 请求/响应模型
-# =====================================================================
 
 
 class SLDRequest(BaseModel):
@@ -93,9 +91,7 @@ class PredictRequest(BaseModel):
     axial_depth: float | None = Field(default=None, gt=0, description="实际轴向切深 mm，用于判定稳定性")
 
 
-# =====================================================================
 # 1. SLD 稳定性叶图可视化端点
-# =====================================================================
 
 
 @router.post("/sld", dependencies=[Depends(require_permission("chatter:write"))])
@@ -188,9 +184,7 @@ async def get_stability_lobe_diagram(req: SLDRequest):
         raise HTTPException(status_code=400, detail=safe) from e
 
 
-# =====================================================================
 # 2. 模态参数输入接口（锤击测试数据上传）
-# =====================================================================
 
 
 @router.post("/modal/upload", dependencies=[Depends(require_permission("chatter:write"))])
@@ -268,9 +262,7 @@ async def upload_modal_data(
         raise HTTPException(status_code=400, detail=safe) from e
 
 
-# =====================================================================
 # 3. 在线模态辨识（直接基于频响函数序列）
-# =====================================================================
 
 
 @router.post("/modal/identify", dependencies=[Depends(require_permission("chatter:write"))])
@@ -317,9 +309,7 @@ async def identify_modal(req: ModalIdentificationRequest):
         raise HTTPException(status_code=400, detail=safe) from e
 
 
-# =====================================================================
 # 4. 单点稳定性预测（兼容旧接口，补充切深判定）
-# =====================================================================
 
 
 @router.post("/predict", dependencies=[Depends(require_permission("chatter:write"))])
@@ -351,9 +341,7 @@ async def predict_chatter_stability(req: PredictRequest):
         raise HTTPException(status_code=400, detail=safe) from e
 
 
-# =====================================================================
 # 辅助函数
-# =====================================================================
 
 
 def _apply_custom_modal(machine: MachineParams, custom: dict) -> MachineParams:
@@ -472,7 +460,7 @@ def identify_modal_parameters(
         else:
             zeta = 0.05
 
-        # 单模态拟合：k = 1/|G(ω_n)|（单位 mm/N → N/m）
+        # 单模态拟合：k = 1/|G(ω_n)|（单位 mm/N N/m）
         # peak_mag 单位 mm/N，转换为 m/N：peak_mag / 1000
         peak_mag_m_per_n = peak_mag / 1000.0
         if peak_mag_m_per_n > 0:

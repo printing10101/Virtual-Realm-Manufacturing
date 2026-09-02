@@ -50,9 +50,7 @@ router = APIRouter(
     dependencies=[Depends(require_permission("chatter_prediction:read"))],
 )
 
-# =============================================================================
 # 端点实现
-# =============================================================================
 
 
 @router.get("/precision_info")

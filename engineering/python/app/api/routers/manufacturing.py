@@ -27,12 +27,12 @@ from app.api.v1 import (
 
 def register(app: FastAPI) -> None:
     """注册制造域路由（Manufacturing UI APIs）."""
-    # === Manufacturing UI APIs ===
+    # Manufacturing UI APIs
     app.include_router(materials.router)
     app.include_router(equipment.router)
     app.include_router(quality.router)
     app.include_router(production.router)
     app.include_router(process_routes.router)
     app.include_router(documents.router)
-    # === 顶栏通知 / 首页系统状态与活动简报（聚合端点） ===
+    # 顶栏通知 / 首页系统状态与活动简报（聚合端点）
     app.include_router(notifications.router)

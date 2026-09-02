@@ -26,6 +26,7 @@
 - 使用 ``pytest.mark.asyncio`` 标记异步测试
 - 每个测试后 ``reset_flywheel_collector()`` 清理全局状态
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -67,9 +68,7 @@ from plugins.data_flywheel.feedback_collector import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 测试替身：InMemoryDatasetStore
-# ---------------------------------------------------------------------------
 
 
 def _compute_content_hash(records: list[dict[str, Any]]) -> str:
@@ -147,9 +146,7 @@ class InMemoryDatasetStore(IDatasetStore):
             version = _bump_patch(existing[-1].version) if existing else "1.0.0"
 
         content_hash = _compute_content_hash(records)
-        size_bytes = len(
-            json.dumps(records, ensure_ascii=False, default=str).encode()
-        )
+        size_bytes = len(json.dumps(records, ensure_ascii=False, default=str).encode())
 
         v = DatasetVersion(
             dataset_id=dataset_id,
@@ -170,9 +167,7 @@ class InMemoryDatasetStore(IDatasetStore):
             self._lineages.append(lineage)
         return v
 
-    async def get_version(
-        self, dataset_id: str, version: Optional[str] = None
-    ) -> DatasetVersion:
+    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersion:
         if self.get_version_should_fail:
             self.get_version_should_fail = False
             raise RuntimeError("模拟 get_version 失败")
@@ -211,9 +206,7 @@ class InMemoryDatasetStore(IDatasetStore):
         raise KeyError(f"版本不存在: {dataset_id}/{version}")
 
 
-# ---------------------------------------------------------------------------
 # 测试替身：InMemorySnapshotStore
-# ---------------------------------------------------------------------------
 
 
 class InMemorySnapshotStore(ISnapshotStore):
@@ -262,9 +255,7 @@ class InMemorySnapshotStore(ISnapshotStore):
             raise KeyError(f"snapshot 不存在: {snapshot_id}")
         return self._snapshots[snapshot_id]
 
-    async def list(
-        self, *, filters: Optional[dict[str, Any]] = None
-    ) -> list[ExperimentSnapshot]:
+    async def list(self, *, filters: Optional[dict[str, Any]] = None) -> list[ExperimentSnapshot]:
         if self.list_should_fail:
             # 持续失败（不自动重置）：模拟真实故障——collect 内多个指标
             # 各自调用 list，一次性失败会让后续调用读到数据（测试意图破坏）
@@ -292,9 +283,7 @@ class InMemorySnapshotStore(ISnapshotStore):
         return f"wf-reproduce-{snapshot_id}"
 
 
-# ---------------------------------------------------------------------------
 # 辅助：构造反馈记录
-# ---------------------------------------------------------------------------
 
 
 def _make_feedback_record(
@@ -338,9 +327,7 @@ async def _seed_feedback_dataset(
     return dataset_id
 
 
-# ---------------------------------------------------------------------------
 # fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -373,9 +360,7 @@ def collector_with_stores(
     return c
 
 
-# ---------------------------------------------------------------------------
 # 测试：常量
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -399,9 +384,7 @@ class TestFlywheelMetricsConstants:
         assert UNCERTAINTY_MEAN_METRIC_KEY == "uncertainty_mean"
 
 
-# ---------------------------------------------------------------------------
 # 测试：从 0 开始（无数据源）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -422,9 +405,7 @@ class TestStartFromZero:
         assert m.feedback_delay == 0.0
 
     @pytest.mark.asyncio
-    async def test_no_dataset_id_returns_zeros(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_no_dataset_id_returns_zeros(self, dataset_store, snapshot_store):
         """有 store 但 feedback_dataset_id=None 时相关指标为 0."""
         c = FlywheelMetricsCollector(
             dataset_store=dataset_store,
@@ -437,9 +418,7 @@ class TestStartFromZero:
         assert m.feedback_delay == 0.0
 
     @pytest.mark.asyncio
-    async def test_empty_dataset_returns_zeros(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_empty_dataset_returns_zeros(self, dataset_store, snapshot_store):
         """数据集存在但版本无记录时返回 0."""
         c = FlywheelMetricsCollector(
             dataset_store=dataset_store,
@@ -454,9 +433,7 @@ class TestStartFromZero:
         assert m.feedback_delay == 0.0
 
     @pytest.mark.asyncio
-    async def test_empty_snapshot_store_returns_zeros(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_empty_snapshot_store_returns_zeros(self, dataset_store, snapshot_store):
         """snapshot_store 为空时 model_quality / uncertainty_mean 为 0."""
         c = FlywheelMetricsCollector(
             dataset_store=dataset_store,
@@ -467,9 +444,7 @@ class TestStartFromZero:
         assert m.uncertainty_mean == 0.0
 
 
-# ---------------------------------------------------------------------------
 # 测试：data_volume 从 IDatasetStore 取值
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -478,9 +453,7 @@ class TestDataVolumeFromDatasetStore:
     """data_volume 从 feedback_records 数据集 row_count 取值."""
 
     @pytest.mark.asyncio
-    async def test_data_volume_matches_row_count(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_data_volume_matches_row_count(self, collector_with_stores, dataset_store):
         records = [
             _make_feedback_record(
                 feedback_id=f"fb-{i}",
@@ -497,9 +470,7 @@ class TestDataVolumeFromDatasetStore:
         assert m.data_volume == 5
 
     @pytest.mark.asyncio
-    async def test_data_volume_zero_when_get_version_fails(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_data_volume_zero_when_get_version_fails(self, collector_with_stores, dataset_store):
         """get_version 抛错时 data_volume 回退为 0（错误容忍）."""
         dataset_id = await _seed_feedback_dataset(
             dataset_store,
@@ -519,9 +490,7 @@ class TestDataVolumeFromDatasetStore:
         assert m.data_volume == 0
 
 
-# ---------------------------------------------------------------------------
 # 测试：model_quality / uncertainty_mean 从 ISnapshotStore 取值
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -530,9 +499,7 @@ class TestModelMetricsFromSnapshotStore:
     """model_quality / uncertainty_mean 从最新快照 metrics 取值."""
 
     @pytest.mark.asyncio
-    async def test_model_quality_from_latest_snapshot(
-        self, collector_with_stores, snapshot_store
-    ):
+    async def test_model_quality_from_latest_snapshot(self, collector_with_stores, snapshot_store):
         await snapshot_store.create(
             config={},
             dataset_versions=[],
@@ -545,9 +512,7 @@ class TestModelMetricsFromSnapshotStore:
         assert m.uncertainty_mean == 0.18
 
     @pytest.mark.asyncio
-    async def test_latest_snapshot_picks_most_recent(
-        self, collector_with_stores, snapshot_store
-    ):
+    async def test_latest_snapshot_picks_most_recent(self, collector_with_stores, snapshot_store):
         """多个快照时取 created_at 最新的."""
         old = await snapshot_store.create(
             config={},
@@ -574,9 +539,7 @@ class TestModelMetricsFromSnapshotStore:
         assert m.uncertainty_mean == 0.1
 
     @pytest.mark.asyncio
-    async def test_model_quality_missing_metric_key_returns_zero(
-        self, collector_with_stores, snapshot_store
-    ):
+    async def test_model_quality_missing_metric_key_returns_zero(self, collector_with_stores, snapshot_store):
         """快照 metrics 中无 model_quality 键时返回 0."""
         await snapshot_store.create(
             config={},
@@ -590,9 +553,7 @@ class TestModelMetricsFromSnapshotStore:
         assert m.uncertainty_mean == 0.0
 
     @pytest.mark.asyncio
-    async def test_model_quality_snapshot_list_fails_returns_zero(
-        self, collector_with_stores, snapshot_store
-    ):
+    async def test_model_quality_snapshot_list_fails_returns_zero(self, collector_with_stores, snapshot_store):
         """snapshot_store.list() 抛错时 model_quality / uncertainty_mean 为 0."""
         await snapshot_store.create(
             config={},
@@ -608,9 +569,7 @@ class TestModelMetricsFromSnapshotStore:
         assert m.uncertainty_mean == 0.0
 
 
-# ---------------------------------------------------------------------------
 # 测试：adoption_rate 从反馈记录计算
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -619,9 +578,7 @@ class TestAdoptionRateFromFeedback:
     """adoption_rate 扫描 adoption 类型反馈，计算 accepted=True 比例."""
 
     @pytest.mark.asyncio
-    async def test_adoption_rate_all_accepted(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_adoption_rate_all_accepted(self, collector_with_stores, dataset_store):
         records = [
             _make_feedback_record(
                 feedback_id=f"fb-{i}",
@@ -638,9 +595,7 @@ class TestAdoptionRateFromFeedback:
         assert m.adoption_rate == 100.0
 
     @pytest.mark.asyncio
-    async def test_adoption_rate_half_accepted(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_adoption_rate_half_accepted(self, collector_with_stores, dataset_store):
         records = [
             _make_feedback_record(
                 feedback_id="fb-1",
@@ -662,9 +617,7 @@ class TestAdoptionRateFromFeedback:
         assert m.adoption_rate == 50.0
 
     @pytest.mark.asyncio
-    async def test_adoption_rate_no_adoption_records_returns_zero(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_adoption_rate_no_adoption_records_returns_zero(self, collector_with_stores, dataset_store):
         """有反馈但无 adoption 类型时 adoption_rate 为 0."""
         records = [
             _make_feedback_record(
@@ -685,9 +638,7 @@ class TestAdoptionRateFromFeedback:
         assert m.adoption_rate == 0.0
 
     @pytest.mark.asyncio
-    async def test_adoption_rate_ignores_annotation_records(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_adoption_rate_ignores_annotation_records(self, collector_with_stores, dataset_store):
         """annotation 类型记录不计入 adoption_rate 分母."""
         records = [
             _make_feedback_record(
@@ -721,9 +672,7 @@ class TestAdoptionRateFromFeedback:
         assert m.adoption_rate == 50.0  # 1/2，而非 1/4
 
     @pytest.mark.asyncio
-    async def test_adoption_rate_read_fails_returns_zero(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_adoption_rate_read_fails_returns_zero(self, collector_with_stores, dataset_store):
         """read 抛错时 adoption_rate 回退为 0."""
         records = [
             _make_feedback_record(
@@ -741,9 +690,7 @@ class TestAdoptionRateFromFeedback:
         assert m.adoption_rate == 0.0
 
 
-# ---------------------------------------------------------------------------
 # 测试：feedback_delay 计算
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -752,9 +699,7 @@ class TestFeedbackDelayCalculation:
     """feedback_delay 扫描 metadata['prediction_timestamp'] 计算延迟."""
 
     @pytest.mark.asyncio
-    async def test_feedback_delay_average_minutes(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_feedback_delay_average_minutes(self, collector_with_stores, dataset_store):
         """2 条记录，延迟分别为 30 分钟和 60 分钟，平均 45 分钟."""
         base = datetime(2026, 7, 13, 12, 0, 0, tzinfo=timezone.utc)
         records = [
@@ -780,9 +725,7 @@ class TestFeedbackDelayCalculation:
         assert m.feedback_delay == 45.0
 
     @pytest.mark.asyncio
-    async def test_feedback_delay_no_prediction_timestamp_returns_zero(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_feedback_delay_no_prediction_timestamp_returns_zero(self, collector_with_stores, dataset_store):
         """无 prediction_timestamp 字段的记录跳过，全部跳过时返回 0."""
         records = [
             _make_feedback_record(
@@ -800,9 +743,7 @@ class TestFeedbackDelayCalculation:
         assert m.feedback_delay == 0.0
 
     @pytest.mark.asyncio
-    async def test_feedback_delay_negative_delta_skipped(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_feedback_delay_negative_delta_skipped(self, collector_with_stores, dataset_store):
         """预测时间晚于反馈时间（异常数据）跳过."""
         feedback_ts = datetime(2026, 7, 13, 12, 0, 0, tzinfo=timezone.utc)
         prediction_ts = feedback_ts + timedelta(hours=1)  # 晚于反馈
@@ -822,9 +763,7 @@ class TestFeedbackDelayCalculation:
         assert m.feedback_delay == 0.0
 
     @pytest.mark.asyncio
-    async def test_feedback_delay_invalid_timestamp_skipped(
-        self, collector_with_stores, dataset_store
-    ):
+    async def test_feedback_delay_invalid_timestamp_skipped(self, collector_with_stores, dataset_store):
         """prediction_timestamp 格式非法时跳过该记录."""
         base = datetime(2026, 7, 13, 12, 0, 0, tzinfo=timezone.utc)
         records = [
@@ -853,9 +792,7 @@ class TestFeedbackDelayCalculation:
         assert m.feedback_delay == 30.0
 
 
-# ---------------------------------------------------------------------------
 # 测试：错误容忍（单个指标失败不影响其他指标）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -864,9 +801,7 @@ class TestErrorIsolation:
     """单个指标采集失败不影响其他指标."""
 
     @pytest.mark.asyncio
-    async def test_dataset_store_failure_does_not_affect_snapshot_metrics(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_dataset_store_failure_does_not_affect_snapshot_metrics(self, dataset_store, snapshot_store):
         """dataset_store.get_version 失败时 model_quality 仍能从 snapshot 取."""
         c = FlywheelMetricsCollector(
             dataset_store=dataset_store,
@@ -908,9 +843,7 @@ class TestErrorIsolation:
         assert m.uncertainty_mean == 0.15
 
     @pytest.mark.asyncio
-    async def test_snapshot_store_failure_does_not_affect_dataset_metrics(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_snapshot_store_failure_does_not_affect_dataset_metrics(self, dataset_store, snapshot_store):
         """snapshot_store.list 失败时 data_volume / adoption_rate 仍能从 dataset 取."""
         c = FlywheelMetricsCollector(
             dataset_store=dataset_store,
@@ -947,9 +880,7 @@ class TestErrorIsolation:
         assert m.adoption_rate == 100.0
 
 
-# ---------------------------------------------------------------------------
 # 测试：set_feedback_dataset_id 懒注入
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -958,9 +889,7 @@ class TestLazyFeedbackDatasetIdInjection:
     """set_feedback_dataset_id 懒注入."""
 
     @pytest.mark.asyncio
-    async def test_set_feedback_dataset_id_enables_data_volume(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_set_feedback_dataset_id_enables_data_volume(self, dataset_store, snapshot_store):
         c = FlywheelMetricsCollector(
             dataset_store=dataset_store,
             snapshot_store=snapshot_store,
@@ -998,9 +927,7 @@ class TestLazyFeedbackDatasetIdInjection:
         assert c.feedback_dataset_id == "ds-test"
 
 
-# ---------------------------------------------------------------------------
 # 测试：全局配置
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1034,9 +961,7 @@ class TestGlobalConfiguration:
         assert new_one is not None
 
     @pytest.mark.asyncio
-    async def test_configured_collector_uses_injected_stores(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_configured_collector_uses_injected_stores(self, dataset_store, snapshot_store):
         """配置后的全局单例能从注入的数据源取真实数据."""
         records = [
             _make_feedback_record(
@@ -1059,9 +984,7 @@ class TestGlobalConfiguration:
         assert m.adoption_rate == 100.0
 
 
-# ---------------------------------------------------------------------------
 # 测试：deprecated 同步方法
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1101,9 +1024,7 @@ class TestDeprecatedSyncMethods:
         assert "summary" in report
 
 
-# ---------------------------------------------------------------------------
 # 测试：get_historical_metrics_async
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1118,9 +1039,7 @@ class TestHistoricalMetricsAsync:
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_returns_snapshots_within_days_window(
-        self, collector_with_stores, snapshot_store
-    ):
+    async def test_returns_snapshots_within_days_window(self, collector_with_stores, snapshot_store):
         now = datetime.utcnow()
         # 3 天前的快照（在 7 天窗口内）
         old_snap = await snapshot_store.create(
@@ -1163,9 +1082,7 @@ class TestHistoricalMetricsAsync:
         assert result == []
 
 
-# ---------------------------------------------------------------------------
 # 测试：generate_weekly_report_async
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1191,9 +1108,7 @@ class TestWeeklyReportAsync:
         assert report["trends"] == {}  # < 2 条历史
 
     @pytest.mark.asyncio
-    async def test_report_with_data(
-        self, collector_with_stores, dataset_store, snapshot_store
-    ):
+    async def test_report_with_data(self, collector_with_stores, dataset_store, snapshot_store):
         """有数据时报告包含真实指标."""
         records = [
             _make_feedback_record(
@@ -1223,9 +1138,7 @@ class TestWeeklyReportAsync:
         assert "health_score" in report["summary"]
 
 
-# ---------------------------------------------------------------------------
 # 测试：FlywheelMetrics 数据类
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1272,9 +1185,7 @@ class TestFlywheelMetricsDataclass:
         assert d["timestamp"] == "2026-07-13T12:00:00+00:00"
 
 
-# ---------------------------------------------------------------------------
 # 测试：_parse_iso8601 辅助函数
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1315,9 +1226,7 @@ class TestParseIso8601:
         assert _parse_iso8601(123) is None  # type: ignore[arg-type]
 
 
-# ---------------------------------------------------------------------------
 # 测试：save_report_to_file
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1350,9 +1259,7 @@ class TestSaveReportToFile:
         assert output_dir.exists()
 
 
-# ---------------------------------------------------------------------------
 # 测试：与 FeedbackCollector 端到端集成
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1361,9 +1268,7 @@ class TestEndToEndWithFeedbackCollector:
     """端到端：FeedbackCollector 写入 → FlywheelMetricsCollector 读取."""
 
     @pytest.mark.asyncio
-    async def test_feedback_collector_writes_metrics_reads(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_feedback_collector_writes_metrics_reads(self, dataset_store, snapshot_store):
         """FeedbackCollector.flush 后 FlywheelMetricsCollector 能读到真实指标."""
         # 1. 用 FeedbackCollector 写入反馈
         fc = FeedbackCollector(dataset_store=dataset_store, owner_id="test")
@@ -1397,9 +1302,7 @@ class TestEndToEndWithFeedbackCollector:
         assert m.adoption_rate == 50.0  # 1 accepted / 2 total
 
     @pytest.mark.asyncio
-    async def test_feedback_with_prediction_timestamp_calculates_delay(
-        self, dataset_store, snapshot_store
-    ):
+    async def test_feedback_with_prediction_timestamp_calculates_delay(self, dataset_store, snapshot_store):
         """带 prediction_timestamp 的反馈能被 feedback_delay 正确计算."""
         fc = FeedbackCollector(dataset_store=dataset_store, owner_id="test")
         pred_ts = datetime.now(timezone.utc) - timedelta(minutes=45)

@@ -40,9 +40,7 @@ router = APIRouter(prefix="/api/v1/llm-providers", tags=["LLM Providers"])
 LLM_DETECT_TIMEOUT_SEC: float = 30.0
 
 
-# ---------------------------------------------------------------------------
 # Pydantic 请求模型
-# ---------------------------------------------------------------------------
 
 
 class ProviderCreateRequest(BaseModel):
@@ -91,9 +89,7 @@ class ChatTestRequest(BaseModel):
     model: str | None = Field(None, description="可选，覆盖默认模型")
 
 
-# ---------------------------------------------------------------------------
 # 工具函数
-# ---------------------------------------------------------------------------
 
 
 def _parse_provider_type(value: str) -> ProviderType:
@@ -169,9 +165,7 @@ def _apply_update(config: ProviderConfig, req: ProviderUpdateRequest) -> Provide
     return config
 
 
-# ---------------------------------------------------------------------------
 # 读取类端点（登录可见）
-# ---------------------------------------------------------------------------
 
 
 @router.get("", summary="列出所有 Provider 配置")
@@ -202,9 +196,7 @@ async def get_active_provider():
     return {"ok": True, "data": config.to_dict()}
 
 
-# ---------------------------------------------------------------------------
 # 静态路径端点（必须在 /{provider_id} 之前注册，避免被路径参数吞掉）
-# ---------------------------------------------------------------------------
 
 
 @router.get("/types", summary="列出所有支持的 Provider 类型")
@@ -338,9 +330,7 @@ async def list_routing_strategies():
     }
 
 
-# ---------------------------------------------------------------------------
 # 路径参数端点（/{provider_id} 必须放在所有静态路径之后）
-# ---------------------------------------------------------------------------
 
 
 @router.get("/{provider_id}", summary="获取指定 Provider 配置")
@@ -409,9 +399,7 @@ async def health_check_provider(provider_id: str):
     }
 
 
-# ---------------------------------------------------------------------------
 # 写入类端点（需要 system:config 权限）
-# ---------------------------------------------------------------------------
 
 
 @router.post(

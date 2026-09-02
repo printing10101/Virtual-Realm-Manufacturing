@@ -35,9 +35,7 @@ from app.models.knowledge_graph import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 实体类型枚举
-# ---------------------------------------------------------------------------
 
 
 class EntityType(str, Enum):
@@ -49,7 +47,7 @@ class EntityType(str, Enum):
     PROCESS = "Process"
 
 
-# 实体类型 → Pydantic 模型映射，用于属性校验与实例化
+# 实体类型 Pydantic 模型映射，用于属性校验与实例化
 ENTITY_TYPE_TO_MODEL: dict[EntityType, type] = {
     EntityType.MATERIAL: Material,
     EntityType.TOOL: Tool,
@@ -58,9 +56,7 @@ ENTITY_TYPE_TO_MODEL: dict[EntityType, type] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # 关系类型枚举
-# ---------------------------------------------------------------------------
 
 
 class RelationType(str, Enum):
@@ -75,7 +71,7 @@ class RelationType(str, Enum):
     USED = "USED"  # (Process) -[USED]-> (Tool)
 
 
-# 关系类型 → Pydantic 关系模型映射
+# 关系类型 Pydantic 关系模型映射
 RELATION_TYPE_TO_MODEL: dict[RelationType, type] = {
     RelationType.SUITABLE_FOR_MATERIAL: ToolSuitableForMaterial,
     RelationType.SUITABLE_FOR_FEATURE: ToolSuitableForFeature,
@@ -84,9 +80,7 @@ RELATION_TYPE_TO_MODEL: dict[RelationType, type] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # 三元组结构
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -168,9 +162,7 @@ class Triple:
         )
 
 
-# ---------------------------------------------------------------------------
 # 领域 Schema
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -185,7 +177,7 @@ class DomainSchema:
     entity_types: frozenset[EntityType] = field(default_factory=lambda: frozenset(ENTITY_TYPE_TO_MODEL.keys()))
     # 关系类型集合
     relation_types: frozenset[RelationType] = field(default_factory=lambda: frozenset(RELATION_TYPE_TO_MODEL.keys()))
-    # 关系 → (头实体类型, 尾实体类型) 的合法映射
+    # 关系 (头实体类型, 尾实体类型) 的合法映射
     relation_domains: dict[RelationType, tuple[EntityType, EntityType]] = field(
         default_factory=lambda: {
             RelationType.SUITABLE_FOR_MATERIAL: (EntityType.TOOL, EntityType.MATERIAL),

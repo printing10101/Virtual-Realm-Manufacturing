@@ -88,9 +88,7 @@ def _resolve_stability_limit(
     return None
 
 
-# =====================================================================
 # 请求/响应模型
-# =====================================================================
 
 
 class AdaptiveSolveSegmentRequest(BaseModel):
@@ -137,9 +135,7 @@ class KienzleComputeRequest(BaseModel):
     mc: float | None = Field(default=None, gt=0)
 
 
-# =====================================================================
 # 1. 单段自适应求解
-# =====================================================================
 
 
 @router.post("/adaptive/solve-segment")
@@ -198,9 +194,7 @@ async def adaptive_solve_segment(req: AdaptiveSolveSegmentRequest):
         )
 
 
-# =====================================================================
 # 2. 批量多段求解
-# =====================================================================
 
 
 @router.post("/adaptive/solve-segments")
@@ -261,9 +255,7 @@ async def adaptive_solve_segments(req: AdaptiveSolveSegmentsRequest):
         )
 
 
-# =====================================================================
 # 3. 快速预览
-# =====================================================================
 
 
 @router.post("/adaptive/preview")
@@ -297,9 +289,7 @@ async def adaptive_preview():
         )
 
 
-# =====================================================================
 # 4. Kienzle 系数查询
-# =====================================================================
 
 
 @router.get("/kienzle/coefficients/{material}")
@@ -324,9 +314,7 @@ async def get_kienzle_coeffs(material: str):
         )
 
 
-# =====================================================================
 # 5. Kienzle 正向切削力计算
-# =====================================================================
 
 
 @router.post("/kienzle/compute")

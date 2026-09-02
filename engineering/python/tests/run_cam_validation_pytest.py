@@ -30,11 +30,9 @@ import sys
 import types
 from pathlib import Path
 
-# =============================================================================
 # Windows WinSock 初始化（必须在 asyncio / socket 派生模块之前）
 # 项目记忆硬约束：WinSock initialization issues may occur; implement workaround
 # by forcing WinSock initialization before imports
-# =============================================================================
 if sys.platform == "win32":
     import ctypes
     from ctypes import wintypes as _wt
@@ -57,23 +55,23 @@ if sys.platform == "win32":
         if _wsa_rc == 0:
             import socket as _socket_mod
 
-            _ws_init_sock = _socket_mod.socket(
-                _socket_mod.AF_INET, _socket_mod.SOCK_STREAM
-            )
+            _ws_init_sock = _socket_mod.socket(_socket_mod.AF_INET, _socket_mod.SOCK_STREAM)
             _ws_init_sock.close()
     except (OSError, AttributeError):
         pass
 
-# =============================================================================
 # _overlapped 假模块注入（项目记忆硬约束：Python 3.14 _overlapped 损坏 workaround）
 # asyncio 在 Windows 上依赖 _overlapped C 扩展，Python 3.14 该扩展损坏
 # 假模块包含 IocpProactor 构造所需的最小属性集
-# =============================================================================
 if sys.platform == "win32" and "_overlapped" not in sys.modules:
     _ov = types.ModuleType("_overlapped")
-    _ov.Overlapped = type("Overlapped", (), {
-        "__init__": lambda self, *a, **kw: None,
-    })
+    _ov.Overlapped = type(
+        "Overlapped",
+        (),
+        {
+            "__init__": lambda self, *a, **kw: None,
+        },
+    )
     _ov.NULL = 0
     _ov.INVALID_HANDLE_VALUE = -1
     _ov.OVERLAPPED_VERSION = 1
@@ -94,9 +92,7 @@ if sys.platform == "win32" and "_overlapped" not in sys.modules:
     _ov.ConnectEx = lambda *a, **kw: 0
     sys.modules["_overlapped"] = _ov
 
-# =============================================================================
 # 环境变量设置（模拟 conftest.py 的 _env_setup fixture）
-# =============================================================================
 
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["LNN_AUTH_ENABLED"] = "false"
@@ -114,10 +110,8 @@ os.environ.setdefault("LNN_CAM_TASK_TIMEOUT", "600")
 _PYTHON_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PYTHON_DIR))
 
-# =============================================================================
 # Mock 模块注入（项目记忆硬约束：本地环境缺 matplotlib / slowapi，
 # Python 3.14 _overlapped 损坏，需注入假模块绕过导入期失败）
-# =============================================================================
 
 # matplotlib 假模块（含 use() 函数，避免 AttributeError）
 if "matplotlib" not in sys.modules:
@@ -136,10 +130,14 @@ if "matplotlib" not in sys.modules:
 # slowapi 假模块（项目记忆硬约束：路由层依赖，cam_validation 间接导入）
 if "slowapi" not in sys.modules:
     _slowapi = types.ModuleType("slowapi")
-    _slowapi.Limiter = type("Limiter", (), {
-        "__init__": lambda self, *a, **kw: None,
-        "limit": lambda self, *a, **kw: (lambda f: f),
-    })
+    _slowapi.Limiter = type(
+        "Limiter",
+        (),
+        {
+            "__init__": lambda self, *a, **kw: None,
+            "limit": lambda self, *a, **kw: lambda f: f,
+        },
+    )
     _slowapi.RateLimitExceeded = type("RateLimitExceeded", (Exception,), {})
     _slowapi.get_remote_address = lambda req: "127.0.0.1"
     _slowapi.errors = types.ModuleType("slowapi.errors")
@@ -148,9 +146,8 @@ if "slowapi" not in sys.modules:
     sys.modules["slowapi.errors"] = _slowapi.errors
 
 
-# =============================================================================
 # 调用 pytest.main() 运行 test_cam_validation.py
-# =============================================================================
+
 
 def main() -> int:
     """运行 test_cam_validation.py。
@@ -167,7 +164,8 @@ def main() -> int:
         "-v",
         "--no-header",
         "--noconftest",
-        "-p", "no:cacheprovider",
+        "-p",
+        "no:cacheprovider",
         "--override-ini=addopts=",
         "--override-ini=filterwarnings=",
     ]

@@ -30,9 +30,7 @@ from app.parametric_geometry._review_state_machine import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 与既有枚举逐值对齐（防漂移）
-# ---------------------------------------------------------------------------
 
 
 class TestEnumAlignment:
@@ -56,9 +54,7 @@ class TestEnumAlignment:
         assert StepReviewStatus.EDITED.value == RV_EDITED
 
 
-# ---------------------------------------------------------------------------
 # 状态允许性判定
-# ---------------------------------------------------------------------------
 
 
 class TestCanExecute:
@@ -144,9 +140,7 @@ class TestIsTerminal:
         assert is_terminal(ST_REVIEWED) is False
 
 
-# ---------------------------------------------------------------------------
 # 审核完成判定
-# ---------------------------------------------------------------------------
 
 
 class TestAllFeaturesReviewed:
@@ -174,9 +168,7 @@ class TestNextStatusAfterReview:
         assert next_status_after_review(False, ST_STEP_GENERATED) == ST_STEP_GENERATED
 
 
-# ---------------------------------------------------------------------------
 # 校验函数
-# ---------------------------------------------------------------------------
 
 
 class TestValidation:

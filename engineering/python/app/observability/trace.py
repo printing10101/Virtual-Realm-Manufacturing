@@ -63,9 +63,7 @@ class TraceSink(ITraceSink):
         if log_file:
             os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)
 
-    # ------------------------------------------------------------------
     # ITraceSink 实现
-    # ------------------------------------------------------------------
 
     def start_span(self, name: str, parent: str | None = None) -> str:
         """开启一个 span，返回 span_id."""
@@ -118,9 +116,7 @@ class TraceSink(ITraceSink):
                 return
             span.events.append({"name": name, "ts": time.time(), "payload": payload})
 
-    # ------------------------------------------------------------------
     # 查询 API（非契约部分，便于调试/前端拉取）
-    # ------------------------------------------------------------------
 
     def get_span(self, span_id: str) -> TraceSpan | None:
         """获取 span（不存在返回 None）."""
@@ -141,9 +137,7 @@ class TraceSink(ITraceSink):
         with self._lock:
             self._flush_locked()
 
-    # ------------------------------------------------------------------
     # 内部
-    # ------------------------------------------------------------------
 
     def _enforce_bounds_locked(self) -> None:
         """超过上限时按 FIFO 淘汰最老 span."""
@@ -183,9 +177,7 @@ class MetricSink(IMetricSink):
         if log_file:
             os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)
 
-    # ------------------------------------------------------------------
     # IMetricSink 实现
-    # ------------------------------------------------------------------
 
     def counter(self, name: str, value: float = 1, labels: dict[str, str] | None = None) -> None:
         """递增计数器."""
@@ -199,9 +191,7 @@ class MetricSink(IMetricSink):
         """记录 histogram 样本."""
         self._record(name, value, labels, unit="histogram")
 
-    # ------------------------------------------------------------------
     # 查询 API
-    # ------------------------------------------------------------------
 
     def list_metrics(
         self,
@@ -225,9 +215,7 @@ class MetricSink(IMetricSink):
         with self._lock:
             self._flush_locked()
 
-    # ------------------------------------------------------------------
     # 内部
-    # ------------------------------------------------------------------
 
     def _record(
         self,
@@ -286,9 +274,7 @@ class LogSink(ILogSink):
         if log_file:
             os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)
 
-    # ------------------------------------------------------------------
     # ILogSink 实现
-    # ------------------------------------------------------------------
 
     def log(self, entry: LogEntry) -> None:
         """写入一条结构化日志."""
@@ -299,9 +285,7 @@ class LogSink(ILogSink):
                 self._logs.popleft()
             self._append_to_file_locked(sanitized)
 
-    # ------------------------------------------------------------------
     # 查询 API
-    # ------------------------------------------------------------------
 
     def list_logs(
         self,
@@ -323,9 +307,7 @@ class LogSink(ILogSink):
         logs.sort(key=lambda entry: entry.timestamp, reverse=True)
         return logs[:limit]
 
-    # ------------------------------------------------------------------
     # 内部
-    # ------------------------------------------------------------------
 
     def _sanitize(self, entry: LogEntry) -> LogEntry:
         """脱敏处理（如 LogSanitizer 可用）."""
@@ -357,9 +339,7 @@ class LogSink(ILogSink):
             logger.warning("LogSink: 写入 JSONL 失败: %s", e)
 
 
-# ---------------------------------------------------------------------------
 # 组合 sink
-# ---------------------------------------------------------------------------
 
 
 class CompositeObservabilitySink(ITraceSink, IMetricSink, ILogSink):
@@ -425,9 +405,7 @@ class CompositeObservabilitySink(ITraceSink, IMetricSink, ILogSink):
         self._metric.flush()
 
 
-# ---------------------------------------------------------------------------
 # 序列化辅助
-# ---------------------------------------------------------------------------
 
 
 def _span_to_jsonl(span: TraceSpan) -> str:
@@ -494,9 +472,7 @@ def _load_sanitizer():
         return None
 
 
-# ---------------------------------------------------------------------------
 # 单例
-# ---------------------------------------------------------------------------
 
 
 _composite_sink: CompositeObservabilitySink | None = None

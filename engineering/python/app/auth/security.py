@@ -16,20 +16,16 @@ from jwt.exceptions import PyJWTError as JWTError
 
 logger = logging.getLogger(__name__)
 
-# ============================================================
 # JWT Secret 安全管理
 # - 所有环境（开发、测试、生产）必须设置 LNN_JWT_SECRET 环境变量
 # - 密钥长度 >= 32 字符，且具备足够的随机性，否则拒绝启动
-# ============================================================
 
 _MIN_SECRET_LENGTH = 32
 _GENERATE_SECRET_CMD = 'python -c "import secrets; print(secrets.token_urlsafe(32))"'
 
-# ============================================================
 # 占位符密钥黑名单
 # 防止应用以公开已知的占位符密钥启动（如 CHANGE_ME_IN_PRODUCTION_JWT_SECRET）。
 # 这些占位符在源码仓库中可见，攻击者可据此伪造管理员 JWT。
-# ============================================================
 
 # 已知占位符精确匹配集合（比较时大小写不敏感）
 _PLACEHOLDER_BLACKLIST = frozenset(

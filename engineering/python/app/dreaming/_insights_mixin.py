@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class _InsightsMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _get_llm_router: Callable[..., Any]
 
     def _prepare_session_summaries(self, sessions: list[ProjectSession]) -> str:
@@ -179,9 +179,7 @@ class _InsightsMixin:
 
         return insights
 
-    # ------------------------------------------------------------------
     # 摘要生成
-    # ------------------------------------------------------------------
 
     def _generate_summary(
         self,

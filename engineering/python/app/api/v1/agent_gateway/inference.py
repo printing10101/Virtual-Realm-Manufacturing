@@ -241,10 +241,10 @@ async def agent_execute(request: AgentExecuteRequest, http_request: Request):
             return success(data=result, message="Operation simulated (Paper-Only mode)")
 
         # [F-P0-4] 实模式：必须通过双因子确认 + 机床安全前置校验
-        #   - has_t_permission: 权限已由 require_permission 依赖项校验，此处置 True
-        #   - ui_confirmed: simulate=False 表示用户在 UI 上明确选择实模式执行
-        #   - supervisor_confirmed: 班长双因子确认（请求体显式传入）
-        #   - machine_safety_status: 机床物理安全状态（请求体显式传入）
+        # - has_t_permission: 权限已由 require_permission 依赖项校验，此处置 True
+        # - ui_confirmed: simulate=False 表示用户在 UI 上明确选择实模式执行
+        # - supervisor_confirmed: 班长双因子确认（请求体显式传入）
+        # - machine_safety_status: 机床物理安全状态（请求体显式传入）
         allowed, reason = paper_only_guard.check_t_operation(
             has_t_permission=True,
             ui_confirmed=not request.simulate,
@@ -415,9 +415,7 @@ async def revoke_all_t_tokens():
     return success(data={"revoked_count": count}, message=f"Revoked {count} T-class tokens")
 
 
-# =============================================================================
 # Workflow Pipeline Execution Endpoints
-# =============================================================================
 
 
 # 认证：管线执行属于执行类操作，需要 agent:execute 权限

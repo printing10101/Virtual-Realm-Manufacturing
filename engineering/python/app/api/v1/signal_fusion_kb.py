@@ -45,9 +45,7 @@ router = APIRouter(
 )
 
 
-# =====================================================================
 # 请求模型
-# =====================================================================
 
 
 class SignalSampleRequest(BaseModel):
@@ -136,9 +134,7 @@ class CorrelateChatterRequest(BaseModel):
     )
 
 
-# =====================================================================
 # 辅助函数
-# =====================================================================
 
 
 def _to_signal_sample(req: SignalSampleRequest) -> SignalSample:
@@ -175,9 +171,7 @@ def _collect_samples(
     return result
 
 
-# =====================================================================
 # 1. 注册单个样本
-# =====================================================================
 
 
 @router.post("/samples", dependencies=[Depends(require_permission("signal_kb:write"))])
@@ -195,9 +189,7 @@ async def register_sample(request: Request, req: SignalSampleRequest):
     )
 
 
-# =====================================================================
 # 2. 批量注册
-# =====================================================================
 
 
 @router.post("/samples/batch", dependencies=[Depends(require_permission("signal_kb:write"))])
@@ -221,9 +213,7 @@ async def register_samples_batch(request: Request, req: BatchSamplesRequest):
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 3. 列出样本（分页）
-# =====================================================================
 
 
 @router.get("/samples")
@@ -252,9 +242,7 @@ async def list_samples(
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 4. 按信号类型列出
-# =====================================================================
 
 
 @router.get("/samples/by-type/{signal_type}")
@@ -288,9 +276,7 @@ async def list_by_type(
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 5. 检索相似样本
-# =====================================================================
 
 
 @router.post("/retrieve", dependencies=[Depends(require_permission("signal_kb:read"))])
@@ -323,9 +309,7 @@ async def retrieve_similar(request: Request, req: RetrieveRequest):
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 6. 多源信号融合
-# =====================================================================
 
 
 @router.post("/fuse", dependencies=[Depends(require_permission("signal_kb:read"))])
@@ -371,9 +355,7 @@ async def fuse_signals(request: Request, req: FuseRequest):
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 7. 关联磨损状态
-# =====================================================================
 
 
 @router.post("/correlate/wear", dependencies=[Depends(require_permission("signal_kb:read"))])
@@ -408,9 +390,7 @@ async def correlate_wear(request: Request, req: CorrelateWearRequest):
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 8. 关联颤振状态
-# =====================================================================
 
 
 @router.post("/correlate/chatter", dependencies=[Depends(require_permission("signal_kb:read"))])
@@ -448,9 +428,7 @@ async def correlate_chatter(request: Request, req: CorrelateChatterRequest):
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 9. 知识库统计
-# =====================================================================
 
 
 @router.get("/stats")
@@ -466,9 +444,7 @@ async def stats(request: Request):
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 10. 按样本 ID 删除
-# =====================================================================
 
 
 @router.delete("/samples/{sample_id}", dependencies=[Depends(require_permission("signal_kb:write"))])
@@ -488,9 +464,7 @@ async def delete_sample(request: Request, sample_id: str):
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 11. 按信号类型批量删除
-# =====================================================================
 
 
 @router.delete("/samples/by-type/{signal_type}", dependencies=[Depends(require_permission("signal_kb:write"))])
@@ -516,9 +490,7 @@ async def delete_by_type(request: Request, signal_type: str):
         return error(ErrorCode.INTERNAL_ERROR, message=safe["message"], detail={"error_id": safe["error_id"]})
 
 
-# =====================================================================
 # 12. 健康检查
-# =====================================================================
 
 
 @router.get("/health")

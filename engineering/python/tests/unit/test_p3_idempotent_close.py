@@ -26,9 +26,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-# ---------------------------------------------------------------------------
 # BudgetManager.close() 幂等性
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -87,9 +85,7 @@ class TestBudgetManagerCloseIdempotency:
         assert manager._closed is True
 
 
-# ---------------------------------------------------------------------------
 # MultiDimensionCostTracker.close() 幂等性
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -144,9 +140,7 @@ class TestCostTrackerCloseIdempotency:
         assert tracker._closed is True
 
 
-# ---------------------------------------------------------------------------
 # RuleDatabase.close() 幂等性
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -203,9 +197,7 @@ class TestRuleDatabaseCloseIdempotency:
         assert db._closed is True
 
 
-# ---------------------------------------------------------------------------
 # WakeupQueue.close() 幂等性
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -246,9 +238,7 @@ class TestWakeupQueueCloseIdempotency:
         assert queue._closed is True
 
 
-# ---------------------------------------------------------------------------
 # HeartbeatScheduler.stop() 幂等性
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -309,9 +299,7 @@ class TestHeartbeatSchedulerStopIdempotency:
         assert scheduler._stopped is True
 
 
-# ---------------------------------------------------------------------------
 # VectorStore.close() 幂等性
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -391,9 +379,7 @@ class TestVectorStoreCloseIdempotency:
         assert store._closed is True
 
 
-# ---------------------------------------------------------------------------
 # 静态契约验证：所有资源类均定义了 _closed / _stopped 标志位
-# ---------------------------------------------------------------------------
 
 
 class TestIdempotencyFlagContract:
@@ -409,16 +395,10 @@ class TestIdempotencyFlagContract:
         from app.budget import budget
 
         source = inspect.getsource(budget.BudgetManager.__init__)
-        assert "self._closed = False" in source, (
-            "BudgetManager.__init__ 必须初始化 self._closed = False"
-        )
+        assert "self._closed = False" in source, "BudgetManager.__init__ 必须初始化 self._closed = False"
         close_source = inspect.getsource(budget.BudgetManager.close)
-        assert "if self._closed:" in close_source, (
-            "BudgetManager.close 必须以 if self._closed: return 开头"
-        )
-        assert "self._closed = True" in close_source, (
-            "BudgetManager.close 必须在结束时设置 self._closed = True"
-        )
+        assert "if self._closed:" in close_source, "BudgetManager.close 必须以 if self._closed: return 开头"
+        assert "self._closed = True" in close_source, "BudgetManager.close 必须在结束时设置 self._closed = True"
 
     def test_cost_tracker_has_closed_flag(self):
         import inspect
@@ -426,9 +406,7 @@ class TestIdempotencyFlagContract:
         from app.budget.cost_tracker import MultiDimensionCostTracker
 
         source = inspect.getsource(MultiDimensionCostTracker.__init__)
-        assert "self._closed = False" in source, (
-            "MultiDimensionCostTracker.__init__ 必须初始化 self._closed = False"
-        )
+        assert "self._closed = False" in source, "MultiDimensionCostTracker.__init__ 必须初始化 self._closed = False"
 
         # 取最后一个 close 方法（覆盖之前的）
         close_source = inspect.getsource(MultiDimensionCostTracker.close)
@@ -484,9 +462,7 @@ class TestIdempotencyFlagContract:
         assert "self._closed = True" in close_source
 
 
-# ---------------------------------------------------------------------------
 # 重复 close 日志频次验证
-# ---------------------------------------------------------------------------
 
 
 class TestCloseLogFrequency:
@@ -501,78 +477,52 @@ class TestCloseLogFrequency:
         caplog.set_level(logging.INFO)
         return caplog
 
-    def test_budget_manager_close_logs_once(
-        self, isolated_budget_manager, captured_logs
-    ):
+    def test_budget_manager_close_logs_once(self, isolated_budget_manager, captured_logs):
         manager, _, _ = isolated_budget_manager
 
         manager.close()
         manager.close()
         manager.close()
 
-        close_logs = [
-            r for r in captured_logs.records if "BudgetManager closed" in r.message
-        ]
-        assert len(close_logs) == 1, (
-            f"BudgetManager closed 日志应仅出现 1 次，实际 {len(close_logs)} 次"
-        )
+        close_logs = [r for r in captured_logs.records if "BudgetManager closed" in r.message]
+        assert len(close_logs) == 1, f"BudgetManager closed 日志应仅出现 1 次，实际 {len(close_logs)} 次"
 
-    def test_cost_tracker_close_logs_once(
-        self, isolated_cost_tracker, captured_logs
-    ):
+    def test_cost_tracker_close_logs_once(self, isolated_cost_tracker, captured_logs):
         tracker, _, _ = isolated_cost_tracker
 
         tracker.close()
         tracker.close()
         tracker.close()
 
-        close_logs = [
-            r
-            for r in captured_logs.records
-            if "MultiDimensionCostTracker closed" in r.message
-        ]
+        close_logs = [r for r in captured_logs.records if "MultiDimensionCostTracker closed" in r.message]
         assert len(close_logs) == 1
 
-    def test_rule_database_close_logs_once(
-        self, isolated_rule_database, captured_logs
-    ):
+    def test_rule_database_close_logs_once(self, isolated_rule_database, captured_logs):
         db, _, _ = isolated_rule_database
 
         db.close()
         db.close()
         db.close()
 
-        close_logs = [
-            r for r in captured_logs.records if "RuleDatabase closed" in r.message
-        ]
+        close_logs = [r for r in captured_logs.records if "RuleDatabase closed" in r.message]
         assert len(close_logs) == 1
 
-    def test_wakeup_queue_close_logs_once(
-        self, isolated_wakeup_queue, captured_logs
-    ):
+    def test_wakeup_queue_close_logs_once(self, isolated_wakeup_queue, captured_logs):
         queue, _, _ = isolated_wakeup_queue
 
         queue.close()
         queue.close()
         queue.close()
 
-        close_logs = [
-            r for r in captured_logs.records if "WakeupQueue closed" in r.message
-        ]
+        close_logs = [r for r in captured_logs.records if "WakeupQueue closed" in r.message]
         assert len(close_logs) == 1
 
-    def test_vector_store_close_logs_once(
-        self, isolated_vector_store, captured_logs
-    ):
+    def test_vector_store_close_logs_once(self, isolated_vector_store, captured_logs):
         store = isolated_vector_store
 
         store.close()
         store.close()
         store.close()
 
-        close_logs = [
-            r
-            for r in captured_logs.records
-            if "ChromaDB PersistentClient closed" in r.message
-        ]
+        close_logs = [r for r in captured_logs.records if "ChromaDB PersistentClient closed" in r.message]
         assert len(close_logs) == 1

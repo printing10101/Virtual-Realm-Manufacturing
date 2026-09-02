@@ -44,9 +44,7 @@ from app.contracts.config import ConfigSpec, IConfigStore
 # 以保持 ``from app.config.spec import flatten_dict`` 的向后兼容。
 
 
-# ---------------------------------------------------------------------------
 # ConfigStore 实现
-# ---------------------------------------------------------------------------
 
 
 class ConfigStore(IConfigStore):
@@ -63,14 +61,12 @@ class ConfigStore(IConfigStore):
 
     def __init__(self) -> None:
         self._specs: dict[str, ConfigSpec] = {}
-        # spec_name → YAML 文件绝对路径
+        # spec_name YAML 文件绝对路径
         self._yaml_bindings: dict[str, str] = {}
         # YAML 缓存由 YamlLoader 全局单例管理（p3-8 抽取）
         self._lock = threading.RLock()
 
-    # ------------------------------------------------------------------
     # ConfigSpec 注册与查询
-    # ------------------------------------------------------------------
 
     def register(self, spec: ConfigSpec) -> None:
         """注册一个配置规格。
@@ -95,9 +91,7 @@ class ConfigStore(IConfigStore):
         with self._lock:
             return sorted(self._specs.keys())
 
-    # ------------------------------------------------------------------
     # YAML 绑定与加载
-    # ------------------------------------------------------------------
 
     def bind_yaml(self, spec_name: str, yaml_path: Union[str, Path]) -> None:
         """绑定 YAML 文件到 spec，``resolve`` 时自动加载并合并。
@@ -143,9 +137,7 @@ class ConfigStore(IConfigStore):
         """
         return get_yaml_loader().load(path)
 
-    # ------------------------------------------------------------------
     # resolve：合并 spec 默认值 + YAML + overrides
-    # ------------------------------------------------------------------
 
     def resolve(
         self,
@@ -201,9 +193,7 @@ class ConfigStore(IConfigStore):
         # 6. 还原为嵌套字典（便于消费方按 model.hidden_size 访问）
         return unflatten_dict(materialized)
 
-    # ------------------------------------------------------------------
     # expand_sweep：超参搜索展开
-    # ------------------------------------------------------------------
 
     def expand_sweep(
         self,
@@ -281,7 +271,7 @@ class ConfigStore(IConfigStore):
                     f"Available fields: {[f.name for f in spec.fields]}"
                 )
 
-            # 标量值 → 固定覆盖（不参与 sweep）
+            # 标量值 固定覆盖（不参与 sweep）
             if isinstance(spec_value, (int, float, str, bool)):
                 fixed_overrides[field_name] = spec_value
                 continue
@@ -448,9 +438,7 @@ class ConfigStore(IConfigStore):
         return list(values), kind
 
 
-# ---------------------------------------------------------------------------
 # 全局单例
-# ---------------------------------------------------------------------------
 
 _global_store: ConfigStore | None = None
 _global_store_lock = threading.Lock()

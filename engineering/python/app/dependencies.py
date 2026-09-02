@@ -30,9 +30,7 @@ from collections.abc import Callable
 T = TypeVar("T")
 
 
-# ============================================================================
 # 工具函数：懒加载单例包装器
-# ============================================================================
 
 
 class _LazySingleton(Generic[T]):
@@ -70,9 +68,7 @@ class _LazySingleton(Generic[T]):
             self._initialized = False
 
 
-# ============================================================================
 # 数据库
-# ============================================================================
 
 
 def get_db():
@@ -99,9 +95,7 @@ def get_db_sessionmaker():
     return _impl()
 
 
-# ============================================================================
 # 缓存与消息队列
-# ============================================================================
 
 _get_redis = _LazySingleton(lambda: _import_redis())
 
@@ -124,9 +118,7 @@ def get_ring_log_buffer():
     return _impl()
 
 
-# ============================================================================
 # 时序数据库
-# ============================================================================
 
 _get_tdengine = _LazySingleton(lambda: _import_tdengine())
 
@@ -149,9 +141,7 @@ async def get_tdengine_async():
     return await _impl()
 
 
-# ============================================================================
 # 用户与认证
-# ============================================================================
 
 from app.models.user import get_user_store as _get_user_store_raw, UserStore
 
@@ -168,9 +158,7 @@ def get_token_ban_list():
     return _impl()
 
 
-# ============================================================================
 # 预算与审批
-# ============================================================================
 
 
 def get_budget_enforcer():
@@ -208,9 +196,7 @@ def get_approval_engine():
     return _impl()
 
 
-# ============================================================================
 # AI / LLM
-# ============================================================================
 
 
 def get_llm_registry():
@@ -250,9 +236,7 @@ def get_process_understanding_engine():
     return _impl()
 
 
-# ============================================================================
 # Agent 编排
-# ============================================================================
 
 
 def get_orchestrator():
@@ -269,9 +253,7 @@ def get_state_persistence_manager():
     )
 
 
-# ============================================================================
 # 插件系统
-# ============================================================================
 
 
 def get_plugin_manager():
@@ -288,9 +270,7 @@ def get_skill_marketplace():
     return _impl()
 
 
-# ============================================================================
 # RAG / 知识库
-# ============================================================================
 
 
 def get_vector_store():
@@ -314,9 +294,7 @@ def get_embedding_service():
     return _impl()
 
 
-# ============================================================================
 # 业务服务
-# ============================================================================
 
 
 def get_rule_db():
@@ -342,9 +320,7 @@ def get_task_checkout_manager():
     return _impl()
 
 
-# ============================================================================
 # 飞轮 / 指标
-# ============================================================================
 
 
 def get_flywheel_metrics():
@@ -354,9 +330,7 @@ def get_flywheel_metrics():
     return _impl()
 
 
-# ============================================================================
 # 配置
-# ============================================================================
 
 
 def get_config():
@@ -366,9 +340,7 @@ def get_config():
     return _cfg
 
 
-# ============================================================================
 # 测试辅助
-# ============================================================================
 
 
 def reset_all_singletons() -> None:
@@ -378,9 +350,7 @@ def reset_all_singletons() -> None:
     _get_tdengine.reset()
 
 
-# ============================================================================
 # 业务服务（第二批 · 2026-08-03）
-# ============================================================================
 
 
 def get_rl_agent_service():
@@ -467,9 +437,7 @@ def get_scheduler():
     return _impl()
 
 
-# ============================================================================
 # Repository 层（V3.0）
-# ============================================================================
 
 
 def get_agent_state_repo():
@@ -490,26 +458,24 @@ def get_system_repo():
     return _impl()
 
 
-# ============================================================================
 # 迁移进度跟踪
-# ============================================================================
-# ✅ 已注册 (~41): get_db, get_db_engine, get_db_sessionmaker, get_redis,
-#    get_ring_log_buffer, get_tdengine, get_tdengine_async, get_user_store,
-#    get_token_ban_list, get_budget_enforcer, get_cost_optimizer,
-#    get_cost_tracker, get_budget_manager, get_approval_engine,
-#    get_llm_registry, get_llm_router, get_llm_client, get_shared_http_client,
-#    get_process_understanding_engine, get_orchestrator, get_plugin_manager,
-#    get_skill_marketplace, get_vector_store, get_knowledge_base,
-#    get_embedding_service, get_rule_db, get_model_registry_service,
-#    get_task_checkout_manager, get_flywheel_metrics, get_config,
-#    get_rl_agent_service, get_resource_card_service,
-#    get_project_package_service, get_world_model_service,
-#    get_workflow_template_service, get_explainability_service,
-#    get_project_sync_service, get_memory_cache, get_dataset_store,
-#    get_goal_chain_store, get_risk_identifier, get_scheduler
+#  已注册 (~41): get_db, get_db_engine, get_db_sessionmaker, get_redis,
+# get_ring_log_buffer, get_tdengine, get_tdengine_async, get_user_store,
+# get_token_ban_list, get_budget_enforcer, get_cost_optimizer,
+# get_cost_tracker, get_budget_manager, get_approval_engine,
+# get_llm_registry, get_llm_router, get_llm_client, get_shared_http_client,
+# get_process_understanding_engine, get_orchestrator, get_plugin_manager,
+# get_skill_marketplace, get_vector_store, get_knowledge_base,
+# get_embedding_service, get_rule_db, get_model_registry_service,
+# get_task_checkout_manager, get_flywheel_metrics, get_config,
+# get_rl_agent_service, get_resource_card_service,
+# get_project_package_service, get_world_model_service,
+# get_workflow_template_service, get_explainability_service,
+# get_project_sync_service, get_memory_cache, get_dataset_store,
+# get_goal_chain_store, get_risk_identifier, get_scheduler
 #
-# ⚠ 迁移指南中但实际无对应 get_xxx 的模块：
-#    stock_model (类构造函数), process_data_manager (类构造函数),
-#    experience_store, validation_calibrator, tool_wear/facade,
-#    rust_engine, postprocessor/registry, state/checkpoint,
-#    state/recovery, templates/template_*
+#  迁移指南中但实际无对应 get_xxx 的模块：
+# stock_model (类构造函数), process_data_manager (类构造函数),
+# experience_store, validation_calibrator, tool_wear/facade,
+# rust_engine, postprocessor/registry, state/checkpoint,
+# state/recovery, templates/template_*

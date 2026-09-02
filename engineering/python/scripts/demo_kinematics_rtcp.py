@@ -44,9 +44,7 @@ from app.simulation.kinematics import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 数据模型
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -128,9 +126,7 @@ class KinematicsReport:
     summary: dict[str, Any] = field(default_factory=dict)
 
 
-# ---------------------------------------------------------------------------
 # 场景1：运动学正解
-# ---------------------------------------------------------------------------
 
 
 def run_forward_demo(kin: XM100Kinematics) -> list[ForwardResult]:
@@ -163,22 +159,23 @@ def run_forward_demo(kin: XM100Kinematics) -> list[ForwardResult]:
         pim = fwd.get("point_in_machine")
 
         result = ForwardResult(
-            x=x, y=y, z=z, a_deg=a, c_deg=c,
+            x=x,
+            y=y,
+            z=z,
+            a_deg=a,
+            c_deg=c,
             tool_axis_in_wp=[float(v) for v in axis],
             point_in_machine=[float(v) for v in pim] if pim is not None else None,
         )
         results.append(result)
 
-        print(f"{desc:<28} {a:>6.1f} {c:>6.1f} "
-              f"{axis[0]:>9.4f} {axis[1]:>9.4f} {axis[2]:>9.4f}")
+        print(f"{desc:<28} {a:>6.1f} {c:>6.1f} {axis[0]:>9.4f} {axis[1]:>9.4f} {axis[2]:>9.4f}")
 
     print(f"\n共 {len(results)} 个正解案例")
     return results
 
 
-# ---------------------------------------------------------------------------
 # 场景2：运动学逆解
-# ---------------------------------------------------------------------------
 
 
 def run_inverse_demo(kin: XM100Kinematics) -> list[InverseResult]:
@@ -207,40 +204,47 @@ def run_inverse_demo(kin: XM100Kinematics) -> list[InverseResult]:
             result = InverseResult(
                 target_position=list(target),
                 tool_axis_direction=list(axis),
-                solved_x=solved["x"], solved_y=solved["y"], solved_z=solved["z"],
-                solved_a=solved["a"], solved_c=solved["c"],
+                solved_x=solved["x"],
+                solved_y=solved["y"],
+                solved_z=solved["z"],
+                solved_a=solved["a"],
+                solved_c=solved["c"],
                 feasible=True,
                 note="在机床行程内",
             )
-            print(f"{desc:<32} "
-                  f"({target[0]:.0f},{target[1]:.0f},{target[2]:.0f}) "
-                  f"({axis[0]:.2f},{axis[1]:.2f},{axis[2]:.2f}) "
-                  f"{'是':>5} {solved['a']:>7.2f} {solved['c']:>7.2f}")
+            print(
+                f"{desc:<32} "
+                f"({target[0]:.0f},{target[1]:.0f},{target[2]:.0f}) "
+                f"({axis[0]:.2f},{axis[1]:.2f},{axis[2]:.2f}) "
+                f"{'是':>5} {solved['a']:>7.2f} {solved['c']:>7.2f}"
+            )
         else:
             result = InverseResult(
                 target_position=list(target),
                 tool_axis_direction=list(axis),
-                solved_x=0, solved_y=0, solved_z=0,
-                solved_a=0, solved_c=0,
+                solved_x=0,
+                solved_y=0,
+                solved_z=0,
+                solved_a=0,
+                solved_c=0,
                 feasible=False,
                 note="超出机床行程或A轴范围",
             )
-            print(f"{desc:<32} "
-                  f"({target[0]:.0f},{target[1]:.0f},{target[2]:.0f}) "
-                  f"({axis[0]:.2f},{axis[1]:.2f},{axis[2]:.2f}) "
-                  f"{'否':>5} {'N/A':>7} {'N/A':>7}")
+            print(
+                f"{desc:<32} "
+                f"({target[0]:.0f},{target[1]:.0f},{target[2]:.0f}) "
+                f"({axis[0]:.2f},{axis[1]:.2f},{axis[2]:.2f}) "
+                f"{'否':>5} {'N/A':>7} {'N/A':>7}"
+            )
 
         results.append(result)
 
     feasible_count = sum(1 for r in results if r.feasible)
-    print(f"\n共 {len(results)} 个逆解案例，{feasible_count} 个可行，"
-          f"{len(results) - feasible_count} 个不可行")
+    print(f"\n共 {len(results)} 个逆解案例，{feasible_count} 个可行，{len(results) - feasible_count} 个不可行")
     return results
 
 
-# ---------------------------------------------------------------------------
 # 场景3：RTCP 补偿
-# ---------------------------------------------------------------------------
 
 
 def run_rtcp_demo(kin: XM100Kinematics) -> list[RTCPStep]:
@@ -258,17 +262,20 @@ def run_rtcp_demo(kin: XM100Kinematics) -> list[RTCPStep]:
     print(f"\n初始位置：X={init_x}, Y={init_y}, Z={init_z}")
     print(f"刀触点（工件坐标系）：{tool_contact_point}")
     print("\n--- A 轴旋转扫描（C=0° 固定）---")
-    print(f"{'步':>3} {'A°':>7} {'C°':>7} "
-          f"{'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} "
-          f"{'新X':>8} {'新Y':>8} {'新Z':>8}")
+    print(f"{'步':>3} {'A°':>7} {'C°':>7} {'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} {'新X':>8} {'新Y':>8} {'新Z':>8}")
     print("-" * 90)
 
     steps: list[RTCPStep] = []
     for i, a_deg in enumerate([0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0]):
         c_deg = 0.0  # 固定 C 轴
         new_x, new_y, new_z = kin.rtcp_compensate(
-            init_x, init_y, init_z, a_deg, c_deg,
-            current_a=0.0, current_c=0.0,
+            init_x,
+            init_y,
+            init_z,
+            a_deg,
+            c_deg,
+            current_a=0.0,
+            current_c=0.0,
             tool_contact_point=tool_contact_point,
         )
         dx = new_x - init_x
@@ -276,27 +283,38 @@ def run_rtcp_demo(kin: XM100Kinematics) -> list[RTCPStep]:
         dz = new_z - init_z
 
         step = RTCPStep(
-            step=i, a_deg=a_deg, c_deg=c_deg,
-            comp_x=dx, comp_y=dy, comp_z=dz,
-            new_x=new_x, new_y=new_y, new_z=new_z,
+            step=i,
+            a_deg=a_deg,
+            c_deg=c_deg,
+            comp_x=dx,
+            comp_y=dy,
+            comp_z=dz,
+            new_x=new_x,
+            new_y=new_y,
+            new_z=new_z,
         )
         steps.append(step)
-        print(f"{i:>3} {a_deg:>7.1f} {c_deg:>7.1f} "
-              f"{dx:>9.4f} {dy:>9.4f} {dz:>9.4f} "
-              f"{new_x:>8.3f} {new_y:>8.3f} {new_z:>8.3f}")
+        print(
+            f"{i:>3} {a_deg:>7.1f} {c_deg:>7.1f} "
+            f"{dx:>9.4f} {dy:>9.4f} {dz:>9.4f} "
+            f"{new_x:>8.3f} {new_y:>8.3f} {new_z:>8.3f}"
+        )
 
     # C 轴旋转扫描
     print("\n--- C 轴旋转扫描（A=30° 固定，从 A=0/C=0 起始）---")
-    print(f"{'步':>3} {'A°':>7} {'C°':>7} "
-          f"{'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} "
-          f"{'新X':>8} {'新Y':>8} {'新Z':>8}")
+    print(f"{'步':>3} {'A°':>7} {'C°':>7} {'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} {'新X':>8} {'新Y':>8} {'新Z':>8}")
     print("-" * 90)
 
     for i, c_deg in enumerate([0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0]):
         a_deg = 30.0
         new_x, new_y, new_z = kin.rtcp_compensate(
-            init_x, init_y, init_z, a_deg, c_deg,
-            current_a=0.0, current_c=0.0,
+            init_x,
+            init_y,
+            init_z,
+            a_deg,
+            c_deg,
+            current_a=0.0,
+            current_c=0.0,
             tool_contact_point=tool_contact_point,
         )
         dx = new_x - init_x
@@ -304,30 +322,45 @@ def run_rtcp_demo(kin: XM100Kinematics) -> list[RTCPStep]:
         dz = new_z - init_z
 
         step = RTCPStep(
-            step=i + 100, a_deg=a_deg, c_deg=c_deg,
-            comp_x=dx, comp_y=dy, comp_z=dz,
-            new_x=new_x, new_y=new_y, new_z=new_z,
+            step=i + 100,
+            a_deg=a_deg,
+            c_deg=c_deg,
+            comp_x=dx,
+            comp_y=dy,
+            comp_z=dz,
+            new_x=new_x,
+            new_y=new_y,
+            new_z=new_z,
         )
         steps.append(step)
-        print(f"{i + 100:>3} {a_deg:>7.1f} {c_deg:>7.1f} "
-              f"{dx:>9.4f} {dy:>9.4f} {dz:>9.4f} "
-              f"{new_x:>8.3f} {new_y:>8.3f} {new_z:>8.3f}")
+        print(
+            f"{i + 100:>3} {a_deg:>7.1f} {c_deg:>7.1f} "
+            f"{dx:>9.4f} {dy:>9.4f} {dz:>9.4f} "
+            f"{new_x:>8.3f} {new_y:>8.3f} {new_z:>8.3f}"
+        )
 
     # 复合旋转扫描
     print("\n--- 复合旋转扫描（A 和 C 同时变化）---")
-    print(f"{'步':>3} {'A°':>7} {'C°':>7} "
-          f"{'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} "
-          f"{'新X':>8} {'新Y':>8} {'新Z':>8}")
+    print(f"{'步':>3} {'A°':>7} {'C°':>7} {'ΔX':>9} {'ΔY':>9} {'ΔZ':>9} {'新X':>8} {'新Y':>8} {'新Z':>8}")
     print("-" * 90)
 
     complex_cases = [
-        (15.0, 30.0), (30.0, 60.0), (45.0, 90.0),
-        (60.0, 120.0), (45.0, 180.0), (30.0, 270.0),
+        (15.0, 30.0),
+        (30.0, 60.0),
+        (45.0, 90.0),
+        (60.0, 120.0),
+        (45.0, 180.0),
+        (30.0, 270.0),
     ]
     for i, (a_deg, c_deg) in enumerate(complex_cases):
         new_x, new_y, new_z = kin.rtcp_compensate(
-            init_x, init_y, init_z, a_deg, c_deg,
-            current_a=0.0, current_c=0.0,
+            init_x,
+            init_y,
+            init_z,
+            a_deg,
+            c_deg,
+            current_a=0.0,
+            current_c=0.0,
             tool_contact_point=tool_contact_point,
         )
         dx = new_x - init_x
@@ -335,22 +368,28 @@ def run_rtcp_demo(kin: XM100Kinematics) -> list[RTCPStep]:
         dz = new_z - init_z
 
         step = RTCPStep(
-            step=i + 200, a_deg=a_deg, c_deg=c_deg,
-            comp_x=dx, comp_y=dy, comp_z=dz,
-            new_x=new_x, new_y=new_y, new_z=new_z,
+            step=i + 200,
+            a_deg=a_deg,
+            c_deg=c_deg,
+            comp_x=dx,
+            comp_y=dy,
+            comp_z=dz,
+            new_x=new_x,
+            new_y=new_y,
+            new_z=new_z,
         )
         steps.append(step)
-        print(f"{i + 200:>3} {a_deg:>7.1f} {c_deg:>7.1f} "
-              f"{dx:>9.4f} {dy:>9.4f} {dz:>9.4f} "
-              f"{new_x:>8.3f} {new_y:>8.3f} {new_z:>8.3f}")
+        print(
+            f"{i + 200:>3} {a_deg:>7.1f} {c_deg:>7.1f} "
+            f"{dx:>9.4f} {dy:>9.4f} {dz:>9.4f} "
+            f"{new_x:>8.3f} {new_y:>8.3f} {new_z:>8.3f}"
+        )
 
     print(f"\n共 {len(steps)} 个 RTCP 补偿步骤")
     return steps
 
 
-# ---------------------------------------------------------------------------
 # 场景4：奇异点检查
-# ---------------------------------------------------------------------------
 
 
 def run_singularity_demo(kin: XM100Kinematics) -> list[SingularityCheck]:
@@ -375,9 +414,7 @@ def run_singularity_demo(kin: XM100Kinematics) -> list[SingularityCheck]:
     return results
 
 
-# ---------------------------------------------------------------------------
 # 场景5：工作空间扫描
-# ---------------------------------------------------------------------------
 
 
 def run_workspace_scan(kin: XM100Kinematics) -> list[WorkspaceScanPoint]:
@@ -418,33 +455,32 @@ def run_workspace_scan(kin: XM100Kinematics) -> list[WorkspaceScanPoint]:
             warnings = kin.check_limits(x_val, y_val, z_val, a, c)
             if not warnings:
                 point = WorkspaceScanPoint(
-                    a_deg=a, c_deg=c, feasible=True,
-                    solved_x=x_val, solved_y=y_val, solved_z=z_val,
+                    a_deg=a,
+                    c_deg=c,
+                    feasible=True,
+                    solved_x=x_val,
+                    solved_y=y_val,
+                    solved_z=z_val,
                 )
                 feasible_count += 1
-                print(f"{a:>7.1f} {c:>7.1f} {'是':>5} "
-                      f"{x_val:>8.2f} {y_val:>8.2f} {z_val:>8.2f} "
-                      f"{'':<30}")
+                print(f"{a:>7.1f} {c:>7.1f} {'是':>5} {x_val:>8.2f} {y_val:>8.2f} {z_val:>8.2f} {'':<30}")
             else:
                 point = WorkspaceScanPoint(
-                    a_deg=a, c_deg=c, feasible=False,
+                    a_deg=a,
+                    c_deg=c,
+                    feasible=False,
                     warning=warnings[0],
                 )
-                print(f"{a:>7.1f} {c:>7.1f} {'否':>5} "
-                      f"{'N/A':>8} {'N/A':>8} {'N/A':>8} "
-                      f"{warnings[0]:<30}")
+                print(f"{a:>7.1f} {c:>7.1f} {'否':>5} {'N/A':>8} {'N/A':>8} {'N/A':>8} {warnings[0]:<30}")
 
             results.append(point)
 
     total = len(results)
-    print(f"\n共扫描 {total} 个 A/C 组合，{feasible_count} 个可行 "
-          f"({100 * feasible_count / total:.1f}%)")
+    print(f"\n共扫描 {total} 个 A/C 组合，{feasible_count} 个可行 ({100 * feasible_count / total:.1f}%)")
     return results
 
 
-# ---------------------------------------------------------------------------
 # 报告生成
-# ---------------------------------------------------------------------------
 
 
 def build_report(
@@ -505,8 +541,7 @@ def build_report(
             "singularity_detected": sum(1 for s in singularity_checks if s.is_singular),
             "workspace_scan_total": len(workspace_scan),
             "workspace_scan_feasible": feasible_workspace,
-            "workspace_coverage_pct": round(100 * feasible_workspace / len(workspace_scan), 1)
-            if workspace_scan else 0,
+            "workspace_coverage_pct": round(100 * feasible_workspace / len(workspace_scan), 1) if workspace_scan else 0,
         },
     )
 
@@ -534,27 +569,32 @@ def write_markdown_report(report: KinematicsReport, output_path: str) -> None:
     lines.append("| --- | --- | --- | --- | --- |")
     for r in report.forward_results:
         ax = r["tool_axis_in_wp"]
-        lines.append(f"| {r['a_deg']:.1f} | {r['c_deg']:.1f} | "
-                     f"{ax[0]:.4f} | {ax[1]:.4f} | {ax[2]:.4f} |")
+        lines.append(f"| {r['a_deg']:.1f} | {r['c_deg']:.1f} | {ax[0]:.4f} | {ax[1]:.4f} | {ax[2]:.4f} |")
 
     lines.append("\n## 3. 运动学逆解\n")
-    lines.append(f"共 {report.summary['inverse_cases']} 个案例，"
-                 f"可行 {report.summary['inverse_feasible']} 个，"
-                 f"不可行 {report.summary['inverse_infeasible']} 个。\n")
+    lines.append(
+        f"共 {report.summary['inverse_cases']} 个案例，"
+        f"可行 {report.summary['inverse_feasible']} 个，"
+        f"不可行 {report.summary['inverse_infeasible']} 个。\n"
+    )
     lines.append("| 描述 | 目标位置 | 刀轴方向 | 可行 | X | Y | Z | A(°) | C(°) |")
     lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for r in report.inverse_results:
         tp = r["target_position"]
         ax = r["tool_axis_direction"]
         if r["feasible"]:
-            lines.append(f"| - | ({tp[0]:.0f},{tp[1]:.0f},{tp[2]:.0f}) | "
-                         f"({ax[0]:.2f},{ax[1]:.2f},{ax[2]:.2f}) | 是 | "
-                         f"{r['solved_x']:.2f} | {r['solved_y']:.2f} | {r['solved_z']:.2f} | "
-                         f"{r['solved_a']:.2f} | {r['solved_c']:.2f} |")
+            lines.append(
+                f"| - | ({tp[0]:.0f},{tp[1]:.0f},{tp[2]:.0f}) | "
+                f"({ax[0]:.2f},{ax[1]:.2f},{ax[2]:.2f}) | 是 | "
+                f"{r['solved_x']:.2f} | {r['solved_y']:.2f} | {r['solved_z']:.2f} | "
+                f"{r['solved_a']:.2f} | {r['solved_c']:.2f} |"
+            )
         else:
-            lines.append(f"| - | ({tp[0]:.0f},{tp[1]:.0f},{tp[2]:.0f}) | "
-                         f"({ax[0]:.2f},{ax[1]:.2f},{ax[2]:.2f}) | 否 | "
-                         f"- | - | - | - | - |")
+            lines.append(
+                f"| - | ({tp[0]:.0f},{tp[1]:.0f},{tp[2]:.0f}) | "
+                f"({ax[0]:.2f},{ax[1]:.2f},{ax[2]:.2f}) | 否 | "
+                f"- | - | - | - | - |"
+            )
 
     lines.append("\n## 4. RTCP 补偿\n")
     lines.append(f"共 {report.summary['rtcp_steps']} 个补偿步骤。\n")
@@ -563,71 +603,83 @@ def write_markdown_report(report: KinematicsReport, output_path: str) -> None:
     lines.append("| --- | --- | --- | --- | --- | --- | --- |")
     for s in report.rtcp_compensation:
         if s["step"] < 100:
-            lines.append(f"| {s['a_deg']:.1f} | {s['comp_x']:.4f} | "
-                         f"{s['comp_y']:.4f} | {s['comp_z']:.4f} | "
-                         f"{s['new_x']:.3f} | {s['new_y']:.3f} | {s['new_z']:.3f} |")
+            lines.append(
+                f"| {s['a_deg']:.1f} | {s['comp_x']:.4f} | "
+                f"{s['comp_y']:.4f} | {s['comp_z']:.4f} | "
+                f"{s['new_x']:.3f} | {s['new_y']:.3f} | {s['new_z']:.3f} |"
+            )
 
     lines.append("\n### 4.2 C 轴扫描（A=30° 固定，从 A=0/C=0 起始）\n")
     lines.append("| A(°) | C(°) | ΔX(mm) | ΔY(mm) | ΔZ(mm) | 新X | 新Y | 新Z |")
     lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
     for s in report.rtcp_compensation:
         if 100 <= s["step"] < 200:
-            lines.append(f"| {s['a_deg']:.1f} | {s['c_deg']:.1f} | "
-                         f"{s['comp_x']:.4f} | {s['comp_y']:.4f} | {s['comp_z']:.4f} | "
-                         f"{s['new_x']:.3f} | {s['new_y']:.3f} | {s['new_z']:.3f} |")
+            lines.append(
+                f"| {s['a_deg']:.1f} | {s['c_deg']:.1f} | "
+                f"{s['comp_x']:.4f} | {s['comp_y']:.4f} | {s['comp_z']:.4f} | "
+                f"{s['new_x']:.3f} | {s['new_y']:.3f} | {s['new_z']:.3f} |"
+            )
 
     lines.append("\n### 4.3 复合旋转扫描（A 和 C 同时变化）\n")
     lines.append("| A(°) | C(°) | ΔX(mm) | ΔY(mm) | ΔZ(mm) | 新X | 新Y | 新Z |")
     lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
     for s in report.rtcp_compensation:
         if s["step"] >= 200:
-            lines.append(f"| {s['a_deg']:.1f} | {s['c_deg']:.1f} | "
-                         f"{s['comp_x']:.4f} | {s['comp_y']:.4f} | {s['comp_z']:.4f} | "
-                         f"{s['new_x']:.3f} | {s['new_y']:.3f} | {s['new_z']:.3f} |")
+            lines.append(
+                f"| {s['a_deg']:.1f} | {s['c_deg']:.1f} | "
+                f"{s['comp_x']:.4f} | {s['comp_y']:.4f} | {s['comp_z']:.4f} | "
+                f"{s['new_x']:.3f} | {s['new_y']:.3f} | {s['new_z']:.3f} |"
+            )
 
     a_max = report.summary["rtcp_a_scan_max_compensation_mm"]
     c_max = report.summary["rtcp_c_scan_max_compensation_mm"]
     cx_max = report.summary["rtcp_complex_scan_max_compensation_mm"]
-    lines.append(f"\n**A轴扫描最大补偿量**：ΔX={a_max['max_dx']:.4f}mm, "
-                 f"ΔY={a_max['max_dy']:.4f}mm, ΔZ={a_max['max_dz']:.4f}mm")
-    lines.append(f"\n**C轴扫描最大补偿量**：ΔX={c_max['max_dx']:.4f}mm, "
-                 f"ΔY={c_max['max_dy']:.4f}mm, ΔZ={c_max['max_dz']:.4f}mm")
-    lines.append(f"\n**复合扫描最大补偿量**：ΔX={cx_max['max_dx']:.4f}mm, "
-                 f"ΔY={cx_max['max_dy']:.4f}mm, ΔZ={cx_max['max_dz']:.4f}mm")
+    lines.append(
+        f"\n**A轴扫描最大补偿量**：ΔX={a_max['max_dx']:.4f}mm, ΔY={a_max['max_dy']:.4f}mm, ΔZ={a_max['max_dz']:.4f}mm"
+    )
+    lines.append(
+        f"\n**C轴扫描最大补偿量**：ΔX={c_max['max_dx']:.4f}mm, ΔY={c_max['max_dy']:.4f}mm, ΔZ={c_max['max_dz']:.4f}mm"
+    )
+    lines.append(
+        f"\n**复合扫描最大补偿量**：ΔX={cx_max['max_dx']:.4f}mm, "
+        f"ΔY={cx_max['max_dy']:.4f}mm, ΔZ={cx_max['max_dz']:.4f}mm"
+    )
 
     lines.append("\n## 5. 奇异点检查\n")
-    lines.append(f"共 {report.summary['singularity_cases']} 个检查点，"
-                 f"奇异 {report.summary['singularity_detected']} 个。\n")
+    lines.append(
+        f"共 {report.summary['singularity_cases']} 个检查点，奇异 {report.summary['singularity_detected']} 个。\n"
+    )
     lines.append("| A(°) | 奇异 | 警告 |")
     lines.append("| --- | --- | --- |")
     for s in report.singularity_checks:
-        lines.append(f"| {s['a_deg']:.1f} | {'是' if s['is_singular'] else '否'} | "
-                     f"{s['warning']} |")
+        lines.append(f"| {s['a_deg']:.1f} | {'是' if s['is_singular'] else '否'} | {s['warning']} |")
 
     lines.append("\n## 6. 工作空间扫描\n")
-    lines.append(f"共扫描 {report.summary['workspace_scan_total']} 个 A/C 组合，"
-                 f"可行 {report.summary['workspace_scan_feasible']} 个 "
-                 f"({report.summary['workspace_coverage_pct']:.1f}%)。\n")
+    lines.append(
+        f"共扫描 {report.summary['workspace_scan_total']} 个 A/C 组合，"
+        f"可行 {report.summary['workspace_scan_feasible']} 个 "
+        f"({report.summary['workspace_coverage_pct']:.1f}%)。\n"
+    )
     lines.append("| A(°) | C(°) | 可行 | X | Y | Z | 警告 |")
     lines.append("| --- | --- | --- | --- | --- | --- | --- |")
     for p in report.workspace_scan:
         if p["feasible"]:
-            lines.append(f"| {p['a_deg']:.1f} | {p['c_deg']:.1f} | 是 | "
-                         f"{p['solved_x']:.2f} | {p['solved_y']:.2f} | {p['solved_z']:.2f} | - |")
+            lines.append(
+                f"| {p['a_deg']:.1f} | {p['c_deg']:.1f} | 是 | "
+                f"{p['solved_x']:.2f} | {p['solved_y']:.2f} | {p['solved_z']:.2f} | - |"
+            )
         else:
-            lines.append(f"| {p['a_deg']:.1f} | {p['c_deg']:.1f} | 否 | "
-                         f"- | - | - | {p['warning']} |")
+            lines.append(f"| {p['a_deg']:.1f} | {p['c_deg']:.1f} | 否 | - | - | - | {p['warning']} |")
 
     lines.append("\n## 7. 总结\n")
     s = report.summary
     lines.append(f"- 正解案例：{s['forward_cases']} 个")
-    lines.append(f"- 逆解案例：{s['inverse_cases']} 个 "
-                 f"(可行 {s['inverse_feasible']} / 不可行 {s['inverse_infeasible']})")
+    lines.append(
+        f"- 逆解案例：{s['inverse_cases']} 个 (可行 {s['inverse_feasible']} / 不可行 {s['inverse_infeasible']})"
+    )
     lines.append(f"- RTCP 补偿步骤：{s['rtcp_steps']} 个")
-    lines.append(f"- 奇异点检查：{s['singularity_cases']} 个 "
-                 f"(奇异 {s['singularity_detected']} 个)")
-    lines.append(f"- 工作空间扫描：{s['workspace_scan_total']} 个组合，"
-                 f"覆盖率 {s['workspace_coverage_pct']:.1f}%")
+    lines.append(f"- 奇异点检查：{s['singularity_cases']} 个 (奇异 {s['singularity_detected']} 个)")
+    lines.append(f"- 工作空间扫描：{s['workspace_scan_total']} 个组合，覆盖率 {s['workspace_coverage_pct']:.1f}%")
     lines.append("\n---")
     lines.append("\n*本报告由 XM-100 五轴运动学展示脚本自动生成。*")
 
@@ -635,9 +687,7 @@ def write_markdown_report(report: KinematicsReport, output_path: str) -> None:
         f.write("\n".join(lines))
 
 
-# ---------------------------------------------------------------------------
 # 主入口
-# ---------------------------------------------------------------------------
 
 
 def main() -> int:
@@ -659,8 +709,11 @@ def main() -> int:
 
     # 构建报告
     report = build_report(
-        forward_results, inverse_results, rtcp_steps,
-        singularity_checks, workspace_scan,
+        forward_results,
+        inverse_results,
+        rtcp_steps,
+        singularity_checks,
+        workspace_scan,
     )
 
     # 输出报告
@@ -683,13 +736,10 @@ def main() -> int:
     s = report.summary
     print("\n总结：")
     print(f"  正解案例：{s['forward_cases']} 个")
-    print(f"  逆解案例：{s['inverse_cases']} 个 "
-          f"(可行 {s['inverse_feasible']} / 不可行 {s['inverse_infeasible']})")
+    print(f"  逆解案例：{s['inverse_cases']} 个 (可行 {s['inverse_feasible']} / 不可行 {s['inverse_infeasible']})")
     print(f"  RTCP 补偿步骤：{s['rtcp_steps']} 个")
-    print(f"  奇异点检查：{s['singularity_cases']} 个 "
-          f"(奇异 {s['singularity_detected']} 个)")
-    print(f"  工作空间扫描：{s['workspace_scan_total']} 个组合，"
-          f"覆盖率 {s['workspace_coverage_pct']:.1f}%")
+    print(f"  奇异点检查：{s['singularity_cases']} 个 (奇异 {s['singularity_detected']} 个)")
+    print(f"  工作空间扫描：{s['workspace_scan_total']} 个组合，覆盖率 {s['workspace_coverage_pct']:.1f}%")
 
     return 0
 

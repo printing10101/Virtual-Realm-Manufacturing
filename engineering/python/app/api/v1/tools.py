@@ -22,9 +22,7 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
 # Pydantic schemas
-# ---------------------------------------------------------------------------
 
 
 class ToolCreate(BaseModel):
@@ -74,9 +72,7 @@ class ToolWearUpdate(BaseModel):
     sharpened: bool = Field(False, description="是否进行了刃磨")
 
 
-# ---------------------------------------------------------------------------
 # Endpoints
-# ---------------------------------------------------------------------------
 
 
 @router.get("/")
@@ -197,9 +193,7 @@ async def tool_life_prediction(tool_id: str):
     return success(data=data)
 
 
-# ---------------------------------------------------------------------------
 # Seed data
-# ---------------------------------------------------------------------------
 
 
 @router.post("/seed", dependencies=[Depends(require_role("admin"))])

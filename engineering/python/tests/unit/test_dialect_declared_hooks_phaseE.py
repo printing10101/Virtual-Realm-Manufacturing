@@ -15,10 +15,7 @@ import pytest
 import yaml
 
 # 方言 hooks 模块是纯 Python，直接从插件目录导入（模拟编译器加载路径）
-_PLUGIN_ROOT = (
-    Path(__file__).resolve().parents[4]
-    / "postprocessor-plugins"
-)
+_PLUGIN_ROOT = Path(__file__).resolve().parents[4] / "postprocessor-plugins"
 _SIEMENS_HOOKS = Path(_PLUGIN_ROOT) / "siemens_840d" / "hooks.py"
 _HEIDENHAIN_HOOKS = Path(_PLUGIN_ROOT) / "heidenhain_tnc640" / "hooks.py"
 
@@ -45,9 +42,7 @@ def heidenhain_hooks():
     return _load_hooks_module(_HEIDENHAIN_HOOKS, "heidenhain_tnc640_hooks_test")
 
 
-# ---------------------------------------------------------------------------
 # 声明 YAML 结构
-# ---------------------------------------------------------------------------
 
 
 class TestDialectDeclarations:
@@ -86,9 +81,7 @@ class TestDialectDeclarations:
         assert any("HeidenhainHeaderHooks" in h["class"] for h in data["hooks"])
 
 
-# ---------------------------------------------------------------------------
 # Siemens 840D hooks 逻辑
-# ---------------------------------------------------------------------------
 
 
 class _SiemensContext:
@@ -166,9 +159,7 @@ class TestSiemens840DHooks:
         assert "G90 G71 G94" in out
 
 
-# ---------------------------------------------------------------------------
 # Heidenhain TNC640 hooks 逻辑
-# ---------------------------------------------------------------------------
 
 
 class TestHeidenhainTNC640Hooks:

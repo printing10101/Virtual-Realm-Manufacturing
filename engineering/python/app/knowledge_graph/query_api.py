@@ -24,9 +24,7 @@ from .graph_store import GraphStore
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 工具
-# ---------------------------------------------------------------------------
 
 
 # 通配符到正则的转换
@@ -51,9 +49,7 @@ def _match(value: Any, pattern: str | None) -> bool:
     return re.match(_wildcard_to_regex(pattern), str(value)) is not None
 
 
-# ---------------------------------------------------------------------------
 # 知识图谱查询 API
-# ---------------------------------------------------------------------------
 
 
 class KnowledgeGraphQueryAPI:

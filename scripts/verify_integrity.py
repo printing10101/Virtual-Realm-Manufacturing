@@ -46,6 +46,7 @@ if env_file.exists():
                 if key and key not in os.environ:
                     os.environ[key] = value
 
+
 def check_missing_inits(base_dir: Path):
     """检查包含 .py 文件但缺少 __init__.py 的目录（非命名空间包）"""
     missing = []
@@ -53,19 +54,20 @@ def check_missing_inits(base_dir: Path):
         # 跳过测试目录和虚拟环境
         if "tests" in root or "venv" in root or "__pycache__" in root:
             continue
-        
+
         py_files = [f for f in files if f.endswith(".py") and f != "__init__.py"]
         has_init = "__init__.py" in files
-        
+
         if py_files and not has_init:
             # 这是一个包含代码但没有 __init__.py 的包
             missing.append(root)
     return missing
 
+
 def check_imports():
     """尝试导入 app 包下的所有模块"""
     errors = []
-    
+
     try:
         import app
     except ImportError as e:
@@ -73,13 +75,11 @@ def check_imports():
         return False
 
     # 遍历 app 下的所有子模块
-    for importer, modname, ispkg in pkgutil.walk_packages(
-        path=app.__path__, prefix="app.", onerror=lambda x: None
-    ):
+    for importer, modname, ispkg in pkgutil.walk_packages(path=app.__path__, prefix="app.", onerror=lambda x: None):
         try:
             # 尝试导入模块
             mod = importlib.import_module(modname)
-            
+
             # 如果是包，检查其 __all__ 或属性是否可访问
             if ispkg and hasattr(mod, "__all__"):
                 for name in mod.__all__:
@@ -87,7 +87,7 @@ def check_imports():
                         getattr(mod, name)
                     except AttributeError as e:
                         errors.append(f"[属性缺失] {modname}.{name} -> {e}")
-                        
+
         except ImportError as e:
             errors.append(f"[导入失败] {modname} -> {e}")
         except Exception as e:
@@ -96,11 +96,12 @@ def check_imports():
 
     return errors
 
+
 def main():
     print("=" * 60)
     print("灵境制造 - 全局导入链完整性验证")
     print("=" * 60)
-    
+
     app_dir = project_root / "app"
     if not app_dir.exists():
         print(f"错误: 找不到 app 目录 ({app_dir})")
@@ -120,7 +121,7 @@ def main():
     # 2. 检查导入链
     print("\n[2/2] 扫描并尝试导入所有模块 ...")
     errors = check_imports()
-    
+
     if errors:
         print(f"  ❌ 发现 {len(errors)} 个导入/属性错误:")
         for err in errors:
@@ -136,6 +137,7 @@ def main():
     else:
         print("✅ 验证通过: 导入链完整，类名匹配，无缺失文件。")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

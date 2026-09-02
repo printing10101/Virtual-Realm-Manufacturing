@@ -113,9 +113,7 @@ from app.config.environment import get_lingjing_env, parse_allowed_origins
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # Exceptions
-# ---------------------------------------------------------------------------
 
 
 class CorsConfigError(Exception):
@@ -127,63 +125,57 @@ class CorsConfigError(Exception):
     """
 
 
-# ---------------------------------------------------------------------------
 # Production environment
-# ---------------------------------------------------------------------------
 # Production defaults to an **empty** explicit allowlist and instead uses a
 # tightly bounded regex that only matches ``http://localhost`` with an
-# optional port.  This is *not* a wildcard — the protocol is fixed to
-# ``http`` and the host is fixed to ``localhost``.  Real production
+# optional port. This is *not* a wildcard — the protocol is fixed to
+# ``http`` and the host is fixed to ``localhost``. Real production
 # deployments are expected to set the ``ALLOWED_ORIGINS`` environment
 # variable to a comma-separated list of explicit production domains.
 PRODUCTION_ORIGINS: list[str] = []
 
-#: Matches ``http://localhost`` with an optional port number (e.g. ``:5173``,
-#: ``:8080``).  生产环境仅允许 HTTP 协议访问 localhost，禁止 HTTPS —— 防止
-#: 本地自签证书绕过浏览器同源策略的安全风险。  真实生产域名（含 HTTPS）
-#: 请通过 ``ALLOWED_ORIGINS`` 环境变量显式配置。
-#: 显式端口匹配可防止开放重定向式绕过，避免使用 ``https?://.*`` 这类过于
-#: 宽松的正则。  P2-1-1 修复：使用 ``re.fullmatch`` 隐式锚定整个字符串，
-#: 无需在正则末尾显式添加 ``$``；模块级硬校验（line ~701）也期望无 ``$``
-#: 的形式。
+#: : Matches ``http://localhost`` with an optional port number (e.g. ``:5173``,
+#: : ``:8080``). 生产环境仅允许 HTTP 协议访问 localhost，禁止 HTTPS —— 防止
+#: : 本地自签证书绕过浏览器同源策略的安全风险。 真实生产域名（含 HTTPS）
+#: : 请通过 ``ALLOWED_ORIGINS`` 环境变量显式配置。
+#: : 显式端口匹配可防止开放重定向式绕过，避免使用 ``https?://.*`` 这类过于
+#: : 宽松的正则。 P2-1-1 修复：使用 ``re.fullmatch`` 隐式锚定整个字符串，
+#: : 无需在正则末尾显式添加 ``$``；模块级硬校验（line ~701）也期望无 ``$``
+#: : 的形式。
 PRODUCTION_ORIGIN_REGEX = r"http://localhost(:\d+)?"
 
 
-# ---------------------------------------------------------------------------
 # Development environment
-# ---------------------------------------------------------------------------
 # Explicit, comma-free allowlist of ``http://localhost:<port>`` URLs.
 # Partial wildcards (a leading-dot subdomain wildcard, a scheme wildcard,
 # or a port wildcard) are **forbidden** here because ``allow_credentials``
-# is always ``True`` for this service.  See the module docstring for the
+# is always ``True`` for this service. See the module docstring for the
 # security rationale.
 #
 # Common frontend development server ports:
-#   * 3000 – Create React App / Next.js (default)
-#   * 5173 – Vite (default)
-#   * 8080 – Webpack dev server / common backend proxy
+# * 3000 – Create React App / Next.js (default)
+# * 5173 – Vite (default)
+# * 8080 – Webpack dev server / common backend proxy
 DEVELOPMENT_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:8080",
 ]
 
-#: No regex needed in development — every allowed origin is enumerated above.
+#: : No regex needed in development — every allowed origin is enumerated above.
 DEVELOPMENT_ORIGIN_REGEX: str | None = None
 
 
-# ---------------------------------------------------------------------------
 # CORS preflight cache duration (seconds)
-# ---------------------------------------------------------------------------
 # P2-1-3 修复：提取 max_age 为命名常量，消除 CorsSettings.__init__ 与
 # get_cors_config() 之间的 DRY 违反，避免魔法数字分散导致配置漂移。
-#: Development environment: shorter cache (1 hour) so developers see policy
-#: changes quickly without waiting for the browser preflight cache to expire.
+#: : Development environment: shorter cache (1 hour) so developers see policy
+#: : changes quickly without waiting for the browser preflight cache to expire.
 MAX_AGE_DEVELOPMENT: int = 3600
 
-#: Production environment: longer cache (10 minutes) to reduce preflight
-#: request volume while still allowing policy updates to propagate within
-#: a reasonable window.
+#: : Production environment: longer cache (10 minutes) to reduce preflight
+#: : request volume while still allowing policy updates to propagate within
+#: : a reasonable window.
 MAX_AGE_PRODUCTION: int = 600
 
 
@@ -199,21 +191,19 @@ def _resolve_max_age(env: str) -> int:
     return MAX_AGE_DEVELOPMENT if env == "development" else MAX_AGE_PRODUCTION
 
 
-# ---------------------------------------------------------------------------
 # Wildcard detection helpers
-# ---------------------------------------------------------------------------
 
-#: Regex used to detect *any* form of wildcard — full (the all-origins
-#: wildcard string) or partial (e.g. a leading-dot subdomain wildcard,
-#: a scheme wildcard, or a port wildcard).  Matches the wildcard
-#: character appearing in any position of the origin string, including
-#: the all-origins string.
+#: : Regex used to detect *any* form of wildcard — full (the all-origins
+#: : wildcard string) or partial (e.g. a leading-dot subdomain wildcard,
+#: : a scheme wildcard, or a port wildcard). Matches the wildcard
+#: : character appearing in any position of the origin string, including
+#: : the all-origins string.
 _WILDCARD_PATTERN = re.compile(r"\*")
 
-#: The literal wildcard character.  Centralised so that the source file
-#: never contains the bare wildcard string outside of comments and
-#: detection patterns.  Built via :func:`chr` to keep the source free
-#: of the literal character.
+#: : The literal wildcard character. Centralised so that the source file
+#: : never contains the bare wildcard string outside of comments and
+#: : detection patterns. Built via :func:`chr` to keep the source free
+#: : of the literal character.
 WILDCARD_CHAR = chr(42)
 
 
@@ -237,9 +227,7 @@ def _contains_wildcard(origins: list[str] | None) -> bool:
     return any(_is_wildcard_origin(o) for o in origins)
 
 
-# ---------------------------------------------------------------------------
 # Validation
-# ---------------------------------------------------------------------------
 
 
 def validate_cors_config(
@@ -279,7 +267,7 @@ def validate_cors_config(
     """
     if not allow_credentials:
         # When credentials are disabled, full wildcards are technically
-        # permitted by the spec.  We still log a WARNING if a wildcard
+        # permitted by the spec. We still log a WARNING if a wildcard
         # is present so operators notice during development, but do not
         # raise.
         if _contains_wildcard(allow_origins):
@@ -290,7 +278,7 @@ def validate_cors_config(
             )
         return
 
-    # --- Full / partial wildcard detection ---------------------------------
+    # Full / partial wildcard detection
     if _contains_wildcard(allow_origins):
         wildcard_entries = [o for o in (allow_origins or []) if _is_wildcard_origin(o)]
         # The ERROR-level log line must contain the required Chinese
@@ -310,12 +298,12 @@ def validate_cors_config(
             "Specify explicit origins instead."
         )
 
-    # --- Origin regex sanity check -----------------------------------------
+    # Origin regex sanity check
     # The production regex is hard-coded to ``https?://localhost(:\d+)?`` and
-    # is considered safe.  If a custom regex is supplied at runtime it
+    # is considered safe. If a custom regex is supplied at runtime it
     # must not be a bare wildcard pattern.
     if origin_regex is not None and WILDCARD_CHAR in origin_regex:
-        # Only reject the obviously dangerous patterns.  A regex like
+        # Only reject the obviously dangerous patterns. A regex like
         # ``https://[^/]+\\.example\\.com`` is a tight subdomain match
         # and is allowed.
         if re.fullmatch(r"\.\*|.*\*\.\*.*", origin_regex) or origin_regex.strip() in {WILDCARD_CHAR, ".*", ".+"}:
@@ -401,9 +389,7 @@ def _resolve_environment() -> str:
     return get_lingjing_env()
 
 
-# ---------------------------------------------------------------------------
 # Settings class
-# ---------------------------------------------------------------------------
 
 
 class CorsSettings:
@@ -420,10 +406,10 @@ class CorsSettings:
     """
 
     def __init__(self) -> None:
-        # --- Environment detection ---
+        # Environment detection
         self._env = _resolve_environment()
 
-        # --- Origin resolution ---
+        # Origin resolution
         # ALLOWED_ORIGINS env var takes the highest priority.
         # P1-8 集中环境变量读取：调用 parse_allowed_origins()，消除内联实现。
         env_origins = parse_allowed_origins()
@@ -437,19 +423,19 @@ class CorsSettings:
             self._origins = list(PRODUCTION_ORIGINS)
             self._origin_regex = PRODUCTION_ORIGIN_REGEX
 
-        # --- CORS flags ---
+        # CORS flags
         self.allow_credentials = True
         # P2-1-3 修复：使用 _resolve_max_age 统一管理 max_age，消除魔法数字。
         self.max_age = _resolve_max_age(self._env)
 
-        # --- Startup validation ---
+        # Startup validation
         validate_cors_config(
             self._origins,
             self.allow_credentials,
             origin_regex=self._origin_regex,
         )
 
-    # -- Public accessors ---------------------------------------------------
+    # Public accessors
 
     def get_origins(self) -> list[str]:
         """Return the list of explicitly allowed origins."""
@@ -542,9 +528,7 @@ class CorsSettings:
 cors_settings = CorsSettings()
 
 
-# ---------------------------------------------------------------------------
 # Standalone helper functions
-# ---------------------------------------------------------------------------
 
 
 def get_environment() -> str:
@@ -689,11 +673,9 @@ def is_production() -> bool:
     return get_environment() == "production"
 
 
-# ---------------------------------------------------------------------------
 # Module-level invariants
-# ---------------------------------------------------------------------------
 # Verify the hard-coded production regex is bounded to localhost and does
-# not act as a wildcard.  This is a defence-in-depth check that runs once
+# not act as a wildcard. This is a defence-in-depth check that runs once
 # at import time — if it ever fires, the package is unrecoverable and
 # should be patched.
 #

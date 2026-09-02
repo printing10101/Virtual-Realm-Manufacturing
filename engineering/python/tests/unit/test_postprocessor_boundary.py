@@ -99,9 +99,7 @@ class TestBoundaryCoordinates:
 
     def test_negative_arc_center_fanuc(self):
         pp = FanucPostProcessor()
-        arc = pp.format_arc(
-            (-20.0, -10.0, -5.0), (-10.0, 0.0, -5.0), (-15.0, -5.0, -5.0), clockwise=True
-        )
+        arc = pp.format_arc((-20.0, -10.0, -5.0), (-10.0, 0.0, -5.0), (-15.0, -5.0, -5.0), clockwise=True)
         assert "G02" in arc
         assert "X-10.000" in arc
 
@@ -144,7 +142,7 @@ class TestDrillCycleBoundaries:
     """钻孔循环边界：dwell=0 与 pecking 参数语义。"""
 
     def test_dwell_zero_uses_g83_fanuc(self):
-        # Fanuc：dwell>0 → G73（带 P 暂停），dwell=0 → G83（无 P）
+        # Fanuc：dwell>0 G73（带 P 暂停），dwell=0 G83（无 P）
         pp = FanucPostProcessor()
         drill = pp.format_cycle_drill(x=10.0, y=10.0, z=0.0, depth=15.0, dwell=0.0)
         assert "G83" in drill
@@ -164,7 +162,7 @@ class TestDrillCycleBoundaries:
         assert a == b
 
     def test_depth_threshold_g83_g81_xmachine(self):
-        # XM-100：depth>5.0 → G83，否则 G81（桌面级小切深逻辑）
+        # XM-100：depth>5.0 G83，否则 G81（桌面级小切深逻辑）
         pp = XMachineXM100PostProcessor()
         deep = pp.format_cycle_drill(x=10.0, y=10.0, z=0.0, depth=6.0)
         shallow = pp.format_cycle_drill(x=10.0, y=10.0, z=0.0, depth=3.0)
@@ -178,7 +176,7 @@ class TestDrillCycleBoundaries:
         assert a == b
 
     def test_zero_dwell_heidenhain_uses_203(self):
-        # Heidenhain：dwell=0 → CYCL DEF 203（万能钻孔）
+        # Heidenhain：dwell=0 CYCL DEF 203（万能钻孔）
         pp = HeidenhainPostProcessor()
         pp.format_header()
         drill = pp.format_cycle_drill(x=10.0, y=10.0, z=0.0, depth=15.0, dwell=0.0)
@@ -211,7 +209,7 @@ class TestCoolantBoundaries:
     """冷却液状态边界。"""
 
     def test_unknown_state_returns_m09(self):
-        # 未知状态：_format_coolant 返回空 → format_coolant 兜底 "M09"
+        # 未知状态：_format_coolant 返回空 format_coolant 兜底 "M09"
         pp = FanucPostProcessor()
         assert pp.format_coolant("weird_state") == "M09"
 
@@ -255,7 +253,7 @@ class TestXMachineSafety:
     def test_twp_normalized_output(self):
         pp = XMachineXM100PostProcessor()
         out = pp.format_twp_on(tool_axis_i=0.0, tool_axis_j=0.0, tool_axis_k=2.0)
-        # 非单位矢量被归一化：K=2.0 → 1.000
+        # 非单位矢量被归一化：K=2.0 1.000
         assert "K1.000" in out
 
     def test_workspace_check_within_bounds(self):
@@ -301,7 +299,7 @@ class TestSubprogramBoundaries:
 
     def test_program_number_clamped(self):
         pp = FanucPostProcessor()
-        # 超过 9999 → 钳制到 9999（现有行为）
+        # 超过 9999 钳制到 9999（现有行为）
         out = pp.format_subprogram_call(program_number=99999)
         assert "M98" in out
 

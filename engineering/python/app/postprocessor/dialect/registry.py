@@ -59,9 +59,7 @@ class DialectRegistry:
         self._compile_errors: dict[str, str] = {}
         self._stages: dict[str, DialectLifecycleStage] = {}
 
-    # ------------------------------------------------------------------
     # 发现 / 编译 / 注册
-    # ------------------------------------------------------------------
 
     def discover(self) -> list[str]:
         """扫描插件目录下的方言声明，返回发现的方言 id 列表。
@@ -151,9 +149,7 @@ class DialectRegistry:
             logger.info("方言已注册到 PostProcessorRegistry: %s -> %s", dialect_id, cls.__name__)
         return count
 
-    # ------------------------------------------------------------------
     # 查询
-    # ------------------------------------------------------------------
 
     def list_dialects(self) -> list[str]:
         """列出已发现（含编译失败）的方言 id。"""

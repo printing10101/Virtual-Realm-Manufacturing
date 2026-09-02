@@ -12,6 +12,7 @@ torch-free：本测试不依赖 torch，可在纯 numpy 环境下运行，覆盖
 - 不注入桩模块：weights_resolver 是纯字符串/路径操作，无需 mock
 - 路径穿越防护用例覆盖 ``..`` / 空版本 / 非法字符
 """
+
 from __future__ import annotations
 
 import os
@@ -27,9 +28,7 @@ from app.plugins.world_model.training.weights_resolver import (
 )
 
 
-# ---------------------------------------------------------------------------
 # build_canonical_weights_path：训练器写入侧
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_build_canonical_path_basic() -> None:
     """合法版本字符串应拼出 ``<models_dir>/world_model/<version>.pt``."""
@@ -82,9 +81,7 @@ def test_build_canonical_path_accepts_safe_chars() -> None:
         assert f"{safe}.pt" in path
 
 
-# ---------------------------------------------------------------------------
 # resolve_world_model_weights_path：plugin 读取侧
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_resolve_returns_none_for_non_world_model_uri() -> None:
     """非 ``model://world_model/`` 前缀的 URI 应返回 None（交由其他解析路径）."""
@@ -142,9 +139,7 @@ def test_resolve_round_trip_with_build(tmp_path: Path) -> None:
         f.write(b"checkpoint")
 
     # plugin 侧
-    read_path = resolve_world_model_weights_path(
-        f"model://world_model/{version}", models_dir=models_dir
-    )
+    read_path = resolve_world_model_weights_path(f"model://world_model/{version}", models_dir=models_dir)
     assert read_path is not None
     assert os.path.normpath(read_path) == os.path.normpath(write_path)
 
@@ -170,9 +165,7 @@ def test_resolve_handles_non_string_uri() -> None:
     assert resolve_world_model_weights_path(123, models_dir="/tmp") is None  # type: ignore[arg-type]
 
 
-# ---------------------------------------------------------------------------
 # 环境变量覆盖（DEFAULT_MODELS_DIR）
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_default_models_dir_env_override(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """``WORLD_MODEL_MODELS_DIR`` 环境变量应覆盖默认存储根目录.
@@ -188,9 +181,7 @@ def test_default_models_dir_env_override(monkeypatch: pytest.MonkeyPatch, tmp_pa
     assert custom_dir in path or os.path.abspath(custom_dir) in os.path.abspath(path)
 
 
-# ---------------------------------------------------------------------------
 # 导出契约
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_module_exports() -> None:
     """__all__ 应包含 P1 闭环所需的全部公共符号."""

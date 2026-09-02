@@ -26,9 +26,7 @@ from app.rules.safety_constraint_rules import (  # noqa: E402
 )
 
 
-# ---------------------------------------------------------------------------
 # 1. 正常表达式求值
-# ---------------------------------------------------------------------------
 
 
 class TestNormalExpressions:
@@ -72,9 +70,7 @@ class TestNormalExpressions:
         assert safe_eval_math_expression("10.5+20.3*2") == 51.1
 
 
-# ---------------------------------------------------------------------------
 # 2. 恶意代码注入防护
-# ---------------------------------------------------------------------------
 
 
 class TestMaliciousInputRejected:
@@ -97,7 +93,7 @@ class TestMaliciousInputRejected:
             "locals()",
             # 字符串/列表/字典常量
             "'hello'",
-            "\"world\"",
+            '"world"',
             "[1,2,3]",
             "{'a':1}",
             "(1,2,3)",
@@ -135,10 +131,8 @@ class TestMaliciousInputRejected:
     def test_no_eval_or_exec_in_module(self):
         """模块源码中不应出现 ``eval(`` / ``exec(`` / ``compile(`` 真实调用。"""
         import ast as _ast
-        source_path = (
-            Path(__file__).resolve().parent.parent.parent
-            / "app" / "rules" / "safety_constraint_rules.py"
-        )
+
+        source_path = Path(__file__).resolve().parent.parent.parent / "app" / "rules" / "safety_constraint_rules.py"
         source = source_path.read_text(encoding="utf-8")
         tree = _ast.parse(source, filename=str(source_path))
         # 收集所有 Name 节点，定位 eval/exec/compile 的真实调用入口
@@ -147,19 +141,13 @@ class TestMaliciousInputRejected:
             if isinstance(node, _ast.Call):
                 func = node.func
                 if isinstance(func, _ast.Name) and func.id in {"eval", "exec", "compile"}:
-                    offenders.append(
-                        f"line {node.lineno}: {func.id}(...)"
-                    )
+                    offenders.append(f"line {node.lineno}: {func.id}(...)")
                 if isinstance(func, _ast.Attribute) and func.attr in {"eval", "exec"}:
-                    offenders.append(
-                        f"line {node.lineno}: {func.attr}(...) on {_ast.dump(func.value)}"
-                    )
+                    offenders.append(f"line {node.lineno}: {func.attr}(...) on {_ast.dump(func.value)}")
         assert not offenders, f"发现残留的可执行入口: {offenders}"
 
 
-# ---------------------------------------------------------------------------
 # 3. 边界条件
-# ---------------------------------------------------------------------------
 
 
 class TestBoundaryConditions:
@@ -191,12 +179,12 @@ class TestBoundaryConditions:
             "1+abc",
             "abc+1",
             "1 2",
-            "1**2",   # 不允许幂运算
-            "1%2",    # 不允许取模
-            "1&2",    # 不允许位运算
+            "1**2",  # 不允许幂运算
+            "1%2",  # 不允许取模
+            "1&2",  # 不允许位运算
             "1|2",
             "1^2",
-            "//",     # 不允许整除
+            "//",  # 不允许整除
             "1//2",
             "a+b",
             "_x",
@@ -249,9 +237,7 @@ class TestBoundaryConditions:
             SafeMathEvaluator("eval('1')")
 
 
-# ---------------------------------------------------------------------------
 # 4. 缓存正确性
-# ---------------------------------------------------------------------------
 
 
 class TestCaching:
@@ -259,6 +245,7 @@ class TestCaching:
 
     def test_cache_returns_same_value(self):
         from app.rules.safety_constraint_rules import _SAFE_EXPR_CACHE
+
         _SAFE_EXPR_CACHE.clear()
         assert safe_eval_math_expression("12*34") == 408.0
         assert safe_eval_math_expression("12*34") == 408.0
@@ -267,6 +254,7 @@ class TestCaching:
 
     def test_cache_does_not_leak_state(self):
         from app.rules.safety_constraint_rules import _SAFE_EXPR_CACHE
+
         _SAFE_EXPR_CACHE.clear()
         a = safe_eval_math_expression("3+4")
         b = safe_eval_math_expression("(3+4)")
@@ -276,9 +264,7 @@ class TestCaching:
         assert c == 7.0
 
 
-# ---------------------------------------------------------------------------
 # 5. 接口兼容性
-# ---------------------------------------------------------------------------
 
 
 class TestEngineInterfaceCompat:
@@ -315,9 +301,7 @@ class TestEngineInterfaceCompat:
     def test_resolve_eval_payload_returns_zero(self):
         engine = SafetyRuleEngine()
         # 注入字符串必须返回 0.0
-        assert engine._resolve_expression(
-            "__import__('os').system('echo hack')", {}
-        ) == 0.0
+        assert engine._resolve_expression("__import__('os').system('echo hack')", {}) == 0.0
 
     def test_end_to_end_rule_evaluation(self):
         """完整走通 ``evaluate`` 流程，确保 ``_resolve_expression`` 的改动不破坏规则链路。"""
@@ -349,16 +333,12 @@ class TestEngineInterfaceCompat:
             ),
         )
         engine.load_rules([rule])
-        triggered = engine.evaluate(
-            {"spindle_speed": 12000.0, "max_spindle_speed": 10000.0}
-        )
+        triggered = engine.evaluate({"spindle_speed": 12000.0, "max_spindle_speed": 10000.0})
         assert len(triggered) == 1
         assert triggered[0]["value"] == pytest.approx(9000.0)
 
 
-# ---------------------------------------------------------------------------
 # 6. 性能
-# ---------------------------------------------------------------------------
 
 
 class TestPerformance:
@@ -384,6 +364,7 @@ class TestPerformance:
     def test_cache_hit_is_fast(self):
         """缓存命中应明显快于冷启动。"""
         from app.rules.safety_constraint_rules import _SAFE_EXPR_CACHE
+
         _SAFE_EXPR_CACHE.clear()
         # 首次：冷启动
         cold_start = time.perf_counter()
@@ -395,7 +376,7 @@ class TestPerformance:
             safe_eval_math_expression("100*(1+2+3+4+5)")
         warm_elapsed = time.perf_counter() - warm_start
         # 缓存命中后应远快于冷启动
-        assert warm_elapsed * 1000 < 100, f"缓存命中过慢: {warm_elapsed*1000:.2f} ms / 1000次"
+        assert warm_elapsed * 1000 < 100, f"缓存命中过慢: {warm_elapsed * 1000:.2f} ms / 1000次"
         # 1000 次缓存命中平均到单次应显著低于冷启动
         per_call_warm_ms = (warm_elapsed / 1000) * 1000
         assert per_call_warm_ms < cold_elapsed * 1000, (
@@ -403,9 +384,7 @@ class TestPerformance:
         )
 
 
-# ---------------------------------------------------------------------------
 # 7. 线程安全（模块级缓存 LRU 淘汰可能竞争）
-# ---------------------------------------------------------------------------
 
 
 class TestThreadSafety:
@@ -414,6 +393,7 @@ class TestThreadSafety:
     def test_concurrent_compile(self):
         import threading
         from app.rules.safety_constraint_rules import _SAFE_EXPR_CACHE
+
         _SAFE_EXPR_CACHE.clear()
 
         errors = []
@@ -433,9 +413,7 @@ class TestThreadSafety:
         assert not errors, f"并发调用出错: {errors}"
 
 
-# ---------------------------------------------------------------------------
 # 8. SafeMathEvaluator 直接使用
-# ---------------------------------------------------------------------------
 
 
 class TestSafeMathEvaluatorDirect:

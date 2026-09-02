@@ -38,9 +38,7 @@ from app.knowledge_graph.feedback_updater import FeedbackUpdater
 from app.knowledge_graph.query_api import KnowledgeGraphQueryAPI
 
 
-# ---------------------------------------------------------------------------
 # XM-100 加工经验记录（模拟数据）
-# ---------------------------------------------------------------------------
 
 
 def build_xm100_records() -> list[dict[str, Any]]:
@@ -54,214 +52,224 @@ def build_xm100_records() -> list[dict[str, Any]]:
 
     # 节点ID必须符合 <type>-<slug> 格式且以字母开头
     # 记录1：φ10立铣刀加工45钢方肩 — 标准工况，合格
-    records.append({
-        "record_id": "XM100-REC-001",
-        "machine_id": "xmachine_xm100",
-        "tool_id": "tool-endmill_wc_d10",
-        "workpiece_material": "material-45steel",
-        "process_plan": {
-            "steps": [
-                {
-                    "process_id": "process-shoulder-mill-steel-rough",
-                    "name": "45钢方肩粗铣",
-                    "feature_id": "feature-shoulder-pocket-10mm",
-                    "params": {"speed": 6000, "feed": 800, "depth": 1.0}
-                },
-                {
-                    "process_id": "process-shoulder-mill-steel-finish",
-                    "name": "45钢方肩精铣",
-                    "feature_id": "feature-shouldar-pocket-10mm",
-                    "params": {"speed": 8000, "feed": 400, "depth": 0.2}
-                }
-            ]
-        },
-        "first_pass_acceptance": True,
-        "actual_dimensions": {"width": 50.02, "depth": 10.01},
-        "surface_roughness": 1.6,
-    })
+    records.append(
+        {
+            "record_id": "XM100-REC-001",
+            "machine_id": "xmachine_xm100",
+            "tool_id": "tool-endmill_wc_d10",
+            "workpiece_material": "material-45steel",
+            "process_plan": {
+                "steps": [
+                    {
+                        "process_id": "process-shoulder-mill-steel-rough",
+                        "name": "45钢方肩粗铣",
+                        "feature_id": "feature-shoulder-pocket-10mm",
+                        "params": {"speed": 6000, "feed": 800, "depth": 1.0},
+                    },
+                    {
+                        "process_id": "process-shoulder-mill-steel-finish",
+                        "name": "45钢方肩精铣",
+                        "feature_id": "feature-shouldar-pocket-10mm",
+                        "params": {"speed": 8000, "feed": 400, "depth": 0.2},
+                    },
+                ]
+            },
+            "first_pass_acceptance": True,
+            "actual_dimensions": {"width": 50.02, "depth": 10.01},
+            "surface_roughness": 1.6,
+        }
+    )
 
     # 记录2：φ6锥度球头刀加工铝合金曲面 — 五轴RTCP，合格
-    records.append({
-        "record_id": "XM100-REC-002",
-        "machine_id": "xmachine_xm100",
-        "tool_id": "tool-endmill_wc_taper_d6",
-        "workpiece_material": "material-aluminum_6061",
-        "process_plan": {
-            "steps": [
-                {
-                    "process_id": "process-5axis-curve-aluminum",
-                    "name": "铝合金曲面五轴精加工",
-                    "feature_id": "feature-curved-surface-r30",
-                    "params": {"speed": 12000, "feed": 1500, "depth": 0.3}
-                }
-            ]
-        },
-        "first_pass_acceptance": True,
-        "actual_dimensions": {"profile_error": 0.015},
-        "surface_roughness": 0.8,
-    })
+    records.append(
+        {
+            "record_id": "XM100-REC-002",
+            "machine_id": "xmachine_xm100",
+            "tool_id": "tool-endmill_wc_taper_d6",
+            "workpiece_material": "material-aluminum_6061",
+            "process_plan": {
+                "steps": [
+                    {
+                        "process_id": "process-5axis-curve-aluminum",
+                        "name": "铝合金曲面五轴精加工",
+                        "feature_id": "feature-curved-surface-r30",
+                        "params": {"speed": 12000, "feed": 1500, "depth": 0.3},
+                    }
+                ]
+            },
+            "first_pass_acceptance": True,
+            "actual_dimensions": {"profile_error": 0.015},
+            "surface_roughness": 0.8,
+        }
+    )
 
     # 记录3：φ10立铣刀加工不锈钢 — 参数偏激进，不合格
-    records.append({
-        "record_id": "XM100-REC-003",
-        "machine_id": "xmachine_xm100",
-        "tool_id": "tool-endmill_wc_d10",
-        "workpiece_material": "material-stainless_304",
-        "process_plan": {
-            "steps": [
-                {
-                    "process_id": "process-slot-mill-304",
-                    "name": "304不锈钢槽铣",
-                    "feature_id": "feature-slot-8mm",
-                    "params": {"speed": 8000, "feed": 1000, "depth": 2.0}
-                }
-            ]
-        },
-        "first_pass_acceptance": False,
-        "actual_dimensions": {"width": 8.05, "depth": 8.02},
-        "surface_roughness": 3.2,
-    })
+    records.append(
+        {
+            "record_id": "XM100-REC-003",
+            "machine_id": "xmachine_xm100",
+            "tool_id": "tool-endmill_wc_d10",
+            "workpiece_material": "material-stainless_304",
+            "process_plan": {
+                "steps": [
+                    {
+                        "process_id": "process-slot-mill-304",
+                        "name": "304不锈钢槽铣",
+                        "feature_id": "feature-slot-8mm",
+                        "params": {"speed": 8000, "feed": 1000, "depth": 2.0},
+                    }
+                ]
+            },
+            "first_pass_acceptance": False,
+            "actual_dimensions": {"width": 8.05, "depth": 8.02},
+            "surface_roughness": 3.2,
+        }
+    )
 
     # 记录4：φ1微型立铣刀加工ABS塑料 — 雕刻，合格
-    records.append({
-        "record_id": "XM100-REC-004",
-        "machine_id": "xmachine_xm100",
-        "tool_id": "tool-endmill_wc_micro_d1",
-        "workpiece_material": "material-abs",
-        "process_plan": {
-            "steps": [
-                {
-                    "process_id": "process-engraving-abs",
-                    "name": "ABS塑料雕刻",
-                    "feature_id": "feature-engraving-logo",
-                    "params": {"speed": 15000, "feed": 500, "depth": 0.5}
-                }
-            ]
-        },
-        "first_pass_acceptance": True,
-        "actual_dimensions": {"depth": 0.48},
-        "surface_roughness": 1.2,
-    })
+    records.append(
+        {
+            "record_id": "XM100-REC-004",
+            "machine_id": "xmachine_xm100",
+            "tool_id": "tool-endmill_wc_micro_d1",
+            "workpiece_material": "material-abs",
+            "process_plan": {
+                "steps": [
+                    {
+                        "process_id": "process-engraving-abs",
+                        "name": "ABS塑料雕刻",
+                        "feature_id": "feature-engraving-logo",
+                        "params": {"speed": 15000, "feed": 500, "depth": 0.5},
+                    }
+                ]
+            },
+            "first_pass_acceptance": True,
+            "actual_dimensions": {"depth": 0.48},
+            "surface_roughness": 1.2,
+        }
+    )
 
     # 记录5：φ50面铣刀加工45钢平面 — 大切深，合格
-    records.append({
-        "record_id": "XM100-REC-005",
-        "machine_id": "xmachine_xm100",
-        "tool_id": "tool-facemill_wc_d50",
-        "workpiece_material": "material-45steel",
-        "process_plan": {
-            "steps": [
-                {
-                    "process_id": "process-facemill-steel",
-                    "name": "45钢平面铣削",
-                    "feature_id": "feature-flat-surface-100x100",
-                    "params": {"speed": 4000, "feed": 600, "depth": 1.5}
-                }
-            ]
-        },
-        "first_pass_acceptance": True,
-        "actual_dimensions": {"flatness": 0.02},
-        "surface_roughness": 1.6,
-    })
+    records.append(
+        {
+            "record_id": "XM100-REC-005",
+            "machine_id": "xmachine_xm100",
+            "tool_id": "tool-facemill_wc_d50",
+            "workpiece_material": "material-45steel",
+            "process_plan": {
+                "steps": [
+                    {
+                        "process_id": "process-facemill-steel",
+                        "name": "45钢平面铣削",
+                        "feature_id": "feature-flat-surface-100x100",
+                        "params": {"speed": 4000, "feed": 600, "depth": 1.5},
+                    }
+                ]
+            },
+            "first_pass_acceptance": True,
+            "actual_dimensions": {"flatness": 0.02},
+            "surface_roughness": 1.6,
+        }
+    )
 
     # 记录6：φ6锥度球头刀加工黄铜 — 五轴叶轮，合格
-    records.append({
-        "record_id": "XM100-REC-006",
-        "machine_id": "xmachine_xm100",
-        "tool_id": "tool-endmill_wc_taper_d6",
-        "workpiece_material": "material-brass",
-        "process_plan": {
-            "steps": [
-                {
-                    "process_id": "process-5axis-impeller-brass",
-                    "name": "黄铜叶轮五轴加工",
-                    "feature_id": "feature-impeller-blade",
-                    "params": {"speed": 10000, "feed": 800, "depth": 0.5}
-                }
-            ]
-        },
-        "first_pass_acceptance": True,
-        "actual_dimensions": {"blade_profile": 0.02},
-        "surface_roughness": 0.8,
-    })
+    records.append(
+        {
+            "record_id": "XM100-REC-006",
+            "machine_id": "xmachine_xm100",
+            "tool_id": "tool-endmill_wc_taper_d6",
+            "workpiece_material": "material-brass",
+            "process_plan": {
+                "steps": [
+                    {
+                        "process_id": "process-5axis-impeller-brass",
+                        "name": "黄铜叶轮五轴加工",
+                        "feature_id": "feature-impeller-blade",
+                        "params": {"speed": 10000, "feed": 800, "depth": 0.5},
+                    }
+                ]
+            },
+            "first_pass_acceptance": True,
+            "actual_dimensions": {"blade_profile": 0.02},
+            "surface_roughness": 0.8,
+        }
+    )
 
     # 记录7：φ10立铣刀加工45钢 — 第二次，合格（提升可信度）
-    records.append({
-        "record_id": "XM100-REC-007",
-        "machine_id": "xmachine_xm100",
-        "tool_id": "tool-endmill_wc_d10",
-        "workpiece_material": "material-45steel",
-        "process_plan": {
-            "steps": [
-                {
-                    "process_id": "process-shoulder-mill-steel-rough",
-                    "name": "45钢方肩粗铣",
-                    "feature_id": "feature-shoulder-pocket-10mm",
-                    "params": {"speed": 6000, "feed": 800, "depth": 1.0}
-                }
-            ]
-        },
-        "first_pass_acceptance": True,
-        "actual_dimensions": {"width": 50.01, "depth": 10.00},
-        "surface_roughness": 1.4,
-    })
+    records.append(
+        {
+            "record_id": "XM100-REC-007",
+            "machine_id": "xmachine_xm100",
+            "tool_id": "tool-endmill_wc_d10",
+            "workpiece_material": "material-45steel",
+            "process_plan": {
+                "steps": [
+                    {
+                        "process_id": "process-shoulder-mill-steel-rough",
+                        "name": "45钢方肩粗铣",
+                        "feature_id": "feature-shoulder-pocket-10mm",
+                        "params": {"speed": 6000, "feed": 800, "depth": 1.0},
+                    }
+                ]
+            },
+            "first_pass_acceptance": True,
+            "actual_dimensions": {"width": 50.01, "depth": 10.00},
+            "surface_roughness": 1.4,
+        }
+    )
 
     # 记录8：V型雕刻刀加工胡桃木 — 雕刻，合格
-    records.append({
-        "record_id": "XM100-REC-008",
-        "machine_id": "xmachine_xm100",
-        "tool_id": "tool-vbit_wc_60deg",
-        "workpiece_material": "material-wood_walnut",
-        "process_plan": {
-            "steps": [
-                {
-                    "process_id": "process-vcarve-wood",
-                    "name": "胡桃木V型雕刻",
-                    "feature_id": "feature-vcarve-sign",
-                    "params": {"speed": 18000, "feed": 1200, "depth": 1.0}
-                }
-            ]
-        },
-        "first_pass_acceptance": True,
-        "actual_dimensions": {"depth": 0.98},
-        "surface_roughness": 3.2,
-    })
+    records.append(
+        {
+            "record_id": "XM100-REC-008",
+            "machine_id": "xmachine_xm100",
+            "tool_id": "tool-vbit_wc_60deg",
+            "workpiece_material": "material-wood_walnut",
+            "process_plan": {
+                "steps": [
+                    {
+                        "process_id": "process-vcarve-wood",
+                        "name": "胡桃木V型雕刻",
+                        "feature_id": "feature-vcarve-sign",
+                        "params": {"speed": 18000, "feed": 1200, "depth": 1.0},
+                    }
+                ]
+            },
+            "first_pass_acceptance": True,
+            "actual_dimensions": {"depth": 0.98},
+            "surface_roughness": 3.2,
+        }
+    )
 
     return records
 
 
-# ---------------------------------------------------------------------------
 # 核心展示逻辑
-# ---------------------------------------------------------------------------
 
 
-def import_records(
-    updater: FeedbackUpdater, records: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def import_records(updater: FeedbackUpdater, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """导入加工记录到知识图谱。"""
     results = []
     for rec in records:
         stats = updater.update_from_machining_record(rec)
-        results.append({
-            "record_id": rec["record_id"],
-            "tool": rec["tool_id"],
-            "material": rec["workpiece_material"],
-            "first_pass": rec["first_pass_acceptance"],
-            "stats": stats,
-        })
+        results.append(
+            {
+                "record_id": rec["record_id"],
+                "tool": rec["tool_id"],
+                "material": rec["workpiece_material"],
+                "first_pass": rec["first_pass_acceptance"],
+                "stats": stats,
+            }
+        )
     return results
 
 
-def query_tools_for_material(
-    api: KnowledgeGraphQueryAPI, material_id: str
-) -> list[dict[str, Any]]:
+def query_tools_for_material(api: KnowledgeGraphQueryAPI, material_id: str) -> list[dict[str, Any]]:
     """查询某材料适配的所有刀具。"""
     return api.tools_for_material(material_id, min_confidence=0.0)
 
 
-def query_materials_for_tool(
-    api: KnowledgeGraphQueryAPI, tool_id: str
-) -> list[dict[str, Any]]:
+def query_materials_for_tool(api: KnowledgeGraphQueryAPI, tool_id: str) -> list[dict[str, Any]]:
     """查询某刀具能加工的所有材料。"""
     return api.materials_for_tool(tool_id, min_confidence=0.0)
 
@@ -286,8 +294,7 @@ def print_qa_section(api: KnowledgeGraphQueryAPI) -> list[dict[str, Any]]:
         confs = [f"{t['confidence']:.2f}" for t in tools]
         log(
             "45钢可以用哪些刀具加工？",
-            f"知识图谱中有 {len(tools)} 把刀具适配 45钢："
-            f"{', '.join(tool_names)}（可信度分别为 {', '.join(confs)}）",
+            f"知识图谱中有 {len(tools)} 把刀具适配 45钢：{', '.join(tool_names)}（可信度分别为 {', '.join(confs)}）",
         )
     else:
         log("45钢可以用哪些刀具加工？", "暂无数据")
@@ -299,8 +306,7 @@ def print_qa_section(api: KnowledgeGraphQueryAPI) -> list[dict[str, Any]]:
         confs = [f"{m['confidence']:.2f}" for m in mats]
         log(
             "φ10立铣刀(tool-endmill_wc_d10)能加工哪些材料？",
-            f"知识图谱中该刀具适配 {len(mats)} 种材料："
-            f"{', '.join(mat_names)}（可信度分别为 {', '.join(confs)}）",
+            f"知识图谱中该刀具适配 {len(mats)} 种材料：{', '.join(mat_names)}（可信度分别为 {', '.join(confs)}）",
         )
     else:
         log("φ10立铣刀能加工什么材料？", "暂无数据")
@@ -331,14 +337,12 @@ def print_qa_section(api: KnowledgeGraphQueryAPI) -> list[dict[str, Any]]:
     sampled = [p for p in process_nodes if (p.get("properties") or {}).get("sample_count", 0) > 0]
     if sampled:
         names = [
-            f"{p['node_id']}(n={p['properties']['sample_count']}, "
-            f"合格率={p['properties'].get('success_rate', 0):.0%})"
+            f"{p['node_id']}(n={p['properties']['sample_count']}, 合格率={p['properties'].get('success_rate', 0):.0%})"
             for p in sampled
         ]
         log(
             "哪些工艺已有 XM-100 实测数据？",
-            f"有 {len(sampled)} 个工艺节点已有实测数据："
-            + "; ".join(names),
+            f"有 {len(sampled)} 个工艺节点已有实测数据：" + "; ".join(names),
         )
     else:
         log("哪些工艺已有 XM-100 实测数据？", "暂无工艺节点有实测数据")

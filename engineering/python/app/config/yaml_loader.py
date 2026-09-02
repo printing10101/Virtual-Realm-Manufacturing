@@ -53,9 +53,7 @@ from pathlib import Path
 from typing import Any, Union
 
 
-# ---------------------------------------------------------------------------
 # 常量
-# ---------------------------------------------------------------------------
 
 # 最大继承深度（防止循环引用导致栈溢出）
 MAX_INHERIT_DEPTH: int = 16
@@ -71,9 +69,7 @@ _ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::([^}]*))?\}")
 _REF_PATTERN = re.compile(r"^(?P<path>[^#]+)(?:#(?P<keypath>.+))?$")
 
 
-# ---------------------------------------------------------------------------
 # 异常
-# ---------------------------------------------------------------------------
 
 
 class YamlLoaderError(ValueError):
@@ -100,9 +96,7 @@ class YamlRefError(YamlLoaderError):
     """$ref 跨文件引用解析失败。"""
 
 
-# ---------------------------------------------------------------------------
 # 工具函数
-# ---------------------------------------------------------------------------
 
 
 def flatten_dict(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
@@ -149,9 +143,7 @@ def unflatten_dict(d: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-# ---------------------------------------------------------------------------
 # YamlLoader
-# ---------------------------------------------------------------------------
 
 
 class YamlLoader:
@@ -175,13 +167,11 @@ class YamlLoader:
     ) -> None:
         self._max_inherit_depth = max_inherit_depth
         self._max_ref_depth = max_ref_depth
-        # cache_key (resolved path str) → 扁平化配置 dict
+        # cache_key (resolved path str) 扁平化配置 dict
         self._cache: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
 
-    # ------------------------------------------------------------------
     # 公共 API
-    # ------------------------------------------------------------------
 
     def load(
         self,
@@ -222,9 +212,7 @@ class YamlLoader:
         with self._lock:
             self._cache.clear()
 
-    # ------------------------------------------------------------------
     # 内部实现：递归加载 + 继承
-    # ------------------------------------------------------------------
 
     def _load_recursive(
         self,
@@ -368,9 +356,7 @@ class YamlLoader:
             if key in raw and not isinstance(raw[key], dict):
                 raise YamlSchemaError(f"YAML field {key!r} must be a mapping, got {type(raw[key]).__name__}: {path}")
 
-    # ------------------------------------------------------------------
     # 内部实现：$ref 跨文件引用
-    # ------------------------------------------------------------------
 
     def _resolve_refs(
         self,
@@ -479,9 +465,7 @@ class YamlLoader:
             f"{sorted(set(k.split('.')[0] for k in ref_flat))}"
         )
 
-    # ------------------------------------------------------------------
     # 内部实现：环境变量插值
-    # ------------------------------------------------------------------
 
     def _interpolate_env(self, data: Any) -> Any:
         """递归进行环境变量插值。
@@ -569,9 +553,7 @@ class YamlLoader:
         return raw_value
 
 
-# ---------------------------------------------------------------------------
 # 全局单例
-# ---------------------------------------------------------------------------
 
 
 _global_loader: YamlLoader | None = None

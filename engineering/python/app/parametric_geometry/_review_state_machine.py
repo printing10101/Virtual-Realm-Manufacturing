@@ -22,9 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# ---------------------------------------------------------------------------
 # 状态常量（与 step_store.py 枚举逐值对齐）
-# ---------------------------------------------------------------------------
 
 # 任务状态
 ST_PENDING = "pending"
@@ -79,7 +77,7 @@ class StatusRule:
     error_template: str
 
 
-# 审核状态机核心规则（current → allowed）
+# 审核状态机核心规则（current allowed）
 TASK_TRANSITIONS: tuple[StatusRule, ...] = (
     StatusRule(
         current=ST_PENDING,
@@ -104,9 +102,7 @@ TASK_TRANSITIONS: tuple[StatusRule, ...] = (
 )
 
 
-# ---------------------------------------------------------------------------
 # 纯函数判定
-# ---------------------------------------------------------------------------
 
 
 def can_execute(status: str) -> bool:

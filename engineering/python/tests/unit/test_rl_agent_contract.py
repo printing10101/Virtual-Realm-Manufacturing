@@ -51,9 +51,7 @@ from app.contracts.rl_agent import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 任务类型常量
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -71,9 +69,7 @@ class TestTaskTypeConstant:
         assert RL_ACT_TASK_TYPE
 
 
-# ---------------------------------------------------------------------------
 # OptimizationTarget
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -109,9 +105,7 @@ class TestOptimizationTarget:
         assert OptimizationTarget.default() == OptimizationTarget.BALANCE
 
 
-# ---------------------------------------------------------------------------
 # PolicyAlgorithm
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -147,9 +141,7 @@ class TestPolicyAlgorithm:
         assert PolicyAlgorithm.default() == PolicyAlgorithm.PPO
 
 
-# ---------------------------------------------------------------------------
 # TrainingStatus
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -210,9 +202,7 @@ class TestTrainingStatus:
         assert TrainingStatus.is_terminal("") is False
 
 
-# ---------------------------------------------------------------------------
 # SafetyConstraintsSpec
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -284,9 +274,7 @@ class TestSafetyConstraintsSpec:
         assert d["min_surface_quality"] == 0.9
 
 
-# ---------------------------------------------------------------------------
 # RLActRequest
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -345,9 +333,7 @@ class TestRLActRequest:
             assert req.optimization_target == target
 
 
-# ---------------------------------------------------------------------------
 # ActionEvaluation
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -418,9 +404,7 @@ class TestActionEvaluation:
         assert d["q_value"] == 0.9
 
 
-# ---------------------------------------------------------------------------
 # PolicyInfo
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -488,9 +472,7 @@ class TestPolicyInfo:
         }
 
 
-# ---------------------------------------------------------------------------
 # RecommendedAction
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -524,9 +506,7 @@ class TestRecommendedAction:
         assert set(d.keys()) == {"action", "reasoning"}
 
 
-# ---------------------------------------------------------------------------
 # RLActResponse
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -604,9 +584,7 @@ class TestRLActResponse:
         assert d["policy_info"]["algorithm"] == PolicyAlgorithm.PPO
 
 
-# ---------------------------------------------------------------------------
 # PolicyVersion
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -677,9 +655,7 @@ class TestPolicyVersion:
         assert d["created_at"] == ts.isoformat()
 
 
-# ---------------------------------------------------------------------------
 # TrainingMetricsSnapshot
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -755,9 +731,7 @@ class TestTrainingMetricsSnapshot:
         assert d["epsilon"] == 0.05
 
 
-# ---------------------------------------------------------------------------
 # TrainingStatusInfo
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -893,9 +867,7 @@ class TestTrainingStatusInfo:
         assert d["error_message"] == "gradient explosion"
 
 
-# ---------------------------------------------------------------------------
 # TrainingStartRequest
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -951,9 +923,7 @@ class TestTrainingStartRequest:
             TrainingStartRequest(seed=seed)
 
 
-# ---------------------------------------------------------------------------
 # 异常层级
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit

@@ -11,6 +11,7 @@
 
 本文件只提供插件骨架：manifest 加载、扩展点注册、健康检查。
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,9 +46,7 @@ from plugins.data_flywheel.hot_update_manager import (
 logger = logging.getLogger(__name__)
 
 # 模型迭代管线模板文件路径（本插件自带）
-_MODEL_ITERATION_TEMPLATE_PATH: Path = (
-    Path(__file__).parent / "templates" / "model_iteration_pipeline.yaml"
-)
+_MODEL_ITERATION_TEMPLATE_PATH: Path = Path(__file__).parent / "templates" / "model_iteration_pipeline.yaml"
 # 模板名（与 _handle_workflow_template_request 返回的 template_name 一致）
 _MODEL_ITERATION_TEMPLATE_NAME: str = "model_iteration_pipeline"
 
@@ -77,9 +76,7 @@ class Plugin(IPlugin):
         # p4-5: HotUpdateManager 是否已在 on_load 中配置（on_unload 时据此清理）
         self._hot_update_configured: bool = False
 
-    # ------------------------------------------------------------------
     # IPlugin 契约实现
-    # ------------------------------------------------------------------
 
     def manifest(self) -> PluginManifest:
         """返回插件清单（从 plugin.yaml 加载，带缓存）."""
@@ -101,7 +98,7 @@ class Plugin(IPlugin):
         plugin_id = context.plugin_id
 
         # 0. 主动加载插件清单：on_load 后 health_check 的 manifest_loaded 必须为 True
-        #    清单缺失属降级模式（保留 None，health_check 如实上报 unhealthy）
+        # 清单缺失属降级模式（保留 None，health_check 如实上报 unhealthy）
         try:
             self.manifest()
         except Exception:
@@ -109,7 +106,7 @@ class Plugin(IPlugin):
             self._manifest = None
 
         # 1. 构造反馈采集器（p4-2）
-        #    dataset_store 可能为 None（降级模式），FeedbackCollector 内部处理
+        # dataset_store 可能为 None（降级模式），FeedbackCollector 内部处理
         feedback_config = context.config.get("feedback_collection", {}) if context.config else {}
         self._feedback_collector = FeedbackCollector(
             dataset_store=context.dataset_store,
@@ -118,7 +115,7 @@ class Plugin(IPlugin):
         )
 
         # 1. 注册工作区面板扩展点：飞轮看板
-        #    p4-6 中前端 FlywheelDashboard.vue 通过此贡献渲染
+        # p4-6 中前端 FlywheelDashboard.vue 通过此贡献渲染
         registry.register_component(
             extension_point=BUILTIN_EXTENSION_POINTS.UI_WORKSPACE_PANEL,
             plugin_id=plugin_id,
@@ -142,7 +139,7 @@ class Plugin(IPlugin):
         self._registered_points.append(BUILTIN_EXTENSION_POINTS.UI_WORKSPACE_PANEL)
 
         # 2. 注册工作流模板扩展点：模型迭代管线
-        #    p4-3 中实现完整的 WorkflowSpec（采集→训练→评估→热更新）
+        # p4-3 中实现完整的 WorkflowSpec（采集训练评估热更新）
         registry.register(
             extension_point=BUILTIN_EXTENSION_POINTS.WORKFLOW_TEMPLATE,
             plugin_id=plugin_id,
@@ -156,7 +153,7 @@ class Plugin(IPlugin):
         self._registered_points.append(BUILTIN_EXTENSION_POINTS.WORKFLOW_TEMPLATE)
 
         # 3. 注册任务处理器扩展点：反馈提交（p4-2）
-        #    前端/其他模块通过 TASK_HANDLER 提交用户反馈到 IDatasetStore
+        # 前端/其他模块通过 TASK_HANDLER 提交用户反馈到 IDatasetStore
         registry.register(
             extension_point=BUILTIN_EXTENSION_POINTS.TASK_HANDLER,
             plugin_id=plugin_id,
@@ -171,8 +168,8 @@ class Plugin(IPlugin):
         self._registered_points.append(BUILTIN_EXTENSION_POINTS.TASK_HANDLER)
 
         # 4. p4-5: 注册任务处理器扩展点：模型热更新（canary_deploy/observe/promote/rollback）
-        #    model_iteration_pipeline.yaml 的 canary_deploy 节点 task_type=hot_update_manager
-        #    通过此 handler 调用 HotUpdateManager 完成灰度部署生命周期
+        # model_iteration_pipeline.yaml 的 canary_deploy 节点 task_type=hot_update_manager
+        # 通过此 handler 调用 HotUpdateManager 完成灰度部署生命周期
         registry.register(
             extension_point=BUILTIN_EXTENSION_POINTS.TASK_HANDLER,
             plugin_id=plugin_id,
@@ -196,9 +193,9 @@ class Plugin(IPlugin):
         # 重复 append 会导致清理计数偏高，因此保持只 append 一次
 
         # 5. p4-4c: 把 dataset_store / snapshot_store 注入到全局飞轮采集器
-        #    FlywheelMetricsCollector 通过 IDatasetStore 读取 feedback_records，
-        #    通过 ISnapshotStore 读取模型质量/不确定性。
-        #    snapshot_store 从 observability 模块获取（全局单例，懒初始化）。
+        # FlywheelMetricsCollector 通过 IDatasetStore 读取 feedback_records，
+        # 通过 ISnapshotStore 读取模型质量/不确定性。
+        # snapshot_store 从 observability 模块获取（全局单例，懒初始化）。
         snapshot_store = self._resolve_snapshot_store()
         configure_flywheel_collector(
             dataset_store=context.dataset_store,
@@ -206,14 +203,9 @@ class Plugin(IPlugin):
         )
         # 若 FeedbackCollector 已有缓存的 dataset_id（极少见：插件重加载场景），
         # 立即注入到 FlywheelMetricsCollector
-        if (
-            self._feedback_collector is not None
-            and self._feedback_collector.dataset_id is not None
-        ):
+        if self._feedback_collector is not None and self._feedback_collector.dataset_id is not None:
             try:
-                get_flywheel_collector().set_feedback_dataset_id(
-                    self._feedback_collector.dataset_id
-                )
+                get_flywheel_collector().set_feedback_dataset_id(self._feedback_collector.dataset_id)
             except ValueError:
                 logger.warning(
                     "注入缓存的 feedback_dataset_id 失败: %s",
@@ -222,9 +214,9 @@ class Plugin(IPlugin):
                 )
 
         # 6. p4-5: 配置全局 HotUpdateManager 单例
-        #    注入 ModelRegistryService（来自 app.services.model_registry_service）
-        #    与 hot_update 配置（来自 plugin.yaml config_schema.hot_update section）。
-        #    ModelRegistryService 不可用时降级运行（仅记录 DeploymentRecord）。
+        # 注入 ModelRegistryService（来自 app.services.model_registry_service）
+        # 与 hot_update 配置（来自 plugin.yaml config_schema.hot_update section）。
+        # ModelRegistryService 不可用时降级运行（仅记录 DeploymentRecord）。
         hot_update_config = context.config.get("hot_update", {}) if context.config else {}
         model_registry_service = self._resolve_model_registry_service()
         configure_hot_update_manager(
@@ -338,10 +330,7 @@ class Plugin(IPlugin):
                 "total_recorded": self._feedback_collector.total_recorded,
                 "total_flushed": self._feedback_collector.total_flushed,
                 "dataset_id": self._feedback_collector.dataset_id,
-                "dataset_store_available": self._feedback_collector.config.get(
-                    "batch_size"
-                )
-                is not None,
+                "dataset_store_available": self._feedback_collector.config.get("batch_size") is not None,
             }
 
         # p4-5: 附带热更新管理器统计（同步属性，不触发 IO）
@@ -381,9 +370,7 @@ class Plugin(IPlugin):
             "message": "数据飞轮插件运行正常" if healthy else "部分核心依赖不可用",
         }
 
-    # ------------------------------------------------------------------
     # 扩展点处理器（p4-2 ~ p4-6 中实现具体逻辑）
-    # ------------------------------------------------------------------
 
     def _resolve_snapshot_store(self) -> Any:
         """解析 ISnapshotStore 实例（p4-4c）.
@@ -401,8 +388,7 @@ class Plugin(IPlugin):
             return get_snapshot_store()
         except ImportError:  # pragma: no cover
             logger.warning(
-                "observability 模块不可用，flywheel_metrics 将无法采集 model_quality "
-                "与 uncertainty_mean（降级为 0）",
+                "observability 模块不可用，flywheel_metrics 将无法采集 model_quality 与 uncertainty_mean（降级为 0）",
                 exc_info=True,
             )
             return None
@@ -445,9 +431,7 @@ class Plugin(IPlugin):
             )
             return None
 
-    def _handle_workflow_template_request(
-        self, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _handle_workflow_template_request(self, payload: dict[str, Any]) -> dict[str, Any]:
         """工作流模板扩展点处理器.
 
         当核心层请求 ``core.workflow_template`` 时被调用，返回模型迭代管线
@@ -469,10 +453,7 @@ class Plugin(IPlugin):
         """
         # template_name 过滤：核心层可能枚举多个插件的工作流模板
         requested_name = payload.get("template_name") if payload else None
-        if (
-            requested_name is not None
-            and requested_name != _MODEL_ITERATION_TEMPLATE_NAME
-        ):
+        if requested_name is not None and requested_name != _MODEL_ITERATION_TEMPLATE_NAME:
             return {
                 "template_name": requested_name,
                 "description": "",
@@ -525,9 +506,7 @@ class Plugin(IPlugin):
         try:
             template = load_template_from_file(_MODEL_ITERATION_TEMPLATE_PATH)
         except TemplateNotFoundError:
-            logger.error(
-                "模型迭代管线模板文件不存在: %s", _MODEL_ITERATION_TEMPLATE_PATH
-            )
+            logger.error("模型迭代管线模板文件不存在: %s", _MODEL_ITERATION_TEMPLATE_PATH)
             self._model_iteration_spec_loaded = True
             return None
         except ValueError:
@@ -561,9 +540,7 @@ class Plugin(IPlugin):
         )
         return self._model_iteration_spec_cache
 
-    # ------------------------------------------------------------------
     # p4-2: 反馈提交处理器
-    # ------------------------------------------------------------------
 
     async def _handle_feedback_submission(self, payload: dict[str, Any]) -> dict[str, Any]:
         """反馈提交任务处理器.
@@ -600,9 +577,7 @@ class Plugin(IPlugin):
 
         feedback_type = payload.get("feedback_type")
         if feedback_type not in VALID_FEEDBACK_TYPES:
-            raise ValueError(
-                f"feedback_type 不合法: {feedback_type}，合法值: {sorted(VALID_FEEDBACK_TYPES)}"
-            )
+            raise ValueError(f"feedback_type 不合法: {feedback_type}，合法值: {sorted(VALID_FEEDBACK_TYPES)}")
 
         common_kwargs = {
             "user_id": payload.get("user_id", "anonymous"),
@@ -618,12 +593,8 @@ class Plugin(IPlugin):
         elif feedback_type == "adoption":
             accepted = payload.get("accepted")
             if not isinstance(accepted, bool):
-                raise ValueError(
-                    f"adoption 类型必须提供 bool 类型的 accepted，收到: {type(accepted).__name__}"
-                )
-            feedback_id = await self._feedback_collector.record_adoption(
-                accepted=accepted, **common_kwargs
-            )
+                raise ValueError(f"adoption 类型必须提供 bool 类型的 accepted，收到: {type(accepted).__name__}")
+            feedback_id = await self._feedback_collector.record_adoption(accepted=accepted, **common_kwargs)
         else:  # correction
             original_output = payload.get("original_output")
             corrected_output = payload.get("corrected_output")
@@ -683,18 +654,14 @@ class Plugin(IPlugin):
                 exc_info=True,
             )
 
-    # ------------------------------------------------------------------
     # p4-2: 公开 API（供 p4-4 飞轮指标与 p4-6 前端看板使用）
-    # ------------------------------------------------------------------
 
     @property
     def feedback_collector(self) -> Optional[FeedbackCollector]:
         """反馈采集器实例（供 p4-4 飞轮指标读取反馈数据）."""
         return self._feedback_collector
 
-    # ------------------------------------------------------------------
     # p4-5: 模型热更新处理器
-    # ------------------------------------------------------------------
 
     async def _handle_hot_update_request(self, payload: dict[str, Any]) -> dict[str, Any]:
         """模型热更新任务处理器（p4-5）.
@@ -748,9 +715,7 @@ class Plugin(IPlugin):
             RuntimeError: HotUpdateManager 未配置
         """
         if not self._hot_update_configured:
-            raise RuntimeError(
-                "HotUpdateManager 未配置（插件未 on_load 或配置失败）"
-            )
+            raise RuntimeError("HotUpdateManager 未配置（插件未 on_load 或配置失败）")
 
         action = payload.get("action")
         if not action:
@@ -778,9 +743,7 @@ class Plugin(IPlugin):
             "rollback / list_deployments / get_deployment / select_model"
         )
 
-    async def _hot_update_canary_deploy(
-        self, manager: HotUpdateManager, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _hot_update_canary_deploy(self, manager: HotUpdateManager, payload: dict[str, Any]) -> dict[str, Any]:
         """处理 canary_deploy 动作."""
         model_name = payload.get("model_name")
         new_model_uri = payload.get("new_model_uri")
@@ -812,9 +775,7 @@ class Plugin(IPlugin):
         )
         return {"action": "canary_deploy", "deployment": record.to_dict()}
 
-    async def _hot_update_observe(
-        self, manager: HotUpdateManager, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _hot_update_observe(self, manager: HotUpdateManager, payload: dict[str, Any]) -> dict[str, Any]:
         """处理 observe 动作."""
         deployment_id = payload.get("deployment_id")
         current_canary_metrics = payload.get("current_canary_metrics")
@@ -829,9 +790,7 @@ class Plugin(IPlugin):
         )
         return {"action": "observe", "decision": decision.to_dict()}
 
-    async def _hot_update_promote(
-        self, manager: HotUpdateManager, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _hot_update_promote(self, manager: HotUpdateManager, payload: dict[str, Any]) -> dict[str, Any]:
         """处理 promote 动作."""
         deployment_id = payload.get("deployment_id")
         if not deployment_id:
@@ -839,21 +798,15 @@ class Plugin(IPlugin):
         record = await manager.promote(deployment_id)
         return {"action": "promote", "deployment": record.to_dict()}
 
-    async def _hot_update_rollback(
-        self, manager: HotUpdateManager, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _hot_update_rollback(self, manager: HotUpdateManager, payload: dict[str, Any]) -> dict[str, Any]:
         """处理 rollback 动作."""
         deployment_id = payload.get("deployment_id")
         if not deployment_id:
             raise ValueError("rollback 缺少必填字段: deployment_id")
-        record = await manager.rollback(
-            deployment_id, reason=payload.get("reason", "")
-        )
+        record = await manager.rollback(deployment_id, reason=payload.get("reason", ""))
         return {"action": "rollback", "deployment": record.to_dict()}
 
-    async def _hot_update_list_deployments(
-        self, manager: HotUpdateManager, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _hot_update_list_deployments(self, manager: HotUpdateManager, payload: dict[str, Any]) -> dict[str, Any]:
         """处理 list_deployments 动作."""
         model_name = payload.get("filter_model_name")
         status_str = payload.get("filter_status")
@@ -863,8 +816,7 @@ class Plugin(IPlugin):
                 status = DeploymentStatus(status_str)
             except ValueError:
                 raise ValueError(
-                    f"filter_status 不合法: {status_str}，"
-                    f"合法值: {[s.value for s in DeploymentStatus]}"
+                    f"filter_status 不合法: {status_str}，合法值: {[s.value for s in DeploymentStatus]}"
                 ) from None
 
         records = await manager.list_deployments(model_name=model_name, status=status)
@@ -874,9 +826,7 @@ class Plugin(IPlugin):
             "count": len(records),
         }
 
-    async def _hot_update_get_deployment(
-        self, manager: HotUpdateManager, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _hot_update_get_deployment(self, manager: HotUpdateManager, payload: dict[str, Any]) -> dict[str, Any]:
         """处理 get_deployment 动作."""
         deployment_id = payload.get("deployment_id")
         if not deployment_id:
@@ -884,9 +834,7 @@ class Plugin(IPlugin):
         record = await manager.get_deployment(deployment_id)
         return {"action": "get_deployment", "deployment": record.to_dict()}
 
-    def _hot_update_select_model(
-        self, manager: HotUpdateManager, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _hot_update_select_model(self, manager: HotUpdateManager, payload: dict[str, Any]) -> dict[str, Any]:
         """处理 select_model 动作（同步）."""
         model_name = payload.get("model_name")
         if not model_name:
@@ -894,9 +842,7 @@ class Plugin(IPlugin):
         model_uri = manager.select_model_for_request(model_name)
         return {"action": "select_model", "model_uri": model_uri}
 
-    # ------------------------------------------------------------------
     # p4-5: 公开 API（供 p4-6 前端看板与推理路径使用）
-    # ------------------------------------------------------------------
 
     @property
     def hot_update_manager(self) -> Optional[HotUpdateManager]:

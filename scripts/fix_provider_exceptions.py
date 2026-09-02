@@ -103,7 +103,7 @@ def fix_provider_file(file_path: Path):
         
         # 3. 替换泛型捕获
         content = GENERIC_EXCEPTION_PATTERN.sub(
-            "except Exception as e:  # noqa: PERF203, BLE001\n            logger.exception(f"[{file_path.name}] Failure: %s", e)\n",
+            "except Exception as e:  # noqa: PERF203, BLE001\n            logger.exception(f\"[{file_path.name}] Failure: %s\", e)\n",
             content
         )
         

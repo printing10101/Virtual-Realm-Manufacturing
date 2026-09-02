@@ -21,7 +21,7 @@ P2-1 修复：本模块原为独立的 ``AgentAuditLog`` 实现（简化版，�
 
 from __future__ import annotations
 
-# ruff: noqa: F822  # re-export shim：__all__ 符号经 __getattr__ 惰性解析（见模块 docstring）
+# ruff: noqa: F822 # re-export shim：__all__ 符号经 __getattr__ 惰性解析（见模块 docstring）
 
 __all__ = [
     "AgentAuditEntry",

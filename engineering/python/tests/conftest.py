@@ -35,20 +35,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Generator
 
-# ---------------------------------------------------------------------------
 # Windows WinSock 损坏兜底：asyncio 导入期失败的 stub 注入
-# ---------------------------------------------------------------------------
 # 背景：
 # - 当前 Windows 环境下 ``_overlapped`` 模块损坏（OSError [WinError 10038]
-#   在一个非套接字上尝试了一个操作），导致 ``asyncio.windows_events`` 导入失败，
-#   进而使整个 ``asyncio`` 包不可用，pytest 无法启动任何依赖 asyncio 的测试。
+# 在一个非套接字上尝试了一个操作），导致 ``asyncio.windows_events`` 导入失败，
+# 进而使整个 ``asyncio`` 包不可用，pytest 无法启动任何依赖 asyncio 的测试。
 # - 根本修复需管理员执行 ``netsh winsock reset`` 并重启系统；在修复之前，
-#   本 conftest 在导入早期注入一个最小 asyncio stub，让 sqlite_retry /
-#   sqlite_pool / pydantic_core / typing_extensions 等模块的 ``import asyncio``
-#   能成功加载，使测试套件可以运行。
+# 本 conftest 在导入早期注入一个最小 asyncio stub，让 sqlite_retry /
+# sqlite_pool / pydantic_core / typing_extensions 等模块的 ``import asyncio``
+# 能成功加载，使测试套件可以运行。
 # - stub 仅提供类型注解和最基本的同步语义；任何实际触发异步执行的测试
-#   （如 asyncio.run / await sleep）应当通过 ``pytest.importorskip`` 跳过，
-#   而非依赖此 stub 完成真实异步行为。
+# （如 asyncio.run / await sleep）应当通过 ``pytest.importorskip`` 跳过，
+# 而非依赖此 stub 完成真实异步行为。
 # - 该 stub 与 ``tests/unit/_verify_p3_fix.py`` 中的实现保持一致，便于维护。
 try:
     import asyncio  # noqa: F401
@@ -128,19 +126,18 @@ except (OSError, ImportError):
 
     sys.modules["asyncio"] = _asyncio_stub
 
-# ---------------------------------------------------------------------------
 # Python 3.10 兼容：为 ``enum.StrEnum`` 注入 polyfill
-# ---------------------------------------------------------------------------
 # 背景：
 # - ``enum.StrEnum`` 是 Python 3.11+ 引入的枚举类型；项目代码
-#   （如 ``app.core.response``）以及部分性能测试直接 ``from enum import StrEnum``。
+# （如 ``app.core.response``）以及部分性能测试直接 ``from enum import StrEnum``。
 # - 当前 CI 使用 Python 3.10.11，导入会触发 ImportError，导致依赖
-#   StrEnum 的测试被 skip（掩盖性能覆盖），生产路径在 3.10 下也无法加载。
+# StrEnum 的测试被 skip（掩盖性能覆盖），生产路径在 3.10 下也无法加载。
 # - polyfill 实现 ``class StrEnum(str, Enum)`` 与 3.11 内建语义等价（PEP 663），
-#   使 3.10 环境也能跑通相关测试与代码路径。3.11+ 直接用原版 StrEnum，不覆盖。
+# 使 3.10 环境也能跑通相关测试与代码路径。3.11+ 直接用原版 StrEnum，不覆盖。
 import enum as _enum
 
 if not hasattr(_enum, "StrEnum"):
+
     class StrEnum(str, _enum.Enum):
         """``enum.StrEnum`` 的 Python 3.10 polyfill（与 3.11+ 语义等价）。"""
 
@@ -156,25 +153,22 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-# ---------------------------------------------------------------------------
 # 测试环境配置：补齐 ``app.auth.security`` 在导入期读取的强制环境变量。
 # 背景：``app.auth.security.SECRET_KEY`` 在模块加载时会调用
 # ``_validate_and_get_secret``，未设置 ``LNN_JWT_SECRET`` 时会抛出 RuntimeError
 # 阻断后续任何依赖 ``app.api.v1.auth`` 的测试。这里在 conftest 入口补齐默认值。
-# ---------------------------------------------------------------------------
 if not os.environ.get("LNN_JWT_SECRET"):
     # P2-13 修复：使用 secrets.token_hex 动态生成测试密钥，避免硬编码已知密钥。
     # 硬编码密钥提交到版本控制后，若测试环境意外暴露（CI 日志泄露、外部访问），
     # 攻击者可用此已知密钥伪造 JWT。动态生成确保每次测试运行使用不同密钥。
     import secrets as _secrets
+
     os.environ["LNN_JWT_SECRET"] = _secrets.token_hex(32)
 
-# ---------------------------------------------------------------------------
 # 认证开关默认关闭（app import 前固化）
-# ---------------------------------------------------------------------------
 # 背景：本 conftest 的 ``# [2026-08-13 审计修复] lazy stub 会空化 app.api.v1/__init__.py 的聚合 re-export
-# （lnn_uncertain 等符号丢失），导致测试环境路由注册不完整（630 → 559）：
-#   from app.api.v1 import lnn_uncertain → ImportError → 域注册器降级吞错 → lnn 路由 404。
+# （lnn_uncertain 等符号丢失），导致测试环境路由注册不完整（630 559）：
+# from app.api.v1 import lnn_uncertain ImportError 域注册器降级吞错 lnn 路由 404。
 # 原目的（避免 app.api.v1 导入链触发 torch 初始化）已无必要：本 conftest 顶部已
 # 真实导入 torch（S7 策略），且 pytest-cov 冲突有专项处理。保留函数定义便于回退。
 # _install_lazy_app_api_v1()`` 会立即 resolve ``app.api.v1.auth``，
@@ -192,9 +186,7 @@ os.environ.setdefault("ENVIRONMENT", "testing")
 os.environ.setdefault("LNN_REGISTRATION_CODE", "SECRET-1234")
 
 
-# ---------------------------------------------------------------------------
 # Torch 加载策略：真实 torch 优先，无 torch 时显式标记并跳过
-# ---------------------------------------------------------------------------
 # 学术诚信修复 [S7]：
 # 原实现通过 _LazyStubModule 注入完整的 torch 桩模块，使所有依赖 torch 的
 # 测试在不安装 torch 的环境下也能"通过"——这掩盖了真实的测试覆盖空洞。
@@ -202,7 +194,7 @@ os.environ.setdefault("LNN_REGISTRATION_CODE", "SECRET-1234")
 # 新策略：
 # 1. 优先尝试导入真实 torch；成功则直接使用，测试执行真实计算路径。
 # 2. 若真实 torch 不可用，打印明确警告并让依赖 torch 的测试通过
-#    ``pytest.importorskip("torch")`` 自然跳过，而非用桩模块伪装通过。
+# ``pytest.importorskip("torch")`` 自然跳过，而非用桩模块伪装通过。
 # 3. 仅保留对 torch C 扩展冲突的容错处理（retry 机制），不再注入桩。
 #
 # 这保证了：
@@ -233,21 +225,18 @@ if "torch" not in sys.modules:
             import torch  # noqa: F401  # 重试导入
         except Exception:
             warnings.warn(
-                f"[S7] torch 导入失败（C 扩展冲突）：{_torch_init_err}。"
-                "依赖 torch 的测试将跳过。",
+                f"[S7] torch 导入失败（C 扩展冲突）：{_torch_init_err}。依赖 torch 的测试将跳过。",
                 stacklevel=2,
             )
 
 
-# ---------------------------------------------------------------------------
 # Stub ``app.api.v1`` package: 避免导入 auth 模块时触发 ``lnn`` 等子模块的副作用链
-# ---------------------------------------------------------------------------
 # 背景：
 # - ``app.api.v1/__init__.py`` 一次性导入所有子模块（lnn/jobs/plugins/...）。
 # - 其中 lnn 会进一步触发 ``app.ai.lnn`` -> ``torch`` 的初始化，pytest-cov 多次
-#   运行时会与 C 扩展冲突。
+# 运行时会与 C 扩展冲突。
 # - 我们关心的只有 ``app.api.v1.auth``，因此在测试环境下将 ``app.api.v1`` 替换为
-#   懒加载式的桩包：仅当真正访问 ``app.api.v1.auth`` 等子模块时才进行按需加载。
+# 懒加载式的桩包：仅当真正访问 ``app.api.v1.auth`` 等子模块时才进行按需加载。
 # - 这种方法对其他测试无影响，因为生产代码中 ``app.api.v1.auth`` 仍然按需加载。
 def _install_lazy_app_api_v1() -> None:
     """将 ``app.api.v1`` 替换为懒加载桩包。"""
@@ -289,9 +278,7 @@ def _install_lazy_app_api_v1() -> None:
     _real_app_api_v1_path = _real_app_api_path / "v1"
 
     if not _real_app_api_v1_path.exists():
-        raise RuntimeError(
-            f"无法定位 app.api.v1 目录: {_real_app_api_v1_path}"
-        )
+        raise RuntimeError(f"无法定位 app.api.v1 目录: {_real_app_api_v1_path}")
 
     # 安装一个非常薄的 ``app.api`` 桩，保持 __path__ 指向真实目录
     _app_api_pkg = types.ModuleType("app.api")
@@ -305,9 +292,7 @@ def _install_lazy_app_api_v1() -> None:
 
     def _resolve(name: str):
         # 先尝试从真实 v1 目录加载子模块
-        spec = importlib.util.spec_from_file_location(
-            f"app.api.v1.{name}", _real_app_api_v1_path / f"{name}.py"
-        )
+        spec = importlib.util.spec_from_file_location(f"app.api.v1.{name}", _real_app_api_v1_path / f"{name}.py")
         if spec is None or spec.loader is None:
             raise ImportError(f"Cannot load app.api.v1.{name}")
         mod = importlib.util.module_from_spec(spec)
@@ -322,18 +307,16 @@ def _install_lazy_app_api_v1() -> None:
 _install_lazy_app_api_v1()
 
 
-# ---------------------------------------------------------------------------
 # Python 3.11.0rc2 traceback 模块 CJK 异常消息 UnicodeDecodeError 兼容补丁
 # 背景：
 # - 当前 CI 使用 Python 3.11.0rc2，其 ``traceback.TracebackException.format_frame_summary``
-#   在格式化包含非 ASCII 字符（如 CJK）的异常链时会出现 UnicodeDecodeError。
+# 在格式化包含非 ASCII 字符（如 CJK）的异常链时会出现 UnicodeDecodeError。
 # - 该问题在 Python 3.11.0 正式版及更高版本已修复。
 # - 我们的异常处理器大量使用中文提示信息来告知用户具体错误原因，
-#   所以测试中需要规避此 traceback bug。
+# 所以测试中需要规避此 traceback bug。
 # - 此处 monkey-patch 掉 ``TracebackException.format`` 与 ``print_exception``，
-#   在 UnicodeDecodeError 时回退到 ``format_exception_only`` 输出来自异常类型 + 消息，
-#   保证测试不因 traceback bug 崩溃，同时保留足够的诊断信息。
-# ---------------------------------------------------------------------------
+# 在 UnicodeDecodeError 时回退到 ``format_exception_only`` 输出来自异常类型 + 消息，
+# 保证测试不因 traceback bug 崩溃，同时保留足够的诊断信息。
 def _patch_traceback_for_cjk() -> None:
     import sys as _sys
 
@@ -410,6 +393,7 @@ def _env_setup(monkeypatch, tmp_path):
     # 强制重置 ban list 单例并更新 BANNED_TOKENS_FILE 常量，使新的临时文件生效
     try:
         from app.auth import security as _sec
+
         _sec.BANNED_TOKENS_FILE = banned_file
         _sec._token_ban_list = None
     except Exception:
@@ -417,9 +401,7 @@ def _env_setup(monkeypatch, tmp_path):
     yield
 
 
-# ---------------------------------------------------------------------------
 # 集成测试专用 Fixtures
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -668,10 +650,22 @@ def sample_process_card() -> ProcessCard:
     )
     card.operations = [
         {"step": 1, "operation": "下料", "machine": "锯床GZ4230", "description": "按毛坯尺寸下料", "time_min": 2},
-        {"step": 2, "operation": "粗车外圆", "machine": "数控车床CK6150", "description": "粗车外圆至Φ102mm", "time_min": 8},
+        {
+            "step": 2,
+            "operation": "粗车外圆",
+            "machine": "数控车床CK6150",
+            "description": "粗车外圆至Φ102mm",
+            "time_min": 8,
+        },
         {"step": 3, "operation": "粗车端面", "machine": "数控车床CK6150", "description": "粗车两端面", "time_min": 5},
         {"step": 4, "operation": "钻孔", "machine": "加工中心VMC850", "description": "钻4×Φ8mm通孔", "time_min": 10},
-        {"step": 5, "operation": "精车外圆", "machine": "数控车床CK6150", "description": "精车外圆至Φ100mm(IT8)", "time_min": 12},
+        {
+            "step": 5,
+            "operation": "精车外圆",
+            "machine": "数控车床CK6150",
+            "description": "精车外圆至Φ100mm(IT8)",
+            "time_min": 12,
+        },
         {"step": 6, "operation": "铰孔", "machine": "加工中心VMC850", "description": "铰孔至Φ8H8", "time_min": 8},
         {"step": 7, "operation": "检验", "machine": "三坐标测量机", "description": "全尺寸检验", "time_min": 15},
     ]
@@ -715,7 +709,7 @@ def risk_assessment_template() -> list[RiskItem]:
     ]
 
 
-# --- 辅助工具 ---
+# 辅助工具
 
 
 def _write_minimal_png(filepath: Path, width: int, height: int) -> None:
@@ -733,12 +727,7 @@ def _write_minimal_png(filepath: Path, width: int, height: int) -> None:
         raw_data += b"\x00" + b"\xff\xff\xff" * width
     idat_data = zlib.compress(raw_data)
 
-    png = (
-        b"\x89PNG\r\n\x1a\n"
-        + chunk(b"IHDR", ihdr_data)
-        + chunk(b"IDAT", idat_data)
-        + chunk(b"IEND", b"")
-    )
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr_data) + chunk(b"IDAT", idat_data) + chunk(b"IEND", b"")
     filepath.write_bytes(png)
 
 
@@ -786,13 +775,15 @@ def test_report_collector():
             self.performance_metrics: dict[str, list[float]] = {}
 
         def add_result(self, test_name: str, passed: bool, details: str = "", metrics: dict[str, Any] | None = None):
-            self.results.append({
-                "test": test_name,
-                "passed": passed,
-                "details": details,
-                "metrics": metrics or {},
-                "timestamp": time.time(),
-            })
+            self.results.append(
+                {
+                    "test": test_name,
+                    "passed": passed,
+                    "details": details,
+                    "metrics": metrics or {},
+                    "timestamp": time.time(),
+                }
+            )
 
         def record_metric(self, name: str, value: float):
             if name not in self.performance_metrics:

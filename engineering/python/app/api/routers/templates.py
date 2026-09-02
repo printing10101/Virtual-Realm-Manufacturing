@@ -27,7 +27,7 @@ from app.api.v1 import (
 
 def register(app: FastAPI) -> None:
     """注册模板域路由."""
-    # === 模板系统 ===
+    # 模板系统
     app.include_router(template_ab.router)
     app.include_router(template_branches.router)
     app.include_router(template_evolution.router)
@@ -35,5 +35,5 @@ def register(app: FastAPI) -> None:
     app.include_router(pattern_engine.router)
     app.include_router(flywheel.router)
 
-    # === 模板市场 ===
+    # 模板市场
     app.include_router(template_market.router)

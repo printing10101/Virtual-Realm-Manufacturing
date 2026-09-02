@@ -122,7 +122,7 @@ def should_abort_after(stage_key: StageKey | str, failed: bool) -> bool:
     """
     if not failed:
         return False
-    # 失败阶段若致命 → 中止；可降级阶段失败 → 继续
+    # 失败阶段若致命 中止；可降级阶段失败 继续
     return stage_failure_is_fatal(stage_key)
 
 

@@ -22,9 +22,7 @@ def _search_import(filepath: Path, pattern: str) -> bool:
     return pattern in text
 
 
-# ============================================================================
 # 规则 1: 域层不得从 app.api.v1.auth 导入 get_current_user
-# ============================================================================
 
 _DOMAIN_FILES = [
     "simulation/api.py",
@@ -43,14 +41,11 @@ def test_domain_no_api_auth_import(rel_path: str) -> None:
         pytest.skip(f"{rel_path} 不存在")
     has_violation = _search_import(fp, "from app.api.v1.auth import")
     assert not has_violation, (
-        f"{rel_path} 仍从 API 层导入认证依赖，"
-        f"应改为 from app.auth.dependencies import get_current_user"
+        f"{rel_path} 仍从 API 层导入认证依赖，应改为 from app.auth.dependencies import get_current_user"
     )
 
 
-# ============================================================================
 # 规则 2: auth/audit, idempotency, rate_limiter 使用延迟导入
-# ============================================================================
 
 _AUTH_SHIM_FILES = [
     "auth/audit.py",
@@ -68,17 +63,12 @@ def test_auth_shim_uses_lazy_import(rel_path: str) -> None:
     has_lazy = "def __getattr__" in text
     # 不应有顶层 from app.agent 导入（违反单向依赖）；
     # 仅统计行首（无缩进）的导入语句——函数内懒导入不算
-    has_top_level = any(
-        line.startswith("from app.agent")
-        for line in text.splitlines()
-    )
+    has_top_level = any(line.startswith("from app.agent") for line in text.splitlines())
     assert has_lazy, f"{rel_path} 缺少 __getattr__ 延迟导入"
     assert not has_top_level, f"{rel_path} 仍有顶层 from app.agent 导入"
 
 
-# ============================================================================
 # 规则 3: shared/ 无重依赖
-# ============================================================================
 
 _FORBIDDEN_SHARED = ["import torch", "import numpy", "from pydantic", "from fastapi"]
 
@@ -96,9 +86,7 @@ def test_shared_no_heavy_imports() -> None:
     assert not violations, f"shared/ 包含重依赖: {violations}"
 
 
-# ============================================================================
 # 规则 4: main.py 已将 shared/ 加入 sys.path
-# ============================================================================
 
 
 def test_main_adds_shared_to_path() -> None:
@@ -107,6 +95,4 @@ def test_main_adds_shared_to_path() -> None:
     text = main_py.read_text(encoding="utf-8")
     has_sys_path = "sys.path.insert(0" in text or "sys.path.append(" in text
     has_repo_root = "_REPO_ROOT" in text or "parents[" in text
-    assert has_sys_path and has_repo_root, (
-        "main.py 应确保 shared/ 在 Python 路径中"
-    )
+    assert has_sys_path and has_repo_root, "main.py 应确保 shared/ 在 Python 路径中"

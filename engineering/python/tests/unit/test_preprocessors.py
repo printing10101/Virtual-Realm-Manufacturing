@@ -61,6 +61,7 @@ class TestBasePreprocessor:
 
 # ---------------------------------------------------------------- ImagePreprocessor
 
+
 class TestImagePreprocessor:
     def _make(self, **kw):
         cfg = ImageProcessorConfig(image_size=kw.pop("image_size", 32), **kw)
@@ -120,7 +121,9 @@ class TestImagePreprocessor:
     def test_validate_ok(self):
         p = self._make()
         img = np.zeros((32, 32, 3), dtype=np.float32)
-        pd = ProcessedData(source_type=DataSourceType.IMAGE, original_data=img, processed_data=img, feature_dim=32 * 32 * 3)
+        pd = ProcessedData(
+            source_type=DataSourceType.IMAGE, original_data=img, processed_data=img, feature_dim=32 * 32 * 3
+        )
         m = p.validate(pd)
         assert m.validation_errors == []
 
@@ -154,6 +157,7 @@ class TestImagePreprocessor:
 
 
 # ---------------------------------------------------------------- TimeSeriesPreprocessor
+
 
 class TestTimeSeriesPreprocessor:
     def _make(self, **kw):
@@ -224,6 +228,7 @@ class TestTimeSeriesPreprocessor:
 
 # ---------------------------------------------------------------- TextPreprocessor
 
+
 class TestTextPreprocessor:
     def _make(self, **kw):
         cfg = TextProcessorConfig(
@@ -269,13 +274,16 @@ class TestTextPreprocessor:
 
     def test_validate_empty(self):
         p = self._make()
-        pd = ProcessedData(source_type=DataSourceType.TEXT, original_data="", processed_data=np.array([]), feature_dim=512)
+        pd = ProcessedData(
+            source_type=DataSourceType.TEXT, original_data="", processed_data=np.array([]), feature_dim=512
+        )
         m = p.validate(pd)
         assert m.completeness == 0.0
         assert any("为空" in e for e in m.validation_errors)
 
 
 # ---------------------------------------------------------------- ToolStatePreprocessor
+
 
 class TestToolStatePreprocessor:
     def _make(self, **kw):
@@ -312,7 +320,7 @@ class TestToolStatePreprocessor:
         assert pd.processed_data.shape[0] == 3
 
     def test_anomaly_zscore(self):
-        # 归一化后 load=0.5 / wear=0.1 / temp=0.2 → z 值约 1.12，阈值 0.5 触发
+        # 归一化后 load=0.5 / wear=0.1 / temp=0.2 z 值约 1.12，阈值 0.5 触发
         p = self._make(anomaly_detection_method="z_score", anomaly_threshold=0.5)
         data = {"load": 100.0, "wear": 0.1, "temp": 0.2}
         pd = p.preprocess(ToolStateInput(data=data))
@@ -320,7 +328,7 @@ class TestToolStatePreprocessor:
 
     def test_validate_outlier(self):
         p = self._make(anomaly_detection_method="z_score", anomaly_threshold=0.5)
-        # 归一化后 load=0.5 / wear≈0.017 / temp≈0.001 → load 明显离群
+        # 归一化后 load=0.5 / wear≈0.017 / temp≈0.001 load 明显离群
         data = {"load": 100.0, "wear": 0.1, "temp": 0.2}
         pd = p.preprocess(ToolStateInput(data=data))
         m = p.validate(pd)
@@ -329,6 +337,7 @@ class TestToolStatePreprocessor:
 
 
 # ---------------------------------------------------------------- GCodePreprocessor
+
 
 class TestGCodePreprocessor:
     def _make(self, **kw):

@@ -72,9 +72,7 @@ def _validate_predict_input(input_data: list[float]) -> list[float]:
     if not input_data:
         raise ValueError("input_data 不能为空")
     if len(input_data) > _MAX_INPUT_SIZE:
-        raise ValueError(
-            f"input_data 长度 {len(input_data)} 超过最大限制 {_MAX_INPUT_SIZE}"
-        )
+        raise ValueError(f"input_data 长度 {len(input_data)} 超过最大限制 {_MAX_INPUT_SIZE}")
     # 检查 NaN/Inf
     import math
 
@@ -84,6 +82,8 @@ def _validate_predict_input(input_data: list[float]) -> list[float]:
         if math.isinf(v):
             raise ValueError(f"input_data[{i}] = Inf")
     return input_data
+
+
 _USER_AGENT = "lingjing-mcp/1.0"
 
 # 安全修复：启动时校验 AGENT_TOKEN 强度，避免空 token 导致认证失效。
@@ -111,9 +111,7 @@ elif len(AGENT_TOKEN) < 32 and not _DEV_MODE:
 if not BASE_URL.startswith("https://"):
     if "localhost" not in BASE_URL and "127.0.0.1" not in BASE_URL:
         if not _DEV_MODE:
-            raise RuntimeError(
-                f"LINGJING_API_URL must use HTTPS in production: {BASE_URL}"
-            )
+            raise RuntimeError(f"LINGJING_API_URL must use HTTPS in production: {BASE_URL}")
     else:
         logger.debug("Using non-HTTPS BASE_URL for localhost development: %s", BASE_URL)
 
@@ -155,9 +153,7 @@ def _format_success(data: Any) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False)
 
 
-def _validate_range(
-    name: str, value: float, constraints: tuple[float, float]
-) -> str | None:
+def _validate_range(name: str, value: float, constraints: tuple[float, float]) -> str | None:
     lo, hi = constraints
     if value < lo or value > hi:
         return f"{name}={value}超出有效范围[{lo}, {hi}]"
@@ -166,9 +162,7 @@ def _validate_range(
 
 async def list_models() -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
-        resp = await client.get(
-            f"{BASE_URL}/api/agent/v1/models", headers=_headers()
-        )
+        resp = await client.get(f"{BASE_URL}/api/agent/v1/models", headers=_headers())
         resp.raise_for_status()
         return resp.json()
 
@@ -176,16 +170,12 @@ async def list_models() -> dict[str, Any]:
 async def get_model_info(name: str) -> dict[str, Any]:
     name = _sanitize_model_name(name)
     async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
-        resp = await client.get(
-            f"{BASE_URL}/api/agent/v1/models/{name}/info", headers=_headers()
-        )
+        resp = await client.get(f"{BASE_URL}/api/agent/v1/models/{name}/info", headers=_headers())
         resp.raise_for_status()
         return resp.json()
 
 
-async def predict(
-    model_name: str, input_data: list[float], return_confidence: bool = False
-) -> dict[str, Any]:
+async def predict(model_name: str, input_data: list[float], return_confidence: bool = False) -> dict[str, Any]:
     model_name = _sanitize_model_name(model_name)
     input_data = _validate_predict_input(input_data)
     payload = {
@@ -226,9 +216,7 @@ async def train(
 
     valid_optimizers = frozenset({"adam", "sgd", "adamw", "rmsprop"})
     if optimizer.lower() not in valid_optimizers:
-        raise ValueError(
-            f"optimizer='{optimizer}'无效，可选: {sorted(valid_optimizers)}"
-        )
+        raise ValueError(f"optimizer='{optimizer}'无效，可选: {sorted(valid_optimizers)}")
 
     payload = {
         "model_name": model_name,
@@ -254,9 +242,7 @@ async def train(
 async def get_train_status(job_id: str) -> dict[str, Any]:
     job_id = _sanitize_job_id(job_id)
     async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
-        resp = await client.get(
-            f"{BASE_URL}/api/agent/v1/train/{job_id}", headers=_headers()
-        )
+        resp = await client.get(f"{BASE_URL}/api/agent/v1/train/{job_id}", headers=_headers())
         resp.raise_for_status()
         return resp.json()
 
@@ -298,10 +284,7 @@ def register_tools(server) -> None:
     权限类: R = Read, B = Budgeted Write
     """
 
-    @server.tool(
-        name="lnn_list_models",
-        description="列出所有已注册的LNN模型及其基本元数据"
-    )
+    @server.tool(name="lnn_list_models", description="列出所有已注册的LNN模型及其基本元数据")
     async def lnn_list_models() -> list[dict]:
         try:
             result = await list_models()
@@ -324,10 +307,7 @@ def register_tools(server) -> None:
 
     @server.tool(
         name="lnn_predict",
-        description=(
-            "使用指定LNN模型对输入数据进行预测推理。"
-            "input_data为浮点数列表，长度需与模型输入维度匹配"
-        ),
+        description=("使用指定LNN模型对输入数据进行预测推理。input_data为浮点数列表，长度需与模型输入维度匹配"),
     )
     async def lnn_predict(
         model_name: str,
@@ -350,8 +330,7 @@ def register_tools(server) -> None:
     @server.tool(
         name="lnn_train",
         description=(
-            "启动LNN模型异步训练任务，返回job_id用于追踪进度。"
-            "支持配置学习率、epoch数、batch_size、优化器和计算设备"
+            "启动LNN模型异步训练任务，返回job_id用于追踪进度。支持配置学习率、epoch数、batch_size、优化器和计算设备"
         ),
     )
     async def lnn_train(
@@ -364,9 +343,7 @@ def register_tools(server) -> None:
         device: str = "auto",
     ) -> list[dict]:
         try:
-            result = await train(
-                model_name, data_path, learning_rate, epochs, batch_size, optimizer, device
-            )
+            result = await train(model_name, data_path, learning_rate, epochs, batch_size, optimizer, device)
             return [{"type": "text", "text": _format_success(result)}]
         except ValueError as exc:
             logger.warning("lnn_train validation error: %s", exc)
@@ -391,9 +368,7 @@ def register_tools(server) -> None:
         name="lnn_wait_for_training",
         description="等待训练任务完成，以poll_interval秒间隔轮询直至状态为终态",
     )
-    async def lnn_wait_for_training(
-        job_id: str, poll_interval: float = 2.0
-    ) -> list[dict]:
+    async def lnn_wait_for_training(job_id: str, poll_interval: float = 2.0) -> list[dict]:
         try:
             result = await wait_for_training(job_id, poll_interval)
             return [{"type": "text", "text": _format_success(result)}]
@@ -401,12 +376,10 @@ def register_tools(server) -> None:
             logger.exception("lnn_wait_for_training failed for %s", job_id)
             return [{"type": "text", "text": _format_error(str(exc))}]
 
-    # ---------------------------------------------------------------------
-    # 设备元数据 → MCP 工具自动生成（Phase 2：A2M 思路）
+    # 设备元数据 MCP 工具自动生成（Phase 2：A2M 思路）
     # 按 DeviceDescriptor 的 capabilities 自动注册 {device_id}_{op} 工具，
     # 后端为仿真设备（SimulatedDevice），参数越界 fail-closed。
     # 注册失败不影响既有 6 个 LNN 工具。
-    # ---------------------------------------------------------------------
     try:
         from mcp_server.device_registry import build_demo_registry
         from mcp_server.device_tools import register_device_tools
@@ -416,9 +389,7 @@ def register_tools(server) -> None:
     except Exception as exc:  # noqa: BLE001 - 设备工具注册失败不阻断 LNN 工具
         logger.warning("设备工具注册失败（不影响 LNN 工具）: %s", exc)
 
-    # ---------------------------------------------------------------------
     # 仿真工厂工具（升级①：语言驱动仿真工厂，SUPCON 思路）
-    # ---------------------------------------------------------------------
     try:
         from mcp_server.factory_tools import register_factory_tools
 

@@ -83,9 +83,7 @@ class ProjectSyncService(
         self._repos_root = os.path.join(os.path.abspath(config.storage.output_dir), "project_sync")
         os.makedirs(self._repos_root, exist_ok=True)
 
-    # ------------------------------------------------------------------
     # 内部辅助：锁管理
-    # ------------------------------------------------------------------
 
     def _get_project_lock(self, project_id: str) -> threading.Lock:
         """获取（或创建）指定项目的专用锁."""

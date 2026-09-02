@@ -33,9 +33,8 @@ from app.middleware.cors_config import (
 )
 
 
-# =============================================================================
 # Validation
-# =============================================================================
+
 
 class TestValidateCorsConfig:
     """Tests for the ``validate_cors_config`` security guard."""
@@ -75,7 +74,7 @@ class TestValidateCorsConfig:
                 True,
             )
 
-    # --- Partial wildcard detection (new in this hardening pass) -----------
+    # Partial wildcard detection (new in this hardening pass)
 
     def test_rejects_partial_wildcard_subdomain(self):
         """Partial wildcard ``*.example.com`` with credentials must raise."""
@@ -115,9 +114,8 @@ class TestValidateCorsConfig:
         assert "通配符*与allow_credentials=True同时使用存在严重安全风险" in combined
 
 
-# =============================================================================
 # Development environment
-# =============================================================================
+
 
 class TestDevEnvironment:
     """Tests for CORS behavior in development environment."""
@@ -175,9 +173,8 @@ class TestDevEnvironment:
         assert config["max_age"] == 3600
 
 
-# =============================================================================
 # Production environment
-# =============================================================================
+
 
 class TestProdEnvironment:
     """Tests for CORS behavior in production environment."""
@@ -250,9 +247,8 @@ class TestProdEnvironment:
         assert config["max_age"] == 600
 
 
-# =============================================================================
 # Environment variable override
-# =============================================================================
+
 
 class TestEnvOverride:
     """Tests for ALLOWED_ORIGINS environment variable override."""
@@ -311,9 +307,8 @@ class TestEnvOverride:
             CorsSettings()
 
 
-# =============================================================================
 # Default fallback
-# =============================================================================
+
 
 class TestDefaultFallback:
     """Tests for default behavior when LINGJING_ENV is not set."""
@@ -341,9 +336,8 @@ class TestDefaultFallback:
         assert settings.get_origins() == PRODUCTION_ORIGINS
 
 
-# =============================================================================
 # Override environment parameter (standalone helpers)
-# =============================================================================
+
 
 class TestOverrideEnvParam:
     """Tests for override_env parameter in helper functions."""
@@ -355,23 +349,17 @@ class TestOverrideEnvParam:
 
     def test_get_cors_origin_regex_with_override(self):
         assert get_cors_origin_regex(override_env="development") is None
-        assert (
-            get_cors_origin_regex(override_env="production") == PRODUCTION_ORIGIN_REGEX
-        )
+        assert get_cors_origin_regex(override_env="production") == PRODUCTION_ORIGIN_REGEX
 
     def test_is_allowed_origin_with_override(self):
         assert is_allowed_origin("http://localhost:3000", override_env="development") is True
         assert is_allowed_origin("https://evil.com", override_env="development") is False
-        assert (
-            is_allowed_origin("http://localhost:5173", override_env="production")
-            is True
-        )
+        assert is_allowed_origin("http://localhost:5173", override_env="production") is True
         assert is_allowed_origin("https://evil.com", override_env="production") is False
 
 
-# =============================================================================
 # Security headers
-# =============================================================================
+
 
 class TestSecurityHeaders:
     """Tests for security headers helper."""
@@ -385,9 +373,8 @@ class TestSecurityHeaders:
         assert headers["X-XSS-Protection"] == "1; mode=block"
 
 
-# =============================================================================
 # Startup-time enforcement (non-zero exit on wildcard + credentials)
-# =============================================================================
+
 
 class TestEnforceStartupSecurity:
     """Tests for ``enforce_startup_security`` — the runtime gate."""
@@ -475,9 +462,8 @@ class TestStartupExitCode:
         assert exc_info.value.code != 0
 
 
-# =============================================================================
 # Environment isolation (dev must not leak into prod and vice versa)
-# =============================================================================
+
 
 class TestEnvironmentIsolation:
     """Verify that the development origins never appear in production and that
@@ -547,9 +533,8 @@ class TestEnvironmentIsolation:
         assert get_cors_origins() == settings.get_origins()
 
 
-# =============================================================================
 # Source-level guard rails
-# =============================================================================
+
 
 class TestSourceHasNoWildcardOrigin:
     """Source-level assertions mirroring the grep acceptance check.
@@ -574,8 +559,7 @@ class TestSourceHasNoWildcardOrigin:
         # The only allowed occurrence is in the _WILDCARD_PATTERN
         # detector or in error messages, never as a default origin.
         assert '"*"' not in non_comment, (
-            "Bare '\"*\"' string found in cors_config.py — possible "
-            "default wildcard origin regression."
+            "Bare '\"*\"' string found in cors_config.py — possible default wildcard origin regression."
         )
 
 

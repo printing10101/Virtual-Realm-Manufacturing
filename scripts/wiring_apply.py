@@ -50,7 +50,15 @@ _warnings: list[str] = []
 
 def log(msg: str) -> None:
     # 将 Unicode 字符转换为 ASCII 替代，避免 GBK 编码错误
-    msg = msg.replace('✅', '[OK]').replace('❌', '[ERR]').replace('⏭️', '[SKIP]').replace('📋', '[NOTE]').replace('🚀', '[INFO]').replace('🔧', '[FIX]').replace('⚠️', '[WARN]')
+    msg = (
+        msg.replace("✅", "[OK]")
+        .replace("❌", "[ERR]")
+        .replace("⏭️", "[SKIP]")
+        .replace("📋", "[NOTE]")
+        .replace("🚀", "[INFO]")
+        .replace("🔧", "[FIX]")
+        .replace("⚠️", "[WARN]")
+    )
     print(msg)
 
 
@@ -58,9 +66,7 @@ def section(title: str) -> None:
     log(f"\n{'=' * 70}\n{title}\n{'=' * 70}")
 
 
-# ---------------------------------------------------------------------------
 # 文件工具
-# ---------------------------------------------------------------------------
 
 
 def read_text(path: Path) -> str:
@@ -170,9 +176,7 @@ def remove_file(rel_path: str, dry_run: bool) -> None:
     log(f"  ✅ 删除: {rel_path}")
 
 
-# ---------------------------------------------------------------------------
 # 步骤实现
-# ---------------------------------------------------------------------------
 
 
 def step0_fix_path_bugs(dry_run: bool) -> None:
@@ -227,9 +231,18 @@ def step2_init_exports(dry_run: bool) -> None:
     extend_all(
         "app/integrations/mtconnect/__init__.py",
         [
-            "MTConnectStreamServer", "StreamEvent", "AlertEvent", "StreamConsumer",
-            "WebSocketAlertHandler", "ConditionChecker", "ChatterDetector", "Alert",
-            "AlertCondition", "AlertPriority", "AlertType", "MTConnectExperienceBridge",
+            "MTConnectStreamServer",
+            "StreamEvent",
+            "AlertEvent",
+            "StreamConsumer",
+            "WebSocketAlertHandler",
+            "ConditionChecker",
+            "ChatterDetector",
+            "Alert",
+            "AlertCondition",
+            "AlertPriority",
+            "AlertType",
+            "MTConnectExperienceBridge",
         ],
         dry_run,
     )
@@ -260,7 +273,14 @@ def step2_init_exports(dry_run: bool) -> None:
     )
     extend_all(
         "app/contracts/__init__.py",
-        ["CuttingParameters", "CuttingResults", "MachiningAnomaly", "CuttingExperience", "ExperienceQuery", "ExperienceStats"],
+        [
+            "CuttingParameters",
+            "CuttingResults",
+            "MachiningAnomaly",
+            "CuttingExperience",
+            "ExperienceQuery",
+            "ExperienceStats",
+        ],
         dry_run,
     )
 
@@ -395,7 +415,7 @@ def step4_delegation(dry_run: bool) -> None:
         "                self._compiled_classes[dialect_id] = self.compiler.compile(declaration)\n",
         "                self._compiled_classes[dialect_id] = self.compiler.compile(declaration)\n"
         "                self._stages[dialect_id] = next_stage_after_success(\n"
-        "                    self._stages.get(dialect_id, DialectLifecycleStage.DISCOVERED), \"compile\"\n"
+        '                    self._stages.get(dialect_id, DialectLifecycleStage.DISCOVERED), "compile"\n'
         "                )\n",
         "registry.py compile_all() 成功后记录 COMPILED",
         dry_run,
@@ -416,7 +436,7 @@ def step4_delegation(dry_run: bool) -> None:
         "            registry.register(dialect_id, cls)\n            count += 1\n",
         "            registry.register(dialect_id, cls)\n"
         "            self._stages[dialect_id] = next_stage_after_success(\n"
-        "                self._stages.get(dialect_id, DialectLifecycleStage.COMPILED), \"register\"\n"
+        '                self._stages.get(dialect_id, DialectLifecycleStage.COMPILED), "register"\n'
         "            )\n"
         "            count += 1\n",
         "registry.py register_to() 成功后记录 REGISTERED",
@@ -427,26 +447,26 @@ def step4_delegation(dry_run: bool) -> None:
         "app/postprocessor/dialect/registry.py",
         "    def get_compile_errors(self",
         "    def unregister(self, dialect_id: str, target: PostProcessorRegistry | None = None) -> bool:\n"
-        "        \"\"\"卸载方言（P4-2 生命周期：REGISTERED → UNREGISTERED）。\"\"\"\n"
+        '        """卸载方言（P4-2 生命周期：REGISTERED → UNREGISTERED）。"""\n'
         "        registry = target or PostProcessorRegistry()\n"
-        "        if hasattr(registry, \"unregister\"):\n"
+        '        if hasattr(registry, "unregister"):\n'
         "            try:\n"
         "                registry.unregister(dialect_id)\n"
         "            except Exception as exc:\n"
-        "                logger.warning(\"方言卸载失败: %s\", exc)\n"
+        '                logger.warning("方言卸载失败: %s", exc)\n'
         "                return False\n"
         "        else:\n"
-        "            logger.warning(\"PostProcessorRegistry 不支持 unregister，仅更新状态\")\n"
+        '            logger.warning("PostProcessorRegistry 不支持 unregister，仅更新状态")\n'
         "        self._stages[dialect_id] = next_stage_after_success(\n"
-        "            self._stages.get(dialect_id, DialectLifecycleStage.REGISTERED), \"unregister\"\n"
+        '            self._stages.get(dialect_id, DialectLifecycleStage.REGISTERED), "unregister"\n'
         "        )\n"
-        "        logger.info(\"方言已卸载: %s\", dialect_id)\n"
+        '        logger.info("方言已卸载: %s", dialect_id)\n'
         "        return True\n"
         "\n"
         "    def lifecycle_status(self, dialect_id: str) -> str:\n"
-        "        \"\"\"查询方言生命周期状态（P4-2）。\"\"\"\n"
+        '        """查询方言生命周期状态（P4-2）。"""\n'
         "        stage = self._stages.get(dialect_id)\n"
-        "        return stage.value if stage else \"unknown\"\n"
+        '        return stage.value if stage else "unknown"\n'
         "\n"
         "    def get_compile_errors(self",
         "registry.py 新增 unregister() / lifecycle_status() 方法",

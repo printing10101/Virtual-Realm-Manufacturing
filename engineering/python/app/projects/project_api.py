@@ -116,9 +116,7 @@ def _validate_project_file_path(user_path: str) -> Path:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-# ============================================================
 # 请求/响应模型
-# ============================================================
 
 
 class ProjectMetadataRequest(BaseModel):
@@ -147,9 +145,7 @@ class ResourceUploadMeta(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, description="额外元数据")
 
 
-# ============================================================
 # API 端点
-# ============================================================
 
 
 @router.post("/new", dependencies=[Depends(require_permission("project:write"))])
@@ -489,7 +485,7 @@ async def download_project(project_name: str) -> FileResponse:
 
 
 # 文件上传限制
-# P0-12 修复：100MB 全量入内存 → 50MB 分块流式读取 + magic bytes 校验
+# P0-12 修复：100MB 全量入内存 50MB 分块流式读取 + magic bytes 校验
 # ``MAX_UPLOAD_SIZE`` 由 ``app.config.limits`` 集中管理，与 dxf/step_import/
 # upload_security 等模块共享同一基准值。
 ALLOWED_UPLOAD_EXTENSIONS = {".step", ".stp", ".dxf", ".igs", ".iges", ".stl", ".obj"}

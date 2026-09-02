@@ -62,11 +62,9 @@ router = APIRouter(
     dependencies=[Depends(require_permission("gcode_generation:read"))],
 )
 
-# =============================================================================
 # 端点实现
 # Pydantic 请求 / 响应模型已迁移至 ``app.api.v1.gcode_generation.schemas``，
 # 与同级 stage 模块（chatter_prediction / cutting_parameters 等）约定一致。
-# =============================================================================
 
 
 @router.get("/precision_info")

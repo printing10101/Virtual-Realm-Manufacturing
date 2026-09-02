@@ -372,7 +372,7 @@ async def validate_dxf(
         )
 
 
-# ==================== XM-100 五轴加工端点 ====================
+# XM-100 五轴加工端点
 
 
 @router.post("/xm100/generate", response_model=dict)

@@ -227,9 +227,7 @@ class CostOptimizer(BaseSingletonService):
         all_suggestions.extend(self.analyze_training_efficiency())
         return sorted(all_suggestions, key=lambda s: s.estimated_savings, reverse=True)
 
-    # ------------------------------------------------------------------
     # 单例生命周期扩展
-    # ------------------------------------------------------------------
 
     @classmethod
     def init(cls) -> "CostOptimizer":

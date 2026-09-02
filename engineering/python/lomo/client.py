@@ -48,9 +48,7 @@ DEFAULT_TIMEOUT = 30.0
 _API_PREFIX = "/api/v1"
 
 
-# ---------------------------------------------------------------------------
 # 流式响应封装
-# ---------------------------------------------------------------------------
 
 
 class StreamingJSONL:
@@ -80,9 +78,7 @@ class StreamingJSONL:
             try:
                 obj = _json.loads(line)
             except _json.JSONDecodeError as e:
-                raise LomoConnectionError(
-                    f"流式响应中存在非法 JSON 行: {e}; line={line[:200]}"
-                ) from e
+                raise LomoConnectionError(f"流式响应中存在非法 JSON 行: {e}; line={line[:200]}") from e
             if isinstance(obj, dict) and "error" in obj:
                 # 后端在流中以 {"error": ..., "message": ...} 形式报告错误
                 from lomo.exceptions import LomoAPIError
@@ -146,9 +142,7 @@ class SSEEventStream:
             yield {"event": event_type or "message", "data": data}
 
 
-# ---------------------------------------------------------------------------
 # 客户端基类（同步/异步共享配置）
-# ---------------------------------------------------------------------------
 
 
 class _BaseClient:
@@ -162,11 +156,7 @@ class _BaseClient:
         timeout: float = DEFAULT_TIMEOUT,
         client: Any = None,
     ) -> None:
-        self.base_url = (
-            base_url
-            or os.getenv("LOMO_BASE_URL")
-            or DEFAULT_BASE_URL
-        ).rstrip("/")
+        self.base_url = (base_url or os.getenv("LOMO_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
         self.token = token or os.getenv("LOMO_TOKEN")
         self.timeout = float(timeout)
         # 三大资源访问器（懒加载）
@@ -195,9 +185,7 @@ class _BaseClient:
         return headers
 
 
-# ---------------------------------------------------------------------------
 # 同步客户端
-# ---------------------------------------------------------------------------
 
 
 class LomoClient(_BaseClient):
@@ -223,7 +211,7 @@ class LomoClient(_BaseClient):
         super().__init__(base_url, token=token, timeout=timeout)
         self._client = httpx.Client(timeout=self.timeout)
 
-    # -- 生命周期 -----------------------------------------------------------
+    # 生命周期
 
     def __enter__(self) -> "LomoClient":
         return self
@@ -235,7 +223,7 @@ class LomoClient(_BaseClient):
         """释放底层 httpx 连接池。"""
         self._client.close()
 
-    # -- 资源访问器（懒加载，避免循环导入） ----------------------------------
+    # 资源访问器（懒加载，避免循环导入）
 
     @property
     def workflows(self):
@@ -261,7 +249,7 @@ class LomoClient(_BaseClient):
             self._snapshots = Snapshot(self)
         return self._snapshots
 
-    # -- HTTP 方法 ----------------------------------------------------------
+    # HTTP 方法
 
     def request(
         self,
@@ -295,18 +283,14 @@ class LomoClient(_BaseClient):
         headers = self._headers(stream=stream)
         try:
             if stream:
-                req = self._client.build_request(
-                    method, url, json=json, params=params, headers=headers
-                )
+                req = self._client.build_request(method, url, json=json, params=params, headers=headers)
                 resp = self._client.send(req, stream=True)
                 # 检查 Content-Type 决定封装类型
                 ctype = (resp.headers.get("content-type") or "").lower()
                 if "text/event-stream" in ctype:
                     return SSEEventStream(resp)
                 return StreamingJSONL(resp)
-            resp = self._client.request(
-                method, url, json=json, params=params, headers=headers
-            )
+            resp = self._client.request(method, url, json=json, params=params, headers=headers)
         except httpx.TimeoutException as e:
             raise LomoTimeoutError(f"请求超时: {e}") from e
         except httpx.HTTPError as e:
@@ -315,9 +299,7 @@ class LomoClient(_BaseClient):
         try:
             payload = resp.json()
         except ValueError as e:
-            raise LomoConnectionError(
-                f"非 JSON 响应 (HTTP {resp.status_code}): {resp.text[:200]}"
-            ) from e
+            raise LomoConnectionError(f"非 JSON 响应 (HTTP {resp.status_code}): {resp.text[:200]}") from e
 
         _raise_for_envelope(payload)
         return payload.get("data")

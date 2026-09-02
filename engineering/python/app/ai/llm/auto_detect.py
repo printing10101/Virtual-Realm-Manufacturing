@@ -22,9 +22,7 @@ from app.ai.llm.provider_base import ProviderConfig, ProviderType
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 探测目标定义
-# ---------------------------------------------------------------------------
 
 # 各 Provider 的默认探测配置：端口、进程名、确认 API 路径
 _PROBE_TARGETS: list[dict[str, Any]] = [
@@ -184,13 +182,13 @@ class AutoDetector:
             base_url=target["default_base_url"],
         )
 
-        # 步骤1: 端口扫描
+        # 端口扫描
         result.port_open = await self._check_port(target["host"], target["port"])
 
-        # 步骤2: 进程识别（辅助信息，移至线程池避免阻塞事件循环）
+        # 进程识别（辅助信息，移至线程池避免阻塞事件循环）
         result.process_found = await asyncio.to_thread(self._check_processes, target["process_names"])
 
-        # 步骤3: API 探测（仅当端口开放时）
+        # API 探测（仅当端口开放时）
         if result.port_open:
             try:
                 result.api_responsive, result.models = await self._probe_api(

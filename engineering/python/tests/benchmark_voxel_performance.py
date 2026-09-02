@@ -34,9 +34,7 @@ from app.simulation.voxel_cutter import (
 from app.simulation.toolpath_parser import ToolpathParser
 
 
-# =============================================================================
 # 辅助函数：收集性能数据
-# =============================================================================
 class PerformanceMetrics:
     """性能数据采集器。"""
 
@@ -64,9 +62,7 @@ class PerformanceMetrics:
         print("-" * 70)
         for name, data in self.results.items():
             dur = data.get("duration_seconds", 0)
-            extra = ", ".join(
-                f"{k}={v}" for k, v in data.items() if k != "duration_seconds"
-            )
+            extra = ", ".join(f"{k}={v}" for k, v in data.items() if k != "duration_seconds")
             print(f"{name:<40} {dur:<15.6f} {extra}")
         print("=" * 70)
 
@@ -74,11 +70,10 @@ class PerformanceMetrics:
 _metrics = PerformanceMetrics()
 
 
-# =============================================================================
 # 测试用例
-# =============================================================================
 
-# ---- 1. 刀具掩码生成性能 ----
+# 1. 刀具掩码生成性能
+
 
 @pytest.mark.benchmark
 class TestToolMaskPerformance:
@@ -142,9 +137,7 @@ class TestToolMaskPerformance:
 
     def test_corner_radius_tool_mask(self):
         """带圆角平底刀掩码生成性能。"""
-        tool = ToolModel(
-            diameter=10.0, tool_type="flat", corner_radius=2.0, cutting_length=30.0
-        )
+        tool = ToolModel(diameter=10.0, tool_type="flat", corner_radius=2.0, cutting_length=30.0)
         _ = tool.voxel_mask(voxel_size=1.0)
         n_runs = 100
         t0 = time.perf_counter()
@@ -158,7 +151,8 @@ class TestToolMaskPerformance:
         )
 
 
-# ---- 2. 批量刀具掩码应用性能 ----
+# 2. 批量刀具掩码应用性能
+
 
 @pytest.mark.benchmark
 class TestBatchToolMaskPerformance:
@@ -175,8 +169,12 @@ class TestBatchToolMaskPerformance:
         warmup_grid = np.ones((20, 20, 20), dtype=bool)
         warmup_pts = np.array([[5.0, 5.0, 5.0]], dtype=np.float64)
         _apply_tool_mask_batch(
-            warmup_grid, self.tool_mask, warmup_pts,
-            self.bbox_min, self.voxel_size, self.padding,
+            warmup_grid,
+            self.tool_mask,
+            warmup_pts,
+            self.bbox_min,
+            self.voxel_size,
+            self.padding,
         )
 
     def _run_bench(self, n_points: int, label: str):
@@ -187,8 +185,12 @@ class TestBatchToolMaskPerformance:
 
         t0 = time.perf_counter()
         removed = _apply_tool_mask_batch(
-            grid, self.tool_mask, points,
-            self.bbox_min, self.voxel_size, self.padding,
+            grid,
+            self.tool_mask,
+            points,
+            self.bbox_min,
+            self.voxel_size,
+            self.padding,
         )
         t1 = time.perf_counter()
 
@@ -208,7 +210,8 @@ class TestBatchToolMaskPerformance:
         self._run_bench(5000, "5000pts")
 
 
-# ---- 3. Marching Cubes 网格重建性能 ----
+# 3. Marching Cubes 网格重建性能
+
 
 @pytest.mark.benchmark
 class TestMeshReconstructionPerformance:
@@ -228,9 +231,7 @@ class TestMeshReconstructionPerformance:
         """创建球形体素网格。"""
         cx = cy = cz = size // 2
         r = int(size * radius_ratio)
-        X, Y, Z = np.meshgrid(
-            np.arange(size), np.arange(size), np.arange(size), indexing="ij"
-        )
+        X, Y, Z = np.meshgrid(np.arange(size), np.arange(size), np.arange(size), indexing="ij")
         return ((X - cx) ** 2 + (Y - cy) ** 2 + (Z - cz) ** 2) <= r**2
 
     def test_mc_30x30x30(self):
@@ -276,7 +277,8 @@ class TestMeshReconstructionPerformance:
         )
 
 
-# ---- 4. 端到端仿真性能 ----
+# 4. 端到端仿真性能
+
 
 @pytest.mark.benchmark
 class TestEndToEndSimulationPerformance:
@@ -398,7 +400,8 @@ G00 Z80."""
             )
 
 
-# ---- 5. 优化前后对比测试 ----
+# 5. 优化前后对比测试
+
 
 @pytest.mark.benchmark
 class TestOptimizationComparison:
@@ -424,9 +427,7 @@ class TestOptimizationComparison:
         )
 
 
-# =============================================================================
 # 最终报告输出
-# =============================================================================
 
 
 def pytest_sessionfinish(session):
@@ -446,7 +447,7 @@ class TestPerformanceRequirements:
             tool.voxel_mask(voxel_size=1.0)
         t1 = time.perf_counter()
         avg = (t1 - t0) / 20
-        assert avg < 0.01, f"掩码生成耗时{avg*1000:.2f}ms，超出10ms阈值"
+        assert avg < 0.01, f"掩码生成耗时{avg * 1000:.2f}ms，超出10ms阈值"
 
     def test_marching_cubes_under_1s_100x100x100(self):
         """100x100x100网格的Marching Cubes应小于1秒。"""
@@ -461,21 +462,15 @@ class TestPerformanceRequirements:
 
         # 创建100x100x100网格
         nx = ny = nz = 100
-        X, Y, Z = np.meshgrid(
-            np.arange(nx), np.arange(ny), np.arange(nz), indexing="ij"
-        )
+        X, Y, Z = np.meshgrid(np.arange(nx), np.arange(ny), np.arange(nz), indexing="ij")
         grid = ((X - 50) ** 2 + (Y - 50) ** 2 + (Z - 50) ** 2) <= 30**2
         padded = np.pad(grid, pad_width=1, mode="constant", constant_values=0)
 
         t0 = time.perf_counter()
-        verts, faces, _, _ = skmeasure.marching_cubes(
-            padded.astype(np.float64), level=0.5, spacing=(1.0, 1.0, 1.0)
-        )
+        verts, faces, _, _ = skmeasure.marching_cubes(padded.astype(np.float64), level=0.5, spacing=(1.0, 1.0, 1.0))
         t1 = time.perf_counter()
         duration = t1 - t0
-        assert duration < 1.0, (
-            f"100x100x100 Marching Cubes耗时{duration:.4f}s，超出1s阈值"
-        )
+        assert duration < 1.0, f"100x100x100 Marching Cubes耗时{duration:.4f}s，超出1s阈值"
         _metrics.record(
             "mc_100x100x100_quality_check",
             duration,
@@ -516,6 +511,4 @@ G00 Z80."""
             )
             t1 = time.perf_counter()
             duration = t1 - t0
-            assert duration < 30.0, (
-                f"端到端仿真耗时{duration:.4f}s，超出30s阈值"
-            )
+            assert duration < 30.0, f"端到端仿真耗时{duration:.4f}s，超出30s阈值"

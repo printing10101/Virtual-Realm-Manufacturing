@@ -39,9 +39,9 @@ logger = logging.getLogger(__name__)
 
 # 默认体素网格维度（与 PartPriorVAE.voxel_dim 一致）
 DEFAULT_VOXEL_DIM = 64
-# 默认点云采样数（mesh → 点云）
+# 默认点云采样数（mesh 点云）
 DEFAULT_NUM_SAMPLES = 10000
-# 默认体素化阈值（点云密度 → 二值体素）
+# 默认体素化阈值（点云密度 二值体素）
 DEFAULT_VOXEL_THRESHOLD = 0.5
 # 固定随机种子（D-2 硬约束）
 DEFAULT_SEED = 42

@@ -22,9 +22,7 @@ from typing import Any
 import pytest
 
 
-# ---------------------------------------------------------------------------
 # 故障模拟工具
-# ---------------------------------------------------------------------------
 
 
 class FaultInjector:
@@ -90,9 +88,8 @@ class FaultInjector:
             "downtime_s": actual_downtime,
             "pre_crash_state": pre_crash_state,
             "post_restart_state": post_restart_state,
-            "data_consistency": pre_crash_state == {
-                k: v for k, v in post_restart_state.items() if k in pre_crash_state
-            },
+            "data_consistency": pre_crash_state
+            == {k: v for k, v in post_restart_state.items() if k in pre_crash_state},
             "recovery_successful": True,
         }
 
@@ -127,16 +124,13 @@ class FaultInjector:
             "downtime_s": recovery_time - failure_time,
             "pre_failure_data": pre_failure_data,
             "post_recovery_data": post_recovery_data,
-            "data_consistent": pre_failure_data == {
-                k: v for k, v in post_recovery_data.items() if k in pre_failure_data
-            },
+            "data_consistent": pre_failure_data
+            == {k: v for k, v in post_recovery_data.items() if k in pre_failure_data},
             "recovery_successful": True,
         }
 
 
-# ---------------------------------------------------------------------------
 # 故障恢复测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -147,7 +141,7 @@ class TestFaultRecovery:
     def setup_method(self):
         self.injector = FaultInjector()
 
-    # ---------- 网络中断恢复 ----------
+    # 网络中断恢复
 
     def test_network_partition_recovery(self):
         """模拟网络中断：持续10秒后恢复."""
@@ -156,8 +150,7 @@ class TestFaultRecovery:
         assert result["recovery_successful"], "网络中断恢复失败"
 
         # 验证恢复时间 < 30秒
-        assert result["downtime_s"] < 30.0, \
-            f"网络恢复时间{result['downtime_s']:.1f}s >= 30s"
+        assert result["downtime_s"] < 30.0, f"网络恢复时间{result['downtime_s']:.1f}s >= 30s"
 
         # 验证无数据丢失
         assert not result["data_lost"], "网络中断导致数据丢失"
@@ -181,11 +174,10 @@ class TestFaultRecovery:
             "timestamp": pre_data["timestamp"],
         }
 
-        assert pre_data["operations_count"] == post_data["operations_count"], \
-            "网络中断后数据不一致"
+        assert pre_data["operations_count"] == post_data["operations_count"], "网络中断后数据不一致"
         assert result["recovery_successful"]
 
-    # ---------- 核心服务崩溃恢复 ----------
+    # 核心服务崩溃恢复
 
     def test_service_crash_recovery(self):
         """模拟核心服务崩溃：强制终止后自动重启."""
@@ -194,8 +186,7 @@ class TestFaultRecovery:
         assert result["recovery_successful"], "服务崩溃恢复失败"
 
         # 验证恢复时间
-        assert result["downtime_s"] < 30.0, \
-            f"服务恢复时间{result['downtime_s']:.1f}s >= 30s"
+        assert result["downtime_s"] < 30.0, f"服务恢复时间{result['downtime_s']:.1f}s >= 30s"
 
         # 验证数据一致性
         assert result["data_consistency"], "服务崩溃后数据不一致"
@@ -221,12 +212,10 @@ class TestFaultRecovery:
         }
 
         assert result["recovery_successful"], "服务恢复失败"
-        assert after_recovery["task_id"] == before_crash["task_id"], \
-            "任务ID不一致"
-        assert after_recovery["progress_pct"] == before_crash["progress_pct"], \
-            "任务进度丢失"
+        assert after_recovery["task_id"] == before_crash["task_id"], "任务ID不一致"
+        assert after_recovery["progress_pct"] == before_crash["progress_pct"], "任务进度丢失"
 
-    # ---------- 数据库连接失败恢复 ----------
+    # 数据库连接失败恢复
 
     def test_db_connection_failure_recovery(self):
         """模拟数据库连接失败：持续15秒后恢复."""
@@ -235,12 +224,10 @@ class TestFaultRecovery:
         assert result["recovery_successful"], "数据库恢复失败"
 
         # 验证恢复时间
-        assert result["downtime_s"] < 30.0, \
-            f"数据库恢复时间{result['downtime_s']:.1f}s >= 30s"
+        assert result["downtime_s"] < 30.0, f"数据库恢复时间{result['downtime_s']:.1f}s >= 30s"
 
         # 验证数据一致性100%
-        assert result["data_consistent"], \
-            f"数据库恢复后数据不一致: {result}"
+        assert result["data_consistent"], f"数据库恢复后数据不一致: {result}"
 
     def test_db_failure_data_consistency_check(self):
         """数据库恢复后数据一致性100%."""
@@ -259,7 +246,7 @@ class TestFaultRecovery:
         assert len(critical_data["materials"]) == 4, "材料数据丢失"
         assert len(critical_data["tools"]) == 3, "刀具数据丢失"
 
-    # ---------- 综合故障恢复 ----------
+    # 综合故障恢复
 
     def test_concurrent_fault_recovery(self):
         """同时多种故障恢复：验证系统处理多重故障的能力."""
@@ -272,10 +259,8 @@ class TestFaultRecovery:
 
         # 所有故障都应恢复
         for i, result in enumerate(results):
-            assert result["recovery_successful"], \
-                f"故障{i + 1}恢复失败: {result['fault_type']}"
-            assert result["downtime_s"] < 30.0, \
-                f"故障{i + 1}恢复时间{result['downtime_s']:.1f}s >= 30s"
+            assert result["recovery_successful"], f"故障{i + 1}恢复失败: {result['fault_type']}"
+            assert result["downtime_s"] < 30.0, f"故障{i + 1}恢复时间{result['downtime_s']:.1f}s >= 30s"
 
     def test_graceful_degradation_during_fault(self):
         """故障期间的优雅降级：非核心功能降级，核心功能保持."""
@@ -312,9 +297,7 @@ class TestFaultRecovery:
         assert not system.non_core_functions_degraded
 
 
-# ---------------------------------------------------------------------------
 # Agent级故障恢复
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -346,9 +329,7 @@ class TestAgentFaultRecovery:
             pytest.skip(f"Agent模块不可用: {e}")
 
         agent = KnowledgeFetchAgent()
-        context = AgentContext(
-            extracted_params={"material": "45钢", "part_type": "法兰盘"}
-        )
+        context = AgentContext(extracted_params={"material": "45钢", "part_type": "法兰盘"})
 
         try:
             result = asyncio.new_event_loop().run_until_complete(agent.execute(context))

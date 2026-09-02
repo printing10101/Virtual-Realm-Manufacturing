@@ -18,9 +18,7 @@ from app.rules.safety_constraint_rules import (  # noqa: E402
     Priority,
 )
 
-# ---------------------------------------------------------------------------
 # 已知危险场景清单（必须被规则覆盖）
-# ---------------------------------------------------------------------------
 
 KNOWN_HAZARD_SCENARIOS = [
     # 机床场景
@@ -111,9 +109,7 @@ class TestRuleCoverage:
             if not matched:
                 uncovered.append(scenario["scenario"])
 
-        assert len(uncovered) == 0, (
-            f"以下危险场景缺少规则覆盖: {uncovered}"
-        )
+        assert len(uncovered) == 0, f"以下危险场景缺少规则覆盖: {uncovered}"
 
     def test_scenario_count_matches_rule_count(self, engine):
         """验证：已知场景数量不超规则总数（所有场景都应有规则）"""
@@ -124,9 +120,7 @@ class TestRuleCoverage:
         rule_ids = {r.rule_id for r in engine.rules}
         missing = scenario_rules - rule_ids
 
-        assert len(missing) == 0, (
-            f"以下规则在场景定义中存在但未加载: {missing}"
-        )
+        assert len(missing) == 0, f"以下规则在场景定义中存在但未加载: {missing}"
 
     def test_machine_category_coverage(self, engine):
         """验证：机床安全场景全部覆盖"""
@@ -134,10 +128,7 @@ class TestRuleCoverage:
         machine_rules = engine.get_rules_by_category(RuleCategory.MACHINE)
 
         for scenario in machine_scenarios:
-            found = any(
-                r.rule_id in scenario["expected_rule_ids"]
-                for r in machine_rules
-            )
+            found = any(r.rule_id in scenario["expected_rule_ids"] for r in machine_rules)
             assert found, f"机床场景未覆盖: {scenario['scenario']}"
 
     def test_tool_category_coverage(self, engine):
@@ -146,24 +137,16 @@ class TestRuleCoverage:
         tool_rules = engine.get_rules_by_category(RuleCategory.TOOL)
 
         for scenario in tool_scenarios:
-            found = any(
-                r.rule_id in scenario["expected_rule_ids"]
-                for r in tool_rules
-            )
+            found = any(r.rule_id in scenario["expected_rule_ids"] for r in tool_rules)
             assert found, f"刀具场景未覆盖: {scenario['scenario']}"
 
     def test_process_category_coverage(self, engine):
         """验证：工艺场景全部覆盖"""
-        process_scenarios = [
-            s for s in KNOWN_HAZARD_SCENARIOS if s["category"] == "P"
-        ]
+        process_scenarios = [s for s in KNOWN_HAZARD_SCENARIOS if s["category"] == "P"]
         process_rules = engine.get_rules_by_category(RuleCategory.PROCESS)
 
         for scenario in process_scenarios:
-            found = any(
-                r.rule_id in scenario["expected_rule_ids"]
-                for r in process_rules
-            )
+            found = any(r.rule_id in scenario["expected_rule_ids"] for r in process_rules)
             assert found, f"工艺场景未覆盖: {scenario['scenario']}"
 
     def test_priority_requirements_met(self, engine):
@@ -184,8 +167,7 @@ class TestRuleCoverage:
         """验证：P0(人员安全)规则确实存在"""
         p0_rules = engine.get_rules_by_priority(Priority.P0)
         p0_ids = {r.rule_id for r in p0_rules}
-        expected_p0 = {s["expected_rule_ids"][0] for s in KNOWN_HAZARD_SCENARIOS
-                       if s["min_priority"] == "P0"}
+        expected_p0 = {s["expected_rule_ids"][0] for s in KNOWN_HAZARD_SCENARIOS if s["min_priority"] == "P0"}
         # M-001, T-002, P-003 should all be P0
         for rid in expected_p0:
             assert rid in p0_ids, f"规则 {rid} 应为P0但未找到或优先级不对"
@@ -196,9 +178,7 @@ class TestRuleCount:
 
     def test_minimum_rule_count(self, engine):
         """验证：至少包含10条基础安全规则"""
-        assert engine.rule_count >= 10, (
-            f"期望至少10条安全规则，实际: {engine.rule_count}"
-        )
+        assert engine.rule_count >= 10, f"期望至少10条安全规则，实际: {engine.rule_count}"
 
     def test_all_categories_present(self, engine):
         """验证：M/T/P三类规则都存在"""

@@ -8,7 +8,7 @@ from app.process_planning._schemas import GCodeResult
 
 
 class _HoleDrillingMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     CONTROLLER_MAP: Any
     _registry: Any
 

@@ -54,9 +54,7 @@ from app.pipelines import (
 from app.pipelines.machining_collector import CollectorStats
 
 
-# ---------------------------------------------------------------------------
 # Helpers / Fixtures
-# ---------------------------------------------------------------------------
 
 
 def _make_sample(
@@ -119,9 +117,7 @@ def base_config() -> CollectorConfig:
     )
 
 
-# ---------------------------------------------------------------------------
 # CollectorContext
-# ---------------------------------------------------------------------------
 
 
 class TestCollectorContext:
@@ -156,9 +152,7 @@ class TestCollectorContext:
         assert ctx.process_params == {}
 
 
-# ---------------------------------------------------------------------------
 # convert_sample_to_record
-# ---------------------------------------------------------------------------
 
 
 class TestConvertSampleToRecord:
@@ -211,9 +205,7 @@ class TestConvertSampleToRecord:
         assert record.process_params["spindle_load"] == 30.0
 
 
-# ---------------------------------------------------------------------------
 # aggregate_samples_to_record
-# ---------------------------------------------------------------------------
 
 
 class TestAggregateSamples:
@@ -282,9 +274,7 @@ class TestAggregateSamples:
         assert record.process_params["depth_of_cut"] == 1.5
 
 
-# ---------------------------------------------------------------------------
 # SampleBatchAggregator
-# ---------------------------------------------------------------------------
 
 
 class TestSampleBatchAggregator:
@@ -367,9 +357,7 @@ class TestSampleBatchAggregator:
         assert snap["flush_interval"] == 2.0
 
 
-# ---------------------------------------------------------------------------
 # MachiningCollector
-# ---------------------------------------------------------------------------
 
 
 class _StubAdapter:
@@ -507,7 +495,7 @@ class TestCollectorWriteRetry:
         await c.start()
         await asyncio.sleep(0.5)
         await c.stop(timeout=2.0)
-        # max_write_retries=2 ⇒ 每个 flush 最多调用 2 次
+        # max_write_retries=2 每个 flush 最多调用 2 次
         assert attempts["n"] >= 1
         assert c._stats.write_retries >= 1
         assert c._stats.write_failures >= 1
@@ -615,9 +603,7 @@ class TestCollectorSingleton:
         assert get_collector() is None
 
 
-# ---------------------------------------------------------------------------
 # Module exports
-# ---------------------------------------------------------------------------
 
 
 def test_module_exports() -> None:
@@ -640,9 +626,7 @@ def test_module_exports() -> None:
         assert hasattr(pl, name), f"app.pipelines 缺少 {name}"
 
 
-# ---------------------------------------------------------------------------
 # Stats dataclass
-# ---------------------------------------------------------------------------
 
 
 def test_collector_stats_to_dict() -> None:

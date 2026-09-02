@@ -90,9 +90,7 @@ from app.services._agent_helpers import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 状态/动作字段索引（与 StateField.all() / ActionField.all() 顺序对齐）
-# ---------------------------------------------------------------------------
 
 _STATE_FIELD_ORDER: list[str] = StateField.all()
 """状态字段顺序（与 PolicyNet 输入维度对齐）."""
@@ -103,9 +101,7 @@ _ACTION_FIELD_ORDER: list[str] = ActionField.all()
 _STATE_FIELD_INDEX: dict[str, int] = {name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)}
 
 
-# ---------------------------------------------------------------------------
 # 单例
-# ---------------------------------------------------------------------------
 
 
 def get_rl_agent_service() -> "RLAgentService":
@@ -118,9 +114,7 @@ def reset_rl_agent_service() -> None:
     RLAgentService.reset_instance()
 
 
-# ---------------------------------------------------------------------------
 # 服务实现
-# ---------------------------------------------------------------------------
 
 
 class RLAgentService(BaseSingletonService):
@@ -375,10 +369,10 @@ class RLAgentService(BaseSingletonService):
         """
         start_time = time.perf_counter()
         try:
-            # 1. 状态字典 → ndarray
+            # 1. 状态字典 ndarray
             state_arr = self._state_dict_to_array(request.current_state, field_name="current_state")
 
-            # 2. 候选动作 list[dict] → list[ndarray]
+            # 2. 候选动作 list[dict] list[ndarray]
             candidate_action_arrs = [
                 self._action_dict_to_array(act, field_name=f"candidate_actions[{idx}]")
                 for idx, act in enumerate(request.candidate_actions)
@@ -389,7 +383,7 @@ class RLAgentService(BaseSingletonService):
             value_net = self._get_or_load_value(request.model_uri)
             shield = self._get_or_create_shield(request.safety_constraints)
 
-            # 4. 策略前向 → 原始推荐动作
+            # 4. 策略前向 原始推荐动作
             with self._infer_lock:
                 policy_out = policy_net(state_arr)
                 raw_action = self._extract_action(policy_out)
@@ -603,7 +597,7 @@ class RLAgentService(BaseSingletonService):
         logger.info("RL 训练停止请求已发送: run_id=%s", target.id)
         return self._training_run_to_status_info(target)
 
-    # ── 内部辅助方法：ORM ↔ dataclass ──────────────────────────────
+    # ── 内部辅助方法：ORM dataclass ──────────────────────────────
 
     def _orm_to_dataclass(self, orm: RLAgentPolicyVersionORM) -> PolicyVersion:
         return _orm_to_dataclass(orm)
@@ -611,7 +605,7 @@ class RLAgentService(BaseSingletonService):
     def _training_run_to_status_info(self, orm: RLAgentTrainingRunORM) -> TrainingStatusInfo:
         return _training_run_to_status_info(orm)
 
-    # ── 内部辅助方法：dict ↔ ndarray ────────────────────────────────
+    # ── 内部辅助方法：dict ndarray ────────────────────────────────
 
     def _state_dict_to_array(self, state_dict: dict[str, float], *, field_name: str) -> np.ndarray:
         return _state_dict_to_array(state_dict, field_name=field_name)

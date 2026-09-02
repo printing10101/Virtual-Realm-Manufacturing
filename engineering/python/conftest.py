@@ -20,16 +20,16 @@ import sys
 import types
 from pathlib import Path
 
-# === SQLite 连接池测试模式（M1 修复） ===
+# SQLite 连接池测试模式（M1 修复）
 # 启用 fail-fast：连接池耗尽时立即抛出 RuntimeError，而非 30s 忙等死锁。
-# 根因：pytest_full_v3.log:231 显示 fixture 阶段 GoalChainStore →
-# sqlite_pool.get_connection → time.sleep(0.1) 自旋触发 Timeout。
+# 根因：pytest_full_v3.log:231 显示 fixture 阶段 GoalChainStore
+# sqlite_pool.get_connection time.sleep(0.1) 自旋触发 Timeout。
 # 生产环境不受影响（连接池正常工作时不会进入等待分支）。
 os.environ.setdefault("LNN_SQLITE_POOL_FAIL_FAST", "1")
 
-# === WinSock 损坏绕过补丁 ===
+# WinSock 损坏绕过补丁
 # 本机 _overlapped 模块因系统级 WinSock 损坏无法导入（WinError 10038），
-# 导致 anyio → asyncio.windows_events → _overlapped 导入链失败，
+# 导致 anyio asyncio.windows_events _overlapped 导入链失败，
 # 进而使 pytest 启动阶段（load_setuptools_entrypoints）崩溃。
 # 此处注入一个空实现的 _overlapped 模块以绕过导入阶段失败。
 # 测试用例中需要真实异步 IO 的场景应使用 asyncio.SelectorEventLoop，
@@ -43,15 +43,17 @@ except OSError:
     sys.modules["_overlapped"] = _patch
     print("[warn] _overlapped 模块加载失败，已注入空实现绕过 WinSock 损坏。")
 
-# === 强制使用 SelectorEventLoop（避免 IOCP/_overlapped 不完整问题） ===
+# 强制使用 SelectorEventLoop（避免 IOCP/_overlapped 不完整问题）
 # 背景：_overlapped stub 仅提供 Overlapped 属性，但 ProactorEventLoop 的
 # IocpProactor 还需要 CreateIoCompletionPort / GetQueuedCompletionStatus 等
 # 函数。强制使用 SelectorEventLoop 可避免 async 测试因 IOCP 调用失败。
 # 根因修复（netsh winsock reset + 重启）后可安全移除此段。
 import sys as _sys
+
 if _sys.platform == "win32":
     try:
         import asyncio as _asyncio
+
         _asyncio.set_event_loop_policy(_asyncio.WindowsSelectorEventLoopPolicy())
     except Exception:
         pass

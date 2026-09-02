@@ -19,9 +19,7 @@
 
 from __future__ import annotations
 
-# ---------------------------------------------------------------------------
 # 主引擎与评估器（最常用，直接导出）
-# ---------------------------------------------------------------------------
 from app.rag.rag_retrieval import (
     RagRetrievalEngine,
     QueryIntent,
@@ -39,9 +37,7 @@ from app.rag.evaluation import (
     ComparisonReport,
 )
 
-# ---------------------------------------------------------------------------
 # 增强组件（懒加载，仅在显式引用时才触发模型加载）
-# ---------------------------------------------------------------------------
 from app.dependencies import get_embedding_service
 from app.rag.embeddings import EmbeddingService
 from app.rag.reranker import RerankerService, get_reranker_service
@@ -54,9 +50,7 @@ from app.rag.hybrid_search import (
 from app.dependencies import get_knowledge_base
 from app.rag.knowledge_base import KnowledgeBase
 
-# ---------------------------------------------------------------------------
 # 查询改写器（导入即触发 LLM client 懒加载，不阻塞 __init__）
-# ---------------------------------------------------------------------------
 try:
     from app.rag.query_rewriter import (
         QueryRewriter,

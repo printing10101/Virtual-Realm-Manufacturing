@@ -101,7 +101,7 @@ def import_tools(
             stats.success += 1
             stats.node_type_breakdown[NODE_TYPE_TOOL] = stats.node_type_breakdown.get(NODE_TYPE_TOOL, 0) + 1
 
-            # --- 关系 1：Tool -> Feature (SUITABLE_FOR) ---
+            # 关系 1：Tool -> Feature (SUITABLE_FOR)
             series = properties["series"]
             for feature_id, feature_name, feature_type in _SERIES_TO_FEATURES.get(series, []):
                 # 确保 feature 节点存在
@@ -135,7 +135,7 @@ def import_tools(
                 except ValueError as exc:
                     stats.error_messages.append(f"tool->feature edge error: {exc}")
 
-            # --- 关系 2：Tool -> Material (SUITABLE_FOR) ---
+            # 关系 2：Tool -> Material (SUITABLE_FOR)
             # 按材料 category 与刀具材料 (HSS / carbide) 设置 confidence
             tool_mat = properties["material"].lower()
             for material_name in _ALL_MATERIAL_NAMES:

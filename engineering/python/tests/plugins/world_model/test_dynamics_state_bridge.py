@@ -10,6 +10,7 @@
 - ``StateField.WIDTH_OF_CUT`` / ``CHATTER_PROBABILITY`` 不参与映射
 - ``to_dict`` 序列化往返一致
 """
+
 from __future__ import annotations
 
 import pytest
@@ -285,9 +286,9 @@ class TestShouldDegrade:
         }
         result = DynamicsStateBridge.from_current_state(current_state)
 
-        # 默认阈值 3 → 不降级
+        # 默认阈值 3 不降级
         assert DynamicsStateBridge.should_degrade(result) is False
-        # 自定义阈值 2 → 降级
+        # 自定义阈值 2 降级
         assert DynamicsStateBridge.should_degrade(result, threshold=2) is True
 
     def test_threshold_boundary_at_three(self):
@@ -352,9 +353,7 @@ class TestBridgeResultSerialization:
 
     def test_to_dict_reflects_missing(self):
         """序列化结果反映缺失字段."""
-        result = DynamicsStateBridge.from_current_state(
-            {StateField.SPINDLE_SPEED: 8000.0}
-        )
+        result = DynamicsStateBridge.from_current_state({StateField.SPINDLE_SPEED: 8000.0})
         d = result.to_dict()
         assert d["is_complete"] is False
         assert len(d["defaulted_fields"]) == 5

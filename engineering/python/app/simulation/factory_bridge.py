@@ -26,7 +26,7 @@ def _ensure_mcp_server_importable() -> None:
         return
     _import_attempted = True
     try:
-        # engineering/python/app/... → 仓库根
+        # engineering/python/app/... 仓库根
         root = Path(__file__).resolve().parents[4]
         if str(root) not in sys.path:
             sys.path.insert(0, str(root))

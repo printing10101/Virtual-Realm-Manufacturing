@@ -33,30 +33,30 @@ from app.api.v1 import (
 
 def register(app: FastAPI) -> None:
     """注册工作流域路由."""
-    # === ADR-005 阶段 1：DAG 工作流编排 ===
+    # ADR-005 阶段 1：DAG 工作流编排
     app.include_router(workflows.router)
 
-    # === ADR-005 阶段 2：数据集 / 版本 / 血缘 ===
+    # ADR-005 阶段 2：数据集 / 版本 / 血缘
     app.include_router(datasets.router)
 
-    # === ADR-005 阶段 2：实验快照 / 一键复现 ===
+    # ADR-005 阶段 2：实验快照 / 一键复现
     app.include_router(snapshots.router)
 
-    # === ADR-010 阶段 6 p6-1：工作流模板市场 ===
+    # ADR-010 阶段 6 p6-1：工作流模板市场
     app.include_router(workflow_templates.router)
 
-    # === ADR-011 阶段 6 p6-2：项目级 Git 同步 ===
+    # ADR-011 阶段 6 p6-2：项目级 Git 同步
     app.include_router(project_sync.router)
 
-    # === ADR-012 阶段 6 p6-3：资源卡片 ===
+    # ADR-012 阶段 6 p6-3：资源卡片
     app.include_router(resource_cards.router)
 
-    # === ADR-015 阶段 6 p6-4：项目导入导出 ===
+    # ADR-015 阶段 6 p6-4：项目导入导出
     app.include_router(project_packages.router)
 
-    # === ADR-016 阶段 7 p7：可解释性可视化 ===
+    # ADR-016 阶段 7 p7：可解释性可视化
     app.include_router(explainability.router)
 
-    # === ADR-017 阶段 8 p8：世界模型 / RL Agent ===
+    # ADR-017 阶段 8 p8：世界模型 / RL Agent
     app.include_router(world_model.router)
     app.include_router(rl_agent.router)

@@ -42,9 +42,7 @@ def _collect_imports(root: Path, pattern: str) -> list[tuple[Path, str]]:
     return results
 
 
-# ============================================================================
 # 测试 1: domain/ 层不得导入 FastAPI
-# ============================================================================
 
 
 def test_domain_has_no_fastapi() -> None:
@@ -54,15 +52,12 @@ def test_domain_has_no_fastapi() -> None:
         pytest.skip("domain/ 目录尚未创建")
 
     violations = _collect_imports(domain, "fastapi")
-    assert not violations, (
-        f"domain/ 层 {len(violations)} 处违规导入 FastAPI:\n"
-        + "\n".join(f"  {f}: {imp}" for f, imp in violations)
+    assert not violations, f"domain/ 层 {len(violations)} 处违规导入 FastAPI:\n" + "\n".join(
+        f"  {f}: {imp}" for f, imp in violations
     )
 
 
-# ============================================================================
 # 测试 2: API 层不得直接导入 database 模型/连接
-# ============================================================================
 
 
 def test_api_does_not_import_database() -> None:
@@ -83,9 +78,7 @@ def test_api_does_not_import_database() -> None:
         )
 
 
-# ============================================================================
 # 测试 3: contracts/ 层不得导入 config / infrastructure
-# ============================================================================
 
 
 def test_contracts_has_no_infrastructure_imports() -> None:
@@ -99,14 +92,10 @@ def test_contracts_has_no_infrastructure_imports() -> None:
         # STREAM_BUFFER_SIZE 已本地定义，此检查确保无新增
         violations.append((py_file, imp))
 
-    assert not violations, (
-        f"contracts/ 层 {len(violations)} 处导入 config/infrastructure"
-    )
+    assert not violations, f"contracts/ 层 {len(violations)} 处导入 config/infrastructure"
 
 
-# ============================================================================
 # 测试 4: shared/ 零重依赖
-# ============================================================================
 
 
 def test_shared_has_no_heavy_dependencies() -> None:
@@ -122,14 +111,10 @@ def test_shared_has_no_heavy_dependencies() -> None:
         if top in heavy:
             violations.append((py_file, imp))
 
-    assert not violations, (
-        f"shared/ 层 {len(violations)} 处导入重依赖"
-    )
+    assert not violations, f"shared/ 层 {len(violations)} 处导入重依赖"
 
 
-# ============================================================================
-# 测试 5: 无 domain → api 导入（关键循环依赖检测）
-# ============================================================================
+# 测试 5: 无 domain api 导入（关键循环依赖检测）
 
 
 def test_domain_does_not_import_api() -> None:
@@ -154,15 +139,12 @@ def test_domain_does_not_import_api() -> None:
         for py_file, imp in _collect_imports(d, "app.api"):
             violations.append((py_file, imp))
 
-    assert not violations, (
-        f"域层 {len(violations)} 处导入 API 层（循环依赖风险）:\n"
-        + "\n".join(f"  {f.relative_to(APP_ROOT)}: {i}" for f, i in violations)
+    assert not violations, f"域层 {len(violations)} 处导入 API 层（循环依赖风险）:\n" + "\n".join(
+        f"  {f.relative_to(APP_ROOT)}: {i}" for f, i in violations
     )
 
 
-# ============================================================================
 # 测试 6: core/ 不依赖 repository/
-# ============================================================================
 
 
 def test_core_does_not_import_repository() -> None:
@@ -176,7 +158,6 @@ def test_core_does_not_import_repository() -> None:
     for py_file, imp in _collect_imports(core, "app.repository"):
         violations.append((py_file, imp))
 
-    assert not violations, (
-        f"core/ 层 {len(violations)} 处导入 repository/:\n"
-        + "\n".join(f"  {f.relative_to(APP_ROOT)}: {i}" for f, i in violations)
+    assert not violations, f"core/ 层 {len(violations)} 处导入 repository/:\n" + "\n".join(
+        f"  {f.relative_to(APP_ROOT)}: {i}" for f, i in violations
     )

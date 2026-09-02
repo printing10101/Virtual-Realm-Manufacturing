@@ -131,9 +131,7 @@ def _read_records_from_path(path: Path, batch_size: int) -> list[list[dict[str, 
     return batches
 
 
-# ---------------------------------------------------------------------------
-# ORM ↔ Contract 转换
-# ---------------------------------------------------------------------------
+# ORM Contract 转换
 
 
 def _schema_to_json(schema: DatasetSchema) -> str:
@@ -412,9 +410,7 @@ class DatasetStore(IDatasetStore):
                 version,
             )
 
-    # ------------------------------------------------------------------
     # 扩展方法（非契约，但 API 路由与 UI 需要）
-    # ------------------------------------------------------------------
 
     async def list_datasets(
         self,
@@ -484,25 +480,15 @@ class DatasetStore(IDatasetStore):
     async def get_metrics(self) -> dict[str, Any]:
         """全局数据集指标：总数 / 按状态分布 / 版本数 / 总行数 / 总大小。"""
         async with await self._get_session() as session:
-            total_datasets = (
-                await session.execute(select(func.count()).select_from(DatasetORM))
-            ).scalar_one()
-            status_rows = await session.execute(
-                select(DatasetORM.status, func.count()).group_by(DatasetORM.status)
-            )
+            total_datasets = (await session.execute(select(func.count()).select_from(DatasetORM))).scalar_one()
+            status_rows = await session.execute(select(DatasetORM.status, func.count()).group_by(DatasetORM.status))
             datasets_by_status = {str(row[0]): int(row[1]) for row in status_rows.all()}
-            total_versions = (
-                await session.execute(select(func.count()).select_from(DatasetVersionORM))
-            ).scalar_one()
+            total_versions = (await session.execute(select(func.count()).select_from(DatasetVersionORM))).scalar_one()
             total_rows = (
-                await session.execute(
-                    select(func.coalesce(func.sum(DatasetVersionORM.row_count), 0))
-                )
+                await session.execute(select(func.coalesce(func.sum(DatasetVersionORM.row_count), 0)))
             ).scalar_one()
             total_bytes = (
-                await session.execute(
-                    select(func.coalesce(func.sum(DatasetVersionORM.size_bytes), 0))
-                )
+                await session.execute(select(func.coalesce(func.sum(DatasetVersionORM.size_bytes), 0)))
             ).scalar_one()
             return {
                 "total_datasets": int(total_datasets),
@@ -552,9 +538,7 @@ class DatasetStore(IDatasetStore):
             }
 
 
-# ---------------------------------------------------------------------------
 # 单例访问
-# ---------------------------------------------------------------------------
 
 
 _singleton: DatasetStore | None = None

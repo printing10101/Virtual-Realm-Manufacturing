@@ -55,9 +55,7 @@ from app.simulation.stock_model import StockModel
 from app.simulation.toolpath_parser import ToolpathSegment
 
 
-# ---------------------------------------------------------------------------
 # 模板加载
-# ---------------------------------------------------------------------------
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 

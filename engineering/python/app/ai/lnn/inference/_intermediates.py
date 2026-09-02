@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 class _IntermediatesMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _compute_confidence: Callable[..., Any]
     _maybe_inverse_transform: Callable[..., Any]
     _postprocess: Callable[..., Any]
@@ -62,9 +62,7 @@ class _IntermediatesMixin:
     通过 MRO 链继承初始化。
     """
 
-    # ------------------------------------------------------------------
     # 私有辅助方法
-    # ------------------------------------------------------------------
     def _init_intermediates_dict(self) -> dict[str, Any]:
         """返回初始化为空字典结构的 intermediates 容器。
 
@@ -131,10 +129,10 @@ class _IntermediatesMixin:
         """
         if captured_hidden:
             # hook 模式：逐层隐状态
-            # 取最后一层的输出作为帧序列（[seq, batch, hidden] → [seq, hidden]）
+            # 取最后一层的输出作为帧序列（[seq, batch, hidden] [seq, hidden]）
             last_layer = captured_hidden[-1]
             if last_layer.ndim == 3:
-                # [seq, batch, hidden] → [seq, hidden]（batch=1）
+                # [seq, batch, hidden] [seq, hidden]（batch=1）
                 hidden_seq = last_layer[:, 0, :]
             elif last_layer.ndim == 2:
                 hidden_seq = last_layer
@@ -148,7 +146,7 @@ class _IntermediatesMixin:
             if last_hs is not None:
                 if HAS_TORCH and isinstance(last_hs, torch.Tensor):
                     last_hs = last_hs.detach().cpu().numpy()
-                # [num_layers, batch, hidden] → [num_layers, hidden]（batch=1）
+                # [num_layers, batch, hidden] [num_layers, hidden]（batch=1）
                 if isinstance(last_hs, np.ndarray):
                     if last_hs.ndim == 3:
                         hs_seq = last_hs[:, 0, :]
@@ -247,9 +245,7 @@ class _IntermediatesMixin:
             },
         )
 
-    # ------------------------------------------------------------------
     # 公开方法（保持原签名）
-    # ------------------------------------------------------------------
     def predict_with_intermediates(
         self,
         input_data: Any,
@@ -323,7 +319,7 @@ class _IntermediatesMixin:
                 )
                 return self._build_intermediate_failure_result(intermediates, str(exc), start_time)
 
-            # ---- 捕获中间状态 ----
+            # 捕获中间状态
             hook_handles, captured_hidden, capture_mode = self._register_hidden_hooks(capture_hidden)
             intermediates["capture_mode"] = capture_mode
 

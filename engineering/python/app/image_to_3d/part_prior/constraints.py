@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 # 默认约束项权重（消融实验基准值，D-2 冻结）
 # 这 3 个权重对应 total_loss 中的 γ / δ / ε 系数：
-#   total = recon + β·KL + γ·symmetry + δ·flatness + ε·nominal
+# total = recon + β·KL + γ·symmetry + δ·flatness + ε·nominal
 DEFAULT_SYMMETRY_WEIGHT = 0.1
 DEFAULT_FLATNESS_WEIGHT = 0.1
 DEFAULT_NOMINAL_WEIGHT = 0.1

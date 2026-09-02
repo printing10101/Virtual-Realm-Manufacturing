@@ -19,6 +19,7 @@ predicted_trajectory / trajectory_metrics。
 - 测试不依赖随机种子（只校验形状与有限值，不校验具体数值）
 - 不写入 MLflow / 不调用任何带副作用的外部依赖
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,9 +33,7 @@ from app.plugins.world_model.unified_state import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 公共 fixture：典型 6061-T6 立方零件 + HRC52 类切削工况
-# ---------------------------------------------------------------------------
 def _make_unified_state() -> UnifiedState:
     return UnifiedState(
         geometry=GeometryFeatures(
@@ -71,9 +70,7 @@ def _make_fusion_config() -> WorldModelConfig:
     )
 
 
-# ---------------------------------------------------------------------------
 # 用例 1：WorldModelConfig.use_fusion=True 校验
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_fusion_config_validation() -> None:
     """use_fusion=True 时 feature_dim/d_model/fused_dim 必须为正数。"""
@@ -99,9 +96,7 @@ def test_fusion_config_validation() -> None:
     legacy_cfg.validate()  # 不抛异常
 
 
-# ---------------------------------------------------------------------------
 # 用例 2：WorldModelNet 融合模式实例化
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_world_model_net_fusion_init() -> None:
     """融合模式下 WorldModelNet 应实例化三个编码器子模块。"""
@@ -127,9 +122,7 @@ def test_world_model_net_fusion_init() -> None:
     assert net.state_head.out_features == cfg.state_dim
 
 
-# ---------------------------------------------------------------------------
 # 用例 3：WorldModelNet.forward(unified_states=...) 端到端前向
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_world_model_net_fusion_forward() -> None:
     """融合路径 forward 输出应满足 ADR-017 契约。"""
@@ -185,9 +178,7 @@ def test_world_model_net_fusion_forward() -> None:
     assert torch.isfinite(metrics).all(), "trajectory_metrics 含 NaN/Inf"
 
 
-# ---------------------------------------------------------------------------
 # 用例 3b：融合模式缺 unified_states 应抛 ValueError
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_world_model_net_fusion_missing_unified_states() -> None:
     """use_fusion=True 但未传 unified_states 应显式报错。"""
@@ -202,9 +193,7 @@ def test_world_model_net_fusion_missing_unified_states() -> None:
         net(states=None, actions=actions, horizon=5)
 
 
-# ---------------------------------------------------------------------------
 # 用例 4：TrajectoryPredictor.predict(unified_state=...) 上层封装链路
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_trajectory_predictor_fusion_path() -> None:
     """TrajectoryPredictor 融合路径应输出单样本轨迹（去 batch 维度）。"""
@@ -242,9 +231,7 @@ def test_trajectory_predictor_fusion_path() -> None:
     assert np.all(np.isfinite(prediction.trajectory_metrics))
 
 
-# ---------------------------------------------------------------------------
 # 用例 4b：use_fusion=False 时传入 unified_state 应抛 ValueError
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_predictor_fusion_config_mismatch() -> None:
     """config.use_fusion=False 但传 unified_state 应显式报错。"""

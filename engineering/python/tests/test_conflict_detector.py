@@ -36,7 +36,8 @@ def make_rule(
     )
 
 
-# ==================== 矛盾冲突测试 ====================
+# 矛盾冲突测试
+
 
 class TestContradictionConflict:
     """矛盾冲突测试：条件完全相同但结论不同"""
@@ -161,7 +162,8 @@ class TestContradictionConflict:
         assert len(reports) == 3
 
 
-# ==================== 子集冲突测试 ====================
+# 子集冲突测试
+
 
 class TestSubsetConflict:
     """子集冲突测试：一条规则条件是另一条的子集但结论不同"""
@@ -282,7 +284,8 @@ class TestSubsetConflict:
         assert reports[0].conflict_type == ConflictType.SUBSET
 
 
-# ==================== 参数冲突测试 ====================
+# 参数冲突测试
+
 
 class TestParameterConflict:
     """参数冲突测试：多条规则对同一参数赋予不同值"""
@@ -377,7 +380,8 @@ class TestParameterConflict:
         assert len(reports) == 3
 
 
-# ==================== detect_conflicts 集成测试 ====================
+# detect_conflicts 集成测试
+
 
 class TestDetectConflictsIntegration:
     """detect_conflicts 主函数集成测试"""
@@ -436,9 +440,7 @@ class TestDetectConflictsIntegration:
             rules.append(
                 make_rule(
                     i + 1,
-                    conditions=[
-                        {"parameter": f"材料{i % 10}", "operator": "=", "value": f"材料{i % 10}"}
-                    ],
+                    conditions=[{"parameter": f"材料{i % 10}", "operator": "=", "value": f"材料{i % 10}"}],
                     result={"parameter": "切深", "operator": "<=", "value": str(i + 1)},
                 )
             )

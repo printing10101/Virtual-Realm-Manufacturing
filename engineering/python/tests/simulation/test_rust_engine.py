@@ -27,9 +27,7 @@ import pytest
 logging.getLogger("app.simulation.rust_engine").setLevel(logging.WARNING)
 
 
-# =============================================================================
 # Fixtures
-# =============================================================================
 
 
 @pytest.fixture
@@ -59,9 +57,7 @@ def empty_stock_grid() -> np.ndarray:
     return np.zeros((20, 20, 10), dtype=bool)
 
 
-# =============================================================================
 # 模块导入 & 可用性探测
-# =============================================================================
 
 
 class TestRustEngineAvailability:
@@ -100,17 +96,13 @@ class TestRustEngineAvailability:
         assert status["rust_available"] == is_available
 
 
-# =============================================================================
 # VoxelCutter 类 API 兼容性
-# =============================================================================
 
 
 class TestVoxelCutterApiCompatibility:
     """验证 VoxelCutter 类保持与父类 Python 实现的 API 兼容。"""
 
-    def test_voxel_cutter_inherits_python(
-        self, voxel_cutter_class: Any, rust_engine_module: Any
-    ) -> None:
+    def test_voxel_cutter_inherits_python(self, voxel_cutter_class: Any, rust_engine_module: Any) -> None:
         """VoxelCutter 必须继承自 Python 父类。"""
         from app.simulation.voxel_cutter import VoxelCutter as PyVoxelCutter
 
@@ -121,9 +113,7 @@ class TestVoxelCutterApiCompatibility:
         cutter = voxel_cutter_class(voxel_size=1.0)
         assert cutter._voxel_size == 1.0
 
-    def test_voxel_cutter_minimum_size_clamp(
-        self, voxel_cutter_class: Any
-    ) -> None:
+    def test_voxel_cutter_minimum_size_clamp(self, voxel_cutter_class: Any) -> None:
         """极端小的 voxel_size 必须被夹紧到安全范围。"""
         cutter = voxel_cutter_class(voxel_size=0.001)
         assert cutter._voxel_size >= 0.1
@@ -138,9 +128,7 @@ class TestVoxelCutterApiCompatibility:
         assert isinstance(cutter.last_cut_stats.removed, int)
 
 
-# =============================================================================
 # 6 种刀具类型掩码构建（双路径一致性）
-# =============================================================================
 
 
 class TestToolMaskAllSixTypes:
@@ -172,9 +160,7 @@ class TestToolMaskAllSixTypes:
         assert mask.shape[0] > 0 and mask.shape[1] > 0 and mask.shape[2] > 0
         assert mask.sum() > 0, f"{tool_type} 掩码应包含被占据的体素"
 
-    def test_build_mask_ball_auto_corner_radius(
-        self, voxel_cutter_class: Any
-    ) -> None:
+    def test_build_mask_ball_auto_corner_radius(self, voxel_cutter_class: Any) -> None:
         """球头刀未指定 corner_radius 时应使用 diameter/2。"""
         from app.simulation.voxel_cutter import ToolModel
 
@@ -211,9 +197,7 @@ class TestToolMaskAllSixTypes:
         assert mask_coarse.shape[0] < mask_fine.shape[0], "粗分辨率掩码应更小"
 
 
-# =============================================================================
 # 批量切削 - 双路径执行
-# =============================================================================
 
 
 class TestApplyToolMaskBatch:
@@ -276,16 +260,12 @@ class TestApplyToolMaskBatch:
         bbox_min = np.array([0.0, 0.0, 0.0])
 
         grid = solid_stock_grid.copy()
-        removed = cutter._apply_tool_mask_batch(
-            grid, mask, points, bbox_min, 1.0, 2.0
-        )
+        removed = cutter._apply_tool_mask_batch(grid, mask, points, bbox_min, 1.0, 2.0)
         assert removed > 0
         assert cutter.last_cut_stats.used_rust is False
         assert cutter.last_cut_stats.fallback_reason is not None
 
-    def test_results_match_python_reference(
-        self, voxel_cutter_class: Any, solid_stock_grid: np.ndarray
-    ) -> None:
+    def test_results_match_python_reference(self, voxel_cutter_class: Any, solid_stock_grid: np.ndarray) -> None:
         """Rust 与 Python 双路径在同输入下，removed 数量应一致（允许相等或差异 ≤ 1）。"""
         from app.simulation.voxel_cutter import (
             _apply_tool_mask_batch as py_batch,
@@ -296,15 +276,11 @@ class TestApplyToolMaskBatch:
         tool = ToolModel(diameter=6.0, tool_type="flat")
         mask = cutter._build_tool_mask(tool)
 
-        points = np.array(
-            [[5.0, 5.0, 5.0], [7.0, 5.0, 5.0]], dtype=np.float64
-        )
+        points = np.array([[5.0, 5.0, 5.0], [7.0, 5.0, 5.0]], dtype=np.float64)
         bbox_min = np.array([0.0, 0.0, 0.0])
 
         grid_rust = solid_stock_grid.copy()
-        removed_rust = cutter._apply_tool_mask_batch(
-            grid_rust, mask, points, bbox_min, 1.0, 2.0
-        )
+        removed_rust = cutter._apply_tool_mask_batch(grid_rust, mask, points, bbox_min, 1.0, 2.0)
 
         grid_py = solid_stock_grid.copy()
         removed_py = py_batch(grid_py, mask, points, bbox_min, 1.0, 2.0)
@@ -312,9 +288,7 @@ class TestApplyToolMaskBatch:
         # 允许 ±5% 的差异（边界采样不同）
         if removed_py > 0:
             ratio = abs(removed_rust - removed_py) / removed_py
-            assert ratio < 0.1, (
-                f"Rust/Python 结果差异过大: rust={removed_rust} py={removed_py}"
-            )
+            assert ratio < 0.1, f"Rust/Python 结果差异过大: rust={removed_rust} py={removed_py}"
 
     def test_empty_points_noop(
         self,
@@ -332,14 +306,10 @@ class TestApplyToolMaskBatch:
         bbox_min = np.array([0.0, 0.0, 0.0])
 
         grid = solid_stock_grid.copy()
-        removed = cutter._apply_tool_mask_batch(
-            grid, mask, empty_points, bbox_min, 1.0, 2.0
-        )
+        removed = cutter._apply_tool_mask_batch(grid, mask, empty_points, bbox_min, 1.0, 2.0)
         assert removed == 0
 
-    def test_empty_grid_noop(
-        self, voxel_cutter_class: Any, empty_stock_grid: np.ndarray
-    ) -> None:
+    def test_empty_grid_noop(self, voxel_cutter_class: Any, empty_stock_grid: np.ndarray) -> None:
         """空体素网格必须返回 0 切除数。"""
         from app.simulation.voxel_cutter import ToolModel
 
@@ -351,14 +321,10 @@ class TestApplyToolMaskBatch:
         bbox_min = np.array([0.0, 0.0, 0.0])
 
         grid = empty_stock_grid.copy()
-        removed = cutter._apply_tool_mask_batch(
-            grid, mask, points, bbox_min, 1.0, 2.0
-        )
+        removed = cutter._apply_tool_mask_batch(grid, mask, points, bbox_min, 1.0, 2.0)
         assert removed == 0
 
-    def test_points_outside_grid_noop(
-        self, voxel_cutter_class: Any, solid_stock_grid: np.ndarray
-    ) -> None:
+    def test_points_outside_grid_noop(self, voxel_cutter_class: Any, solid_stock_grid: np.ndarray) -> None:
         """超出体素网格的点位应被安全跳过，不引发异常。"""
         from app.simulation.voxel_cutter import ToolModel
 
@@ -374,9 +340,7 @@ class TestApplyToolMaskBatch:
         bbox_min = np.array([0.0, 0.0, 0.0])
 
         grid = solid_stock_grid.copy()
-        removed = cutter._apply_tool_mask_batch(
-            grid, mask, far_points, bbox_min, 1.0, 2.0
-        )
+        removed = cutter._apply_tool_mask_batch(grid, mask, far_points, bbox_min, 1.0, 2.0)
         # 远端点应不切除任何体素
         assert removed == 0
 
@@ -395,18 +359,14 @@ class TestApplyToolMaskBatch:
         points = np.array([[5.0, 5.0, 5.0]], dtype=np.float64)
         bbox_min = np.array([0.0, 0.0, 0.0])
 
-        cutter._apply_tool_mask_batch(
-            solid_stock_grid.copy(), mask, points, bbox_min, 1.0, 2.0
-        )
+        cutter._apply_tool_mask_batch(solid_stock_grid.copy(), mask, points, bbox_min, 1.0, 2.0)
         stats = cutter.last_cut_stats
         assert stats.elapsed_ms >= 0
         assert stats.points == 1
         assert stats.removed >= 0
 
 
-# =============================================================================
 # 全流程 run_simulation
-# =============================================================================
 
 
 class TestRunSimulationFallback:
@@ -477,9 +437,7 @@ class TestRunSimulationFallback:
                 assert key in d, f"输出缺失字段: {key}"
 
 
-# =============================================================================
 # 工具类型映射
-# =============================================================================
 
 
 class TestToolTypeMapping:
@@ -504,9 +462,7 @@ class TestToolTypeMapping:
         assert rust_engine_module._to_rust_tool_type("FLAT") == "flat"
         assert rust_engine_module._to_rust_tool_type("Ball") == "ball"
 
-    def test_rust_type_mapping_unknown_falls_back_to_flat(
-        self, rust_engine_module: Any
-    ) -> None:
+    def test_rust_type_mapping_unknown_falls_back_to_flat(self, rust_engine_module: Any) -> None:
         """未知类型应降级为 flat。"""
         assert rust_engine_module._to_rust_tool_type("unknown_type") == "flat"
         assert rust_engine_module._to_rust_tool_type("xyz") == "flat"
@@ -536,9 +492,7 @@ class TestToolTypeMapping:
         assert abs(radius - 2.0) < 1e-6
 
 
-# =============================================================================
 # 边界条件
-# =============================================================================
 
 
 class TestEdgeCases:
@@ -582,21 +536,15 @@ class TestEdgeCases:
 
         cutter = voxel_cutter_class(voxel_size=1.0)
         # 极小
-        small = ToolModel(
-            diameter=0.5, tool_type="flat", shank_diameter=0.5
-        )
+        small = ToolModel(diameter=0.5, tool_type="flat", shank_diameter=0.5)
         mask_small = cutter._build_tool_mask(small)
         # 极大
-        large = ToolModel(
-            diameter=200.0, tool_type="flat", shank_diameter=200.0
-        )
+        large = ToolModel(diameter=200.0, tool_type="flat", shank_diameter=200.0)
         mask_large = cutter._build_tool_mask(large)
 
         assert mask_small.shape[0] < mask_large.shape[0]
 
-    def test_unsupported_tool_type_uses_fallback(
-        self, voxel_cutter_class: Any
-    ) -> None:
+    def test_unsupported_tool_type_uses_fallback(self, voxel_cutter_class: Any) -> None:
         """不支持的刀具类型应使用 Python 回退路径，仍能生成掩码。"""
         from app.simulation.voxel_cutter import ToolModel
 
@@ -606,17 +554,13 @@ class TestEdgeCases:
         mask = cutter._build_tool_mask(tool)
         assert mask.sum() > 0
 
-    def test_apply_mask_with_non_contiguous_grid(
-        self, voxel_cutter_class: Any
-    ) -> None:
+    def test_apply_mask_with_non_contiguous_grid(self, voxel_cutter_class: Any) -> None:
         """非连续内存的网格输入应被安全处理。"""
         from app.simulation.voxel_cutter import ToolModel
 
         cutter = voxel_cutter_class(voxel_size=1.0)
         # 显式指定 shank_diameter 以满足 ``shank_diameter <= diameter * 2`` 约束
-        tool = ToolModel(
-            diameter=4.0, tool_type="flat", shank_diameter=4.0
-        )
+        tool = ToolModel(diameter=4.0, tool_type="flat", shank_diameter=4.0)
         mask = cutter._build_tool_mask(tool)
 
         # 构造非连续网格（stride 截断）
@@ -628,9 +572,7 @@ class TestEdgeCases:
         points = np.array([[2.0, 2.0, 5.0]], dtype=np.float64)
         bbox_min = np.array([0.0, 0.0, 0.0])
 
-        removed = cutter._apply_tool_mask_batch(
-            grid, mask, points, bbox_min, 1.0, 1.0
-        )
+        removed = cutter._apply_tool_mask_batch(grid, mask, points, bbox_min, 1.0, 1.0)
         assert removed >= 0  # 不崩溃
 
     def test_apply_mask_preserves_grid_unmodified_for_far_points(
@@ -641,9 +583,7 @@ class TestEdgeCases:
 
         cutter = voxel_cutter_class(voxel_size=1.0)
         # 显式指定 shank_diameter 以满足 ``shank_diameter <= diameter * 2`` 约束
-        tool = ToolModel(
-            diameter=4.0, tool_type="flat", shank_diameter=4.0
-        )
+        tool = ToolModel(diameter=4.0, tool_type="flat", shank_diameter=4.0)
         mask = cutter._build_tool_mask(tool)
 
         points = np.array([[100.0, 100.0, 100.0]], dtype=np.float64)
@@ -651,7 +591,5 @@ class TestEdgeCases:
 
         grid = solid_stock_grid.copy()
         original_sum = int(grid.sum())
-        cutter._apply_tool_mask_batch(
-            grid, mask, points, bbox_min, 1.0, 1.0
-        )
+        cutter._apply_tool_mask_batch(grid, mask, points, bbox_min, 1.0, 1.0)
         assert int(grid.sum()) == original_sum

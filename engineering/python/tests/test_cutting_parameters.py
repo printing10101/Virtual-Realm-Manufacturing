@@ -29,9 +29,7 @@ from pathlib import Path
 import pytest
 
 
-# =============================================================================
 # 模块导入测试
-# =============================================================================
 
 
 class TestModuleImport:
@@ -71,18 +69,34 @@ class TestModuleImport:
         )
 
         for obj in [
-            CuttingParametersTask, CuttingParametersTaskStatus,
-            CuttingReviewStatus, OperationType,
-            RecommendedCuttingParams, TaskStore,
-            generate_task_id, get_task_store,
-            CuttingDisclaimer, INDUSTRIAL_HARD_GATES, build_cutting_disclaimer,
-            MaterialParams, MaterialResolver, MaterialResolverError,
-            MaterialNotFoundError, get_material_resolver, reset_material_resolver,
-            CuttingParamRecommender, RecommendationError, FeatureNotSupportedError,
-            SUPPORTED_FEATURE_TYPES, FEATURE_TYPE_RADIAL_DEPTH_RATIO,
+            CuttingParametersTask,
+            CuttingParametersTaskStatus,
+            CuttingReviewStatus,
+            OperationType,
+            RecommendedCuttingParams,
+            TaskStore,
+            generate_task_id,
+            get_task_store,
+            CuttingDisclaimer,
+            INDUSTRIAL_HARD_GATES,
+            build_cutting_disclaimer,
+            MaterialParams,
+            MaterialResolver,
+            MaterialResolverError,
+            MaterialNotFoundError,
+            get_material_resolver,
+            reset_material_resolver,
+            CuttingParamRecommender,
+            RecommendationError,
+            FeatureNotSupportedError,
+            SUPPORTED_FEATURE_TYPES,
+            FEATURE_TYPE_RADIAL_DEPTH_RATIO,
             to_chatter_params_dict,
-            CuttingParametersPipeline, CuttingParametersResult,
-            CuttingParametersPipelineError, CuttingReviewError, FeaturesLoadError,
+            CuttingParametersPipeline,
+            CuttingParametersResult,
+            CuttingParametersPipelineError,
+            CuttingReviewError,
+            FeaturesLoadError,
         ]:
             assert obj is not None, f"{obj} 导入失败"
 
@@ -92,10 +106,7 @@ class TestModuleImport:
 
         assert hasattr(cp_routes_pkg, "routes")
         assert cp_routes_pkg.routes.router is not None
-        assert (
-            cp_routes_pkg.routes.router.prefix
-            == "/api/v1/cutting_parameters"
-        )
+        assert cp_routes_pkg.routes.router.prefix == "/api/v1/cutting_parameters"
 
     def test_nine_endpoints_registered(self):
         """T03: 9 个 API 端点全部注册。
@@ -143,18 +154,14 @@ class TestModuleImport:
         from app.api.v1.cutting_parameters import routes as cp_routes
 
         tags = cp_routes.router.tags
-        assert any("Engineer-Assisted" in t for t in tags), (
-            f"路由 tags 未标注工程师辅助定位: {tags}"
-        )
+        assert any("Engineer-Assisted" in t for t in tags), f"路由 tags 未标注工程师辅助定位: {tags}"
 
         # 顶层 dependencies 必须包含权限依赖
         deps = cp_routes.router.dependencies
         assert len(deps) > 0, "路由未挂载任何 dependencies（权限校验缺失）"
 
 
-# =============================================================================
 # 精度告知机制测试
-# =============================================================================
 
 
 class TestCuttingDisclaimer:
@@ -210,9 +217,7 @@ class TestCuttingDisclaimer:
             tool_diameter_mm=10.0,
         )
         msg = disclaimer.warning_message
-        assert "未标定" in msg or "无量纲" in msg, (
-            f"未标定 mesh 警告未告知无量纲: {msg}"
-        )
+        assert "未标定" in msg or "无量纲" in msg, f"未标定 mesh 警告未告知无量纲: {msg}"
 
     def test_pending_calibration_material_warning(self):
         """T07: HRC52 pending_calibration 状态在警告中体现。"""
@@ -229,9 +234,7 @@ class TestCuttingDisclaimer:
             tool_diameter_mm=10.0,
         )
         msg = disclaimer.warning_message
-        assert "待自采" in msg or "pending_calibration" in msg or "估算" in msg, (
-            f"HRC52 警告未体现待校准状态: {msg}"
-        )
+        assert "待自采" in msg or "pending_calibration" in msg or "估算" in msg, f"HRC52 警告未体现待校准状态: {msg}"
 
     def test_chatter_params_not_ready_warning(self):
         """T08: ChatterParams 未输出时警告明确告知阶段 5 不可用。"""
@@ -275,9 +278,7 @@ class TestCuttingDisclaimer:
         assert disclaimer.chatter_params_ready is True
         # 警告消息必须提及工程师审核或 CAM 校验
         msg = disclaimer.warning_message
-        assert "审核" in msg or "CAM" in msg, (
-            f"已标定警告未提及工程师审核或 CAM 校验: {msg}"
-        )
+        assert "审核" in msg or "CAM" in msg, f"已标定警告未提及工程师审核或 CAM 校验: {msg}"
 
     def test_industrial_hard_gates_complete(self):
         """T10: 8 条工业硬门槛覆盖关键约束。"""
@@ -297,41 +298,27 @@ class TestCuttingDisclaimer:
 
         all_gates_text = " ".join(gates)
 
-        # mesh → CAD 自动转换未解决
-        assert "CAD" in all_gates_text or "自动转换" in all_gates_text, (
-            f"硬门槛未提及 mesh→CAD 未解决: {gates}"
-        )
+        # mesh CAD 自动转换未解决
+        assert "CAD" in all_gates_text or "自动转换" in all_gates_text, f"硬门槛未提及 mesh→CAD 未解决: {gates}"
         # 良品率 0 缺陷容忍
-        assert "良品率" in all_gates_text or "0 缺陷" in all_gates_text, (
-            f"硬门槛未提及良品率: {gates}"
-        )
+        assert "良品率" in all_gates_text or "0 缺陷" in all_gates_text, f"硬门槛未提及良品率: {gates}"
         # 配合面公差 0.01mm 不可达
-        assert "0.01" in all_gates_text or "公差" in all_gates_text, (
-            f"硬门槛未提及公差: {gates}"
-        )
+        assert "0.01" in all_gates_text or "公差" in all_gates_text, f"硬门槛未提及公差: {gates}"
         # CNC 操作资质
-        assert "持证" in all_gates_text or "操作资质" in all_gates_text, (
-            f"硬门槛未提及持证操作员: {gates}"
-        )
+        assert "持证" in all_gates_text or "操作资质" in all_gates_text, f"硬门槛未提及持证操作员: {gates}"
         # CAM 二次校验
         assert "CAM" in all_gates_text, f"硬门槛未提及 CAM 二次校验: {gates}"
         # 工程师助手定位
-        assert "工程师助手" in all_gates_text, (
-            f"硬门槛未提及工程师助手定位: {gates}"
-        )
+        assert "工程师助手" in all_gates_text, f"硬门槛未提及工程师助手定位: {gates}"
         # K_s 影响颤振预测
         assert "K_s" in all_gates_text or "specific_cutting_force" in all_gates_text, (
             f"硬门槛未提及 K_s 影响颤振预测: {gates}"
         )
         # 导师签字 + 保险
-        assert "导师" in all_gates_text or "保险" in all_gates_text, (
-            f"硬门槛未提及导师签字或保险: {gates}"
-        )
+        assert "导师" in all_gates_text or "保险" in all_gates_text, f"硬门槛未提及导师签字或保险: {gates}"
 
 
-# =============================================================================
 # 枚举完整性测试
-# =============================================================================
 
 
 class TestEnums:
@@ -342,8 +329,13 @@ class TestEnums:
         from app.cutting_parameters import CuttingParametersTaskStatus
 
         expected = {
-            "pending", "running", "params_recommended",
-            "reviewed", "succeeded", "failed", "cancelled",
+            "pending",
+            "running",
+            "params_recommended",
+            "reviewed",
+            "succeeded",
+            "failed",
+            "cancelled",
         }
         actual = {s.value for s in CuttingParametersTaskStatus}
         assert actual == expected, f"任务状态枚举不匹配: {actual - expected}"
@@ -377,9 +369,7 @@ class TestEnums:
         assert OperationType.ROUGHING == "roughing"
 
 
-# =============================================================================
 # effective_params 测试
-# =============================================================================
 
 
 class TestEffectiveParams:
@@ -411,9 +401,7 @@ class TestEffectiveParams:
         assert effective["axial_depth_mm"] == 1.25
         # 修改返回值不应影响原参数
         effective["spindle_speed_rpm"] = 999.0
-        assert params.spindle_speed_rpm == 3000.0, (
-            "effective_params() 未返回副本，污染了推荐值"
-        )
+        assert params.spindle_speed_rpm == 3000.0, "effective_params() 未返回副本，污染了推荐值"
 
     def test_confirmed_returns_recommended_values(self):
         """T16: confirmed 状态返回推荐值副本。"""
@@ -436,15 +424,13 @@ class TestEffectiveParams:
             review_status="edited",
             edited_params={
                 "spindle_speed_rpm": 2500.0,  # 覆盖推荐值
-                "axial_depth_mm": 0.8,       # 覆盖推荐值
+                "axial_depth_mm": 0.8,  # 覆盖推荐值
             },
         )
         effective = params.effective_params()
 
         # edited_params 优先覆盖
-        assert effective["spindle_speed_rpm"] == 2500.0, (
-            f"edited_params 未覆盖推荐值: {effective}"
-        )
+        assert effective["spindle_speed_rpm"] == 2500.0, f"edited_params 未覆盖推荐值: {effective}"
         assert effective["axial_depth_mm"] == 0.8
         # 未编辑的字段保留推荐值
         assert effective["feed_rate_mm_per_min"] == 480.0
@@ -460,9 +446,7 @@ class TestEffectiveParams:
         assert effective["axial_depth_mm"] == 1.25
 
 
-# =============================================================================
 # 材料解析器测试
-# =============================================================================
 
 
 class TestMaterialResolver:
@@ -521,9 +505,7 @@ class TestMaterialResolver:
         materials = resolver.list_materials()
         ids = [m.id for m in materials]
 
-        assert "steel_hrc52" in ids, (
-            f"list_materials() 未包含 HRC52 补充数据: {ids}"
-        )
+        assert "steel_hrc52" in ids, f"list_materials() 未包含 HRC52 补充数据: {ids}"
 
     def test_has_material_hrc52(self):
         """T25: has_material() 正确识别 HRC52。"""
@@ -553,14 +535,10 @@ class TestMaterialResolver:
 
         # HRC52 roughing 切削速度 [20, 40] m/min，远低于铝合金
         roughing_max = hrc52.cutting_speed_range["roughing"][1]
-        assert roughing_max <= 50.0, (
-            f"HRC52 切削速度上限 {roughing_max} 应低于 50 m/min"
-        )
+        assert roughing_max <= 50.0, f"HRC52 切削速度上限 {roughing_max} 应低于 50 m/min"
 
 
-# =============================================================================
 # 推荐引擎测试
-# =============================================================================
 
 
 class TestRecommender:
@@ -611,9 +589,7 @@ class TestRecommender:
             tool_diameter_mm=10.0,
             num_flutes=4,
         )
-        assert params.operation == "finishing", (
-            f"high 档位应为 finishing，实际: {params.operation}"
-        )
+        assert params.operation == "finishing", f"high 档位应为 finishing，实际: {params.operation}"
 
     def test_coarse_tier_uses_roughing(self):
         """T30: precision_tier=coarse → roughing 操作。"""
@@ -637,9 +613,7 @@ class TestRecommender:
             tool_diameter_mm=10.0,
             num_flutes=4,
         )
-        assert params.operation == "finishing", (
-            f"standard + hole 应为 finishing，实际: {params.operation}"
-        )
+        assert params.operation == "finishing", f"standard + hole 应为 finishing，实际: {params.operation}"
 
     def test_standard_plane_uses_roughing(self):
         """T32: standard + plane → roughing（大面先粗加工）。"""
@@ -752,9 +726,7 @@ class TestRecommender:
             num_flutes=4,
         )
         warnings_text = " ".join(params.warnings)
-        assert "铰孔" in warnings_text or "镗孔" in warnings_text, (
-            f"hole warnings 未提及铰孔/镗孔: {params.warnings}"
-        )
+        assert "铰孔" in warnings_text or "镗孔" in warnings_text, f"hole warnings 未提及铰孔/镗孔: {params.warnings}"
 
     def test_coarse_tier_warning(self):
         """T40: coarse 档位 warnings 必须含「不可用于配合面」提示。"""
@@ -767,9 +739,7 @@ class TestRecommender:
             num_flutes=4,
         )
         warnings_text = " ".join(params.warnings)
-        assert "配合面" in warnings_text, (
-            f"coarse warnings 未提及配合面限制: {params.warnings}"
-        )
+        assert "配合面" in warnings_text, f"coarse warnings 未提及配合面限制: {params.warnings}"
 
     def test_radial_depth_ratios(self):
         """T41: 4 种特征径向切深比例正确。"""
@@ -798,8 +768,7 @@ class TestRecommender:
         # 验证公式：n = V_c * 1000 / (π * 10)
         expected_rpm = params.cutting_speed_m_per_min * 1000.0 / (math.pi * 10.0)
         assert abs(params.spindle_speed_rpm - expected_rpm) < 1.0, (
-            f"主轴转速公式错误: 实际 {params.spindle_speed_rpm}, "
-            f"期望 {expected_rpm}"
+            f"主轴转速公式错误: 实际 {params.spindle_speed_rpm}, 期望 {expected_rpm}"
         )
 
     def test_supported_feature_types_complete(self):
@@ -807,14 +776,10 @@ class TestRecommender:
         from app.cutting_parameters import SUPPORTED_FEATURE_TYPES
 
         expected = {"plane", "cylinder", "hole", "boss"}
-        assert set(SUPPORTED_FEATURE_TYPES) == expected, (
-            f"支持特征类型不完整: {SUPPORTED_FEATURE_TYPES}"
-        )
+        assert set(SUPPORTED_FEATURE_TYPES) == expected, f"支持特征类型不完整: {SUPPORTED_FEATURE_TYPES}"
 
 
-# =============================================================================
 # to_chatter_params_dict 测试（阶段 5 对接契约）
-# =============================================================================
 
 
 class TestToChatterParams:
@@ -848,9 +813,7 @@ class TestToChatterParams:
         cp = to_chatter_params_dict(params)
 
         required_keys = {"spindle_rpm", "machine", "tool", "axial_depth"}
-        assert set(cp.keys()) == required_keys, (
-            f"ChatterParams dict 键不匹配: {set(cp.keys())}"
-        )
+        assert set(cp.keys()) == required_keys, f"ChatterParams dict 键不匹配: {set(cp.keys())}"
 
     def test_tool_contains_cutting_force_coeff(self):
         """T45: tool dict 含 cutting_force_coeff 字段（阶段 5 关键契约）。"""
@@ -860,9 +823,7 @@ class TestToChatterParams:
         cp = to_chatter_params_dict(params)
 
         tool = cp["tool"]
-        assert "cutting_force_coeff" in tool, (
-            f"tool dict 缺失 cutting_force_coeff: {tool}"
-        )
+        assert "cutting_force_coeff" in tool, f"tool dict 缺失 cutting_force_coeff: {tool}"
 
     def test_cutting_force_coeff_equals_k_s(self):
         """T46: cutting_force_coeff = MaterialParams.specific_cutting_force (K_s)。"""
@@ -877,8 +838,7 @@ class TestToChatterParams:
 
         material = resolver.get_material("steel_hrc52")
         assert cp["tool"]["cutting_force_coeff"] == material.specific_cutting_force, (
-            f"cutting_force_coeff {cp['tool']['cutting_force_coeff']} "
-            f"不等于 K_s {material.specific_cutting_force}"
+            f"cutting_force_coeff {cp['tool']['cutting_force_coeff']} 不等于 K_s {material.specific_cutting_force}"
         )
 
     def test_edited_params_override(self):
@@ -892,12 +852,8 @@ class TestToChatterParams:
         cp = to_chatter_params_dict(params)
 
         # edited 值应覆盖推荐值
-        assert cp["spindle_rpm"] == 2500.0, (
-            f"ChatterParams 未使用 edited spindle_rpm: {cp['spindle_rpm']}"
-        )
-        assert cp["axial_depth"] == 0.8, (
-            f"ChatterParams 未使用 edited axial_depth: {cp['axial_depth']}"
-        )
+        assert cp["spindle_rpm"] == 2500.0, f"ChatterParams 未使用 edited spindle_rpm: {cp['spindle_rpm']}"
+        assert cp["axial_depth"] == 0.8, f"ChatterParams 未使用 edited axial_depth: {cp['axial_depth']}"
 
     def test_machine_dict_structure(self):
         """T48: machine dict 含阶段 5 必需字段。"""
@@ -908,8 +864,13 @@ class TestToChatterParams:
 
         machine = cp["machine"]
         required_fields = {
-            "machine_id", "stiffness_x", "stiffness_y", "stiffness_z",
-            "damping_ratio", "natural_freq", "modal_mass",
+            "machine_id",
+            "stiffness_x",
+            "stiffness_y",
+            "stiffness_z",
+            "damping_ratio",
+            "natural_freq",
+            "modal_mass",
         }
         assert required_fields.issubset(set(machine.keys())), (
             f"machine dict 缺失字段: {required_fields - set(machine.keys())}"
@@ -917,9 +878,7 @@ class TestToChatterParams:
         assert machine["machine_id"] == "vmc_850"
 
 
-# =============================================================================
 # Pipeline 状态机测试
-# =============================================================================
 
 
 class TestPipelineStateMachine:
@@ -942,9 +901,7 @@ class TestPipelineStateMachine:
             output_dir=str(tmp_path / "cp_output"),
         )
         self.resolver = MaterialResolver()
-        self.pipeline = CuttingParametersPipeline(
-            cfg=self.cfg, resolver=self.resolver
-        )
+        self.pipeline = CuttingParametersPipeline(cfg=self.cfg, resolver=self.resolver)
         yield
         TaskStore.reset_instance()
 
@@ -952,10 +909,12 @@ class TestPipelineStateMachine:
         """构造阶段 2 confirmed_features.json。"""
         features = []
         for i in range(feature_count):
-            features.append({
-                "feature_id": f"feat_plane_{i:03d}",
-                "feature_type": "plane",
-            })
+            features.append(
+                {
+                    "feature_id": f"feat_plane_{i:03d}",
+                    "feature_type": "plane",
+                }
+            )
         features_json = Path(self.cfg.output_dir) / "confirmed_features.json"
         features_json.parent.mkdir(parents=True, exist_ok=True)
         features_json.write_text(
@@ -1034,11 +993,9 @@ class TestPipelineStateMachine:
             review_status="confirmed",
             reviewed_by="engineer_zhang",
         )
-        # 全部审核完毕 → REVIEWED
+        # 全部审核完毕 REVIEWED
         task_after_all = self.pipeline._store.get_task(task.task_id)
-        assert task_after_all.status == "reviewed", (
-            f"全部审核完毕未转 REVIEWED: {task_after_all.status}"
-        )
+        assert task_after_all.status == "reviewed", f"全部审核完毕未转 REVIEWED: {task_after_all.status}"
 
     def test_export_chatter_params_to_succeeded(self):
         """T52: export_chatter_params() 后状态变为 SUCCEEDED 并写 JSON。"""
@@ -1207,9 +1164,7 @@ class TestPipelineStateMachine:
             data = json.load(f)
 
         # 只有 1 条（confirmed），rejected 被排除
-        assert data["feature_count"] == 1, (
-            f"rejected 特征未排除: feature_count={data['feature_count']}"
-        )
+        assert data["feature_count"] == 1, f"rejected 特征未排除: feature_count={data['feature_count']}"
         assert len(data["chatter_params_list"]) == 1
         assert data["chatter_params_list"][0]["feature_id"] == "feat_plane_000"
 
@@ -1245,9 +1200,7 @@ class TestPipelineStateMachine:
         assert data["feature_count"] == 1
         cp = data["chatter_params_list"][0]["chatter_params"]
         # spindle_rpm 应为编辑值 2500.0
-        assert cp["spindle_rpm"] == 2500.0, (
-            f"edited 特征未使用编辑值: {cp['spindle_rpm']}"
-        )
+        assert cp["spindle_rpm"] == 2500.0, f"edited 特征未使用编辑值: {cp['spindle_rpm']}"
 
     def test_edited_without_params_raises(self):
         """T59: edited 状态但未提供 edited_params 抛 CuttingReviewError。"""
@@ -1323,9 +1276,7 @@ class TestPipelineStateMachine:
             )
 
 
-# =============================================================================
 # 配置校验测试
-# =============================================================================
 
 
 class TestConfigValidation:
@@ -1354,9 +1305,7 @@ class TestConfigValidation:
         from app.config import CuttingParametersConfig
 
         cfg = CuttingParametersConfig(precision_tier="invalid_tier")
-        assert cfg.precision_tier == "standard", (
-            f"非法 precision_tier 未回退: {cfg.precision_tier}"
-        )
+        assert cfg.precision_tier == "standard", f"非法 precision_tier 未回退: {cfg.precision_tier}"
 
     def test_invalid_tool_diameter_falls_back(self):
         """T64: 非法 default_tool_diameter_mm 回退为 10.0。"""
@@ -1397,9 +1346,7 @@ class TestConfigValidation:
         )
 
 
-# =============================================================================
 # 项目记忆硬约束集中验证
-# =============================================================================
 
 
 class TestProjectMemoryHardConstraints:

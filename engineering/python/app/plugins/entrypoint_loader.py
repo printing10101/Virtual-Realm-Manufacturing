@@ -58,9 +58,7 @@ from app.plugins.plugin_system import PluginMetadata
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 异常定义
-# ---------------------------------------------------------------------------
 
 
 class EntrypointLoadError(RuntimeError):
@@ -72,9 +70,7 @@ class EntrypointLoadError(RuntimeError):
         super().__init__(f"Failed to load entrypoint '{entrypoint}': {reason}")
 
 
-# ---------------------------------------------------------------------------
 # 入口点格式枚举
-# ---------------------------------------------------------------------------
 
 
 class EntryPointFormat(str, Enum):
@@ -85,9 +81,7 @@ class EntryPointFormat(str, Enum):
     AUTO = "auto"  # 自动检测
 
 
-# ---------------------------------------------------------------------------
 # 入口点解析
-# ---------------------------------------------------------------------------
 
 
 def parse_entrypoint(
@@ -142,9 +136,7 @@ def parse_entrypoint(
     return fmt, entrypoint, None
 
 
-# ---------------------------------------------------------------------------
 # 类加载
-# ---------------------------------------------------------------------------
 
 
 def _safe_module_name(plugin_id: str) -> str:
@@ -341,9 +333,7 @@ def load_plugin_class(
     raise last_error or EntrypointLoadError(entrypoint, "未知加载失败")
 
 
-# ---------------------------------------------------------------------------
 # 实例化与 IPlugin 适配
-# ---------------------------------------------------------------------------
 
 
 def _build_legacy_metadata_from_manifest(
@@ -479,9 +469,7 @@ def load_plugin_from_manifest(
     )
 
 
-# ---------------------------------------------------------------------------
 # 显式注册表：支持不通过文件加载的内存插件
-# ---------------------------------------------------------------------------
 
 
 class ExplicitPluginRegistry:

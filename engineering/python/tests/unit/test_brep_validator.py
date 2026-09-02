@@ -23,9 +23,7 @@ from app.cad._brep_validator import (
 from app.cad.cadquery_gen import CadQueryGenerator, CadQueryScriptError
 
 
-# ---------------------------------------------------------------------------
 # validate_workplane / validate_brep 基本正确性
-# ---------------------------------------------------------------------------
 class TestValidateBasic:
     @pytest.mark.parametrize(
         "factory",
@@ -79,14 +77,10 @@ class TestValidateBasic:
                 raise_if_invalid(report)
 
 
-# ---------------------------------------------------------------------------
 # sanitize_dimensions
-# ---------------------------------------------------------------------------
 class TestSanitize:
     def test_clamps_degenerate_and_oversized(self) -> None:
-        out = sanitize_dimensions(
-            {"shape_type": "box", "dimensions": {"length": 0, "width": -5, "height": 20000}}
-        )
+        out = sanitize_dimensions({"shape_type": "box", "dimensions": {"length": 0, "width": -5, "height": 20000}})
         dims = out["dimensions"]
         assert dims["length"] >= 1e-3
         assert dims["width"] >= 1e-3
@@ -103,9 +97,7 @@ class TestSanitize:
         assert params["dimensions"]["length"] == 0  # 原 dict 未被修改
 
 
-# ---------------------------------------------------------------------------
 # 导出文件回读校验
-# ---------------------------------------------------------------------------
 class TestExportedModel:
     def test_step_roundtrip_valid(self, tmp_path) -> None:
         solid = cq.Workplane("XY").box(20, 12, 8).val()
@@ -133,9 +125,7 @@ class TestExportedModel:
         assert not report.is_valid
 
 
-# ---------------------------------------------------------------------------
 # CadQueryGenerator 集成：拓扑校验 + 失败重生成闭环
-# ---------------------------------------------------------------------------
 class TestGeneratorIntegration:
     def setup_method(self) -> None:
         self.gen = CadQueryGenerator()

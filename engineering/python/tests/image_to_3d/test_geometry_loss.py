@@ -1,5 +1,3 @@
-
-
 """思路 3（几何一致性显式约束）单元测试。
 
 对应 ADR-020 第 3.8 节测试方案 /
@@ -19,6 +17,7 @@ app/image_to_3d/part_prior/geometry_loss.py + constraints.py。
 - torch 不可用时通过 pytest.importorskip 自然跳过，不注入桩模块伪装通过
 - loss_dict 的 6 个 key 顺序与 D-2 论文表格模板一致
 """
+
 from __future__ import annotations
 
 import pytest
@@ -26,13 +25,8 @@ import pytest
 pytestmark = pytest.mark.skip_ci
 
 
-
-
-
-# ---------------------------------------------------------------------------
 # 固定随机种子（D-2 学术诚信硬约束：torch.manual_seed + cudnn.deterministic）
 # 在每个 torch 用例内部独立设置，避免模块加载期依赖 torch。
-# ---------------------------------------------------------------------------
 
 
 SEED = 42
@@ -60,13 +54,10 @@ def test_symmetry_loss_prefers_symmetric():
     asym_loss = symmetry_loss(asym_voxel, ["x"])
 
     assert sym_loss.item() < asym_loss.item(), (
-        f"对称体素 loss ({sym_loss.item()}) 应小于非对称体素 loss "
-        f"({asym_loss.item()})"
+        f"对称体素 loss ({sym_loss.item()}) 应小于非对称体素 loss ({asym_loss.item()})"
     )
     # 对称体素的镜像差应严格为 0
-    assert sym_loss.item() == 0.0, (
-        f"完全对称体素的 symmetry_loss 应为 0，实际 {sym_loss.item()}"
-    )
+    assert sym_loss.item() == 0.0, f"完全对称体素的 symmetry_loss 应为 0，实际 {sym_loss.item()}"
 
 
 def test_flatness_loss_prefers_flat_slab():
@@ -93,13 +84,10 @@ def test_flatness_loss_prefers_flat_slab():
     rough_loss = mating_plane_flatness_loss(rough_voxel, [("x", 4, 1)])
 
     assert flat_loss.item() < rough_loss.item(), (
-        f"平坦 slab loss ({flat_loss.item()}) 应小于起伏 slab loss "
-        f"({rough_loss.item()})"
+        f"平坦 slab loss ({flat_loss.item()}) 应小于起伏 slab loss ({rough_loss.item()})"
     )
     # 平坦 slab 的标准差应严格为 0
-    assert flat_loss.item() == 0.0, (
-        f"完全平坦 slab 的 flatness_loss 应为 0，实际 {flat_loss.item()}"
-    )
+    assert flat_loss.item() == 0.0, f"完全平坦 slab 的 flatness_loss 应为 0，实际 {flat_loss.item()}"
 
 
 def test_total_loss_returns_dict():
@@ -120,8 +108,6 @@ def test_total_loss_returns_dict():
     from app.image_to_3d.part_prior.constraints import GeometryConstraints
     from app.image_to_3d.part_prior.geometry_loss import total_loss
 
-
-
     recon = torch.sigmoid(torch.randn(2, 1, 64, 64, 64))
     target = torch.ones(2, 1, 64, 64, 64) * 0.5
     mu = torch.randn(2, 256)
@@ -135,12 +121,8 @@ def test_total_loss_returns_dict():
     loss, loss_dict = total_loss(recon, target, mu, logvar, constraints)
 
     # loss 是标量 tensor
-    assert isinstance(loss, torch.Tensor), (
-        f"total_loss 返回的 loss 应为 torch.Tensor，实际 {type(loss)}"
-    )
-    assert loss.dim() == 0, (
-        f"total_loss 返回的 loss 应为标量（0 维），实际 {loss.dim()} 维"
-    )
+    assert isinstance(loss, torch.Tensor), f"total_loss 返回的 loss 应为 torch.Tensor，实际 {type(loss)}"
+    assert loss.dim() == 0, f"total_loss 返回的 loss 应为标量（0 维），实际 {loss.dim()} 维"
 
     # loss_dict 的 6 个固定 key（D-2 学术诚信硬约束）
     expected_keys = {
@@ -152,13 +134,10 @@ def test_total_loss_returns_dict():
         "total",
     }
     assert set(loss_dict.keys()) == expected_keys, (
-        f"loss_dict key 集合不匹配：期望 {expected_keys}，"
-        f"实际 {set(loss_dict.keys())}"
+        f"loss_dict key 集合不匹配：期望 {expected_keys}，实际 {set(loss_dict.keys())}"
     )
 
     # 所有值应为 float（MLflow 记录要求）
     for key, value in loss_dict.items():
-        assert isinstance(value, float), (
-            f"loss_dict['{key}'] 应为 float，实际 {type(value)}"
-        )
+        assert isinstance(value, float), f"loss_dict['{key}'] 应为 float，实际 {type(value)}"
         assert value == value, f"loss_dict['{key}'] 是 NaN"  # NaN 检查

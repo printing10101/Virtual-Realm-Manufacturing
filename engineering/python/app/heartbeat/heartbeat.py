@@ -596,12 +596,12 @@ class WakeupQueue:
 
 
 # [F-P0-6] 防复发说明：
-#   历史上本文件存在两个 WakeupQueue.close 方法定义（L202 正确版 + L535 错误版），
-#   Python 解释器会以后者为准，导致 close() 直接调用 sqlite3.Connection.close()
-#   而绕过连接池的 return_connection()，造成连接泄漏。
-#   现已删除错误的重复定义，统一使用 L202 的正确实现（归还连接到连接池）。
-#   防御性措施：在 __init__ 中通过 hasattr 检查避免重复初始化，并在 close 中
-#   设置 self._conn = None 防止重复关闭。
+# 历史上本文件存在两个 WakeupQueue.close 方法定义（L202 正确版 + L535 错误版），
+# Python 解释器会以后者为准，导致 close() 直接调用 sqlite3.Connection.close()
+# 而绕过连接池的 return_connection()，造成连接泄漏。
+# 现已删除错误的重复定义，统一使用 L202 的正确实现（归还连接到连接池）。
+# 防御性措施：在 __init__ 中通过 hasattr 检查避免重复初始化，并在 close 中
+# 设置 self._conn = None 防止重复关闭。
 
 
 class HeartbeatScheduler:

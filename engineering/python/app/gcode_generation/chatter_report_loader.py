@@ -37,9 +37,7 @@ from app.gcode_generation.gcode_store import (
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
 # ChatterReport JSON 必填字段
-# =============================================================================
 
 REQUIRED_REPORT_FIELDS = {
     "task_id",
@@ -64,9 +62,7 @@ REQUIRED_FEATURE_FIELDS = {
 }
 
 
-# =============================================================================
 # LoadedChatterReport：加载后的 ChatterReport 结构
-# =============================================================================
 
 
 class LoadedChatterReport:
@@ -119,9 +115,7 @@ class LoadedChatterReport:
         }
 
 
-# =============================================================================
 # ChatterReportLoader：加载器
-# =============================================================================
 
 
 class ChatterReportLoader:

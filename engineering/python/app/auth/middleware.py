@@ -58,9 +58,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# ============================================================
 # LNN Token Auth (from AuthMiddleware)
-# ============================================================
 
 
 def _get_token_metadata(token: str) -> dict | None:
@@ -141,9 +139,7 @@ def _initialize_token() -> str:
     return new_token
 
 
-# ============================================================
 # JWT Auth (from JwtAuthMiddleware)
-# ============================================================
 
 
 def _decode_token(token: str) -> dict | None:
@@ -180,9 +176,7 @@ def _get_token_ban_list() -> "_TokenBanList" | None:
         return None
 
 
-# ============================================================
 # Agent Auth (from AgentAuthMiddleware)
-# ============================================================
 
 
 def _get_agent_token_store() -> "_AgentTokenStore":
@@ -193,9 +187,7 @@ def _get_agent_token_store() -> "_AgentTokenStore":
     return agent_token_store
 
 
-# ============================================================
 # Unified ASGI Middleware
-# ============================================================
 
 
 def _make_json_response(
@@ -334,9 +326,7 @@ class UnifiedAuthMiddleware:
                 captured_status["code"] = int(message.get("status", 0))
             await send(message)
 
-        # ================================================================
         # Early public path detection - fast path, no auth processing
-        # ================================================================
         if self._is_public_path(path):
             await self.app(scope, receive, _send_wrapper)
             _log_access(
@@ -347,9 +337,7 @@ class UnifiedAuthMiddleware:
             )
             return
 
-        # ================================================================
         # Extract Authorization header and all headers
-        # ================================================================
         raw_headers = scope.get("headers", [])
         auth_header = ""
         for key, value in raw_headers:
@@ -357,9 +345,7 @@ class UnifiedAuthMiddleware:
                 auth_header = value.decode("utf-8", errors="ignore")
                 break
 
-        # ================================================================
         # Agent API path - use agent token authentication
-        # ================================================================
         if self._is_agent_path(path) and self.agent_auth_enabled:
             # Health check and token creation exempt
             if path == "/api/agent/v1/health":
@@ -398,13 +384,11 @@ class UnifiedAuthMiddleware:
             )
             return
 
-        # ================================================================
         # Regular API path - unified LNN + JWT auth
         # Strategy: detect token type and route to the appropriate handler.
-        #   - JWT tokens start with "eyJ" -> try JWT first
-        #   - Flat LNN tokens -> try LNN first, fallback to JWT
+        # - JWT tokens start with "eyJ" -> try JWT first
+        # - Flat LNN tokens -> try LNN first, fallback to JWT
         # Either one passing is sufficient.
-        # ================================================================
         token = auth_header[7:] if auth_header.startswith("Bearer ") else ""
 
         if token:
@@ -470,9 +454,7 @@ class UnifiedAuthMiddleware:
                 )
                 return
 
-        # ================================================================
         # Auth passed - forward to app
-        # ================================================================
         await self.app(scope, receive, _send_wrapper)
         _log_access(
             method=method,
@@ -658,7 +640,7 @@ class UnifiedAuthMiddleware:
         scope.setdefault("state", {})["username"] = payload.get("sub", "") or ""
         # 2026-08-23 注册/访客功能：同时写入角色与访客标记，供 require_role /
         # require_permission 校验读取（此前 request.state.user_role 从未被写入，
-        # 导致 require_role 端点触发 AttributeError → 500）。
+        # 导致 require_role 端点触发 AttributeError 500）。
         scope["state"]["user_role"] = payload.get("role", "user") or "user"
         scope["state"]["is_guest"] = bool(payload.get("is_guest", False))
         return None

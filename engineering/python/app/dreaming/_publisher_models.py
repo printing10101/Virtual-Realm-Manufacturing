@@ -12,9 +12,7 @@ from app.dreaming.rule_validator import ValidationResult
 
 logger = logging.getLogger(__name__)
 
-# -----------------------------------------------------------------------------
 # 灰度发布状态
-# -----------------------------------------------------------------------------
 
 
 class PublicationStage(str, Enum):

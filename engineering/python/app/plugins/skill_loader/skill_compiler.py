@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class SkillCompilerMixin:
-    # ---- 宿主契约：由兄弟 mixin 提供（SandboxExecutorMixin） ----
+    # 宿主契约：由兄弟 mixin 提供（SandboxExecutorMixin）
     _USE_SUBPROCESS_ISOLATION: bool
     _SUBPROCESS_TIMEOUT_SEC: float
     """技能代码编译 Mixin。

@@ -37,9 +37,7 @@ router = APIRouter(
 )
 
 
-# =====================================================================
 # 请求模型
-# =====================================================================
 
 
 class ExplainProcessRequest(BaseModel):
@@ -69,9 +67,7 @@ class ChatRequest(BaseModel):
     session_id: str | None = Field(default=None, description="会话 ID（None 新建）")
 
 
-# =====================================================================
 # 1. 解释工艺规划
-# =====================================================================
 
 
 @router.post("/explain-process", dependencies=[Depends(require_permission("explainer:read"))])
@@ -95,9 +91,7 @@ async def explain_process(request: Request, req: ExplainProcessRequest):
     )
 
 
-# =====================================================================
 # 2. 解释 NC 代码
-# =====================================================================
 
 
 @router.post("/explain-nc", dependencies=[Depends(require_permission("explainer:read"))])
@@ -119,9 +113,7 @@ async def explain_nc(request: Request, req: ExplainNCRequest):
     )
 
 
-# =====================================================================
 # 3. 多轮对话
-# =====================================================================
 
 
 @router.post("/chat", dependencies=[Depends(require_permission("explainer:read"))])
@@ -141,9 +133,7 @@ async def chat(request: Request, req: ChatRequest):
     )
 
 
-# =====================================================================
 # 4. 创建新会话
-# =====================================================================
 
 
 @router.post("/sessions", dependencies=[Depends(require_permission("explainer:write"))])
@@ -159,9 +149,7 @@ async def create_session():
     )
 
 
-# =====================================================================
 # 5. 获取会话历史
-# =====================================================================
 
 
 @router.get("/sessions/{session_id}")
@@ -183,9 +171,7 @@ async def get_session(
     )
 
 
-# =====================================================================
 # 6. 清空会话
-# =====================================================================
 
 
 @router.delete("/sessions/{session_id}", dependencies=[Depends(require_permission("explainer:write"))])
@@ -200,9 +186,7 @@ async def clear_session(session_id: str):
     )
 
 
-# =====================================================================
 # 7. 清理过期会话
-# =====================================================================
 
 
 @router.post("/cleanup", dependencies=[Depends(require_permission("explainer:write"))])

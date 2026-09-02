@@ -48,37 +48,37 @@ def register(app: FastAPI, *, ollama_available: bool = False) -> None:
         app: FastAPI 应用实例
         ollama_available: Ollama 模块是否可用（由 router_registry 传入）
     """
-    # === LNN 不确定性 / 磨损预测 ===
+    # LNN 不确定性 / 磨损预测
     app.include_router(lnn_routes_router)  # LNN 主聚合器（60+ 端点）
     app.include_router(lnn_uncertain.router)  # 独立不确定性端点
     app.include_router(wear_prediction.router)
 
-    # === RAG ===
+    # RAG
     app.include_router(rag_routes.router)
 
-    # === Ollama（条件注册） ===
+    # Ollama（条件注册）
     if ollama_available:
         from app.ai import ollama_routes
 
         app.include_router(ollama_routes.router)
 
-    # === LLM Provider 网关 ===
+    # LLM Provider 网关
     app.include_router(llm_providers.router)
 
-    # === SHARP 三元组验证智能体 ===
+    # SHARP 三元组验证智能体
     app.include_router(sharp_routes.router)
 
-    # === 工艺 / NC 代码对话式解释 ===
+    # 工艺 / NC 代码对话式解释
     app.include_router(process_explainer_routes.router)
 
-    # === 工艺理解 ===
+    # 工艺理解
     app.include_router(process_understanding_routes.router)
 
-    # === 刀路动态调参闭环 ===
+    # 刀路动态调参闭环
     app.include_router(dynamic_adjustment_routes.router)
 
-    # === 多源信号融合知识库 ===
+    # 多源信号融合知识库
     app.include_router(signal_fusion_kb_routes.router)
 
-    # === 知识图谱 ===
+    # 知识图谱
     app.include_router(knowledge_graph_routes.router)

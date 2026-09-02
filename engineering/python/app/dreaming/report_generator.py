@@ -55,9 +55,7 @@ class ReportGenerator:
         self.output_dir = Path(output_dir or "python/outputs/dreaming/reports")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------
     # 主入口
-    # ------------------------------------------------------------------
 
     def generate(
         self,
@@ -98,9 +96,7 @@ class ReportGenerator:
 
         return str(report_file)
 
-    # ------------------------------------------------------------------
     # 报告内容构建
-    # ------------------------------------------------------------------
 
     def _build_report_content(
         self,
@@ -141,9 +137,7 @@ class ReportGenerator:
 
         return "\n".join(lines)
 
-    # ------------------------------------------------------------------
     # 各章节构建
-    # ------------------------------------------------------------------
 
     def _build_header(self, reflection: ReflectionResult, instructions: str | None) -> str:
         """构建报告头部。"""

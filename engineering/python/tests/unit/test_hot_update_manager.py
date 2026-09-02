@@ -27,6 +27,7 @@ plugins/data_flywheel/hot_update_manager.py + main.py 集成.
 
 不依赖 torch / sklearn / fastapi / SQLite / 文件系统，可在无 WinSock 环境运行。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -66,9 +67,7 @@ from plugins.data_flywheel.hot_update_manager import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 测试替身：FakeModelRegistryService
-# ---------------------------------------------------------------------------
 
 
 class FakeModelRegistryService:
@@ -100,9 +99,7 @@ class FakeModelRegistryService:
         return self._registered.get(model_name)
 
 
-# ---------------------------------------------------------------------------
 # 测试替身：InMemoryDatasetStore（与 test_feedback_collector.py 对齐）
-# ---------------------------------------------------------------------------
 
 
 class InMemoryDatasetStore(IDatasetStore):
@@ -163,9 +160,7 @@ class InMemoryDatasetStore(IDatasetStore):
         self._records[dataset_id] = list(records)
         return v
 
-    async def get_version(
-        self, dataset_id: str, version: Optional[str] = None
-    ) -> DatasetVersion:
+    async def get_version(self, dataset_id: str, version: Optional[str] = None) -> DatasetVersion:
         versions = self._versions.get(dataset_id, [])
         if not versions:
             raise KeyError(f"dataset 无版本: {dataset_id}")
@@ -188,9 +183,7 @@ class InMemoryDatasetStore(IDatasetStore):
         pass
 
 
-# ---------------------------------------------------------------------------
 # 测试替身：InMemorySnapshotStore
-# ---------------------------------------------------------------------------
 
 
 class InMemorySnapshotStore(ISnapshotStore):
@@ -236,9 +229,7 @@ class InMemorySnapshotStore(ISnapshotStore):
         return f"reproduce-{snapshot_id}"
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 _PLUGIN_DIR = Path(__file__).resolve().parents[2] / "plugins" / "data_flywheel"
@@ -318,9 +309,7 @@ def _make_plugin_context(
     )
 
 
-# ===========================================================================
 # 测试 1: 枚举与数据类
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -495,9 +484,7 @@ class TestEnumsAndDataclasses:
         assert d["deployment_status"] == "observing"
 
 
-# ===========================================================================
 # 测试 2: HotUpdateManager 构造与属性
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -541,9 +528,7 @@ class TestHotUpdateManagerConstruction:
         assert any("降级模式" in r.message for r in caplog.records)
 
 
-# ===========================================================================
 # 测试 3: canary_deploy
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -588,9 +573,7 @@ class TestCanaryDeploy:
         assert record.rollback_metric_drop == 0.1
 
     @pytest.mark.asyncio
-    async def test_canary_deploy_default_values_when_config_missing(
-        self, fake_registry_service, snapshot_store
-    ):
+    async def test_canary_deploy_default_values_when_config_missing(self, fake_registry_service, snapshot_store):
         """无 config 时使用默认值."""
         m = HotUpdateManager(
             model_registry_service=fake_registry_service,
@@ -685,9 +668,7 @@ class TestCanaryDeploy:
         assert degraded_manager.is_degraded is True
 
     @pytest.mark.asyncio
-    async def test_canary_deploy_calls_model_registry_service(
-        self, fake_registry_service, snapshot_store
-    ):
+    async def test_canary_deploy_calls_model_registry_service(self, fake_registry_service, snapshot_store):
         """非降级模式下 _register_canary_to_model_registry 被调用（list_models）."""
         m = HotUpdateManager(
             model_registry_service=fake_registry_service,
@@ -703,9 +684,7 @@ class TestCanaryDeploy:
         assert fake_registry_service.list_call_count >= 1
 
 
-# ===========================================================================
 # 测试 4: 并发灰度拒绝
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -786,9 +765,7 @@ class TestConcurrentCanaryRejection:
         assert r2.status == DeploymentStatus.OBSERVING
 
 
-# ===========================================================================
 # 测试 5: observe_deployment 三态决策
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -865,7 +842,7 @@ class TestObserveDecision:
     @pytest.mark.asyncio
     async def test_decision_rollback_on_metric_drop(self, manager):
         """canary 指标退化超过阈值 → rollback."""
-        # baseline f1=0.88, canary f1=0.80 → drop=(0.88-0.80)/0.88=0.0909 > 0.05
+        # baseline f1=0.88, canary f1=0.80 drop=(0.88-0.80)/0.88=0.0909 > 0.05
         record = await manager.canary_deploy(
             model_name="ltc",
             new_model_uri="model://v3",
@@ -888,7 +865,7 @@ class TestObserveDecision:
     @pytest.mark.asyncio
     async def test_decision_no_rollback_when_drop_below_threshold(self, manager):
         """canary 指标退化但未超过阈值 → continue（不回滚）."""
-        # baseline f1=0.88, canary f1=0.87 → drop=(0.88-0.87)/0.88=0.011 < 0.05
+        # baseline f1=0.88, canary f1=0.87 drop=(0.88-0.87)/0.88=0.011 < 0.05
         record = await manager.canary_deploy(
             model_name="ltc",
             new_model_uri="model://v3",
@@ -959,12 +936,8 @@ class TestObserveDecision:
         )
         now1 = record.started_at + timedelta(seconds=1)
         now2 = record.started_at + timedelta(seconds=2)
-        await manager.observe_deployment(
-            record.deployment_id, {"f1": 0.91}, now=now1
-        )
-        await manager.observe_deployment(
-            record.deployment_id, {"f1": 0.92}, now=now2
-        )
+        await manager.observe_deployment(record.deployment_id, {"f1": 0.91}, now=now1)
+        await manager.observe_deployment(record.deployment_id, {"f1": 0.92}, now=now2)
         updated = await manager.get_deployment(record.deployment_id)
         assert len(updated.observation_history) == 2
         assert updated.observation_history[0]["canary_metrics"] == {"f1": 0.91}
@@ -973,14 +946,10 @@ class TestObserveDecision:
     @pytest.mark.asyncio
     async def test_observe_nonexistent_deployment(self, manager):
         with pytest.raises(KeyError, match="deployment 不存在"):
-            await manager.observe_deployment(
-                "dep-nonexistent", {"f1": 0.9}
-            )
+            await manager.observe_deployment("dep-nonexistent", {"f1": 0.9})
 
 
-# ===========================================================================
 # 测试 6: promote / rollback
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -1015,9 +984,7 @@ class TestPromoteAndRollback:
             baseline_model_uri="model://v2",
             eval_metrics={"f1": 0.92},
         )
-        rolled_back = await manager.rollback(
-            record.deployment_id, reason="指标退化"
-        )
+        rolled_back = await manager.rollback(record.deployment_id, reason="指标退化")
         assert rolled_back.status == DeploymentStatus.ROLLED_BACK
         assert rolled_back.rollback_reason == "指标退化"
         assert rolled_back.ended_at is not None
@@ -1095,9 +1062,7 @@ class TestPromoteAndRollback:
         )
         await manager.promote(record.deployment_id)
         with pytest.raises(ValueError, match="终态"):
-            await manager.observe_deployment(
-                record.deployment_id, {"f1": 0.9}
-            )
+            await manager.observe_deployment(record.deployment_id, {"f1": 0.9})
 
     @pytest.mark.asyncio
     async def test_observe_after_rollback_rejected(self, manager):
@@ -1109,14 +1074,10 @@ class TestPromoteAndRollback:
         )
         await manager.rollback(record.deployment_id, reason="测试")
         with pytest.raises(ValueError, match="终态"):
-            await manager.observe_deployment(
-                record.deployment_id, {"f1": 0.9}
-            )
+            await manager.observe_deployment(record.deployment_id, {"f1": 0.9})
 
 
-# ===========================================================================
 # 测试 7: 流量分配 select_model_for_request
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -1199,9 +1160,8 @@ class TestSelectModelForRequest:
         """select_model_for_request 是同步方法（非 async）."""
         # 在未部署场景下也确认它是同步调用
         import inspect
-        assert not inspect.iscoroutinefunction(
-            manager.select_model_for_request
-        )
+
+        assert not inspect.iscoroutinefunction(manager.select_model_for_request)
 
     @pytest.mark.asyncio
     async def test_get_production_model(self, manager):
@@ -1240,9 +1200,7 @@ class TestSelectModelForRequest:
         assert manager.get_production_model("ltc") == "model://v3"
 
 
-# ===========================================================================
 # 测试 8: 查询 API
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -1321,12 +1279,8 @@ class TestQueryAPI:
             eval_metrics={"f1": 0.92},
         )
         await manager.promote(r1.deployment_id)
-        observing = await manager.list_deployments(
-            status=DeploymentStatus.OBSERVING
-        )
-        promoted = await manager.list_deployments(
-            status=DeploymentStatus.PROMOTED
-        )
+        observing = await manager.list_deployments(status=DeploymentStatus.OBSERVING)
+        promoted = await manager.list_deployments(status=DeploymentStatus.PROMOTED)
         assert len(observing) == 1
         assert observing[0].deployment_id == r2.deployment_id
         assert len(promoted) == 1
@@ -1365,9 +1319,7 @@ class TestQueryAPI:
         }
 
 
-# ===========================================================================
 # 测试 9: 全局单例
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -1414,9 +1366,7 @@ class TestGlobalSingleton:
         assert m.is_degraded is True
 
 
-# ===========================================================================
 # 测试 10: Plugin 集成
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -1429,9 +1379,7 @@ class TestPluginIntegration:
         """mock Plugin 的 _resolve_snapshot_store / _resolve_model_registry_service."""
         from plugins.data_flywheel.main import Plugin
 
-        monkeypatch.setattr(
-            Plugin, "_resolve_snapshot_store", lambda self: snapshot_store
-        )
+        monkeypatch.setattr(Plugin, "_resolve_snapshot_store", lambda self: snapshot_store)
         monkeypatch.setattr(
             Plugin,
             "_resolve_model_registry_service",
@@ -1439,9 +1387,7 @@ class TestPluginIntegration:
         )
 
     @pytest.mark.asyncio
-    async def test_on_load_configures_hot_update_manager(
-        self, fresh_registry, fake_registry_service
-    ):
+    async def test_on_load_configures_hot_update_manager(self, fresh_registry, fake_registry_service):
         from plugins.data_flywheel.main import Plugin
 
         plugin = Plugin()
@@ -1462,16 +1408,12 @@ class TestPluginIntegration:
         await plugin.on_unload()
 
     @pytest.mark.asyncio
-    async def test_on_load_degraded_when_model_registry_unavailable(
-        self, fresh_registry, monkeypatch
-    ):
+    async def test_on_load_degraded_when_model_registry_unavailable(self, fresh_registry, monkeypatch):
         """_resolve_model_registry_service 返回 None → 降级模式."""
         from plugins.data_flywheel.main import Plugin
 
         # 覆盖 autouse fixture 的 mock
-        monkeypatch.setattr(
-            Plugin, "_resolve_model_registry_service", lambda self: None
-        )
+        monkeypatch.setattr(Plugin, "_resolve_model_registry_service", lambda self: None)
         plugin = Plugin()
         ctx = _make_plugin_context(store=InMemoryDatasetStore())
         await plugin.on_load(ctx)
@@ -1547,9 +1489,7 @@ class TestPluginIntegration:
             await plugin._handle_hot_update_request({"action": "list_deployments"})
 
 
-# ===========================================================================
 # 测试 11: _handle_hot_update_request 7 action 分发
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -1592,9 +1532,7 @@ class TestHotUpdateRequestDispatch:
     @pytest.mark.asyncio
     async def test_action_canary_deploy_missing_fields(self, loaded_plugin):
         with pytest.raises(ValueError, match="model_name"):
-            await loaded_plugin._handle_hot_update_request(
-                {"action": "canary_deploy", "new_model_uri": "model://v3"}
-            )
+            await loaded_plugin._handle_hot_update_request({"action": "canary_deploy", "new_model_uri": "model://v3"})
 
     @pytest.mark.asyncio
     async def test_action_observe_continue(self, loaded_plugin):
@@ -1642,9 +1580,7 @@ class TestHotUpdateRequestDispatch:
             }
         )
         dep_id = deploy_result["deployment"]["deployment_id"]
-        promote_result = await loaded_plugin._handle_hot_update_request(
-            {"action": "promote", "deployment_id": dep_id}
-        )
+        promote_result = await loaded_plugin._handle_hot_update_request({"action": "promote", "deployment_id": dep_id})
         assert promote_result["action"] == "promote"
         assert promote_result["deployment"]["status"] == "promoted"
 
@@ -1680,9 +1616,7 @@ class TestHotUpdateRequestDispatch:
                     "eval_metrics": {"f1": 0.92},
                 }
             )
-        result = await loaded_plugin._handle_hot_update_request(
-            {"action": "list_deployments"}
-        )
+        result = await loaded_plugin._handle_hot_update_request({"action": "list_deployments"})
         assert result["action"] == "list_deployments"
         assert result["count"] == 2
         assert len(result["deployments"]) == 2
@@ -1720,9 +1654,7 @@ class TestHotUpdateRequestDispatch:
     @pytest.mark.asyncio
     async def test_action_list_deployments_invalid_status(self, loaded_plugin):
         with pytest.raises(ValueError, match="filter_status 不合法"):
-            await loaded_plugin._handle_hot_update_request(
-                {"action": "list_deployments", "filter_status": "invalid"}
-            )
+            await loaded_plugin._handle_hot_update_request({"action": "list_deployments", "filter_status": "invalid"})
 
     @pytest.mark.asyncio
     async def test_action_get_deployment(self, loaded_plugin):
@@ -1736,18 +1668,14 @@ class TestHotUpdateRequestDispatch:
             }
         )
         dep_id = deploy_result["deployment"]["deployment_id"]
-        result = await loaded_plugin._handle_hot_update_request(
-            {"action": "get_deployment", "deployment_id": dep_id}
-        )
+        result = await loaded_plugin._handle_hot_update_request({"action": "get_deployment", "deployment_id": dep_id})
         assert result["action"] == "get_deployment"
         assert result["deployment"]["deployment_id"] == dep_id
 
     @pytest.mark.asyncio
     async def test_action_get_deployment_missing_id(self, loaded_plugin):
         with pytest.raises(ValueError, match="deployment_id"):
-            await loaded_plugin._handle_hot_update_request(
-                {"action": "get_deployment"}
-            )
+            await loaded_plugin._handle_hot_update_request({"action": "get_deployment"})
 
     @pytest.mark.asyncio
     async def test_action_select_model(self, loaded_plugin):
@@ -1761,18 +1689,14 @@ class TestHotUpdateRequestDispatch:
                 "canary_ratio": 0.0,  # 强制 100% 走 production
             }
         )
-        result = await loaded_plugin._handle_hot_update_request(
-            {"action": "select_model", "model_name": "ltc"}
-        )
+        result = await loaded_plugin._handle_hot_update_request({"action": "select_model", "model_name": "ltc"})
         assert result["action"] == "select_model"
         assert result["model_uri"] == "model://v2"
 
     @pytest.mark.asyncio
     async def test_action_select_model_missing_name(self, loaded_plugin):
         with pytest.raises(ValueError, match="model_name"):
-            await loaded_plugin._handle_hot_update_request(
-                {"action": "select_model"}
-            )
+            await loaded_plugin._handle_hot_update_request({"action": "select_model"})
 
     @pytest.mark.asyncio
     async def test_action_missing_action_field(self, loaded_plugin):
@@ -1782,14 +1706,10 @@ class TestHotUpdateRequestDispatch:
     @pytest.mark.asyncio
     async def test_action_unsupported(self, loaded_plugin):
         with pytest.raises(ValueError, match="不支持的 action"):
-            await loaded_plugin._handle_hot_update_request(
-                {"action": "unknown_action"}
-            )
+            await loaded_plugin._handle_hot_update_request({"action": "unknown_action"})
 
 
-# ===========================================================================
 # 测试 12: 完整生命周期端到端
-# ===========================================================================
 
 
 @pytest.mark.unit
@@ -1856,9 +1776,7 @@ class TestFullLifecycle:
         assert d.decision == "rollback"
 
         # 执行回滚
-        rolled_back = await manager.rollback(
-            record.deployment_id, reason=d.reason
-        )
+        rolled_back = await manager.rollback(record.deployment_id, reason=d.reason)
         assert rolled_back.status == DeploymentStatus.ROLLED_BACK
 
         # 流量分配：production 恢复为 baseline
@@ -1868,7 +1786,7 @@ class TestFullLifecycle:
     @pytest.mark.asyncio
     async def test_iterative_deployments_after_promote(self, manager):
         """多次迭代：v2→v3（promote）→ v4（promote）."""
-        # 第一次：v2 → v3
+        # 第一次：v2 v3
         r1 = await manager.canary_deploy(
             model_name="ltc",
             new_model_uri="model://v3",
@@ -1878,7 +1796,7 @@ class TestFullLifecycle:
         await manager.promote(r1.deployment_id)
         assert manager.get_production_model("ltc") == "model://v3"
 
-        # 第二次：v3 → v4
+        # 第二次：v3 v4
         r2 = await manager.canary_deploy(
             model_name="ltc",
             new_model_uri="model://v4",

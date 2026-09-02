@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class _DetectMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _is_in_cooldown: Callable[..., Any]
     rollback_rule: Callable[..., Any]
     _applicator: Any

@@ -23,9 +23,7 @@ from typing import Any
 import pytest
 
 
-# ---------------------------------------------------------------------------
 # G-code 语法校验工具
-# ---------------------------------------------------------------------------
 
 
 class GCodeValidator:
@@ -60,8 +58,7 @@ class GCodeValidator:
             return {"is_valid": False, "errors": ["空NC代码"], "warnings": [], "commands_count": 0}
 
         lines = [
-            line.strip() for line in gcode.strip().split("\n")
-            if line.strip() and not line.strip().startswith(";")
+            line.strip() for line in gcode.strip().split("\n") if line.strip() and not line.strip().startswith(";")
         ]
 
         # 检查通用G-code语法
@@ -102,25 +99,37 @@ class GCodeValidator:
             if s_match:
                 s_val = float(s_match.group(1))
                 if s_val < self.SAFE_RANGES["spindle_speed"][0]:
-                    violations.append({
-                        "line": i + 1, "type": "spindle_speed_low",
-                        "value": s_val, "message": f"主轴转速{s_val}过低",
-                    })
+                    violations.append(
+                        {
+                            "line": i + 1,
+                            "type": "spindle_speed_low",
+                            "value": s_val,
+                            "message": f"主轴转速{s_val}过低",
+                        }
+                    )
                 elif s_val > self.SAFE_RANGES["spindle_speed"][1]:
-                    violations.append({
-                        "line": i + 1, "type": "spindle_speed_high",
-                        "value": s_val, "message": f"主轴转速{s_val}超过安全上限8000",
-                    })
+                    violations.append(
+                        {
+                            "line": i + 1,
+                            "type": "spindle_speed_high",
+                            "value": s_val,
+                            "message": f"主轴转速{s_val}超过安全上限8000",
+                        }
+                    )
 
             # 检查F值（进给速度）
             f_match = re.search(r"\bF(\d+(?:\.\d+)?)\b", line)
             if f_match:
                 f_val = float(f_match.group(1))
                 if f_val > self.SAFE_RANGES["feed_rate"][1]:
-                    violations.append({
-                        "line": i + 1, "type": "feed_rate_high",
-                        "value": f_val, "message": f"进给速度{f_val}超过安全上限",
-                    })
+                    violations.append(
+                        {
+                            "line": i + 1,
+                            "type": "feed_rate_high",
+                            "value": f_val,
+                            "message": f"进给速度{f_val}超过安全上限",
+                        }
+                    )
 
         return {
             "all_safe": len(violations) == 0,
@@ -159,9 +168,7 @@ class GCodeValidator:
         }
 
 
-# ---------------------------------------------------------------------------
 # 场景1 端到端测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -172,11 +179,9 @@ class Test3ViewToNCConversion:
     def setup_method(self):
         self.gcode_validator = GCodeValidator()
 
-    # ---------- 认知层：用户意图解析 ----------
+    # 认知层：用户意图解析
 
-    def test_user_intent_extraction(
-        self, material_steel_45, it8_tolerance_data, production_batch_100
-    ):
+    def test_user_intent_extraction(self, material_steel_45, it8_tolerance_data, production_batch_100):
         """认知层验证：用户意图解析准确率 > 95%."""
         try:
             from app.ai.agents import UnderstandingAgent, AgentContext
@@ -193,8 +198,7 @@ class Test3ViewToNCConversion:
             assert result.extracted_params, "应提取到参数"
             params = result.extracted_params
             assert any(
-                keyword in json.dumps(params, ensure_ascii=False).lower()
-                for keyword in ["45", "钢", "steel"]
+                keyword in json.dumps(params, ensure_ascii=False).lower() for keyword in ["45", "钢", "steel"]
             ), f"应识别出材料类型，实际: {params}"
             assert result.stage_status == "completed", f"理解阶段应完成，实际: {result.stage_status}"
         except Exception as e:
@@ -202,9 +206,7 @@ class Test3ViewToNCConversion:
             params = context.extracted_params
             assert isinstance(params, dict), "降级后仍应返回字典"
 
-    def test_constraint_extraction_completeness(
-        self, it8_tolerance_data, machining_params_steel
-    ):
+    def test_constraint_extraction_completeness(self, it8_tolerance_data, machining_params_steel):
         """认知层验证：工艺约束提取完整性 100%."""
         constraints = {
             "tolerance_grade": "IT8",
@@ -222,7 +224,7 @@ class Test3ViewToNCConversion:
         # 验证IT8公差数据完整性
         assert len(it8_tolerance_data["nominal_ranges"]) >= 8, "IT8公差数据不完整"
 
-    # ---------- 感知层：CadQuery模型生成（I-JEPA 模块已于 v2.5 移除） ----------
+    # 感知层：CadQuery模型生成（I-JEPA 模块已于 v2.5 移除）
 
     def test_cadquery_3d_model_generation(self, temp_dir, standard_3view_images):
         """感知层验证：CadQuery 3D模型生成完整性."""
@@ -247,8 +249,9 @@ class Test3ViewToNCConversion:
         dims = params.get("dimensions", params)
 
         assert isinstance(dims, dict), "应返回几何参数字典"
-        assert "length" in dims or "width" in dims or "height" in dims, \
+        assert "length" in dims or "width" in dims or "height" in dims, (
             f"至少应包含基本尺寸参数，实际: {list(dims.keys())}"
+        )
 
         # 验证STL导出能力
         try:
@@ -298,12 +301,15 @@ class Test3ViewToNCConversion:
             error_pct = abs(actual_dims[axis] - target) / target * 100
             assert error_pct < 2.0, f"{axis}轴尺寸误差{error_pct:.1f}%超过2%阈值"
 
-    # ---------- 执行层：LNN切削力预测 ----------
+    # 执行层：LNN切削力预测
 
     def test_lnn_cutting_force_prediction(self, machining_params_steel, material_steel_45):
         """执行层验证：LNN切削力预测误差范围 < 5%."""
         try:
-            from research.models.parameter_models import CuttingParameters, ParameterSource  # 阶段2 解耦：models/ 已迁移到 research/
+            from research.models.parameter_models import (
+                CuttingParameters,
+                ParameterSource,
+            )  # 阶段2 解耦：models/ 已迁移到 research/
         except ImportError:
             pytest.skip("LNN模块未安装")
 
@@ -356,7 +362,7 @@ class Test3ViewToNCConversion:
         except ImportError:
             pytest.skip("ParameterAgentLNN模块未安装")
 
-    # ---------- 执行层：Rule Engine安全规则验证 ----------
+    # 执行层：Rule Engine安全规则验证
 
     def test_safety_rules_coverage(self, machining_params_steel):
         """执行层验证：Rule Engine安全规则执行覆盖率 100%."""
@@ -380,8 +386,7 @@ class Test3ViewToNCConversion:
 
             # 验证规则优先级覆盖
             priorities_found = {getattr(rule, "priority", None) for rule in rules}
-            assert len(priorities_found) >= 2, \
-                f"安全规则优先级覆盖不足: {priorities_found}"
+            assert len(priorities_found) >= 2, f"安全规则优先级覆盖不足: {priorities_found}"
 
         except ImportError:
             pytest.skip("安全规则引擎模块未安装")
@@ -421,7 +426,7 @@ class Test3ViewToNCConversion:
         except ImportError:
             pytest.skip("约束校验模块未安装")
 
-    # ---------- 执行层：NC代码生成 ----------
+    # 执行层：NC代码生成
 
     def test_nc_code_generation_flow(self, sample_process_card):
         """执行层验证：NC代码生成逻辑完整."""
@@ -475,7 +480,7 @@ class Test3ViewToNCConversion:
             result = validator.validate_syntax(gcode)
             assert result["is_valid"], f"{name} G-code语法错误: {result['errors']}"
 
-    # ---------- 认知层：方案验证 ----------
+    # 认知层：方案验证
 
     def test_verification_mechanism(self, sample_process_card):
         """认知层验证：方案验证机制有效性."""
@@ -521,22 +526,22 @@ class Test3ViewToNCConversion:
         except Exception:
             pass
 
-    # ---------- 端到端全流程 ----------
+    # 端到端全流程
 
     def test_end_to_end_3view_to_nc(self, sample_process_card, temp_dir):
         """场景1全流程端到端测试."""
         # 模拟完整流程
 
-        # Step 1: 输入验证
+        # 输入验证
         assert sample_process_card.material, "材料不为空"
         assert sample_process_card.operations, "工艺路线不为空"
 
-        # Step 2: 3D模型（模拟）
+        # 3D模型（模拟）
         stl_path = temp_dir / "model.stl"
         stl_path.write_bytes(b"MOCK_STL_DATA")
         assert stl_path.exists(), "STL模型文件应存在"
 
-        # Step 3: NC代码生成（模拟）
+        # NC代码生成（模拟）
         nc_code = """%
 O0001 (法兰盘加工)
 G21 G17 G40 G49 G80 G90 G94
@@ -555,12 +560,12 @@ M30
         nc_path = temp_dir / "output.nc"
         nc_path.write_text(nc_code, encoding="utf-8")
 
-        # Step 4: 语法验证
+        # 语法验证
         validator = GCodeValidator()
         validation_result = validator.full_validation(nc_code)
         assert validation_result["passed"], f"NC代码验证失败: {validation_result}"
 
-        # Step 5: 工艺卡片生成
+        # 工艺卡片生成
         process_card_json = {
             "material": sample_process_card.material,
             "part_name": sample_process_card.part_name,
@@ -572,10 +577,22 @@ M30
         card_path = temp_dir / "process_card.json"
         card_path.write_text(json.dumps(process_card_json, ensure_ascii=False, indent=2))
 
-        # Step 6: 风险评估
+        # 风险评估
         risks = [
-            {"id": "R01", "category": "安全", "description": "高速切削切屑飞溅", "severity": "中", "mitigation": "使用防护罩"},
-            {"id": "R02", "category": "质量", "description": "刀具磨损影响IT8精度", "severity": "中", "mitigation": "刀具寿命管理"},
+            {
+                "id": "R01",
+                "category": "安全",
+                "description": "高速切削切屑飞溅",
+                "severity": "中",
+                "mitigation": "使用防护罩",
+            },
+            {
+                "id": "R02",
+                "category": "质量",
+                "description": "刀具磨损影响IT8精度",
+                "severity": "中",
+                "mitigation": "刀具寿命管理",
+            },
         ]
         risk_path = temp_dir / "risk_assessment.json"
         risk_path.write_text(json.dumps(risks, ensure_ascii=False, indent=2))

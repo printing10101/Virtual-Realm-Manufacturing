@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class _TaskExecutionMixin:
-    # ---- 宿主契约：由主类 AsyncTaskManager / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 AsyncTaskManager / 兄弟 mixin 提供
     _tasks: dict[str, Any]
     _cancel_events: dict[str, asyncio.Event]
     _max_concurrent: int
@@ -199,7 +199,7 @@ class _TaskExecutionMixin:
                         continue
                     # 最后一次重试失败（含超时）：标记 FAILED 并清理，防止任务残留
                     # （测试 test_timeout_marks_failed / test_retryable_exhausts_retries 期望
-                    #   重试耗尽后任务从 _tasks 移除，get_task 返回 None）
+                    # 重试耗尽后任务从 _tasks 移除，get_task 返回 None）
                     safe = safe_error_message(e, context=f"task_system.run_task[{job_id}]")
                     async with self._get_task_lock():
                         if job_id in self._tasks:

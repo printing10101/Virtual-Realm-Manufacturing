@@ -27,9 +27,7 @@ from app.utils.utils import get_output_dir
 
 logger = logging.getLogger(__name__)
 
-# ============================================================
 # SQLite 连接配置（命名常量，便于统一调整与运维排查）
-# ============================================================
 # busy_timeout（毫秒）：当数据库被其他连接锁定时，当前连接等待解锁的最长时间。
 # 5 秒足够覆盖常规事务持锁时长；过短会导致 SQLITE_BUSY 错误，过长会让请求堆积。
 DEFAULT_BUSY_TIMEOUT_MS = 5000

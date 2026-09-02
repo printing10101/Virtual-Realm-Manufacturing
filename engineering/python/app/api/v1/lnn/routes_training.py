@@ -76,7 +76,7 @@ logger = logging.getLogger(__name__)
 _active_training_tasks: set[asyncio.Task] = set()
 _active_broadcast_tasks: set[asyncio.Task] = set()
 
-# === 训练 dry-run 参数 ===
+# 训练 dry-run 参数
 _DRY_RUN_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024  # 数据文件大小上限：100 MB
 _DRY_RUN_TRAIN_RATIO = 0.8  # 训练集占比（剩余作为验证集）
 _DRY_RUN_MEM_MULTIPLIER = 3  # 内存估算系数（数据体积倍数）
@@ -423,7 +423,7 @@ async def train_lnn(
         # 修复：保存任务引用防止 GC 提前回收，并添加异常处理
         # 原实现只通过 add_done_callback 记录异常，但未保留任务引用，
         # 局部变量 training_task / broadcast_task 在函数返回后被 GC，
-        # asyncio 事件循环仅持有弱引用 → 任务被静默取消且不抛异常，
+        # asyncio 事件循环仅持有弱引用 任务被静默取消且不抛异常，
         # 训练流程会被悄悄杀死。现使用模块级 set 持有强引用，与
         # routes_prediction.py 中的 _active_batch_tasks 修复方式保持一致。
         training_task = asyncio.create_task(

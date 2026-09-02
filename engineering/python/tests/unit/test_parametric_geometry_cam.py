@@ -29,9 +29,8 @@ from app.cam_validation.cam_disclaimer import (
 pytestmark = pytest.mark.unit
 
 
-# ---------------------------------------------------------------------------
 # ReviewedFeatureRef / ParametricGeometryTask
-# ---------------------------------------------------------------------------
+
 
 class TestReviewedFeatureRef:
     def test_effective_params_uses_source(self):
@@ -84,9 +83,8 @@ class TestParametricGeometryTask:
         assert task.cam_validation_required is True
 
 
-# ---------------------------------------------------------------------------
 # TaskStore CRUD
-# ---------------------------------------------------------------------------
+
 
 class TestTaskStore:
     def _make_task(self, task_id: str = "pg-1") -> ParametricGeometryTask:
@@ -172,9 +170,8 @@ class TestTaskStore:
         assert len(tid) > 0
 
 
-# ---------------------------------------------------------------------------
 # CamDisclaimer
-# ---------------------------------------------------------------------------
+
 
 class TestCamDisclaimer:
     def _build(self, **kwargs: Any) -> CamDisclaimer:

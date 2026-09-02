@@ -35,14 +35,10 @@ KND_PLUGIN_DIR = PLUGIN_ROOT / "knd_1000_2000_3000"
 @pytest.fixture(autouse=True)
 def _fixed_date(monkeypatch):
     """固定日期：与 golden 测试一致，消除 header 日期不确定性。"""
-    monkeypatch.setattr(
-        BasePostProcessor, "_date_string", staticmethod(lambda: FIXED_DATE)
-    )
+    monkeypatch.setattr(BasePostProcessor, "_date_string", staticmethod(lambda: FIXED_DATE))
 
 
-# ---------------------------------------------------------------------------
 # 声明加载与校验
-# ---------------------------------------------------------------------------
 
 
 class TestDeclarationLoading:
@@ -70,8 +66,7 @@ class TestDeclarationLoading:
     def test_invalid_template_method_rejected(self, tmp_path):
         bad = tmp_path / "dialect.yaml"
         bad.write_text(
-            "id: x\nname: X\nversion: 1.0.0\nextends: fanuc_0i\n"
-            "templates:\n  format_evil: templates/evil.j2\n",
+            "id: x\nname: X\nversion: 1.0.0\nextends: fanuc_0i\ntemplates:\n  format_evil: templates/evil.j2\n",
             encoding="utf-8",
         )
         with pytest.raises(DialectDeclarationError):
@@ -80,8 +75,7 @@ class TestDeclarationLoading:
     def test_missing_template_file_rejected(self, tmp_path):
         bad = tmp_path / "dialect.yaml"
         bad.write_text(
-            "id: x\nname: X\nversion: 1.0.0\nextends: fanuc_0i\n"
-            "templates:\n  format_header: templates/absent.j2\n",
+            "id: x\nname: X\nversion: 1.0.0\nextends: fanuc_0i\ntemplates:\n  format_header: templates/absent.j2\n",
             encoding="utf-8",
         )
         with pytest.raises(DialectDeclarationError):
@@ -103,9 +97,7 @@ class TestDeclarationLoading:
             DialectDeclaration.from_yaml(bad)
 
 
-# ---------------------------------------------------------------------------
 # 编译
-# ---------------------------------------------------------------------------
 
 
 class TestCompilation:
@@ -114,7 +106,7 @@ class TestCompilation:
         compiler = DialectCompiler()
         cls = compiler.compile(decl)
         assert issubclass(cls, BasePostProcessor)
-        # extends fanuc_0i → 编译类继承 FanucPostProcessor（含全部 Fanuc 方法）
+        # extends fanuc_0i 编译类继承 FanucPostProcessor（含全部 Fanuc 方法）
         from app.postprocessor.fanuc import FanucPostProcessor
 
         assert issubclass(cls, FanucPostProcessor)
@@ -122,7 +114,10 @@ class TestCompilation:
 
     def test_compile_without_extends_raises(self):
         decl = DialectDeclaration(
-            id="x", name="X", version="1.0.0", extends=None,
+            id="x",
+            name="X",
+            version="1.0.0",
+            extends=None,
             templates={"format_header": KND_PLUGIN_DIR / "templates" / "header.j2"},
         )
         with pytest.raises(DialectCompileError):
@@ -132,7 +127,10 @@ class TestCompilation:
         """hooks 方法覆盖基类实现（代码钩子表达模板难表达的逻辑）。"""
 
         decl = DialectDeclaration(
-            id="hooky", name="Hooky", version="1.0.0", extends="fanuc_0i",
+            id="hooky",
+            name="Hooky",
+            version="1.0.0",
+            extends="fanuc_0i",
             hooks="tests.utils.test_dialect_hooks:CustomCycleHooks",
         )
         cls = DialectCompiler().compile(decl)
@@ -150,7 +148,10 @@ class TestCompilation:
 
         tpl = KND_PLUGIN_DIR / "templates" / "cycle_drill.j2"
         decl = DialectDeclaration(
-            id="hooky2", name="Hooky2", version="1.0.0", extends="fanuc_0i",
+            id="hooky2",
+            name="Hooky2",
+            version="1.0.0",
+            extends="fanuc_0i",
             hooks="tests.utils.test_dialect_hooks:CustomCycleHooks",
             templates={"format_cycle_drill": tpl},
         )
@@ -163,7 +164,10 @@ class TestCompilation:
         """hooks 可提供基类 MRO 之外的新方法。"""
 
         decl = DialectDeclaration(
-            id="hooky3", name="Hooky3", version="1.0.0", extends="fanuc_0i",
+            id="hooky3",
+            name="Hooky3",
+            version="1.0.0",
+            extends="fanuc_0i",
             hooks="tests.utils.test_dialect_hooks:CustomCycleHooks",
         )
         cls = DialectCompiler().compile(decl)
@@ -173,7 +177,10 @@ class TestCompilation:
 
     def test_hooks_bad_format_raises(self):
         decl = DialectDeclaration(
-            id="x", name="X", version="1.0.0", extends="fanuc_0i",
+            id="x",
+            name="X",
+            version="1.0.0",
+            extends="fanuc_0i",
             hooks="no-colon-here",
         )
         with pytest.raises(DialectCompileError):
@@ -181,7 +188,10 @@ class TestCompilation:
 
     def test_hooks_module_not_found_raises(self):
         decl = DialectDeclaration(
-            id="x", name="X", version="1.0.0", extends="fanuc_0i",
+            id="x",
+            name="X",
+            version="1.0.0",
+            extends="fanuc_0i",
             hooks="nonexistent.module:Hooks",
         )
         with pytest.raises(DialectCompileError):
@@ -189,7 +199,10 @@ class TestCompilation:
 
     def test_hooks_no_format_methods_raises(self):
         decl = DialectDeclaration(
-            id="x", name="X", version="1.0.0", extends="fanuc_0i",
+            id="x",
+            name="X",
+            version="1.0.0",
+            extends="fanuc_0i",
             hooks="tests.utils.test_dialect_hooks:ProbeHooks",  # ProbeHooks 只有 format_probe（非 format_* 前缀白名单）
         )
         # ProbeHooks 定义了 format_probe（以 format_ 开头），应能加载
@@ -203,7 +216,10 @@ class TestCompilation:
         tpl = tmp_path / "bad.j2"
         tpl.write_text("NOPE\n", encoding="utf-8")
         decl = DialectDeclaration(
-            id="x", name="X", version="1.0.0", extends="fanuc_0i",
+            id="x",
+            name="X",
+            version="1.0.0",
+            extends="fanuc_0i",
             templates={"format_nonexistent": tpl},
         )
         with pytest.raises(DialectCompileError):
@@ -219,9 +235,7 @@ class TestCompilation:
         assert "G21 G17 G40 G49 G80 G90 G94" in header
 
 
-# ---------------------------------------------------------------------------
 # 注册表
-# ---------------------------------------------------------------------------
 
 
 class TestRegistry:
@@ -265,11 +279,9 @@ class TestRegistry:
         assert count >= 1
 
 
-# ---------------------------------------------------------------------------
 # 黄金一致性（P1 验收核心）
-# ---------------------------------------------------------------------------
 
-# 声明镜像 → 内置类对照表（P2 迁移逐个追加）
+# 声明镜像 内置类对照表（P2 迁移逐个追加）
 MIRROR_BUILTIN_CLASSES = {
     "knd_1000_2000_3000": KNDPostProcessor,
 }

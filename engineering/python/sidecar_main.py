@@ -122,6 +122,7 @@ def main() -> int:
     # 但必须打印警告，避免误将 sidecar 模式部署到多用户/生产环境。
     # 生产部署应通过 start_server.py 入口，那里会 fail-fast 拒绝缺失密钥。
     import secrets as _secrets
+
     if not os.environ.get("LNN_JWT_SECRET"):
         os.environ["LNN_JWT_SECRET"] = _secrets.token_urlsafe(32)
         print("[sidecar] WARNING: LNN_JWT_SECRET 未配置，已生成临时密钥（重启后失效）。")
@@ -137,9 +138,9 @@ def main() -> int:
 
     # 注入 nlopt/casadi stub 模块（必须在导入 app.main 之前）
     # 原因：cadquery 2.7.0 将 nlopt/casadi 声明为硬依赖，
-    #   - cadquery/occ_impl/sketch_solver.py 顶部 `import nlopt`
-    #   - cadquery/occ_impl/solver.py 顶部 `import casadi as ca`
-    # cadquery/__init__.py → from .sketch import Sketch → from .occ_impl.sketch_solver import ...
+    # - cadquery/occ_impl/sketch_solver.py 顶部 `import nlopt`
+    # - cadquery/occ_impl/solver.py 顶部 `import casadi as ca`
+    # cadquery/__init__.py from .sketch import Sketch from .occ_impl.sketch_solver import ...
     # 形成 import cadquery 即触发 nlopt 导入的硬链。
     # 桌面 sidecar 不使用 sketch solver 求解功能，PyInstaller excludes 排除 nlopt/casadi
     # （DLL 依赖不完整），这里注入 stub 让 cadquery 能正常导入。

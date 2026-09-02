@@ -62,9 +62,7 @@ from app.services._card_helpers import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 自定义异常层级（与 ProjectSyncService 对齐）
-# ---------------------------------------------------------------------------
 
 
 class ResourceCardError(RuntimeError):
@@ -91,9 +89,7 @@ class LineageSummaryError(ResourceCardError):
     """lineage 摘要构建失败."""
 
 
-# ---------------------------------------------------------------------------
 # 单例
-# ---------------------------------------------------------------------------
 
 
 def get_resource_card_service() -> "ResourceCardService":
@@ -106,9 +102,7 @@ def reset_resource_card_service() -> None:
     ResourceCardService.reset_instance()
 
 
-# ---------------------------------------------------------------------------
 # 服务实现
-# ---------------------------------------------------------------------------
 
 
 class ResourceCardService(BaseSingletonService):
@@ -818,7 +812,7 @@ class ResourceCardService(BaseSingletonService):
         downstream_count = len(downstream_nodes)
         total_nodes = upstream_count + downstream_count + 1  # +1 for target
 
-        # 提取关键路径（target → 根节点的最短路径）
+        # 提取关键路径（target 根节点的最短路径）
         key_path = _extract_key_path(target_uri, upstream_full)
 
         return LineageSummary(
@@ -832,9 +826,7 @@ class ResourceCardService(BaseSingletonService):
         )
 
 
-# ---------------------------------------------------------------------------
 # 辅助函数
-# ---------------------------------------------------------------------------
 
 
 __all__ = [

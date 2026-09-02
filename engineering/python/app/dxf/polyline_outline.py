@@ -90,7 +90,7 @@ class PolylineOutlineProcessor:
             outer.is_hole = False
             outlines.append(outer)
             for c in infos[1:]:
-                # 简单判定：c 的某个顶点在外轮廓内 → 视为孔
+                # 简单判定：c 的某个顶点在外轮廓内 视为孔
                 if self._point_in_polygon(c.vertices[0], outer.vertices):
                     c.is_hole = True
                     outlines.append(c)

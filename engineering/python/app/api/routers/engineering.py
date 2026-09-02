@@ -46,19 +46,19 @@ def register(app: FastAPI) -> None:
     app.include_router(chatter_api.router)
     app.include_router(cutting_force_api.router)
 
-    # === 项目 / STEP / 规则 ===
+    # 项目 / STEP / 规则
     app.include_router(project_routes.router)
     app.include_router(step_import_api.router)
     app.include_router(rules_router)
 
-    # === DXF 流水线 ===
+    # DXF 流水线
     app.include_router(dxf_pipeline_routes.router)
 
-    # === CAM APIs ===
+    # CAM APIs
     app.include_router(collision_check.router)
     app.include_router(tools.router)
 
-    # === NL-to-CAD 自然语言建模 ===
+    # NL-to-CAD 自然语言建模
     app.include_router(nl2cad_router)
 
     # === 后处理器方言管理（P3）===

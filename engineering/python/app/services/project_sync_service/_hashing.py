@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class _HashingMixin:
-    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类提供（mypy 需要显式声明）
     _get_session: Callable[..., Any]
     """内容哈希 Mixin：资源 sha256 计算.
 
@@ -68,24 +68,24 @@ class _HashingMixin:
 
         try:
             if resource_type == RESOURCE_TYPES.DATASET:
-                # dataset://<dataset_id>/<version> → 查 DatasetVersion.content_hash
+                # dataset://<dataset_id>/<version> 查 DatasetVersion.content_hash
                 return await self._lookup_dataset_hash(path)
             if resource_type == RESOURCE_TYPES.MODEL:
-                # model://<model_name>/<version> → 模型文件 sha256
+                # model://<model_name>/<version> 模型文件 sha256
                 # 当前无 model_artifacts ORM，返回空字符串占位
                 # （ADR-012 将补全 model_artifacts 表后启用文件路径查找）
                 return ""
             if resource_type == RESOURCE_TYPES.WORKFLOW:
-                # workflow://<run_id> → WorkflowRun.spec JSONB sha256
+                # workflow://<run_id> WorkflowRun.spec JSONB sha256
                 return await self._lookup_workflow_hash(path)
             if resource_type == RESOURCE_TYPES.CONFIG:
-                # config://<spec_name> → YAML 文件 sha256（ConfigStore）
+                # config://<spec_name> YAML 文件 sha256（ConfigStore）
                 return await self._lookup_config_hash(path)
             if resource_type == RESOURCE_TYPES.SNAPSHOT:
-                # snapshot://<snapshot_id> → ExperimentSnapshot.git_sha
+                # snapshot://<snapshot_id> ExperimentSnapshot.git_sha
                 return await self._lookup_snapshot_hash(path)
             if resource_type == RESOURCE_TYPES.TEMPLATE:
-                # template://<template_id>/<version> → manifest_snapshot sha256
+                # template://<template_id>/<version> manifest_snapshot sha256
                 return await self._lookup_template_hash(path)
         except Exception as e:
             logger.warning(

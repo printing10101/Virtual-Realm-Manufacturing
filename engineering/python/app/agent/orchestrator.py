@@ -285,9 +285,7 @@ class AgentOrchestrator:
         ) * 1000
         return step_result
 
-    # -----------------------------------------------------------------------
     # Default step handlers
-    # -----------------------------------------------------------------------
 
     async def _step_dxf_parse(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
         """Parse DXF file and extract features."""
@@ -533,9 +531,7 @@ class AgentOrchestrator:
         # Fallback to context if no successful steps
         return context.get("input", {})
 
-    # -----------------------------------------------------------------------
     # Trace and history
-    # -----------------------------------------------------------------------
 
     def _write_trace(self, result: PipelineResult) -> None:
         """Write pipeline execution trace to log file."""

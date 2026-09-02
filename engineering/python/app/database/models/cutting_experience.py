@@ -178,9 +178,7 @@ class CuttingExperienceRecord(Base):  # type: ignore[misc, valid-type]
         ),
     )
 
-    # ------------------------------------------------------------------
-    # 契约 ↔ ORM 转换（单一事实源在 app/contracts/cutting_experience.py）
-    # ------------------------------------------------------------------
+    # 契约 ORM 转换（单一事实源在 app/contracts/cutting_experience.py）
 
     @classmethod
     def from_contract(cls, record: Any) -> "CuttingExperienceRecord":

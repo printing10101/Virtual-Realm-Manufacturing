@@ -48,7 +48,7 @@ from app.simulation.toolpath_parser import ToolpathParser
 
 logger = logging.getLogger(__name__)
 
-# V3.0 拆分：Pydantic 模型 → schemas.py，辅助函数 → _helpers.py
+# V3.0 拆分：Pydantic 模型 schemas.py，辅助函数 _helpers.py
 from .schemas import (
     SimulationRequest,
     ConflictCheckRequest,
@@ -619,9 +619,7 @@ async def export_simulation_animation(
         ) from e
 
 
-# =============================================================================
 # Auto-Diff 几何比对（VERICUT 式残料 / 过切检测）
-# =============================================================================
 
 # 比对结果缓存（task_id -> DiffResult），与 _in_memory_store 同生命周期
 _diff_result_store: dict[str, DiffResult] = {}
@@ -737,9 +735,7 @@ async def get_auto_diff_result(
     return success(data=result.to_dict(), message="OK")
 
 
-# ---------------------------------------------------------------------------
 # FEM 求解（简化解析模型，教学演示级）
-# ---------------------------------------------------------------------------
 
 
 @router.post("/fem/solve")
@@ -817,9 +813,7 @@ async def fem_solve(
         return error(code=ErrorCode.INTERNAL_ERROR, message=safe["message"])
 
 
-# =============================================================================
 # 仿真工厂闭环（Phase 3b 升级：① SUPCON Factory Agent 思路 API 化）
-# =============================================================================
 
 
 @router.post("/factory/closed-loop")

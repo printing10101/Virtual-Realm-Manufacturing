@@ -57,12 +57,10 @@ def _local_attr_name(name: str) -> str:
     return name.split("}")[-1]
 
 
-# ---------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------------------
 
 
-# Table schema for TDengine.  Kept here (rather than in the TDengine
+# Table schema for TDengine. Kept here (rather than in the TDengine
 # client) because the column set is a property of the *MTConnect*
 # contract, not of the storage backend.
 DEFAULT_TABLE_DDL: tuple[str, ...] = (
@@ -101,20 +99,18 @@ class AdapterConfig:
 
     def __post_init__(self) -> None:
         # Normalise the agent URL so the rest of the code can rely on
-        # ``urljoin`` semantics.  Trailing slashes are removed to
+        # ``urljoin`` semantics. Trailing slashes are removed to
         # avoid double-slash URLs after path joining.
         self.agent_url = self.agent_url.rstrip("/")
         if not self.agent_url.lower().startswith(("http://", "https://")):
             raise ValueError(f"agent_url must be an http(s) URL, got: {self.agent_url!r}")
 
 
-# ---------------------------------------------------------------------------
 # Adapter
-# ---------------------------------------------------------------------------
 
 
 # Callback type used by the adapter to publish "live" samples to the
-# CLI or any other observer.  Receives a fully populated ``Sample``.
+# CLI or any other observer. Receives a fully populated ``Sample``.
 SampleCallback = Callable[[Sample], None]
 
 
@@ -131,9 +127,7 @@ class MTConnectAdapter:
     Or, in a long-running service, drain the batch buffer on a timer.
     """
 
-    # ------------------------------------------------------------------
     # Construction
-    # ------------------------------------------------------------------
 
     def __init__(
         self,
@@ -170,9 +164,7 @@ class MTConnectAdapter:
         """Context manager exit."""
         self.close()
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
     def probe(self) -> dict[str, str]:
         """Verify the agent responds to ``/probe``.
@@ -197,14 +189,14 @@ class MTConnectAdapter:
         # The MTConnect namespace is declared on the root element, which
         # means ElementTree exposes all attributes (including ``sender``
         # / ``instanceId``) with the Clark notation prefix
-        # ``{urn:mtconnect.org:MTConnectDevices:1.5}attr``.  We build a
+        # ``{urn:mtconnect.org:MTConnectDevices:1.5}attr``. We build a
         # lookup that transparently handles both namespaced and
         # namespace-free payloads so the parser works for v1.5 as well
         # as for any future spec revision that may drop the namespace.
         #
         # ``sender`` / ``instanceId`` / ``mtconnectVersion`` live on the
         # ``<Header>`` child element (per the MTConnect spec), *not* on
-        # the document root.  We therefore merge the root attributes
+        # the document root. We therefore merge the root attributes
         # with those of the first ``<Header>`` we find in the tree so
         # the lookup below works for both the strict v1.5 layout and
         # for any conformant agent that places the identity header on
@@ -300,7 +292,7 @@ class MTConnectAdapter:
             self._maybe_flush()
 
             # 3) Sleep until the next tick, but remain responsive to
-            #    stop requests.
+            # stop requests.
             self._sleep_interval()
 
         # Always flush at the end so the last partial batch is not lost.
@@ -339,9 +331,7 @@ class MTConnectAdapter:
             logger.info("Flushed batch of %d samples to TDengine", written)
         return written
 
-    # ------------------------------------------------------------------
     # Public, read-only state
-    # ------------------------------------------------------------------
 
     @property
     def ingested_count(self) -> int:
@@ -355,9 +345,7 @@ class MTConnectAdapter:
     def buffer_size(self) -> int:
         return len(self._buffer)
 
-    # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
 
     def _build_default_session(self) -> Session:
         session = requests.Session()
@@ -407,7 +395,7 @@ class MTConnectAdapter:
                 backoff = min(backoff * 2, self.config.max_backoff)
             except ET.ParseError as exc:
                 # Malformed XML almost certainly won't fix itself with
-                # another immediate attempt.  Log and bail.
+                # another immediate attempt. Log and bail.
                 self._error_count += 1
                 logger.error("MTConnect returned malformed XML: %s", exc)
                 last_error = exc
@@ -507,9 +495,7 @@ class MTConnectAdapter:
         return int(result)
 
 
-# ---------------------------------------------------------------------------
 # Convenience: CLI / one-shot helper
-# ---------------------------------------------------------------------------
 
 
 def build_table_ddl() -> tuple[str, ...]:

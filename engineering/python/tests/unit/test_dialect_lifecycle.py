@@ -18,7 +18,7 @@ from app.postprocessor.dialect._lifecycle import (
 
 class TestTransitions:
     def test_happy_path(self) -> None:
-        # DISCOVERED → COMPILED → REGISTERED
+        # DISCOVERED COMPILED REGISTERED
         assert can_transition(Stage.DISCOVERED, Stage.COMPILED) is True
         assert can_transition(Stage.COMPILED, Stage.REGISTERED) is True
 

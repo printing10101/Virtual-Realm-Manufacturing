@@ -55,9 +55,9 @@ class LNNModelRegistry(BaseModelRegistry):
             name="wear_prediction",
             # 学术诚信说明 [S6]：model_type="LTC" 指向 LTCModel 类
             # （MODEL_CLASS_MAP["LTC"] = LTCModel）。LTCModel 同时提供：
-            #   - NumPy 前向推理（forward / predict）：功能性实现，可独立运行
-            #   - PyTorch 训练（_train_step / _train_step_torch）：真实梯度更新
-            #   - NumPy 训练（_train_step_numpy）：非功能性占位（详见 S2 修复）
+            # - NumPy 前向推理（forward / predict）：功能性实现，可独立运行
+            # - PyTorch 训练（_train_step / _train_step_torch）：真实梯度更新
+            # - NumPy 训练（_train_step_numpy）：非功能性占位（详见 S2 修复）
             # 当 models/wear_prediction.pt 不存在时，模型以 NumPy 权重初始化，
             # 仍可执行前向推理（用于演示/接口验证），但无法执行真实训练。
             # 论文报告训练结果时必须确认 .pt 文件已通过 PyTorch 后端生成。

@@ -40,9 +40,7 @@ class DNCManager:
         self._meta: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
 
-    # ------------------------------------------------------------------
     # 对外兼容视图：connections 字典
-    # ------------------------------------------------------------------
     @property
     def connections(self) -> dict[str, dict[str, Any]]:
         """只读兼容视图，返回 machine_id -> 连接元信息字典。
@@ -67,9 +65,7 @@ class DNCManager:
                 }
         return view
 
-    # ------------------------------------------------------------------
     # 连接管理
-    # ------------------------------------------------------------------
     async def add_machine(self, machine_id: str, protocol: ProtocolType, endpoint: str, **kwargs) -> bool:
         """添加机床连接（委托给 UnifiedDNCAdapter.connect_single）。"""
         try:
@@ -136,9 +132,7 @@ class DNCManager:
             logger.error("断开机床 %s 连接失败: %s", machine_id, e)
             raise
 
-    # ------------------------------------------------------------------
     # 状态查询
-    # ------------------------------------------------------------------
     async def get_machine_status(self, machine_id: str) -> dict[str, Any]:
         """获取机床状态（返回 UnifiedMachineStatus.to_dict 或 error 字典）。"""
         with self._lock:

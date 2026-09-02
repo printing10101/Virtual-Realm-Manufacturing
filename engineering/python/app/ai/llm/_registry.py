@@ -41,9 +41,7 @@ class ProviderRegistry:
         self._instances: dict[str, LLMProvider] = {}  # provider_id -> 实例缓存
         self._initialized = False
 
-    # ------------------------------------------------------------------
     # 数据库初始化
-    # ------------------------------------------------------------------
 
     def _get_conn(self) -> sqlite3.Connection:
         """获取 SQLite 连接（每次新建，使用完关闭）。"""
@@ -137,9 +135,7 @@ class ProviderRegistry:
             ),
         )
 
-    # ------------------------------------------------------------------
     # 行 -> ProviderConfig 转换
-    # ------------------------------------------------------------------
 
     def _row_to_config(self, row: sqlite3.Row) -> ProviderConfig:
         """数据库行转换为 ProviderConfig 对象。"""
@@ -178,9 +174,7 @@ class ProviderRegistry:
             extra=extra,
         )
 
-    # ------------------------------------------------------------------
     # 查询接口
-    # ------------------------------------------------------------------
 
     def list_providers(self, include_disabled: bool = True) -> list[ProviderConfig]:
         """列出所有 Provider 配置。"""
@@ -220,9 +214,7 @@ class ProviderRegistry:
         finally:
             conn.close()
 
-    # ------------------------------------------------------------------
     # 增删改
-    # ------------------------------------------------------------------
 
     def upsert_provider(self, config: ProviderConfig) -> None:
         """新增或更新 Provider 配置。
@@ -326,9 +318,7 @@ class ProviderRegistry:
             finally:
                 conn.close()
 
-    # ------------------------------------------------------------------
     # 实例获取
-    # ------------------------------------------------------------------
 
     def get_provider_instance(self, provider_id: str) -> LLMProvider | None:
         """获取 Provider 实例（带缓存）。
@@ -372,9 +362,7 @@ class ProviderRegistry:
         with self._lock:
             self._instances.clear()
 
-    # ------------------------------------------------------------------
     # 批量导入（用于自动探测结果）
-    # ------------------------------------------------------------------
 
     def import_from_detection(self, configs: list[ProviderConfig]) -> int:
         """从自动探测结果导入 Provider 配置。
@@ -437,9 +425,7 @@ class ProviderRegistry:
             logger.info("从探测结果导入 %d 个 Provider", imported)
         return imported
 
-    # ------------------------------------------------------------------
     # 调试/状态
-    # ------------------------------------------------------------------
 
     def get_status_summary(self) -> dict[str, Any]:
         """返回注册表状态摘要。"""
@@ -474,9 +460,7 @@ class ProviderRegistry:
             conn.close()
 
 
-# ---------------------------------------------------------------------------
 # 全局单例
-# ---------------------------------------------------------------------------
 
 _registry: ProviderRegistry | None = None
 _registry_lock = threading.Lock()

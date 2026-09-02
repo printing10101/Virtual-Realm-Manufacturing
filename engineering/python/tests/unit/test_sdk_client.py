@@ -30,6 +30,7 @@ CI 标记：@pytest.mark.unit（与 ci.yml `pytest -m unit` 对齐）。
     - 断言 httpx.HTTPError → LomoConnectionError
     - 断言流式响应按 SSE / JSONL 协议正确解析
 """
+
 from __future__ import annotations
 
 import json as _json
@@ -76,9 +77,7 @@ from lomo.snapshot import Snapshot  # noqa: E402
 from lomo.workflow import Workflow  # noqa: E402
 
 
-# ---------------------------------------------------------------------------
 # 工具函数：构造伪造的 httpx 响应
-# ---------------------------------------------------------------------------
 
 
 def _make_response(
@@ -171,9 +170,7 @@ def _make_async_stream_response(
     return resp
 
 
-# ---------------------------------------------------------------------------
 # 1. LomoClient 配置管理
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -225,37 +222,25 @@ class TestLomoClientConfig:
         """相对路径自动追加 /api/v1 前缀."""
         with patch("lomo.client.httpx.Client"):
             client = LomoClient(base_url="http://host")
-            assert (
-                client._build_url("/datasets")
-                == "http://host/api/v1/datasets"
-            )
+            assert client._build_url("/datasets") == "http://host/api/v1/datasets"
 
     def test_build_url_without_leading_slash(self):
         """无前导斜杠的路径会被补上."""
         with patch("lomo.client.httpx.Client"):
             client = LomoClient(base_url="http://host")
-            assert (
-                client._build_url("datasets")
-                == "http://host/api/v1/datasets"
-            )
+            assert client._build_url("datasets") == "http://host/api/v1/datasets"
 
     def test_build_url_absolute_http(self):
         """http:// 开头视为绝对 URL，直接返回."""
         with patch("lomo.client.httpx.Client"):
             client = LomoClient(base_url="http://host")
-            assert (
-                client._build_url("http://other-host/x")
-                == "http://other-host/x"
-            )
+            assert client._build_url("http://other-host/x") == "http://other-host/x"
 
     def test_build_url_absolute_https(self):
         """https:// 开头视为绝对 URL."""
         with patch("lomo.client.httpx.Client"):
             client = LomoClient(base_url="http://host")
-            assert (
-                client._build_url("https://secure.example.com/y")
-                == "https://secure.example.com/y"
-            )
+            assert client._build_url("https://secure.example.com/y") == "https://secure.example.com/y"
 
     def test_headers_without_token(self):
         """无 token 时 headers 不含 Authorization."""
@@ -299,9 +284,7 @@ class TestLomoClientConfig:
             mock_instance.close.assert_called_once()
 
 
-# ---------------------------------------------------------------------------
 # 2. LomoClient.request() 成功路径
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -429,9 +412,7 @@ class TestLomoClientRequestSuccess:
             assert args[0] == "PUT"
 
 
-# ---------------------------------------------------------------------------
 # 3. LomoClient.request() 错误路径
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -549,17 +530,13 @@ class TestLomoClientRequestErrors:
         """响应非 JSON 时抛 LomoConnectionError."""
         with patch("lomo.client.httpx.Client") as mock_cls:
             mock_client = mock_cls.return_value
-            mock_client.request.return_value = _make_response(
-                text="<html>502 Bad Gateway</html>"
-            )
+            mock_client.request.return_value = _make_response(text="<html>502 Bad Gateway</html>")
             client = LomoClient(base_url="http://h")
             with pytest.raises(LomoConnectionError):
                 client.get("/x")
 
 
-# ---------------------------------------------------------------------------
 # 4. httpx 网络异常转换
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -620,9 +597,7 @@ class TestLomoClientNetworkErrors:
             assert issubclass(exc_cls, LomoError)
 
 
-# ---------------------------------------------------------------------------
 # 5. Workflow 资源类
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -665,9 +640,7 @@ class TestWorkflowResource:
                 "request_id": "r",
             }
         )
-        run_id = client.workflows.run(
-            {"name": "wf"}, inputs={"k": "v"}, owner_id="alice"
-        )
+        run_id = client.workflows.run({"name": "wf"}, inputs={"k": "v"}, owner_id="alice")
         assert run_id == "wf-abc"
         args, kwargs = mock_http.request.call_args
         assert args[0] == "POST"
@@ -849,9 +822,7 @@ class TestWorkflowResource:
         assert kwargs_send["stream"] is True
 
 
-# ---------------------------------------------------------------------------
 # 6. Dataset 资源类
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -979,9 +950,7 @@ class TestDatasetResource:
             "",
             '{"id": 3, "force": 14.5}',
         ]
-        mock_resp = _make_stream_response(
-            lines=jsonl_lines, content_type="application/x-ndjson"
-        )
+        mock_resp = _make_stream_response(lines=jsonl_lines, content_type="application/x-ndjson")
         mock_http.build_request.return_value = MagicMock()
         mock_http.send.return_value = mock_resp
         rows = list(client.datasets.read("ds-1", version="1.0.0", batch_size=500))
@@ -1000,9 +969,7 @@ class TestDatasetResource:
             '{"id": 1}',
             '{"error": "decode_failed", "message": "bad row"}',
         ]
-        mock_resp = _make_stream_response(
-            lines=jsonl_lines, content_type="application/x-ndjson"
-        )
+        mock_resp = _make_stream_response(lines=jsonl_lines, content_type="application/x-ndjson")
         mock_http.build_request.return_value = MagicMock()
         mock_http.send.return_value = mock_resp
         with pytest.raises(LomoAPIError) as exc_info:
@@ -1043,9 +1010,7 @@ class TestDatasetResource:
                 "request_id": "r",
             }
         )
-        client.datasets.get_lineage(
-            "dataset://ds-1/1.0.0", direction="upstream", depth=5
-        )
+        client.datasets.get_lineage("dataset://ds-1/1.0.0", direction="upstream", depth=5)
         args, kwargs = mock_http.request.call_args
         assert args[0] == "GET"
         # target_uri 作为 path 拼接
@@ -1059,9 +1024,7 @@ class TestDatasetResource:
             client.datasets.get_lineage("x", direction="invalid")
 
 
-# ---------------------------------------------------------------------------
 # 7. Snapshot 资源类
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1079,9 +1042,7 @@ class TestSnapshotResource:
         mock_http.request.return_value = _make_response(
             json_body={"code": 0, "message": "OK", "data": {"items": []}, "request_id": "r"}
         )
-        client.snapshots.list(
-            created_by="alice", git_sha="abc", model_uri="model://m", detail=True
-        )
+        client.snapshots.list(created_by="alice", git_sha="abc", model_uri="model://m", detail=True)
         args, kwargs = mock_http.request.call_args
         assert args[0] == "GET"
         assert args[1] == "http://h/api/v1/snapshots"
@@ -1179,9 +1140,7 @@ class TestSnapshotResource:
         assert client.snapshots.reproduce("snap-1") == ""
 
 
-# ---------------------------------------------------------------------------
 # 8. 流式响应封装
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1191,12 +1150,14 @@ class TestStreamingJSONL:
     def test_iter_json_yields_dicts(self):
         """iter_json() 跳过空行，逐行解析 JSON."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            '{"a": 1}',
-            "",
-            '  {"b": 2}  ',
-            '{"c": 3}',
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                '{"a": 1}',
+                "",
+                '  {"b": 2}  ',
+                '{"c": 3}',
+            ]
+        )
         stream = StreamingJSONL(resp)
         rows = list(stream.iter_json())
         assert rows == [{"a": 1}, {"b": 2}, {"c": 3}]
@@ -1212,9 +1173,11 @@ class TestStreamingJSONL:
     def test_iter_json_raises_on_error_line(self):
         """含 error 字段的行抛 LomoAPIError."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            '{"error": "x", "message": "bad"}',
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                '{"error": "x", "message": "bad"}',
+            ]
+        )
         stream = StreamingJSONL(resp)
         with pytest.raises(LomoAPIError) as exc_info:
             list(stream.iter_json())
@@ -1249,14 +1212,16 @@ class TestSSEEventStream:
     def test_basic_event_parsing(self):
         """标准 SSE 事件（event: + data: + 空行）被正确解析."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            "event: node_started",
-            'data: {"node_id": "n1"}',
-            "",
-            "event: workflow_completed",
-            'data: {"result": "ok"}',
-            "",
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                "event: node_started",
+                'data: {"node_id": "n1"}',
+                "",
+                "event: workflow_completed",
+                'data: {"result": "ok"}',
+                "",
+            ]
+        )
         stream = SSEEventStream(resp)
         events = list(stream.iter_events())
         assert len(events) == 2
@@ -1268,12 +1233,14 @@ class TestSSEEventStream:
     def test_multi_line_data(self):
         """多行 data: 被合并为换行分隔的字符串再解析."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            "event: progress",
-            'data: {"p": 0.5',
-            'data: , "n": 1}',
-            "",
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                "event: progress",
+                'data: {"p": 0.5',
+                'data: , "n": 1}',
+                "",
+            ]
+        )
         stream = SSEEventStream(resp)
         events = list(stream.iter_events())
         assert len(events) == 1
@@ -1283,13 +1250,15 @@ class TestSSEEventStream:
     def test_comment_lines_ignored(self):
         """以 : 开头的注释行被忽略."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            ": this is a comment",
-            ": another",
-            "event: ping",
-            "data: {}",
-            "",
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                ": this is a comment",
+                ": another",
+                "event: ping",
+                "data: {}",
+                "",
+            ]
+        )
         stream = SSEEventStream(resp)
         events = list(stream.iter_events())
         assert len(events) == 1
@@ -1298,10 +1267,12 @@ class TestSSEEventStream:
     def test_default_event_type_is_message(self):
         """无 event: 行时 event 默认为 message."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            'data: {"x": 1}',
-            "",
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                'data: {"x": 1}',
+                "",
+            ]
+        )
         stream = SSEEventStream(resp)
         events = list(stream.iter_events())
         assert events[0]["event"] == "message"
@@ -1310,11 +1281,13 @@ class TestSSEEventStream:
     def test_invalid_json_data_returns_raw(self):
         """data 非 JSON 时返回 {"raw": <原始字符串>}."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            "event: log",
-            "data: not json",
-            "",
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                "event: log",
+                "data: not json",
+                "",
+            ]
+        )
         stream = SSEEventStream(resp)
         events = list(stream.iter_events())
         assert events[0]["event"] == "log"
@@ -1323,10 +1296,12 @@ class TestSSEEventStream:
     def test_event_without_data_yields_empty_dict(self):
         """无 data 行的事件返回空 dict."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            "event: heartbeat",
-            "",
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                "event: heartbeat",
+                "",
+            ]
+        )
         stream = SSEEventStream(resp)
         events = list(stream.iter_events())
         assert events[0]["event"] == "heartbeat"
@@ -1335,11 +1310,13 @@ class TestSSEEventStream:
     def test_final_event_without_trailing_blank(self):
         """流结束时若仍有缓冲，刷出最后一个事件."""
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            "event: done",
-            'data: {"ok": true}',
-            # 注意：没有结尾空行
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                "event: done",
+                'data: {"ok": true}',
+                # 注意：没有结尾空行
+            ]
+        )
         stream = SSEEventStream(resp)
         events = list(stream.iter_events())
         assert len(events) == 1
@@ -1348,19 +1325,19 @@ class TestSSEEventStream:
 
     def test_iter_dunder_iter_calls_iter_events(self):
         resp = MagicMock(spec=httpx.Response)
-        resp.iter_lines.return_value = iter([
-            "event: x",
-            "data: {}",
-            "",
-        ])
+        resp.iter_lines.return_value = iter(
+            [
+                "event: x",
+                "data: {}",
+                "",
+            ]
+        )
         stream = SSEEventStream(resp)
         events = list(stream)
         assert len(events) == 1
 
 
-# ---------------------------------------------------------------------------
 # 9. 异常映射函数
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1401,11 +1378,13 @@ class TestRaiseForEnvelope:
 
     def test_request_id_extracted(self):
         with pytest.raises(LomoAPIError) as exc_info:
-            _raise_for_envelope({
-                "code": 1001,
-                "message": "x",
-                "request_id": "rid-123",
-            })
+            _raise_for_envelope(
+                {
+                    "code": 1001,
+                    "message": "x",
+                    "request_id": "rid-123",
+                }
+            )
         assert exc_info.value.request_id == "rid-123"
 
     def test_numeric_code_mapping_table_complete(self):
@@ -1418,9 +1397,7 @@ class TestRaiseForEnvelope:
         assert 7001 not in _NUMERIC_CODE_TO_EXC
 
 
-# ---------------------------------------------------------------------------
 # 10. 懒加载资源访问器
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1458,9 +1435,7 @@ class TestLazyResourceAccessors:
             assert client.datasets is not client.snapshots
 
 
-# ---------------------------------------------------------------------------
 # 11. SDK 顶层导出
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1472,14 +1447,17 @@ class TestSDKTopLevelExports:
 
     def test_version_string(self):
         import lomo
+
         assert lomo.__version__ == "1.0.0"
 
     def test_sync_client_exported(self):
         from lomo import LomoClient as _LC
+
         assert _LC is LomoClient
 
     def test_async_client_exported(self):
         from lomo import AsyncLomoClient as _ALC
+
         assert _ALC is AsyncLomoClient
 
     def test_streaming_classes_exported(self):
@@ -1494,6 +1472,7 @@ class TestSDKTopLevelExports:
 
     def test_all_exceptions_exported(self):
         import lomo
+
         for name in (
             "LomoError",
             "LomoAPIError",
@@ -1510,44 +1489,49 @@ class TestSDKTopLevelExports:
     def test_lazy_workflow_export(self):
         """from lomo import Workflow 通过 __getattr__ 懒导出."""
         from lomo import Workflow as _W
+
         assert _W is Workflow
 
     def test_lazy_dataset_export(self):
         from lomo import Dataset as _D
+
         assert _D is Dataset
 
     def test_lazy_snapshot_export(self):
         from lomo import Snapshot as _S
+
         assert _S is Snapshot
 
     def test_lazy_async_workflow_export(self):
         from lomo import AsyncWorkflow as _AW
+
         assert _AW is AsyncWorkflow
 
     def test_lazy_async_dataset_export(self):
         from lomo import AsyncDataset as _AD
+
         assert _AD is AsyncDataset
 
     def test_lazy_async_snapshot_export(self):
         from lomo import AsyncSnapshot as _AS
+
         assert _AS is AsyncSnapshot
 
     def test_unknown_attribute_raises(self):
         import lomo
+
         with pytest.raises(AttributeError):
             lomo.NonExistent  # noqa: B018
 
     def test_dir_returns_lazy_names(self):
         import lomo
+
         names = dir(lomo)
-        for n in ("Workflow", "Dataset", "Snapshot",
-                  "AsyncWorkflow", "AsyncDataset", "AsyncSnapshot"):
+        for n in ("Workflow", "Dataset", "Snapshot", "AsyncWorkflow", "AsyncDataset", "AsyncSnapshot"):
             assert n in names
 
 
-# ---------------------------------------------------------------------------
 # 12. 异步客户端 —— AsyncLomoClient 配置与生命周期
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1612,9 +1596,7 @@ class TestAsyncLomoClientConfig:
             assert client.snapshots is sn
 
 
-# ---------------------------------------------------------------------------
 # 13. AsyncLomoClient.request() 成功与错误路径
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -1625,9 +1607,11 @@ class TestAsyncLomoClientRequest:
     async def test_get_returns_data(self):
         with patch("lomo._async.httpx.AsyncClient") as mock_cls:
             mock_http = mock_cls.return_value
-            mock_http.request = AsyncMock(return_value=_make_async_response(
-                json_body={"code": 0, "message": "OK", "data": {"x": 1}, "request_id": "r"}
-            ))
+            mock_http.request = AsyncMock(
+                return_value=_make_async_response(
+                    json_body={"code": 0, "message": "OK", "data": {"x": 1}, "request_id": "r"}
+                )
+            )
             client = AsyncLomoClient(base_url="http://h")
             data = await client.get("/x")
             assert data == {"x": 1}
@@ -1636,9 +1620,11 @@ class TestAsyncLomoClientRequest:
     async def test_post_returns_data(self):
         with patch("lomo._async.httpx.AsyncClient") as mock_cls:
             mock_http = mock_cls.return_value
-            mock_http.request = AsyncMock(return_value=_make_async_response(
-                json_body={"code": 0, "message": "OK", "data": {"y": 2}, "request_id": "r"}
-            ))
+            mock_http.request = AsyncMock(
+                return_value=_make_async_response(
+                    json_body={"code": 0, "message": "OK", "data": {"y": 2}, "request_id": "r"}
+                )
+            )
             client = AsyncLomoClient(base_url="http://h")
             data = await client.post("/x", json={"k": "v"})
             assert data == {"y": 2}
@@ -1650,9 +1636,9 @@ class TestAsyncLomoClientRequest:
     async def test_error_code_raises_exception(self):
         with patch("lomo._async.httpx.AsyncClient") as mock_cls:
             mock_http = mock_cls.return_value
-            mock_http.request = AsyncMock(return_value=_make_async_response(
-                json_body={"code": 1001, "message": "not found", "request_id": "r"}
-            ))
+            mock_http.request = AsyncMock(
+                return_value=_make_async_response(json_body={"code": 1001, "message": "not found", "request_id": "r"})
+            )
             client = AsyncLomoClient(base_url="http://h")
             with pytest.raises(LomoNotFoundError):
                 await client.get("/x")
@@ -1688,9 +1674,11 @@ class TestAsyncLomoClientRequest:
     async def test_put_method(self):
         with patch("lomo._async.httpx.AsyncClient") as mock_cls:
             mock_http = mock_cls.return_value
-            mock_http.request = AsyncMock(return_value=_make_async_response(
-                json_body={"code": 0, "message": "OK", "data": {"ok": True}, "request_id": "r"}
-            ))
+            mock_http.request = AsyncMock(
+                return_value=_make_async_response(
+                    json_body={"code": 0, "message": "OK", "data": {"ok": True}, "request_id": "r"}
+                )
+            )
             client = AsyncLomoClient(base_url="http://h")
             data = await client.put("/x", json={"k": "v"})
             assert data == {"ok": True}
@@ -1701,9 +1689,11 @@ class TestAsyncLomoClientRequest:
     async def test_delete_method(self):
         with patch("lomo._async.httpx.AsyncClient") as mock_cls:
             mock_http = mock_cls.return_value
-            mock_http.request = AsyncMock(return_value=_make_async_response(
-                json_body={"code": 0, "message": "OK", "data": {"deleted": True}, "request_id": "r"}
-            ))
+            mock_http.request = AsyncMock(
+                return_value=_make_async_response(
+                    json_body={"code": 0, "message": "OK", "data": {"deleted": True}, "request_id": "r"}
+                )
+            )
             client = AsyncLomoClient(base_url="http://h")
             data = await client.delete("/x")
             assert data == {"deleted": True}
@@ -1711,9 +1701,7 @@ class TestAsyncLomoClientRequest:
             assert args[0] == "DELETE"
 
 
-# ---------------------------------------------------------------------------
 # 14. 异步资源类 —— AsyncWorkflow / AsyncDataset / AsyncSnapshot
-# ---------------------------------------------------------------------------
 
 
 def _make_async_client_with_mock() -> tuple[AsyncLomoClient, MagicMock]:
@@ -1731,9 +1719,11 @@ class TestAsyncWorkflowResource:
     @pytest.mark.asyncio
     async def test_validate(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"valid": True}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"valid": True}, "request_id": "r"}
+            )
+        )
         await client.workflows.validate({"name": "wf"})
         args, kwargs = mock_http.request.call_args
         assert args[0] == "POST"
@@ -1743,9 +1733,11 @@ class TestAsyncWorkflowResource:
     @pytest.mark.asyncio
     async def test_run_returns_run_id(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"workflow_run_id": "wf-1"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"workflow_run_id": "wf-1"}, "request_id": "r"}
+            )
+        )
         run_id = await client.workflows.run({"name": "wf"}, owner_id="alice")
         assert run_id == "wf-1"
         args, kwargs = mock_http.request.call_args
@@ -1755,9 +1747,11 @@ class TestAsyncWorkflowResource:
     @pytest.mark.asyncio
     async def test_resume(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"workflow_run_id": "wf-1"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"workflow_run_id": "wf-1"}, "request_id": "r"}
+            )
+        )
         await client.workflows.resume("wf-1", {"name": "wf"})
         args, _ = mock_http.request.call_args
         assert args[0] == "POST"
@@ -1766,9 +1760,11 @@ class TestAsyncWorkflowResource:
     @pytest.mark.asyncio
     async def test_get_status(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"status": "running"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"status": "running"}, "request_id": "r"}
+            )
+        )
         await client.workflows.get_status("wf-1")
         args, _ = mock_http.request.call_args
         assert args[0] == "GET"
@@ -1777,18 +1773,22 @@ class TestAsyncWorkflowResource:
     @pytest.mark.asyncio
     async def test_cancel_returns_bool(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"cancelled": True}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"cancelled": True}, "request_id": "r"}
+            )
+        )
         result = await client.workflows.cancel("wf-1")
         assert result is True
 
     @pytest.mark.asyncio
     async def test_delete(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"deleted": True}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"deleted": True}, "request_id": "r"}
+            )
+        )
         await client.workflows.delete("wf-1")
         args, _ = mock_http.request.call_args
         assert args[0] == "DELETE"
@@ -1796,9 +1796,11 @@ class TestAsyncWorkflowResource:
     @pytest.mark.asyncio
     async def test_list(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"workflows": []}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"workflows": []}, "request_id": "r"}
+            )
+        )
         await client.workflows.list(limit=10, offset=5, status="running")
         args, kwargs = mock_http.request.call_args
         assert args[0] == "GET"
@@ -1836,9 +1838,11 @@ class TestAsyncDatasetResource:
     @pytest.mark.asyncio
     async def test_list(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"items": []}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"items": []}, "request_id": "r"}
+            )
+        )
         await client.datasets.list(owner_id="alice", status="draft")
         args, kwargs = mock_http.request.call_args
         assert args[0] == "GET"
@@ -1849,12 +1853,12 @@ class TestAsyncDatasetResource:
     @pytest.mark.asyncio
     async def test_create(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"dataset_id": "ds-1"}, "request_id": "r"}
-        ))
-        await client.datasets.create(
-            name="ds", schema={"fields": {}}, owner_id="alice"
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"dataset_id": "ds-1"}, "request_id": "r"}
+            )
         )
+        await client.datasets.create(name="ds", schema={"fields": {}}, owner_id="alice")
         args, kwargs = mock_http.request.call_args
         assert args[0] == "POST"
         assert args[1] == "http://h/api/v1/datasets"
@@ -1862,9 +1866,11 @@ class TestAsyncDatasetResource:
     @pytest.mark.asyncio
     async def test_get(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"dataset_id": "ds-1"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"dataset_id": "ds-1"}, "request_id": "r"}
+            )
+        )
         await client.datasets.get("ds-1")
         args, _ = mock_http.request.call_args
         assert args[0] == "GET"
@@ -1873,9 +1879,11 @@ class TestAsyncDatasetResource:
     @pytest.mark.asyncio
     async def test_list_versions(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"versions": []}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"versions": []}, "request_id": "r"}
+            )
+        )
         await client.datasets.list_versions("ds-1")
         args, _ = mock_http.request.call_args
         assert args[1] == "http://h/api/v1/datasets/ds-1/versions"
@@ -1883,9 +1891,11 @@ class TestAsyncDatasetResource:
     @pytest.mark.asyncio
     async def test_commit_version(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"version": "1.0.0"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"version": "1.0.0"}, "request_id": "r"}
+            )
+        )
         await client.datasets.commit_version("ds-1", records=[{"id": 1}], version="1.0.0")
         args, kwargs = mock_http.request.call_args
         assert args[1] == "http://h/api/v1/datasets/ds-1/commit"
@@ -1895,9 +1905,11 @@ class TestAsyncDatasetResource:
     @pytest.mark.asyncio
     async def test_deprecate(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"status": "deprecated"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"status": "deprecated"}, "request_id": "r"}
+            )
+        )
         await client.datasets.deprecate("ds-1", "1.0.0")
         args, kwargs = mock_http.request.call_args
         assert args[1] == "http://h/api/v1/datasets/ds-1/deprecate"
@@ -1912,9 +1924,7 @@ class TestAsyncDatasetResource:
             '{"id": 2}',
             "",
         ]
-        mock_resp = _make_async_stream_response(
-            lines=jsonl_lines, content_type="application/x-ndjson"
-        )
+        mock_resp = _make_async_stream_response(lines=jsonl_lines, content_type="application/x-ndjson")
         mock_http.build_request.return_value = MagicMock()
         mock_http.send = AsyncMock(return_value=mock_resp)
 
@@ -1926,9 +1936,11 @@ class TestAsyncDatasetResource:
     @pytest.mark.asyncio
     async def test_record_lineage(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"record_id": "lin-1"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"record_id": "lin-1"}, "request_id": "r"}
+            )
+        )
         await client.datasets.record_lineage({"target": "dataset://x/1.0.0"})
         args, kwargs = mock_http.request.call_args
         assert args[1] == "http://h/api/v1/datasets/lineage"
@@ -1937,9 +1949,11 @@ class TestAsyncDatasetResource:
     @pytest.mark.asyncio
     async def test_get_lineage(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"records": []}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"records": []}, "request_id": "r"}
+            )
+        )
         await client.datasets.get_lineage("dataset://x/1.0.0", direction="downstream", depth=3)
         args, kwargs = mock_http.request.call_args
         assert args[1] == "http://h/api/v1/datasets/lineage/dataset://x/1.0.0"
@@ -1959,9 +1973,11 @@ class TestAsyncSnapshotResource:
     @pytest.mark.asyncio
     async def test_list(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"items": []}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"items": []}, "request_id": "r"}
+            )
+        )
         await client.snapshots.list(created_by="alice", detail=True)
         args, kwargs = mock_http.request.call_args
         assert args[1] == "http://h/api/v1/snapshots"
@@ -1970,9 +1986,11 @@ class TestAsyncSnapshotResource:
     @pytest.mark.asyncio
     async def test_create(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"snapshot_id": "snap-1"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"snapshot_id": "snap-1"}, "request_id": "r"}
+            )
+        )
         await client.snapshots.create(
             model_uri="model://m",
             created_by="alice",
@@ -1989,9 +2007,11 @@ class TestAsyncSnapshotResource:
     @pytest.mark.asyncio
     async def test_get(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"snapshot_id": "snap-1"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"snapshot_id": "snap-1"}, "request_id": "r"}
+            )
+        )
         await client.snapshots.get("snap-1")
         args, _ = mock_http.request.call_args
         assert args[0] == "GET"
@@ -2000,9 +2020,11 @@ class TestAsyncSnapshotResource:
     @pytest.mark.asyncio
     async def test_reproduce(self):
         client, mock_http = _make_async_client_with_mock()
-        mock_http.request = AsyncMock(return_value=_make_async_response(
-            json_body={"code": 0, "message": "OK", "data": {"workflow_run_id": "wf-2"}, "request_id": "r"}
-        ))
+        mock_http.request = AsyncMock(
+            return_value=_make_async_response(
+                json_body={"code": 0, "message": "OK", "data": {"workflow_run_id": "wf-2"}, "request_id": "r"}
+            )
+        )
         run_id = await client.snapshots.reproduce("snap-1")
         assert run_id == "wf-2"
         args, _ = mock_http.request.call_args
@@ -2010,9 +2032,7 @@ class TestAsyncSnapshotResource:
         assert args[1] == "http://h/api/v1/snapshots/snap-1/reproduce"
 
 
-# ---------------------------------------------------------------------------
 # 15. 异步流式响应封装
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio

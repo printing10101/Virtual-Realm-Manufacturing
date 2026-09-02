@@ -24,9 +24,7 @@ from app.knowledge_graph.persistence import GraphPersistence
 from app.knowledge_graph.repository import KnowledgeGraphRepository
 
 
-# ======================================================================
 # 1. GraphStore 内存图模型
-# ======================================================================
 
 
 class TestGraphStoreNodes:
@@ -483,9 +481,7 @@ class TestGraphStoreEdges:
         assert g.edge_count() == 0
 
 
-# ======================================================================
 # 2. SQLAlchemy ORM 模型表结构
-# ======================================================================
 
 
 class TestORMModelSchema:
@@ -603,9 +599,7 @@ class TestORMModelSchema:
         assert "0.9" in r
 
 
-# ======================================================================
 # 3. Repository CRUD 集成（基于内存 SQLite）
-# ======================================================================
 
 
 @pytest.fixture
@@ -858,9 +852,7 @@ class TestRepositoryCRUD:
         assert repo.count_edges("APPLIED_TO") == 0
 
 
-# ======================================================================
 # 4. GraphPersistence 双向同步
-# ======================================================================
 
 
 @pytest.fixture
@@ -1013,7 +1005,7 @@ class TestGraphPersistence:
         """任务 M1.2 验收脚本的等价测试。"""
         persistence = GraphPersistence(session_factory=persistence_repo._session_factory)
 
-        # 步骤 1：创建并落库
+        # 创建并落库
         g = GraphStore()
         g.add_node("material", "material-45steel", {"name": "45 steel"})
         g.add_node("tool", "tool-endmill-10", {"name": "Endmill D10"})
@@ -1025,7 +1017,7 @@ class TestGraphPersistence:
         )
         persistence.flush_to_repository(g)
 
-        # 步骤 2：重启 GraphStore 实例
+        # 重启 GraphStore 实例
         g2 = GraphStore()
         persistence.load_from_repository(g2)
 
@@ -1064,9 +1056,7 @@ class TestGraphPersistence:
         assert g_target.node_count() == 6
 
 
-# ======================================================================
 # 5. 集成测试：API 验收场景
-# ======================================================================
 
 
 class TestAcceptanceScenarios:

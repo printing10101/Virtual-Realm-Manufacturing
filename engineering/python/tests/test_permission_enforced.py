@@ -73,13 +73,10 @@ class TestPermissionEnforcedWarning:
         monkeypatch.setenv("ENVIRONMENT", "development")
         with caplog.at_level(logging.WARNING, logger="app.config"):
             SecurityConfig()
-        warning_messages = [
-            rec.message for rec in caplog.records if rec.levelno >= logging.WARNING
-        ]
-        assert any(
-            "权限检查功能已被禁用" in msg and "安全风险" in msg
-            for msg in warning_messages
-        ), f"未找到预期 WARNING 日志，实际记录: {warning_messages}"
+        warning_messages = [rec.message for rec in caplog.records if rec.levelno >= logging.WARNING]
+        assert any("权限检查功能已被禁用" in msg and "安全风险" in msg for msg in warning_messages), (
+            f"未找到预期 WARNING 日志，实际记录: {warning_messages}"
+        )
 
     def test_no_warning_in_testing_env(self, monkeypatch, caplog):
         """测试环境下不应输出 WARNING 日志，避免日志噪音。"""
@@ -87,9 +84,7 @@ class TestPermissionEnforcedWarning:
         monkeypatch.setenv("ENVIRONMENT", "testing")
         with caplog.at_level(logging.WARNING, logger="app.config"):
             SecurityConfig()
-        warning_messages = [
-            rec.message for rec in caplog.records if rec.levelno >= logging.WARNING
-        ]
+        warning_messages = [rec.message for rec in caplog.records if rec.levelno >= logging.WARNING]
         assert not any("权限检查功能已被禁用" in msg for msg in warning_messages)
 
     def test_no_warning_when_enabled(self, monkeypatch, caplog):
@@ -98,15 +93,11 @@ class TestPermissionEnforcedWarning:
         monkeypatch.setenv("ENVIRONMENT", "development")
         with caplog.at_level(logging.WARNING, logger="app.config"):
             SecurityConfig()
-        warning_messages = [
-            rec.message for rec in caplog.records if rec.levelno >= logging.WARNING
-        ]
+        warning_messages = [rec.message for rec in caplog.records if rec.levelno >= logging.WARNING]
         assert not any("权限检查功能已被禁用" in msg for msg in warning_messages)
 
 
-# ===========================================================================
 # 辅助解析函数测试
-# ===========================================================================
 
 
 class TestHelperEnvParsers:
@@ -182,9 +173,7 @@ class TestHelperEnvParsers:
         assert result.endswith("rel/path") or "rel/path" in result
 
 
-# ===========================================================================
 # SecurityConfig 其它字段测试
-# ===========================================================================
 
 
 class TestSecurityConfigOtherFields:
@@ -263,9 +252,7 @@ class TestSecurityConfigOtherFields:
         assert cfg.agent_auth_enabled is True
 
 
-# ===========================================================================
 # TokenConfig 测试
-# ===========================================================================
 
 
 class TestTokenConfig:
@@ -352,9 +339,7 @@ class TestTokenConfig:
         assert any("Failed to read token file" in r.message for r in warnings)
 
 
-# ===========================================================================
 # EnvironmentConfig 测试
-# ===========================================================================
 
 
 class TestEnvironmentConfig:
@@ -388,9 +373,7 @@ class TestEnvironmentConfig:
         assert cfg.is_development is False
 
 
-# ===========================================================================
 # 其它 config dataclass 简单冒烟测试，确保构造路径被执行
-# ===========================================================================
 
 
 class TestOtherConfigsSmoke:

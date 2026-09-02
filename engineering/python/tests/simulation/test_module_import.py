@@ -36,9 +36,7 @@ def _child_env() -> dict[str, str]:
     return env
 
 
-# =============================================================================
 # 直接导入测试
-# =============================================================================
 
 
 class TestModuleImportDirect:
@@ -106,9 +104,7 @@ class TestModuleImportDirect:
             assert rust_engine.RUST_IMPORT_ERROR is not None
 
 
-# =============================================================================
 # 命令行导入验证
-# =============================================================================
 
 
 class TestCommandLineImport:
@@ -119,9 +115,7 @@ class TestCommandLineImport:
         """获取当前 Python 解释器路径。"""
         return sys.executable
 
-    def test_compute_voxel_cutter_subprocess(
-        self, python_executable: str
-    ) -> None:
+    def test_compute_voxel_cutter_subprocess(self, python_executable: str) -> None:
         """子进程中 ``from compute import voxel_cutter`` 必须成功（兼容性回退）。
 
         当 Rust 扩展未构建时，``compute`` 包不可用，此时子进程可能因
@@ -144,14 +138,10 @@ class TestCommandLineImport:
             timeout=30,
             env=_child_env(),
         )
-        assert result.returncode == 0, (
-            f"子进程返回非零: {result.stderr}"
-        )
+        assert result.returncode == 0, f"子进程返回非零: {result.stderr}"
         assert "Rust module loaded" in result.stdout
 
-    def test_rust_engine_subprocess_loads_cleanly(
-        self, python_executable: str
-    ) -> None:
+    def test_rust_engine_subprocess_loads_cleanly(self, python_executable: str) -> None:
         """子进程中 rust_engine 导入必须无任何错误。"""
         code = textwrap.dedent(
             """
@@ -174,19 +164,13 @@ class TestCommandLineImport:
             timeout=30,
             env=_child_env(),
         )
-        assert result.returncode == 0, (
-            f"子进程返回非零: {result.stderr}"
-        )
+        assert result.returncode == 0, f"子进程返回非零: {result.stderr}"
         assert "rust_engine loaded" in result.stdout
         assert "fallback:" in result.stdout
         # stderr 必须为空（或仅警告）
-        assert "Traceback" not in result.stderr, (
-            f"子进程抛出异常: {result.stderr}"
-        )
+        assert "Traceback" not in result.stderr, f"子进程抛出异常: {result.stderr}"
 
-    def test_voxel_cutter_instantiation_subprocess(
-        self, python_executable: str
-    ) -> None:
+    def test_voxel_cutter_instantiation_subprocess(self, python_executable: str) -> None:
         """子进程中 VoxelCutter 必须能成功实例化。"""
         code = textwrap.dedent(
             """
@@ -203,14 +187,10 @@ class TestCommandLineImport:
             timeout=30,
             env=_child_env(),
         )
-        assert result.returncode == 0, (
-            f"子进程返回非零: {result.stderr}"
-        )
+        assert result.returncode == 0, f"子进程返回非零: {result.stderr}"
         assert "cutter instantiated: 1.0" in result.stdout
 
-    def test_no_unexpected_exceptions_in_import_path(
-        self, python_executable: str
-    ) -> None:
+    def test_no_unexpected_exceptions_in_import_path(self, python_executable: str) -> None:
         """导入路径上不应出现任何非预期异常。"""
         code = textwrap.dedent(
             """
@@ -241,15 +221,11 @@ class TestCommandLineImport:
             timeout=30,
             env=_child_env(),
         )
-        assert result.returncode == 0, (
-            f"导入路径异常: stdout={result.stdout!r} stderr={result.stderr!r}"
-        )
+        assert result.returncode == 0, f"导入路径异常: stdout={result.stdout!r} stderr={result.stderr!r}"
         assert "import_path_clean" in result.stdout
 
 
-# =============================================================================
 # 模块 API 完整性
-# =============================================================================
 
 
 class TestModuleApiCompleteness:

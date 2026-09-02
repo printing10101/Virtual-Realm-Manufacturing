@@ -67,9 +67,7 @@ class MTConnectExperienceBridge:
         self._ingested = 0
         self._discarded = 0
 
-    # ------------------------------------------------------------------
     # 状态
-    # ------------------------------------------------------------------
 
     @property
     def ingested_count(self) -> int:
@@ -86,9 +84,7 @@ class MTConnectExperienceBridge:
             "discarded": self._discarded,
         }
 
-    # ------------------------------------------------------------------
     # 转换
-    # ------------------------------------------------------------------
 
     def sample_to_experience(self, sample: Sample) -> CuttingExperience | None:
         """将单个 MTConnect Sample 转换为 CuttingExperience。
@@ -107,7 +103,7 @@ class MTConnectExperienceBridge:
 
         # 参数（MTConnect 无切深，置默认 0 表示未知，由 Pydantic gt 校验排除）
         # 注意：CuttingParameters 要求 depth>0 / feed>0，MTConnect 样本不含
-        # 切深 → 若样本无 feedrate 则无法构造合法参数。此处仅在 feedrate
+        # 切深 若样本无 feedrate 则无法构造合法参数。此处仅在 feedrate
         # 可用时构造（feed_mm_per_rev = feedrate ÷ spindle_rpm），否则丢弃。
         feed_mm_per_rev = (sample.feedrate or 0.0) / spindle_rpm
         if feed_mm_per_rev <= 0:
@@ -147,9 +143,7 @@ class MTConnectExperienceBridge:
             anomalies=anomalies,
         )
 
-    # ------------------------------------------------------------------
     # 落库
-    # ------------------------------------------------------------------
 
     async def ingest_sample(self, sample: Sample) -> bool:
         """转换并落库单条样本。

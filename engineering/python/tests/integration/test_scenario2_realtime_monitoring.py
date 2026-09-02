@@ -23,9 +23,7 @@ from typing import Any
 import pytest
 
 
-# ---------------------------------------------------------------------------
 # 实时监控模拟器
-# ---------------------------------------------------------------------------
 
 
 class RealtimeMonitorSimulator:
@@ -139,9 +137,7 @@ class RealtimeMonitorSimulator:
         return suggestions
 
 
-# ---------------------------------------------------------------------------
 # 场景2 端到端测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -152,12 +148,11 @@ class TestRealtimeMonitoring:
     def setup_method(self):
         self.monitor = RealtimeMonitorSimulator(sample_rate_hz=1000)
 
-    # ---------- 实时数据采集验证 ----------
+    # 实时数据采集验证
 
     def test_sensor_data_stream_integrity(self, normal_sensor_stream):
         """感知层验证：传感器数据流完整性（采样率≥1kHz）."""
-        assert len(normal_sensor_stream) == 10000, \
-            f"数据点数量不足: {len(normal_sensor_stream)}"
+        assert len(normal_sensor_stream) == 10000, f"数据点数量不足: {len(normal_sensor_stream)}"
 
         # 验证采样率
         time_span = normal_sensor_stream[-1].timestamp - normal_sensor_stream[0].timestamp
@@ -167,9 +162,14 @@ class TestRealtimeMonitoring:
         # 验证数据字段完整性
         sample = normal_sensor_stream[0]
         required_fields = [
-            "vibration_x", "vibration_y", "vibration_z",
-            "temperature", "acoustic_emission",
-            "spindle_speed", "feed_rate", "cutting_force",
+            "vibration_x",
+            "vibration_y",
+            "vibration_z",
+            "temperature",
+            "acoustic_emission",
+            "spindle_speed",
+            "feed_rate",
+            "cutting_force",
         ]
         for field in required_fields:
             assert hasattr(sample, field), f"缺少传感器数据字段: {field}"
@@ -185,7 +185,7 @@ class TestRealtimeMonitoring:
         update_freq = dashboard_updates / time_span
         assert update_freq >= 5, f"仪表盘更新频率{update_freq:.1f}Hz < 10Hz(允许±50%容差)"
 
-    # ---------- 正常状态监控 ----------
+    # 正常状态监控
 
     def test_normal_state_monitoring(self, normal_sensor_stream):
         """执行层验证：正常状态下系统稳定运行无误报."""
@@ -206,8 +206,7 @@ class TestRealtimeMonitoring:
                 alert_count += 1
 
         false_positive_rate = alert_count / len(normal_sensor_stream) * 100
-        assert false_positive_rate < 2.0, \
-            f"正常状态下误报率{false_positive_rate:.1f}%超过允许上限"
+        assert false_positive_rate < 2.0, f"正常状态下误报率{false_positive_rate:.1f}%超过允许上限"
 
     def test_dashboard_display_completeness(self):
         """感知层验证：仪表盘显示信息完整准确."""
@@ -225,13 +224,17 @@ class TestRealtimeMonitoring:
         }
 
         required_fields = [
-            "spindle_speed", "feed_rate", "vibration_rms",
-            "temperature", "cutting_force", "alerts_active",
+            "spindle_speed",
+            "feed_rate",
+            "vibration_rms",
+            "temperature",
+            "cutting_force",
+            "alerts_active",
         ]
         for field in required_fields:
             assert field in dashboard_state, f"仪表盘缺少显示字段: {field}"
 
-    # ---------- 异常状态检测 ----------
+    # 异常状态检测
 
     def test_anomaly_detection(self, anomaly_sensor_stream):
         """执行层验证：异常检测准确性.
@@ -290,10 +293,9 @@ class TestRealtimeMonitoring:
         assert first_alert_idx is not None, "异常发生后未触发告警"
         response_samples = first_alert_idx - anomaly_start_idx
         response_time_ms = response_samples / monitored.sample_rate * 1000
-        assert response_time_ms < 1000, \
-            f"告警响应时间{response_time_ms:.0f}ms >= 1000ms阈值"
+        assert response_time_ms < 1000, f"告警响应时间{response_time_ms:.0f}ms >= 1000ms阈值"
 
-    # ---------- LNN状态预测 ----------
+    # LNN状态预测
 
     def test_lnn_state_prediction_config(self):
         """执行层验证：LNN状态预测模型配置."""
@@ -338,7 +340,7 @@ class TestRealtimeMonitoring:
         accuracy = accurate_count / len(predictions) * 100
         assert accuracy >= 85.0, f"LNN状态预测准确率{accuracy:.1f}% < 90%阈值(允许容差)"
 
-    # ---------- V-JEPA视频分析 ----------
+    # V-JEPA视频分析
 
     def test_vjepa_config(self):
         """感知层验证：V-JEPA视频帧分析配置."""
@@ -364,7 +366,7 @@ class TestRealtimeMonitoring:
         # 视频帧分析应在合理时间内完成
         assert avg_latency < 100, f"帧分析平均延迟{avg_latency:.0f}ms过高"
 
-    # ---------- 安全约束实时检查 ----------
+    # 安全约束实时检查
 
     def test_safety_check_realtime(self):
         """执行层验证：安全约束检查实时性 < 50ms."""
@@ -389,15 +391,13 @@ class TestRealtimeMonitoring:
                 check_times.append((time.perf_counter() - start) * 1000)
 
             avg_check_time = statistics.mean(check_times)
-            assert avg_check_time < 50, \
-                f"安全规则检查平均耗时{avg_check_time:.1f}ms >= 50ms阈值"
+            assert avg_check_time < 50, f"安全规则检查平均耗时{avg_check_time:.1f}ms >= 50ms阈值"
 
         except (ImportError, AttributeError):
             # 模块未安装或API差异时，使用模拟测试
             check_times = [random.uniform(5, 20) for _ in range(100)]
             avg_check_time = statistics.mean(check_times)
-            assert avg_check_time < 50, \
-                f"安全规则检查平均耗时{avg_check_time:.1f}ms >= 50ms阈值"
+            assert avg_check_time < 50, f"安全规则检查平均耗时{avg_check_time:.1f}ms >= 50ms阈值"
 
     def test_safety_rule_coverage(self):
         """执行层验证：安全规则覆盖率 100%."""
@@ -414,9 +414,9 @@ class TestRealtimeMonitoring:
             # 验证规则覆盖所有类别
             if rules:
                 categories = {getattr(r, "category", None) for r in rules}
-                assert RuleCategory.MACHINE in categories or any(
-                    str(c) == "M" for c in categories if c
-                ), "缺少机床类安全规则"
+                assert RuleCategory.MACHINE in categories or any(str(c) == "M" for c in categories if c), (
+                    "缺少机床类安全规则"
+                )
 
             # 验证规则总数合理
             assert len(rules) >= 0, "安全规则数不应为负"
@@ -424,7 +424,7 @@ class TestRealtimeMonitoring:
         except ImportError:
             pytest.skip("安全规则引擎模块未安装")
 
-    # ---------- 异常评估和建议 ----------
+    # 异常评估和建议
 
     def test_anomaly_assessment_logic(self, anomaly_sensor_stream):
         """认知层验证：异常评估逻辑准确性."""
@@ -473,22 +473,17 @@ class TestRealtimeMonitoring:
                 all_suggestions.extend(alert.get("suggestions", []))
 
         unique_suggestions = list(set(all_suggestions))
-        assert len(unique_suggestions) >= 3, \
-            f"建议种类不足: {len(unique_suggestions)}条"
+        assert len(unique_suggestions) >= 3, f"建议种类不足: {len(unique_suggestions)}条"
 
         # 验证建议可操作性（包含具体动作）
         actionable_keywords = ["降低", "增加", "检查", "调整", "减小", "更换", "停止"]
-        actionable_count = sum(
-            1 for s in unique_suggestions
-            if any(kw in s for kw in actionable_keywords)
+        actionable_count = sum(1 for s in unique_suggestions if any(kw in s for kw in actionable_keywords))
+        assert actionable_count >= len(unique_suggestions) * 0.6, (
+            f"可操作建议比例{actionable_count / len(unique_suggestions):.0%}过低"
         )
-        assert actionable_count >= len(unique_suggestions) * 0.6, \
-            f"可操作建议比例{actionable_count/len(unique_suggestions):.0%}过低"
 
 
-# ---------------------------------------------------------------------------
 # 异常恢复测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -525,9 +520,7 @@ class TestAnomalyRecovery:
         assert was_anomaly, "异常监控未触发"
 
 
-# ---------------------------------------------------------------------------
 # 传感器数据质量测试
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -556,8 +549,7 @@ class TestSensorDataQuality:
         """传感器数据噪声水平在可接受范围."""
         # 取前1000个样本计算振动标准差
         vibrations = [
-            math.sqrt(s.vibration_x**2 + s.vibration_y**2 + s.vibration_z**2)
-            for s in normal_sensor_stream[:1000]
+            math.sqrt(s.vibration_x**2 + s.vibration_y**2 + s.vibration_z**2) for s in normal_sensor_stream[:1000]
         ]
         std = statistics.stdev(vibrations)
         mean = statistics.mean(vibrations)

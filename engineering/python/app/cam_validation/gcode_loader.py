@@ -51,9 +51,7 @@ from app.core.safe_errors import safe_error_message
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
 # 必填字段集合（阶段 6 report.json）
-# =============================================================================
 
 
 REQUIRED_GCODE_REPORT_FIELDS: frozenset[str] = frozenset(
@@ -72,9 +70,7 @@ REQUIRED_GCODE_REPORT_FIELDS: frozenset[str] = frozenset(
 )
 
 
-# =============================================================================
 # GCodeLoadResult dataclass
-# =============================================================================
 
 
 @dataclass
@@ -144,9 +140,7 @@ class GCodeLoadResult:
         }
 
 
-# =============================================================================
 # GCodeLoader 类
-# =============================================================================
 
 
 class GCodeLoader:
@@ -191,9 +185,7 @@ class GCodeLoader:
         """
         load_warnings: list[str] = []
 
-        # ------------------------------------------------------------------
         # 1. 读取 report.json
-        # ------------------------------------------------------------------
         report_full_path = self._resolve_path(report_path)
         if not os.path.isfile(report_full_path):
             raise GCodeReportLoadError(safe_error_message(ValueError(f"阶段 6 report.json 不存在: {report_path}")))
@@ -211,26 +203,20 @@ class GCodeLoader:
             report_data.get("task_id", "<missing>"),
         )
 
-        # ------------------------------------------------------------------
         # 2. 校验必填字段
-        # ------------------------------------------------------------------
         missing_fields = REQUIRED_GCODE_REPORT_FIELDS - set(report_data.keys())
         if missing_fields:
             missing_str = ", ".join(sorted(missing_fields))
             raise GCodeReportLoadError(f"阶段 6 report.json 必填字段缺失: {missing_str}")
 
-        # ------------------------------------------------------------------
         # 3. 校验 task_status == "succeeded"
-        # ------------------------------------------------------------------
         task_status = report_data["task_status"]
         if task_status != "succeeded":
             raise GCodeReportLoadError(
                 f"阶段 6 任务未审核通过（task_status={task_status}），请先在阶段 6 完成审核并导出 SUCCEEDED 产物"
             )
 
-        # ------------------------------------------------------------------
         # 4. 校验 cam_validation_required == True（项目记忆硬约束）
-        # ------------------------------------------------------------------
         cam_validation_required = bool(report_data["cam_validation_required"])
         if not cam_validation_required:
             # 项目记忆硬约束：cam_validation_required 始终 True
@@ -241,9 +227,7 @@ class GCodeLoader:
             load_warnings.append("阶段 6 report.json cam_validation_required=False，已强制视为 True")
             cam_validation_required = True
 
-        # ------------------------------------------------------------------
         # 5. 提取并校验 feature_results
-        # ------------------------------------------------------------------
         raw_feature_results = report_data["feature_results"]
         if not isinstance(raw_feature_results, list):
             raise GCodeReportLoadError(
@@ -252,14 +236,14 @@ class GCodeLoader:
         if not raw_feature_results:
             raise GCodeReportLoadError("阶段 6 report.json feature_results 为空，无法执行 CAM 校验")
 
-        # 深拷贝 + line_range list → tuple 转换
+        # 深拷贝 + line_range list tuple 转换
         feature_results: list[dict[str, Any]] = []
         for idx, fr in enumerate(raw_feature_results):
             if not isinstance(fr, dict):
                 load_warnings.append(f"feature_results[{idx}] 不是 dict，已跳过")
                 continue
             fr_copy = dict(fr)
-            # line_range: list [start, end] → tuple (start, end)
+            # line_range: list [start, end] tuple (start, end)
             lr = fr_copy.get("line_range")
             if isinstance(lr, (list, tuple)) and len(lr) == 2:
                 fr_copy["line_range"] = (int(lr[0]), int(lr[1]))
@@ -273,15 +257,11 @@ class GCodeLoader:
         if not feature_results:
             raise GCodeReportLoadError("阶段 6 report.json feature_results 解析后为空")
 
-        # ------------------------------------------------------------------
         # 6. 读取 G 代码文件
-        # ------------------------------------------------------------------
         gcode_file_path = report_data["gcode_file_path"]
         gcode_text = self._load_gcode_text(gcode_file_path)
 
-        # ------------------------------------------------------------------
         # 7. 构造 GCodeLoadResult
-        # ------------------------------------------------------------------
         result = GCodeLoadResult(
             task_id=str(report_data["task_id"]),
             gcode_text=gcode_text,

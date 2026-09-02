@@ -41,9 +41,7 @@ from app.integrations.mes.client import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # Request/Response Models
-# ---------------------------------------------------------------------------
 
 
 class WorkOrderRequest(BaseModel):
@@ -168,9 +166,7 @@ class HealthResponse(BaseModel):
     mes_connected: bool = Field(..., description="MES 系统是否可连接")
 
 
-# ---------------------------------------------------------------------------
 # Dependency Injection
-# ---------------------------------------------------------------------------
 
 
 async def get_mes_client() -> MESClient:
@@ -205,9 +201,7 @@ async def get_mes_client() -> MESClient:
     )
 
 
-# ---------------------------------------------------------------------------
 # Router
-# ---------------------------------------------------------------------------
 
 
 router = APIRouter(

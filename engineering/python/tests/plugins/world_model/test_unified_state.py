@@ -13,6 +13,7 @@
 - 测试不依赖随机种子（只校验形状与往返，不校验数值）
 - torch 不可用时通过 pytest.importorskip 自然跳过，不注入桩模块伪装通过
 """
+
 from __future__ import annotations
 
 import pytest
@@ -25,9 +26,7 @@ from app.plugins.world_model.unified_state import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 公共 fixture：构造一个典型 UnifiedState（6061-T6 立方零件 + 典型切削工况）
-# ---------------------------------------------------------------------------
 def _make_geometry() -> GeometryFeatures:
     return GeometryFeatures(
         bbox_dimensions=(100.0, 60.0, 40.0),
@@ -52,9 +51,7 @@ def _make_unified_state() -> UnifiedState:
     return UnifiedState(geometry=_make_geometry(), dynamics=_make_dynamics())
 
 
-# ---------------------------------------------------------------------------
 # 用例 1：UnifiedState 序列化/反序列化往返
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_unified_state_roundtrip() -> None:
     """to_dict → from_dict 应保持字段完全一致。"""
@@ -63,9 +60,7 @@ def test_unified_state_roundtrip() -> None:
     restored = UnifiedState.from_dict(serialized)
 
     # 几何字段
-    assert list(restored.geometry.bbox_dimensions) == list(
-        original.geometry.bbox_dimensions
-    )
+    assert list(restored.geometry.bbox_dimensions) == list(original.geometry.bbox_dimensions)
     assert restored.geometry.feature_vector == original.geometry.feature_vector
     assert restored.geometry.symmetry_score == original.geometry.symmetry_score
     assert restored.geometry.complexity_score == original.geometry.complexity_score
@@ -82,9 +77,7 @@ def test_unified_state_roundtrip() -> None:
     assert restored.fused_embedding is None
 
 
-# ---------------------------------------------------------------------------
 # 用例 2：UNIFIED_STATE_SCHEMA 结构与必填字段
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_unified_state_schema_structure() -> None:
     """Schema 应声明 geometry/dynamics 必填，并约束数值边界。"""
@@ -118,9 +111,7 @@ def test_unified_state_schema_structure() -> None:
     assert serialized["fused_embedding"] is None
 
 
-# ---------------------------------------------------------------------------
 # 用例 3：GeometryEncoder 输出形状
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_geometry_encoder_output_shape() -> None:
     """GeometryEncoder 输出 (batch, d_model)。"""
@@ -140,9 +131,7 @@ def test_geometry_encoder_output_shape() -> None:
     assert output.shape == (2, 64)
 
 
-# ---------------------------------------------------------------------------
 # 用例 4：DynamicsEncoder 输出形状
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_dynamics_encoder_output_shape() -> None:
     """DynamicsEncoder 输出 (batch, d_model)。"""
@@ -161,9 +150,7 @@ def test_dynamics_encoder_output_shape() -> None:
     assert output.shape == (2, 64)
 
 
-# ---------------------------------------------------------------------------
 # 用例 5：FusionLayer 端到端融合 + UnifiedState 张量化链路
-# ---------------------------------------------------------------------------
 @pytest.mark.unit
 def test_fusion_layer_end_to_end() -> None:
     """GeometryEncoder + DynamicsEncoder + FusionLayer 端到端输出 (batch, fused_dim)。"""
@@ -177,12 +164,8 @@ def test_fusion_layer_end_to_end() -> None:
     batch = 4
 
     state = _make_unified_state()
-    geo_tensor = torch.tensor(
-        [state.geometry.to_tensor_input()] * batch, dtype=torch.float32
-    )
-    dyn_tensor = torch.tensor(
-        [state.dynamics.to_tensor_input()] * batch, dtype=torch.float32
-    )
+    geo_tensor = torch.tensor([state.geometry.to_tensor_input()] * batch, dtype=torch.float32)
+    dyn_tensor = torch.tensor([state.dynamics.to_tensor_input()] * batch, dtype=torch.float32)
 
     geo_encoder = GeometryEncoder(feature_dim=32, d_model=d_model)
     dyn_encoder = DynamicsEncoder(d_model=d_model)
@@ -196,7 +179,7 @@ def test_fusion_layer_end_to_end() -> None:
     fused = fusion(geo_emb, dyn_emb)
     assert fused.shape == (batch, fused_dim)
 
-    # 写回 UnifiedState.fused_embedding，验证张量 → list 链路可序列化
+    # 写回 UnifiedState.fused_embedding，验证张量 list 链路可序列化
     state.fused_embedding = fused[0].detach().tolist()
     serialized = state.to_dict()
     assert isinstance(serialized["fused_embedding"], list)

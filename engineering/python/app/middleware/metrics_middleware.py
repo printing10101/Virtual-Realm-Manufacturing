@@ -30,9 +30,7 @@ from starlette.responses import JSONResponse, Response
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
 # MetricsMiddleware：请求级指标观测
-# =============================================================================
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
@@ -114,9 +112,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
                     )
 
 
-# =============================================================================
 # /api/metrics 端点 IP 白名单鉴权
-# =============================================================================
 #
 # P1-12 修复：/api/metrics 暴露运行时指标（路径/权限/模型/错误率），
 # 三层鉴权（PUBLIC_PATHS/_PUBLIC_ENDPOINTS_LNN/AUTH_PUBLIC_PATHS）全部放行，
@@ -182,9 +178,7 @@ def is_metrics_allowed(client_ip: str) -> bool:
     return False
 
 
-# =============================================================================
 # /api/metrics 端点注册
-# =============================================================================
 
 
 def create_metrics_router(metrics: Any) -> APIRouter:

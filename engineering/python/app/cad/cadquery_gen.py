@@ -29,16 +29,13 @@ from app.cad._brep_validator import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # CadQuery 临时输出目录的进程级清理
-# ---------------------------------------------------------------------------
 # 历史问题：execute_and_export / generate_3d_model / generate_with_features
 # 三处使用固定名称的临时目录（cadquery_output / cadquery_models），产物文件
 # 永不回收，高频建模场景下数日内即可耗尽 /tmp 磁盘。
 # 修复策略：模块级维护已创建目录集合，atexit 退出时统一清理。
 # 不能使用 TemporaryDirectory 上下文管理器，因为返回的 output_path 会被
 # 后续步骤（NL2CAD pipeline / API 响应）读取，必须保留到进程退出。
-# ---------------------------------------------------------------------------
 _CADQUERY_TEMP_DIRS: set[Path] = set()
 
 
@@ -156,7 +153,7 @@ class CadQueryGenerator:
                 logger.warning("View file not found: %s (%s)", view_name, view_path)
                 continue
 
-            # --- CV-based extraction (primary path) -----------------
+            # CV-based extraction (primary path)
             try:
                 cv_out = _extract_cv_geometry_params(view_file)
                 if cv_out is not None:
@@ -176,7 +173,7 @@ class CadQueryGenerator:
                     e,
                 )
 
-            # --- Header-based fallback (always attempted) -----------
+            # Header-based fallback (always attempted)
             width: float
             height: float
             try:
@@ -195,7 +192,7 @@ class CadQueryGenerator:
         if not image_sizes and not cv_results:
             logger.warning("Could not read any view images; using default geometry params")
 
-        # --- Merge CV results when available ------------------------
+        # Merge CV results when available
         if cv_results:
             params = _merge_cv_results(cv_results, image_sizes)
         else:

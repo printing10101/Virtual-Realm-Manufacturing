@@ -71,7 +71,7 @@ DEFAULT_BASELINE: tuple[BaselineEntry, ...] = (
     _b("SS304", "turning", 1.0, 0.15, 1500, 120),
     _b("SS304", "drilling", 0.8, 0.1, 2000, 80),
     _b("SS304", "tapping", 0.8, 0.08, 600, 60),
-    # --- 45# 钢 / 碳钢 ---
+    # 45# 钢 / 碳钢
     _b("45", "milling", 1.5, 0.15, 5000, 160),
     _b("45", "turning", 1.5, 0.18, 2000, 160),
     _b("45", "drilling", 1.0, 0.12, 3000, 100),
@@ -85,7 +85,7 @@ DEFAULT_BASELINE: tuple[BaselineEntry, ...] = (
     _b("HT250", "drilling", 1.2, 0.15, 2500, 90),
 )
 
-# 常见别名 → 规范材料名（模糊匹配用）
+# 常见别名 规范材料名（模糊匹配用）
 _MATERIAL_ALIASES: dict[str, str] = {
     "al6061": "AL6061",
     "6061": "AL6061",

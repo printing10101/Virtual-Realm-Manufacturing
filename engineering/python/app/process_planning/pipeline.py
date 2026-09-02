@@ -4,14 +4,12 @@
 实现从零件参数输入到可执行G代码输出的全流程自动化处理。
 
 流水线阶段（6步）：
-┌─────────────────────────────────────────────────────────┐
-│ Step 1: 输入验证 ─── 校验零件描述数据的完整性和有效性   │
-│ Step 2: 孔特征识别 ─ 调用HoleFeatureRecognizer           │
-│ Step 3: 知识库查询 ─ 调用ToolParamMatcher匹配刀具和参数  │
-│ Step 4: 工艺规划 ─── 调用OperationSequencer生成工序序列  │
-│ Step 5: G代码生成 ── 调用GCodeGenerator输出数控程序      │
-│ Step 6: 结果验证 ─── 校验输出完整性和语法正确性           │
-└─────────────────────────────────────────────────────────┘
+1. 输入验证：校验零件描述数据的完整性和有效性
+2. 孔特征识别：调用HoleFeatureRecognizer
+3. 知识库查询：调用ToolParamMatcher匹配刀具和参数
+4. 工艺规划：调用OperationSequencer生成工序序列
+5. G代码生成：调用GCodeGenerator输出数控程序
+6. 结果验证：校验输出完整性和语法正确性
 
 质量标准：
 - 端到端流程无人工干预即可完成
@@ -115,7 +113,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         result = PipelineResult()
         stages: list[PipelineStage] = []
 
-        # ========== Stage 1: 输入验证 ==========
+        # Stage 1: 输入验证
         stage1 = self._validate_input(part_description)
         stages.append(stage1)
         if stage1.status == "failed":
@@ -126,7 +124,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         material_name = part_description.get("material", "45#钢")
         part_type = part_description.get("part_type", "general")
 
-        # ========== Stage 2: 孔特征识别 ==========
+        # Stage 2: 孔特征识别
         stage2_start = time.time()
         hole_result = self._hole_recognizer.recognize_holes(part_description)
 
@@ -140,7 +138,7 @@ class ProcessPlanningPipeline(_StagesMixin):
             warnings=hole_result.warnings,
         )
 
-        # 孔识别失败 → 终止流水线
+        # 孔识别失败 终止流水线
         if hole_result.errors:
             stage2.status = "failed"
             stages.extend([stage1, stage2])
@@ -152,7 +150,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         stages.append(stage2)
         result.hole_recognition = hole_result
 
-        # ========== Stage 3: 知识库查询 (材料+刀具+参数匹配) ==========
+        # Stage 3: 知识库查询 (材料+刀具+参数匹配)
         stage3_start = time.time()
         process_plans: list[HoleProcessPlan] = []
 
@@ -217,7 +215,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         stages.append(stage3)
         result.process_plans = process_plans
 
-        # ========== Stage 4: 工序规划 ==========
+        # Stage 4: 工序规划
         stage4_start = time.time()
 
         features = self._build_features(
@@ -258,7 +256,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         stages.append(stage4)
         result.operation_plan = operation_plan
 
-        # ========== Stage 4.5: 仿真验证 ==========
+        # Stage 4.5: 仿真验证
         simulation_result = self._run_simulation(
             material=material_name,
             operation_plan=operation_plan,
@@ -278,7 +276,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         stages.append(stage4_5)
         result.simulation = simulation_result
 
-        # ========== Stage 5: G代码生成 ==========
+        # Stage 5: G代码生成
         stage5_start = time.time()
 
         try:
@@ -319,7 +317,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         stages.append(stage5)
         result.gcode_result = gcode_result
 
-        # ========== Stage 6: 结果验证 ==========
+        # Stage 6: 结果验证
         stage6_start = time.time()
 
         validation_errors, validation_warnings = self._validate_pipeline_output(result)
@@ -334,7 +332,7 @@ class ProcessPlanningPipeline(_StagesMixin):
         )
         stages.append(stage6)
 
-        # ========== 汇总 ==========
+        # 汇总
         result.stages = stages
         result.success = all(s.status == "success" for s in stages)
         result.total_duration_ms = (time.time() - pipeline_start) * 1000

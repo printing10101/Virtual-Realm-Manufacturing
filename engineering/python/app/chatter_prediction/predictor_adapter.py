@@ -58,18 +58,14 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # 异常类
-# =============================================================================
 
 
 class PredictorAdapterError(Exception):
     """预测适配器异常。"""
 
 
-# =============================================================================
 # HRC52 与 pending_calibration 配置
-# =============================================================================
 
 
 # HRC52 材料 ID 列表（项目记忆硬约束：HRC52 不可使用纯文献数据）
@@ -94,9 +90,7 @@ FALLBACK_CONFIDENCE = 0.3
 SAFETY_MARGIN_RATIO = 0.8
 
 
-# =============================================================================
 # LTC 模型可用性检查
-# =============================================================================
 
 
 def check_ltc_model_available() -> bool:
@@ -128,9 +122,7 @@ def check_ltc_model_available() -> bool:
         return False
 
 
-# =============================================================================
 # 预测适配器
-# =============================================================================
 
 
 @dataclass
@@ -271,9 +263,7 @@ class ChatterPredictorAdapter:
             cutting_force_coeff=cutting_force_coeff,
         )
 
-    # -------------------------------------------------------------------------
     # 内部：双路径预测
-    # -------------------------------------------------------------------------
 
     def _predict_dual_path(
         self,
@@ -327,7 +317,7 @@ class ChatterPredictorAdapter:
         machine_id = str(machine_dict.get("machine_id", "vmc_850"))
         tool_id = str(tool_dict.get("tool_id", "endmill_d10"))
 
-        # predict_stability 内部已实现 LTC → 解析法回退逻辑
+        # predict_stability 内部已实现 LTC 解析法回退逻辑
         # 当 ltc_active=True 时返回 neural_network，否则返回 analytical
         result = predict_stability(
             spindle_rpm=spindle_rpm,
@@ -420,9 +410,7 @@ class ChatterPredictorAdapter:
             warnings=[],
         )
 
-    # -------------------------------------------------------------------------
     # 内部：材料标定状态解析
-    # -------------------------------------------------------------------------
 
     def _resolve_calibration_status(self, material_id: str) -> str:
         """解析材料标定状态。

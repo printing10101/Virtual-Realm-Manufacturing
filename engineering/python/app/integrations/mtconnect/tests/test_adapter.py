@@ -37,8 +37,8 @@ from requests.exceptions import HTTPError
 # ``python/`` (the directory layout recommended in the task spec).
 #
 # Path layout of this file:
-#   python/app/integrations/mtconnect/tests/test_adapter.py
-#       ↑ parents[4]
+# python/app/integrations/mtconnect/tests/test_adapter.py
+#  parents[4]
 _PYTHON_DIR = Path(__file__).resolve().parents[4]
 if str(_PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(_PYTHON_DIR))
@@ -53,9 +53,7 @@ from app.integrations.mtconnect.adapter import (
 from app.integrations.mtconnect.parser import Sample, parse_sample_response
 
 
-# ---------------------------------------------------------------------------
 # Sample XML fixtures
-# ---------------------------------------------------------------------------
 
 
 SAMPLE_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -123,9 +121,7 @@ PROBE_XML = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-# ---------------------------------------------------------------------------
 # 1) Pure parser tests
-# ---------------------------------------------------------------------------
 
 
 class TestParser:
@@ -141,9 +137,9 @@ class TestParser:
 
     def test_partial_response_unavailable_sentinel(self) -> None:
         sample = parse_sample_response(PARTIAL_XML)
-        # SpindleSpeed "UNAVAILABLE" → None
+        # SpindleSpeed "UNAVAILABLE" None
         assert sample.spindle_speed is None
-        # SpindleLoad "0" → 0.0
+        # SpindleLoad "0" 0.0
         assert sample.spindle_load == pytest.approx(0.0)
         # Feedrate still parsed
         assert sample.feedrate == pytest.approx(250.0)
@@ -209,9 +205,7 @@ class TestParser:
         assert sample.extras.get("power_state") == "ON"
 
 
-# ---------------------------------------------------------------------------
 # 2) AdapterConfig
-# ---------------------------------------------------------------------------
 
 
 class TestAdapterConfig:
@@ -251,9 +245,7 @@ class TestAdapterConfig:
         assert any("feedrate" in col for col in ddl)
 
 
-# ---------------------------------------------------------------------------
 # 3) Adapter behaviour with mocked session
-# ---------------------------------------------------------------------------
 
 
 class _StubResponse:
@@ -369,7 +361,7 @@ class TestAdapterRun:
     def test_run_with_no_tdengine_counts_samples(self) -> None:
         # Provide far more responses than the loop will ever consume
         # within ``duration`` so the queue cannot run out regardless
-        # of scheduler jitter.  The assertion below is therefore a
+        # of scheduler jitter. The assertion below is therefore a
         # lower-bound on what the adapter *must* have ingested.
         session = _build_stub_session([_StubResponse(SAMPLE_XML) for _ in range(50)])
         adapter = MTConnectAdapter(
@@ -384,7 +376,7 @@ class TestAdapterRun:
         seen: list[Sample] = []
         ingested = adapter.run(duration=0.1, on_sample=seen.append)
         # At least three full polling cycles must have completed in
-        # 100 ms with a 10 ms interval.  Exact equality is unsafe on
+        # 100 ms with a 10 ms interval. Exact equality is unsafe on
         # shared CI runners, so we only assert a sensible lower bound.
         assert ingested >= 3
         assert len(seen) >= 3
@@ -392,7 +384,7 @@ class TestAdapterRun:
 
     def test_run_retries_then_succeeds(self) -> None:
         # Lead with a couple of transport errors and then keep
-        # returning a valid response.  As long as the queue never
+        # returning a valid response. As long as the queue never
         # runs dry the loop will eventually recover – we just want
         # to confirm that retries are counted and at least one
         # sample is ingested within the test's time budget.
@@ -519,9 +511,7 @@ class TestAdapterFlush:
         assert adapter.buffer_size == 0
 
 
-# ---------------------------------------------------------------------------
 # 4) CLI tests
-# ---------------------------------------------------------------------------
 
 
 class TestCLIFormatting:
@@ -569,7 +559,7 @@ class TestCLIMain:
         # Stub the probe to raise – the CLI should report the failure
         # and exit with code 2.
         session = _build_stub_session([_StubResponse("oops", status_code=500)])
-        # Patch the ``requests.Session`` used by the adapter.  Because
+        # Patch the ``requests.Session`` used by the adapter. Because
         # MTConnectAdapter builds its own session when none is passed,
         # we monkey-patch the class instead.
         with patch.object(MTConnectAdapter, "_build_default_session", return_value=session):
@@ -588,7 +578,7 @@ class TestCLIMain:
 
     def test_main_runs_and_persists(self, capsys) -> None:
         # Happy-path: probe OK, then a steady stream of valid samples
-        # flushed to a stub TDengine client.  We deliberately provide
+        # flushed to a stub TDengine client. We deliberately provide
         # far more samples than the loop will consume within
         # ``--duration`` so the queue cannot run dry and trip the
         # ``AssertionError("No more stub responses queued")`` guard.

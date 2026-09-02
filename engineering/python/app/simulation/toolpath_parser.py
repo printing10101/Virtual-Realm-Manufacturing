@@ -179,7 +179,7 @@ class ToolpathParser:
             # Heidenhain 特殊指令过滤：跳过非运动指令行
             if self.controller_type == "heidenhain":
                 upper = stripped.upper()
-                # 去掉行号前缀（如 "1  BLK FORM" -> "BLK FORM"）
+                # 去掉行号前缀（如 "1 BLK FORM" -> "BLK FORM"）
                 parts = upper.split(None, 1)
                 content = parts[1] if len(parts) > 1 else upper
 

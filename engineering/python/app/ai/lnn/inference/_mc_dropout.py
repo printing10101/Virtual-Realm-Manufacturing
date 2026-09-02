@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 class _MCDropoutMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _get_memory_usage_mb: Callable[..., Any]
     _maybe_inverse_transform: Callable[..., Any]
     _postprocess: Callable[..., Any]
@@ -65,9 +65,7 @@ class _MCDropoutMixin:
     通过 MRO 链继承初始化。
     """
 
-    # ------------------------------------------------------------------
     # 私有辅助方法
-    # ------------------------------------------------------------------
     def _mc_fallback_no_torch(self, input_data: Any) -> "PredictionResult":
         """非 torch 环境下的降级回退路径。
 
@@ -261,9 +259,7 @@ class _MCDropoutMixin:
             },
         )
 
-    # ------------------------------------------------------------------
     # 公开方法（保持原签名）
-    # ------------------------------------------------------------------
     def predict_mc_dropout(
         self,
         input_data: Any,

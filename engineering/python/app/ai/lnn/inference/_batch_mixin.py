@@ -35,7 +35,7 @@ except ImportError:
 
 
 class _BatchMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _compute_confidence: Callable[..., Any]
     _get_memory_usage_mb: Callable[..., Any]
     _maybe_inverse_transform: Callable[..., Any]

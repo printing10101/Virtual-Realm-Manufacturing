@@ -1,5 +1,3 @@
-
-
 """关键模块性能基准测试
 
 测试目标：
@@ -96,12 +94,7 @@ from unittest.mock import MagicMock, patch
 pytestmark = pytest.mark.skip_ci
 
 
-
-
-
-# ---------------------------------------------------------------------------
 # WinSock 损坏环境检测
-# ---------------------------------------------------------------------------
 # 背景：当前 Windows 环境 WinSock 损坏，依赖 TestClient（需真实 asyncio
 # 事件循环 + socketpair）的测试会以 OSError [WinError 10038] 失败。
 # 这些测试不反映被测代码的性能问题，应在 WinSock 损坏环境下跳过而非 FAIL。
@@ -132,56 +125,56 @@ class TestDatabaseConnectionPoolPerformance:
     def test_connection_pool_creation_time(self):
         """测试连接池创建时间"""
         from app.database.connection import _DatabaseSingletons
-        
+
         start = time.perf_counter()
         singletons = _DatabaseSingletons()
         elapsed = (time.perf_counter() - start) * 1000
-        
+
         # 连接池对象创建应该在1ms内完成
         assert elapsed < 1.0, f"连接池创建时间过长: {elapsed:.3f}ms"
-        
+
         print(f"\n连接池创建时间: {elapsed:.3f}ms")
 
     def test_concurrent_engine_access(self):
         """测试并发引擎访问性能"""
         from app.database.connection import _DatabaseSingletons
         import threading
-        
+
         singletons = _DatabaseSingletons()
         results = []
         errors = []
-        
+
         def access_engine(thread_id: int):
             try:
                 start = time.perf_counter()
-                with patch('app.database.connection.create_async_engine') as mock_create:
+                with patch("app.database.connection.create_async_engine") as mock_create:
                     mock_create.return_value = MagicMock()
                     engine = singletons.get_engine()
                     elapsed = (time.perf_counter() - start) * 1000
                     results.append(elapsed)
             except Exception as e:
                 errors.append(e)
-        
+
         # 创建20个并发线程
         threads = [threading.Thread(target=access_engine, args=(i,)) for i in range(20)]
-        
+
         start_total = time.perf_counter()
         for t in threads:
             t.start()
         for t in threads:
             t.join()
         total_elapsed = (time.perf_counter() - start_total) * 1000
-        
+
         # 验证无错误
         assert len(errors) == 0, f"并发访问出错: {errors}"
-        
+
         # 验证性能
         avg_time = sum(results) / len(results) if results else 0
         p95_time = sorted(results)[int(len(results) * 0.95)] if results else 0
-        
+
         assert avg_time < 5.0, f"平均访问时间过长: {avg_time:.3f}ms"
         assert p95_time < 10.0, f"P95访问时间过长: {p95_time:.3f}ms"
-        
+
         print("\n并发引擎访问性能 (20线程):")
         print(f"  总时间: {total_elapsed:.3f}ms")
         print(f"  平均时间: {avg_time:.3f}ms")
@@ -198,23 +191,23 @@ class TestExceptionHandlerPerformance:
             ValidationException,
             InternalServerException,
         )
-        
+
         iterations = 10000
         start = time.perf_counter()
-        
+
         for _ in range(iterations):
             _ = NotFoundException(message="Test")
             _ = ValidationException(message="Test")
             _ = InternalServerException(message="Test")
-        
+
         elapsed = time.perf_counter() - start
         per_exception_ms = (elapsed / (iterations * 3)) * 1000
-        
+
         # 每个异常创建应该在0.01ms内完成
         assert per_exception_ms < 0.01, f"异常创建过慢: {per_exception_ms:.4f}ms"
-        
-        print(f"\n异常创建性能 ({iterations*3}次):")
-        print(f"  总时间: {elapsed*1000:.2f}ms")
+
+        print(f"\n异常创建性能 ({iterations * 3}次):")
+        print(f"  总时间: {elapsed * 1000:.2f}ms")
         print(f"  每次: {per_exception_ms:.4f}ms")
 
     @pytest.mark.skipif(
@@ -234,40 +227,40 @@ class TestExceptionHandlerPerformance:
         from fastapi.testclient import TestClient
         from app.core.exceptions import NotFoundException
         from app.core.exception_handlers import register_exception_handlers
-        
+
         app = FastAPI()
         register_exception_handlers(app)
-        
+
         @app.get("/test")
         async def test_endpoint():
             raise NotFoundException(message="Test error")
-        
+
         client = TestClient(app, raise_server_exceptions=False)
-        
+
         # 预热
         for _ in range(10):
             client.get("/test")
-        
+
         # 性能测试
         iterations = 100
         times = []
-        
+
         for _ in range(iterations):
             start = time.perf_counter()
             response = client.get("/test")
             elapsed = (time.perf_counter() - start) * 1000
             times.append(elapsed)
             assert response.status_code == 404
-        
+
         times.sort()
         n = len(times)
         avg_time = sum(times) / n
         p50_time = times[int(n * 0.50)]
         p95_time = times[min(int(n * 0.95), n - 1)]
-        
+
         # 异常处理响应应该在10ms内
         assert p95_time < 10.0, f"P95响应时间过长: {p95_time:.3f}ms"
-        
+
         print(f"\n异常处理响应时间 ({iterations}次):")
         print(f"  平均: {avg_time:.3f}ms")
         print(f"  P50: {p50_time:.3f}ms")
@@ -280,44 +273,44 @@ class TestAuthenticationPerformance:
     def test_jwt_token_creation_performance(self):
         """测试JWT令牌创建性能"""
         from app.auth.security import create_access_token
-        
+
         iterations = 1000
         start = time.perf_counter()
-        
+
         for i in range(iterations):
             _ = create_access_token(data={"sub": f"user_{i}"})
-        
+
         elapsed = time.perf_counter() - start
         per_token_ms = (elapsed / iterations) * 1000
-        
+
         # 每个令牌创建应该在1ms内完成
         assert per_token_ms < 1.0, f"JWT令牌创建过慢: {per_token_ms:.3f}ms"
-        
+
         print(f"\nJWT令牌创建性能 ({iterations}次):")
-        print(f"  总时间: {elapsed*1000:.2f}ms")
+        print(f"  总时间: {elapsed * 1000:.2f}ms")
         print(f"  每次: {per_token_ms:.3f}ms")
 
     def test_jwt_token_verification_performance(self):
         """测试JWT令牌验证性能"""
         from app.auth.security import create_access_token, decode_token
-        
+
         # 创建测试令牌
         token = create_access_token(data={"sub": "test_user"})
-        
+
         iterations = 1000
         start = time.perf_counter()
-        
+
         for _ in range(iterations):
             _ = decode_token(token)
-        
+
         elapsed = time.perf_counter() - start
         per_verify_ms = (elapsed / iterations) * 1000
-        
+
         # 每个令牌验证应该在1ms内完成
         assert per_verify_ms < 1.0, f"JWT令牌验证过慢: {per_verify_ms:.3f}ms"
-        
+
         print(f"\nJWT令牌验证性能 ({iterations}次):")
-        print(f"  总时间: {elapsed*1000:.2f}ms")
+        print(f"  总时间: {elapsed * 1000:.2f}ms")
         print(f"  每次: {per_verify_ms:.3f}ms")
 
 
@@ -365,7 +358,7 @@ class TestAPIRoutePerformance:
         # 阈值依据：Windows TestClient 进程内 HTTP 开销 + Python 3.10 路径
         # 在 Linux/CI 上通常 <5ms，Windows 上 TestClient 走 socket loopback 较慢
         assert p95_time < 30.0, f"健康检查P95响应过长: {p95_time:.3f}ms"
-        
+
         print(f"\n健康检查端点性能 ({iterations}次):")
         print(f"  平均: {avg_time:.3f}ms")
         print(f"  P95: {p95_time:.3f}ms")
@@ -379,7 +372,7 @@ class TestAPIRoutePerformance:
             pytest.skip("StrEnum requires Python 3.11+; skip on 3.10")
 
         from app.core.response import success
-        
+
         # 创建测试数据
         test_data = {
             "id": 1,
@@ -388,21 +381,21 @@ class TestAPIRoutePerformance:
             "tags": ["tag1", "tag2", "tag3"],
             "metadata": {"key1": "value1", "key2": "value2"},
         }
-        
+
         iterations = 10000
         start = time.perf_counter()
-        
+
         for _ in range(iterations):
             _ = success(data=test_data)
-        
+
         elapsed = time.perf_counter() - start
         per_response_ms = (elapsed / iterations) * 1000
-        
+
         # 每个响应构建应该在0.1ms内完成
         assert per_response_ms < 0.1, f"响应序列化过慢: {per_response_ms:.4f}ms"
-        
+
         print(f"\nAPI响应序列化性能 ({iterations}次):")
-        print(f"  总时间: {elapsed*1000:.2f}ms")
+        print(f"  总时间: {elapsed * 1000:.2f}ms")
         print(f"  每次: {per_response_ms:.4f}ms")
 
 
@@ -412,69 +405,63 @@ class TestDataPipelinePerformance:
     def test_data_validation_performance(self):
         """测试数据校验性能"""
         from pydantic import BaseModel
-        
+
         class TestDataModel(BaseModel):
             id: int
             name: str
             value: float
             tags: list[str]
-        
+
         test_data = {
             "id": 1,
             "name": "Test",
             "value": 3.14,
             "tags": ["a", "b", "c"],
         }
-        
+
         iterations = 10000
         start = time.perf_counter()
-        
+
         for _ in range(iterations):
             _ = TestDataModel(**test_data)
-        
+
         elapsed = time.perf_counter() - start
         per_validation_ms = (elapsed / iterations) * 1000
-        
+
         # 每个校验应该在0.1ms内完成
         assert per_validation_ms < 0.1, f"数据校验过慢: {per_validation_ms:.4f}ms"
-        
+
         print(f"\n数据校验性能 ({iterations}次):")
-        print(f"  总时间: {elapsed*1000:.2f}ms")
+        print(f"  总时间: {elapsed * 1000:.2f}ms")
         print(f"  每次: {per_validation_ms:.4f}ms")
 
     def test_json_serialization_performance(self):
         """测试JSON序列化性能"""
         import json
-        
+
         test_data = {
             "id": 1,
             "name": "Test Item",
             "description": "A test item for performance testing",
             "tags": ["tag1", "tag2", "tag3"],
             "metadata": {"key1": "value1", "key2": "value2"},
-            "nested": {
-                "level1": {
-                    "level2": {
-                        "level3": {"value": "deep"}
-                    }
-                }
-            },
+            "nested": {"level1": {"level2": {"level3": {"value": "deep"}}}},
         }
-        
+
         iterations = 10000
         start = time.perf_counter()
-        
+
         for _ in range(iterations):
             _ = json.dumps(test_data)
-        
+
         elapsed = time.perf_counter() - start
         per_serialization_ms = (elapsed / iterations) * 1000
-        
+
         # 每个序列化应该在0.1ms内完成
         assert per_serialization_ms < 0.1, f"JSON序列化过慢: {per_serialization_ms:.4f}ms"
-        
+
         print(f"\nJSON序列化性能 ({iterations}次):")
-        print(f"  总时间: {elapsed*1000:.2f}ms")
+        print(f"  总时间: {elapsed * 1000:.2f}ms")
         print(f"  每次: {per_serialization_ms:.4f}ms")
 
 
@@ -485,39 +472,36 @@ class TestMemoryPerformance:
         """测试连接池内存占用"""
         import gc
         from app.database.connection import _DatabaseSingletons
-        
+
         gc.collect()
         initial_objects = len(gc.get_objects())
-        
+
         # 创建多个连接池实例
         pools = []
         for _ in range(10):
             pools.append(_DatabaseSingletons())
-        
+
         gc.collect()
         final_objects = len(gc.get_objects())
-        
+
         object_growth = final_objects - initial_objects
-        
+
         # 对象增长应该在合理范围内
         assert object_growth < 1000, f"对象增长过大: {object_growth}"
-        
+
         print("\n连接池内存占用:")
         print(f"  对象增长: {object_growth}")
-        
+
         # 清理
         pools.clear()
         gc.collect()
 
 
-# ===========================================================================
 # 性能基线扩展：P3 幂等性 / 中间件 / 预算 / 审计 / 心跳
-# ===========================================================================
 # 以下测试类建立生产关键路径的性能基线，配合 P0-P3 修复确保优化不退化。
 # 阈值设定依据：在开发机 (i7-12700H, 32GB, NVMe) 上多次采样取 P95 上浮 30%
 # 作为基线，留出 CI 环境波动余量。阈值被突破时打印诊断信息而非硬失败
 # （mark=pytest.mark.xfail conditional），避免 CI 噪声淹没真实信号。
-# ===========================================================================
 
 
 class TestResourceShutdownPerformance:
@@ -544,17 +528,13 @@ class TestResourceShutdownPerformance:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         # 首次 close 应在 50ms 内完成（包含连接归还 + 标志位更新）
-        assert elapsed_ms < 50.0, (
-            f"BudgetManager.close() 延迟过高: {elapsed_ms:.3f}ms"
-        )
+        assert elapsed_ms < 50.0, f"BudgetManager.close() 延迟过高: {elapsed_ms:.3f}ms"
 
         # 幂等性路径应明显更快（< 0.1ms）
         start = time.perf_counter()
         manager.close()
         idempotent_ms = (time.perf_counter() - start) * 1000
-        assert idempotent_ms < 0.1, (
-            f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
-        )
+        assert idempotent_ms < 0.1, f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
 
         print("\nBudgetManager.close() 性能:")
         print(f"  首次关闭: {elapsed_ms:.3f}ms")
@@ -569,16 +549,12 @@ class TestResourceShutdownPerformance:
         tracker.close()
         elapsed_ms = (time.perf_counter() - start) * 1000
 
-        assert elapsed_ms < 50.0, (
-            f"CostTracker.close() 延迟过高: {elapsed_ms:.3f}ms"
-        )
+        assert elapsed_ms < 50.0, f"CostTracker.close() 延迟过高: {elapsed_ms:.3f}ms"
 
         start = time.perf_counter()
         tracker.close()
         idempotent_ms = (time.perf_counter() - start) * 1000
-        assert idempotent_ms < 0.1, (
-            f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
-        )
+        assert idempotent_ms < 0.1, f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
 
         print("\nCostTracker.close() 性能:")
         print(f"  首次关闭: {elapsed_ms:.3f}ms")
@@ -598,16 +574,12 @@ class TestResourceShutdownPerformance:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         # close_all 释放池中所有连接，允许 100ms
-        assert elapsed_ms < 100.0, (
-            f"RuleDatabase.close() 延迟过高: {elapsed_ms:.3f}ms"
-        )
+        assert elapsed_ms < 100.0, f"RuleDatabase.close() 延迟过高: {elapsed_ms:.3f}ms"
 
         start = time.perf_counter()
         db.close()
         idempotent_ms = (time.perf_counter() - start) * 1000
-        assert idempotent_ms < 0.1, (
-            f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
-        )
+        assert idempotent_ms < 0.1, f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
 
         print("\nRuleDatabase.close() 性能:")
         print(f"  首次关闭: {elapsed_ms:.3f}ms")
@@ -622,16 +594,12 @@ class TestResourceShutdownPerformance:
         queue.close()
         elapsed_ms = (time.perf_counter() - start) * 1000
 
-        assert elapsed_ms < 50.0, (
-            f"WakeupQueue.close() 延迟过高: {elapsed_ms:.3f}ms"
-        )
+        assert elapsed_ms < 50.0, f"WakeupQueue.close() 延迟过高: {elapsed_ms:.3f}ms"
 
         start = time.perf_counter()
         queue.close()
         idempotent_ms = (time.perf_counter() - start) * 1000
-        assert idempotent_ms < 0.1, (
-            f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
-        )
+        assert idempotent_ms < 0.1, f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
 
         print("\nWakeupQueue.close() 性能:")
         print(f"  首次关闭: {elapsed_ms:.3f}ms")
@@ -652,16 +620,12 @@ class TestResourceShutdownPerformance:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         # 无客户端时 close 应在 1ms 内完成（仅标志位更新）
-        assert elapsed_ms < 1.0, (
-            f"VectorStore.close() 无客户端延迟过高: {elapsed_ms:.6f}ms"
-        )
+        assert elapsed_ms < 1.0, f"VectorStore.close() 无客户端延迟过高: {elapsed_ms:.6f}ms"
 
         start = time.perf_counter()
         store.close()
         idempotent_ms = (time.perf_counter() - start) * 1000
-        assert idempotent_ms < 0.1, (
-            f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
-        )
+        assert idempotent_ms < 0.1, f"幂等 close 路径延迟过高: {idempotent_ms:.6f}ms"
 
         print("\nVectorStore.close() 性能（无客户端）:")
         print(f"  首次关闭: {elapsed_ms:.6f}ms")
@@ -694,9 +658,7 @@ class TestResourceShutdownPerformance:
 
         assert len(errors) == 0, f"并发 close 出错: {errors}"
         # 100 次 close 调用（5 线程 × 20 次）应在 200ms 内完成
-        assert elapsed_ms < 200.0, (
-            f"并发 close 性能过差: {elapsed_ms:.3f}ms"
-        )
+        assert elapsed_ms < 200.0, f"并发 close 性能过差: {elapsed_ms:.3f}ms"
 
         print("\n并发 close 性能 (5线程 × 20次):")
         print(f"  总时间: {elapsed_ms:.3f}ms")
@@ -824,9 +786,7 @@ class TestMiddlewareStackPerformance:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         # 中间件栈装配应在 200ms 内完成
-        assert elapsed_ms < 200.0, (
-            f"中间件栈装配时间过长: {elapsed_ms:.3f}ms"
-        )
+        assert elapsed_ms < 200.0, f"中间件栈装配时间过长: {elapsed_ms:.3f}ms"
 
         print(f"\n中间件栈装配时间: {elapsed_ms:.3f}ms")
 
@@ -844,6 +804,7 @@ class TestBudgetTrackerThroughput:
     def budget_manager(self, tmp_path):
         """BudgetManager fixture，使用临时 db"""
         from app.budget.budget import BudgetManager
+
         manager = BudgetManager(db_path=str(tmp_path / "budget_perf.db"))
         yield manager
         manager.close()
@@ -852,6 +813,7 @@ class TestBudgetTrackerThroughput:
     def cost_tracker(self, tmp_path):
         """MultiDimensionCostTracker fixture"""
         from app.budget.cost_tracker import MultiDimensionCostTracker
+
         tracker = MultiDimensionCostTracker(db_path=str(tmp_path / "cost_perf.db"))
         yield tracker
         tracker.close()
@@ -872,9 +834,7 @@ class TestBudgetTrackerThroughput:
         ops_per_sec = iterations / elapsed_s if elapsed_s > 0 else 0
 
         # 每次 check_budget 应在 50ms 内完成（含 psutil 采集 + DB 查询）
-        assert per_call_ms < 50.0, (
-            f"check_budget 单次延迟过高: {per_call_ms:.3f}ms"
-        )
+        assert per_call_ms < 50.0, f"check_budget 单次延迟过高: {per_call_ms:.3f}ms"
 
         print(f"\ncheck_budget 吞吐量 ({iterations}次):")
         print(f"  总时间: {elapsed_s * 1000:.2f}ms")
@@ -905,9 +865,7 @@ class TestBudgetTrackerThroughput:
         # 每条记录应在 10ms 内（含 INSERT + commit）
         # 阈值依据：Windows + SQLite WAL 同步 I/O，单条 INSERT+commit 通常 1-5ms
         # Linux/NVMe 上通常 <2ms
-        assert per_call_ms < 10.0, (
-            f"record_cost 单次延迟过高: {per_call_ms:.3f}ms"
-        )
+        assert per_call_ms < 10.0, f"record_cost 单次延迟过高: {per_call_ms:.3f}ms"
 
         print(f"\nrecord_cost 吞吐量 ({iterations}次):")
         print(f"  总时间: {elapsed_s * 1000:.2f}ms")
@@ -948,10 +906,7 @@ class TestBudgetTrackerThroughput:
             except Exception as e:
                 errors.append(e)
 
-        threads = [
-            threading.Thread(target=record_worker, args=(tid,))
-            for tid in range(thread_count)
-        ]
+        threads = [threading.Thread(target=record_worker, args=(tid,)) for tid in range(thread_count)]
         start = time.perf_counter()
         for t in threads:
             t.start()
@@ -1009,9 +964,7 @@ class TestAuditLogHashChainPerformance:
         per_call_ms = (elapsed_s / iterations) * 1000
 
         # 单条 log 应在 5ms 内（含 SHA-256 + 文件 I/O + 链状态持久化）
-        assert per_call_ms < 5.0, (
-            f"audit_log.log() 单次延迟过高: {per_call_ms:.3f}ms"
-        )
+        assert per_call_ms < 5.0, f"audit_log.log() 单次延迟过高: {per_call_ms:.3f}ms"
 
         print(f"\nAgentAuditLog.log() 性能 ({iterations}次):")
         print(f"  总时间: {elapsed_s * 1000:.2f}ms")
@@ -1060,9 +1013,7 @@ class TestAuditLogHashChainPerformance:
                     "prev_hash": last_hash,
                 }
                 payload = json.dumps(entry, ensure_ascii=False, sort_keys=True)
-                entry_hash = hashlib.sha256(
-                    (payload + last_hash).encode("utf-8")
-                ).hexdigest()
+                entry_hash = hashlib.sha256((payload + last_hash).encode("utf-8")).hexdigest()
                 entry["entry_hash"] = entry_hash
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 f.flush()
@@ -1072,17 +1023,11 @@ class TestAuditLogHashChainPerformance:
 
         plain_per_ms = (plain_elapsed / iterations) * 1000
         chain_per_ms = (chain_elapsed / iterations) * 1000
-        overhead_pct = (
-            ((chain_per_ms - plain_per_ms) / plain_per_ms * 100)
-            if plain_per_ms > 0
-            else 0
-        )
+        overhead_pct = ((chain_per_ms - plain_per_ms) / plain_per_ms * 100) if plain_per_ms > 0 else 0
 
         # 哈希链 overhead 应在 200% 以内（即不超过基线的 3 倍）
         # SHA-256 在短消息上极快，主要开销在 sort_keys 序列化
-        assert overhead_pct < 200.0, (
-            f"哈希链 overhead 过高: {overhead_pct:.1f}%"
-        )
+        assert overhead_pct < 200.0, f"哈希链 overhead 过高: {overhead_pct:.1f}%"
 
         print(f"\n哈希链 overhead 对比 ({iterations}次):")
         print(f"  无哈希链: {plain_per_ms:.4f}ms/条")
@@ -1110,9 +1055,7 @@ class TestAuditLogHashChainPerformance:
 
         assert is_valid, f"完整性校验失败: {breaks}"
         # 500 条日志扫描应在 500ms 内完成
-        assert elapsed_ms < 500.0, (
-            f"verify_integrity() 扫描过慢: {elapsed_ms:.3f}ms"
-        )
+        assert elapsed_ms < 500.0, f"verify_integrity() 扫描过慢: {elapsed_ms:.3f}ms"
 
         print("\nverify_integrity() 扫描性能 (500条):")
         print(f"  总时间: {elapsed_ms:.3f}ms")
@@ -1176,13 +1119,11 @@ class TestHeartbeatSchedulerPerformance:
 
         # 每次 add_task 应在 10ms 内（含 CronParser 缓存查找 + INSERT + commit）
         # 阈值依据：
-        #   - CronParser 缓存命中 <0.1ms（仅首次冷启动约 2-5ms，摊销后忽略）
-        #   - SQLite WAL INSERT+commit 约 1-5ms（Windows）
-        #   - Windows 文件系统 I/O 开销
+        # - CronParser 缓存命中 <0.1ms（仅首次冷启动约 2-5ms，摊销后忽略）
+        # - SQLite WAL INSERT+commit 约 1-5ms（Windows）
+        # - Windows 文件系统 I/O 开销
         # Linux/NVMe + Python 3.11+ 上通常 <2ms
-        assert per_call_ms < 10.0, (
-            f"add_task 单次延迟过高: {per_call_ms:.3f}ms"
-        )
+        assert per_call_ms < 10.0, f"add_task 单次延迟过高: {per_call_ms:.3f}ms"
 
         print(f"\nWakeupQueue.add_task 吞吐量 ({iterations}次):")
         print(f"  总时间: {elapsed_s * 1000:.2f}ms")
@@ -1195,8 +1136,6 @@ class TestHeartbeatSchedulerPerformance:
         get_due_tasks 在心跳循环中每秒调用一次，是热路径。
         """
         import time as _time
-
-
 
         queue, ScheduledTask, _ = wakeup_queue
 
@@ -1227,9 +1166,7 @@ class TestHeartbeatSchedulerPerformance:
         p95 = times[min(int(len(times) * 0.95), len(times) - 1)]
 
         # 100 条到期任务查询 P95 应在 10ms 内
-        assert p95 < 10.0, (
-            f"get_due_tasks P95 过高: {p95:.3f}ms"
-        )
+        assert p95 < 10.0, f"get_due_tasks P95 过高: {p95:.3f}ms"
 
         print(f"\nget_due_tasks 查询性能 ({iterations}次, 100条到期):")
         print(f"  P50: {p50:.3f}ms")
@@ -1271,9 +1208,7 @@ class TestHeartbeatSchedulerPerformance:
         # 每次 update 应在 5ms 内（含 UPDATE + commit）
         # 阈值依据：SQLite WAL UPDATE+commit 约 1-3ms，
         # Windows 环境下 I/O 开销略高
-        assert per_call_ms < 5.0, (
-            f"update_task_status 单次延迟过高: {per_call_ms:.3f}ms"
-        )
+        assert per_call_ms < 5.0, f"update_task_status 单次延迟过高: {per_call_ms:.3f}ms"
 
         print(f"\nupdate_task_status 性能 ({iterations}次):")
         print(f"  总时间: {elapsed_s * 1000:.2f}ms")

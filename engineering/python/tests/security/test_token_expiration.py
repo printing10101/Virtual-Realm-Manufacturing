@@ -36,9 +36,7 @@ from app.auth.security import (
 )
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -61,9 +59,7 @@ def ensure_secret(monkeypatch):
         )
 
 
-# ---------------------------------------------------------------------------
 # 密钥强度
-# ---------------------------------------------------------------------------
 
 
 class TestSecretGeneration:
@@ -77,9 +73,7 @@ class TestSecretGeneration:
             generate_secure_jwt_secret(length=8)
 
 
-# ---------------------------------------------------------------------------
 # Token 颁发与解码
-# ---------------------------------------------------------------------------
 
 
 class TestTokenIssuance:
@@ -122,17 +116,13 @@ class TestTokenIssuance:
         assert decode_token("a.b.c") is None
 
 
-# ---------------------------------------------------------------------------
 # Token 过期
-# ---------------------------------------------------------------------------
 
 
 class TestTokenExpiration:
     def test_decode_returns_none_for_expired_token(self, monkeypatch):
         # 颁发一个 1 分钟后过期的 token
-        create_access_token(
-            {"sub": "u1"}, expires_delta=timedelta(minutes=1)
-        )
+        create_access_token({"sub": "u1"}, expires_delta=timedelta(minutes=1))
         # 把系统时间向后拨 1 小时（jose 内部使用 datetime.utcnow，monkeypatch 比较难）
         datetime.now(timezone.utc) + timedelta(hours=1)
         expired = jwt.encode(
@@ -174,9 +164,7 @@ class TestTokenExpiration:
         assert decoded.get("sub") == "alice"
 
 
-# ---------------------------------------------------------------------------
 # 密码哈希
-# ---------------------------------------------------------------------------
 
 
 class TestPasswordHashing:
@@ -205,9 +193,7 @@ class TestPasswordHashing:
         assert verify_password("x", h) is False
 
 
-# ---------------------------------------------------------------------------
 # Token 撤销列表
-# ---------------------------------------------------------------------------
 
 
 class TestTokenBanList:

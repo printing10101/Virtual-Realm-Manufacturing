@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class _ModelsMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _build_config_object: Callable[..., Any]
     _config: Any
     _is_dirty: Any

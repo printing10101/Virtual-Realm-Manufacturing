@@ -65,9 +65,7 @@ class SessionExtractor(_SourcesMixin):
         self.audit_log_dir = Path(audit_log_dir or "python/outputs/audit")
         self.cutting_store = cutting_store
 
-    # ------------------------------------------------------------------
     # 主入口
-    # ------------------------------------------------------------------
 
     def extract_sessions(
         self,

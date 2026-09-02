@@ -35,9 +35,7 @@ import builtins
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 内部数据结构：注册表项
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -63,9 +61,7 @@ class _Registration:
         }
 
 
-# ---------------------------------------------------------------------------
 # ExtensionRegistry：IExtensionRegistry 实现
-# ---------------------------------------------------------------------------
 
 
 class ExtensionRegistry(IExtensionRegistry):
@@ -89,14 +85,14 @@ class ExtensionRegistry(IExtensionRegistry):
     """
 
     def __init__(self) -> None:
-        # extension_point → list[_Registration]
+        # extension_point list[_Registration]
         self._registrations: dict[str, list[_Registration]] = {}
-        # plugin_id → set[extension_point]（反向索引，加速 unregister）
+        # plugin_id set[extension_point]（反向索引，加速 unregister）
         self._plugin_index: dict[str, set] = {}
         self._lock = threading.RLock()
         self._order_counter = 0
 
-    # ----- 注册 -----
+    # 注册
 
     def register(
         self,
@@ -206,7 +202,7 @@ class ExtensionRegistry(IExtensionRegistry):
             metadata=full_meta,
         )
 
-    # ----- 取消注册 -----
+    # 取消注册
 
     def unregister(self, plugin_id: str, extension_point: str | None = None) -> int:
         """取消注册.
@@ -267,7 +263,7 @@ class ExtensionRegistry(IExtensionRegistry):
             total += self._unregister_one(plugin_id, ext_point)
         return total
 
-    # ----- 查询 -----
+    # 查询
 
     def list(self, extension_point: str) -> builtins.list[dict[str, Any]]:
         """列出某扩展点的所有贡献元信息（按注册顺序）.
@@ -299,7 +295,7 @@ class ExtensionRegistry(IExtensionRegistry):
                 return len(self._registrations.get(extension_point, []))
             return sum(len(regs) for regs in self._registrations.values())
 
-    # ----- 调用 -----
+    # 调用
 
     async def invoke(self, extension_point: str, payload: dict[str, Any]) -> builtins.list[Any]:
         """调用某扩展点的所有贡献，返回结果列表（按注册顺序）.
@@ -369,7 +365,7 @@ class ExtensionRegistry(IExtensionRegistry):
             )
             return default
 
-    # ----- 批量管理 -----
+    # 批量管理
 
     def clear(self) -> None:
         """清空所有注册（主要用于测试与系统关闭）."""
@@ -389,9 +385,7 @@ class ExtensionRegistry(IExtensionRegistry):
             return list(self._plugin_index.keys())
 
 
-# ---------------------------------------------------------------------------
 # 模块级单例访问
-# ---------------------------------------------------------------------------
 
 
 _registry_singleton: ExtensionRegistry | None = None

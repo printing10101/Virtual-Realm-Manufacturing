@@ -31,9 +31,7 @@ from app.main import app
 from app.dnc.dnc_manager import DNCManager, dnc_manager, ProtocolType
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -73,9 +71,7 @@ def _set_connections(monkeypatch, machines: dict) -> None:
     monkeypatch.setattr(DNCManager, "connections", PropertyMock(return_value=machines))
 
 
-# ---------------------------------------------------------------------------
 # 机床连接管理测试
-# ---------------------------------------------------------------------------
 
 
 class TestMachineConnection:
@@ -132,9 +128,7 @@ class TestMachineConnection:
         assert data["data"]["status"] == "disconnected"
 
 
-# ---------------------------------------------------------------------------
 # 机床状态查询测试
-# ---------------------------------------------------------------------------
 
 
 class TestMachineStatus:
@@ -166,9 +160,7 @@ class TestMachineStatus:
         assert isinstance(data["data"], dict)
 
 
-# ---------------------------------------------------------------------------
 # NC 程序传输测试
-# ---------------------------------------------------------------------------
 
 
 class TestNCProgramTransfer:
@@ -235,9 +227,7 @@ class TestNCProgramTransfer:
             os.unlink(temp_path)
 
 
-# ---------------------------------------------------------------------------
 # 报警信息查询测试
-# ---------------------------------------------------------------------------
 
 
 class TestMachineAlarms:
@@ -291,9 +281,7 @@ class TestMachineAlarms:
         assert data["data"] == []
 
 
-# ---------------------------------------------------------------------------
 # 参数验证测试
-# ---------------------------------------------------------------------------
 
 
 class TestValidation:

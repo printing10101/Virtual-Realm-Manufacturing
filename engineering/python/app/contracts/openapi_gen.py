@@ -91,9 +91,7 @@ from app.contracts import (
 )
 
 
-# ---------------------------------------------------------------------------
 # OpenAPI 元信息
-# ---------------------------------------------------------------------------
 
 OPENAPI_TITLE = "灵境制造 核心架构契约 API"
 OPENAPI_DESCRIPTION = (
@@ -104,9 +102,7 @@ OPENAPI_DESCRIPTION = (
 OPENAPI_VERSION = CONTRACTS_VERSION  # 与契约版本同步
 
 
-# ---------------------------------------------------------------------------
-# Python 类型 → JSON Schema 转换
-# ---------------------------------------------------------------------------
+# Python 类型 JSON Schema 转换
 
 # 基本类型映射
 _BASIC_TYPE_MAP = {
@@ -146,7 +142,7 @@ def _python_type_to_schema(tp: Any) -> dict[str, Any]:
 
     # Enum
     if isinstance(tp, type) and issubclass(tp, Enum):
-        # str enum → string + enum
+        # str enum string + enum
         if issubclass(tp, str):
             return {
                 "type": "string",
@@ -163,7 +159,7 @@ def _python_type_to_schema(tp: Any) -> dict[str, Any]:
     if tp is datetime:
         return {"type": "string", "format": "date-time"}
 
-    # 嵌套 dataclass → $ref
+    # 嵌套 dataclass $ref
     if isinstance(tp, type) and is_dataclass(tp):
         ref_name = tp.__name__
         return {"$ref": f"#/components/schemas/{ref_name}"}
@@ -199,9 +195,7 @@ def _dataclass_to_schema(cls: type) -> dict[str, Any]:
     return schema
 
 
-# ---------------------------------------------------------------------------
 # 契约 schema 注册
-# ---------------------------------------------------------------------------
 
 
 def _collect_contract_dataclasses() -> list[type]:
@@ -351,9 +345,7 @@ def build_contracts_schema() -> dict[str, Any]:
     return openapi
 
 
-# ---------------------------------------------------------------------------
 # 导出与校验
-# ---------------------------------------------------------------------------
 
 
 DEFAULT_OUTPUT_PATH = Path(__file__).resolve().parents[3] / "docs" / "api" / "openapi.json"
@@ -411,9 +403,7 @@ def verify_openapi(path: Union[str, Path] | None = None) -> tuple[bool, str]:
     return False, "OpenAPI schemas inconsistent: " + "; ".join(diffs)
 
 
-# ---------------------------------------------------------------------------
 # CLI
-# ---------------------------------------------------------------------------
 
 
 def _cmd_export(args: argparse.Namespace) -> int:

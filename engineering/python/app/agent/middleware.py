@@ -61,12 +61,12 @@ class AgentAuditLog:
 
     # 链状态持久化周期：每 N 次 log 才保存一次状态文件。
     # 设计依据：
-    #   1. 链状态文件只是 _last_hash/_chain_seq 的快照，用于加速启动；
-    #      日志文件本身已包含完整哈希链，verify_integrity() 不依赖状态文件。
-    #   2. 崩溃时状态文件可能落后最多 N-1 条，但 _load_chain_state()
-    #      已实现 _rebuild_chain_state_from_log() 兜底重建逻辑。
-    #   3. N=32 在 100 次 log 测试中将 I/O 次数从 200 次降至 ~6 次，
-    #      实测单次 log 延迟从 3.064ms 降至 ~0.5ms。
+    # 1. 链状态文件只是 _last_hash/_chain_seq 的快照，用于加速启动；
+    # 日志文件本身已包含完整哈希链，verify_integrity() 不依赖状态文件。
+    # 2. 崩溃时状态文件可能落后最多 N-1 条，但 _load_chain_state()
+    # 已实现 _rebuild_chain_state_from_log() 兜底重建逻辑。
+    # 3. N=32 在 100 次 log 测试中将 I/O 次数从 200 次降至 ~6 次，
+    # 实测单次 log 延迟从 3.064ms 降至 ~0.5ms。
     _CHAIN_STATE_SAVE_INTERVAL = 32
 
     def __init__(self, log_path: str | os.PathLike[str] | None = None):
@@ -105,9 +105,7 @@ class AgentAuditLog:
             )
             self._stream = None
 
-    # ------------------------------------------------------------------
     # P0-16 修复：哈希链基础设施
-    # ------------------------------------------------------------------
 
     def _load_chain_state(self) -> None:
         """启动时从 agent_audit_chain_state.json 加载 _last_hash 和 _chain_seq。
@@ -360,9 +358,7 @@ class AgentAuditLog:
 
         return len(breaks) == 0, breaks
 
-    # ------------------------------------------------------------------
     # 原有方法
-    # ------------------------------------------------------------------
 
     def log(
         self,
@@ -584,9 +580,7 @@ agent_rate_limiter = AgentRateLimiter()
 idempotency_store = IdempotencyStore()
 
 
-# ============================================================
 # P2-1 修复：AgentAuditLog 进程级单例工厂
-# ============================================================
 # 历史遗留：``app.agent.middleware.agent_audit_log`` 与
 # ``app.auth.audit.agent_audit_log`` 是两个独立模块级实例，导致审计
 # 日志写入分散在两个文件、哈希链状态不同步。本工厂通过双重检查锁

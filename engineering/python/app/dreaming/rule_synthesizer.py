@@ -31,12 +31,10 @@ from app.dreaming.reflector import InsightItem, ReflectionResult
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 规则数据结构
-# ---------------------------------------------------------------------------
 
 
-# 规则状态机：draft → validated → applied → deprecated
+# 规则状态机：draft validated applied deprecated
 RULE_STATUS_DRAFT = "draft"
 RULE_STATUS_VALIDATED = "validated"
 RULE_STATUS_APPLIED = "applied"
@@ -106,9 +104,7 @@ class RuleDraft:
         )
 
 
-# ---------------------------------------------------------------------------
 # RuleSynthesizer
-# ---------------------------------------------------------------------------
 
 
 class RuleSynthesizer:
@@ -132,9 +128,7 @@ class RuleSynthesizer:
         self.output_dir = Path(output_dir or "python/outputs/dreaming/rules")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------
     # 主入口
-    # ------------------------------------------------------------------
 
     def synthesize(
         self,
@@ -186,9 +180,7 @@ class RuleSynthesizer:
         )
         return rules
 
-    # ------------------------------------------------------------------
     # 合成策略
-    # ------------------------------------------------------------------
 
     def _synthesize_pattern_rule(self, insight: InsightItem) -> RuleDraft | None:
         """从 pattern 类洞察合成规则。
@@ -308,9 +300,7 @@ class RuleSynthesizer:
             source_insight_content=insight.content,
         )
 
-    # ------------------------------------------------------------------
     # 硬约束校验
-    # ------------------------------------------------------------------
 
     def _validate_hard_constraints(self, rule: RuleDraft) -> bool:
         """校验规则是否违反硬约束。
@@ -334,9 +324,7 @@ class RuleSynthesizer:
 
         return True
 
-    # ------------------------------------------------------------------
     # 工具方法
-    # ------------------------------------------------------------------
 
     def _extract_material(self, content: str) -> str | None:
         """从洞察文本中提取材料类型。
@@ -387,9 +375,7 @@ class RuleSynthesizer:
         except OSError as e:
             logger.warning("规则持久化失败：%s", e)
 
-    # ------------------------------------------------------------------
     # 规则加载（供 RuleValidator 使用）
-    # ------------------------------------------------------------------
 
     def load_rules(self, status: str | None = None) -> list[RuleDraft]:
         """加载已持久化的规则草稿。

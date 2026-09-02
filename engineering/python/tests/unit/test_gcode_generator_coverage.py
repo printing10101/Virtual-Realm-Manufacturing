@@ -74,7 +74,7 @@ class TestGenerateFanuc:
         plan = _plan(operations=[_op(1, "平面铣削")])
         r = gen.generate(plan, controller_type="fanuc_0i", use_coolant=False)
         # fanuc header 自带一次 M08（后处理器固有安全默认）；
-        # use_coolant=False 关闭工序级冷却液 → 全程序仅 header 一处 M08
+        # use_coolant=False 关闭工序级冷却液 全程序仅 header 一处 M08
         assert r.program_text.count("M08") == 1
 
     def test_generate_g42_compensation(self):
@@ -125,7 +125,7 @@ class TestGenerateControllers:
     def test_xmachine_five_axis(self):
         gen = GCodeGenerator()
         plan = _plan(operations=[_op(1, "五轴联动铣削")])
-        # safe_z=80 超过 XM-100 Z 行程 ±50 → 自动 clamp
+        # safe_z=80 超过 XM-100 Z 行程 ±50 自动 clamp
         r = gen.generate(plan, controller_type="xmachine_xm100", safe_z=80.0)
         assert r.program_text
         assert "五轴" in r.program_text
@@ -140,7 +140,9 @@ class TestGenerateControllers:
 class TestFeatureBranches:
     def test_drilling_center(self):
         gen = GCodeGenerator()
-        plan = _plan(operations=[_op(1, "中心孔钻削", cutting_params={"geometry": {"x": 5.0, "y": 5.0, "z_depth": 3.0}})])
+        plan = _plan(
+            operations=[_op(1, "中心孔钻削", cutting_params={"geometry": {"x": 5.0, "y": 5.0, "z_depth": 3.0}})]
+        )
         r = gen.generate(plan, controller_type="fanuc_0i")
         assert "G81" in r.program_text or "G83" in r.program_text or "G73" in r.program_text
 

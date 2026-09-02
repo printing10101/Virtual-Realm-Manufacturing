@@ -84,9 +84,7 @@ from app.contracts.workflow_template import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # Schema 常量
-# ---------------------------------------------------------------------------
 
 
 REQUIRED_FIELDS: tuple[str, ...] = (
@@ -124,9 +122,7 @@ _SEMVER_PATTERN = re.compile(
 _CONTRACT_PATTERN = re.compile(r"^[a-z][a-z0-9_]*@[^\s]+$")
 
 
-# ---------------------------------------------------------------------------
 # 校验异常
-# ---------------------------------------------------------------------------
 
 
 class TemplateValidationError(ValueError):
@@ -137,9 +133,7 @@ class TemplateValidationError(ValueError):
         super().__init__("; ".join(errors))
 
 
-# ---------------------------------------------------------------------------
 # 校验器
-# ---------------------------------------------------------------------------
 
 
 def validate_template_dict(data: dict[str, Any]) -> list[str]:
@@ -213,9 +207,7 @@ def validate_template_dict(data: dict[str, Any]) -> list[str]:
     return errors
 
 
-# ---------------------------------------------------------------------------
 # 加载器
-# ---------------------------------------------------------------------------
 
 
 def load_template_from_dict(data: dict[str, Any]) -> WorkflowTemplateManifest:
@@ -384,9 +376,7 @@ def _infer_plugin_id(plugin_dir: Path) -> str:
         return ""
 
 
-# ---------------------------------------------------------------------------
 # 序列化器
-# ---------------------------------------------------------------------------
 
 
 def template_to_dict(manifest: WorkflowTemplateManifest) -> dict[str, Any]:
@@ -425,9 +415,7 @@ def template_to_yaml(manifest: WorkflowTemplateManifest) -> str:
     )
 
 
-# ---------------------------------------------------------------------------
 # 示例 template 生成
-# ---------------------------------------------------------------------------
 
 
 def create_example_template_dict(

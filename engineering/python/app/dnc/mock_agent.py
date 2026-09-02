@@ -350,7 +350,7 @@ class MockMTConnectAgent:
             (_MockAgentHandler,),
             {"simulator": self.simulator},
         )
-        # port=0 → OS 分配；绑定失败 → 换端口重试（WinError 10013 / EADDRINUSE）
+        # port=0 OS 分配；绑定失败 换端口重试（WinError 10013 / EADDRINUSE）
         last_exc: OSError | None = None
         for _ in range(_MAX_BIND_ATTEMPTS):
             try:
@@ -359,7 +359,7 @@ class MockMTConnectAgent:
             except OSError as exc:
                 last_exc = exc
                 if self.port == 0:
-                    # 已是自动分配端口仍失败 → 放弃（环境级问题）
+                    # 已是自动分配端口仍失败 放弃（环境级问题）
                     raise
                 logger.warning("MockMTConnectAgent bind %s:%s failed: %s；换端口重试", self.host, self.port, exc)
                 self.port = 0

@@ -55,7 +55,7 @@ class Dataset:
     def __init__(self, client: LomoClient) -> None:
         self._client = client
 
-    # -- 列表与创建 ---------------------------------------------------------
+    # 列表与创建
 
     def list(
         self,
@@ -112,7 +112,7 @@ class Dataset:
         """获取数据集详情（含 schema 与版本概要）。"""
         return self._client.get(f"/datasets/{dataset_id}")
 
-    # -- 版本管理 -----------------------------------------------------------
+    # 版本管理
 
     def list_versions(self, dataset_id: str) -> dict[str, Any]:
         """列出数据集的所有版本（按创建时间倒序）。"""
@@ -147,17 +147,13 @@ class Dataset:
             body["version"] = version
         if lineage is not None:
             body["lineage"] = lineage
-        return self._client.post(
-            f"/datasets/{dataset_id}/commit", json=body
-        )
+        return self._client.post(f"/datasets/{dataset_id}/commit", json=body)
 
     def deprecate(self, dataset_id: str, version: str) -> dict[str, Any]:
         """废弃某版本（不可逆，但内容仍可读）。"""
-        return self._client.post(
-            f"/datasets/{dataset_id}/deprecate", params={"version": version}
-        )
+        return self._client.post(f"/datasets/{dataset_id}/deprecate", params={"version": version})
 
-    # -- 流式读取 -----------------------------------------------------------
+    # 流式读取
 
     def read(
         self,
@@ -179,16 +175,12 @@ class Dataset:
         params: dict[str, Any] = {"batch_size": batch_size}
         if version is not None:
             params["version"] = version
-        stream = self._client.get(
-            f"/datasets/{dataset_id}/read", params=params, stream=True
-        )
+        stream = self._client.get(f"/datasets/{dataset_id}/read", params=params, stream=True)
         if not isinstance(stream, StreamingJSONL):
-            raise TypeError(
-                f"read 期望 StreamingJSONL，实际得到 {type(stream).__name__}"
-            )
+            raise TypeError(f"read 期望 StreamingJSONL，实际得到 {type(stream).__name__}")
         return iter(stream)
 
-    # -- 血缘 ---------------------------------------------------------------
+    # 血缘
 
     def record_lineage(self, lineage: dict[str, Any]) -> dict[str, Any]:
         """记录一条血缘。
@@ -231,9 +223,7 @@ class Dataset:
         params = {"direction": direction, "depth": depth}
         # target_uri 作为 path 传入，httpx 会自动 URL 编码斜杠之外的特殊字符；
         # 但为避免斜杠被 path 压扁，使用原始字符串拼接（后端用 {target_uri:path} 接收）
-        return self._client.get(
-            f"/datasets/lineage/{target_uri}", params=params
-        )
+        return self._client.get(f"/datasets/lineage/{target_uri}", params=params)
 
 
 __all__ = ["Dataset"]

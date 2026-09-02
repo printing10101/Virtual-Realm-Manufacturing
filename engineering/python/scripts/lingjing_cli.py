@@ -11,6 +11,7 @@
     lingjing uninstall   卸载（保留 .env 与数据前会确认）
     lingjing version     显示版本
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,9 +25,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-# -----------------------------------------------------------------------------
 # 路径解析（install.sh 注入环境变量，默认 ~/.lingjing）
-# -----------------------------------------------------------------------------
 HOME = Path.home()
 
 
@@ -72,9 +71,7 @@ def fail(msg: str) -> None:
     print(f"  {RED}✗{NC} {msg}")
 
 
-# -----------------------------------------------------------------------------
 # 工具函数
-# -----------------------------------------------------------------------------
 def is_running(pid: int) -> bool:
     if pid <= 0:
         return False
@@ -83,7 +80,9 @@ def is_running(pid: int) -> bool:
         try:
             r = subprocess.run(
                 ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             return str(pid) in (r.stdout or "")
         except Exception:
@@ -132,9 +131,7 @@ def read_version() -> str:
     return "unknown"
 
 
-# -----------------------------------------------------------------------------
 # doctor — 全面自检
-# -----------------------------------------------------------------------------
 def cmd_doctor() -> int:
     print(f"灵境制造 doctor（版本 {read_version()}）\n")
     errors = 0
@@ -158,9 +155,7 @@ def cmd_doctor() -> int:
         fail(f"虚拟环境 Python 不存在: {py}")
         return errors + 1
     try:
-        ver = subprocess.run(
-            [str(py), "--version"], capture_output=True, text=True, timeout=10
-        ).stdout.strip()
+        ver = subprocess.run([str(py), "--version"], capture_output=True, text=True, timeout=10).stdout.strip()
         ok(f"Python: {ver}")
         m = re.search(r"(\d+)\.(\d+)", ver)
         if m and (int(m.group(1)), int(m.group(2))) < (3, 11):
@@ -172,9 +167,7 @@ def cmd_doctor() -> int:
     # 3. 关键依赖
     print("[-] 关键依赖")
     for mod in ("fastapi", "uvicorn", "sqlalchemy", "pydantic"):
-        r = subprocess.run(
-            [str(py), "-c", f"import {mod}"], capture_output=True, text=True, timeout=30
-        )
+        r = subprocess.run([str(py), "-c", f"import {mod}"], capture_output=True, text=True, timeout=30)
         if r.returncode == 0:
             ok(f"已安装: {mod}")
         else:
@@ -226,9 +219,7 @@ def cmd_doctor() -> int:
     return 0
 
 
-# -----------------------------------------------------------------------------
 # start / stop / restart / status
-# -----------------------------------------------------------------------------
 def cmd_start() -> int:
     py = python_bin()
     if not py.exists():
@@ -247,6 +238,7 @@ def cmd_start() -> int:
     if env_file.exists():
         try:
             from dotenv import load_dotenv
+
             load_dotenv(env_file, override=False)
         except ImportError:  # 兜底：手动解析（python-dotenv 缺失时）
             for line in env_file.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -277,8 +269,18 @@ def cmd_start() -> int:
 
     with open(BACKEND_LOG, "ab") as log_f:
         proc = subprocess.Popen(
-            [str(py), "-m", "uvicorn", "app.main:app",
-             "--host", API_HOST, "--port", str(API_PORT), "--log-level", "info"],
+            [
+                str(py),
+                "-m",
+                "uvicorn",
+                "app.main:app",
+                "--host",
+                API_HOST,
+                "--port",
+                str(API_PORT),
+                "--log-level",
+                "info",
+            ],
             cwd=str(src_dir),
             env=env,
             stdout=log_f,
@@ -361,16 +363,13 @@ def cmd_status() -> int:
     return 0
 
 
-# -----------------------------------------------------------------------------
 # update / uninstall / version
-# -----------------------------------------------------------------------------
 def cmd_update() -> int:
     if not (LINGJING_SRC / ".git").exists():
         print("错误: 源码目录不是 git 仓库（跳过 git pull）")
         return 1
     print("更新代码...")
-    r = subprocess.run(["git", "-C", str(LINGJING_SRC), "pull", "--ff-only"],
-                       capture_output=True, text=True)
+    r = subprocess.run(["git", "-C", str(LINGJING_SRC), "pull", "--ff-only"], capture_output=True, text=True)
     print(r.stdout.strip())
     if r.returncode != 0:
         print(f"错误: git pull 失败\n{r.stderr.strip()}")
@@ -378,9 +377,9 @@ def cmd_update() -> int:
     print("更新依赖...")
     py = python_bin()
     r = subprocess.run(
-        ["uv", "pip", "install", "--python", str(py),
-         "-r", str(LINGJING_SRC / "engineering/python/requirements.txt")],
-        capture_output=True, text=True,
+        ["uv", "pip", "install", "--python", str(py), "-r", str(LINGJING_SRC / "engineering/python/requirements.txt")],
+        capture_output=True,
+        text=True,
     )
     print(r.stdout.strip())
     if r.returncode != 0:
@@ -405,6 +404,7 @@ def cmd_uninstall() -> int:
         return 1
     cmd_stop()
     import shutil
+
     if LINGJING_HOME.exists():
         shutil.rmtree(LINGJING_HOME)
     link = HOME / ".local/bin/lingjing"
@@ -419,7 +419,6 @@ def cmd_version() -> int:
     return 0
 
 
-# -----------------------------------------------------------------------------
 def main() -> int:
     parser = argparse.ArgumentParser(prog="lingjing", description="灵境制造服务管理 CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)

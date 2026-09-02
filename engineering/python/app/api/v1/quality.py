@@ -30,9 +30,7 @@ class QualityAnomalyCreate(BaseModel):
     severity: str
 
 
-# ---------------------------------------------------------------------------
 # Router
-# ---------------------------------------------------------------------------
 
 router = APIRouter(prefix="/api/v1/quality", tags=["Quality"])
 

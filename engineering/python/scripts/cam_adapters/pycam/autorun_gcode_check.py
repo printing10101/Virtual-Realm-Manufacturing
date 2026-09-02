@@ -95,6 +95,7 @@ PyCAM 环境要求
 
 ``cam_adapter.py`` 收到 status="error" 后自动降级到 manual 后端，链路不中断。
 """
+
 from __future__ import annotations
 
 import json
@@ -107,9 +108,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# =============================================================================
 # 输出协议常量（与 cam_adapter.py _JSON_*_FIELD 对齐）
-# =============================================================================
 
 _JSON_STATUS_FIELD = "status"
 _JSON_COLLISIONS_FIELD = "collisions"
@@ -117,7 +116,7 @@ _JSON_MESSAGES_FIELD = "messages"
 
 _VALID_STATUSES = frozenset({"pass", "fail", "error"})
 
-# 控制器类型 → 后处理器名称映射（与 NX Open 脚本对齐）
+# 控制器类型 后处理器名称映射（与 NX Open 脚本对齐）
 _CONTROLLER_TO_POSTPROCESSOR: dict[str, str] = {
     "fanuc_0i": "fanuc_0i",
     "siemens_840d": "siemens_840d",
@@ -125,9 +124,7 @@ _CONTROLLER_TO_POSTPROCESSOR: dict[str, str] = {
     "xmachine_xm100": "xmachine_xm100",
 }
 
-# =============================================================================
 # 工作空间与安全参数（可通过环境变量覆盖）
-# =============================================================================
 
 # 默认机床工作空间（mm），对应典型 3 轴 VMC（如 VMC750）
 # 实际部署应通过环境变量按车间机床配置
@@ -146,9 +143,7 @@ _DEFAULT_RAPID_MAX_Z = float(os.environ.get("PYCAM_RAPID_MAX_Z", "5.0"))
 _DEFAULT_MIN_MOVE_DISTANCE = float(os.environ.get("PYCAM_MIN_MOVE_DISTANCE", "0.001"))
 
 
-# =============================================================================
 # 输出工具函数
-# =============================================================================
 
 
 def _emit_result(
@@ -180,10 +175,7 @@ def _emit_result(
         sys.stdout.write("\n")
         sys.stdout.flush()
     except Exception as exc:
-        sys.stderr.write(
-            f"PyCAM 脚本 JSON 输出失败: {exc}\n"
-            f"payload: {payload}\n"
-        )
+        sys.stderr.write(f"PyCAM 脚本 JSON 输出失败: {exc}\npayload: {payload}\n")
         return 1
 
     return 0 if status in {"pass", "fail"} else 1
@@ -194,9 +186,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# =============================================================================
 # G 代码解析器（轻量实现，PyCAM 无原生 G 代码 Importer）
-# =============================================================================
 
 
 # G 代码行正则：匹配 NXX GXX X.. Y.. Z.. F.. S.. 等格式
@@ -282,9 +272,8 @@ def _parse_gcode_line(line: str, line_index: int) -> GcodeMove | None:
     # 跳过非 G 代码行（M 代码、T 代码、% 等）
     # 但保留含坐标的行（可能是 G0/G1 的省略写法）
     upper = line_clean.upper()
-    if (
-        not any(upper.startswith(g) for g in ("N", "G", "X", "Y", "Z"))
-        and not any(axis in upper for axis in ("X", "Y", "Z"))
+    if not any(upper.startswith(g) for g in ("N", "G", "X", "Y", "Z")) and not any(
+        axis in upper for axis in ("X", "Y", "Z")
     ):
         return None
 
@@ -376,9 +365,7 @@ def parse_gcode_file(gcode_file_path: str) -> tuple[list[GcodeMove], list[str]]:
     return moves, messages
 
 
-# =============================================================================
 # PyCAM 真实调用（导入核心模块，验证可用性）
-# =============================================================================
 
 
 def _import_pycam() -> dict[str, Any]:
@@ -407,10 +394,7 @@ def _import_pycam() -> dict[str, Any]:
             ToroidalCutter,
         )  # type: ignore[import-not-found]
     except ImportError as exc:
-        raise ImportError(
-            f"PyCAM 核心模块不可用：{exc}。"
-            "请执行 'pip install pycam' 安装 PyCAM 0.6+。"
-        ) from exc
+        raise ImportError(f"PyCAM 核心模块不可用：{exc}。请执行 'pip install pycam' 安装 PyCAM 0.6+。") from exc
 
     return {
         "pycam": pycam,
@@ -421,9 +405,7 @@ def _import_pycam() -> dict[str, Any]:
     }
 
 
-# =============================================================================
 # 校验逻辑（PyCAM 能力范围内的真实检测）
-# =============================================================================
 
 
 def _check_workspace_limits(
@@ -451,35 +433,32 @@ def _check_workspace_limits(
 
     for move in moves:
         if move.x is not None and (move.x < x_min or move.x > x_max):
-            collisions.append({
-                "collision_type": "workspace_limit",
-                "block_number": move.block_number,
-                "message": (
-                    f"X={move.x:.3f}mm 超出工作空间 X 范围 "
-                    f"[{x_min:.1f}, {x_max:.1f}]mm"
-                ),
-                "severity": "critical",
-            })
+            collisions.append(
+                {
+                    "collision_type": "workspace_limit",
+                    "block_number": move.block_number,
+                    "message": (f"X={move.x:.3f}mm 超出工作空间 X 范围 [{x_min:.1f}, {x_max:.1f}]mm"),
+                    "severity": "critical",
+                }
+            )
         if move.y is not None and (move.y < y_min or move.y > y_max):
-            collisions.append({
-                "collision_type": "workspace_limit",
-                "block_number": move.block_number,
-                "message": (
-                    f"Y={move.y:.3f}mm 超出工作空间 Y 范围 "
-                    f"[{y_min:.1f}, {y_max:.1f}]mm"
-                ),
-                "severity": "critical",
-            })
+            collisions.append(
+                {
+                    "collision_type": "workspace_limit",
+                    "block_number": move.block_number,
+                    "message": (f"Y={move.y:.3f}mm 超出工作空间 Y 范围 [{y_min:.1f}, {y_max:.1f}]mm"),
+                    "severity": "critical",
+                }
+            )
         if move.z is not None and (move.z < z_min or move.z > z_max):
-            collisions.append({
-                "collision_type": "workspace_limit",
-                "block_number": move.block_number,
-                "message": (
-                    f"Z={move.z:.3f}mm 超出工作空间 Z 范围 "
-                    f"[{z_min:.1f}, {z_max:.1f}]mm"
-                ),
-                "severity": "critical",
-            })
+            collisions.append(
+                {
+                    "collision_type": "workspace_limit",
+                    "block_number": move.block_number,
+                    "message": (f"Z={move.z:.3f}mm 超出工作空间 Z 范围 [{z_min:.1f}, {z_max:.1f}]mm"),
+                    "severity": "critical",
+                }
+            )
 
     return collisions
 
@@ -507,15 +486,14 @@ def _check_safe_z(
             continue
         # 仅对 G0 快速移动检查安全 Z（G1 切削移动允许低于安全 Z）
         if move.gcode.upper() == "G0" and move.z < safe_z:
-            collisions.append({
-                "collision_type": "safe_z_violation",
-                "block_number": move.block_number,
-                "message": (
-                    f"G0 快速移动 Z={move.z:.3f}mm 低于安全 Z={safe_z:.1f}mm，"
-                    "可能导致刀具-工件/夹具碰撞"
-                ),
-                "severity": "critical",
-            })
+            collisions.append(
+                {
+                    "collision_type": "safe_z_violation",
+                    "block_number": move.block_number,
+                    "message": (f"G0 快速移动 Z={move.z:.3f}mm 低于安全 Z={safe_z:.1f}mm，可能导致刀具-工件/夹具碰撞"),
+                    "severity": "critical",
+                }
+            )
 
     return collisions
 
@@ -545,15 +523,16 @@ def _check_rapid_in_material(
         if move.z is None:
             continue
         if move.gcode.upper() == "G0" and move.z < rapid_max_z:
-            collisions.append({
-                "collision_type": "rapid_in_material",
-                "block_number": move.block_number,
-                "message": (
-                    f"G0 快速移动 Z={move.z:.3f}mm 低于材料顶面阈值 "
-                    f"{rapid_max_z:.1f}mm，应改用 G1 切削进给"
-                ),
-                "severity": "warning",
-            })
+            collisions.append(
+                {
+                    "collision_type": "rapid_in_material",
+                    "block_number": move.block_number,
+                    "message": (
+                        f"G0 快速移动 Z={move.z:.3f}mm 低于材料顶面阈值 {rapid_max_z:.1f}mm，应改用 G1 切削进给"
+                    ),
+                    "severity": "warning",
+                }
+            )
 
     return collisions
 
@@ -587,15 +566,16 @@ def _check_move_continuity(
             dz = new_z - cur_z
             dist = math.sqrt(dx * dx + dy * dy + dz * dz)
             if 0 < dist < min_distance:
-                collisions.append({
-                    "collision_type": "move_continuity",
-                    "block_number": move.block_number,
-                    "message": (
-                        f"相邻点位距离 {dist:.6f}mm 低于最小阈值 {min_distance:.3f}mm，"
-                        "可能漏写坐标或重复指令"
-                    ),
-                    "severity": "warning",
-                })
+                collisions.append(
+                    {
+                        "collision_type": "move_continuity",
+                        "block_number": move.block_number,
+                        "message": (
+                            f"相邻点位距离 {dist:.6f}mm 低于最小阈值 {min_distance:.3f}mm，可能漏写坐标或重复指令"
+                        ),
+                        "severity": "warning",
+                    }
+                )
 
         cur_x, cur_y, cur_z = new_x, new_y, new_z
 
@@ -624,9 +604,7 @@ def _compute_toolpath_bounds(
     }
 
 
-# =============================================================================
 # 主入口
-# =============================================================================
 
 
 def main(argv: list[str]) -> int:
@@ -656,10 +634,7 @@ def main(argv: list[str]) -> int:
     if controller_type not in _CONTROLLER_TO_POSTPROCESSOR:
         return _emit_result(
             status="error",
-            messages=[
-                f"未知控制器类型：{controller_type}。"
-                f"合法值：{sorted(_CONTROLLER_TO_POSTPROCESSOR.keys())}"
-            ],
+            messages=[f"未知控制器类型：{controller_type}。合法值：{sorted(_CONTROLLER_TO_POSTPROCESSOR.keys())}"],
         )
 
     # 2. 校验 G 代码文件存在性（早期失败）
@@ -724,11 +699,7 @@ def main(argv: list[str]) -> int:
     collisions: list[dict[str, Any]] = []
 
     # 6.1 工作空间边界检查
-    collisions.extend(
-        _check_workspace_limits(
-            moves, _DEFAULT_WORKSPACE_X, _DEFAULT_WORKSPACE_Y, _DEFAULT_WORKSPACE_Z
-        )
-    )
+    collisions.extend(_check_workspace_limits(moves, _DEFAULT_WORKSPACE_X, _DEFAULT_WORKSPACE_Y, _DEFAULT_WORKSPACE_Z))
 
     # 6.2 安全 Z 检查
     collisions.extend(_check_safe_z(moves, _DEFAULT_SAFE_Z))
@@ -744,9 +715,7 @@ def main(argv: list[str]) -> int:
         "PyCAM 能力边界：仅完成工作空间/安全Z/G0材料内/连续性基础检查，"
         "未检测刀柄-工件/刀具-夹具碰撞（需 NX Open / PowerMill）。"
     )
-    messages.append(
-        f"PyCAM 版本：{getattr(pycam_modules['pycam'], 'VERSION', 'unknown')}"
-    )
+    messages.append(f"PyCAM 版本：{getattr(pycam_modules['pycam'], 'VERSION', 'unknown')}")
     messages.append(f"碰撞事件数：{len(collisions)}")
     messages.append(f"校验完成时间：{_now_iso()}")
 

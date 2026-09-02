@@ -17,6 +17,7 @@
 - 训练用例用小尺寸模型（hidden_dim=8）+ 合成数据，CPU 可在数秒内完成
 - 不写入 MLflow（track_experiment=False），不依赖外部服务
 """
+
 from __future__ import annotations
 
 import os
@@ -41,9 +42,7 @@ import pytest
 from app.plugins.world_model.net import WorldModelConfig
 
 
-# ---------------------------------------------------------------------------
 # 公共 fixtures
-# ---------------------------------------------------------------------------
 def _make_fusion_config() -> WorldModelConfig:
     """融合模式小尺寸配置（CPU 快速训练）."""
     return WorldModelConfig(
@@ -85,9 +84,8 @@ def _make_synthetic_samples(
     return samples
 
 
-# ===========================================================================
 # torch-free 用例：构造期硬约束与静态方法（始终运行）
-# ===========================================================================
+
 
 @pytest.mark.unit
 def test_trainer_import_without_torch_does_not_crash() -> None:
@@ -98,6 +96,7 @@ def test_trainer_import_without_torch_does_not_crash() -> None:
     """
     # 导入本身不应抛错
     from app.plugins.world_model.training import fusion_trainer as ft_module
+
     assert hasattr(ft_module, "FusionWorldModelTrainer")
     assert hasattr(ft_module, "FusionTrainerError")
     assert hasattr(ft_module, "DEFAULT_FUSION_EXPERIMENT_NAME")
@@ -108,12 +107,11 @@ def test_extract_version_from_uri_valid() -> None:
     """``_extract_version_from_uri`` 应从合法 URI 提取 version."""
     from app.plugins.world_model.training.fusion_trainer import FusionWorldModelTrainer
 
-    assert FusionWorldModelTrainer._extract_version_from_uri(
-        "model://world_model/1.0.0"
-    ) == "1.0.0"
-    assert FusionWorldModelTrainer._extract_version_from_uri(
-        "model://world_model/fusion-v1-20260715"
-    ) == "fusion-v1-20260715"
+    assert FusionWorldModelTrainer._extract_version_from_uri("model://world_model/1.0.0") == "1.0.0"
+    assert (
+        FusionWorldModelTrainer._extract_version_from_uri("model://world_model/fusion-v1-20260715")
+        == "fusion-v1-20260715"
+    )
 
 
 @pytest.mark.unit
@@ -138,9 +136,7 @@ def test_extract_version_from_uri_strips_unsafe_chars() -> None:
     from app.plugins.world_model.training.fusion_trainer import FusionWorldModelTrainer
 
     # 含空格和斜杠的版本应被逐字符过滤（不截断）
-    version = FusionWorldModelTrainer._extract_version_from_uri(
-        "model://world_model/v1.0 beta/evil"
-    )
+    version = FusionWorldModelTrainer._extract_version_from_uri("model://world_model/v1.0 beta/evil")
     assert " " not in version
     assert "/" not in version
     # 空格和斜杠被删除，其余安全字符保留
@@ -157,9 +153,8 @@ def test_fusion_trainer_error_is_runtime_error() -> None:
     assert issubclass(FusionTrainerError, RuntimeError)
 
 
-# ===========================================================================
 # torch 依赖用例：构造、训练、checkpoint（importorskip 跳过）
-# ===========================================================================
+
 
 @pytest.mark.unit
 def test_trainer_init_requires_torch() -> None:
@@ -317,9 +312,13 @@ def test_trainer_full_train_loop_and_checkpoint(tmp_path: Path) -> None:
     # geo_dim 必须与 cfg 对应：3 + feature_dim + 1 + 1
     geo_dim = 3 + cfg.feature_dim + 1 + 1
     samples = _make_synthetic_samples(
-        n=4, T=2, horizon=3,
-        geo_dim=geo_dim, dynamics_dim=6,
-        action_dim=cfg.action_dim, state_dim=cfg.state_dim,
+        n=4,
+        T=2,
+        horizon=3,
+        geo_dim=geo_dim,
+        dynamics_dim=6,
+        action_dim=cfg.action_dim,
+        state_dim=cfg.state_dim,
     )
     dataset = FusionTrajectoryDataset(
         samples,
@@ -395,12 +394,18 @@ def test_trainer_checkpoint_load_restores_state(tmp_path: Path) -> None:
 
     geo_dim = 3 + cfg.feature_dim + 1 + 1
     samples = _make_synthetic_samples(
-        n=2, T=2, horizon=3,
-        geo_dim=geo_dim, action_dim=cfg.action_dim, state_dim=cfg.state_dim,
+        n=2,
+        T=2,
+        horizon=3,
+        geo_dim=geo_dim,
+        action_dim=cfg.action_dim,
+        state_dim=cfg.state_dim,
     )
     dataset = FusionTrajectoryDataset(
-        samples, geo_input_dim=geo_dim,
-        action_dim=cfg.action_dim, state_dim=cfg.state_dim,
+        samples,
+        geo_input_dim=geo_dim,
+        action_dim=cfg.action_dim,
+        state_dim=cfg.state_dim,
     )
     loader = DataLoader(dataset, batch_size=2, collate_fn=fusion_collate_fn)
     trainer.train(loader, loader, horizon=3)
@@ -422,9 +427,7 @@ def test_trainer_checkpoint_load_restores_state(tmp_path: Path) -> None:
     assert trainer2.current_epoch == checkpoint["epoch"]
     assert trainer2.best_val_loss == checkpoint["best_val_loss"]
     # 模型权重应一致（state_dict 加载后参数相同）
-    for (n1, p1), (n2, p2) in zip(
-        net.state_dict().items(), net2.state_dict().items()
-    ):
+    for (n1, p1), (n2, p2) in zip(net.state_dict().items(), net2.state_dict().items()):
         assert n1 == n2
         assert torch.allclose(p1, p2), f"参数 {n1} 加载后不一致"
 
@@ -461,12 +464,18 @@ def test_trainer_early_stopping(tmp_path: Path) -> None:
     geo_dim = 3 + cfg.feature_dim + 1 + 1
     # 用同一批数据做训练和验证，val_loss 大概率单调（可能不下降）
     samples = _make_synthetic_samples(
-        n=2, T=2, horizon=3,
-        geo_dim=geo_dim, action_dim=cfg.action_dim, state_dim=cfg.state_dim,
+        n=2,
+        T=2,
+        horizon=3,
+        geo_dim=geo_dim,
+        action_dim=cfg.action_dim,
+        state_dim=cfg.state_dim,
     )
     dataset = FusionTrajectoryDataset(
-        samples, geo_input_dim=geo_dim,
-        action_dim=cfg.action_dim, state_dim=cfg.state_dim,
+        samples,
+        geo_input_dim=geo_dim,
+        action_dim=cfg.action_dim,
+        state_dim=cfg.state_dim,
     )
     loader = DataLoader(dataset, batch_size=2, collate_fn=fusion_collate_fn)
 
@@ -507,12 +516,18 @@ def test_trainer_get_training_summary(tmp_path: Path) -> None:
 
     geo_dim = 3 + cfg.feature_dim + 1 + 1
     samples = _make_synthetic_samples(
-        n=2, T=2, horizon=3,
-        geo_dim=geo_dim, action_dim=cfg.action_dim, state_dim=cfg.state_dim,
+        n=2,
+        T=2,
+        horizon=3,
+        geo_dim=geo_dim,
+        action_dim=cfg.action_dim,
+        state_dim=cfg.state_dim,
     )
     dataset = FusionTrajectoryDataset(
-        samples, geo_input_dim=geo_dim,
-        action_dim=cfg.action_dim, state_dim=cfg.state_dim,
+        samples,
+        geo_input_dim=geo_dim,
+        action_dim=cfg.action_dim,
+        state_dim=cfg.state_dim,
     )
     loader = DataLoader(dataset, batch_size=2, collate_fn=fusion_collate_fn)
     trainer.train(loader, loader, horizon=3)

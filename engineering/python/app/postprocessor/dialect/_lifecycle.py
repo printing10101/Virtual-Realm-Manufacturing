@@ -74,7 +74,7 @@ LIFECYCLE_TRANSITIONS: tuple[LifecycleRule, ...] = (
     ),
 )
 
-# 终态（不可再流转，除 failed→discovered）
+# 终态（不可再流转，除 faileddiscovered）
 TERMINAL_STAGES = frozenset({DialectLifecycleStage.REGISTERED})
 
 # 可恢复态（可从这些状态重新 discover）

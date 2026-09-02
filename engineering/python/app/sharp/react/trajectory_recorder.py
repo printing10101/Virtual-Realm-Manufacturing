@@ -21,9 +21,7 @@ from typing import Any
 from app.sharp.tools.base import ToolCall, ToolResult
 
 
-# ---------------------------------------------------------------------------
 # 轨迹步结构
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -101,9 +99,7 @@ class TrajectoryStep:
         return str(self.observation)[:500]
 
 
-# ---------------------------------------------------------------------------
 # 轨迹记录器
-# ---------------------------------------------------------------------------
 
 
 class TrajectoryRecorder:
@@ -159,9 +155,7 @@ class TrajectoryRecorder:
         self._pending_confidence = new_conf
         self._current_confidence = new_conf
 
-    # ------------------------------------------------------------------
     # 记录
-    # ------------------------------------------------------------------
 
     def record_step(
         self,
@@ -222,9 +216,7 @@ class TrajectoryRecorder:
             return observation[: self._max_obs_len] + ("...（截断）" if len(observation) > self._max_obs_len else "")
         return observation  # dict/list 在 to_dict 时再截断
 
-    # ------------------------------------------------------------------
     # 序列化
-    # ------------------------------------------------------------------
 
     def to_dict(self) -> dict[str, Any]:
         """完整轨迹序列化为 dict。"""
@@ -245,9 +237,7 @@ class TrajectoryRecorder:
         steps = self._steps[-last_n:] if last_n else self._steps
         return format_trajectory_for_prompt(steps)
 
-    # ------------------------------------------------------------------
     # 统计
-    # ------------------------------------------------------------------
 
     def get_tool_usage_stats(self) -> dict[str, int]:
         """统计每个工具的调用次数。"""

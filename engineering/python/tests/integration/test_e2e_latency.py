@@ -19,9 +19,7 @@ import time
 import pytest
 
 
-# ---------------------------------------------------------------------------
 # 场景1延迟测试：三视图到NC代码转换
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -50,8 +48,7 @@ class TestScenario1Latency:
                 latencies.append(time.perf_counter() - start)
 
             avg = statistics.mean(latencies)
-            assert avg < self.LATENCY_THRESHOLD_S, \
-                f"几何参数提取平均延迟{avg:.3f}s >= {self.LATENCY_THRESHOLD_S}s"
+            assert avg < self.LATENCY_THRESHOLD_S, f"几何参数提取平均延迟{avg:.3f}s >= {self.LATENCY_THRESHOLD_S}s"
         except ImportError:
             pytest.skip("CadQuery模块未安装")
 
@@ -89,7 +86,7 @@ class TestScenario1Latency:
             latencies.append(time.perf_counter() - start)
 
         avg = statistics.mean(latencies)
-        assert avg < 0.1, f"G-code验证平均延迟{avg*1000:.1f}ms >= 100ms"
+        assert avg < 0.1, f"G-code验证平均延迟{avg * 1000:.1f}ms >= 100ms"
 
     def test_full_pipeline_latency_estimate(self, sample_process_card, high_precision_timer):
         """场景1全流程延迟估算."""
@@ -108,18 +105,16 @@ class TestScenario1Latency:
         }
 
         total_estimated = sum(stages.values())
-        assert total_estimated < self.LATENCY_THRESHOLD_S, \
+        assert total_estimated < self.LATENCY_THRESHOLD_S, (
             f"预估全流程延迟{total_estimated:.1f}s >= {self.LATENCY_THRESHOLD_S}s"
+        )
 
         # 打印延迟分解
         for stage, delay in stages.items():
-            assert delay < self.LATENCY_THRESHOLD_S, \
-                f"{stage}单独延迟{delay:.1f}s超过总阈值"
+            assert delay < self.LATENCY_THRESHOLD_S, f"{stage}单独延迟{delay:.1f}s超过总阈值"
 
 
-# ---------------------------------------------------------------------------
 # 场景2延迟测试：实时监控响应
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -147,6 +142,7 @@ class TestScenario2Latency:
         }
 
         from tests.integration.test_scenario2_realtime_monitoring import RealtimeMonitorSimulator
+
         monitor = RealtimeMonitorSimulator()
 
         for _ in range(self.NUM_ITERATIONS):
@@ -157,10 +153,8 @@ class TestScenario2Latency:
         avg = statistics.mean(latencies)
         p99 = sorted(latencies)[int(len(latencies) * 0.99)]
 
-        assert avg < self.LATENCY_THRESHOLD_MS, \
-            f"平均处理延迟{avg:.1f}ms >= {self.LATENCY_THRESHOLD_MS}ms"
-        assert p99 < self.LATENCY_THRESHOLD_MS * 2, \
-            f"P99延迟{p99:.1f}ms超过{self.LATENCY_THRESHOLD_MS*2}ms"
+        assert avg < self.LATENCY_THRESHOLD_MS, f"平均处理延迟{avg:.1f}ms >= {self.LATENCY_THRESHOLD_MS}ms"
+        assert p99 < self.LATENCY_THRESHOLD_MS * 2, f"P99延迟{p99:.1f}ms超过{self.LATENCY_THRESHOLD_MS * 2}ms"
 
     def test_batch_processing_throughput(self, normal_sensor_stream):
         """批量数据处理吞吐量测试."""
@@ -189,8 +183,7 @@ class TestScenario2Latency:
             results[batch_size] = elapsed
 
         # 1000个采样点应在1秒内处理完成
-        assert results[1000] < 1.0, \
-            f"1000点批量处理{results[1000]:.3f}s >= 1s"
+        assert results[1000] < 1.0, f"1000点批量处理{results[1000]:.3f}s >= 1s"
 
     def test_alert_generation_latency(self, anomaly_sensor_stream):
         """告警生成延迟测试."""
@@ -217,13 +210,10 @@ class TestScenario2Latency:
             latencies.append((time.perf_counter() - start) * 1000)
 
         avg_latency = statistics.mean(latencies)
-        assert avg_latency < 50, \
-            f"告警生成平均延迟{avg_latency:.1f}ms >= 50ms"
+        assert avg_latency < 50, f"告警生成平均延迟{avg_latency:.1f}ms >= 50ms"
 
 
-# ---------------------------------------------------------------------------
 # 场景3延迟测试：工艺方案咨询
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -254,8 +244,7 @@ class TestScenario3Latency:
                 latencies.append(0.5)  # 降级模式估计
 
         avg = statistics.mean(latencies) if latencies else 0
-        assert avg < self.LATENCY_THRESHOLD_S, \
-            f"查询理解平均延迟{avg:.3f}s >= {self.LATENCY_THRESHOLD_S}s"
+        assert avg < self.LATENCY_THRESHOLD_S, f"查询理解平均延迟{avg:.3f}s >= {self.LATENCY_THRESHOLD_S}s"
 
     def test_knowledge_retrieval_latency(self):
         """知识检索延迟测试."""
@@ -288,13 +277,12 @@ class TestScenario3Latency:
         }
 
         total_estimated = sum(stages.values())
-        assert total_estimated < self.LATENCY_THRESHOLD_S, \
+        assert total_estimated < self.LATENCY_THRESHOLD_S, (
             f"预估全流程延迟{total_estimated:.1f}s >= {self.LATENCY_THRESHOLD_S}s"
+        )
 
 
-# ---------------------------------------------------------------------------
 # 综合延迟统计
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -324,5 +312,4 @@ class TestLatencyStatistics:
                 failures.append(f"{scenario}: {actual:.3f}s >= {limit:.3f}s")
                 all_pass = False
 
-        assert all_pass, \
-            "延迟测试未通过:\n" + "\n".join(failures)
+        assert all_pass, "延迟测试未通过:\n" + "\n".join(failures)

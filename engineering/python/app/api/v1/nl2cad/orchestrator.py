@@ -76,7 +76,7 @@ class NL2NCPipelineOrchestrator:
         state = PipelineState()
 
         try:
-            # Stage 1: NL → CAD
+            # Stage 1: NL CAD
             logger.info("Stage 1: NL to CAD conversion")
             state.stage = PipelineStage.NL_TO_CAD
 
@@ -88,7 +88,7 @@ class NL2NCPipelineOrchestrator:
             state.cad_params = cad_params
             logger.info("Stage 1 completed: model at %s", model_path)
 
-            # Stage 2: CAD → Process planning
+            # Stage 2: CAD Process planning
             logger.info("Stage 2: Process planning")
             state.stage = PipelineStage.CAD_TO_PROCESS
 
@@ -99,7 +99,7 @@ class NL2NCPipelineOrchestrator:
             state.process_plan = process_plan
             logger.info("Stage 2 completed: %d operations", len(process_plan.get("operations", [])))
 
-            # Stage 3: Process → NC code
+            # Stage 3: Process NC code
             logger.info("Stage 3: NC code generation")
             state.stage = PipelineStage.PROCESS_TO_NC
 
@@ -110,7 +110,7 @@ class NL2NCPipelineOrchestrator:
             state.nc_code = nc_code
             logger.info("Stage 3 completed: %d chars of G-code", len(nc_code))
 
-            # Stage 4: NC → Simulation（已集成真实 voxel 仿真模块，仿真精度取决于 voxel_size 参数）
+            # Stage 4: NC Simulation（已集成真实 voxel 仿真模块，仿真精度取决于 voxel_size 参数）
             logger.info("Stage 4: Simulation verification")
             state.stage = PipelineStage.NC_TO_SIMULATION
 

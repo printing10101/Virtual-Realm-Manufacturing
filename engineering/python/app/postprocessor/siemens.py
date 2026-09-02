@@ -121,9 +121,9 @@ class SiemensPostProcessor(BasePostProcessor):
     ) -> str:
         # pecking 参数与基类签名对齐：True 用啄钻循环，False 用普通循环
         # Siemens 840D 钻孔循环族：
-        #   CYCLE81 = 简单钻孔（无 dwell）
-        #   CYCLE82 = 钻孔 + 底部暂停（支持 dwell）
-        #   CYCLE83 = 深孔啄钻（无 dwell，分段进给）
+        # CYCLE81 = 简单钻孔（无 dwell）
+        # CYCLE82 = 钻孔 + 底部暂停（支持 dwell）
+        # CYCLE83 = 深孔啄钻（无 dwell，分段进给）
         # 之前实现错误：dwell>0 时仍用 CYCLE81（不支持 dwell 参数）。
         if dwell > 0:
             cycle_code = "CYCLE82"

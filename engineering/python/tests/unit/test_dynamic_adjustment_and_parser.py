@@ -43,7 +43,7 @@ def _current(**kw):
     return CurrentParameters(**base)
 
 
-# ==================== 数据结构 ====================
+# 数据结构
 
 
 class TestWearState:
@@ -120,7 +120,7 @@ class TestDecisionDataclasses:
         assert out["per_segment_log"] == []
 
 
-# ==================== 辅助方法 ====================
+# 辅助方法
 
 
 class TestHelpers:
@@ -180,7 +180,7 @@ class TestHelpers:
         assert lim.get_feed_rate(None) == 0.0
 
 
-# ==================== 决策编排 ====================
+# 决策编排
 
 
 class TestDecideAdjustment:
@@ -221,9 +221,7 @@ class TestDecideAdjustment:
             "confidence": 0.9,
             "sensor_coverage": 0.8,
         }
-        monkeypatch.setattr(
-            o.wear_predictor, "calibrate_with_real_time_data", lambda **kw: fake
-        )
+        monkeypatch.setattr(o.wear_predictor, "calibrate_with_real_time_data", lambda **kw: fake)
         d = o.decide_adjustment(
             _wear(wear_amount=0.12),
             _current(),
@@ -258,7 +256,7 @@ class TestDecideAdjustment:
         assert d.strategy in ("no_adjustment", "slight_compensation")
 
 
-# ==================== NC 改写 ====================
+# NC 改写
 
 
 class TestRewriteNcCode:
@@ -279,7 +277,7 @@ class TestRewriteNcCode:
         r = o.rewrite_nc_code(self.GCODE, dec)
         assert r.segments_total >= 1
         assert r.segments_adjusted >= 1
-        # 运动段 F 已替换（N40 G01 F200 → F150）
+        # 运动段 F 已替换（N40 G01 F200 F150）
         assert "N40 G01 X50 Y0 Z-2 F150" in r.rewritten_gcode
         # G00 段保留原样（apply_to_motion_only 默认 True，且 rapid 段不改写）
         assert "N30 G00 X0 Y0 Z5" in r.rewritten_gcode
@@ -350,11 +348,11 @@ class TestRewriteNcCode:
         )
         r = o.rewrite_nc_code(self.GCODE, dec)
         assert r.segments_total >= 1
-        # 已提供 fanuc parser 且要求 fanuc → 复用实例
+        # 已提供 fanuc parser 且要求 fanuc 复用实例
         assert o.toolpath_parser is parser
 
 
-# ==================== G 代码解析器 ====================
+# G 代码解析器
 
 
 class TestToolpathParser:

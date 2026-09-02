@@ -46,6 +46,7 @@ def make_record(msg: str, args=None, level: int = logging.INFO) -> logging.LogRe
 
 # ---------------------------------------------------------------- SensitiveDataFilter
 
+
 class TestSensitiveDataFilter:
     def test_param_tuple_args(self):
         f = SensitiveDataFilter()
@@ -126,8 +127,8 @@ class TestSensitiveDataFilter:
         assert r.getMessage() == "task train_001 completed in 300 ms"
 
     def test_format_failure_falls_back(self):
-        # msg 无法用 args 格式化（% 语法不匹配）→ 合并回退，但第一层
-        # PATTERNS 仍对 msg 脱敏（password=abc%d → password=***），args 原样保留
+        # msg 无法用 args 格式化（% 语法不匹配） 合并回退，但第一层
+        # PATTERNS 仍对 msg 脱敏（password=abc%d password=***），args 原样保留
         f = SensitiveDataFilter()
         r = make_record("login password=abc%d def", ("x",))
         f.filter(r)
@@ -162,7 +163,7 @@ class TestSensitiveDataFilter:
             lc._REENTRANCY_GUARD.active = False
 
     def test_sanitizer_exception_degraded(self):
-        # LogSanitizer.sanitize 抛异常 → 降级不阻断
+        # LogSanitizer.sanitize 抛异常 降级不阻断
         f = SensitiveDataFilter()
         f._log_sanitizer = _BrokenSanitizer()
         r = make_record("password=hunter2")
@@ -176,6 +177,7 @@ class _BrokenSanitizer:
 
 
 # ---------------------------------------------------------------- filters & formatters
+
 
 class TestRequestIdFilter:
     def test_sets_request_id(self):
@@ -239,6 +241,7 @@ class TestMillisecondFormatter:
 
 # ---------------------------------------------------------------- rotating handler
 
+
 class TestDailySizeRotatingHandler:
     def test_get_log_path_suffix(self, tmp_path: Path):
         h = _DailySizeRotatingHandler(str(tmp_path), module_name="app")
@@ -254,7 +257,7 @@ class TestDailySizeRotatingHandler:
 
     def test_open_stream_failure_raises(self, tmp_path: Path):
         h = _DailySizeRotatingHandler(str(tmp_path))
-        # 目标路径是一个已存在的文件（无法作为目录）→ open 失败
+        # 目标路径是一个已存在的文件（无法作为目录） open 失败
         blocker = tmp_path / "blocker"
         blocker.mkdir(parents=True, exist_ok=True)
         h._log_root = blocker
@@ -314,7 +317,7 @@ class TestDailySizeRotatingHandler:
     def test_emit_failure_handle_error(self, tmp_path: Path):
         h = _DailySizeRotatingHandler(str(tmp_path))
         h.setFormatter(logging.Formatter("%(message)s"))
-        # stream 置为 None → write 失败走 handleError
+        # stream 置为 None write 失败走 handleError
         h._stream = None
         r = make_record("x")
         h.emit(r)  # 不抛
@@ -327,6 +330,7 @@ class TestDailySizeRotatingHandler:
 
 
 # ---------------------------------------------------------------- configure/shutdown
+
 
 @pytest.fixture
 def saved_root_logger():
@@ -369,7 +373,7 @@ class TestConfigureLogging:
 
     def test_sentry_no_dsn(self, saved_root_logger, monkeypatch):
         monkeypatch.delenv("SENTRY_DSN", raising=False)
-        # enable_sentry=True 但无 DSN → warning 分支
+        # enable_sentry=True 但无 DSN warning 分支
         configure_logging(enable_sentry=True)
         root = logging.getLogger()
         assert any(isinstance(h, logging.StreamHandler) for h in root.handlers)

@@ -29,9 +29,7 @@ class WearCurvePredictor:
     def __init__(self) -> None:
         self.default_replacement_threshold = DEFAULT_REPLACEMENT_THRESHOLD
 
-    # ------------------------------------------------------------------
     # 私有：物理模型计算
-    # ------------------------------------------------------------------
 
     def _get_temperature(
         self,
@@ -118,9 +116,7 @@ class WearCurvePredictor:
             confidence += 0.05
         return max(0.5, min(0.98, confidence))
 
-    # ------------------------------------------------------------------
     # 公开 API
-    # ------------------------------------------------------------------
 
     def predict_wear_curve(self, input_parameters: dict) -> WearCurve:
         cutting_speed = input_parameters.get("cutting_speed", 150.0)

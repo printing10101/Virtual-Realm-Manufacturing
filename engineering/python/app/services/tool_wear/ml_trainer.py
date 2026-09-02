@@ -33,9 +33,7 @@ class WearMLTrainer:
         self._uniwear_loader: Any | None = None
         self._logger = logging.getLogger(self.__class__.__name__)
 
-    # ------------------------------------------------------------------
     # Bosch CNC
-    # ------------------------------------------------------------------
 
     def _get_bosch_loader(self, data_dir: str = "python/data/datasets/bosch_cnc"):
         if self._bosch_feature_loader is not None:
@@ -360,9 +358,7 @@ class WearMLTrainer:
             "sample_count": len(samples),
         }
 
-    # ------------------------------------------------------------------
     # Uniwear（NUAA + PHM2010）
-    # ------------------------------------------------------------------
 
     def get_uniwear_material_params(self) -> dict:
         return {

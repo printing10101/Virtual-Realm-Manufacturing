@@ -24,11 +24,9 @@ from typing import Final
 from app.config._utils import _env
 
 
-# ===========================================================================
 # LINGJING_ENV —— CORS / 安全配置专用环境标识
-# ===========================================================================
 
-#: ``LINGJING_ENV`` 的两个合法取值。
+#: : ``LINGJING_ENV`` 的两个合法取值。
 _DEVELOPMENT: Final[str] = "development"
 _PRODUCTION: Final[str] = "production"
 _VALID_LINGJING_ENVS: Final[frozenset[str]] = frozenset({_DEVELOPMENT, _PRODUCTION})
@@ -53,12 +51,10 @@ def get_lingjing_env() -> str:
     return env if env in _VALID_LINGJING_ENVS else _PRODUCTION
 
 
-# ===========================================================================
 # ALLOWED_ORIGINS —— CORS 允许来源列表
-# ===========================================================================
 
-#: ``ALLOWED_ORIGINS`` 环境变量的合法取值——以逗号分隔的 Origin 列表。
-#: 空字符串或未设置时返回空列表，由调用方决定回退策略。
+#: : ``ALLOWED_ORIGINS`` 环境变量的合法取值——以逗号分隔的 Origin 列表。
+#: : 空字符串或未设置时返回空列表，由调用方决定回退策略。
 
 
 def parse_allowed_origins() -> list[str]:
@@ -89,9 +85,7 @@ def parse_allowed_origins() -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
-# ===========================================================================
 # 通用 EnvironmentConfig 数据类（保留向后兼容）
-# ===========================================================================
 
 
 @dataclass

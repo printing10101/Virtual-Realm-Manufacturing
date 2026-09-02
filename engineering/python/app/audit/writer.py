@@ -36,7 +36,7 @@ logger = logging.getLogger("app.audit.audit_log")
 
 
 class WriterMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     _compute_entry_hash: Callable[..., Any]
     _rotate_if_needed: Callable[..., Any]
     _save_chain_state: Callable[..., Any]
@@ -55,7 +55,7 @@ class WriterMixin:
     - ``self._rotate_if_needed``：来自 ``ArchiverMixin``
     """
 
-    # ========== 日志写入 ==========
+    # 日志写入
 
     def _get_current_log_file(self) -> Path:
         today = datetime.now().strftime("%Y-%m-%d")

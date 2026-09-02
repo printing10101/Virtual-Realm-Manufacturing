@@ -4,33 +4,35 @@
 path = r"C:\Users\Lenovo\Desktop\灵境制造（上线版）\engineering\src\views\Simulation.vue"
 comp_dir = r"C:\Users\Lenovo\Desktop\灵境制造（上线版）\engineering\src\components\simulation"
 
-src = open(path, 'r', encoding='utf-8').read()
-lines = src.split('\n')
+src = open(path, "r", encoding="utf-8").read()
+lines = src.split("\n")
 
-# ============= Tab boundaries confirmed by manual read =============
+# Tab boundaries confirmed by manual read
 # Tab 1: lines 122-527 (0-indexed: 121-526)
 # Tab 2: lines 530-710 (0-indexed: 529-709)
 # Tab 3: lines 713-943 (0-indexed: 712-942)
 
-def get_range(start1, end1):
-    return '\n'.join(lines[start1-1:end1]) + '\n'
 
-# ============= Extract Tab 1 template =============
+def get_range(start1, end1):
+    return "\n".join(lines[start1 - 1 : end1]) + "\n"
+
+
+# Extract Tab 1 template
 tab1_tmpl = get_range(122, 527)
 # Wrap in outer div
 tab1_tmpl_wrapped = tab1_tmpl  # already has outer div with v-show
 
-# ============= Extract Tab 2 template =============
+# Extract Tab 2 template
 tab2_tmpl = get_range(530, 710)
 tab2_tmpl_wrapped = tab2_tmpl
 
-# ============= Extract Tab 3 template =============
+# Extract Tab 3 template
 tab3_tmpl = get_range(713, 943)
 tab3_tmpl_wrapped = tab3_tmpl
 
-# ============= Extract relevant styles =============
+# Extract relevant styles
 # Get style section (1363+)
-style_lines = '\n'.join(lines[1362:])  # lines 1363-end
+style_lines = "\n".join(lines[1362:])  # lines 1363-end
 
 # Extract CSS selectors used by each tab
 # Tab 1 uses: gcode-textarea, gcode-stats, params-grid, sim-layout, sim-left, sim-right, stats-row, stat-card, content-card, sim-tabs, tab-panel, toolpath-preview, result-card, collision-warning, etc.
@@ -50,11 +52,11 @@ tab1_styles = """.stats-row { display: grid; grid-template-columns: repeat(4,1fr
 # have its own copy of the full style block. It'll be repetitive but works correctly
 # because scoped prevents cross-contamination.
 
-# ============= Build sub-component files =============
+# Build sub-component files
 # Each sub-component gets: <template> + <script setup> (self-contained) + <style scoped>
 
 # Tab 1 script: lines 968-1281 (0-indexed 967-1280) - the main simulation logic
-script_lines = '\n'.join(lines[967:1281])
+script_lines = "\n".join(lines[967:1281])
 tab1_script = f"""<script setup lang="ts">
 // Auto-extracted from Simulation.vue Tab 1
 import {{ ref, computed, onMounted, onUnmounted }} from 'vue'
@@ -92,7 +94,7 @@ defineEmits<Record<string, never>>()
 </script>
 """
 
-# ============= Write Tab 1 component =============
+# Write Tab 1 component
 simtab = f"""<template>
 {tab1_tmpl_wrapped}
 </template>
@@ -103,9 +105,9 @@ simtab = f"""<template>
 {style_lines}
 </style>
 """
-open(f"{comp_dir}/SimulationSimTab.vue", 'w', encoding='utf-8').write(simtab)
+open(f"{comp_dir}/SimulationSimTab.vue", "w", encoding="utf-8").write(simtab)
 
-# ============= Write Tab 2 component =============
+# Write Tab 2 component
 femtab = f"""<template>
 {tab2_tmpl_wrapped}
 </template>
@@ -116,9 +118,9 @@ femtab = f"""<template>
 {style_lines}
 </style>
 """
-open(f"{comp_dir}/SimulationFemTab.vue", 'w', encoding='utf-8').write(femtab)
+open(f"{comp_dir}/SimulationFemTab.vue", "w", encoding="utf-8").write(femtab)
 
-# ============= Write Tab 3 component =============
+# Write Tab 3 component
 exptab = f"""<template>
 {tab3_tmpl_wrapped}
 </template>
@@ -129,13 +131,13 @@ exptab = f"""<template>
 {style_lines}
 </style>
 """
-open(f"{comp_dir}/SimulationExportTab.vue", 'w', encoding='utf-8').write(exptab)
+open(f"{comp_dir}/SimulationExportTab.vue", "w", encoding="utf-8").write(exptab)
 
-# ============= Update main Simulation.vue =============
+# Update main Simulation.vue
 # Replace each tab with component reference
-# Tab 1 (lines 122-527) → <SimulationSimTab />
-# Tab 2 (lines 530-710) → <SimulationFemTab />
-# Tab 3 (lines 713-943) → <SimulationExportTab />
+# Tab 1 (lines 122-527) <SimulationSimTab />
+# Tab 2 (lines 530-710) <SimulationFemTab />
+# Tab 3 (lines 713-943) <SimulationExportTab />
 
 new_main = src
 
@@ -163,10 +165,13 @@ new_main = new_main.replace(t3_old, t3_new, 1)
 
 # Add imports
 import_line = "import SimulationViewer from '@/components/simulation/SimulationViewer.vue'"
-new_imports = import_line + "\nimport SimulationSimTab from '@/components/simulation/SimulationSimTab.vue'\nimport SimulationFemTab from '@/components/simulation/SimulationFemTab.vue'\nimport SimulationExportTab from '@/components/simulation/SimulationExportTab.vue'"
+new_imports = (
+    import_line
+    + "\nimport SimulationSimTab from '@/components/simulation/SimulationSimTab.vue'\nimport SimulationFemTab from '@/components/simulation/SimulationFemTab.vue'\nimport SimulationExportTab from '@/components/simulation/SimulationExportTab.vue'"
+)
 new_main = new_main.replace(import_line, new_imports, 1)
 
-open(path, 'w', encoding='utf-8').write(new_main)
+open(path, "w", encoding="utf-8").write(new_main)
 
 print(f"SimTab lines: {len(simtab.splitlines())}")
 print(f"FemTab lines: {len(femtab.splitlines())}")

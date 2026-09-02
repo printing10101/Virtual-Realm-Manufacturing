@@ -36,9 +36,7 @@ from app.toolpath.feed_rate_optimizer import CuttingConditions, FeedRateOptimize
 logger = logging.getLogger(__name__)
 
 
-# =====================================================================
 # 数据结构
-# =====================================================================
 
 
 @dataclass
@@ -102,7 +100,7 @@ class AdjustmentDecision:
     """单次调整决策结果。"""
 
     strategy: str  # no_adjustment / slight_compensation / moderate_compensation /
-    #                aggressive_compensation / replace_tool
+    # aggressive_compensation / replace_tool
     urgency: str  # normal / warning / critical
     new_cutting_speed: float
     new_feed_rate: float  # mm/rev
@@ -131,9 +129,7 @@ class NCRewriteResult:
         return asdict(self)
 
 
-# =====================================================================
 # 核心编排器
-# =====================================================================
 
 
 class DynamicAdjustmentOrchestrator:
@@ -154,9 +150,7 @@ class DynamicAdjustmentOrchestrator:
         # ToolpathParser 默认 fanuc 方言，可按调用方需求覆盖
         self.toolpath_parser = toolpath_parser
 
-    # ------------------------------------------------------------------
     # 公共入口
-    # ------------------------------------------------------------------
 
     def decide_adjustment(
         self,
@@ -189,7 +183,7 @@ class DynamicAdjustmentOrchestrator:
         input_params = current.to_input_parameters(wear)
 
         # 0) 可选：实时传感器数据 EWMA 校正磨损预测
-        #    集成点 1：打通 calibrate_with_real_time_data → decide_adjustment 闭环
+        # 集成点 1：打通 calibrate_with_real_time_data decide_adjustment 闭环
         calibration_info: dict[str, Any] = {}
         effective_wear = wear
         if real_time_wear is not None and sensor_features is not None and elapsed_time is not None:
@@ -245,8 +239,8 @@ class DynamicAdjustmentOrchestrator:
         )
 
         # 2) 解析补偿建议中的新参数
-        #    get_compensation_recommendations 返回 suggestions 列表，
-        #    每项含 param/current/recommended 字段
+        # get_compensation_recommendations 返回 suggestions 列表，
+        # 每项含 param/current/recommended 字段
         new_cutting_speed = current.cutting_speed
         new_feed_rate = current.feed_rate
         new_depth_of_cut = current.depth_of_cut
@@ -263,7 +257,7 @@ class DynamicAdjustmentOrchestrator:
                 new_depth_of_cut = float(recommended)
 
         # 3) 调用 FeedRateOptimizer 进一步优化进给（结合 tool_wear_factor）
-        #    注意：使用 effective_wear（校正后）以保证闭环一致性
+        # 注意：使用 effective_wear（校正后）以保证闭环一致性
         spindle_rpm = self._compute_spindle_rpm(new_cutting_speed, effective_wear.tool_diameter)
         try:
             conditions = CuttingConditions(
@@ -450,9 +444,7 @@ class DynamicAdjustmentOrchestrator:
             per_segment_log=per_segment_log,
         )
 
-    # ------------------------------------------------------------------
     # 内部辅助
-    # ------------------------------------------------------------------
 
     def _compute_spindle_rpm(self, cutting_speed_m_min: float, tool_diameter: float) -> float:
         """由切削速度反算主轴转速。
@@ -522,9 +514,7 @@ class DynamicAdjustmentOrchestrator:
         return pattern.sub(_replacer, line, count=1)
 
 
-# =====================================================================
 # 辅助类
-# =====================================================================
 
 
 class _SimpleLimiter:
@@ -548,9 +538,7 @@ class _SimpleLimiter:
         return max(0.0, min(float(requested_feed), self._max_feed))
 
 
-# =====================================================================
 # 单例访问
-# =====================================================================
 
 
 _orchestrator: DynamicAdjustmentOrchestrator | None = None

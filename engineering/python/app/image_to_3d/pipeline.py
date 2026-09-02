@@ -174,7 +174,7 @@ class ReconstructionPipeline:
         )
 
         try:
-            # ============= 阶段 1: COLMAP 稀疏重建 =============
+            # 阶段 1: COLMAP 稀疏重建
             t_colmap_start = time.time()
             colmap_result = await asyncio.to_thread(
                 run_sparse_reconstruction,
@@ -222,7 +222,7 @@ class ReconstructionPipeline:
                 openmvs_duration = time.time() - t_openmvs_start
                 mesh_path = Path(openmvs_result["mesh_path"])
 
-            # ============= 阶段 3: 尺度归一化 =============
+            # 阶段 3: 尺度归一化
             t_scale_start = time.time()
             output_mesh_path = workspace_dir / "output_normalized.ply"
             scale_result: ScaleNormalizationResult = await asyncio.to_thread(
@@ -374,7 +374,7 @@ class ReconstructionPipeline:
                 bbox_min,
             )
 
-            # 3. 运行先验补全（稀疏点云 → 稠密体素 → mesh）
+            # 3. 运行先验补全（稀疏点云 稠密体素 mesh）
             runner = PartPriorRunner(
                 vae=vae,
                 voxel_dim=prior_cfg.voxel_dim,
@@ -389,9 +389,9 @@ class ReconstructionPipeline:
             )
 
             # 4. 将 mesh 从体素坐标 [0, voxel_dim] 缩放回 SfM 坐标系
-            #    completer 归一化: normalized = (point - bbox_min) / bbox_extent
-            #    voxel_idx = normalized * voxel_dim
-            #    逆变换: vertex_sfm = vertex_voxel / voxel_dim * bbox_extent + bbox_min
+            # completer 归一化: normalized = (point - bbox_min) / bbox_extent
+            # voxel_idx = normalized * voxel_dim
+            # 逆变换: vertex_sfm = vertex_voxel / voxel_dim * bbox_extent + bbox_min
             scaled_mesh_path = workspace_dir / "output_part_prior_scaled.ply"
             self._scale_mesh_to_sfm(
                 Path(runner_result.output_mesh_path),
@@ -474,7 +474,7 @@ class ReconstructionPipeline:
             raise RuntimeError(f"part_prior 路径需要 numpy + trimesh，但当前环境不可用: {e}") from e
 
         # H5 bug 修复：Trimesh 构造函数没有 file_path 参数（这是 AI 臆造的 API）。
-        # 原写法 mesh.vertices 永远为空 → 直接导出空 mesh → 缩放逻辑全部跳过。
+        # 原写法 mesh.vertices 永远为空 直接导出空 mesh 缩放逻辑全部跳过。
         # 改用 trimesh.load 正确加载文件。
         mesh = trimesh.load(str(input_mesh_path), force="mesh")
         # Scene 对象（多 mesh 容器）需合并为单个 Trimesh
@@ -486,7 +486,7 @@ class ReconstructionPipeline:
             return
 
         verts = np.asarray(mesh.vertices, dtype=np.float64)
-        # 逆归一化：voxel → SfM
+        # 逆归一化：voxel SfM
         verts[:, 0] = verts[:, 0] / voxel_dim * bbox_extent[0] + bbox_min[0]
         verts[:, 1] = verts[:, 1] / voxel_dim * bbox_extent[1] + bbox_min[1]
         verts[:, 2] = verts[:, 2] / voxel_dim * bbox_extent[2] + bbox_min[2]

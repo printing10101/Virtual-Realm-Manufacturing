@@ -74,9 +74,7 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # 异常类
-# =============================================================================
 
 
 class CuttingParametersPipelineError(CuttingParametersError):
@@ -91,9 +89,7 @@ class CuttingReviewError(CuttingParametersPipelineError):
     """工程师审核操作失败。"""
 
 
-# =============================================================================
 # 结果数据类
-# =============================================================================
 
 
 @dataclass
@@ -128,9 +124,7 @@ class CuttingParametersResult:
         }
 
 
-# =============================================================================
 # 流水线
-# =============================================================================
 
 
 class CuttingParametersPipeline:
@@ -157,9 +151,7 @@ class CuttingParametersPipeline:
         self._resolver = resolver if resolver is not None else get_material_resolver()
         self._recommender = recommender if recommender is not None else CuttingParamRecommender(self._resolver)
 
-    # -------------------------------------------------------------------------
     # 创建任务
-    # -------------------------------------------------------------------------
 
     def create_task(
         self,
@@ -217,9 +209,7 @@ class CuttingParametersPipeline:
         )
         return task
 
-    # -------------------------------------------------------------------------
     # 执行流水线（异步）
-    # -------------------------------------------------------------------------
 
     async def run_pipeline(self, task_id: str) -> CuttingParametersResult:
         """异步执行材料查询 + 参数推荐。
@@ -354,9 +344,7 @@ class CuttingParametersPipeline:
                 error_message=safe.get("message"),
             )
 
-    # -------------------------------------------------------------------------
     # 工程师审核
-    # -------------------------------------------------------------------------
 
     def review_params(
         self,
@@ -421,7 +409,7 @@ class CuttingParametersPipeline:
         if review_status == CuttingReviewStatus.EDITED.value and edited_params:
             target.edited_params = dict(edited_params)
 
-        # 检查是否全部审核完毕 → REVIEWED
+        # 检查是否全部审核完毕 REVIEWED
         all_reviewed = all(p.review_status != CuttingReviewStatus.PENDING.value for p in task.recommended_params)
         if all_reviewed:
             task.status = CuttingParametersTaskStatus.REVIEWED.value
@@ -438,9 +426,7 @@ class CuttingParametersPipeline:
         )
         return target
 
-    # -------------------------------------------------------------------------
     # 导出 ChatterParams
-    # -------------------------------------------------------------------------
 
     def export_chatter_params(self, task_id: str) -> str:
         """导出 ChatterParams JSON（供阶段 5 颤振预测使用）。
@@ -546,9 +532,7 @@ class CuttingParametersPipeline:
         )
         return str(export_path)
 
-    # -------------------------------------------------------------------------
     # 内部辅助
-    # -------------------------------------------------------------------------
 
     def _load_input_features(self, features_path: str) -> list[dict[str, Any]]:
         """加载阶段 2 confirmed_features.json。

@@ -228,9 +228,7 @@ class DempsterShaferFusion:
             stats["high_conflict_rate"] = stats.get("high_conflict_count", 0) / total
         return stats
 
-    # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _weighted_prediction(

@@ -38,19 +38,22 @@ def _params(**overrides):
 class TestConstants:
     def test_get_material_params_match(self):
         from app.services.tool_wear._constants import get_material_params
+
         for name in ["aluminum_6061", "Steel-4140", "TITANIUM_TC4", "stainless 304"]:
             mp = get_material_params(name)
             assert mp.name
 
     def test_get_material_params_default(self):
         from app.services.tool_wear._constants import get_material_params
+
         mp = get_material_params("unknown_xyz")
         assert mp.name == "Default"
 
     def test_get_tool_params(self):
         from app.services.tool_wear._constants import get_tool_params
+
         assert get_tool_params("coated_carbide")["wear_factor"] == 0.7
-    # get_tool_params 运行时按类型字典查（coated_carbide 定义 0.7；cermet 0.8）
+        # get_tool_params 运行时按类型字典查（coated_carbide 定义 0.7；cermet 0.8）
         assert get_tool_params("nope")["wear_factor"] == 1.0
 
     def test_facade_attrs(self):
@@ -107,6 +110,7 @@ class TestWearCurvePredictor:
 
     def test_wear_rates_bounded(self):
         from app.services.tool_wear._constants import get_material_params, get_tool_params
+
         mat = get_material_params("steel_45")
         tool = get_tool_params("carbide")
         u = self.p._usui_wear_rate(120, 0.15, 1.0, 900.0, mat, tool)
@@ -121,6 +125,7 @@ class TestWearCurvePredictor:
 
     def test_confidence_bounds(self):
         from app.services.tool_wear._constants import get_material_params
+
         mat = get_material_params("steel_45")
         c = self.p._compute_confidence(0.3, 300.0, mat)
         assert 0.5 <= c <= 0.98
@@ -167,7 +172,7 @@ class TestCompensationRecommender:
 
     def test_machine_capabilities_limit(self):
         r = self._make()
-        # 极小机床能力 → 转速/进给被钳制并产生警告
+        # 极小机床能力 转速/进给被钳制并产生警告
         caps = {"max_spindle_speed": 1000, "max_feed_rate": 200}
         out = r.get_compensation_recommendations(0.20, _params(cutting_speed=300.0, tool_diameter=3.0), caps)
         assert len(out["warnings"]) >= 1
@@ -195,7 +200,7 @@ class TestWearCalibrator:
         assert out["correction_factor"] > 0
 
     def test_calibrate_with_measurement_far_time(self):
-        # 时间点不在采样点内 → 用平均磨损率兜底
+        # 时间点不在采样点内 用平均磨损率兜底
         c = self._make()
         out = c.calibrate_with_measurement(0.08, 99999.0, _params())
         assert out["predicted_wear_at_time"] >= 0
@@ -203,9 +208,9 @@ class TestWearCalibrator:
     def test_calibrate_real_time_sensors(self):
         c = self._make()
         sensors = {
-            "vibration_rms": 3.0,   # >2.0 → ×1.15
-            "cutting_force": 500.0, # 远超预期（钢 1.0×100=100 → >150 → ×1.20）
-            "temperature": 900.0,   # >800 → ×1.25
+            "vibration_rms": 3.0,  # >2.0 → ×1.15
+            "cutting_force": 500.0,  # 远超预期（钢 1.0×100=100 → >150 → ×1.20）
+            "temperature": 900.0,  # >800 → ×1.25
         }
         out = c.calibrate_with_real_time_data(0.1, sensors, 60.0, _params())
         assert out["sensor_adjustment"] > 1.0
@@ -234,8 +239,9 @@ class TestWearMLTrainer:
     def test_get_process_baseline_no_loader(self, monkeypatch):
         t = self._make()
         monkeypatch.setattr(t, "_bosch_feature_loader", None)
-        # 使 import 失败 → loader None → error
+        # 使 import 失败 loader None error
         import builtins
+
         real_import = builtins.__import__
 
         def fake_import(name, *args, **kwargs):
@@ -274,9 +280,13 @@ class TestWearMLTrainer:
 class TestFeedRateOptimizer:
     def _conditions(self, **kw):
         base = dict(
-            material="steel", tool_diameter=10.0, tool_material="carbide",
-            depth_of_cut=1.0, width_of_cut=10.0,
-            spindle_speed=3000.0, feed_rate=300.0,
+            material="steel",
+            tool_diameter=10.0,
+            tool_material="carbide",
+            depth_of_cut=1.0,
+            width_of_cut=10.0,
+            spindle_speed=3000.0,
+            feed_rate=300.0,
         )
         base.update(kw)
         return CuttingConditions(**base)

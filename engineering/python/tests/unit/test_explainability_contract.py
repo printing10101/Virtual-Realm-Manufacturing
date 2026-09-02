@@ -47,9 +47,7 @@ from app.contracts.explainability import (
 )
 
 
-# ---------------------------------------------------------------------------
 # ExplanationType
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -90,9 +88,7 @@ class TestExplanationType:
         assert ExplanationType.is_valid(value) is False  # type: ignore[arg-type]
 
 
-# ---------------------------------------------------------------------------
 # ProjectionMethod
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -127,9 +123,7 @@ class TestProjectionMethod:
         assert ProjectionMethod.default() == ProjectionMethod.PCA
 
 
-# ---------------------------------------------------------------------------
 # ComparisonType
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -172,9 +166,7 @@ class TestComparisonType:
         assert ComparisonType.is_valid(value) is False  # type: ignore[arg-type]
 
 
-# ---------------------------------------------------------------------------
 # HiddenStateExplanation
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -272,9 +264,7 @@ class TestHiddenStateExplanation:
         assert d["explanation_type"] == ExplanationType.HIDDEN_STATE
 
 
-# ---------------------------------------------------------------------------
 # GateDynamicsExplanation
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -332,9 +322,7 @@ class TestGateDynamicsExplanation:
         assert d["explanation_type"] == ExplanationType.GATE_DYNAMICS
 
 
-# ---------------------------------------------------------------------------
 # CounterfactualExplanation
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -395,9 +383,7 @@ class TestCounterfactualExplanation:
         assert d["explanation_type"] == ExplanationType.COUNTERFACTUAL
 
 
-# ---------------------------------------------------------------------------
 # ConfidenceExplanation
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -485,9 +471,7 @@ class TestConfidenceExplanation:
         assert d["explanation_type"] == ExplanationType.CONFIDENCE
 
 
-# ---------------------------------------------------------------------------
 # ExplanationRequest
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -602,9 +586,7 @@ class TestExplanationRequest:
         assert req1.input_signature() == req2.input_signature()
 
 
-# ---------------------------------------------------------------------------
 # ExplanationRecord
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -713,9 +695,7 @@ class TestExplanationRecord:
         assert d["expires_at"] is None
 
 
-# ---------------------------------------------------------------------------
 # ExplanationComparison
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -808,9 +788,7 @@ class TestExplanationComparison:
         assert d["created_at"] == ts.isoformat()
 
 
-# ---------------------------------------------------------------------------
 # 异常层级
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -913,9 +891,7 @@ class TestExceptions:
             raise ExplainabilityError("base error")
 
 
-# ---------------------------------------------------------------------------
 # IExplainabilityService ABC
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -949,9 +925,14 @@ class TestIExplainabilityService:
 
         class DummyService(IExplainabilityService):
             async def generate_hidden_state_explanation(
-                self, model_uri, *, source_snapshot_id=None,
-                projection_method=ProjectionMethod.PCA, projection_dim=2,
-                max_frames=1000, created_by=None,
+                self,
+                model_uri,
+                *,
+                source_snapshot_id=None,
+                projection_method=ProjectionMethod.PCA,
+                projection_dim=2,
+                max_frames=1000,
+                created_by=None,
             ):
                 return ExplanationRecord(
                     id="exp_001",
@@ -964,8 +945,12 @@ class TestIExplainabilityService:
                 )
 
             async def generate_gate_dynamics_explanation(
-                self, model_uri, *, source_snapshot_id=None,
-                anomaly_sigma=2.0, created_by=None,
+                self,
+                model_uri,
+                *,
+                source_snapshot_id=None,
+                anomaly_sigma=2.0,
+                created_by=None,
             ):
                 return ExplanationRecord(
                     id="exp_002",
@@ -978,9 +963,15 @@ class TestIExplainabilityService:
                 )
 
             async def generate_counterfactual_explanation(
-                self, model_uri, *, base_input, perturbed_feature,
-                perturbation_range=None, perturbation_step=0.05,
-                source_snapshot_id=None, created_by=None,
+                self,
+                model_uri,
+                *,
+                base_input,
+                perturbed_feature,
+                perturbation_range=None,
+                perturbation_step=0.05,
+                source_snapshot_id=None,
+                created_by=None,
             ):
                 return ExplanationRecord(
                     id="exp_003",
@@ -993,8 +984,13 @@ class TestIExplainabilityService:
                 )
 
             async def generate_confidence_explanation(
-                self, model_uri, *, input_data, sample_count=30,
-                source_snapshot_id=None, created_by=None,
+                self,
+                model_uri,
+                *,
+                input_data,
+                sample_count=30,
+                source_snapshot_id=None,
+                created_by=None,
             ):
                 return ExplanationRecord(
                     id="exp_004",
@@ -1010,8 +1006,12 @@ class TestIExplainabilityService:
                 return {"id": explanation_id}
 
             async def list_explanations(
-                self, *, explanation_type=None, model_uri=None,
-                limit=50, offset=0,
+                self,
+                *,
+                explanation_type=None,
+                model_uri=None,
+                limit=50,
+                offset=0,
             ):
                 return [], 0
 
@@ -1019,7 +1019,10 @@ class TestIExplainabilityService:
                 return True
 
             async def compare_explanations(
-                self, base_explanation_id, compared_explanation_id, *,
+                self,
+                base_explanation_id,
+                compared_explanation_id,
+                *,
                 comparison_type=ComparisonType.SAME_MODEL_DIFF_INPUT,
                 created_by=None,
             ):
@@ -1038,9 +1041,7 @@ class TestIExplainabilityService:
         """缺少任一 abstract method 仍不可实例化."""
 
         class IncompleteService(IExplainabilityService):
-            async def generate_hidden_state_explanation(
-                self, model_uri, **kwargs
-            ):
+            async def generate_hidden_state_explanation(self, model_uri, **kwargs):
                 pass
 
             # 缺少其他 7 个方法

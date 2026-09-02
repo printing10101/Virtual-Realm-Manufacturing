@@ -3,6 +3,7 @@
 Setup script for pre-commit hooks and development tools.
 Run: python setup_hooks.py
 """
+
 import subprocess
 import sys
 from pathlib import Path

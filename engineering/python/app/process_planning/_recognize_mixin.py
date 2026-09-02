@@ -8,7 +8,7 @@ from app.process_planning._hole_models import HoleFeature, HoleRecognitionResult
 
 
 class _RecognizeMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     COAXIAL_THRESHOLD: Any
     STANDARD_DRILL_POINT_ANGLE: Any
 
@@ -42,10 +42,10 @@ class _RecognizeMixin:
         errors: list[str] = []
         accuracy_metrics: dict[str, float] = {"overall": 0.99}
 
-        # --- 路径1: 从 holes 字段直接解析 ---
+        # 路径1: 从 holes 字段直接解析
         raw_holes = part_description.get("holes", [])
 
-        # --- 路径2: 从 features 字段提取孔特征 ---
+        # 路径2: 从 features 字段提取孔特征
         raw_features = part_description.get("features", [])
         hole_features = [
             f
@@ -71,7 +71,7 @@ class _RecognizeMixin:
                 }
             )
 
-        # --- 路径3: 从 solids 字段的圆柱面提取 ---
+        # 路径3: 从 solids 字段的圆柱面提取
         solids = part_description.get("solids", [])
         for solid in solids:
             faces = solid.get("faces", [])

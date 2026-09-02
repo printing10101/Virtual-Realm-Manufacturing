@@ -66,7 +66,7 @@ class TestExtractEntry:
         assert "无几何实体" in result.errors[0]
 
     def test_empty_result_warns(self):
-        # 有实体（1条线）但无圆、无闭合矩形 → 特征为空 + 告警
+        # 有实体（1条线）但无圆、无闭合矩形 特征为空 + 告警
         pr = _parse_result(lines=[_line((0, 0), (10, 0))])
         result = FeatureExtractor().extract(pr)
         assert result.warnings
@@ -87,7 +87,7 @@ class TestExtractEntry:
     def test_dimension_semantics(self):
         pr = _parse_result(extents={"width": 120.0, "height": 90.0}, circles=[_circle(0, 0, 1.0)])
         result = FeatureExtractor().extract(pr)
-        # width→length, height→width（DXF 约定）
+        # widthlength, heightwidth（DXF 约定）
         assert result.overall_length == 120.0
         assert result.overall_width == 90.0
         assert result.overall_height == FeatureExtractor.DEFAULT_PLATE_THICKNESS

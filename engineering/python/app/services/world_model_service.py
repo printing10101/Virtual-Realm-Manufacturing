@@ -58,9 +58,7 @@ from app.services._shared.service_base import BaseSingletonService
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 状态/动作字段索引（与 StateField.all() / ActionField 顺序对齐）
-# ---------------------------------------------------------------------------
 
 _STATE_FIELD_ORDER: list[str] = StateField.all()
 """状态字段顺序（与 WorldModelNet 输入维度对齐）."""
@@ -68,9 +66,7 @@ _STATE_FIELD_ORDER: list[str] = StateField.all()
 _STATE_FIELD_INDEX: dict[str, int] = {name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)}
 
 
-# ---------------------------------------------------------------------------
 # 单例
-# ---------------------------------------------------------------------------
 
 
 def get_world_model_service() -> "WorldModelService":
@@ -83,9 +79,7 @@ def reset_world_model_service() -> None:
     WorldModelService.reset_instance()
 
 
-# ---------------------------------------------------------------------------
 # 服务实现
-# ---------------------------------------------------------------------------
 
 
 class WorldModelService(BaseSingletonService):
@@ -310,7 +304,7 @@ class WorldModelService(BaseSingletonService):
         """
         start_time = time.perf_counter()
         try:
-            # 1. 动作字典 → ndarray，扩展为 [horizon, action_dim]
+            # 1. 动作字典 ndarray，扩展为 [horizon, action_dim]
             action_arr = self._action_dict_to_array(
                 request.candidate_action,
                 horizon=request.horizon,
@@ -338,7 +332,7 @@ class WorldModelService(BaseSingletonService):
                     horizon=request.horizon,
                 )
 
-            # 4. 原始数组 → 结构化响应
+            # 4. 原始数组 结构化响应
             response = self._build_response(
                 prediction=prediction,
                 model_uri=request.model_uri,

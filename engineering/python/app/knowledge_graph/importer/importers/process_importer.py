@@ -113,7 +113,7 @@ def import_process_rules(
             stats.success += 1
             stats.node_type_breakdown[NODE_TYPE_PROCESS] = stats.node_type_breakdown.get(NODE_TYPE_PROCESS, 0) + 1
 
-            # --- 关系 1：Process APPLIED_TO Feature（IF 条件部分） ---
+            # 关系 1：Process APPLIED_TO Feature（IF 条件部分）
             tools_used_set: set[str] = set()
             for feature in parsed.features:
                 fid = feature.feature_id
@@ -148,7 +148,7 @@ def import_process_rules(
                 for tool_id in _FEATURE_TO_REPRESENTATIVE_TOOLS.get(fid, []):
                     tools_used_set.add(tool_id)
 
-            # --- 关系 2：Process USED Tool（THEN 动作部分启发式） ---
+            # 关系 2：Process USED Tool（THEN 动作部分启发式）
             # 如果规则没有抽到任何 feature，使用通用刀具
             if not parsed.features:
                 tools_used_set.update(["tool-endmill_6", "tool-twist_drill_5", "tool-face_mill_50"])

@@ -58,9 +58,7 @@ from xml.etree import ElementTree as ET
 _MT_NS = "{urn:mtconnect.org:MTConnectStreams:1.5}"
 
 
-# ---------------------------------------------------------------------------
 # Data model
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -79,11 +77,11 @@ class Sample:
     execution: str | None = None
 
     # Free-form extras so future requirements don't require a data model
-    # change.  The adapter does not persist ``extras`` by default.
+    # change. The adapter does not persist ``extras`` by default.
     extras: dict[str, Any] = field(default_factory=dict)
 
     # The wall-clock time at which the sample was received from the
-    # agent.  Stored alongside the values for time-series correlation.
+    # agent. Stored alongside the values for time-series correlation.
     observed_at: datetime | None = None
 
     def is_empty(self) -> bool:
@@ -109,9 +107,7 @@ class Sample:
         }
 
 
-# ---------------------------------------------------------------------------
 # Parser
-# ---------------------------------------------------------------------------
 
 
 def _local_tag(tag: str) -> str:
@@ -194,7 +190,7 @@ def parse_sample_response(xml_text: str) -> Sample:
             that the retry logic should see.
     """
     if not xml_text or not xml_text.strip():
-        # Empty body → return an empty sample so the caller can decide.
+        # Empty body return an empty sample so the caller can decide.
         return Sample(observed_at=datetime.now(timezone.utc))
 
     root = ET.fromstring(xml_text)
@@ -207,7 +203,7 @@ def parse_sample_response(xml_text: str) -> Sample:
         observed_at=datetime.now(timezone.utc),
     )
 
-    # Capture a couple of optional fields the demo agent exposes.  These
+    # Capture a couple of optional fields the demo agent exposes. These
     # are not persisted by default, but exposing them on the Sample
     # object makes them available to tests and future iterations.
     for tag, key in (

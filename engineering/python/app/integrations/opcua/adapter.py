@@ -44,12 +44,10 @@ logger = logging.getLogger(__name__)
 _NETWORK_EXCEPTIONS = (ConnectionError, OSError, TimeoutError)
 
 
-# ---------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------------------
 
 
-# Table schema for TDengine.  Kept here (rather than in the TDengine
+# Table schema for TDengine. Kept here (rather than in the TDengine
 # client) because the column set is a property of the *OPC UA* contract,
 # not of the storage backend.
 DEFAULT_TABLE_DDL: tuple[str, ...] = (
@@ -88,7 +86,7 @@ class AdapterConfig:
     # Node configuration
     node_ids: list[str] | None = None  # OPC UA node IDs to subscribe
 
-    # === 安全配置（S1 修复） ===
+    # 安全配置（S1 修复）
     # 安全策略：默认强制 Basic256Sha256（工业生产最低安全基线）。
     # 设为 "None" 显式降级为明文（仅开发/仿真环境，会记录 WARNING）。
     security_policy: str = "Basic256Sha256"
@@ -124,13 +122,11 @@ class AdapterConfig:
             )
 
 
-# ---------------------------------------------------------------------------
 # Adapter
-# ---------------------------------------------------------------------------
 
 
 # Callback type used by the adapter to publish "live" samples to the
-# CLI or any other observer.  Receives a fully populated ``Sample``.
+# CLI or any other observer. Receives a fully populated ``Sample``.
 SampleCallback = Callable[[Any], None]
 
 
@@ -147,9 +143,7 @@ class OPCUAAdapter:
     Or, in a long-running service, drain the batch buffer on a timer.
     """
 
-    # ------------------------------------------------------------------
     # Construction
-    # ------------------------------------------------------------------
 
     def __init__(
         self,
@@ -172,9 +166,7 @@ class OPCUAAdapter:
         self._connected = False
         self._loop: Any = None  # Persistent event loop for asyncua operations
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
     def connect(self) -> dict[str, str]:
         """Connect to the OPC UA server and create a subscription.
@@ -607,9 +599,7 @@ class OPCUAAdapter:
             logger.info("Flushed batch of %d samples to TDengine", written)
         return written
 
-    # ------------------------------------------------------------------
     # Public, read-only state
-    # ------------------------------------------------------------------
 
     @property
     def ingested_count(self) -> int:
@@ -623,9 +613,7 @@ class OPCUAAdapter:
     def buffer_size(self) -> int:
         return len(self._buffer)
 
-    # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
 
     def _enqueue(self, sample: Any) -> None:
         """Add a sample to the buffer (called from subscription handler)."""
@@ -709,9 +697,7 @@ class OPCUAAdapter:
         return int(result)
 
 
-# ---------------------------------------------------------------------------
 # Subscription handler
-# ---------------------------------------------------------------------------
 
 
 class SubHandler:
@@ -762,9 +748,7 @@ class SubHandler:
             self.adapter._error_count += 1
 
 
-# ---------------------------------------------------------------------------
 # Convenience: CLI / one-shot helper
-# ---------------------------------------------------------------------------
 
 
 def build_table_ddl() -> tuple[str, ...]:

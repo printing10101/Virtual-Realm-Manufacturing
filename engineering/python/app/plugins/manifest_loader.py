@@ -66,9 +66,7 @@ from app.contracts.plugin import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # Schema 常量
-# ---------------------------------------------------------------------------
 
 
 REQUIRED_FIELDS: tuple[str, ...] = (
@@ -109,9 +107,7 @@ _CONTRACT_PATTERN = re.compile(r"^[a-z][a-z0-9_]*@[^\s]+$")
 _ENTRYPOINT_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]*:[A-Z][a-zA-Z0-9_]*$")
 
 
-# ---------------------------------------------------------------------------
 # 校验异常
-# ---------------------------------------------------------------------------
 
 
 class ManifestValidationError(ValueError):
@@ -122,9 +118,7 @@ class ManifestValidationError(ValueError):
         super().__init__("; ".join(errors))
 
 
-# ---------------------------------------------------------------------------
 # 校验器
-# ---------------------------------------------------------------------------
 
 
 def validate_manifest_dict(data: dict[str, Any]) -> list[str]:
@@ -200,9 +194,7 @@ def validate_manifest_dict(data: dict[str, Any]) -> list[str]:
     return errors
 
 
-# ---------------------------------------------------------------------------
 # 加载器
-# ---------------------------------------------------------------------------
 
 
 def load_manifest_from_dict(data: dict[str, Any]) -> PluginManifest:
@@ -327,9 +319,7 @@ def manifest_to_yaml(manifest: PluginManifest) -> str:
     )
 
 
-# ---------------------------------------------------------------------------
 # 示例 manifest 生成
-# ---------------------------------------------------------------------------
 
 
 def create_example_manifest_dict(

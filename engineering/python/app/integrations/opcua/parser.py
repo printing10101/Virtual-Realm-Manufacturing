@@ -23,9 +23,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-# ---------------------------------------------------------------------------
 # Data model
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -44,11 +42,11 @@ class Sample:
     execution: str | None = None
 
     # Free-form extras so future requirements don't require a data model
-    # change.  The adapter does not persist ``extras`` by default.
+    # change. The adapter does not persist ``extras`` by default.
     extras: dict[str, Any] = field(default_factory=dict)
 
     # The wall-clock time at which the sample was received from the
-    # server.  Stored alongside the values for time-series correlation.
+    # server. Stored alongside the values for time-series correlation.
     observed_at: datetime | None = None
 
     def is_empty(self) -> bool:
@@ -74,9 +72,7 @@ class Sample:
         }
 
 
-# ---------------------------------------------------------------------------
 # Parser
-# ---------------------------------------------------------------------------
 
 
 def _coerce_float(value: Any | None) -> float | None:

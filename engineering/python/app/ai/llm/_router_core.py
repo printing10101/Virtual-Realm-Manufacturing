@@ -37,9 +37,7 @@ class ProviderRouter:
     def latency_cache(self) -> LatencyCache:
         return self._latency_cache
 
-    # ------------------------------------------------------------------
     # 主路由入口
-    # ------------------------------------------------------------------
 
     async def route(self, request: RoutingRequest) -> RoutingResult:
         """根据请求选择最佳 Provider。
@@ -112,9 +110,7 @@ class ProviderRouter:
             reason="all_candidates_unavailable",
         )
 
-    # ------------------------------------------------------------------
     # 候选选择
-    # ------------------------------------------------------------------
 
     def _select_candidates(self, request: RoutingRequest) -> list[ProviderConfig]:
         """根据策略选择候选 Provider 列表。"""
@@ -171,9 +167,7 @@ class ProviderRouter:
 
         return sorted_list[: request.max_candidates]
 
-    # ------------------------------------------------------------------
     # 工具方法
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _has_capabilities(
@@ -226,9 +220,7 @@ class ProviderRouter:
 
         return provider, config
 
-    # ------------------------------------------------------------------
     # 调用便捷方法
-    # ------------------------------------------------------------------
 
     async def chat_completion(
         self,
@@ -299,9 +291,7 @@ class ProviderRouter:
             self._registry.clear_instance_cache()
             raise ProviderUnavailableError(f"Provider {result.selected_id} 调用失败: {e}") from e
 
-    # ------------------------------------------------------------------
     # 状态查询
-    # ------------------------------------------------------------------
 
     def get_status(self) -> dict[str, Any]:
         """返回路由器状态。"""

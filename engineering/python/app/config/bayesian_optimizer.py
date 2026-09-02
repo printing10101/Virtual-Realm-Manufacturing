@@ -50,9 +50,7 @@ from app.config.spec import ConfigStore
 from app.config.yaml_loader import flatten_dict
 
 
-# ---------------------------------------------------------------------------
 # 软依赖：scikit-learn（GaussianProcessRegressor）
-# ---------------------------------------------------------------------------
 
 try:
     from sklearn.gaussian_process import GaussianProcessRegressor
@@ -142,9 +140,7 @@ class BayesianOptimizer:
         # 全候选空间（lazy 初始化，避免构造时即展开大空间）
         self._candidate_cache: list[dict[str, Any]] | None = None
 
-    # ------------------------------------------------------------------
     # 公开 API
-    # ------------------------------------------------------------------
 
     def warmup(self, count: int | None = None) -> list[dict[str, Any]]:
         """返回 warmup 批次（随机采样的初始配置列表）。
@@ -193,7 +189,7 @@ class BayesianOptimizer:
                 return None
 
             if len(self._observations) < 2 or not _HAS_SKLEARN:
-                # 观测太少或无 sklearn → 随机
+                # 观测太少或无 sklearn 随机
                 return self._rng.choice(unobserved)
 
             return self._suggest_by_ei(unobserved)
@@ -260,9 +256,7 @@ class BayesianOptimizer:
         """是否可用 scikit-learn（GP 代理模型）。"""
         return _HAS_SKLEARN
 
-    # ------------------------------------------------------------------
     # 内部实现
-    # ------------------------------------------------------------------
 
     def _get_candidates(self) -> list[dict[str, Any]]:
         """获取全候选空间（lazy 缓存）。"""
@@ -288,7 +282,7 @@ class BayesianOptimizer:
         all_flats = [flatten_dict(c) for c in candidates]
         field_names = sorted({k for f in all_flats for k in f.keys()})
 
-        # 编码：每个字段值映射到数值（分类 → one-hot 索引，数值 → 原值）
+        # 编码：每个字段值映射到数值（分类 one-hot 索引，数值 原值）
         # 简化：所有字段统一转 float（分类用 index 编码）
         field_value_maps: dict[str, dict[Any, float]] = {}
         for fname in field_names:
@@ -322,7 +316,7 @@ class BayesianOptimizer:
         mu = np.asarray(mu, dtype=float)
         sigma = np.asarray(sigma, dtype=float)
 
-        # 最优值（maximize → 最大；minimize → 最小）
+        # 最优值（maximize 最大；minimize 最小）
         if self._maximize:
             best_y = max(y_train)
             improvement = mu - best_y  # >0 表示更好

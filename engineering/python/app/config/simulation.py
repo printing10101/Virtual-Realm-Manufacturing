@@ -20,23 +20,21 @@ class SimulationConfig:
     idle_timeout_seconds: int = field(default_factory=lambda: _int_env("LNN_IDLE_TIMEOUT", 1800))
 
 
-# =============================================================================
 # Hardware Tier Configuration
-# =============================================================================
 # [U-P0-2] 防复发：硬件档位声明 + 轻量模式
 # 设计依据：用户三方评估指出"本地化承诺 vs 硬件现实"矛盾——
-#   项目承诺全本地 LLM，但用户机器可能无 GPU/内存不足，导致 Ollama 启动失败。
-#   通过显式档位声明 + 轻量模式开关，让用户根据硬件条件选择合适的能力子集。
+# 项目承诺全本地 LLM，但用户机器可能无 GPU/内存不足，导致 Ollama 启动失败。
+# 通过显式档位声明 + 轻量模式开关，让用户根据硬件条件选择合适的能力子集。
 # 档位定义（与 docs/user-guide/安装指南.md 硬件配置表对齐）：
-#   - minimal : 4 核 CPU / 8 GB RAM / 无 GPU（仅规则引擎 + 云端 API）
-#   - standard: 8 核 CPU / 16 GB RAM / 可选 GPU（默认，支持本地小模型）
-#   - high    : 8 核+ CPU / 32 GB RAM / NVIDIA GPU ≥ 6 GB（本地 7B-14B 模型）
-#   - ultra   : 工作站级（本地 14B+ 模型 + GPU 训练）
+# - minimal : 4 核 CPU / 8 GB RAM / 无 GPU（仅规则引擎 + 云端 API）
+# - standard: 8 核 CPU / 16 GB RAM / 可选 GPU（默认，支持本地小模型）
+# - high : 8 核+ CPU / 32 GB RAM / NVIDIA GPU ≥ 6 GB（本地 7B-14B 模型）
+# - ultra : 工作站级（本地 14B+ 模型 + GPU 训练）
 # 轻量模式（lightweight_mode）：
-#   - 跳过 Ollama 启动探测（即使安装了 Ollama 也不加载）
-#   - 禁用本地模型路由，强制使用云端 API 或规则引擎
-#   - 限制 AI 并发数为 1，降低内存占用
-#   - 适用于老旧硬件 / 临时演示 / 仅需 CAM 核心功能的场景
+# - 跳过 Ollama 启动探测（即使安装了 Ollama 也不加载）
+# - 禁用本地模型路由，强制使用云端 API 或规则引擎
+# - 限制 AI 并发数为 1，降低内存占用
+# - 适用于老旧硬件 / 临时演示 / 仅需 CAM 核心功能的场景
 
 
 @dataclass

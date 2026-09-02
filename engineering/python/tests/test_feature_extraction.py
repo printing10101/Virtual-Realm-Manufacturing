@@ -28,9 +28,7 @@ from unittest.mock import patch
 import pytest
 
 
-# =============================================================================
 # 模块导入测试
-# =============================================================================
 
 
 class TestModuleImport:
@@ -63,14 +61,26 @@ class TestModuleImport:
 
         # 全部非 None
         for obj in [
-            ExtractedFeature, FeatureExtractionTask, FeatureExtractionTaskStatus,
-            FeatureReviewStatus, FeatureStore, FeatureType, get_feature_store,
-            FeatureDisclaimer, build_feature_disclaimer,
-            PlaneExtractor, PlaneExtractionResult,
-            CylinderExtractor, CylinderExtractionResult,
-            HoleDetector, HoleDetectionResult,
-            FeatureExtractionPipeline, FeatureExtractionResult,
-            FeatureExtractionError, FeatureReviewError, MeshLoadError,
+            ExtractedFeature,
+            FeatureExtractionTask,
+            FeatureExtractionTaskStatus,
+            FeatureReviewStatus,
+            FeatureStore,
+            FeatureType,
+            get_feature_store,
+            FeatureDisclaimer,
+            build_feature_disclaimer,
+            PlaneExtractor,
+            PlaneExtractionResult,
+            CylinderExtractor,
+            CylinderExtractionResult,
+            HoleDetector,
+            HoleDetectionResult,
+            FeatureExtractionPipeline,
+            FeatureExtractionResult,
+            FeatureExtractionError,
+            FeatureReviewError,
+            MeshLoadError,
         ]:
             assert obj is not None, f"{obj} 导入失败"
 
@@ -109,9 +119,7 @@ class TestModuleImport:
         assert not missing, f"缺失端点: {missing}"
 
 
-# =============================================================================
 # 精度告知机制测试
-# =============================================================================
 
 
 class TestFeatureDisclaimer:
@@ -159,9 +167,7 @@ class TestFeatureDisclaimer:
         )
         msg = disclaimer.warning_message
         # 必须明确告知无量纲输出 + 不可用于工艺仿真
-        assert "无量纲" in msg or "未标定" in msg or "不可" in msg, (
-            f"未标定警告消息未明确告知风险: {msg}"
-        )
+        assert "无量纲" in msg or "未标定" in msg or "不可" in msg, f"未标定警告消息未明确告知风险: {msg}"
 
     def test_disclaimer_calibrated_warning(self):
         """T06: 已标定 mesh 时仍要求工程师审核 + CAM 二次校验。"""
@@ -193,42 +199,28 @@ class TestFeatureDisclaimer:
         gates = disclaimer.industrial_hard_gates
 
         # 工业硬门槛必须覆盖：
-        # mesh→CAD / 良品率 / 公差 / 持证操作员 / 签字保险 / CAM 校验 / 工程师助手定位
+        # meshCAD / 良品率 / 公差 / 持证操作员 / 签字保险 / CAM 校验 / 工程师助手定位
         all_gates_text = " ".join(gates)
 
-        # mesh → CAD 自动转换未解决
-        assert "CAD" in all_gates_text or "自动转换" in all_gates_text, (
-            f"工业硬门槛未提及 mesh→CAD 自动转换: {gates}"
-        )
+        # mesh CAD 自动转换未解决
+        assert "CAD" in all_gates_text or "自动转换" in all_gates_text, f"工业硬门槛未提及 mesh→CAD 自动转换: {gates}"
         # 良品率 0 缺陷
-        assert "良品率" in all_gates_text or "0 缺陷" in all_gates_text, (
-            f"工业硬门槛未提及良品率: {gates}"
-        )
+        assert "良品率" in all_gates_text or "0 缺陷" in all_gates_text, f"工业硬门槛未提及良品率: {gates}"
         # 配合面公差
-        assert "0.01" in all_gates_text or "配合面" in all_gates_text, (
-            f"工业硬门槛未提及配合面公差: {gates}"
-        )
+        assert "0.01" in all_gates_text or "配合面" in all_gates_text, f"工业硬门槛未提及配合面公差: {gates}"
         # CNC 持证操作员
-        assert "持证" in all_gates_text or "操作员" in all_gates_text, (
-            f"工业硬门槛未提及 CNC 持证操作员: {gates}"
-        )
+        assert "持证" in all_gates_text or "操作员" in all_gates_text, f"工业硬门槛未提及 CNC 持证操作员: {gates}"
         # CAM 二次校验
-        assert "CAM" in all_gates_text or "校验" in all_gates_text, (
-            f"工业硬门槛未提及 CAM 二次校验: {gates}"
-        )
+        assert "CAM" in all_gates_text or "校验" in all_gates_text, f"工业硬门槛未提及 CAM 二次校验: {gates}"
         # 工程师助手定位
-        assert "工程师助手" in all_gates_text or "助手" in all_gates_text, (
-            f"工业硬门槛未明确系统定位: {gates}"
-        )
+        assert "工程师助手" in all_gates_text or "助手" in all_gates_text, f"工业硬门槛未明确系统定位: {gates}"
         # mesh 标定依赖
         assert "标定" in all_gates_text or "归一化" in all_gates_text or "标定块" in all_gates_text, (
             f"工业硬门槛未提及 mesh 标定: {gates}"
         )
 
 
-# =============================================================================
 # 枚举完整性测试
-# =============================================================================
 
 
 class TestEnums:
@@ -239,8 +231,13 @@ class TestEnums:
         from app.feature_extraction import FeatureExtractionTaskStatus
 
         expected = {
-            "pending", "running", "features_extracted",
-            "reviewed", "succeeded", "failed", "cancelled",
+            "pending",
+            "running",
+            "features_extracted",
+            "reviewed",
+            "succeeded",
+            "failed",
+            "cancelled",
         }
         actual = {s.value for s in FeatureExtractionTaskStatus}
         assert actual == expected, f"任务状态枚举不匹配: {actual ^ expected}"
@@ -262,9 +259,7 @@ class TestEnums:
         assert actual == expected, f"审核状态枚举不匹配: {actual ^ expected}"
 
 
-# =============================================================================
 # ExtractedFeature.effective_params() 测试
-# =============================================================================
 
 
 class TestEffectiveParams:
@@ -328,9 +323,7 @@ class TestEffectiveParams:
         assert eff["offset"] == 5.0
 
 
-# =============================================================================
 # 工程师审核流程测试
-# =============================================================================
 
 
 class TestEngineerReview:
@@ -546,14 +539,10 @@ class TestEngineerReview:
 
         # 任务状态应转为 REVIEWED
         task = pipeline._store.get(task_with_features.task_id)
-        assert task.status == "reviewed", (
-            f"全部审核后状态应为 reviewed，实际 {task.status}"
-        )
+        assert task.status == "reviewed", f"全部审核后状态应为 reviewed，实际 {task.status}"
 
 
-# =============================================================================
 # 导出已确认特征测试
-# =============================================================================
 
 
 class TestExportConfirmedFeatures:
@@ -658,9 +647,7 @@ class TestExportConfirmedFeatures:
         )
 
         data = json.loads(result_path.read_text(encoding="utf-8"))
-        edited_feature = next(
-            f for f in data["features"] if f["feature_id"] == "feat_edited"
-        )
+        edited_feature = next(f for f in data["features"] if f["feature_id"] == "feat_edited")
         # 必须使用工程师编辑后的 radius_mm = 5.2
         assert edited_feature["params"]["radius_mm"] == 5.2, (
             f"导出 edited 特征应使用 edited_params: {edited_feature['params']}"
@@ -715,9 +702,7 @@ class TestExportConfirmedFeatures:
         assert "无已确认特征" in str(exc_info.value) or "confirmed" in str(exc_info.value)
 
 
-# =============================================================================
 # mesh 加载降级测试
-# =============================================================================
 
 
 class TestMeshLoadFallback:
@@ -778,9 +763,7 @@ end_header
         assert "stl" in str(exc_info.value).lower() or "trimesh" in str(exc_info.value).lower()
 
 
-# =============================================================================
 # 任务创建与状态查询测试
-# =============================================================================
 
 
 class TestCreateTask:
@@ -816,6 +799,7 @@ class TestCreateTask:
         )
 
         import asyncio
+
         task = asyncio.run(
             pipeline.create_task(
                 mesh_path=ply_path,
@@ -835,6 +819,7 @@ class TestCreateTask:
         nonexistent = tmp_path / "not_exist.ply"
         with pytest.raises(MeshLoadError):
             import asyncio
+
             asyncio.run(
                 pipeline.create_task(
                     mesh_path=nonexistent,
@@ -844,9 +829,7 @@ class TestCreateTask:
             )
 
 
-# =============================================================================
 # 配置测试
-# =============================================================================
 
 
 class TestFeatureExtractionConfig:
@@ -895,9 +878,7 @@ class TestFeatureExtractionConfig:
         cfg = FeatureExtractionConfig()
         assert cfg.precision_tier in {"coarse", "standard", "high"}
         # 默认应为 standard
-        assert cfg.precision_tier == "standard", (
-            f"默认 precision_tier 应为 'standard'，实际 {cfg.precision_tier}"
-        )
+        assert cfg.precision_tier == "standard", f"默认 precision_tier 应为 'standard'，实际 {cfg.precision_tier}"
 
     def test_invalid_precision_tier_falls_back(self):
         """T35: 非法 precision_tier 在 __post_init__ 中回退为 'standard'。"""
@@ -910,9 +891,7 @@ class TestFeatureExtractionConfig:
         assert cfg.precision_tier == "standard"
 
 
-# =============================================================================
 # main.py 路由注册测试
-# =============================================================================
 
 
 class TestMainAppIntegration:
@@ -926,9 +905,7 @@ class TestMainAppIntegration:
         # main 模块必须有 _FEATURE_EXTRACTION_AVAILABLE 标志
         from app.main import _FEATURE_EXTRACTION_AVAILABLE
 
-        assert isinstance(_FEATURE_EXTRACTION_AVAILABLE, bool), (
-            "_FEATURE_EXTRACTION_AVAILABLE 应为 bool 类型"
-        )
+        assert isinstance(_FEATURE_EXTRACTION_AVAILABLE, bool), "_FEATURE_EXTRACTION_AVAILABLE 应为 bool 类型"
 
     def test_router_prefix_correct(self):
         """T37: 路由 prefix 为 /api/v1/feature_extraction。"""
@@ -942,14 +919,10 @@ class TestMainAppIntegration:
 
         tags = routes.router.tags
         # 至少有一个 tag 包含 "Feature Extraction" 字样
-        assert any("Feature Extraction" in str(t) for t in tags), (
-            f"路由 tags 未包含 Feature Extraction 标识: {tags}"
-        )
+        assert any("Feature Extraction" in str(t) for t in tags), f"路由 tags 未包含 Feature Extraction 标识: {tags}"
 
 
-# =============================================================================
 # 上游 mesh_calibrated 软依赖查询测试
-# =============================================================================
 
 
 class TestResolveUpstreamCalibrated:
@@ -975,9 +948,7 @@ class TestResolveUpstreamCalibrated:
         assert source == "external_upload"
 
 
-# =============================================================================
 # 验收：项目记忆硬约束覆盖测试
-# =============================================================================
 
 
 class TestProjectMemoryHardConstraints:
@@ -992,7 +963,7 @@ class TestProjectMemoryHardConstraints:
             config.feature_extraction,
             mesh_calibrated=False,
         )
-        # 工业硬门槛列表必须包含 mesh → CAD 自动转换未解决的警告
+        # 工业硬门槛列表必须包含 mesh CAD 自动转换未解决的警告
         all_text = " ".join(disclaimer.industrial_hard_gates) + " " + disclaimer.warning_message
         assert "CAD" in all_text or "自动转换" in all_text or "参数化" in all_text, (
             f"未明确告知 mesh → CAD 自动转换工业上未解决: {all_text}"
@@ -1008,9 +979,7 @@ class TestProjectMemoryHardConstraints:
             mesh_calibrated=True,
         )
         all_text = " ".join(disclaimer.industrial_hard_gates)
-        assert "工程师助手" in all_text or "助手" in all_text, (
-            f"未明确告知系统定位为工程师助手: {all_text}"
-        )
+        assert "工程师助手" in all_text or "助手" in all_text, f"未明确告知系统定位为工程师助手: {all_text}"
 
     def test_cam_validation_required(self):
         """T43: requires_cam_validation 始终为 True（项目记忆硬约束）。"""

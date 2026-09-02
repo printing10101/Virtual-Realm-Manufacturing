@@ -123,6 +123,4 @@ class Material(Base):
         return f"<Material(id={self.id}, code={self.code}, name={self.name})>"
 
 
-# ---------------------------------------------------------------------------
 # Equipment Models (equipment / equipment_alarms / maintenance_plans)
-# ---------------------------------------------------------------------------

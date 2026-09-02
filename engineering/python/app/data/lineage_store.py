@@ -35,9 +35,7 @@ from app.database.models.dataset import LineageRecord as LineageRecordORM
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 工厂与转换辅助
-# ---------------------------------------------------------------------------
 
 
 def make_lineage_record(
@@ -132,8 +130,8 @@ class LineageStore(ILineageStore):
             return []
 
         all_records = await self._load_all()
-        # target_uri → 直接产出它的 records
-        # 索引：output_uri → [records]
+        # target_uri 直接产出它的 records
+        # 索引：output_uri [records]
         output_index: dict[str, list[LineageRecord]] = {}
         for rec in all_records:
             for out_uri in rec.outputs:
@@ -164,7 +162,7 @@ class LineageStore(ILineageStore):
             return []
 
         all_records = await self._load_all()
-        # 索引：input_uri → [records]
+        # 索引：input_uri [records]
         input_index: dict[str, list[LineageRecord]] = {}
         for rec in all_records:
             for in_uri in rec.inputs:
@@ -206,7 +204,7 @@ class LineageStore(ILineageStore):
         }
         edges: list[dict[str, Any]] = []
 
-        # 上游：inputs → target（record.target 为直接下游 URI）
+        # 上游：inputs target（record.target 为直接下游 URI）
         for rec in upstream:
             for in_uri in rec.inputs:
                 if in_uri not in nodes:
@@ -233,7 +231,7 @@ class LineageStore(ILineageStore):
                     }
                 )
 
-        # 下游：target → outputs
+        # 下游：target outputs
         for rec in downstream:
             for out_uri in rec.outputs:
                 if out_uri not in nodes:
@@ -278,9 +276,7 @@ def _infer_uri_type(uri: str) -> str:
     return "unknown"
 
 
-# ---------------------------------------------------------------------------
 # 单例访问
-# ---------------------------------------------------------------------------
 
 
 _singleton: LineageStore | None = None

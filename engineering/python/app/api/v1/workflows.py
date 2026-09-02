@@ -55,9 +55,7 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
 # Pydantic 请求模型（前端友好，避免直接暴露 dataclass）
-# ---------------------------------------------------------------------------
 
 
 class ArtifactModel(BaseModel):
@@ -109,9 +107,7 @@ class ResumeRequestModel(BaseModel):
     owner_id: str | None = None
 
 
-# ---------------------------------------------------------------------------
-# 模型转换：Pydantic ↔ 契约 dataclass
-# ---------------------------------------------------------------------------
+# 模型转换：Pydantic 契约 dataclass
 
 
 def _artifact_from_model(m: ArtifactModel) -> Artifact:
@@ -156,9 +152,7 @@ def _serialize_event(event: WorkflowEvent) -> str:
     return f"event: {event.event_type}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-# ---------------------------------------------------------------------------
 # 端点实现
-# ---------------------------------------------------------------------------
 
 
 @router.post("/validate")

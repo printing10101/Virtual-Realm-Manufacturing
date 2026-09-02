@@ -87,7 +87,7 @@ def register(app: FastAPI) -> dict[str, bool]:
     }
 
     # === 阶段 1：拍照重建（ADR-006）===
-    # 手机多角度拍照 → COLMAP SfM → OpenMVS 稠密化 → 标定块尺度归一化 mesh
+    # 手机多角度拍照 COLMAP SfM OpenMVS 稠密化 标定块尺度归一化 mesh
     flags["_IMAGE_TO_3D_AVAILABLE"] = _try_include_router(
         app,
         "app.api.v1.image_to_3d.routes",
@@ -95,8 +95,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     )
 
     # === 阶段 2：几何特征辅助提取（ADR-007）===
-    # mesh → 平面/圆柱/孔检测 → 工程师审核 → 导出已确认特征集
-    # 设计原则：mesh → 参数化 CAD 自动转换工业上未解决，本模块输出「算法建议特征」，
+    # mesh 平面/圆柱/孔检测 工程师审核 导出已确认特征集
+    # 设计原则：mesh 参数化 CAD 自动转换工业上未解决，本模块输出「算法建议特征」，
     # 必须经工程师逐条审核（confirmed / rejected / edited）后才允许进入阶段 3。
     flags["_FEATURE_EXTRACTION_AVAILABLE"] = _try_include_router(
         app,
@@ -105,7 +105,7 @@ def register(app: FastAPI) -> dict[str, bool]:
     )
 
     # === 阶段 3：参数化几何输出（ADR-008）===
-    # confirmed_features.json → B-rep → 装配 → STEP → 两轮审核 → 最终 STEP
+    # confirmed_features.json B-rep 装配 STEP 两轮审核 最终 STEP
     # 设计约束：工程师必须两轮审核（STEP_GENERATED + finalize）后才允许下载最终 STEP；
     # 最终 STEP 必须经 CAM 软件（NX/PowerMill/PyCAM）二次校验后才允许上机床。
     flags["_PARAMETRIC_GEOMETRY_AVAILABLE"] = _try_include_router(
@@ -115,7 +115,7 @@ def register(app: FastAPI) -> dict[str, bool]:
     )
 
     # === 阶段 4：切削参数推荐（ADR-009）===
-    # STEP + confirmed_features.json + material_id → 推荐参数 → 审核 → ChatterParams
+    # STEP + confirmed_features.json + material_id 推荐参数 审核 ChatterParams
     # 设计约束：推荐参数必须经工程师逐条审核后才允许导出 ChatterParams；
     # SUCCEEDED 状态禁止删除（阶段 5 颤振预测可能已引用其 ChatterParams）；
     # HRC52 数据待自采校准，K_s 标记为 pending_calibration。
@@ -126,8 +126,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     )
 
     # === 阶段 5：颤振预测接入 LTC（ADR-010）===
-    # 双路径预测：路径 A Tlusty 解析法（工程默认）→ 路径 B LTC 神经网络（实验性）
-    # → 路径 C 兜底默认值
+    # 双路径预测：路径 A Tlusty 解析法（工程默认） 路径 B LTC 神经网络（实验性）
+    #  路径 C 兜底默认值
     # 设计约束：HRC52 置信度强制降低至 PENDING_CALIBRATION_CONFIDENCE=0.5；
     # SUCCEEDED 状态禁止删除（阶段 6 G 代码生成可能已引用其 ChatterReport）；
     # cam_validation_required 始终 True。
@@ -139,7 +139,7 @@ def register(app: FastAPI) -> dict[str, bool]:
 
     # === 阶段 6：G 代码生成接入（ADR-014）===
     # 数据流：阶段 5 ChatterReport + 阶段 3 OperationPlan
-    #        → GCodeGenerator → 工程师单轮审核 → G 代码文件 + 审核记录 JSON
+    #  GCodeGenerator 工程师单轮审核 G 代码文件 + 审核记录 JSON
     # 设计约束：stable == False 的特征禁止生成 G 代码（强制回阶段 5）；
     # SUCCEEDED 状态禁止删除（阶段 7 CAM 校验可能已引用 G 代码产物）；
     # cam_validation_required 始终 True；系统绝不直接接口 CNC 控制器。
@@ -150,8 +150,8 @@ def register(app: FastAPI) -> dict[str, bool]:
     )
 
     # === 阶段 7：CAM 校验模块（ADR-018）===
-    # 数据流：阶段 6 G 代码 + report.json → CAM 软件（NX/PowerMill/PyCAM）二次校验
-    #        → 校验报告 → 工程师确认 → 上机许可
+    # 数据流：阶段 6 G 代码 + report.json CAM 软件（NX/PowerMill/PyCAM）二次校验
+    #  校验报告 工程师确认 上机许可
     # 设计约束：cam_validation_required 始终 True；最终上机仍需持证操作员 + 导师签字 + 保险。
     flags["_CAM_VALIDATION_AVAILABLE"] = _try_include_router(
         app,

@@ -8,6 +8,7 @@
 5. 继续写入第 51 条，链应保持连续
 6. close 后状态文件应同步到 51
 """
+
 import json
 from pathlib import Path
 
@@ -26,15 +27,11 @@ def test_chain_state_periodic_save_and_crash_recovery(tmp_path):
 
     chain_state_file = tmp_path / "agent_audit_chain_state.json"
     state = json.loads(chain_state_file.read_text(encoding="utf-8"))
-    assert state["chain_seq"] == 32, (
-        f"状态文件应在第 32 条时保存，但实际为 {state['chain_seq']}"
-    )
+    assert state["chain_seq"] == 32, f"状态文件应在第 32 条时保存，但实际为 {state['chain_seq']}"
 
     # 阶段2：重启，应通过 _rebuild_chain_state_from_log 重建到 50
     log2 = AgentAuditLog(log_path=log_path)
-    assert log2._chain_seq == 50, (
-        f"重建失败: expected 50, got {log2._chain_seq}"
-    )
+    assert log2._chain_seq == 50, f"重建失败: expected 50, got {log2._chain_seq}"
 
     # 阶段3：完整性校验
     is_valid, breaks = log2.verify_integrity()
@@ -48,9 +45,7 @@ def test_chain_state_periodic_save_and_crash_recovery(tmp_path):
     # 阶段5：close 后状态文件应同步到 51
     log2.close()
     state_after_close = json.loads(chain_state_file.read_text(encoding="utf-8"))
-    assert state_after_close["chain_seq"] == 51, (
-        f"close 应将状态同步到 51，但实际为 {state_after_close['chain_seq']}"
-    )
+    assert state_after_close["chain_seq"] == 51, f"close 应将状态同步到 51，但实际为 {state_after_close['chain_seq']}"
 
 
 def test_chain_state_save_interval_constant():
@@ -58,12 +53,8 @@ def test_chain_state_save_interval_constant():
     from app.agent.middleware import AgentAuditLog
 
     interval = AgentAuditLog._CHAIN_STATE_SAVE_INTERVAL
-    assert isinstance(interval, int) and interval > 1, (
-        f"_CHAIN_STATE_SAVE_INTERVAL 应为 >1 的整数，实际为 {interval}"
-    )
+    assert isinstance(interval, int) and interval > 1, f"_CHAIN_STATE_SAVE_INTERVAL 应为 >1 的整数，实际为 {interval}"
     # 32 是性能与崩溃恢复成本的平衡点：
-    #   - 太小（如 1）退化为每次保存，性能差
-    #   - 太大（如 1000）崩溃时重建成本高
-    assert interval <= 256, (
-        f"_CHAIN_STATE_SAVE_INTERVAL 过大（{interval}），崩溃时重建成本高"
-    )
+    # - 太小（如 1）退化为每次保存，性能差
+    # - 太大（如 1000）崩溃时重建成本高
+    assert interval <= 256, f"_CHAIN_STATE_SAVE_INTERVAL 过大（{interval}），崩溃时重建成本高"

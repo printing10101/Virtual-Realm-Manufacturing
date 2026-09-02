@@ -42,9 +42,7 @@ from app.models.machining_record import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # Collector context
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -72,9 +70,7 @@ class CollectorContext:
             raise ValueError("CollectorContext.machine_id / tool_id / material are required")
 
 
-# ---------------------------------------------------------------------------
-# Single sample → MachiningRecordCreate
-# ---------------------------------------------------------------------------
+# Single sample MachiningRecordCreate
 
 
 def _safe_float(value: float | None, default: float = 0.0) -> float:
@@ -123,9 +119,7 @@ def convert_sample_to_record(
     )
 
 
-# ---------------------------------------------------------------------------
-# N samples → 1 MachiningRecordCreate (batch aggregation)
-# ---------------------------------------------------------------------------
+# N samples 1 MachiningRecordCreate (batch aggregation)
 
 
 def _build_series_id(context: CollectorContext, start_ts: datetime, suffix: str = "") -> str:
@@ -190,7 +184,7 @@ def aggregate_samples_to_record(
             return float(max(values))
         if strat == "min":
             return float(min(values))
-        # last → 取最后一条样本
+        # last 取最后一条样本
         return float(values[-1])
 
     if strategy == "last":
@@ -228,9 +222,7 @@ def aggregate_samples_to_record(
     )
 
 
-# ---------------------------------------------------------------------------
 # Rolling aggregator state
-# ---------------------------------------------------------------------------
 
 
 class SampleBatchAggregator:

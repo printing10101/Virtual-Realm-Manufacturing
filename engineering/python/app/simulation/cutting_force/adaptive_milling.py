@@ -236,9 +236,7 @@ class AdaptiveMillingSolver:
     def __init__(self, params: AdaptiveMillingParams) -> None:
         self._params = params
 
-    # ------------------------------------------------------------------
     # 公开求解接口
-    # ------------------------------------------------------------------
 
     def solve_segment(
         self,
@@ -262,18 +260,18 @@ class AdaptiveMillingSolver:
             raise ValueError(f"材料 '{p.material}' 缺少 Kienzle 系数，无法计算切削力")
         target_force = force_override_n if force_override_n else p.target_force_n
 
-        # ── Step 1: 选择基准 fz（先用 max_fz 起步，后续按需回退） ──
+        # Step 1: 选择基准 fz（先用 max_fz 起步，后续按需回退）
         # NX Adaptive Milling 思路：优先保证每齿进给最大化以提升 MRR
         fz = p.max_fz
 
-        # ── Step 2: 反求 ap_max ────────────────────────────────────
+        # Step 2: 反求 ap_max
         # Kienzle: F = kc1.1 * b * h^(1-mc)
-        #   b = ap（端铣时径向切宽 = 轴向切深，此处为统一处理用 effective_width）
-        #   h = fz（简化：每齿进给 = 平均切屑厚度，忽略 sin(phi) 最大化场景）
+        # b = ap（端铣时径向切宽 = 轴向切深，此处为统一处理用 effective_width）
+        # h = fz（简化：每齿进给 = 平均切屑厚度，忽略 sin(phi) 最大化场景）
         # 注：实际端铣时 b = ae，h = fz；立铣侧铣时 b = ap，h = fz
         # 本求解器面向立铣侧铣场景（NX Adaptive Milling 典型应用）：
-        #   b = ap, h = fz → F = kc1.1 * ap * fz^(1-mc)
-        #   反推 ap_max = F_target / (kc1.1 * fz^(1-mc))
+        # b = ap, h = fz F = kc1.1 * ap * fz^(1-mc)
+        # 反推 ap_max = F_target / (kc1.1 * fz^(1-mc))
         h = fz
         specific_force = p.kc1_1 * (h ** (1.0 - p.mc))  # 比切削力 N/mm²
         if specific_force <= 0:
@@ -284,7 +282,7 @@ class AdaptiveMillingSolver:
         # 施加安全裕度
         ap_max_force *= p.safety_margin
 
-        # ── Step 3: 应用多重约束 ──────────────────────────────────
+        # Step 3: 应用多重约束
         ap_max = ap_max_force
         constraint = "target_force"
 
@@ -308,19 +306,19 @@ class AdaptiveMillingSolver:
             ap_max = p.min_axial_depth
             constraint = "min_ap"
 
-        # ── Step 4: 反向校核 fz ───────────────────────────────────
+        # Step 4: 反向校核 fz
         # 在 ap 确定后，重新计算 fz 是否还能维持 max_fz。
         # 若 F(ap_max, fz=max_fz) > target_force，则降 fz。
         #
         # 注：本反向校核在大多数场景下是“死代码”（防御式编程）：
-        #   - Step 2 已基于 fz=max_fz 反求 ap_max_force，使得 F(ap_max_force, max_fz) ≈ target_force
-        #   - Step 3 中的 max_ap / stability / material_remainder / min_ap 约束只会让 ap_max 更小
-        #   - 因此 F(ap_max, max_fz) ≤ F(ap_max_force, max_fz) ≈ target_force
-        #   - 仅当 material_remainder 把 ap 压到极小值、再被 min_ap 抬回时，
-        #     或 ap 受 stability_limit_ap 强制截断到比 ap_max_force 更小的值时，
-        #     F(ap_max, max_fz) < target_force，此时 fz 反而不需要降——所以校核不触发。
-        #   - 真正触发本分支的场景：ap_max 被外部的 stability_limit_ap 或 max_axial_depth
-        #     “放大”到比 ap_max_force 还大的情况（理论上不应发生，但作为安全网保留）。
+        # - Step 2 已基于 fz=max_fz 反求 ap_max_force，使得 F(ap_max_force, max_fz) ≈ target_force
+        # - Step 3 中的 max_ap / stability / material_remainder / min_ap 约束只会让 ap_max 更小
+        # - 因此 F(ap_max, max_fz) ≤ F(ap_max_force, max_fz) ≈ target_force
+        # - 仅当 material_remainder 把 ap 压到极小值、再被 min_ap 抬回时，
+        # 或 ap 受 stability_limit_ap 强制截断到比 ap_max_force 更小的值时，
+        # F(ap_max, max_fz) < target_force，此时 fz 反而不需要降——所以校核不触发。
+        # - 真正触发本分支的场景：ap_max 被外部的 stability_limit_ap 或 max_axial_depth
+        # “放大”到比 ap_max_force 还大的情况（理论上不应发生，但作为安全网保留）。
         if p.kc1_1 > 0 and ap_max > 0:
             fz_max_by_force = (target_force / (p.kc1_1 * ap_max)) ** (1.0 / (1.0 - p.mc))
         else:
@@ -339,7 +337,7 @@ class AdaptiveMillingSolver:
             fz = p.min_fz
             constraint = "min_fz"
 
-        # ── Step 5: 计算进给速度 vf = fz * z * n ──────────────────
+        # Step 5: 计算进给速度 vf = fz * z * n
         # 注意：进给速度约束不应覆盖 stability / material_remainder 等物理约束
         # 的追溯信息——后者影响 ap，前者只影响 fz/vf，应并行记录而非覆盖
         vf = fz * p.flute_count * p.spindle_rpm
@@ -357,7 +355,7 @@ class AdaptiveMillingSolver:
                 if constraint in ("target_force", "max_fz", "max_feed"):
                     constraint = "min_feed"
 
-        # ── Step 6: 估算最终切削力与 MRR ─────────────────────────
+        # Step 6: 估算最终切削力与 MRR
         final_force = self._compute_force(ap_max, fz)
         mrr = self._compute_mrr(ap_max, fz, vf)
 
@@ -441,9 +439,7 @@ class AdaptiveMillingSolver:
             summary=summary,
         )
 
-    # ------------------------------------------------------------------
     # 内部实现
-    # ------------------------------------------------------------------
 
     def _compute_force(self, ap: float, fz: float) -> float:
         """正向计算切削力。"""

@@ -28,9 +28,7 @@ from app.models.machining_record import (
 )
 
 
-# ======================================================================
 # 1. Pydantic 模型字段校验
-# ======================================================================
 
 
 class TestPydanticFieldValidation:
@@ -135,9 +133,7 @@ class TestPydanticFieldValidation:
         assert record.machine_id == "CNC-01"
 
 
-# ======================================================================
 # 2. Pydantic 模型序列化 / 反序列化
-# ======================================================================
 
 
 class TestPydanticSerialization:
@@ -201,9 +197,7 @@ class TestPydanticSerialization:
             record.spindle_speed = -1.0
 
 
-# ======================================================================
 # 3. SQLAlchemy ORM 表结构
-# ======================================================================
 
 
 class TestSQLAlchemyModelSchema:
@@ -297,9 +291,7 @@ class TestSQLAlchemyModelSchema:
         assert "CNC-01" in r
 
 
-# ======================================================================
 # 4. Repository CRUD 集成（基于内存 SQLite）
-# ======================================================================
 
 
 @pytest.fixture
@@ -479,9 +471,7 @@ class TestRepositoryCRUD:
         assert repo.get(record_id) is None
 
 
-# ======================================================================
 # 5. Schema 校验
-# ======================================================================
 
 
 class TestSchemaIntegration:

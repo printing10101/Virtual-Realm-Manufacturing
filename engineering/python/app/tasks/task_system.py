@@ -42,9 +42,7 @@ from app.tasks._task_types import (  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
-# ============================================================
 # 任务系统默认配置（命名常量，便于统一调整与运维排查）
-# ============================================================
 # 默认单任务最大执行时长（秒）：训练任务通常 5-30 分钟，1 小时作为兜底上限
 # 默认最大重试次数：工业任务重试过多会放大副作用（如刀具磨损），3 次为安全上限
 
@@ -67,7 +65,7 @@ class AsyncTaskManager(
 
     _instance = None
     _lock = Lock()
-    # ---- 宿主契约 / 动态属性（由 LNN 训练子路由挂载，mypy 需要显式声明） ----
+    # 宿主契约 / 动态属性（由 LNN 训练子路由挂载，mypy 需要显式声明）
     _training_queues: dict = {}
     _training_queues_lock: Any = None
 

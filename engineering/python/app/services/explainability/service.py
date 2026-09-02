@@ -71,9 +71,7 @@ from app.services.explainability._record_repo import ExplanationRecordRepo
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # 单例工厂（向后兼容原模块级 API）
-# ---------------------------------------------------------------------------
 
 
 def get_explainability_service() -> "ExplainabilityService":
@@ -86,9 +84,7 @@ def reset_explainability_service() -> None:
     ExplainabilityService.reset_instance()
 
 
-# ---------------------------------------------------------------------------
 # 服务实现
-# ---------------------------------------------------------------------------
 
 
 class ExplainabilityService(BaseSingletonService):
@@ -159,9 +155,7 @@ class ExplainabilityService(BaseSingletonService):
             created_by=created_by,
         )
 
-    # ==================================================================
     # IExplainabilityService 实现 —— 4 个 generate_xxx
-    # ==================================================================
 
     async def generate_hidden_state_explanation(
         self,
@@ -404,9 +398,7 @@ class ExplainabilityService(BaseSingletonService):
             created_by=created_by,
         )
 
-    # ==================================================================
     # IExplainabilityService 实现 —— 4 个 CRUD
-    # ==================================================================
 
     async def get_explanation(self, explanation_id: str, *, include_payload: bool = False) -> dict[str, Any]:
         """查询解释结果."""

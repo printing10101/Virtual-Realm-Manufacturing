@@ -30,9 +30,8 @@ import pytest
 from app.heartbeat.heartbeat import CronParser
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _isolate_cache():
@@ -45,9 +44,8 @@ def _isolate_cache():
     CronParser.clear_cache()
 
 
-# ---------------------------------------------------------------------------
 # 1. 缓存命中 / 未命中
-# ---------------------------------------------------------------------------
+
 
 class TestCacheHitMiss:
     """缓存命中与未命中行为"""
@@ -59,9 +57,7 @@ class TestCacheHitMiss:
         second = CronParser.parse(expr)
 
         # 缓存命中：两次返回的应该是同一个 list 对象（不是副本）
-        assert first is second, (
-            "同一分钟内重复 parse 应返回缓存的同一 list 对象"
-        )
+        assert first is second, "同一分钟内重复 parse 应返回缓存的同一 list 对象"
         # 缓存中应有且仅有一条该 expr 的条目（当前 minute_bucket）
         assert len(CronParser._CACHE) >= 1
         assert any(k[0] == expr for k in CronParser._CACHE.keys())
@@ -74,9 +70,7 @@ class TestCacheHitMiss:
         result_a = CronParser.parse(expr_a)
         result_b = CronParser.parse(expr_b)
 
-        assert result_a is not result_b, (
-            "不同 cron_expr 的解析结果不应共享"
-        )
+        assert result_a is not result_b, "不同 cron_expr 的解析结果不应共享"
         # 两个 expr 都应在缓存中
         cached_exprs = {k[0] for k in CronParser._CACHE.keys()}
         assert expr_a in cached_exprs
@@ -95,9 +89,7 @@ class TestCacheHitMiss:
 
             # 第二次同一分钟：应命中缓存，不再触发计算
             CronParser.parse(expr)
-            assert spy.call_count == 1, (
-                "同一分钟内第二次 parse 应命中缓存，不触发计算"
-            )
+            assert spy.call_count == 1, "同一分钟内第二次 parse 应命中缓存，不触发计算"
 
     def test_cached_result_semantically_correct(self):
         """缓存结果与新鲜计算结果语义一致（值相同）"""
@@ -108,9 +100,8 @@ class TestCacheHitMiss:
         assert cached == fresh, "缓存结果应与新鲜计算结果一致"
 
 
-# ---------------------------------------------------------------------------
 # 2. TTL 淘汰机制
-# ---------------------------------------------------------------------------
+
 
 class TestTtlEviction:
     """TTL 淘汰：超过 2 分钟的 bucket 在下次写入时被清理"""
@@ -128,9 +119,7 @@ class TestTtlEviction:
         # 触发一次 parse，会淘汰 stale 条目并写入新条目
         CronParser.parse(expr)
 
-        assert stale_key not in CronParser._CACHE, (
-            "过期 bucket (>=2 分钟前) 应被淘汰"
-        )
+        assert stale_key not in CronParser._CACHE, "过期 bucket (>=2 分钟前) 应被淘汰"
         # 新条目应存在
         new_key = (expr, current_bucket)
         assert new_key in CronParser._CACHE
@@ -152,14 +141,10 @@ class TestTtlEviction:
         CronParser.parse("0 * * * *")
 
         # recent_bucket 保留
-        assert recent_key in CronParser._CACHE, (
-            "1 分钟前的 bucket 不应被淘汰"
-        )
+        assert recent_key in CronParser._CACHE, "1 分钟前的 bucket 不应被淘汰"
         # boundary_bucket 也应保留（k[1] == stale_cutoff 时不被淘汰，
         # 因为条件是 k[1] < stale_cutoff）
-        assert boundary_key in CronParser._CACHE, (
-            "2 分钟前的 bucket（== stale_cutoff）不应被淘汰"
-        )
+        assert boundary_key in CronParser._CACHE, "2 分钟前的 bucket（== stale_cutoff）不应被淘汰"
 
     def test_ttl_does_not_affect_current_bucket(self):
         """TTL 淘汰不影响当前 bucket 的条目"""
@@ -167,14 +152,11 @@ class TestTtlEviction:
         result = CronParser.parse(expr)
         # 立即再次调用：应命中缓存
         result_again = CronParser.parse(expr)
-        assert result is result_again, (
-            "当前 bucket 的缓存条目不应被 TTL 淘汰影响"
-        )
+        assert result is result_again, "当前 bucket 的缓存条目不应被 TTL 淘汰影响"
 
 
-# ---------------------------------------------------------------------------
 # 3. 容量保护（_CACHE_MAX_SIZE）
-# ---------------------------------------------------------------------------
+
 
 class TestCapacityProtection:
     """超过 _CACHE_MAX_SIZE 时淘汰最旧 bucket"""
@@ -223,9 +205,7 @@ class TestCapacityProtection:
 
             # 最旧 bucket (current_bucket, expr_0) 应被淘汰
             oldest_key = ("expr_0", current_bucket)
-            assert oldest_key not in CronParser._CACHE, (
-                "超过容量上限时最旧 bucket 应被淘汰"
-            )
+            assert oldest_key not in CronParser._CACHE, "超过容量上限时最旧 bucket 应被淘汰"
             # 新条目应存在
             assert (new_expr, current_bucket) in CronParser._CACHE
         finally:
@@ -261,9 +241,8 @@ class TestCapacityProtection:
             CronParser._CACHE_MAX_SIZE = original_max
 
 
-# ---------------------------------------------------------------------------
 # 4. 字段预编译正确性
-# ---------------------------------------------------------------------------
+
 
 class TestCompileField:
     """_compile_field 对 cron 字段表达式的解析正确性"""
@@ -297,7 +276,7 @@ class TestCompileField:
 
     def test_mixed_syntax(self):
         """混合语法：列表 + 范围 + 步进"""
-        # 1,5-7,*/20 → 1 + 5,6,7 + 0,20,40
+        # 1,5-7,*/20 1 + 5,6,7 + 0,20,40
         result = CronParser._compile_field("1,5-7,*/20", 0, 59)
         assert result == frozenset({0, 1, 5, 6, 7, 20, 40})
 
@@ -317,14 +296,11 @@ class TestCompileField:
     def test_returns_frozenset(self):
         """返回类型必须是 frozenset（不可变 + O(1) 查询）"""
         result = CronParser._compile_field("*", 0, 59)
-        assert isinstance(result, frozenset), (
-            "_compile_field 必须返回 frozenset 以保证不可变性和 O(1) 查询"
-        )
+        assert isinstance(result, frozenset), "_compile_field 必须返回 frozenset 以保证不可变性和 O(1) 查询"
 
 
-# ---------------------------------------------------------------------------
 # 5. _matches_field 向后兼容
-# ---------------------------------------------------------------------------
+
 
 class TestMatchesFieldBackwardCompat:
     """_matches_field 保留向后兼容，行为与 _compile_field 一致"""
@@ -345,21 +321,16 @@ class TestMatchesFieldBackwardCompat:
             ("5/10", 20, 0, 59, False),
         ],
     )
-    def test_matches_field_consistent_with_compile(
-        self, field_str, value, min_val, max_val, expected
-    ):
+    def test_matches_field_consistent_with_compile(self, field_str, value, min_val, max_val, expected):
         """_matches_field 与 _compile_field 对同一表达式行为一致"""
         compiled = CronParser._compile_field(field_str, min_val, max_val)
-        assert (value in compiled) == expected, (
-            f"_matches_field({field_str!r}, {value}) 应为 {expected}"
-        )
+        assert (value in compiled) == expected, f"_matches_field({field_str!r}, {value}) 应为 {expected}"
         # _matches_field 也应返回相同结果
         assert CronParser._matches_field(field_str, value, min_val, max_val) == expected
 
 
-# ---------------------------------------------------------------------------
 # 6. clear_cache 行为
-# ---------------------------------------------------------------------------
+
 
 class TestClearCache:
     """clear_cache 行为"""
@@ -391,14 +362,11 @@ class TestClearCache:
             wraps=CronParser._compute_timestamps,
         ) as spy:
             CronParser.parse(expr)
-            assert spy.call_count == 1, (
-                "clear_cache 后 parse 应重新触发 _compute_timestamps"
-            )
+            assert spy.call_count == 1, "clear_cache 后 parse 应重新触发 _compute_timestamps"
 
 
-# ---------------------------------------------------------------------------
 # 7. get_next_run 与缓存集成
-# ---------------------------------------------------------------------------
+
 
 class TestGetNextRunCacheIntegration:
     """get_next_run 应通过 parse 复用缓存"""
@@ -417,9 +385,7 @@ class TestGetNextRunCacheIntegration:
         ) as spy:
             # 二次调用：应命中缓存
             second = CronParser.get_next_run(expr)
-            assert spy.call_count == 0, (
-                "同一分钟内二次 get_next_run 应命中缓存，不触发 _compute_timestamps"
-            )
+            assert spy.call_count == 0, "同一分钟内二次 get_next_run 应命中缓存，不触发 _compute_timestamps"
 
         # 两次结果应一致
         assert first == second
@@ -433,9 +399,8 @@ class TestGetNextRunCacheIntegration:
         assert result > time.time(), "下次执行时间应在未来"
 
 
-# ---------------------------------------------------------------------------
 # 8. 并发安全
-# ---------------------------------------------------------------------------
+
 
 class TestConcurrencySafety:
     """多线程并发调用 parse 不崩溃、不数据竞争"""
@@ -459,9 +424,7 @@ class TestConcurrencySafety:
                     expr = exprs[(tid + i) % len(exprs)]
                     result = CronParser.parse(expr)
                     # 基本完整性检查：结果是 list 且非空
-                    assert isinstance(result, list), (
-                        f"parse 应返回 list，得到 {type(result)}"
-                    )
+                    assert isinstance(result, list), f"parse 应返回 list，得到 {type(result)}"
                     assert len(result) > 0, f"cron {expr!r} 应有执行时间"
             except Exception as e:
                 errors.append(e)
@@ -498,9 +461,7 @@ class TestConcurrencySafety:
         # 所有结果应语义一致（值相同）
         first = results[0]
         for i, r in enumerate(results):
-            assert r == first, (
-                f"并发 parse 结果不一致: results[{i}] != results[0]"
-            )
+            assert r == first, f"并发 parse 结果不一致: results[{i}] != results[0]"
 
     def test_concurrent_clear_cache_safe(self):
         """并发 parse + clear_cache 不崩溃（clear 是原子操作）"""
@@ -535,9 +496,8 @@ class TestConcurrencySafety:
         assert len(errors) == 0, f"并发 parse+clear 出错: {errors}"
 
 
-# ---------------------------------------------------------------------------
 # 9. 缓存对错误表达式的处理
-# ---------------------------------------------------------------------------
+
 
 class TestCacheWithInvalidExpression:
     """无效 cron 表达式不应污染缓存"""
@@ -550,9 +510,7 @@ class TestCacheWithInvalidExpression:
 
         # 无效表达式不应在缓存中
         cached_exprs = {k[0] for k in CronParser._CACHE.keys()}
-        assert invalid_expr not in cached_exprs, (
-            "无效表达式不应被缓存"
-        )
+        assert invalid_expr not in cached_exprs, "无效表达式不应被缓存"
 
     def test_invalid_expression_does_not_block_subsequent_valid(self):
         """无效表达式后，有效表达式仍可正常解析和缓存"""

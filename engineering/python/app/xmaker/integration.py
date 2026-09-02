@@ -87,9 +87,7 @@ class XmakerIntegration:
         self.max_retries = max_retries
         self._session: requests.Session | None = None
 
-    # ------------------------------------------------------------------
     # 内部辅助
-    # ------------------------------------------------------------------
 
     def _get_session(self) -> requests.Session:
         """获取（或创建）带重试策略和认证头的 HTTP Session"""

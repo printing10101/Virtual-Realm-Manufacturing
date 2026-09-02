@@ -216,7 +216,7 @@ class TrajectoryPredictor:
                 "传入 unified_state 但 config.use_fusion=False，请在 WorldModelConfig 中设置 use_fusion=True。"
             )
 
-        # ADR-020 P3 降级兜底：融合输入但 torch 不可用 → 降级到原始 NumPy 路径。
+        # ADR-020 P3 降级兜底：融合输入但 torch 不可用 降级到原始 NumPy 路径。
         # UnifiedState 无法直接转为 state_dim 维向量（geometry 37 + dynamics 6
         # ≠ state_dim 8），构造零向量兜底（仅满足接口契约，预测无意义，
         # 与 NumPy 回退语义一致）。
@@ -251,9 +251,7 @@ class TrajectoryPredictor:
             return self._predict_torch(states_arr, actions_arr, horizon)
         return self._predict_numpy(states_arr, actions_arr, horizon)
 
-    # ------------------------------------------------------------------
     # 融合路径辅助方法
-    # ------------------------------------------------------------------
 
     def _coerce_unified_state(self, source: Union[UnifiedState, dict]) -> UnifiedState:
         """把 UnifiedState 对象或 dict 统一为 UnifiedState 实例."""
@@ -279,7 +277,7 @@ class TrajectoryPredictor:
         assert torch is not None
         assert self._model is not None
 
-        # 1. 张量化 UnifiedState → [1, 1, input_dim]
+        # 1. 张量化 UnifiedState [1, 1, input_dim]
         geo_input = np.asarray(unified_state.geometry.to_tensor_input(), dtype=np.float32).reshape(1, 1, -1)
         dyn_input = np.asarray(unified_state.dynamics.to_tensor_input(), dtype=np.float32).reshape(1, 1, -1)
 
@@ -335,10 +333,10 @@ class TrajectoryPredictor:
         """标准化状态输入为 ``[batch, T, state_dim]``."""
         arr = np.asarray(current_state, dtype=np.float32)
         if arr.ndim == 1:
-            # [state_dim] → [1, 1, state_dim]
+            # [state_dim] [1, 1, state_dim]
             arr = arr.reshape(1, 1, -1)
         elif arr.ndim == 2:
-            # [T, state_dim] → [1, T, state_dim]
+            # [T, state_dim] [1, T, state_dim]
             arr = arr.reshape(1, arr.shape[0], arr.shape[1])
         elif arr.ndim != 3:
             raise ValueError(f"current_state 维度必须为 1/2/3，当前: {arr.ndim}")
@@ -358,7 +356,7 @@ class TrajectoryPredictor:
         """
         arr = np.asarray(candidate_action, dtype=np.float32)
         if arr.ndim == 1:
-            # [action_dim] → [horizon, action_dim]（单步动作广播到 horizon 步）
+            # [action_dim] [horizon, action_dim]（单步动作广播到 horizon 步）
             arr = np.tile(arr.reshape(1, -1), (horizon, 1))
         if arr.ndim != 2:
             raise ValueError(f"candidate_action 维度必须为 1/2，当前: {arr.ndim}")

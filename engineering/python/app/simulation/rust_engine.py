@@ -66,12 +66,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
 # Rust 模块可用性探测
-# =============================================================================
 # 探测策略：尝试多种 import 路径与形式，捕获所有 ImportError / AttributeError。
 # 探测结果以模块级常量形式暴露给调用方，便于运行时诊断。
-# =============================================================================
 
 RUST_ENGINE_AVAILABLE: bool = False
 RUST_ENGINE_VERSION: str | None = None
@@ -119,24 +116,18 @@ def get_engine_status() -> dict[str, Any]:
     }
 
 
-# =============================================================================
 # 数据结构 - 复用 Python 实现，避免重复定义导致 API 不兼容
-# =============================================================================
 # 直接别名到 Python 端定义，保留 dataclass 字段、序列化、to_dict 行为一致。
 # 这确保上游代码对结果对象做 isinstance/属性访问时不会因为类型不同而失败。
-# =============================================================================
 
 ToolModel = _PyToolModel
 CollisionInfo = _PyCollisionInfo
 VoxelSimulationResult = _PyVoxelSimulationResult
 
 
-# =============================================================================
 # 工具映射：ToolModel -> Rust ToolGeometry 参数
-# =============================================================================
 # 负责把 Python 侧 dataclass 字段翻译成 Rust 端 build_tool_mask 期望的标量。
 # 兼容 6 种刀具类型（含任务说明里要求的球头锥度、成形刀）。
-# =============================================================================
 
 # 任务说明书要求支持的 6 种刀具类型：
 _RUST_TOOL_TYPE_MAP: dict[str, str] = {
@@ -172,13 +163,10 @@ def _resolve_corner_radius(tool: ToolModel) -> float:
     return tool.corner_radius
 
 
-# =============================================================================
 # 核心：VoxelCutter 适配类
-# =============================================================================
 # 继承原始 Python VoxelCutter，仅在切削热路径上覆写为 Rust 实现。
 # 这样所有非性能关键代码（STL 加载、Marching Cubes 重建、碰撞信息汇总）
 # 自动复用 Python 侧的成熟实现，避免重复维护。
-# =============================================================================
 
 
 @dataclass
@@ -218,9 +206,7 @@ class VoxelCutter(_PyVoxelCutter):
             self._voxel_size,
         )
 
-    # -------------------------------------------------------------------------
     # 公开 API：run_simulation 复写以在切削阶段使用 Rust
-    # -------------------------------------------------------------------------
 
     def run_simulation(
         self,
@@ -302,14 +288,10 @@ class VoxelCutter(_PyVoxelCutter):
         collision_info = CollisionInfo()
         padding = self._voxel_size * 2
 
-        # -------------------------------------------------------------------
         # 1) 构造刀具体素掩码（优先使用 Rust）
-        # -------------------------------------------------------------------
         tool_mask = self._build_tool_mask(tool)
 
-        # -------------------------------------------------------------------
         # 2) 收集切削点 + 碰撞检测
-        # -------------------------------------------------------------------
         all_cut_points: list[np.ndarray] = []
         for seg in cutting_segments:
             seg_points = _discretize_segment(seg, self._voxel_size * 0.5, self._voxel_size)
@@ -322,9 +304,7 @@ class VoxelCutter(_PyVoxelCutter):
                     continue
                 all_cut_points.append(np.array([x, y, z]))
 
-        # -------------------------------------------------------------------
         # 3) 批量应用刀具掩码（优先使用 Rust）
-        # -------------------------------------------------------------------
         removed_count = 0
         if all_cut_points:
             points_array = np.array(all_cut_points, dtype=np.float64)
@@ -386,9 +366,7 @@ class VoxelCutter(_PyVoxelCutter):
             toolpath_segment_count=len(segments),
         )
 
-    # -------------------------------------------------------------------------
     # 内部：构造工具掩码（Rust 优先，失败回退到 Python）
-    # -------------------------------------------------------------------------
     def _build_tool_mask(self, tool: ToolModel) -> np.ndarray:
         """构造 3D 刀具掩码（优先 Rust，失败回退 ``ToolModel.voxel_mask``）。
 
@@ -433,9 +411,7 @@ class VoxelCutter(_PyVoxelCutter):
         # 回退：直接调用 Python 端实现
         return tool.voxel_mask(self._voxel_size)
 
-    # -------------------------------------------------------------------------
     # 内部：批量应用刀具掩码（Rust 优先）
-    # -------------------------------------------------------------------------
     def _apply_tool_mask_batch(
         self,
         voxel_grid: np.ndarray,
@@ -507,9 +483,7 @@ class VoxelCutter(_PyVoxelCutter):
         return removed
 
 
-# =============================================================================
 # 便捷函数：直接执行一次切削（无需封装 VoxelCutter）
-# =============================================================================
 def apply_cutting_batch(
     voxel_grid: np.ndarray,
     tool_mask: np.ndarray,

@@ -110,7 +110,7 @@ def _get_repo_root() -> str:
     # cli.py 位于 python/app/dreaming/cli.py
     # 项目根目录是 python/ 的上两级
     current = Path(__file__).resolve()
-    # app/dreaming/cli.py → 回退 3 级到 python/
+    # app/dreaming/cli.py 回退 3 级到 python/
     return str(current.parent.parent.parent.parent)
 
 
@@ -141,9 +141,7 @@ def _init_session_extractor():
     )
 
 
-# ---------------------------------------------------------------------------
 # 子命令实现
-# ---------------------------------------------------------------------------
 
 
 async def cmd_reflect(args: argparse.Namespace) -> int:
@@ -342,9 +340,7 @@ def cmd_version(args: argparse.Namespace) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
 # 参数解析
-# ---------------------------------------------------------------------------
 
 
 def build_parser() -> argparse.ArgumentParser:

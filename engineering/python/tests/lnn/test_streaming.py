@@ -40,9 +40,7 @@ from app.ai.lnn.visualization import (
 )
 
 
-# ---------------------------------------------------------------------------
 # StreamingConfig
-# ---------------------------------------------------------------------------
 
 
 class TestStreamingConfig:
@@ -86,9 +84,7 @@ class TestStreamingConfig:
             cfg.validate()
 
 
-# ---------------------------------------------------------------------------
 # PagedHiddenStateCache
-# ---------------------------------------------------------------------------
 
 
 class TestPagedHiddenStateCache:
@@ -166,9 +162,7 @@ class TestPagedHiddenStateCache:
         assert cache.stats()["page_count"] == 150
 
 
-# ---------------------------------------------------------------------------
 # KeyframeSelector
-# ---------------------------------------------------------------------------
 
 
 class TestKeyframeSelector:
@@ -219,9 +213,7 @@ class TestKeyframeSelector:
         assert decision.is_keyframe is True
 
 
-# ---------------------------------------------------------------------------
 # AnchorContext
-# ---------------------------------------------------------------------------
 
 
 class TestAnchorContext:
@@ -233,9 +225,7 @@ class TestAnchorContext:
         assert drift == 0.0
 
     def test_update_and_correct(self):
-        anchor = AnchorContext(
-            update_rate=0.5, correction_strength=0.1, enabled=True
-        )
+        anchor = AnchorContext(update_rate=0.5, correction_strength=0.1, enabled=True)
         anchor.update(np.array([1.0, 1.0]))
         corrected, drift = anchor.correct(np.array([2.0, 2.0]))
         # 漂移应 > 0
@@ -244,9 +234,7 @@ class TestAnchorContext:
         assert corrected[0] < 2.0
 
     def test_correction_strength_zero_no_correction(self):
-        anchor = AnchorContext(
-            update_rate=0.5, correction_strength=0.0, enabled=True
-        )
+        anchor = AnchorContext(update_rate=0.5, correction_strength=0.0, enabled=True)
         anchor.update(np.array([1.0]))
         arr = np.array([2.0])
         corrected, _ = anchor.correct(arr)
@@ -285,9 +273,7 @@ class TestAnchorContext:
         assert anchor.stats()["update_count"] >= 50
 
 
-# ---------------------------------------------------------------------------
 # TrajectoryMemory
-# ---------------------------------------------------------------------------
 
 
 class TestTrajectoryMemory:
@@ -344,9 +330,7 @@ class TestTrajectoryMemory:
             t.join()
 
 
-# ---------------------------------------------------------------------------
 # StreamingPredictor (端到端，使用 mock LNNPredictor)
-# ---------------------------------------------------------------------------
 
 
 def _make_mock_predictor(value=0.8, confidence=0.9):
@@ -452,9 +436,7 @@ class TestStreamingPredictor:
 
     def test_seed_reproducibility(self):
         """相同种子下两次构造的 predictor 应产出相同的关键帧判定序列。"""
-        cfg = StreamingConfig(
-            keyframe_mode="energy", keyframe_interval=100, energy_threshold=1.5
-        )
+        cfg = StreamingConfig(keyframe_mode="energy", keyframe_interval=100, energy_threshold=1.5)
         sp1 = StreamingPredictor(predictor=_make_mock_predictor(), config=cfg, seed=42)
         sp2 = StreamingPredictor(predictor=_make_mock_predictor(), config=cfg, seed=42)
         data_seq = [
@@ -467,9 +449,7 @@ class TestStreamingPredictor:
         assert flags1 == flags2
 
 
-# ---------------------------------------------------------------------------
 # HybridInferenceEngine 流式扩展
-# ---------------------------------------------------------------------------
 
 
 class TestHybridInferenceEngineStreaming:
@@ -567,9 +547,7 @@ class TestHybridInferenceEngineStreaming:
         assert has_prediction or has_fallback
 
 
-# ---------------------------------------------------------------------------
 # Visualization
-# ---------------------------------------------------------------------------
 
 
 class TestStreamingReportRenderer:
@@ -620,6 +598,7 @@ class TestStreamingReportRenderer:
         """matplotlib 可用时应产出 PNG。"""
         try:
             import matplotlib  # noqa: F401
+
             has_mpl = True
         except ImportError:
             has_mpl = False
@@ -629,9 +608,7 @@ class TestStreamingReportRenderer:
         results = self._make_results(20)
         with tempfile.TemporaryDirectory() as tmpdir:
             out_path = os.path.join(tmpdir, "report.png")
-            outputs = render_streaming_report(
-                results, output_path=out_path, model_name="test_model"
-            )
+            outputs = render_streaming_report(results, output_path=out_path, model_name="test_model")
             assert "png_path" in outputs
             assert os.path.exists(outputs["png_path"])
 
@@ -645,6 +622,7 @@ class TestStreamingReportRenderer:
             out_path = os.path.join(tmpdir, "report.png")
             outputs = render_streaming_report(results, output_path=out_path)
             import json
+
             with open(outputs["json_path"], encoding="utf-8") as f:
                 payload = json.load(f)
             assert payload["frame_count"] == 10

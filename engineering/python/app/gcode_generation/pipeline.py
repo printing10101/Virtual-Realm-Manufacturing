@@ -87,18 +87,14 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # 异常类
-# =============================================================================
 
 
 class GCodeReviewError(GCodeGenerationError):
     """工程师审核操作失败。"""
 
 
-# =============================================================================
 # 结果数据类
-# =============================================================================
 
 
 @dataclass
@@ -141,9 +137,7 @@ class GCodeGenerationResult:
         }
 
 
-# =============================================================================
 # 流水线
-# =============================================================================
 
 
 class GCodeGenerationPipeline:
@@ -172,9 +166,7 @@ class GCodeGenerationPipeline:
         self._loader = ChatterReportLoader()
         self._safety_validator = safety_validator if safety_validator is not None else SafetyValidator()
 
-    # -------------------------------------------------------------------------
     # 创建任务
-    # -------------------------------------------------------------------------
 
     def create_task(
         self,
@@ -240,9 +232,7 @@ class GCodeGenerationPipeline:
         )
         return task
 
-    # -------------------------------------------------------------------------
     # 执行流水线（异步）
-    # -------------------------------------------------------------------------
 
     async def run_pipeline(self, task_id: str) -> GCodeGenerationResult:
         """异步执行 ChatterReport 加载 + OperationPlan 加载 + GeneratorAdapter 适配。
@@ -302,7 +292,7 @@ class GCodeGenerationPipeline:
 
             # 4. 检查 is_valid（含 unstable 特征时 base_result.errors 非空）
             if not base_result.is_valid:
-                # stable == False 的特征存在 → FAILED（强制回阶段 5）
+                # stable == False 的特征存在 FAILED（强制回阶段 5）
                 task.feature_gcode_results = feature_gcode_results
                 task.gcode_text = base_result.program_text
                 task.warnings = list(base_result.warnings)
@@ -327,7 +317,7 @@ class GCodeGenerationPipeline:
                 return self._build_result(task, error_message=task.error_message)
 
             # 4.5 统一多层安全门禁（SafetyValidator，借鉴 NumCraft）：
-            # error 级 → 阻断导出（强制回上游调整）；warning 级 → 随任务上报
+            # error 级 阻断导出（强制回上游调整）；warning 级 随任务上报
             safety_report = self._safety_validator.validate_all(
                 chatter_results=report.feature_results,
                 gcode_text=base_result.program_text,
@@ -351,7 +341,7 @@ class GCodeGenerationPipeline:
             for _sw in safety_report.warnings:
                 task.warnings.append(_sw.message)
 
-            # 5. is_valid == True → GENERATED
+            # 5. is_valid == True GENERATED
             task.feature_gcode_results = feature_gcode_results
             task.gcode_text = base_result.program_text
             task.warnings = list(base_result.warnings)
@@ -409,9 +399,7 @@ class GCodeGenerationPipeline:
             )
             return self._build_result(task, error_message=safe.get("message"))
 
-    # -------------------------------------------------------------------------
     # 工程师审核
-    # -------------------------------------------------------------------------
 
     def review_feature(
         self,
@@ -496,7 +484,7 @@ class GCodeGenerationPipeline:
                 # 非 edited 也允许记录备注（存入 edited_params）
                 target.edited_params = {"engineer_notes": engineer_notes}
 
-            # 检查是否全部审核完毕 → REVIEWED
+            # 检查是否全部审核完毕 REVIEWED
             all_reviewed = all(r.review_status != GCodeReviewStatus.PENDING.value for r in task.feature_gcode_results)
             if all_reviewed:
                 task.status = GCodeGenerationTaskStatus.REVIEWED.value
@@ -514,9 +502,7 @@ class GCodeGenerationPipeline:
         )
         return target
 
-    # -------------------------------------------------------------------------
     # 确认任务 + 导出
-    # -------------------------------------------------------------------------
 
     def confirm_task(
         self,
@@ -588,9 +574,7 @@ class GCodeGenerationPipeline:
         )
         return self._build_result(task)
 
-    # -------------------------------------------------------------------------
     # 导出 G 代码（已 SUCCEEDED 任务可直接获取路径）
-    # -------------------------------------------------------------------------
 
     def export_gcode(self, task_id: str) -> str:
         """获取已导出的 G 代码文件路径。
@@ -615,9 +599,7 @@ class GCodeGenerationPipeline:
             raise GCodeGenerationPipelineError(f"任务 {task_id} gcode_file_path 为空（数据不一致）")
         return task.gcode_file_path
 
-    # -------------------------------------------------------------------------
     # 删除任务（委托给 TaskStore，SUCCEEDED 禁删硬约束已实现）
-    # -------------------------------------------------------------------------
 
     def delete_task(self, task_id: str) -> None:
         """删除任务。
@@ -631,9 +613,7 @@ class GCodeGenerationPipeline:
         """
         self._store.delete_task(task_id, allow_delete_succeeded=False)
 
-    # -------------------------------------------------------------------------
     # 内部辅助
-    # -------------------------------------------------------------------------
 
     def _resolve_output_dir(self) -> Path:
         """解析输出目录。cfg 为 None 时使用默认 outputs/gcode。"""

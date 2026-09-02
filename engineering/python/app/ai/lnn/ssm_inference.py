@@ -50,7 +50,6 @@ class SsmOnnxPredictor:
         )
         logger.info("SSM ONNX 会话已加载: %s（dt=%.3f 烘焙于图内）", onnx_path, meta.dt)
 
-    # ------------------------------------------------------------------
     def predict(
         self,
         x: np.ndarray,

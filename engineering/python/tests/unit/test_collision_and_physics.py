@@ -88,7 +88,7 @@ class TestExtractBbox:
         assert CollisionChecker._extract_bbox((0, 0, 0, 2, 2, 2)) == (0, 0, 0, 2, 2, 2)
 
     def test_unconvertible_values(self):
-        # 长度 6 但无法转 float → None
+        # 长度 6 但无法转 float None
         assert CollisionChecker._extract_bbox((0, 0, 0, "x", 2, 2)) is None
 
     def test_position_offset(self):
@@ -173,7 +173,7 @@ class TestCollisionChecker:
         c = self._make()
         c.set_workpiece(_Geom(bbox=(0, 0, 0, 10, 10, 10)))
         c.set_tool_holder(_Geom(bbox=(1, 1, 1, 3, 3, 3)))
-        # 刀具本身在工作件外，但刀柄与工件相交 → warning
+        # 刀具本身在工作件外，但刀柄与工件相交 warning
         r = c.check_collision((20, 20, 20), _ToolGeom())
         assert r.collided
         assert r.severity == "warning"
@@ -233,9 +233,7 @@ class TestCollisionChecker:
         assert r.severity == "critical"
 
     def test_extract_points_object_with_coords(self):
-        pts = CollisionChecker._extract_toolpath_points(
-            [_Geom(x=1, y=2, z=3), _Geom(x=4, y=5, z=6)]
-        )
+        pts = CollisionChecker._extract_toolpath_points([_Geom(x=1, y=2, z=3), _Geom(x=4, y=5, z=6)])
         assert pts == [(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)]
 
     def test_extract_points_skips_invalid(self):
@@ -261,8 +259,12 @@ class TestPhysicsValidator:
     def test_cutting_force_turning(self):
         v = self._make()
         r = v.calculate_cutting_force(
-            material="steel", cutting_speed_m_min=200.0, feed_mm_rev=0.2,
-            depth_of_cut_mm=2.0, tool_diameter_mm=20.0, operation="turning",
+            material="steel",
+            cutting_speed_m_min=200.0,
+            feed_mm_rev=0.2,
+            depth_of_cut_mm=2.0,
+            tool_diameter_mm=20.0,
+            operation="turning",
         )
         assert isinstance(r, CuttingForceResult)
         assert r.force_feed_n < r.force_tangential_n
@@ -273,16 +275,24 @@ class TestPhysicsValidator:
     def test_cutting_force_milling(self):
         v = self._make()
         r = v.calculate_cutting_force(
-            material="aluminum", cutting_speed_m_min=300.0, feed_mm_rev=0.1,
-            depth_of_cut_mm=1.0, tool_diameter_mm=10.0, operation="milling",
+            material="aluminum",
+            cutting_speed_m_min=300.0,
+            feed_mm_rev=0.1,
+            depth_of_cut_mm=1.0,
+            tool_diameter_mm=10.0,
+            operation="milling",
         )
         assert r.force_feed_n == pytest.approx(r.force_tangential_n * 0.5, rel=1e-3)
 
     def test_cutting_force_drilling(self):
         v = self._make()
         r = v.calculate_cutting_force(
-            material="titanium", cutting_speed_m_min=50.0, feed_mm_rev=0.08,
-            depth_of_cut_mm=0.5, tool_diameter_mm=8.0, operation="drilling",
+            material="titanium",
+            cutting_speed_m_min=50.0,
+            feed_mm_rev=0.08,
+            depth_of_cut_mm=0.5,
+            tool_diameter_mm=8.0,
+            operation="drilling",
         )
         assert r.force_feed_n == pytest.approx(r.force_tangential_n * 0.8, rel=1e-3)
         assert r.force_radial_n == pytest.approx(r.force_tangential_n * 0.2, rel=1e-3)
@@ -290,20 +300,29 @@ class TestPhysicsValidator:
     def test_unknown_material_default_kc(self):
         v = self._make()
         r_unknown = v.calculate_cutting_force(
-            material="unobtainium", cutting_speed_m_min=200.0, feed_mm_rev=0.2,
-            depth_of_cut_mm=2.0, tool_diameter_mm=20.0,
+            material="unobtainium",
+            cutting_speed_m_min=200.0,
+            feed_mm_rev=0.2,
+            depth_of_cut_mm=2.0,
+            tool_diameter_mm=20.0,
         )
         r_default = v.calculate_cutting_force(
-            material="default", cutting_speed_m_min=200.0, feed_mm_rev=0.2,
-            depth_of_cut_mm=2.0, tool_diameter_mm=20.0,
+            material="default",
+            cutting_speed_m_min=200.0,
+            feed_mm_rev=0.2,
+            depth_of_cut_mm=2.0,
+            tool_diameter_mm=20.0,
         )
         assert r_unknown.force_tangential_n == r_default.force_tangential_n
 
     def test_force_over_limit(self):
         v = self._make(max_force_n=100.0)
         r = v.calculate_cutting_force(
-            material="steel", cutting_speed_m_min=200.0, feed_mm_rev=0.2,
-            depth_of_cut_mm=2.0, tool_diameter_mm=20.0,
+            material="steel",
+            cutting_speed_m_min=200.0,
+            feed_mm_rev=0.2,
+            depth_of_cut_mm=2.0,
+            tool_diameter_mm=20.0,
         )
         assert not r.within_limits
         assert any("主切削力" in w for w in r.warnings)
@@ -311,8 +330,11 @@ class TestPhysicsValidator:
     def test_torque_over_limit(self):
         v = self._make(max_torque_nm=0.01)
         r = v.calculate_cutting_force(
-            material="steel", cutting_speed_m_min=200.0, feed_mm_rev=0.2,
-            depth_of_cut_mm=2.0, tool_diameter_mm=50.0,
+            material="steel",
+            cutting_speed_m_min=200.0,
+            feed_mm_rev=0.2,
+            depth_of_cut_mm=2.0,
+            tool_diameter_mm=50.0,
         )
         assert not r.within_limits
         assert any("扭矩" in w for w in r.warnings)
@@ -320,8 +342,11 @@ class TestPhysicsValidator:
     def test_power_over_limit(self):
         v = self._make(max_power_kw=0.001)
         r = v.calculate_cutting_force(
-            material="steel", cutting_speed_m_min=500.0, feed_mm_rev=0.5,
-            depth_of_cut_mm=5.0, tool_diameter_mm=30.0,
+            material="steel",
+            cutting_speed_m_min=500.0,
+            feed_mm_rev=0.5,
+            depth_of_cut_mm=5.0,
+            tool_diameter_mm=30.0,
         )
         assert not r.within_limits
         assert any("功率" in w for w in r.warnings)
@@ -329,8 +354,12 @@ class TestPhysicsValidator:
     def test_validate_valid_parameters(self):
         v = self._make()
         r = v.validate_cutting_parameters(
-            material="aluminum", cutting_speed_m_min=300.0, feed_mm_rev=0.1,
-            depth_of_cut_mm=1.0, tool_diameter_mm=10.0, operation="milling",
+            material="aluminum",
+            cutting_speed_m_min=300.0,
+            feed_mm_rev=0.1,
+            depth_of_cut_mm=1.0,
+            tool_diameter_mm=10.0,
+            operation="milling",
         )
         assert r["valid"] is True
         assert r["errors"] == []
@@ -340,8 +369,11 @@ class TestPhysicsValidator:
     def test_validate_nonpositive_params(self):
         v = self._make()
         r = v.validate_cutting_parameters(
-            material="steel", cutting_speed_m_min=0.0, feed_mm_rev=-0.2,
-            depth_of_cut_mm=0.0, tool_diameter_mm=-1.0,
+            material="steel",
+            cutting_speed_m_min=0.0,
+            feed_mm_rev=-0.2,
+            depth_of_cut_mm=0.0,
+            tool_diameter_mm=-1.0,
         )
         assert r["valid"] is False
         assert len(r["errors"]) == 4
@@ -352,8 +384,11 @@ class TestPhysicsValidator:
         # 直接调用 calculate 时非正参数同样不崩溃（0^(-0.1) 回归）
         v = self._make()
         r = v.calculate_cutting_force(
-            material="steel", cutting_speed_m_min=0.0, feed_mm_rev=0.2,
-            depth_of_cut_mm=2.0, tool_diameter_mm=20.0,
+            material="steel",
+            cutting_speed_m_min=0.0,
+            feed_mm_rev=0.2,
+            depth_of_cut_mm=2.0,
+            tool_diameter_mm=20.0,
         )
         assert r.within_limits is False
         assert any("正数" in w for w in r.warnings)
@@ -361,8 +396,11 @@ class TestPhysicsValidator:
     def test_validate_depth_of_cut_over_limit(self):
         v = self._make(max_depth_of_cut_mm=2.0)
         r = v.validate_cutting_parameters(
-            material="steel", cutting_speed_m_min=100.0, feed_mm_rev=0.1,
-            depth_of_cut_mm=10.0, tool_diameter_mm=20.0,
+            material="steel",
+            cutting_speed_m_min=100.0,
+            feed_mm_rev=0.1,
+            depth_of_cut_mm=10.0,
+            tool_diameter_mm=20.0,
         )
         assert r["valid"] is False
         assert any("切削深度" in e for e in r["errors"])
@@ -371,16 +409,22 @@ class TestPhysicsValidator:
     def test_validate_high_speed_warning(self):
         v = self._make()
         r = v.validate_cutting_parameters(
-            material="steel", cutting_speed_m_min=600.0, feed_mm_rev=0.8,
-            depth_of_cut_mm=1.0, tool_diameter_mm=20.0,
+            material="steel",
+            cutting_speed_m_min=600.0,
+            feed_mm_rev=0.8,
+            depth_of_cut_mm=1.0,
+            tool_diameter_mm=20.0,
         )
         assert any("振动" in w for w in r["warnings"])
 
     def test_validate_force_recommendations(self):
         v = self._make(max_power_kw=0.001)
         r = v.validate_cutting_parameters(
-            material="steel", cutting_speed_m_min=500.0, feed_mm_rev=0.5,
-            depth_of_cut_mm=5.0, tool_diameter_mm=30.0,
+            material="steel",
+            cutting_speed_m_min=500.0,
+            feed_mm_rev=0.5,
+            depth_of_cut_mm=5.0,
+            tool_diameter_mm=30.0,
         )
         assert r["valid"] is False
         assert any("建议将切削速度降低" in rec for rec in r["recommendations"])
@@ -388,8 +432,11 @@ class TestPhysicsValidator:
     def test_validate_torque_recommendation(self):
         v = self._make(max_torque_nm=0.001)
         r = v.validate_cutting_parameters(
-            material="steel", cutting_speed_m_min=500.0, feed_mm_rev=0.5,
-            depth_of_cut_mm=5.0, tool_diameter_mm=30.0,
+            material="steel",
+            cutting_speed_m_min=500.0,
+            feed_mm_rev=0.5,
+            depth_of_cut_mm=5.0,
+            tool_diameter_mm=30.0,
         )
         assert any("建议将进给量降低" in rec for rec in r["recommendations"])
 

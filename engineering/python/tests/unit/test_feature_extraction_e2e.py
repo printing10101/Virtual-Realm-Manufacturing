@@ -44,8 +44,8 @@ class TestPlaneExtractorEndToEnd:
         ex = PlaneExtractor(_plane_cfg())
         r = ex.extract(np.array([]))
         assert r.success is False
-        assert r.method == 'fallback_empty'
-        assert '不足 3' in r.error_message
+        assert r.method == "fallback_empty"
+        assert "不足 3" in r.error_message
 
     def test_none_vertices(self):
         ex = PlaneExtractor(_plane_cfg())
@@ -54,10 +54,10 @@ class TestPlaneExtractorEndToEnd:
 
     def test_wrong_shape(self):
         ex = PlaneExtractor(_plane_cfg())
-        # 3 个点但每点 4 维 → 形状错误（不是 (N,3)）
+        # 3 个点但每点 4 维 形状错误（不是 (N,3)）
         r = ex.extract(np.array([[1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0]]))
         assert r.success is False
-        assert '形状错误' in r.error_message
+        assert "形状错误" in r.error_message
 
     def test_extract_flat_plane(self):
         ex = PlaneExtractor(_plane_cfg())
@@ -67,7 +67,7 @@ class TestPlaneExtractorEndToEnd:
         assert r.extracted_count >= 1
         assert r.features[0].feature_type == FeatureType.PLANE.value
         # 法向量应接近 ±z 轴
-        normal = np.array(r.features[0].params['normal'])
+        normal = np.array(r.features[0].params["normal"])
         assert abs(abs(normal[2]) - 1.0) < 0.1
         assert r.features[0].confidence > 0.9
 
@@ -75,9 +75,9 @@ class TestPlaneExtractorEndToEnd:
         ex = PlaneExtractor(_plane_cfg())
         r = ex.extract(_plane_cloud())
         d = r.to_dict()
-        assert d['success'] is True
-        assert d['total_vertex_count'] == 100
-        assert isinstance(d['features'], list)
+        assert d["success"] is True
+        assert d["total_vertex_count"] == 100
+        assert isinstance(d["features"], list)
 
 
 class TestHoleDetectorEndToEnd:
@@ -90,9 +90,9 @@ class TestHoleDetectorEndToEnd:
         det = HoleDetector(_hole_cfg())
         r = det.detect(np.array([]))
         d = r.to_dict()
-        assert d['success'] is False
-        assert isinstance(d['features'], list)
+        assert d["success"] is False
+        assert isinstance(d["features"], list)
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

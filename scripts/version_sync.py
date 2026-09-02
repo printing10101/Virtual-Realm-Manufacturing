@@ -12,6 +12,7 @@ Usage:
     python scripts/version_sync.py --set 1.8.0      Set all versions to 1.8.0
     python scripts/version_sync.py --show            Display current versions
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,6 +62,7 @@ def _read_json_key(key_path: str):
         for k in keys:
             value = value.get(k, {})
         return str(value) if value else None
+
     return reader
 
 
@@ -69,6 +71,7 @@ def _read_regex(pattern: str, group: int = 1):
         content = path.read_text(encoding="utf-8")
         match = re.search(pattern, content)
         return match.group(group) if match else None
+
     return reader
 
 
@@ -93,6 +96,7 @@ def _write_json_key(key_path: str):
             encoding="utf-8",
         )
         return True
+
     return writer
 
 
@@ -105,6 +109,7 @@ def _write_regex(pattern: str, replacement_template: str):
             return False
         path.write_text(new_content, encoding="utf-8")
         return True
+
     return writer
 
 
@@ -112,7 +117,7 @@ def _write_config_py(path: Path, version: str) -> bool:
     content = path.read_text(encoding="utf-8")
     # P0-5 修复：匹配 _env("APP_VERSION", "x.y.z") 写法（原正则缺逗号）
     pattern = r'(APP_VERSION",\s*")([\d.]+)(")'
-    new_content, count = re.subn(pattern, rf'\g<1>{version}\g<3>', content)
+    new_content, count = re.subn(pattern, rf"\g<1>{version}\g<3>", content)
     if count == 0 or new_content == content:
         return False
     path.write_text(new_content, encoding="utf-8")
@@ -122,7 +127,7 @@ def _write_config_py(path: Path, version: str) -> bool:
 def _write_main_py(path: Path, version: str) -> bool:
     content = path.read_text(encoding="utf-8")
     pattern = r'(version=")([\d.]+)(")'
-    new_content, count = re.subn(pattern, rf'\g<1>{version}\g<3>', content)
+    new_content, count = re.subn(pattern, rf"\g<1>{version}\g<3>", content)
     if count == 0 or new_content == content:
         return False
     path.write_text(new_content, encoding="utf-8")
@@ -290,25 +295,13 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    parser = argparse.ArgumentParser(
-        description="Synchronize version numbers across all project files."
-    )
+    parser = argparse.ArgumentParser(description="Synchronize version numbers across all project files.")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "--check", action="store_true",
-        help="Check all files for version consistency (read-only)"
-    )
-    group.add_argument(
-        "--set", type=str, metavar="VERSION",
-        help="Set all version references to the specified version"
-    )
-    group.add_argument(
-        "--show", action="store_true",
-        help="Display current versions across all files"
-    )
+    group.add_argument("--check", action="store_true", help="Check all files for version consistency (read-only)")
+    group.add_argument("--set", type=str, metavar="VERSION", help="Set all version references to the specified version")
+    group.add_argument("--show", action="store_true", help="Display current versions across all files")
     parser.add_argument(
-        "--dry-run", action="store_true",
-        help="Preview changes without modifying files (use with --set)"
+        "--dry-run", action="store_true", help="Preview changes without modifying files (use with --set)"
     )
 
     args = parser.parse_args()

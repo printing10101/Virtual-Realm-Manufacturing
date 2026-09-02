@@ -46,9 +46,7 @@ from app.plugins.world_model.unified_state import DynamicsState
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# 字段映射：StateField → DynamicsState 字段名
-# ---------------------------------------------------------------------------
+# 字段映射：StateField DynamicsState 字段名
 
 FIELD_MAPPING: dict[str, str] = {
     StateField.SPINDLE_SPEED: "spindle_speed",
@@ -64,9 +62,7 @@ REQUIRED_FIELDS: tuple[str, ...] = tuple(FIELD_MAPPING.keys())
 """桥接所需的最小字段集合（6 个，全部来自 ``StateField``）."""
 
 
-# ---------------------------------------------------------------------------
 # 桥接结果
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -128,9 +124,7 @@ class BridgeResult:
         }
 
 
-# ---------------------------------------------------------------------------
 # 桥接器
-# ---------------------------------------------------------------------------
 
 
 class DynamicsStateBridge:

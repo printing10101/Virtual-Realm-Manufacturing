@@ -79,9 +79,7 @@ def _disclaimer_dict(calibrated: bool = False, scale_factor: float = 1.0) -> dic
     ).to_dict()
 
 
-# =============================================================================
 # 请求 / 响应模型
-# =============================================================================
 
 
 class TaskCreateRequest(BaseModel):
@@ -119,9 +117,7 @@ class TaskStatusResponse(BaseModel):
     precision_disclaimer: dict[str, Any]
 
 
-# =============================================================================
 # 端点实现
-# =============================================================================
 
 
 @router.get("/precision_info")

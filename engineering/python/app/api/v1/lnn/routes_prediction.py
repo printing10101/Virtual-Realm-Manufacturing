@@ -354,9 +354,7 @@ async def batch_inference(
         )
 
 
-# ============================================================
 # 流式长时序推理（借鉴 lingbot-map GCT 五项核心思想）
-# ============================================================
 #
 # 本节暴露 HybridInferenceEngine 的 infer_stream / infer_windowed 能力为
 # HTTP 端点，使前端/外部服务可消费流式推理结果。引擎与 StreamingPredictor
@@ -365,11 +363,11 @@ async def batch_inference(
 #
 # 设计要点：
 # 1. HybridInferenceEngine 作为模块级惰性单例，避免每次请求重建路由表；
-#    使用双重检查锁保证线程安全。
+# 使用双重检查锁保证线程安全。
 # 2. StreamingPredictor 每次请求新建（内部隐状态缓存、锚点、轨迹记忆
-#    随请求隔离，避免跨请求状态污染）。
+# 随请求隔离，避免跨请求状态污染）。
 # 3. 流式端点返回 NDJSON（application/x-ndjson），每行一帧结果，便于
-#    客户端增量消费；窗口化端点返回一次性 JSON 数组。
+# 客户端增量消费；窗口化端点返回一次性 JSON 数组。
 # 4. 速率限制：流式 20/minute（单帧轻量），窗口化 10/hour（批量重负载）。
 
 

@@ -34,9 +34,7 @@ def _fmt_error(message: str) -> str:
     return json.dumps({"ok": False, "error": message}, ensure_ascii=False)
 
 
-# ---------------------------------------------------------------------------
 # 单例（供 MCP 工具共享状态）
-# ---------------------------------------------------------------------------
 _factory: SimulatedFactory | None = None
 _agent: Any | None = None
 
@@ -51,9 +49,7 @@ def _get_singletons(seed: int = 42) -> tuple[SimulatedFactory, Any]:
     return _factory, _agent
 
 
-# ---------------------------------------------------------------------------
 # 工具处理器（与 mcp_server/device_tools.py 格式一致：错误不抛，结构化文本）
-# ---------------------------------------------------------------------------
 async def _handle_run_cycle(n_parts: int, max_ticks: int = 500) -> str:
     if n_parts <= 0 or n_parts > 10000:
         return _fmt_error(f"n_parts 必须为 1~10000，收到 {n_parts}")
@@ -101,7 +97,11 @@ def register_factory_tools(
 
     registered: list[str] = []
     specs = [
-        ("factory_run_cycle", "闭环生产 n 件零件并返回 NLDF 风格 KPI 评分（生产效率/质量/可用性，满分 100）", _handle_run_cycle),
+        (
+            "factory_run_cycle",
+            "闭环生产 n 件零件并返回 NLDF 风格 KPI 评分（生产效率/质量/可用性，满分 100）",
+            _handle_run_cycle,
+        ),
         ("factory_get_status", "读取仿真工厂全量状态（机床/传感器/KPI 快照）", _handle_get_status),
         ("factory_get_kpis", "读取工厂 KPI 与评分", _handle_get_kpis),
         ("factory_step", "手动推进一个仿真 tick（感知层调试用）", _handle_step),
@@ -113,9 +113,7 @@ def register_factory_tools(
     return registered
 
 
-# ---------------------------------------------------------------------------
 # MQTT 事件桥（传输抽象：接真实 broker 时零改动）
-# ---------------------------------------------------------------------------
 class MqttEventBridge:
     """把工厂事件镜像到真实 MQTT broker。
 
@@ -144,6 +142,7 @@ class MqttEventBridge:
 
     def attach(self) -> None:
         """把桥挂到工厂事件总线（订阅已知 topic）。"""
+
         def _make_handler(topic: str) -> Callable[[str, dict[str, Any]], None]:
             def handler(_topic: str, payload: dict[str, Any]) -> None:
                 self._publish(topic, payload)

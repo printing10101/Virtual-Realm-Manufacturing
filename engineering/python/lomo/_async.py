@@ -48,9 +48,7 @@ from lomo.exceptions import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 异步流式响应封装
-# ---------------------------------------------------------------------------
 
 
 class AsyncStreamingJSONL:
@@ -74,9 +72,7 @@ class AsyncStreamingJSONL:
             try:
                 obj = _json.loads(line)
             except _json.JSONDecodeError as e:
-                raise LomoConnectionError(
-                    f"流式响应中存在非法 JSON 行: {e}; line={line[:200]}"
-                ) from e
+                raise LomoConnectionError(f"流式响应中存在非法 JSON 行: {e}; line={line[:200]}") from e
             if isinstance(obj, dict) and "error" in obj:
                 raise LomoAPIError(
                     str(obj.get("message", "stream error")),
@@ -121,9 +117,9 @@ class AsyncSSEEventStream:
             if line.startswith(":"):
                 continue  # SSE 注释行
             if line.startswith("event:"):
-                event_type = line[len("event:"):].strip()
+                event_type = line[len("event:") :].strip()
             elif line.startswith("data:"):
-                data_buf.append(line[len("data:"):].strip())
+                data_buf.append(line[len("data:") :].strip())
             else:
                 # 未知前缀，按 data 处理
                 data_buf.append(line)
@@ -137,9 +133,7 @@ class AsyncSSEEventStream:
             yield {"event": event_type or "message", "data": data}
 
 
-# ---------------------------------------------------------------------------
 # 异步客户端
-# ---------------------------------------------------------------------------
 
 
 class AsyncLomoClient(_BaseClient):
@@ -165,7 +159,7 @@ class AsyncLomoClient(_BaseClient):
         super().__init__(base_url, token=token, timeout=timeout)
         self._client = httpx.AsyncClient(timeout=self.timeout)
 
-    # -- 生命周期 -----------------------------------------------------------
+    # 生命周期
 
     async def __aenter__(self) -> "AsyncLomoClient":
         return self
@@ -177,7 +171,7 @@ class AsyncLomoClient(_BaseClient):
         """释放底层 httpx 连接池。"""
         await self._client.aclose()
 
-    # -- 资源访问器（懒加载，避免循环导入） ----------------------------------
+    # 资源访问器（懒加载，避免循环导入）
 
     @property
     def workflows(self) -> "AsyncWorkflow":
@@ -197,7 +191,7 @@ class AsyncLomoClient(_BaseClient):
             self._snapshots = AsyncSnapshot(self)
         return self._snapshots
 
-    # -- HTTP 方法 ----------------------------------------------------------
+    # HTTP 方法
 
     async def request(
         self,
@@ -232,17 +226,13 @@ class AsyncLomoClient(_BaseClient):
         headers = self._headers(stream=stream)
         try:
             if stream:
-                req = self._client.build_request(
-                    method, url, json=json, params=params, headers=headers
-                )
+                req = self._client.build_request(method, url, json=json, params=params, headers=headers)
                 resp = await self._client.send(req, stream=True)
                 ctype = (resp.headers.get("content-type") or "").lower()
                 if "text/event-stream" in ctype:
                     return AsyncSSEEventStream(resp)
                 return AsyncStreamingJSONL(resp)
-            resp = await self._client.request(
-                method, url, json=json, params=params, headers=headers
-            )
+            resp = await self._client.request(method, url, json=json, params=params, headers=headers)
         except httpx.TimeoutException as e:
             raise LomoTimeoutError(f"请求超时: {e}") from e
         except httpx.HTTPError as e:
@@ -251,16 +241,12 @@ class AsyncLomoClient(_BaseClient):
         try:
             payload = resp.json()
         except ValueError as e:
-            raise LomoConnectionError(
-                f"非 JSON 响应 (HTTP {resp.status_code}): {resp.text[:200]}"
-            ) from e
+            raise LomoConnectionError(f"非 JSON 响应 (HTTP {resp.status_code}): {resp.text[:200]}") from e
 
         _raise_for_envelope(payload)
         return payload.get("data")
 
-    async def get(
-        self, path: str, *, params: Optional[dict] = None, stream: bool = False
-    ):
+    async def get(self, path: str, *, params: Optional[dict] = None, stream: bool = False):
         return await self.request("GET", path, params=params, stream=stream)
 
     async def post(
@@ -280,9 +266,7 @@ class AsyncLomoClient(_BaseClient):
         return await self.request("DELETE", path, params=params)
 
 
-# ---------------------------------------------------------------------------
 # 异步资源类 —— Workflow
-# ---------------------------------------------------------------------------
 
 
 class AsyncWorkflow:
@@ -295,7 +279,7 @@ class AsyncWorkflow:
     def __init__(self, client: AsyncLomoClient) -> None:
         self._client = client
 
-    # -- 校验与运行 ---------------------------------------------------------
+    # 校验与运行
 
     async def validate(self, spec: dict[str, Any]) -> dict[str, Any]:
         """仅校验 WorkflowSpec，不启动运行。"""
@@ -333,11 +317,9 @@ class AsyncWorkflow:
             body["inputs"] = inputs
         if owner_id is not None:
             body["owner_id"] = owner_id
-        return await self._client.post(
-            f"/workflows/{workflow_run_id}/resume", json=body
-        )
+        return await self._client.post(f"/workflows/{workflow_run_id}/resume", json=body)
 
-    # -- 状态查询与控制 -----------------------------------------------------
+    # 状态查询与控制
 
     async def get_status(self, workflow_run_id: str) -> dict[str, Any]:
         """获取工作流运行状态（含每个节点的 status / 起止时间 / 错误信息）。"""
@@ -370,7 +352,7 @@ class AsyncWorkflow:
             params["status"] = status
         return await self._client.get("/workflows", params=params)
 
-    # -- 事件流订阅 ---------------------------------------------------------
+    # 事件流订阅
 
     def subscribe(self, workflow_run_id: str) -> AsyncIterator[dict[str, Any]]:
         """订阅工作流事件流（SSE）。
@@ -396,23 +378,15 @@ class AsyncWorkflow:
         """
         return self._subscribe_impl(workflow_run_id)
 
-    async def _subscribe_impl(
-        self, workflow_run_id: str
-    ) -> AsyncIterator[dict[str, Any]]:
-        stream = await self._client.get(
-            f"/workflows/{workflow_run_id}/stream", stream=True
-        )
+    async def _subscribe_impl(self, workflow_run_id: str) -> AsyncIterator[dict[str, Any]]:
+        stream = await self._client.get(f"/workflows/{workflow_run_id}/stream", stream=True)
         if not isinstance(stream, AsyncSSEEventStream):
-            raise TypeError(
-                f"subscribe 期望 AsyncSSEEventStream，实际得到 {type(stream).__name__}"
-            )
+            raise TypeError(f"subscribe 期望 AsyncSSEEventStream，实际得到 {type(stream).__name__}")
         async for ev in stream:
             yield ev
 
 
-# ---------------------------------------------------------------------------
 # 异步资源类 —— Dataset
-# ---------------------------------------------------------------------------
 
 
 class AsyncDataset:
@@ -425,7 +399,7 @@ class AsyncDataset:
     def __init__(self, client: AsyncLomoClient) -> None:
         self._client = client
 
-    # -- 列表与创建 ---------------------------------------------------------
+    # 列表与创建
 
     async def list(
         self,
@@ -467,7 +441,7 @@ class AsyncDataset:
         """获取数据集详情（含 schema 与版本概要）。"""
         return await self._client.get(f"/datasets/{dataset_id}")
 
-    # -- 版本管理 -----------------------------------------------------------
+    # 版本管理
 
     async def list_versions(self, dataset_id: str) -> dict[str, Any]:
         """列出数据集的所有版本（按创建时间倒序）。"""
@@ -491,17 +465,13 @@ class AsyncDataset:
             body["version"] = version
         if lineage is not None:
             body["lineage"] = lineage
-        return await self._client.post(
-            f"/datasets/{dataset_id}/commit", json=body
-        )
+        return await self._client.post(f"/datasets/{dataset_id}/commit", json=body)
 
     async def deprecate(self, dataset_id: str, version: str) -> dict[str, Any]:
         """废弃某版本（不可逆，但内容仍可读）。"""
-        return await self._client.post(
-            f"/datasets/{dataset_id}/deprecate", params={"version": version}
-        )
+        return await self._client.post(f"/datasets/{dataset_id}/deprecate", params={"version": version})
 
-    # -- 流式读取 -----------------------------------------------------------
+    # 流式读取
 
     def read(
         self,
@@ -532,17 +502,13 @@ class AsyncDataset:
         params: dict[str, Any] = {"batch_size": batch_size}
         if version is not None:
             params["version"] = version
-        stream = await self._client.get(
-            f"/datasets/{dataset_id}/read", params=params, stream=True
-        )
+        stream = await self._client.get(f"/datasets/{dataset_id}/read", params=params, stream=True)
         if not isinstance(stream, AsyncStreamingJSONL):
-            raise TypeError(
-                f"read 期望 AsyncStreamingJSONL，实际得到 {type(stream).__name__}"
-            )
+            raise TypeError(f"read 期望 AsyncStreamingJSONL，实际得到 {type(stream).__name__}")
         async for row in stream:
             yield row
 
-    # -- 血缘 ---------------------------------------------------------------
+    # 血缘
 
     async def record_lineage(self, lineage: dict[str, Any]) -> dict[str, Any]:
         """记录一条血缘。返回 ``{"record_id": "..."}``。"""
@@ -568,14 +534,10 @@ class AsyncDataset:
                 code=1002,
             )
         params = {"direction": direction, "depth": depth}
-        return await self._client.get(
-            f"/datasets/lineage/{target_uri}", params=params
-        )
+        return await self._client.get(f"/datasets/lineage/{target_uri}", params=params)
 
 
-# ---------------------------------------------------------------------------
 # 异步资源类 —— Snapshot
-# ---------------------------------------------------------------------------
 
 
 class AsyncSnapshot:

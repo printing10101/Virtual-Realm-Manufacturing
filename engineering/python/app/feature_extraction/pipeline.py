@@ -72,9 +72,7 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # 异常类
-# =============================================================================
 
 
 class FeatureExtractionError(Exception):
@@ -89,9 +87,7 @@ class FeatureReviewError(FeatureExtractionError):
     """工程师审核操作失败。"""
 
 
-# =============================================================================
 # 条件导入：trimesh 可选
-# =============================================================================
 
 
 def _try_import_trimesh() -> Any:
@@ -111,9 +107,7 @@ def _try_import_trimesh() -> Any:
         return None
 
 
-# =============================================================================
 # 结果数据类
-# =============================================================================
 
 
 @dataclass
@@ -156,9 +150,7 @@ class FeatureExtractionResult:
         }
 
 
-# =============================================================================
 # 特征提取流水线
-# =============================================================================
 
 
 class FeatureExtractionPipeline:
@@ -190,9 +182,7 @@ class FeatureExtractionPipeline:
         self._cylinder_extractor = CylinderExtractor(self._cfg)
         self._hole_detector = HoleDetector(self._cfg)
 
-    # -------------------------------------------------------------------------
     # 任务创建与执行
-    # -------------------------------------------------------------------------
 
     async def create_task(
         self,
@@ -264,7 +254,7 @@ class FeatureExtractionPipeline:
         )
 
         try:
-            # ============= 阶段 1: 加载 mesh =============
+            # 阶段 1: 加载 mesh
             vertices, faces = await asyncio.to_thread(_load_mesh, mesh_path, self._trimesh)
 
             self._store.update(
@@ -273,7 +263,7 @@ class FeatureExtractionPipeline:
                 face_count=int(len(faces)) if faces is not None else 0,
             )
 
-            # ============= 阶段 2: 平面提取 =============
+            # 阶段 2: 平面提取
             t_plane_start = time.time()
             plane_result = await asyncio.to_thread(self._plane_extractor.extract, vertices, faces)
             plane_duration = time.time() - t_plane_start
@@ -288,7 +278,7 @@ class FeatureExtractionPipeline:
                 plane_result.method,
             )
 
-            # ============= 阶段 3: 圆柱提取 =============
+            # 阶段 3: 圆柱提取
             t_cyl_start = time.time()
             cyl_result = await asyncio.to_thread(self._cylinder_extractor.extract, vertices, faces)
             cyl_duration = time.time() - t_cyl_start
@@ -307,7 +297,7 @@ class FeatureExtractionPipeline:
                 cyl_result.method,
             )
 
-            # ============= 阶段 4: 孔/凸台检测 =============
+            # 阶段 4: 孔/凸台检测
             t_hole_start = time.time()
             hole_result = await asyncio.to_thread(
                 self._hole_detector.detect,
@@ -330,7 +320,7 @@ class FeatureExtractionPipeline:
                 hole_result.method,
             )
 
-            # ============= 阶段 5: 合并所有特征 =============
+            # 阶段 5: 合并所有特征
             all_features: list[ExtractedFeature] = []
             all_features.extend(plane_result.features)
             all_features.extend(cyl_result.features if cyl_result.success else [])
@@ -396,9 +386,7 @@ class FeatureExtractionPipeline:
                 exc_info=True,
             )
 
-    # -------------------------------------------------------------------------
     # 工程师审核
-    # -------------------------------------------------------------------------
 
     def review_feature(
         self,
@@ -505,9 +493,7 @@ class FeatureExtractionPipeline:
             )
         return all_reviewed
 
-    # -------------------------------------------------------------------------
     # 导出已确认特征
-    # -------------------------------------------------------------------------
 
     def export_confirmed_features(
         self,
@@ -599,9 +585,7 @@ class FeatureExtractionPipeline:
         )
         return output_path
 
-    # -------------------------------------------------------------------------
     # 查询结果摘要
-    # -------------------------------------------------------------------------
 
     def get_result(self, task_id: str) -> FeatureExtractionResult | None:
         """从任务存储构造 API 响应摘要。"""
@@ -661,9 +645,7 @@ class FeatureExtractionPipeline:
         )
 
 
-# =============================================================================
 # mesh 加载函数
-# =============================================================================
 
 
 def _load_mesh(

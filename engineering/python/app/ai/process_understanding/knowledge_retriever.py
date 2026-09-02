@@ -57,14 +57,12 @@ class HybridRetrievalResult:
     latency_ms: float = 0.0
 
 
-# ---------------------------------------------------------------------------
-# TaskType → QueryIntent 映射（统一两套检索系统）
-# ---------------------------------------------------------------------------
-# A-工艺咨询：聚焦切削参数/刀具选择 → CUTTING_PARAMS
-# B-故障诊断：聚焦振动/磨损/异常 → VIBRATION_WEAR
-# C-方案生成：需要跨源综合数据 → CROSS_SOURCE
-# D-知识查询：通用知识检索 → GENERAL
-# E-闲聊：无需增强 pipeline → GENERAL (fast)
+# TaskType QueryIntent 映射（统一两套检索系统）
+# A-工艺咨询：聚焦切削参数/刀具选择 CUTTING_PARAMS
+# B-故障诊断：聚焦振动/磨损/异常 VIBRATION_WEAR
+# C-方案生成：需要跨源综合数据 CROSS_SOURCE
+# D-知识查询：通用知识检索 GENERAL
+# E-闲聊：无需增强 pipeline GENERAL (fast)
 TASK_TYPE_TO_QUERY_INTENT: dict[TaskType, str] = {
     TaskType.PROCESS_CONSULT: "cutting_params",
     TaskType.FAULT_DIAGNOSIS: "vibration_wear",
@@ -82,7 +80,7 @@ TASK_TYPE_TO_PIPELINE_LEVEL: dict[TaskType, str] = {
     TaskType.SOLUTION_GENERATION: "full",
 }
 
-# TaskType → top_k 默认值（保留原 RETRIEVAL_WEIGHTS 语义）
+# TaskType top_k 默认值（保留原 RETRIEVAL_WEIGHTS 语义）
 TASK_TYPE_DEFAULT_TOP_K: dict[TaskType, int] = {
     TaskType.PROCESS_CONSULT: 5,
     TaskType.FAULT_DIAGNOSIS: 5,
@@ -92,9 +90,7 @@ TASK_TYPE_DEFAULT_TOP_K: dict[TaskType, int] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # RagRetrievalEngine 懒加载单例（线程安全）
-# ---------------------------------------------------------------------------
 
 _rag_engine_instance: Any = None
 _rag_engine_lock = threading.Lock()

@@ -14,6 +14,7 @@
 - ``DerivationResult`` 诊断字段（is_complete/completeness_ratio/to_dict）准确
 - ``should_degrade`` 降级阈值判断正确
 """
+
 from __future__ import annotations
 
 import pytest
@@ -40,9 +41,7 @@ from app.plugins.world_model.geometry_features_deriver import (
 from app.plugins.world_model.unified_state import GeometryFeatures
 
 
-# ---------------------------------------------------------------------------
 # 辅助构造函数
-# ---------------------------------------------------------------------------
 
 
 def make_plane(
@@ -137,9 +136,7 @@ def make_unknown(feature_id: str = "u") -> ExtractedFeature:
     )
 
 
-# ---------------------------------------------------------------------------
 # 1. 派生常量一致性
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -189,9 +186,7 @@ class TestDerivationConstants:
         assert RADIUS_NORM_MM > 0
 
 
-# ---------------------------------------------------------------------------
 # 2. bbox_dimensions 派生
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -203,7 +198,8 @@ class TestDeriveBbox:
         """完整 vertices 正确计算 per-axis max - min."""
         vertices = [[0, 0, 0], [10, 0, 0], [0, 20, 0], [0, 0, 30]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=vertices,
+            features=[],
+            vertices=vertices,
         )
         assert result.geometry.bbox_dimensions == (10.0, 20.0, 30.0)
         assert "bbox_dimensions" not in result.defaulted_fields
@@ -211,7 +207,8 @@ class TestDeriveBbox:
     def test_bbox_none_vertices_defaults_to_zero(self):
         """vertices=None 时 bbox 用 (0,0,0) 填充并标记 defaulted."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=None,
+            features=[],
+            vertices=None,
         )
         assert result.geometry.bbox_dimensions == (0.0, 0.0, 0.0)
         assert "bbox_dimensions" in result.defaulted_fields
@@ -220,7 +217,8 @@ class TestDeriveBbox:
     def test_bbox_empty_list_defaults_to_zero(self):
         """空 vertices 列表时 bbox 用 (0,0,0) 填充."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=[],
+            features=[],
+            vertices=[],
         )
         assert result.geometry.bbox_dimensions == (0.0, 0.0, 0.0)
         assert "bbox_dimensions" in result.defaulted_fields
@@ -229,7 +227,8 @@ class TestDeriveBbox:
         """无效 vertices（含 None 元素 / 不足 3 维）跳过，全无效则 defaulted."""
         vertices = [None, [1, 2], "not_a_point", [0, 0, 0]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=vertices,
+            features=[],
+            vertices=vertices,
         )
         # 仅 [0,0,0] 有效，bbox=(0,0,0) 但非 defaulted（有 1 个有效点）
         assert result.geometry.bbox_dimensions == (0.0, 0.0, 0.0)
@@ -239,7 +238,8 @@ class TestDeriveBbox:
         """全部无效 vertices 视同 None."""
         vertices = [None, [1, 2], "not_a_point"]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=vertices,
+            features=[],
+            vertices=vertices,
         )
         assert result.geometry.bbox_dimensions == (0.0, 0.0, 0.0)
         assert "bbox_dimensions" in result.defaulted_fields
@@ -248,7 +248,8 @@ class TestDeriveBbox:
         """负坐标正确计算（max - min）."""
         vertices = [[-5, -5, -5], [5, 5, 5]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=vertices,
+            features=[],
+            vertices=vertices,
         )
         assert result.geometry.bbox_dimensions == (10.0, 10.0, 10.0)
 
@@ -256,14 +257,13 @@ class TestDeriveBbox:
         """浮点坐标正确计算."""
         vertices = [[1.5, 2.5, 3.5], [4.5, 6.5, 8.5]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=vertices,
+            features=[],
+            vertices=vertices,
         )
         assert result.geometry.bbox_dimensions == (3.0, 4.0, 5.0)
 
 
-# ---------------------------------------------------------------------------
 # 3. symmetry_score 派生
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -275,7 +275,8 @@ class TestDeriveSymmetry:
         """plane 数 < 2 时返回 0.0（无法判断对称性）."""
         features = [make_plane("p1", normal=[0, 0, 1])]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.symmetry_score == 0.0
 
@@ -283,7 +284,8 @@ class TestDeriveSymmetry:
         """无 plane 特征时 symmetry_score=0.0."""
         features = [make_cylinder(), make_hole()]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.symmetry_score == 0.0
 
@@ -294,7 +296,8 @@ class TestDeriveSymmetry:
             make_plane("p2", normal=[0, 0, 1]),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.symmetry_score == pytest.approx(1.0)
 
@@ -308,7 +311,8 @@ class TestDeriveSymmetry:
             make_plane("p2", normal=[0, 0, -1]),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.symmetry_score == pytest.approx(1.0)
 
@@ -319,7 +323,8 @@ class TestDeriveSymmetry:
             make_plane("p2", normal=[1, 0, 0]),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.symmetry_score == pytest.approx(0.0)
 
@@ -342,7 +347,8 @@ class TestDeriveSymmetry:
             make_plane("p4", normal=[1, 0, 0]),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.symmetry_score == pytest.approx(1.0 / 3.0)
 
@@ -354,9 +360,10 @@ class TestDeriveSymmetry:
             make_plane("p3", normal=[0, 0, 1]),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
-        # 只计算 p1 vs p3：|cos|=1 → 1/1 = 1.0
+        # 只计算 p1 vs p3：|cos|=1 1/1 = 1.0
         assert result.geometry.symmetry_score == pytest.approx(1.0)
 
     def test_symmetry_score_bounded_to_one(self):
@@ -367,14 +374,13 @@ class TestDeriveSymmetry:
             make_plane("p3", normal=[0, 0, 1]),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.symmetry_score <= 1.0
 
 
-# ---------------------------------------------------------------------------
 # 4. complexity_score 派生
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -385,7 +391,8 @@ class TestDeriveComplexity:
     def test_complexity_empty_features_returns_zero(self):
         """无特征时 complexity_score=0.0."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=None,
+            features=[],
+            vertices=None,
         )
         assert result.geometry.complexity_score == 0.0
 
@@ -393,18 +400,23 @@ class TestDeriveComplexity:
         """1 个 plane → 1/60."""
         features = [make_plane()]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.complexity_score == pytest.approx(1.0 / 60.0)
 
     def test_complexity_mixed_types(self):
         """混合类型：2 plane + 1 cylinder + 1 hole + 1 boss = 5 → 5/60."""
         features = [
-            make_plane("p1"), make_plane("p2"),
-            make_cylinder("c1"), make_hole("h1"), make_boss("b1"),
+            make_plane("p1"),
+            make_plane("p2"),
+            make_cylinder("c1"),
+            make_hole("h1"),
+            make_boss("b1"),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.complexity_score == pytest.approx(5.0 / 60.0)
 
@@ -412,9 +424,10 @@ class TestDeriveComplexity:
         """unknown 特征不计入复杂度."""
         features = [make_plane(), make_unknown(), make_unknown()]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
-        # 只算 1 个 plane → 1/60
+        # 只算 1 个 plane 1/60
         assert result.geometry.complexity_score == pytest.approx(1.0 / 60.0)
 
     def test_complexity_overflow_truncated_to_one(self):
@@ -422,7 +435,8 @@ class TestDeriveComplexity:
         # 70 个 plane
         features = [make_plane(f"p{i}") for i in range(70)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.complexity_score == 1.0
 
@@ -430,14 +444,13 @@ class TestDeriveComplexity:
         """特征总数恰好 60 → complexity_score=1.0."""
         features = [make_plane(f"p{i}") for i in range(60)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.complexity_score == 1.0
 
 
-# ---------------------------------------------------------------------------
 # 5. feature_vector 派生
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -448,7 +461,8 @@ class TestDeriveFeatureVector:
     def test_feature_vector_always_32_dim(self):
         """feature_vector 恰好 32 维（空特征时全零）."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=None,
+            features=[],
+            vertices=None,
         )
         assert len(result.geometry.feature_vector) == FEATURE_VECTOR_DIM
         assert all(v == 0.0 for v in result.geometry.feature_vector)
@@ -462,7 +476,8 @@ class TestDeriveFeatureVector:
             make_boss("b1", radius_mm=8.0, confidence=0.75),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert len(result.geometry.feature_vector) == FEATURE_VECTOR_DIM
 
@@ -470,7 +485,8 @@ class TestDeriveFeatureVector:
         """plane 桶前 16 维：(area_norm, confidence) × 8."""
         features = [make_plane("p1", area_mm2=500.0, confidence=0.9)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
         # 第 0 位：area_norm = 500/10000 = 0.05
@@ -484,7 +500,8 @@ class TestDeriveFeatureVector:
         """cylinder 桶位 16-23：(radius_norm, confidence) × 4."""
         features = [make_cylinder("c1", radius_mm=10.0, confidence=0.85)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
         # 位 16：radius_norm = 10/50 = 0.2
@@ -498,7 +515,8 @@ class TestDeriveFeatureVector:
         """hole 桶位 24-31：(radius_norm, confidence) × 4."""
         features = [make_hole("h1", radius_mm=5.0, confidence=0.8)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
         # 位 24：radius_norm = 5/50 = 0.1
@@ -512,7 +530,8 @@ class TestDeriveFeatureVector:
         """boss 特征归入 cylinder 桶（位 16-23）."""
         features = [make_boss("b1", radius_mm=8.0, confidence=0.75)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
         # 位 16：radius_norm = 8/50 = 0.16
@@ -525,7 +544,8 @@ class TestDeriveFeatureVector:
         """unknown 特征不出现在 feature_vector 任何桶."""
         features = [make_unknown()]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
         assert len(vec) == FEATURE_VECTOR_DIM
@@ -539,7 +559,8 @@ class TestDeriveFeatureVector:
             make_plane("p3", area_mm2=300.0, confidence=0.7),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
         # top-1 应是 p2 (confidence=0.95)
@@ -552,12 +573,10 @@ class TestDeriveFeatureVector:
     def test_feature_vector_plane_bucket_overflow_truncated(self):
         """plane 超 8 个时按 confidence 降序截断到 8."""
         # 10 个 plane，confidence 从 0.1 到 1.0
-        features = [
-            make_plane(f"p{i}", area_mm2=100.0 * i, confidence=i / 10.0)
-            for i in range(1, 11)
-        ]
+        features = [make_plane(f"p{i}", area_mm2=100.0 * i, confidence=i / 10.0) for i in range(1, 11)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
         # 前 16 维（8 个 plane × 2 参数）应有值
@@ -578,7 +597,8 @@ class TestDeriveFeatureVector:
             make_cylinder("c2", radius_mm=12.0, confidence=0.7),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
         # top-1: boss b1 (confidence=0.95, radius=8)
@@ -599,7 +619,8 @@ class TestDeriveFeatureVector:
         # area = 20000 mm² > AREA_NORM_MM2=10000
         features = [make_plane("p1", area_mm2=20000.0, confidence=0.9)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.feature_vector[0] == 1.0
 
@@ -608,7 +629,8 @@ class TestDeriveFeatureVector:
         # radius = 100 mm > RADIUS_NORM_MM=50
         features = [make_cylinder("c1", radius_mm=100.0, confidence=0.9)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.feature_vector[16] == 1.0
 
@@ -623,14 +645,13 @@ class TestDeriveFeatureVector:
             ),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert result.geometry.feature_vector[1] == 1.0
 
 
-# ---------------------------------------------------------------------------
 # 6. filter_reviewed 过滤行为
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -647,7 +668,9 @@ class TestFilterReviewed:
             make_plane("p4", confidence=0.6, review_status=FeatureReviewStatus.EDITED.value),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None, filter_reviewed=False,
+            features=features,
+            vertices=None,
+            filter_reviewed=False,
         )
         # 全部 4 个 plane 进入复杂度计算
         assert result.geometry.complexity_score == pytest.approx(4.0 / 60.0)
@@ -661,7 +684,9 @@ class TestFilterReviewed:
             make_plane("p4", confidence=0.6, review_status=FeatureReviewStatus.EDITED.value),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None, filter_reviewed=True,
+            features=features,
+            vertices=None,
+            filter_reviewed=True,
         )
         # 只 2 个 plane（p2 + p4）进入复杂度计算
         assert result.geometry.complexity_score == pytest.approx(2.0 / 60.0)
@@ -675,7 +700,9 @@ class TestFilterReviewed:
             make_plane("p2", review_status=FeatureReviewStatus.REJECTED.value),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None, filter_reviewed=True,
+            features=features,
+            vertices=None,
+            filter_reviewed=True,
         )
         assert result.geometry.complexity_score == 0.0
         assert any("filter_reviewed" in note for note in result.derivation_notes)
@@ -686,14 +713,14 @@ class TestFilterReviewed:
             make_plane("p1", review_status=FeatureReviewStatus.CONFIRMED.value),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None, filter_reviewed=True,
+            features=features,
+            vertices=None,
+            filter_reviewed=True,
         )
         assert not any("filter_reviewed" in note for note in result.derivation_notes)
 
 
-# ---------------------------------------------------------------------------
 # 7. DerivationResult 诊断
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -706,7 +733,8 @@ class TestDerivationResultDiagnostics:
         features = [make_plane()]
         vertices = [[0, 0, 0], [10, 0, 0], [0, 20, 0], [0, 0, 30]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=vertices,
+            features=features,
+            vertices=vertices,
         )
         assert result.is_complete is True
         assert len(result.defaulted_fields) == 0
@@ -714,7 +742,8 @@ class TestDerivationResultDiagnostics:
     def test_is_complete_false_when_bbox_missing(self):
         """vertices=None → is_complete=False."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=None,
+            features=[],
+            vertices=None,
         )
         assert result.is_complete is False
         assert "bbox_dimensions" in result.defaulted_fields
@@ -724,7 +753,8 @@ class TestDerivationResultDiagnostics:
         features = [make_plane()]
         vertices = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=vertices,
+            features=features,
+            vertices=vertices,
         )
         assert result.completeness_ratio == 1.0
 
@@ -732,14 +762,16 @@ class TestDerivationResultDiagnostics:
         """仅 bbox 缺失 → completeness_ratio=3/4=0.75."""
         # 其他 3 字段从 features 计算（即使 features 为空也是真实结果）
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[make_plane()], vertices=None,
+            features=[make_plane()],
+            vertices=None,
         )
         assert result.completeness_ratio == 0.75
 
     def test_source_is_adr007_ransac(self):
         """source 固定为 'adr007_ransac'."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=None,
+            features=[],
+            vertices=None,
         )
         assert result.source == "adr007_ransac"
 
@@ -748,7 +780,8 @@ class TestDerivationResultDiagnostics:
         features = [make_plane(area_mm2=500.0, confidence=0.9)]
         vertices = [[0, 0, 0], [10, 0, 0], [0, 20, 0], [0, 0, 30]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=vertices,
+            features=features,
+            vertices=vertices,
         )
         d = result.to_dict()
         assert d["source"] == "adr007_ransac"
@@ -764,21 +797,21 @@ class TestDerivationResultDiagnostics:
         # 10 个 plane 超过 8 桶容量
         features = [make_plane(f"p{i}", confidence=0.5) for i in range(10)]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert any("plane" in note and "截断" in note for note in result.derivation_notes)
 
     def test_derivation_notes_record_empty_features(self):
         """空 features 时备注记录"零件无特征"."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=None,
+            features=[],
+            vertices=None,
         )
         assert any("features 为空" in note for note in result.derivation_notes)
 
 
-# ---------------------------------------------------------------------------
 # 8. should_degrade 降级判断
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -789,7 +822,8 @@ class TestShouldDegrade:
     def test_should_degrade_true_when_bbox_missing(self):
         """bbox 缺失 → should_degrade=True（DEGRADE_THRESHOLD=1）."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[make_plane()], vertices=None,
+            features=[make_plane()],
+            vertices=None,
         )
         assert GeometryFeaturesDeriver.should_degrade(result) is True
 
@@ -798,14 +832,16 @@ class TestShouldDegrade:
         features = [make_plane()]
         vertices = [[0, 0, 0], [1, 0, 0]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=vertices,
+            features=features,
+            vertices=vertices,
         )
         assert GeometryFeaturesDeriver.should_degrade(result) is False
 
     def test_should_degrade_respects_custom_threshold(self):
         """自定义 threshold=2 时，1 个 defaulted 不降级."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[make_plane()], vertices=None,
+            features=[make_plane()],
+            vertices=None,
         )
         # defaulted_fields = ["bbox_dimensions"]，长度 1
         assert GeometryFeaturesDeriver.should_degrade(result, threshold=2) is False
@@ -815,9 +851,7 @@ class TestShouldDegrade:
         assert GeometryFeaturesDeriver.DEGRADE_THRESHOLD == 1
 
 
-# ---------------------------------------------------------------------------
 # 9. effective_params 尊重工程师审核
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -835,15 +869,18 @@ class TestEffectiveParams:
                 confidence=0.9,
                 review_status=FeatureReviewStatus.EDITED.value,
                 edited_params={
-                    "normal": [0, 0, 1], "offset": 0.0, "area_mm2": 500.0,
+                    "normal": [0, 0, 1],
+                    "offset": 0.0,
+                    "area_mm2": 500.0,
                 },
             ),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
-        # 使用 edited_params.area_mm2=500 → 500/10000=0.05
+        # 使用 edited_params.area_mm2=500 500/10000=0.05
         assert vec[0] == pytest.approx(0.05)
 
     def test_edited_cylinder_uses_edited_radius(self):
@@ -853,37 +890,45 @@ class TestEffectiveParams:
                 feature_id="c1",
                 feature_type=FeatureType.CYLINDER.value,
                 params={
-                    "axis": [0, 0, 1], "center": [0, 0, 0],
-                    "radius_mm": 10.0, "height_mm": 20.0,
+                    "axis": [0, 0, 1],
+                    "center": [0, 0, 0],
+                    "radius_mm": 10.0,
+                    "height_mm": 20.0,
                 },
                 confidence=0.85,
                 review_status=FeatureReviewStatus.EDITED.value,
                 edited_params={
-                    "axis": [0, 0, 1], "center": [0, 0, 0],
-                    "radius_mm": 25.0, "height_mm": 20.0,
+                    "axis": [0, 0, 1],
+                    "center": [0, 0, 0],
+                    "radius_mm": 25.0,
+                    "height_mm": 20.0,
                 },
             ),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
-        # 使用 edited_params.radius_mm=25 → 25/50=0.5
+        # 使用 edited_params.radius_mm=25 25/50=0.5
         assert vec[16] == pytest.approx(0.5)
 
     def test_confirmed_plane_uses_original_params(self):
         """confirmed 状态使用原始 params."""
         features = [
             make_plane(
-                "p1", area_mm2=300.0, confidence=0.9,
+                "p1",
+                area_mm2=300.0,
+                confidence=0.9,
                 review_status=FeatureReviewStatus.CONFIRMED.value,
             ),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         vec = result.geometry.feature_vector
-        # 原始 area=300 → 300/10000=0.03
+        # 原始 area=300 300/10000=0.03
         assert vec[0] == pytest.approx(0.03)
 
     def test_edited_plane_normal_used_for_symmetry(self):
@@ -896,7 +941,9 @@ class TestEffectiveParams:
                 confidence=0.9,
                 review_status=FeatureReviewStatus.EDITED.value,
                 edited_params={
-                    "normal": [1, 0, 0], "offset": 0.0, "area_mm2": 100.0,
+                    "normal": [1, 0, 0],
+                    "offset": 0.0,
+                    "area_mm2": 100.0,
                 },
             ),
             ExtractedFeature(
@@ -908,15 +955,14 @@ class TestEffectiveParams:
             ),
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
-        # p1 edited 法向 [1,0,0]，p2 法向 [0,0,1]，正交 → symmetry=0
+        # p1 edited 法向 [1,0,0]，p2 法向 [0,0,1]，正交 symmetry=0
         assert result.geometry.symmetry_score == pytest.approx(0.0)
 
 
-# ---------------------------------------------------------------------------
 # 10. 集成场景
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.unit
@@ -936,11 +982,15 @@ class TestIntegrationScenarios:
             make_boss("b1", radius_mm=10.0, confidence=0.72),
         ]
         vertices = [
-            [-50, -50, -25], [50, 50, 25], [50, -50, -25],
-            [-50, 50, 25], [0, 0, 0],
+            [-50, -50, -25],
+            [50, 50, 25],
+            [50, -50, -25],
+            [-50, 50, 25],
+            [0, 0, 0],
         ]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=vertices,
+            features=features,
+            vertices=vertices,
         )
 
         # bbox = (100, 100, 50)
@@ -948,7 +998,7 @@ class TestIntegrationScenarios:
         # complexity = 7/60
         assert result.geometry.complexity_score == pytest.approx(7.0 / 60.0)
         # symmetry: p1 vs p2 平行（|cos|=1）, p1 vs p3 正交（0）, p2 vs p3 正交（0）
-        # → 1/3
+        #  1/3
         assert result.geometry.symmetry_score == pytest.approx(1.0 / 3.0)
         # feature_vector 32 维
         assert len(result.geometry.feature_vector) == FEATURE_VECTOR_DIM
@@ -962,7 +1012,8 @@ class TestIntegrationScenarios:
         features = [make_plane("p1", area_mm2=100.0, confidence=0.9)]
         vertices = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=vertices,
+            features=features,
+            vertices=vertices,
         )
         assert result.is_complete is True
         assert result.geometry.bbox_dimensions == (1.0, 1.0, 1.0)
@@ -972,7 +1023,8 @@ class TestIntegrationScenarios:
         """vertices=None 时降级路径触发."""
         features = [make_plane()]
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=features, vertices=None,
+            features=features,
+            vertices=None,
         )
         assert GeometryFeaturesDeriver.should_degrade(result) is True
         assert result.is_complete is False
@@ -983,7 +1035,8 @@ class TestIntegrationScenarios:
     def test_geometry_features_dataclass_compatible(self):
         """派生结果可直接构造 GeometryFeatures dataclass."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[make_plane()], vertices=[[0, 0, 0], [1, 1, 1]],
+            features=[make_plane()],
+            vertices=[[0, 0, 0], [1, 1, 1]],
         )
         # 验证返回的 geometry 是 GeometryFeatures 实例
         assert isinstance(result.geometry, GeometryFeatures)
@@ -996,7 +1049,8 @@ class TestIntegrationScenarios:
     def test_no_exception_on_empty_input(self):
         """空输入不抛异常（features=[] + vertices=None）."""
         result = GeometryFeaturesDeriver.from_feature_extraction(
-            features=[], vertices=None,
+            features=[],
+            vertices=None,
         )
         assert result.geometry.bbox_dimensions == (0.0, 0.0, 0.0)
         assert result.geometry.symmetry_score == 0.0

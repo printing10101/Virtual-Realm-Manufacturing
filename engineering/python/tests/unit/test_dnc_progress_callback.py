@@ -27,9 +27,7 @@ from app.integrations.dnc.transfer import (
 )
 
 
-# =============================================================================
 # Fixtures
-# =============================================================================
 
 
 @pytest.fixture
@@ -85,19 +83,17 @@ def _make_serial_transfer(config: DNCConfig) -> DNCTransfer:
     return transfer
 
 
-# =============================================================================
 # TCP传输回调测试
-# =============================================================================
 
 
 class TestTCPProgressCallback:
-
     def test_callback_invoked_tcp(self, tcp_target, small_gcode):
         """TCP传输时回调函数被调用"""
         config = DNCConfig(chunk_size=1024, tcp_send_delay=0.0)
         transfer = _make_tcp_transfer(config)
 
         callback_calls = []
+
         def progress_callback(sent, total, pct):
             callback_calls.append((sent, total, pct))
 
@@ -114,6 +110,7 @@ class TestTCPProgressCallback:
         transfer = _make_tcp_transfer(config)
 
         callback_calls = []
+
         def progress_callback(sent, total, pct):
             callback_calls.append({"sent": sent, "total": total, "pct": pct})
 
@@ -140,6 +137,7 @@ class TestTCPProgressCallback:
         transfer = _make_tcp_transfer(config)
 
         last_progress = {}
+
         def progress_callback(sent, total, pct):
             last_progress["sent"] = sent
             last_progress["total"] = total
@@ -157,6 +155,7 @@ class TestTCPProgressCallback:
         transfer = _make_tcp_transfer(config)
 
         callback_count = 0
+
         def progress_callback(sent, total, pct):
             nonlocal callback_count
             callback_count += 1
@@ -190,19 +189,17 @@ class TestTCPProgressCallback:
         assert bytes_sent > 0
 
 
-# =============================================================================
 # 串口传输回调测试
-# =============================================================================
 
 
 class TestSerialProgressCallback:
-
     def test_callback_invoked_serial(self, serial_target, small_gcode):
         """串口传输时回调函数被调用"""
         config = DNCConfig(chunk_size=1024, serial_send_delay=0.0)
         transfer = _make_serial_transfer(config)
 
         callback_calls = []
+
         def progress_callback(sent, total, pct):
             callback_calls.append((sent, total, pct))
 
@@ -218,6 +215,7 @@ class TestSerialProgressCallback:
         transfer = _make_serial_transfer(config)
 
         callback_calls = []
+
         def progress_callback(sent, total, pct):
             callback_calls.append({"sent": sent, "total": total, "pct": pct})
 
@@ -230,19 +228,17 @@ class TestSerialProgressCallback:
             assert 0.0 <= call["pct"] <= 100.0
 
 
-# =============================================================================
 # 边界条件测试
-# =============================================================================
 
 
 class TestCallbackEdgeCases:
-
     def test_empty_data_callback(self, tcp_target):
         """空数据的回调行为"""
         config = DNCConfig(chunk_size=1024, tcp_send_delay=0.0)
         transfer = _make_tcp_transfer(config)
 
         callback_calls = []
+
         def progress_callback(sent, total, pct):
             callback_calls.append((sent, total, pct))
 
@@ -259,6 +255,7 @@ class TestCallbackEdgeCases:
 
         data = small_gcode.encode("utf-8")
         callback_calls = []
+
         def progress_callback(sent, total, pct):
             callback_calls.append((sent, total, pct))
 
@@ -274,6 +271,7 @@ class TestCallbackEdgeCases:
         transfer = _make_tcp_transfer(config)
 
         progress_values = []
+
         def progress_callback(sent, total, pct):
             progress_values.append(pct)
 
@@ -284,19 +282,17 @@ class TestCallbackEdgeCases:
             assert progress_values[i] >= progress_values[i - 1]
 
 
-# =============================================================================
 # 集成场景测试
-# =============================================================================
 
 
 class TestCallbackIntegration:
-
     def test_progress_ui_update_simulation(self, tcp_target, large_gcode):
         """模拟UI进度条更新场景"""
         config = DNCConfig(chunk_size=256, tcp_send_delay=0.0)
         transfer = _make_tcp_transfer(config)
 
         ui_updates = []
+
         def ui_progress_handler(sent, total, pct):
             ui_updates.append(int(pct))
 
@@ -312,6 +308,7 @@ class TestCallbackIntegration:
         transfer = _make_tcp_transfer(config)
 
         log_entries = []
+
         def log_progress(sent, total, pct):
             log_entries.append(f"传输进度: {sent}/{total} 字节 ({pct:.1f}%)")
 

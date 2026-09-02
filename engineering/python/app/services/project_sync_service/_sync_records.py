@@ -16,7 +16,7 @@ from app.database.models.project_sync import ProjectRepo, ProjectSyncRecord
 
 
 class _SyncRecordsMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _get_session: Callable[..., Any]
     """同步记录 Mixin：record_sync + list_sync_records.
 

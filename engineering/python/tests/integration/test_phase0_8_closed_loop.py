@@ -33,6 +33,7 @@
 CI 标记：``@pytest.mark.integration``（被 ci.yml Job ``python-integration-tests``
 的 ``pytest tests/integration/ -m integration`` 收集）。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -57,9 +58,7 @@ from app.workflow.dag_store import DAGStore
 from app.workflow.runner import WorkflowRunner, reset_workflow_runner
 
 
-# ---------------------------------------------------------------------------
 # 辅助：可编程 TaskHandler mock（复用自 test_workflow_dag.py 风格）
-# ---------------------------------------------------------------------------
 
 
 class _ScriptedHandler:
@@ -143,9 +142,7 @@ def _ok_result_multi(outputs: dict[str, Artifact]) -> TaskResult:
     )
 
 
-# ---------------------------------------------------------------------------
 # 数据库 fixture：内存 SQLite + 完整 schema
-# ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture
@@ -156,10 +153,12 @@ async def in_memory_dag_store(monkeypatch):
     """
     monkeypatch.setenv("DB_URL", "sqlite+aiosqlite:///:memory:")
     from app.database import connection as _conn
+
     _conn._singletons._engine = None
     _conn._singletons._sessionmaker = None
 
     from app.database.models.training_task import init_db
+
     await init_db()
 
     reset_workflow_runner()
@@ -178,19 +177,23 @@ async def integrated_stores(monkeypatch, tmp_path):
     monkeypatch.setenv("DATASET_STORE_DIR", str(tmp_path / "datasets"))
 
     from app.database import connection as _conn
+
     _conn._singletons._engine = None
     _conn._singletons._sessionmaker = None
 
     from app.database.models.training_task import init_db
+
     await init_db()
 
     reset_workflow_runner()
     reset_task_registry()
 
     import app.observability.snapshot as _ss_mod
+
     _ss_mod._snapshot_store = None
 
     from app.observability.snapshot import SnapshotStore
+
     yield {
         "dag": DAGStore(),
         "snapshot": SnapshotStore(),
@@ -203,9 +206,7 @@ async def integrated_stores(monkeypatch, tmp_path):
     _conn._singletons._sessionmaker = None
 
 
-# ---------------------------------------------------------------------------
 # 7 节点闭环 DAG 构造
-# ---------------------------------------------------------------------------
 
 
 def _state_vector() -> list[float]:
@@ -346,9 +347,7 @@ def _build_closed_loop_dag() -> tuple[WorkflowSpec, dict[str, Any]]:
     }
 
     handlers: dict[str, _ScriptedHandler] = {
-        "data_ingest": _ScriptedHandler(
-            "data_ingest", [_ok_result_multi(perceive_outputs)]
-        ),
+        "data_ingest": _ScriptedHandler("data_ingest", [_ok_result_multi(perceive_outputs)]),
         "cam_generate": _ScriptedHandler(
             "cam_generate",
             [_ok_result("gcode_artifact", "file://generate/gcode.nc", "file")],
@@ -419,9 +418,7 @@ def _node_status_map(run_status: dict[str, Any]) -> dict[str, str]:
     return {n["node_id"]: n.get("status", "unknown") for n in nodes}
 
 
-# ---------------------------------------------------------------------------
 # 测试用例 1：7 节点闭环 DAG 端到端跑通
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -450,13 +447,17 @@ class TestClosedLoopWorkflowEndToEnd:
 
         node_status = _node_status_map(final)
         expected_nodes = [
-            "perceive", "predict", "decide",
-            "generate_params", "validate_cam", "execute", "collect_feedback",
+            "perceive",
+            "predict",
+            "decide",
+            "generate_params",
+            "validate_cam",
+            "execute",
+            "collect_feedback",
         ]
         for node_id in expected_nodes:
             assert node_status.get(node_id) == "completed", (
-                f"节点 {node_id} 应为 completed，实际: {node_status.get(node_id)}; "
-                f"全部节点状态: {node_status}"
+                f"节点 {node_id} 应为 completed，实际: {node_status.get(node_id)}; 全部节点状态: {node_status}"
             )
 
     @pytest.mark.asyncio
@@ -470,22 +471,19 @@ class TestClosedLoopWorkflowEndToEnd:
         workflow_run_id = await runner.run(spec, owner_id="test_user")
         final = await _wait_for_terminal(runner, workflow_run_id, timeout_s=60.0)
 
-        assert final["status"] == "completed", (
-            f"前置条件：工作流应 completed，实际: {final['status']}"
-        )
+        assert final["status"] == "completed", f"前置条件：工作流应 completed，实际: {final['status']}"
 
         outputs = final.get("outputs") or {}
         expected_output_keys = [
-            "recommended_action", "gcode", "cam_validation_report",
-            "execution_result", "feedback_record",
+            "recommended_action",
+            "gcode",
+            "cam_validation_report",
+            "execution_result",
+            "feedback_record",
         ]
         for key in expected_output_keys:
-            assert key in outputs, (
-                f"工作流输出应包含 {key}，实际 outputs: {list(outputs.keys())}"
-            )
-            assert outputs[key] is not None, (
-                f"工作流输出 {key} 不应为 None"
-            )
+            assert key in outputs, f"工作流输出应包含 {key}，实际 outputs: {list(outputs.keys())}"
+            assert outputs[key] is not None, f"工作流输出 {key} 不应为 None"
 
     @pytest.mark.asyncio
     async def test_closed_loop_max_concurrent_one(self, in_memory_dag_store):
@@ -502,14 +500,10 @@ class TestClosedLoopWorkflowEndToEnd:
         # 7 节点线性 DAG，max_concurrent=1，应全部 completed
         node_status = _node_status_map(final)
         assert len(node_status) == 7, f"应有 7 个节点，实际: {len(node_status)}"
-        assert all(s == "completed" for s in node_status.values()), (
-            f"所有节点应 completed，实际: {node_status}"
-        )
+        assert all(s == "completed" for s in node_status.values()), f"所有节点应 completed，实际: {node_status}"
 
 
-# ---------------------------------------------------------------------------
 # 测试用例 2：WorldModel + RLAgent 插件协同
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -528,8 +522,7 @@ class TestWorldModelRLAgentIntegration:
         final = await _wait_for_terminal(runner, workflow_run_id, timeout_s=60.0)
 
         assert final["status"] == "completed", (
-            f"工作流应 completed，实际: {final['status']}, "
-            f"nodes: {_node_status_map(final)}"
+            f"工作流应 completed，实际: {final['status']}, nodes: {_node_status_map(final)}"
         )
 
         # predict 节点（WorldModelPlugin）应输出 predicted_trajectory + trajectory_metrics
@@ -553,9 +546,7 @@ class TestWorldModelRLAgentIntegration:
 
         # decide 节点（RLAgentPlugin）应输出 action + safety_result + value_estimate
         node_status = _node_status_map(final)
-        assert node_status.get("decide") == "completed", (
-            f"decide 节点应 completed，实际: {node_status.get('decide')}"
-        )
+        assert node_status.get("decide") == "completed", f"decide 节点应 completed，实际: {node_status.get('decide')}"
 
     @pytest.mark.asyncio
     async def test_artifact_propagation_across_plugins(self, in_memory_dag_store):
@@ -575,27 +566,20 @@ class TestWorldModelRLAgentIntegration:
         workflow_run_id = await runner.run(spec, owner_id="test_user")
         final = await _wait_for_terminal(runner, workflow_run_id, timeout_s=60.0)
 
-        assert final["status"] == "completed", (
-            f"前置条件：工作流应 completed，实际: {final['status']}"
-        )
+        assert final["status"] == "completed", f"前置条件：工作流应 completed，实际: {final['status']}"
 
         # generate_params 应收到 decide.action artifact
-        assert len(gen_capture) == 1, (
-            f"generate_params 应只执行一次，实际 {len(gen_capture)} 次"
-        )
+        assert len(gen_capture) == 1, f"generate_params 应只执行一次，实际 {len(gen_capture)} 次"
         gen_ctx = gen_capture[0]
         assert "recommended_action" in gen_ctx.inputs, (
             "generate_params 应收到 recommended_action 输入（来自 decide.action）"
         )
         assert gen_ctx.inputs["recommended_action"].uri.startswith("metrics://"), (
-            f"recommended_action uri 应为 metrics:// 协议，"
-            f"实际: {gen_ctx.inputs['recommended_action'].uri}"
+            f"recommended_action uri 应为 metrics:// 协议，实际: {gen_ctx.inputs['recommended_action'].uri}"
         )
 
 
-# ---------------------------------------------------------------------------
 # 测试用例 3：SafetyShield 硬约束过滤
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -616,9 +600,7 @@ class TestSafetyShieldHardConstraints:
         assert final["status"] == "completed"
 
         # 通过 completed_outputs 检查 decide 节点的 safety_result
-        completed_outputs = await in_memory_dag_store.get_completed_node_outputs(
-            workflow_run_id
-        )
+        completed_outputs = await in_memory_dag_store.get_completed_node_outputs(workflow_run_id)
         decide_outputs = completed_outputs.get("decide", {})
         assert "safety_result" in decide_outputs, (
             f"decide 节点应输出 safety_result，实际 outputs: {list(decide_outputs.keys())}"
@@ -631,12 +613,8 @@ class TestSafetyShieldHardConstraints:
         else:
             metadata = safety_artifact.metadata
 
-        assert "violated" in metadata, (
-            f"safety_result.metadata 应包含 violated 字段，实际: {metadata}"
-        )
-        assert "fallback_used" in metadata, (
-            f"safety_result.metadata 应包含 fallback_used 字段，实际: {metadata}"
-        )
+        assert "violated" in metadata, f"safety_result.metadata 应包含 violated 字段，实际: {metadata}"
+        assert "fallback_used" in metadata, f"safety_result.metadata 应包含 fallback_used 字段，实际: {metadata}"
 
     @pytest.mark.asyncio
     async def test_action_artifact_has_four_dimensions(self, in_memory_dag_store):
@@ -651,9 +629,7 @@ class TestSafetyShieldHardConstraints:
 
         assert final["status"] == "completed"
 
-        completed_outputs = await in_memory_dag_store.get_completed_node_outputs(
-            workflow_run_id
-        )
+        completed_outputs = await in_memory_dag_store.get_completed_node_outputs(workflow_run_id)
         decide_outputs = completed_outputs.get("decide", {})
         action_artifact = decide_outputs.get("action")
         assert action_artifact is not None, "decide 节点应输出 action artifact"
@@ -666,14 +642,10 @@ class TestSafetyShieldHardConstraints:
         # action 维度应为 4：[spindle_speed_delta, feed_rate_delta, depth_of_cut_delta, width_of_cut_delta]
         values = metadata.get("values")
         assert values is not None, f"action.metadata 应包含 values，实际: {metadata}"
-        assert len(values) == 4, (
-            f"action 向量维度应为 4，实际: {len(values)}"
-        )
+        assert len(values) == 4, f"action 向量维度应为 4，实际: {len(values)}"
 
 
-# ---------------------------------------------------------------------------
 # 测试用例 4：8 大契约互操作性
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -822,9 +794,7 @@ class TestContractsInteroperability:
         assert snapshot.git_sha == "abc123"
 
 
-# ---------------------------------------------------------------------------
 # 测试用例 5：跨阶段集成（WorkflowRunner + SnapshotStore）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -845,9 +815,7 @@ class TestPhase1To8SnapshotIntegration:
         workflow_run_id = await runner.run(spec, owner_id="test_user")
         final = await _wait_for_terminal(runner, workflow_run_id, timeout_s=60.0)
 
-        assert final["status"] == "completed", (
-            f"前置条件：工作流应 completed，实际: {final['status']}"
-        )
+        assert final["status"] == "completed", f"前置条件：工作流应 completed，实际: {final['status']}"
 
         # 创建实验快照（SnapshotStore.create 接收关键字参数，自动采集 git_sha/environment）
         snapshot = await snapshot_store.create(
@@ -899,18 +867,14 @@ class TestPhase1To8SnapshotIntegration:
         assert final["status"] == "completed"
 
         # execute 节点应收到 dry_run=true 配置
-        assert len(exec_capture) == 1, (
-            f"execute 应只执行一次，实际 {len(exec_capture)} 次"
-        )
+        assert len(exec_capture) == 1, f"execute 应只执行一次，实际 {len(exec_capture)} 次"
         exec_ctx = exec_capture[0]
         assert exec_ctx.config.get("dry_run") is True, (
             f"execute 节点 dry_run 应为 True（v1 硬门控），实际: {exec_ctx.config}"
         )
 
 
-# ---------------------------------------------------------------------------
 # 测试用例 6：闭环失败传播（安全三层兜底验证）
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -931,11 +895,13 @@ class TestClosedLoopFailurePropagation:
         # 这里采用更简单的方式：覆盖 wm_predict_state 任务类型为一个失败的 _ScriptedHandler
         failing_handler = _ScriptedHandler(
             "wm_predict_state",
-            [TaskResult(
-                status=TaskStatus.FAILED,
-                error="世界模型预测失败（测试注入）",
-                error_code="TEST_INJECTED_FAILURE",
-            )],
+            [
+                TaskResult(
+                    status=TaskStatus.FAILED,
+                    error="世界模型预测失败（测试注入）",
+                    error_code="TEST_INJECTED_FAILURE",
+                )
+            ],
         )
         registry = get_task_registry()
         registry.register(failing_handler, plugin_id="test_failing_wm")
@@ -944,9 +910,7 @@ class TestClosedLoopFailurePropagation:
         workflow_run_id = await runner.run(spec, owner_id="test_user")
         final = await _wait_for_terminal(runner, workflow_run_id, timeout_s=60.0)
 
-        assert final["status"] == "failed", (
-            f"工作流应为 failed（predict 失败），实际: {final['status']}"
-        )
+        assert final["status"] == "failed", f"工作流应为 failed（predict 失败），实际: {final['status']}"
 
         node_status = _node_status_map(final)
         assert node_status.get("perceive") == "completed", "perceive 应正常完成"
@@ -965,6 +929,7 @@ class TestClosedLoopFailurePropagation:
 
         # 注册真实的 WorldModelPlugin（predict 正常）
         from app.plugins.world_model.plugin import WorldModelPlugin
+
         registry = get_task_registry()
         wm_plugin = WorldModelPlugin()
         wm_plugin.register(registry)
@@ -972,11 +937,13 @@ class TestClosedLoopFailurePropagation:
         # 覆盖 rl_act 任务类型为一个失败的 _ScriptedHandler
         failing_handler = _ScriptedHandler(
             "rl_act",
-            [TaskResult(
-                status=TaskStatus.FAILED,
-                error="RL 决策失败（测试注入）",
-                error_code="TEST_INJECTED_FAILURE",
-            )],
+            [
+                TaskResult(
+                    status=TaskStatus.FAILED,
+                    error="RL 决策失败（测试注入）",
+                    error_code="TEST_INJECTED_FAILURE",
+                )
+            ],
         )
         registry.register(failing_handler, plugin_id="test_failing_rl")
 
@@ -984,9 +951,7 @@ class TestClosedLoopFailurePropagation:
         workflow_run_id = await runner.run(spec, owner_id="test_user")
         final = await _wait_for_terminal(runner, workflow_run_id, timeout_s=60.0)
 
-        assert final["status"] == "failed", (
-            f"工作流应为 failed（decide 失败），实际: {final['status']}"
-        )
+        assert final["status"] == "failed", f"工作流应为 failed（decide 失败），实际: {final['status']}"
 
         node_status = _node_status_map(final)
         assert node_status.get("perceive") == "completed"

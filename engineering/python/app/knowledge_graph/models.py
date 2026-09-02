@@ -35,9 +35,7 @@ logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 
-# ---------------------------------------------------------------------------
 # SQLite 外键约束
-# ---------------------------------------------------------------------------
 
 
 @event.listens_for(Engine, "connect")
@@ -64,9 +62,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
         pass
 
 
-# ---------------------------------------------------------------------------
 # 节点表（kg_nodes）
-# ---------------------------------------------------------------------------
 
 
 class KGNode(Base):  # type: ignore[valid-type, misc]  # declarative_base() 返回值 mypy 不识别为类型
@@ -126,9 +122,7 @@ class KGNode(Base):  # type: ignore[valid-type, misc]  # declarative_base() 返�
         return f"<KGNode(node_id={self.node_id}, node_type={self.node_type})>"
 
 
-# ---------------------------------------------------------------------------
 # 关系表（kg_edges）
-# ---------------------------------------------------------------------------
 
 
 class KGEdge(Base):  # type: ignore[valid-type, misc]  # declarative_base() 返回值 mypy 不识别为类型

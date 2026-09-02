@@ -54,9 +54,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/explainability", tags=["Explainability"])
 
 
-# ---------------------------------------------------------------------------
 # Pydantic 请求模型
-# ---------------------------------------------------------------------------
 
 
 class GenerateHiddenStateRequest(BaseModel):
@@ -129,9 +127,7 @@ class CompareExplanationsRequest(BaseModel):
     created_by: str | None = Field(default=None, max_length=128, description="创建者（user_id 或 plugin_id）")
 
 
-# ---------------------------------------------------------------------------
 # 辅助函数
-# ---------------------------------------------------------------------------
 
 
 def _handle_service_exception(e: Exception, *, action: str):
@@ -187,9 +183,7 @@ def _handle_service_exception(e: Exception, *, action: str):
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点 1: POST /hidden-state —— 生成隐状态投影解释
-# ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -241,9 +235,7 @@ async def generate_hidden_state_explanation(request: GenerateHiddenStateRequest)
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点 2: POST /gate-dynamics —— 生成门控动力学解释
-# ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -278,9 +270,7 @@ async def generate_gate_dynamics_explanation(request: GenerateGateDynamicsReques
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点 3: POST /counterfactual —— 生成反事实解释
-# ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -333,9 +323,7 @@ async def generate_counterfactual_explanation(request: GenerateCounterfactualReq
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点 4: POST /confidence —— 生成置信度分布解释
-# ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -379,9 +367,7 @@ async def generate_confidence_explanation(request: GenerateConfidenceRequest):
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点 5: GET / —— 列出历史解释记录
-# ---------------------------------------------------------------------------
 
 
 @router.get("/")
@@ -432,9 +418,7 @@ async def list_explanations(
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点 6: GET /{explanation_id} —— 查询解释详情
-# ---------------------------------------------------------------------------
 
 
 @router.get("/{explanation_id}")
@@ -461,9 +445,7 @@ async def get_explanation(
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点 7: DELETE /{explanation_id} —— 删除解释记录
-# ---------------------------------------------------------------------------
 
 
 @router.delete(
@@ -487,9 +469,7 @@ async def delete_explanation(explanation_id: str):
     )
 
 
-# ---------------------------------------------------------------------------
 # 端点 8: POST /compare —— 对比两个解释
-# ---------------------------------------------------------------------------
 
 
 @router.post("/compare")

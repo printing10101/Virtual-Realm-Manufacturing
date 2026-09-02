@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class _CommitMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供（mypy 需要显式声明）
     _get_session: Callable[..., Any]
     _get_project_lock: Callable[..., Any]
     _require_git: Callable[..., Any]
@@ -171,7 +171,7 @@ class _CommitMixin:
         Raises:
             ProjectNotFoundError: 项目不存在或仓库目录不存在
         """
-        # Step 1: 加载 project + refs（read-only session）
+        # 加载 project + refs（read-only session）
         async with await self._get_session() as session:
             stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(stmt)).scalar_one_or_none()
@@ -186,11 +186,11 @@ class _CommitMixin:
             )
             ref_orms = list((await session.execute(refs_stmt)).scalars().all())
 
-        # Step 2: 校验仓库目录
+        # 校验仓库目录
         if not os.path.isdir(repo_path):
             raise ProjectNotFoundError(f"项目仓库目录不存在: {repo_path}")
 
-        # Step 3: 重新计算 hash + 检测变更 + 更新 DB（每 ref 独立 commit）
+        # 重新计算 hash + 检测变更 + 更新 DB（每 ref 独立 commit）
         changed_refs: list[dict[str, Any]] = []
         for ref_orm in ref_orms:
             old_hash = ref_orm.content_hash or ""
@@ -210,7 +210,7 @@ class _CommitMixin:
                     r_orm.content_hash = new_hash or None
                     await session.commit()
 
-        # Step 4: 重新加载 project + refs，构造 manifest
+        # 重新加载 project + refs，构造 manifest
         async with await self._get_session() as session:
             p_stmt = select(ProjectRepo).where(ProjectRepo.project_id == project_id)
             project_orm = (await session.execute(p_stmt)).scalar_one()

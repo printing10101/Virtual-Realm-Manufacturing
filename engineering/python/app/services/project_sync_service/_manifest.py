@@ -14,7 +14,7 @@ from app.database.models.project_sync import ProjectRepo, ProjectResourceRef
 
 
 class _ManifestMixin:
-    # ---- 宿主契约：由主类提供（mypy 需要显式声明） ----
+    # 宿主契约：由主类提供（mypy 需要显式声明）
     _MANIFEST_FILENAME: str
     """Manifest IO Mixin：.lomo-project.yaml 读写.
 

@@ -114,9 +114,7 @@ class RLAgentPlugin:
         self._last_action: np.ndarray | None = None
         self._last_action_lock = threading.Lock()
 
-    # ------------------------------------------------------------------
     # TaskHandler 协议实现
-    # ------------------------------------------------------------------
 
     def name(self) -> str:
         """任务类型名称."""
@@ -230,7 +228,7 @@ class RLAgentPlugin:
 
             # 3. 策略前向 + 安全过滤
             with self._infer_lock:
-                # numpy → Tensor 转换（PolicyNet/ValueNet 均为 torch 网络）
+                # numpy Tensor 转换（PolicyNet/ValueNet 均为 torch 网络）
                 if isinstance(current_state, np.ndarray):
                     state_tensor = torch.from_numpy(current_state).float()
                 else:
@@ -327,9 +325,7 @@ class RLAgentPlugin:
                 },
             )
 
-    # ------------------------------------------------------------------
     # 插件生命周期辅助方法
-    # ------------------------------------------------------------------
 
     def register(self, registry: Any) -> None:
         """注册到任务注册表.
@@ -346,9 +342,7 @@ class RLAgentPlugin:
             registry.unregister(self.TASK_TYPE)
         logger.info("RL agent 插件已注销: task_type=%s", self.TASK_TYPE)
 
-    # ------------------------------------------------------------------
     # 内部辅助方法
-    # ------------------------------------------------------------------
 
     def _get_or_load_policy(self, model_uri: str) -> PolicyNet:
         """获取或加载策略网络（带缓存）.

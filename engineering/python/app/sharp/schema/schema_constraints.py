@@ -33,9 +33,7 @@ from app.sharp.schema.domain_schema import (
 )
 
 
-# ---------------------------------------------------------------------------
 # 节点 ID 规范（见 ontology-v1.md 第 5 节 + graph_store.py 实践）
-# ---------------------------------------------------------------------------
 
 # `<type>-<slug>` 形式，slug 允许字母/数字/下划线/点/连字符
 # 首字符必须是字母或下划线，总长度 1-128
@@ -51,9 +49,7 @@ ENTITY_TYPE_ID_PREFIX: dict[EntityType, str] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # 校验结果结构
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -89,9 +85,7 @@ class ValidationResult:
         }
 
 
-# ---------------------------------------------------------------------------
 # Schema 约束校验器
-# ---------------------------------------------------------------------------
 
 
 class SchemaConstraints:
@@ -116,9 +110,7 @@ class SchemaConstraints:
         self.schema = schema or DEFAULT_SCHEMA
         self.strict_id_prefix = strict_id_prefix
 
-    # ------------------------------------------------------------------
     # 公共入口
-    # ------------------------------------------------------------------
 
     def validate(self, triple: Triple) -> ValidationResult:
         """对三元组执行全量校验。"""
@@ -132,9 +124,7 @@ class SchemaConstraints:
         self._validate_relation_properties(triple, result)
         return result
 
-    # ------------------------------------------------------------------
     # 各层校验实现
-    # ------------------------------------------------------------------
 
     def _validate_structure(self, triple: Triple, result: ValidationResult) -> None:
         """结构校验：字段完整且类型合法。"""

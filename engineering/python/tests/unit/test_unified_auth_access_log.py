@@ -1,4 +1,4 @@
-﻿"""Tests for unified_auth middleware access logging helpers.
+"""Tests for unified_auth middleware access logging helpers.
 
 覆盖范围：
 - _get_client_ip：从 X-Forwarded-For / X-Real-IP / scope.client 中提取客户端 IP
@@ -22,9 +22,7 @@ from app.auth.unified_auth import (
 )
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -60,9 +58,7 @@ def app_with_middleware(token_file, monkeypatch) -> Generator[FastAPI, None, Non
     yield app
 
 
-# ---------------------------------------------------------------------------
 # _get_client_ip 测试
-# ---------------------------------------------------------------------------
 
 
 class TestGetClientIp:
@@ -112,9 +108,7 @@ class TestGetClientIp:
         assert _get_client_ip(scope) == "198.51.100.42"
 
 
-# ---------------------------------------------------------------------------
 # _log_access 测试
-# ---------------------------------------------------------------------------
 
 
 class TestLogAccess:
@@ -148,22 +142,16 @@ class TestLogAccess:
         assert any("status=403" in r.message for r in warning_records)
 
 
-# ---------------------------------------------------------------------------
 # 端到端：权限检查关闭时仍记录访问日志
-# ---------------------------------------------------------------------------
 
 
 class TestAccessLogWhenPermissionDisabled:
     """即使权限检查关闭（lnn_permission_enforced=False）也必须记录访问日志。"""
 
-    def test_authorized_request_logs_access(
-        self, app_with_middleware, monkeypatch, caplog
-    ):
+    def test_authorized_request_logs_access(self, app_with_middleware, monkeypatch, caplog):
         """通过认证的请求应当产生一条访问日志。"""
         client = TestClient(app_with_middleware)
-        with caplog.at_level(
-            logging.INFO, logger="app.auth.middleware"
-        ):
+        with caplog.at_level(logging.INFO, logger="app.auth.middleware"):
             response = client.get(
                 "/protected",
                 headers={"Authorization": "Bearer test-token-uuid-12345"},
@@ -177,31 +165,22 @@ class TestAccessLogWhenPermissionDisabled:
     def test_public_endpoint_logs_access(self, app_with_middleware, caplog):
         """公共端点也应记录访问日志。"""
         client = TestClient(app_with_middleware)
-        with caplog.at_level(
-            logging.INFO, logger="app.auth.middleware"
-        ):
+        with caplog.at_level(logging.INFO, logger="app.auth.middleware"):
             response = client.get("/api/health")
         assert response.status_code == 200
         access_records = [r for r in caplog.records if "access" in r.message]
         assert any("path=/api/health" in r.message for r in access_records)
 
-    def test_permission_disabled_logs_audit_info(
-        self, app_with_middleware, caplog
-    ):
+    def test_permission_disabled_logs_audit_info(self, app_with_middleware, caplog):
         """权限检查被关闭时，应记录 INFO 审计日志提示绕过检查。"""
         client = TestClient(app_with_middleware)
-        with caplog.at_level(
-            logging.INFO, logger="app.auth.middleware"
-        ):
+        with caplog.at_level(logging.INFO, logger="app.auth.middleware"):
             response = client.get(
                 "/protected",
                 headers={"Authorization": "Bearer test-token-uuid-12345"},
             )
         assert response.status_code == 200
         # 验证包含 "permission check disabled" 的审计日志
-        audit_records = [
-            r for r in caplog.records
-            if "permission check disabled" in r.message
-        ]
+        audit_records = [r for r in caplog.records if "permission check disabled" in r.message]
         assert len(audit_records) >= 1
         assert any("path=/protected" in r.message for r in audit_records)

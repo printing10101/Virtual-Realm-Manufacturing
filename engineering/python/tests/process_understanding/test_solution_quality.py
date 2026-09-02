@@ -1,5 +1,3 @@
-
-
 """
 工艺方案合理性评估测试
 
@@ -12,8 +10,6 @@ from __future__ import annotations
 import pytest
 
 from app.ai.process_understanding.solution_generator import (
-
-
     ProcessSolution,
     ProcessStep,
     CuttingParam,
@@ -24,11 +20,7 @@ from app.ai.process_understanding.solution_generator import (
 pytestmark = pytest.mark.skip_ci
 
 
-
-# ---------------------------------------------------------------------------
 # 方案合理性评估维度与评分标准
-# ---------------------------------------------------------------------------
-
 
 
 class SolutionEvaluator:
@@ -101,9 +93,7 @@ class SolutionEvaluator:
             score += 5
 
         # 工序描述完整性
-        complete_count = sum(
-            1 for s in route if s.operation and s.description
-        )
+        complete_count = sum(1 for s in route if s.operation and s.description)
         if complete_count == len(route):
             score += 10
         elif complete_count >= len(route) * 0.5:
@@ -216,17 +206,14 @@ class SolutionEvaluator:
         """从字符串中提取数值。"""
         import re
 
-
-
         match = re.search(r"[\d.]+", str(value))
         if match:
             return float(match.group(0))
         return None
 
 
-# ---------------------------------------------------------------------------
 # 测试用例
-# ---------------------------------------------------------------------------
+
 
 class TestProcessSolution:
     """ProcessSolution 数据类测试"""
@@ -269,16 +256,12 @@ class TestFallbackSolution:
     """降级方案测试"""
 
     def test_fallback_has_route(self):
-        solution = SolutionGenerator._create_fallback_solution(
-            "45钢", "IT8", "单件", "CNC加工中心"
-        )
+        solution = SolutionGenerator._create_fallback_solution("45钢", "IT8", "单件", "CNC加工中心")
         assert len(solution.process_route) >= 3
         assert solution.confidence_score <= 5.0
 
     def test_fallback_covers_basic_ops(self):
-        solution = SolutionGenerator._create_fallback_solution(
-            "304不锈钢", "IT7", "批量", "加工中心"
-        )
+        solution = SolutionGenerator._create_fallback_solution("304不锈钢", "IT7", "批量", "加工中心")
         ops = [s.operation for s in solution.process_route]
         # 应包含基本工序
         assert any("粗" in op for op in ops)
@@ -286,9 +269,7 @@ class TestFallbackSolution:
         assert any("检验" in op for op in ops)
 
     def test_fallback_has_risk(self):
-        solution = SolutionGenerator._create_fallback_solution(
-            "45钢", "IT8", "单件", "CNC"
-        )
+        solution = SolutionGenerator._create_fallback_solution("45钢", "IT8", "单件", "CNC")
         assert len(solution.risk_warnings) >= 1
         assert solution.risk_warnings[0].severity in ("high", "medium", "low")
 
@@ -347,9 +328,7 @@ class TestSolutionEvaluator:
 
     def test_evaluate_fallback_solution(self):
         """降级方案的评估分数。"""
-        solution = SolutionGenerator._create_fallback_solution(
-            "45钢", "IT8", "单件", "CNC加工中心"
-        )
+        solution = SolutionGenerator._create_fallback_solution("45钢", "IT8", "单件", "CNC加工中心")
         result = SolutionEvaluator.evaluate(solution)
         print(f"\n降级方案评估: {result}")
         # 降级方案应获得合理分数

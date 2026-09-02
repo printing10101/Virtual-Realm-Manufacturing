@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class _SourcesMixin:
-    # ---- 宿主契约：由主类 / 兄弟 mixin 提供 ----
+    # 宿主契约：由主类 / 兄弟 mixin 提供
     audit_log_dir: Any
     cam_reports_dir: Any
     cutting_store: Any
@@ -102,9 +102,7 @@ class _SourcesMixin:
             logger.debug("MLflow run 归一化失败: %s", e)
             return None
 
-    # ------------------------------------------------------------------
     # CAM 验证 report 数据源
-    # ------------------------------------------------------------------
 
     def _extract_cam_sessions(self, cutoff: datetime) -> list[ProjectSession]:
         """从 cam_validation report JSON 提取验证记录。"""
@@ -164,9 +162,7 @@ class _SourcesMixin:
             logger.debug("CAM report 归一化失败: %s", e)
             return None
 
-    # ------------------------------------------------------------------
     # 审计日志数据源
-    # ------------------------------------------------------------------
 
     def _extract_audit_sessions(self, cutoff: datetime) -> list[ProjectSession]:
         """从 audit_log 哈希链提取决策记录。"""
@@ -247,9 +243,7 @@ class _SourcesMixin:
             logger.debug("Audit entry 归一化失败: %s", e)
             return None
 
-    # ------------------------------------------------------------------
     # 切削参数任务数据源
-    # ------------------------------------------------------------------
 
     def _extract_cutting_sessions(self, cutoff: datetime) -> list[ProjectSession]:
         """从 cutting_store 提取切削参数推荐任务。"""

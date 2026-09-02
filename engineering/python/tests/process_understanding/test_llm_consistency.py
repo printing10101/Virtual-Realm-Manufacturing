@@ -1,5 +1,3 @@
-
-
 """
 系统一致性测试
 
@@ -23,8 +21,6 @@ from app.ai.process_understanding.solution_generator import (
     ProcessSolution,
 )
 from app.ai.process_understanding.prediction_explainer import (
-
-
     PredictionExplainer,
     PredictionData,
     PredictionExplanation,
@@ -33,11 +29,7 @@ from app.ai.process_understanding.prediction_explainer import (
 pytestmark = pytest.mark.skip_ci
 
 
-
-# ---------------------------------------------------------------------------
 # 代表性测试问题集
-# ---------------------------------------------------------------------------
-
 
 
 REPRESENTATIVE_QUERIES = [
@@ -52,17 +44,14 @@ REPRESENTATIVE_QUERIES = [
 ]
 
 
-# ---------------------------------------------------------------------------
 # 一致性评估工具
-# ---------------------------------------------------------------------------
+
 
 class ConsistencyChecker:
     """输出一致性检查器"""
 
     @staticmethod
-    def check_classification_consistency(
-        results: list, min_match_rate: float = 1.0
-    ) -> dict:
+    def check_classification_consistency(results: list, min_match_rate: float = 1.0) -> dict:
         """检查分类结果的一致性。
 
         Args:
@@ -172,14 +161,10 @@ class ConsistencyChecker:
 
         # 操作建议数量一致性
         action_counts = [len(e.recommended_actions) for e in explanations]
-        action_count_consistent = all(
-            abs(c - action_counts[0]) <= 1 for c in action_counts
-        )
+        action_count_consistent = all(abs(c - action_counts[0]) <= 1 for c in action_counts)
 
         # 章节标题相似度
-        section_titles = [
-            [s.title for s in e.sections] for e in explanations
-        ]
+        section_titles = [[s.title for s in e.sections] for e in explanations]
         title_sets = [set(titles) for titles in section_titles]
         similarities = []
         for i in range(len(title_sets)):
@@ -230,10 +215,7 @@ class TestClassifierConsistency:
 
             if len(results) >= 2:
                 check = ConsistencyChecker.check_classification_consistency(results)
-                assert check["passed"], (
-                    f"规则分类器对 '{query}' 的分类不一致: "
-                    f"{check['task_types']}"
-                )
+                assert check["passed"], f"规则分类器对 '{query}' 的分类不一致: {check['task_types']}"
 
 
 class TestFallbackSolutionConsistency:
@@ -243,9 +225,7 @@ class TestFallbackSolutionConsistency:
         """降级方案应对相同参数返回相同结构。"""
         solutions = []
         for _ in range(3):
-            s = SolutionGenerator._create_fallback_solution(
-                "45钢", "IT8", "单件", "CNC加工中心"
-            )
+            s = SolutionGenerator._create_fallback_solution("45钢", "IT8", "单件", "CNC加工中心")
             solutions.append(s)
 
         check = ConsistencyChecker.check_solution_consistency(solutions)
@@ -274,9 +254,7 @@ class TestExplanationConsistency:
 
         # 检查风险等级一致性
         risk_levels = [e.risk_level for e in explanations]
-        assert all(r == risk_levels[0] for r in risk_levels), (
-            f"风险等级不一致: {risk_levels}"
-        )
+        assert all(r == risk_levels[0] for r in risk_levels), f"风险等级不一致: {risk_levels}"
 
         # 检查操作建议非空
         for e in explanations:
@@ -304,23 +282,16 @@ class TestJSONOutputConsistency:
 
     def test_solution_to_dict_is_consistent(self):
         """ProcessSolution.to_dict() 应对相同数据返回相同结果。"""
-        solution = SolutionGenerator._create_fallback_solution(
-            "45钢", "IT8", "单件", "CNC加工中心"
-        )
+        solution = SolutionGenerator._create_fallback_solution("45钢", "IT8", "单件", "CNC加工中心")
 
         outputs = [solution.to_dict() for _ in range(3)]
-        hashes = [
-            hashlib.md5(json.dumps(o, sort_keys=True).encode()).hexdigest()
-            for o in outputs
-        ]
+        hashes = [hashlib.md5(json.dumps(o, sort_keys=True).encode()).hexdigest() for o in outputs]
 
         assert all(h == hashes[0] for h in hashes), "to_dict() 输出不一致"
 
     def test_engine_output_to_dict_is_consistent(self):
         """ProcessUnderstandingOutput.to_dict() 格式一致。"""
         from app.ai.process_understanding.engine import ProcessUnderstandingOutput
-
-
 
         output = ProcessUnderstandingOutput(
             task_type="A",

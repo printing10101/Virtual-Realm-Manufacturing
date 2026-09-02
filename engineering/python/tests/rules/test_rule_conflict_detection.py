@@ -28,9 +28,7 @@ from app.rules.safety_constraint_rules import (  # noqa: E402
 class TestConflictDetection:
     """规则冲突检测测试"""
 
-    # ------------------------------------------------------------------
     # 冲突检测：矛盾规则
-    # ------------------------------------------------------------------
 
     def test_contradictory_rules_same_condition_different_action(self):
         """验证：相同条件但不同动作的规则应被检测为冲突"""
@@ -85,9 +83,7 @@ class TestConflictDetection:
         assert "M-001" in triggered_ids
         assert "M-002" in triggered_ids
 
-    # ------------------------------------------------------------------
     # 冲突检测：优先级依赖冲突
-    # ------------------------------------------------------------------
 
     def test_low_priority_rule_cannot_override_p0_field(self):
         """验证：低优先级规则不能修改P0规则监控的字段"""
@@ -177,9 +173,7 @@ class TestConflictDetection:
         errors = _check_priority_dependency(rules)
         assert len(errors) >= 1, f"应检测到P1规则试图覆盖P0字段的冲突, got {len(errors)}"
 
-    # ------------------------------------------------------------------
     # 冲突检测：引擎级评估
-    # ------------------------------------------------------------------
 
     def test_engine_evaluates_by_priority_order(self):
         """验证：引擎按优先级顺序评估规则"""
@@ -191,10 +185,14 @@ class TestConflictDetection:
                 category=RuleCategory.MACHINE,
                 condition=RuleCondition(
                     condition_type="threshold",
-                    field="spindle_speed", operator=">", value=5000,
+                    field="spindle_speed",
+                    operator=">",
+                    value=5000,
                 ),
                 action=RuleAction(
-                    action_type=ActionType.ALERT, target="spindle_speed", value=5000,
+                    action_type=ActionType.ALERT,
+                    target="spindle_speed",
+                    value=5000,
                 ),
             ),
             SafetyRule(
@@ -204,10 +202,14 @@ class TestConflictDetection:
                 category=RuleCategory.MACHINE,
                 condition=RuleCondition(
                     condition_type="threshold",
-                    field="spindle_speed", operator=">", value=10000,
+                    field="spindle_speed",
+                    operator=">",
+                    value=10000,
                 ),
                 action=RuleAction(
-                    action_type=ActionType.STOP, target="spindle_speed", value=0,
+                    action_type=ActionType.STOP,
+                    target="spindle_speed",
+                    value=0,
                 ),
             ),
         ]
@@ -220,9 +222,7 @@ class TestConflictDetection:
 
         # 两个规则都会触发，但P0应该排在前面
         assert len(results) == 2
-        assert results[0]["priority"] == "P0", (
-            f"P0规则应在最前面，实际: {results[0]['priority']}"
-        )
+        assert results[0]["priority"] == "P0", f"P0规则应在最前面，实际: {results[0]['priority']}"
         assert results[0]["rule_id"] == "M-P0"
 
     def test_no_conflict_when_p0_field_not_targeted(self):
@@ -235,10 +235,14 @@ class TestConflictDetection:
                 category=RuleCategory.MACHINE,
                 condition=RuleCondition(
                     condition_type="threshold",
-                    field="spindle_speed", operator=">", value=10000,
+                    field="spindle_speed",
+                    operator=">",
+                    value=10000,
                 ),
                 action=RuleAction(
-                    action_type=ActionType.STOP, target="spindle_speed", value=0,
+                    action_type=ActionType.STOP,
+                    target="spindle_speed",
+                    value=0,
                 ),
             ),
             SafetyRule(
@@ -248,10 +252,14 @@ class TestConflictDetection:
                 category=RuleCategory.MACHINE,
                 condition=RuleCondition(
                     condition_type="threshold",
-                    field="cutting_force", operator=">", value=500,
+                    field="cutting_force",
+                    operator=">",
+                    value=500,
                 ),
                 action=RuleAction(
-                    action_type=ActionType.OVERRIDE, target="feed_rate", value=200,
+                    action_type=ActionType.OVERRIDE,
+                    target="feed_rate",
+                    value=200,
                 ),
             ),
         ]

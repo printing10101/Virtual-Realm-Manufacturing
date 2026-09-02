@@ -37,7 +37,7 @@ def _plan(ops):
     return OperationPlan(operations=ops, estimated_time_min=sum(o.estimated_time_min for o in ops))
 
 
-# ==================== validate_gcode_syntax ====================
+# validate_gcode_syntax
 
 
 class TestValidateGcodeSyntax:
@@ -117,7 +117,7 @@ class TestValidateGcodeSyntax:
         assert not any("行程" in e for e in errs)
 
 
-# ==================== build_dry_run_preview ====================
+# build_dry_run_preview
 
 
 class TestBuildDryRunPreview:
@@ -133,12 +133,24 @@ class TestBuildDryRunPreview:
 
     def test_normal_plan(self):
         ops = [
-            _op(seq=1, name="粗铣顶面", tool_type="face_mill", machining_method="face_milling",
-                feature_name="顶面", cutting_params={"start_x": 10.0, "depth": 2.0},
-                estimated_time_min=15.0),
-            _op(seq=2, name="精铣侧面", tool_type="end_mill", machining_method="contour_milling",
-                feature_name="侧面", cutting_params={"depth": 0.5},
-                estimated_time_min=10.0),
+            _op(
+                seq=1,
+                name="粗铣顶面",
+                tool_type="face_mill",
+                machining_method="face_milling",
+                feature_name="顶面",
+                cutting_params={"start_x": 10.0, "depth": 2.0},
+                estimated_time_min=15.0,
+            ),
+            _op(
+                seq=2,
+                name="精铣侧面",
+                tool_type="end_mill",
+                machining_method="contour_milling",
+                feature_name="侧面",
+                cutting_params={"depth": 0.5},
+                estimated_time_min=10.0,
+            ),
         ]
         r = build_dry_run_preview(_plan(ops), safe_z=80.0, stock_top_z=50.0)
         assert len(r["tool_path_summary"]) == 2
@@ -162,7 +174,7 @@ class TestBuildDryRunPreview:
         assert r["tool_path_summary"][0]["tool_type"] == "UNKNOWN"
         assert r["tool_path_summary"][0]["start_pos"]["z"] == 80.0
         assert r["tool_path_summary"][0]["end_pos"]["z"] == 80.0
-        # 未指定刀具 → tool_change_count 0（set 去重后为空）
+        # 未指定刀具 tool_change_count 0（set 去重后为空）
         assert r["time_estimation"]["tool_change_count"] == 0
 
     def test_deep_cavity_risk(self):
@@ -172,7 +184,7 @@ class TestBuildDryRunPreview:
         assert any("潜在碰撞风险" in w for w in r["warnings"])
 
     def test_long_rapid_move_risk(self):
-        # 起点安全高度 500 → 终点 50-10=40，差值 460 > 100 → 长距风险
+        # 起点安全高度 500 终点 50-10=40，差值 460 > 100 长距风险
         ops = [_op(seq=1, cutting_params={"depth": 10.0})]
         r = build_dry_run_preview(_plan(ops), safe_z=500.0, stock_top_z=50.0)
         assert any(risk["risk_type"] == "long_rapid_move" for risk in r["collision_risks"])
@@ -180,7 +192,7 @@ class TestBuildDryRunPreview:
     def test_many_tool_changes_warning(self):
         ops = [_op(seq=i, tool_type=f"tool_{i % 3}", cutting_params={}) for i in range(1, 13)]
         r = build_dry_run_preview(_plan(ops), safe_z=80.0, stock_top_z=50.0)
-        # 3 种刀具 → 换刀 3 次，不触发 >10 警告
+        # 3 种刀具 换刀 3 次，不触发 >10 警告
         assert not any("刀具更换次数较多" in w for w in r["warnings"])
         # 每种刀具统计 usage_count 4
         assert r["tool_usage"]["tool_0"]["usage_count"] == 4
@@ -191,7 +203,7 @@ class TestBuildDryRunPreview:
         assert any("预估加工时间较长" in w for w in r["warnings"])
 
 
-# ==================== validate_gcode ====================
+# validate_gcode
 
 
 class TestValidateGcode:
@@ -201,15 +213,7 @@ class TestValidateGcode:
         assert r["errors"] == ["G代码为空"]
 
     def test_valid_program(self):
-        gcode = (
-            "O1000\n"
-            "G90 G21 G54\n"
-            "S1500 M03\n"
-            "G00 Z50\n"
-            "G01 X10 Y20 F500\n"
-            "G00 Z100\n"
-            "M30\n"
-        )
+        gcode = "O1000\nG90 G21 G54\nS1500 M03\nG00 Z50\nG01 X10 Y20 F500\nG00 Z100\nM30\n"
         r = validate_gcode(gcode)
         assert r["valid"] is True
         assert r["errors"] == []
@@ -218,7 +222,7 @@ class TestValidateGcode:
         r = validate_gcode("O1000\nG01 X10 F500\n")
         assert r["valid"] is False
         assert any("程序结束" in e for e in r["errors"])
-        # O1000 有程序号 → 无该警告；缺少主轴启动 → 有警告
+        # O1000 有程序号 无该警告；缺少主轴启动 有警告
         assert not any("程序号" in w for w in r["warnings"])
         assert any("主轴启动" in w for w in r["warnings"])
 

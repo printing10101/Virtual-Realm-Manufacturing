@@ -11,6 +11,7 @@
 
 CI 标记：@pytest.mark.integration（被 ci.yml Job 2 `pytest tests/integration/ -m integration` 收集）。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -34,9 +35,7 @@ from app.workflow.dag_store import DAGStore
 from app.workflow.runner import WorkflowRunner, reset_workflow_runner
 
 
-# ---------------------------------------------------------------------------
 # Mock TaskHandler：可编程的测试 handler
-# ---------------------------------------------------------------------------
 
 
 class _ScriptedHandler:
@@ -105,9 +104,7 @@ def _failed_result(error: str = "模拟失败") -> TaskResult:
     )
 
 
-# ---------------------------------------------------------------------------
 # 数据库 fixture：内存 SQLite + 完整 schema
-# ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture
@@ -120,11 +117,13 @@ async def in_memory_dag_store(monkeypatch):
     monkeypatch.setenv("DB_URL", "sqlite+aiosqlite:///:memory:")
     # 清空单例，使下次 get_sessionmaker 重新基于新 DB_URL 创建
     from app.database import connection as _conn
+
     _conn._singletons._engine = None
     _conn._singletons._sessionmaker = None
 
     # 创建全部表（workflow_runs / workflow_run_nodes 复用 training_task.Base）
     from app.database.models.training_task import init_db
+
     await init_db()
 
     # 重置 workflow / registry 单例
@@ -138,9 +137,7 @@ async def in_memory_dag_store(monkeypatch):
     _conn._singletons._sessionmaker = None
 
 
-# ---------------------------------------------------------------------------
 # 工作流规格构造工具
-# ---------------------------------------------------------------------------
 
 
 def _build_diamond_dag(
@@ -163,19 +160,23 @@ def _build_diamond_dag(
     nodes = [
         WorkflowNode(node_id="A", task_type="task_a", params={"step": "root"}),
         WorkflowNode(
-            node_id="B", task_type="task_b",
+            node_id="B",
+            task_type="task_b",
             inputs={"in_a": "${A.out_a}"},
         ),
         WorkflowNode(
-            node_id="C", task_type="task_c",
+            node_id="C",
+            task_type="task_c",
             inputs={"in_a": "${A.out_a}"},
         ),
         WorkflowNode(
-            node_id="D", task_type="task_d",
+            node_id="D",
+            task_type="task_d",
             inputs={"in_b": "${B.out_b}", "in_c": "${C.out_c}"},
         ),
         WorkflowNode(
-            node_id="E", task_type="task_e",
+            node_id="E",
+            task_type="task_e",
             inputs={"in_d": "${D.out_d}"},
         ),
     ]
@@ -207,8 +208,7 @@ def _build_diamond_dag(
         "task_b": _ScriptedHandler("task_b", [_ok_result("out_b", "file://B/out_b")]),
         "task_c": _ScriptedHandler(
             "task_c",
-            ([_failed_result("C 节点首次失败")] if c_fail_first else [])
-            + [_ok_result("out_c", "file://C/out_c")],
+            ([_failed_result("C 节点首次失败")] if c_fail_first else []) + [_ok_result("out_c", "file://C/out_c")],
         ),
         "task_d": _ScriptedHandler("task_d", [_ok_result("out_d", "file://D/out_d")]),
         "task_e": _ScriptedHandler("task_e", [_ok_result("out_e", "file://E/out_e")]),
@@ -246,9 +246,7 @@ def _node_status_map(run_status: dict[str, Any]) -> dict[str, str]:
     return {n["node_id"]: n.get("status", "unknown") for n in nodes}
 
 
-# ---------------------------------------------------------------------------
 # 测试用例
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
@@ -272,8 +270,7 @@ class TestWorkflowDagHappyPath:
         node_status = _node_status_map(final)
         for node_id in ("A", "B", "C", "D", "E"):
             assert node_status.get(node_id) == "completed", (
-                f"节点 {node_id} 应为 completed，实际: {node_status.get(node_id)}; "
-                f"全部节点状态: {node_status}"
+                f"节点 {node_id} 应为 completed，实际: {node_status.get(node_id)}; 全部节点状态: {node_status}"
             )
 
     @pytest.mark.asyncio
@@ -312,9 +309,7 @@ class TestWorkflowDagHappyPath:
         final = await _wait_for_terminal(runner, workflow_run_id)
 
         outputs = final.get("outputs") or {}
-        assert "final_report" in outputs, (
-            f"应解析 final_report 输出，实际 outputs: {list(outputs.keys())}"
-        )
+        assert "final_report" in outputs, f"应解析 final_report 输出，实际 outputs: {list(outputs.keys())}"
         assert "intermediate_d" in outputs
 
 
@@ -333,18 +328,14 @@ class TestWorkflowFailurePropagation:
         """
         spec, handlers = _build_diamond_dag()
         # 让 B 始终失败
-        handlers["task_b"] = _ScriptedHandler(
-            "task_b", [_failed_result("B 节点注入失败")]
-        )
+        handlers["task_b"] = _ScriptedHandler("task_b", [_failed_result("B 节点注入失败")])
         _register_handlers(handlers)
 
         runner = WorkflowRunner(dag_store=in_memory_dag_store)
         workflow_run_id = await runner.run(spec, owner_id="test_user")
         final = await _wait_for_terminal(runner, workflow_run_id)
 
-        assert final["status"] == "failed", (
-            f"工作流应为 failed，实际: {final['status']}"
-        )
+        assert final["status"] == "failed", f"工作流应为 failed，实际: {final['status']}"
 
         node_status = _node_status_map(final)
         assert node_status.get("A") == "completed", "A 应正常完成"
@@ -361,25 +352,23 @@ class TestWorkflowResumeFromFailure:
     @pytest.mark.asyncio
     async def test_resume_reruns_only_failed_and_pending(self, in_memory_dag_store):
         """断点续跑场景：
-            1. 首次运行：C 首次失败 → D/E skipped → workflow failed
-            2. 修复后 resume_from 同一 run_id：
-                - A/B 已 completed → 跳过（不重跑）
-                - C 之前 failed → 重跑（这次成功）
-                - D/E 之前 skipped → 重跑
-            3. 最终全部 completed
+        1. 首次运行：C 首次失败 → D/E skipped → workflow failed
+        2. 修复后 resume_from 同一 run_id：
+            - A/B 已 completed → 跳过（不重跑）
+            - C 之前 failed → 重跑（这次成功）
+            - D/E 之前 skipped → 重跑
+        3. 最终全部 completed
         """
         spec, handlers = _build_diamond_dag(c_fail_first=True)
         _register_handlers(handlers)
 
         runner = WorkflowRunner(dag_store=in_memory_dag_store)
 
-        # ----- 首次运行：C 失败 -----
+        # 首次运行：C 失败
         workflow_run_id = await runner.run(spec, owner_id="test_user")
         first_final = await _wait_for_terminal(runner, workflow_run_id)
 
-        assert first_final["status"] == "failed", (
-            f"首次应 failed（C 失败），实际: {first_final['status']}"
-        )
+        assert first_final["status"] == "failed", f"首次应 failed（C 失败），实际: {first_final['status']}"
         first_nodes = _node_status_map(first_final)
         assert first_nodes.get("A") == "completed"
         assert first_nodes.get("B") == "completed"
@@ -394,19 +383,16 @@ class TestWorkflowResumeFromFailure:
         assert handlers["task_d"].call_count == 0
         assert handlers["task_e"].call_count == 0
 
-        # ----- 断点续跑：C 这次成功 -----
+        # 断点续跑：C 这次成功
         # _ScriptedHandler 的 results_sequence 第二项是成功结果
         # 重置 WorkflowRunner 单例但不重置 DAGStore（保留 DB 状态）
         resume_runner = WorkflowRunner(dag_store=in_memory_dag_store)
-        resumed_id = await resume_runner.run(
-            spec, resume_from=workflow_run_id, owner_id="test_user"
-        )
+        resumed_id = await resume_runner.run(spec, resume_from=workflow_run_id, owner_id="test_user")
         assert resumed_id == workflow_run_id, "断点续跑应复用同一 run_id"
 
         second_final = await _wait_for_terminal(resume_runner, resumed_id)
         assert second_final["status"] == "completed", (
-            f"续跑后应 completed，实际: {second_final['status']}, "
-            f"error: {second_final.get('error')}"
+            f"续跑后应 completed，实际: {second_final['status']}, error: {second_final.get('error')}"
         )
 
         second_nodes = _node_status_map(second_final)
@@ -418,7 +404,7 @@ class TestWorkflowResumeFromFailure:
         # 验证未重跑已完成节点：A/B 调用次数应仍为 1
         assert handlers["task_a"].call_count == 1, "A 不应重跑"
         assert handlers["task_b"].call_count == 1, "B 不应重跑"
-        # C 应被重跑（首次失败 → 续跑成功），call_count=2
+        # C 应被重跑（首次失败 续跑成功），call_count=2
         assert handlers["task_c"].call_count == 2, "C 应被重跑（首次失败）"
         # D/E 之前 skipped，续跑时应执行
         assert handlers["task_d"].call_count == 1, "D 应在续跑时执行"
@@ -472,6 +458,4 @@ class TestWorkflowEventStream:
         # 至少应收到一个终态事件
         assert len(events) >= 1, "应至少收到一个事件"
         terminal_types = {"workflow_completed", "workflow_failed", "workflow_cancelled"}
-        assert events[-1].event_type in terminal_types, (
-            f"最后一个事件应为终态，实际: {events[-1].event_type}"
-        )
+        assert events[-1].event_type in terminal_types, f"最后一个事件应为终态，实际: {events[-1].event_type}"
