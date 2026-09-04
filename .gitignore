@@ -507,3 +507,6 @@ data/traces/
 # 大数据集不入库（2026-08-30 仓库整理）：按原始来源获取
 research/datasets/uniwear/uniwear/nuaa_orthogonal_bundle_high_resolution.csv
 research/datasets/uniwear/uniwear/phm2010_bundle_high_resolution.csv
+
+# 天才少年计划申请材料（个人材料不入库）
+/application_unitree/

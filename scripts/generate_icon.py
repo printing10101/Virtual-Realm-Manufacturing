@@ -8,7 +8,7 @@
 - "制造"：齿轮 + 立方体（3D 建模 / 工艺规划）
 - 配色：深色背景 (#0e0d0c) + 蓝色渐变 (#007aff → #66abff)
 
-输出文件（覆盖 src-tauri/icons/）：
+输出文件（覆盖 engineering/src-tauri/icons/）：
 - 128x128.png
 - 128x128@2x.png  (256x256)
 - 32x32.png
@@ -21,8 +21,8 @@ import random
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
-# 配置
-ICONS_DIR = Path(__file__).parent.parent / "src-tauri" / "icons"
+# 配置（唯一活跃桌面壳位于 engineering/src-tauri/，根级 src-tauri/ 已移除）
+ICONS_DIR = Path(__file__).parent.parent / "engineering" / "src-tauri" / "icons"
 ICONS_DIR.mkdir(parents=True, exist_ok=True)
 
 # 颜色板（与应用 splashscreen/index.html 保持一致）
@@ -194,8 +194,7 @@ def draw_icon(size: int) -> Image.Image:
     top_bottom = (ccx, ccy)
     top_left = (ccx - cube_size * math.cos(math.pi / 6), ccy - cube_size * math.sin(math.pi / 6))
 
-    # 立方体底部 4 个顶点（顶面 4 个顶点向下平移）
-    bot_top = (top_top[0], top_top[1] + cube_size * 1.0)
+    # 立方体底部 4 个顶点（顶面 4 个顶点向下平移；bot_top 与 top_bottom 重合，无需单独计算）
     bot_right = (top_right[0], top_right[1] + cube_size * 1.0)
     bot_bottom = (top_bottom[0], top_bottom[1] + cube_size * 1.0)
     bot_left = (top_left[0], top_left[1] + cube_size * 1.0)
@@ -283,7 +282,7 @@ def main():
         print(f"  -> {ICONS_DIR / 'icon.icns'}")
     except Exception as e:
         print(f"  [警告] ICNS 生成失败（Windows 平台限制）: {e}")
-        print(f"  部署到 macOS 时请重新运行此脚本或使用 iconutil 工具")
+        print("  部署到 macOS 时请重新运行此脚本或使用 iconutil 工具")
 
     print()
     print("=" * 60)

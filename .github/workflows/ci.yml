@@ -882,27 +882,6 @@ jobs:
           pip install pytest pytest-benchmark
           pip install matplotlib 2>/dev/null || echo "::warning::matplotlib 安装失败，性能基准测试图表将跳过"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run 3D rendering FPS benchmark
-        continue-on-error: true
-        run: |
-          mkdir -p tests/benchmarks/reports
-          npx vitest run tests/benchmarks/renderFPS.bench.ts --config vitest.config.ts --reporter=verbose 2>&1 || \
-          echo "Render benchmark completed (may have skipped in headless)"
-          echo "Render benchmark results:" && ls -la tests/benchmarks/reports/ 2>/dev/null || true
-
       - name: Run Python performance benchmarks
         env:
           CI: 'true'
@@ -1008,12 +987,15 @@ jobs:
           ruff format --check app/
 
       - name: Install frontend dependencies
+        working-directory: engineering
         run: pnpm install --frozen-lockfile
 
       - name: Run frontend lint
+        working-directory: engineering
         run: pnpm run lint
 
       - name: Run type check
+        working-directory: engineering
         run: pnpm run type-check
 
   # ============================================

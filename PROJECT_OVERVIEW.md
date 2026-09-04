@@ -50,7 +50,7 @@
 | `engineering/src/` | Vue 3 前端源码 |
 | `engineering/python/app/` | **FastAPI 后端**（约 70 个业务模块） |
 | `engineering/python/` | 后端运行配置、requirements、sidecar 启动脚本 `sidecar_main.py` |
-| `src-tauri/` | Tauri 2 桌面壳（Rust）：`commands.rs` / `sidecar.rs` / `main.rs` / `lib.rs` |
+| `engineering/src-tauri/` | Tauri 2 桌面壳（Rust）：`commands.rs` / `sidecar.rs` / `main.rs` / `lib.rs`（含 `tauri.conf.json`，唯一可构建副本） |
 | `rust/compute/` | Rust 计算 crate（体素切削仿真，PyO3 暴露给 Python） |
 | `mcp_server/` | Agent Gateway：把 LNN 能力包装为 MCP 工具 |
 | `shared/` | 跨工程/科研的共享 Python 库（常量、数据契约、LNN 类型） |
@@ -90,8 +90,8 @@
 
 ### 3.4 Rust 侧
 
-- `src-tauri/src/sidecar.rs`：启动 Python 后端子进程、轮询 `/api/health/ping` 就绪、退出时先 `POST /api/v1/admin/shutdown` 触发优雅关闭（最多等 8s，超时再 kill），避免 SQLite WAL 未 checkpoint / 文件句柄锁定。
-- `src-tauri/src/commands.rs`：暴露原生命令（如 `close_splashscreen`、dialog、shell）。
+- `engineering/src-tauri/src/sidecar.rs`：启动 Python 后端子进程、轮询 `/api/health/ping` 就绪、退出时先 `POST /api/v1/admin/shutdown` 触发优雅关闭（最多等 8s，超时再 kill），避免 SQLite WAL 未 checkpoint / 文件句柄锁定。
+- `engineering/src-tauri/src/commands.rs`：暴露原生命令（如 `close_splashscreen`、dialog、shell）。
 - `rust/compute/crates/core/`：纯 Rust 体素切削仿真（`cutting.rs`/`tool.rs`/`voxel_grid.rs`）；`crates/pyo3_bindings/`：编译为 `cdylib` 供 Python `import` 调用（性能关键路径用 Rust 替代纯 Python）。
 
 ### 3.5 MCP Agent Gateway（`mcp_server/`）
@@ -110,7 +110,7 @@
 │                                                  python/app :8765) │
 └───────────────────────────────┬──────────────────────────────────┘
                                  │
-        Tauri Rust 壳 (src-tauri) 托管 Python 为 sidecar 子进程：
+        Tauri Rust 壳 (engineering/src-tauri) 托管 Python 为 sidecar 子进程：
         启动→健康检查(/api/health/ping)→退出→优雅关闭(/api/v1/admin/shutdown)
                                  │
         ┌────────────────────────▼─────────────────────────────┐

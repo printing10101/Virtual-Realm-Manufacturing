@@ -70,15 +70,18 @@ jobs:
           echo "✓ Python 代码检查通过"
 
       - name: 安装前端依赖
+        working-directory: engineering
         run: pnpm install --frozen-lockfile
 
       - name: 前端代码检查
+        working-directory: engineering
         run: |
           echo "=== 运行 ESLint ==="
           pnpm run lint || exit 1
           echo "✓ 前端代码检查通过"
 
       - name: TypeScript 类型检查
+        working-directory: engineering
         run: |
           echo "=== 运行 TypeScript 类型检查 ==="
           pnpm run type-check || exit 1
