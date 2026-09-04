@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,8 +18,8 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_THIS_DIR, "..", "..", ".."))
+if __package__ in (None, ""):
+    import _bootstrap  # noqa: F401  # 脚本直跑时引导 engineering/python 入 sys.path
 
 from app.benchmarks.performance.thresholds import (
     REGRESSION_THRESHOLDS,

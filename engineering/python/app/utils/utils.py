@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from pathlib import Path
 from typing import Any
@@ -234,6 +235,34 @@ def validate_user_path(
         return alt_resolved
 
     raise ValueError("路径遍历检测：路径超出允许目录范围")
+
+
+def extract_json_text(content: str) -> str | None:
+    """从 LLM 回复文本中提取 JSON 对象字符串（不解析）。
+
+    提取顺序（与知识图谱抽取器历史语义一致）：
+    1. 整体即 JSON 对象（以 ``{`` 开头）；
+    2. markdown 代码围栏（```json / ```）内的内容；
+    3. 首个 ``{`` 到最后一个 ``}`` 的子串。
+
+    Returns:
+        JSON 字符串；无法提取时返回 ``None``。
+        需要解析后的 dict 时可用 :func:`extract_json_from_markdown`。
+    """
+    text = content.strip()
+    if text.startswith("{"):
+        return text
+
+    fence = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
+    if fence:
+        return fence.group(1).strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1]
+
+    return None
 
 
 def extract_json_from_markdown(content: str) -> dict[str, Any]:

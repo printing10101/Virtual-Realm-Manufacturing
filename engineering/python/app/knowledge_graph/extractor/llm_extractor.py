@@ -20,7 +20,6 @@ import asyncio
 import json
 import logging
 import os
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -373,25 +372,14 @@ class LLMExtractor:
 
     @staticmethod
     def _extract_json(text: str) -> str | None:
-        """从文本中提取 JSON 字符串。"""
-        # 尝试直接解析
-        text = text.strip()
-        if text.startswith("{"):
-            return text
+        """从文本中提取 JSON 字符串。
 
-        # 尝试从 markdown 代码块中提取
-        pattern = r"```(?:json)?\s*\n?(.*?)\n?```"
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            return match.group(1).strip()
+        实现已收敛到 :func:`app.utils.utils.extract_json_text`，
+        本方法仅为保持类接口兼容的委托。
+        """
+        from app.utils.utils import extract_json_text
 
-        # 尝试找到第一个 { 和最后一个 }
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            return text[start : end + 1]
-
-        return None
+        return extract_json_text(text)
 
     @staticmethod
     def _normalize_entity(entity: dict[str, Any]) -> dict[str, Any]:
@@ -504,6 +492,8 @@ def create_llm_client() -> BaseLLMClient:
     if provider == "cloud":
         api_key = os.environ.get("CLOUD_API_KEY", "")
         base_url = os.environ.get("CLOUD_BASE_URL", "https://api.openai.com/v1")
+        # 注意：此处默认模型 gpt-4o-mini 是抽取任务的有意选择，
+        # 与 config.ai.AIConfig.cloud_model（gpt-3.5-turbo）不同，勿合并。
         model = os.environ.get("CLOUD_MODEL", "gpt-4o-mini")
         if not api_key:
             raise ValueError("CLOUD_API_KEY 环境变量未设置")
@@ -513,11 +503,14 @@ def create_llm_client() -> BaseLLMClient:
             model=model,
         )
     else:
-        base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-        model = os.environ.get("OLLAMA_MODEL", "qwen3.5:35b-128k")
+        # 复用 AIConfig：OLLAMA_BASE_URL / OLLAMA_MODEL 的读取与默认值
+        # 以配置模块为唯一权威，避免多处硬编码漂移。
+        from app.config.ai import AIConfig
+
+        ai_cfg = AIConfig()
         return OllamaClient(
-            base_url=base_url,
-            model=model,
+            base_url=ai_cfg.ollama_base_url,
+            model=ai_cfg.ollama_model,
         )
 
 

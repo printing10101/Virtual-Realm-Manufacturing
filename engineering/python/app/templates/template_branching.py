@@ -11,6 +11,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.utils.dict_utils import deep_merge
 from app.utils.sqlite_pool import get_sqlite_manager
 
 logger = logging.getLogger(__name__)
@@ -262,7 +263,7 @@ class TemplateBranchManager:
             if strategy == "overwrite":
                 target.template_data = source.template_data.copy()
             elif strategy == "deep_merge":
-                target.template_data = self._deep_merge(target.template_data, source.template_data)
+                target.template_data = deep_merge(target.template_data, source.template_data)
 
             target.updated_at = time.time()
             target.commit_log.append(
@@ -282,16 +283,6 @@ class TemplateBranchManager:
             self._save_branch(target)
             logger.info("Branch merged: %s → %s (strategy=%s)", source_id, target_id, strategy)
             return target
-
-    def _deep_merge(self, base: dict, override: dict) -> dict:
-        """Recursively merge override into base."""
-        result = base.copy()
-        for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self._deep_merge(result[key], value)
-            else:
-                result[key] = value
-        return result
 
     def delete_branch(self, branch_id: str) -> bool:
         """Delete a branch (cannot delete main)."""

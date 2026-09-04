@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 import sys
 from typing import Any
@@ -26,8 +25,8 @@ except ImportError:
     HAS_TORCH = False
     HAS_CUDA = False
 
-_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_THIS_DIR, "..", "..", ".."))
+if __package__ in (None, ""):
+    import _bootstrap  # noqa: F401  # 脚本直跑时引导 engineering/python 入 sys.path
 
 
 class LNNPerfBenchmark:

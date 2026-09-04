@@ -28,31 +28,14 @@ VALID_CONTROLLER_IDS = (
 from app.postprocessor._validator import ConfigValidationError, ConfigValidator  # noqa: E402
 from app.postprocessor._limiter import ConfigLimiter  # noqa: E402
 
+# 统一使用 utils 版本（deepcopy 语义：返回值与入参完全隔离）。
+# 保留 _deep_merge 别名：config_loader / dialect.compiler / api.postprocessor_dialects
+# 均从本模块再导入此名称。
+from app.utils.dict_utils import deep_merge as _deep_merge  # noqa: E402
+
 
 class ConfigLoadError(Exception):
     """配置加载异常。"""
-
-
-def _deep_merge(base: dict, override: dict) -> dict:
-    """深度合并两个字典，override中的值覆盖base中的同名键。
-
-    嵌套字典递归合并，非字典值直接覆盖。
-    不修改传入的字典，返回新字典。
-
-    Args:
-        base: 基础配置字典
-        override: 覆盖配置字典
-
-    Returns:
-        合并后的新字典
-    """
-    result = copy.deepcopy(base)
-    for key, value in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
-        else:
-            result[key] = copy.deepcopy(value)
-    return result
 
 
 class ConfigLoader:

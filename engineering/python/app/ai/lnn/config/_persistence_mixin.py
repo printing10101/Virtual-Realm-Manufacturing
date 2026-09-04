@@ -11,6 +11,8 @@ from collections.abc import Callable
 
 import yaml  # type: ignore[import-untyped]
 
+from app.utils.dict_utils import deep_merge
+
 logger = logging.getLogger(__name__)
 
 
@@ -114,14 +116,12 @@ class _PersistenceMixin:
 
     def _merge_config(self, loaded_config: dict[str, Any]) -> None:
         """合并加载的配置到现有配置"""
-        self._raw_config = self._deep_merge(self._raw_config, loaded_config)
+        self._raw_config = deep_merge(self._raw_config, loaded_config)
 
     def _deep_merge(self, base: dict, override: dict) -> dict:
-        """深度合并两个字典"""
-        result = base.copy()
-        for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self._deep_merge(result[key], value)
-            else:
-                result[key] = value
-        return result
+        """深度合并两个字典（兼容委托）。
+
+        YAMLConfigManager 等子类/测试直接调用本方法；实现统一收敛到
+        :func:`app.utils.dict_utils.deep_merge`，新代码请直接使用该函数。
+        """
+        return deep_merge(base, override)

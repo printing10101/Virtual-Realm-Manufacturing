@@ -28,17 +28,12 @@
 
 from __future__ import annotations
 
-import json
-import logging
-import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
-
-logger = logging.getLogger(__name__)
+from app.utils.task_store import PerTaskJsonStore
 
 
 # 枚举：任务状态 / 审核状态 / 预测方法
@@ -131,92 +126,23 @@ class ReviewError(ChatterPredictionError):
     """审核异常。"""
 
 
-class TaskStore:
-    """任务存储：内存字典 + JSON 文件持久化 + 线程锁。
+class TaskStore(PerTaskJsonStore[ChatterPredictionTask]):
+    """颤振预测任务存储（持久化目录默认 ``output/chatter_prediction_tasks``）。
 
-    单例模式（双重检查锁），与阶段 2/3/4 的 TaskStore 设计一致。
+    公共实现见 :class:`app.utils.task_store.PerTaskJsonStore`。
     """
 
-    _instance: "TaskStore | None" = None
-    _lock = threading.Lock()
+    default_dir_name = "chatter_prediction_tasks"
 
-    def __init__(self, persist_dir: str | Path | None = None) -> None:
-        if persist_dir is None:
-            project_root = Path(__file__).resolve().parents[3]
-            self._persist_dir = project_root / "output" / "chatter_prediction_tasks"
-        else:
-            self._persist_dir = Path(persist_dir)
-        self._persist_dir.mkdir(parents=True, exist_ok=True)
-        self._tasks: dict[str, ChatterPredictionTask] = {}
-        self._data_lock = threading.Lock()
+    def _review_error(self, message: str) -> Exception:
+        return ReviewError(message)
 
-    @classmethod
-    def get_instance(cls) -> "TaskStore":
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = cls()
-        return cls._instance
-
-    @classmethod
-    def reset_instance(cls) -> None:
-        """重置单例（供测试使用）。"""
-        if cls._instance is not None:
-            with cls._lock:
-                if cls._instance is not None:
-                    cls._instance = None
-
-    def create_task(self, task: ChatterPredictionTask) -> None:
-        with self._data_lock:
-            self._tasks[task.task_id] = task
-            self._persist_task(task)
-
-    def get_task(self, task_id: str) -> ChatterPredictionTask | None:
-        with self._data_lock:
-            return self._tasks.get(task_id)
-
-    def update_task(self, task: ChatterPredictionTask) -> None:
-        with self._data_lock:
-            self._tasks[task.task_id] = task
-            self._persist_task(task)
-
-    def list_tasks(self, limit: int = 50) -> list[ChatterPredictionTask]:
-        with self._data_lock:
-            tasks = sorted(
-                self._tasks.values(),
-                key=lambda t: t.created_at,
-                reverse=True,
-            )
-            return tasks[:limit]
-
-    def delete_task(self, task_id: str) -> bool:
-        with self._data_lock:
-            if task_id not in self._tasks:
-                return False
-            task = self._tasks[task_id]
-            # 项目记忆硬约束：SUCCEEDED 状态禁止删除
-            # （阶段 6 G 代码生成可能已引用其 ChatterReport）
-            if task.status == ChatterPredictionTaskStatus.SUCCEEDED.value:
-                raise ReviewError(
-                    f"任务 {task_id} 处于 SUCCEEDED 状态，禁止删除（阶段 6 G 代码生成可能已引用其 ChatterReport）"
-                )
-            del self._tasks[task_id]
-            # 删除持久化文件
-            persist_path = self._persist_dir / f"{task_id}.json"
-            if persist_path.exists():
-                try:
-                    persist_path.unlink()
-                except OSError as e:
-                    logger.warning("删除任务持久化文件失败 %s: %s", task_id, e)
-            return True
-
-    def _persist_task(self, task: ChatterPredictionTask) -> None:
-        persist_path = self._persist_dir / f"{task.task_id}.json"
-        try:
-            with open(persist_path, "w", encoding="utf-8") as f:
-                json.dump(task.to_dict(), f, ensure_ascii=False, indent=2)
-        except (OSError, TypeError) as e:
-            logger.warning("任务持久化失败 %s: %s", task.task_id, e)
+    def _deletable_reason(self, task: ChatterPredictionTask) -> str | None:
+        # 项目记忆硬约束：SUCCEEDED 状态禁止删除
+        # （阶段 6 G 代码生成可能已引用其 ChatterReport）
+        if task.status == ChatterPredictionTaskStatus.SUCCEEDED.value:
+            return f"任务 {task.task_id} 处于 SUCCEEDED 状态，禁止删除（阶段 6 G 代码生成可能已引用其 ChatterReport）"
+        return None
 
 
 def get_task_store() -> TaskStore:

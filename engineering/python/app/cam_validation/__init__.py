@@ -48,10 +48,9 @@ K_s 传递策略（项目记忆硬约束）：
     与 pending_calibration 状态（用于 disclaimer 文本告知）。
 
 线程安全（项目记忆硬约束）：
-    - TaskStore 使用 threading.Lock 保护 _tasks 字典
-    - 审核操作使用独立的 _review_lock 防止并发审核冲突
-    - 导出操作使用 _export_lock 防止文件写入竞争
-    - CAM 软件调用使用 _cam_call_lock 防止 NX/PowerMill 并发实例崩溃
+    - CamTaskStore（见 app.utils.task_store.InMemoryTaskStore）的任务字典、
+      审核、导出操作分别由独立锁保护
+    - CAM 软件调用使用 cam_call_lock 防止 NX/PowerMill 并发实例崩溃
 """
 
 from __future__ import annotations

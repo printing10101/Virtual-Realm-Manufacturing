@@ -18,11 +18,12 @@ mapping).
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.utils.id import new_id
 
 
 def _utc_now() -> datetime:
@@ -32,7 +33,7 @@ def _utc_now() -> datetime:
 
 def _new_record_id() -> str:
     """生成记录主键 ID（UUID4 字符串）。"""
-    return f"mrec_{uuid.uuid4().hex}"
+    return new_id("mrec")
 
 
 class MachiningRecordBase(BaseModel):

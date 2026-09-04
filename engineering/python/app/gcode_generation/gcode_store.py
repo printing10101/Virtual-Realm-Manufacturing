@@ -33,14 +33,12 @@
 
 from __future__ import annotations
 
-import logging
-import threading
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from app.utils.task_store import InMemoryTaskStore
 
 
 # 枚举：任务状态 / 审核状态
@@ -298,103 +296,21 @@ def generate_task_id() -> str:
 # TaskStore：线程安全的任务存储
 
 
-class TaskStore:
-    """G 代码生成任务存储（线程安全单例）。
+class TaskStore(InMemoryTaskStore):
+    """G 代码生成任务存储。
 
-    使用 threading.Lock 保护 _tasks 字典，防止并发写入竞争。
-    审核操作使用独立的 _review_lock 防止并发审核冲突。
+    公共实现见 :class:`app.utils.task_store.InMemoryTaskStore`；
+    本类仅绑定 G 代码生成阶段的异常类型与删除保护文案。
     """
 
-    _instance: TaskStore | None = None
-    _instance_lock = threading.Lock()
-    # 实例级初始化标志：__new__ 中先置 False，__init__ 幂等初始化（mypy: 需类级声明以确定类型）
-    _initialized: bool = False
+    def _task_error(self, message: str) -> Exception:
+        return GCodeGenerationError(message)
 
-    def __new__(cls) -> TaskStore:
-        if cls._instance is None:
-            with cls._instance_lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-                    cls._instance._initialized = False
-        return cls._instance
+    def _review_error(self, message: str) -> Exception:
+        return ReviewError(message)
 
-    def __init__(self) -> None:
-        if self._initialized:
-            return
-        self._tasks: dict[str, GCodeGenerationTask] = {}
-        self._tasks_lock = threading.Lock()
-        self._review_lock = threading.Lock()
-        self._export_lock = threading.Lock()
-        self._initialized = True
-        logger.debug("GCodeGeneration TaskStore initialized (singleton)")
-
-    def add_task(self, task: GCodeGenerationTask) -> None:
-        """添加任务到存储。"""
-        with self._tasks_lock:
-            if task.task_id in self._tasks:
-                raise GCodeGenerationError(f"任务 ID 已存在: {task.task_id}")
-            self._tasks[task.task_id] = task
-
-    def get_task(self, task_id: str) -> GCodeGenerationTask:
-        """获取任务。"""
-        with self._tasks_lock:
-            if task_id not in self._tasks:
-                raise GCodeGenerationError(f"任务不存在: {task_id}")
-            return self._tasks[task_id]
-
-    def list_tasks(
-        self,
-        status_filter: str | None = None,
-    ) -> list[GCodeGenerationTask]:
-        """列出任务（可选状态过滤）。"""
-        with self._tasks_lock:
-            tasks = list(self._tasks.values())
-        if status_filter:
-            tasks = [t for t in tasks if t.status == status_filter]
-        # 按创建时间倒序
-        tasks.sort(key=lambda t: t.started_at, reverse=True)
-        return tasks
-
-    def update_task(self, task: GCodeGenerationTask) -> None:
-        """更新任务。"""
-        with self._tasks_lock:
-            if task.task_id not in self._tasks:
-                raise GCodeGenerationError(f"任务不存在: {task.task_id}")
-            self._tasks[task.task_id] = task
-
-    def delete_task(
-        self,
-        task_id: str,
-        allow_delete_succeeded: bool = False,
-    ) -> None:
-        """删除任务。
-
-        项目记忆硬约束：SUCCEEDED 状态禁止删除。
-        allow_delete_succeeded 强制 False，不可由环境变量开启。
-        """
-        with self._tasks_lock:
-            if task_id not in self._tasks:
-                raise GCodeGenerationError(f"任务不存在: {task_id}")
-            task = self._tasks[task_id]
-            if task.status == GCodeGenerationTaskStatus.SUCCEEDED.value:
-                if not allow_delete_succeeded:
-                    raise ReviewError(f"任务 {task_id} 已 SUCCEEDED，禁止删除（阶段 7 CAM 校验可能已引用 G 代码产物）")
-            del self._tasks[task_id]
-
-    def clear(self) -> None:
-        """清空所有任务（仅用于测试）。"""
-        with self._tasks_lock:
-            self._tasks.clear()
-
-    @property
-    def review_lock(self) -> threading.Lock:
-        """审核操作锁。"""
-        return self._review_lock
-
-    @property
-    def export_lock(self) -> threading.Lock:
-        """导出操作锁。"""
-        return self._export_lock
+    def _succeeded_delete_message(self, task_id: str) -> str:
+        return f"任务 {task_id} 已 SUCCEEDED，禁止删除（阶段 7 CAM 校验可能已引用 G 代码产物）"
 
 
 def get_task_store() -> TaskStore:

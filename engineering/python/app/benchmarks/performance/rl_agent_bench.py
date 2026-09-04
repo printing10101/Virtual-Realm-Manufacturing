@@ -42,8 +42,8 @@ import numpy as np
 
 from app.benchmarks.performance.thresholds import check_violations
 
-_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_THIS_DIR, "..", "..", ".."))
+if __package__ in (None, ""):
+    import _bootstrap  # noqa: F401  # 脚本直跑时引导 engineering/python 入 sys.path
 
 
 def _percentiles(times: list[float]) -> dict[str, float]:

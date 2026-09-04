@@ -54,6 +54,19 @@ def utcnow_iso_z() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
 
 
+def utcnow_seconds_iso_z() -> str:
+    """返回当前 UTC 时间的秒级精度 ISO 8601 字符串（``Z`` 后缀）。
+
+    格式 ``YYYY-MM-DDTHH:MM:SSZ``。用于与秒级精度的存储约定对齐的
+    场景（如 SQLite DDL 的 ``strftime('%Y-%m-%dT%H:%M:%SZ', 'now')``
+    默认值、CAM 校验报告时间戳）。
+
+    Returns:
+        形如 ``"2026-09-05T12:34:56Z"`` 的字符串。
+    """
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def utcnow_filename_suffix() -> str:
     """返回适用于文件名的时间戳后缀。
 

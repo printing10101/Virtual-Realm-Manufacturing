@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger("app.cam_validation.cam_adapter")
@@ -172,7 +171,9 @@ class _BaseBackend:
     @staticmethod
     def _now_iso() -> str:
         """当前 UTC 时间 ISO 8601 字符串（秒级精度）。"""
-        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        from app.utils.time import utcnow_seconds_iso_z
+
+        return utcnow_seconds_iso_z()
 
     @staticmethod
     def _normalize_collisions(

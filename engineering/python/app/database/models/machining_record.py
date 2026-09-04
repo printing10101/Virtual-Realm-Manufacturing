@@ -19,8 +19,6 @@ rule_models.Base`` 解耦。
 
 from __future__ import annotations
 
-import uuid
-
 from sqlalchemy import (
     JSON,
     Column,
@@ -34,12 +32,14 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 
+from app.utils.id import new_id
+
 Base = declarative_base()
 
 
 def _new_record_id() -> str:
     """生成 MachiningRecord 主键 ID。"""
-    return f"mrec_{uuid.uuid4().hex}"
+    return new_id("mrec")
 
 
 class MachiningRecord(Base):  # type: ignore[misc, valid-type]

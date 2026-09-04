@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import datetime
 
 
 from app.utils.sqlite_pool import get_sqlite_manager
@@ -130,9 +129,9 @@ class RuleDatabase(_RuleCrudMixin, _GroupCrudMixin, _TransferMixin):
         统一时间戳格式为 ``YYYY-MM-DDTHH:MM:SSZ``（UTC 零时区），
         与 DDL 中的 ``DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`` 一致。
         """
-        from datetime import timezone
+        from app.utils.time import utcnow_seconds_iso_z
 
-        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return utcnow_seconds_iso_z()
 
 
 class _RuleDbHolder:
