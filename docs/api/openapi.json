@@ -3,7 +3,7 @@
   "info": {
     "title": "灵境制造 核心架构契约 API",
     "description": "八大核心契约（Task/Workflow、Dataset/Version/Lineage、Plugin/ExtensionPoint、ConfigSpec、Observability、WorldModel、RLAgent、Explainability）的 OpenAPI schema。本 schema 由 app/contracts/openapi_gen.py 自动生成，请勿手动修改。",
-    "version": "2.7.0",
+    "version": "2.8.0",
     "license": {
       "name": "MIT"
     }

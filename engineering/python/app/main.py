@@ -136,7 +136,7 @@ _DOCS_DISABLED = _LNN_ENV == "production"
 
 app = FastAPI(
     title="灵境制造 API",
-    version="2.7.0",
+    version="2.8.0",
     description="Lingjing Manufacturing - NC Machining AI Platform",
     docs_url=None if _DOCS_DISABLED else "/api/docs",
     redoc_url=None if _DOCS_DISABLED else "/api/redoc",
@@ -266,7 +266,7 @@ async def startup_event():
     logger.info("[startup] AsyncTaskManager step done")
 
     # 插件系统接线（P4 完整接线第一步）
-    # 2026-08-19 修复：init_plugin_system() 此前全仓库无调用点，导致
+    # init_plugin_system() 曾长期无调用点（会导致
     # get_plugin_manager() 抛 RuntimeError、插件 API 永远返回空。
     # 无参初始化：plugin_dirs 为空 发现 0 个插件（不触发 torch 依赖插件），
     # 但管理器被初始化，插件 API 返回空而非异常，前端插件页不再死数据。

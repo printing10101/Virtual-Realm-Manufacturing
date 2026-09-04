@@ -1,6 +1,6 @@
 [package]
 name = "lingjing-v4"
-version = "2.7.0"
+version = "2.8.0"
 description = "灵境制造 V4 - AI驱动的3D建模与工艺规划系统"
 authors = ["灵境制造团队"]
 license = "Apache-2.0"
