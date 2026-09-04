@@ -266,9 +266,4 @@ def circuit_breaker_context(
     """
     registry = CircuitBreakerRegistry()
     breaker = registry.get_or_create(name, config, fallback)
-    try:
-        yield breaker
-    except:
-        raise
-    finally:
-        pass
+    yield breaker

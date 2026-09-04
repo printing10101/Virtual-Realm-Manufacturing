@@ -31,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from xml.etree import ElementTree as ET
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -45,6 +46,10 @@ router = APIRouter(prefix="/monitor", tags=["realtime-monitor"])
 # 心跳间隔（秒）
 _HEARTBEAT_INTERVAL_S = 15.0
 
+# demo 降级后周期性重探真实 Agent 的间隔（tick 数，每 tick 1 秒）。
+# 此前断连后永久降级且不再恢复，操作员会一直看假数据。
+_ADAPTER_REPROBE_TICKS = 30
+
 # 本地模拟 Agent 默认地址（无真实机床时用于联调验证；生产环境用 MTCONNECT_AGENT_URL 覆盖）
 _DEFAULT_AGENT_URL = "http://127.0.0.1:5010"
 
@@ -52,6 +57,15 @@ _DEFAULT_AGENT_URL = "http://127.0.0.1:5010"
 def _resolve_agent_url() -> str:
     """返回当前生效的 MTConnect Agent URL（环境变量优先）。"""
     return os.getenv("MTCONNECT_AGENT_URL", _DEFAULT_AGENT_URL)
+
+
+def _close_adapter_quietly(adapter: MTConnectAdapter | None) -> None:
+    if adapter is None:
+        return
+    try:
+        adapter.close()
+    except Exception:  # pragma: no cover - 防御性
+        pass
 
 
 def _create_adapter() -> MTConnectAdapter | None:
@@ -70,12 +84,10 @@ def _create_adapter() -> MTConnectAdapter | None:
         adapter.probe()
         logger.info("monitor: connected to MTConnect agent %s", agent_url)
         return adapter
-    except (ConnectionError, OSError, TimeoutError):
+    except (ConnectionError, OSError, TimeoutError, RuntimeError):
+        # RuntimeError：agent 返回 200 但不是合法 MTConnect 文档
         logger.warning("monitor: MTConnect agent %s 不可达，降级为 demo 数据源", agent_url)
-        try:
-            adapter.close()
-        except Exception:  # pragma: no cover - 防御性
-            pass
+        _close_adapter_quietly(adapter)
         return None
 
 
@@ -118,9 +130,9 @@ async def machine_monitor_ws(websocket: WebSocket) -> None:
     machine_id = "VM-001"
     tick = 0
 
-    # 数据源：优先 MTConnect Agent，不可达时降级 demo（优雅降级，前端可调试）
+    # 数据源：优先 MTConnect Agent；不可达时降级 demo（payload 带 source=demo
+    # 标记，前端可区分），并周期性重探，Agent 恢复后自动切回真实数据。
     adapter = _create_adapter()
-    use_adapter = adapter is not None
 
     try:
         while True:
@@ -140,26 +152,38 @@ async def machine_monitor_ws(websocket: WebSocket) -> None:
             except asyncio.TimeoutError:
                 pass
 
-            # 拉取样本：MTConnect Agent 实时数据；失败降级 demo（避免反复重试）
-            if use_adapter and adapter is not None:
+            if adapter is None and tick % _ADAPTER_REPROBE_TICKS == 0:
+                adapter = _create_adapter()
+
+            source = "demo"
+            if adapter is not None:
                 try:
                     sample = await asyncio.to_thread(adapter.fetch_sample)
-                except (ConnectionError, OSError, TimeoutError) as exc:
-                    logger.warning("monitor: fetch sample failed: %s；降级 demo", exc)
+                    source = "agent"
+                except (ConnectionError, OSError, TimeoutError, ET.ParseError) as exc:
+                    logger.warning("monitor: fetch sample failed: %s；本轮降级 demo", exc)
+                    _close_adapter_quietly(adapter)
+                    adapter = None
                     sample = _demo_sample(machine_id, tick)
-                    use_adapter = False
             else:
                 sample = _demo_sample(machine_id, tick)
 
             # 告警事件 + 数据事件（告警优先推送，前端可即时感知）
-            events = check_alerts(sample) + [StreamEvent(data=sample, event_type="data", priority=1)]
-            for event in events:
-                await websocket.send_json(event.to_dict())
+            alert_events = check_alerts(sample)
+            data_event = StreamEvent(data=sample, event_type="data", priority=1)
+            for event in alert_events + [data_event]:
+                payload = event.to_dict()
+                if event is data_event and source == "demo":
+                    # demo 降级必须对前端可见，避免模拟数据被当作真实机床状态
+                    payload["source"] = "demo"
+                    if isinstance(payload.get("data"), dict):
+                        payload["data"]["source"] = "demo"
+                await websocket.send_json(payload)
             tick += 1
 
             # 心跳
             if tick % _HEARTBEAT_INTERVAL_S == 0:
-                await websocket.send_json({"event_type": "ping", "timestamp": events[-1].timestamp.isoformat()})
+                await websocket.send_json({"event_type": "ping", "timestamp": data_event.timestamp.isoformat()})
 
             await asyncio.sleep(1.0)
 
@@ -167,13 +191,9 @@ async def machine_monitor_ws(websocket: WebSocket) -> None:
         logger.info("monitor ws disconnected: machine=%s", machine_id)
     except Exception as exc:
         logger.warning("monitor ws error: %s", exc)
+    finally:
+        _close_adapter_quietly(adapter)
         try:
             await websocket.close(code=1011, reason="internal error")
         except Exception:
             pass
-    finally:
-        if adapter is not None:
-            try:
-                adapter.close()
-            except Exception:  # pragma: no cover - 防御性
-                pass

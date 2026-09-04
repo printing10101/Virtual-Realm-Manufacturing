@@ -200,6 +200,7 @@ class StreamingReportRenderer:
 
         # PNG 渲染（matplotlib 不可用时跳过）
         if _HAS_MPL and plt is not None:
+            fig = None
             try:
                 fig = self._render_figure(metrics, model_name)
                 Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -208,7 +209,6 @@ class StreamingReportRenderer:
                     dpi=self._config.dpi,
                     bbox_inches="tight",
                 )
-                plt.close(fig)
                 outputs["png_path"] = output_path
                 logger.info(
                     "StreamingReportRenderer: PNG 报告已写入 %s",
@@ -220,6 +220,11 @@ class StreamingReportRenderer:
                     exc,
                     exc_info=True,
                 )
+            finally:
+                # savefig 抛错（磁盘满/权限）时也必须关闭 figure，
+                # 否则 Agg 后端的 figure 累积导致内存泄漏
+                if fig is not None and plt is not None:
+                    plt.close(fig)
         else:
             logger.warning("StreamingReportRenderer: matplotlib 不可用，跳过 PNG 渲染。")
 

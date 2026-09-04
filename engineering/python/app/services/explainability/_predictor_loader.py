@@ -80,12 +80,20 @@ class PredictorLoader:
             if predictor is not None:
                 return predictor
 
-            # 加载模型
-            _ = self.parse_model_uri(model_uri)  # 仅验证 URI 格式（加载路径见 TODO）
+            # 加载模型：model_uri → model_name → 注册表加载
+            # （加载方式与 api/v1/lnn/routes_prediction._load_model_for_predict 一致）
+            model_name = self.parse_model_uri(model_uri)
             try:
-                # TODO(LNN-加载): 探测导入确认依赖可用；加载路径缺失 LNNPredictor 构造
-                # （缓存未命中时返回 None，待办事项中记录）
-                from app.ai.lnn.inference.predictor import LNNPredictor  # noqa: F401
+                from app.ai.lnn.inference.predictor import LNNPredictor
+
+                from app.services.model_registry_service import get_model_registry_service
+
+                predictor = LNNPredictor.from_registry(
+                    registry=get_model_registry_service().model_registry,
+                    model_name=model_name,
+                    use_amp=True,
+                    auto_device=True,
+                )
             except ImportError as exc:
                 raise ProjectionError(f"无法加载模型: {model_uri}（{exc}）") from exc
 

@@ -1,6 +1,6 @@
 {
   "name": "lingjing-v4",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "灵境制造 V4 - AI驱动的3D建模与工艺规划系统",
   "private": true,
   "scripts": {
@@ -72,8 +72,8 @@
       "prettier --write"
     ],
     "python/**/*.py": [
-      "black",
-      "ruff check --fix"
+      "ruff check --fix",
+      "ruff format"
     ],
     "src-tauri/**/*.rs": [
       "cargo fmt --"

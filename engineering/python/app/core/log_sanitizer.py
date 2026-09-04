@@ -186,6 +186,17 @@ class LogSanitizer:
             "message": "Internal server error",
         }
 
+    def sanitize_paths(self, text: str) -> str:
+        """仅脱敏文本中的用户路径（适用于堆栈跟踪等纯文本场景）。
+
+        与 :meth:`sanitize` 不同，本方法不做工艺参数/API Key 级别的
+        语义脱敏，避免破坏错误信息对排障的价值。
+        """
+        sanitized = self._sanitize_file_paths(text)
+        if self._current_user:
+            sanitized = sanitized.replace(self._current_user, "[user]")
+        return sanitized
+
     def _sanitize_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         sanitized = {}
         for key, value in data.items():

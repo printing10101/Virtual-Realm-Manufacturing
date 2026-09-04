@@ -178,8 +178,11 @@ class StatePersistenceManager:
             try:
                 dialect = getattr(getattr(session, "bind", None), "dialect", None)
                 is_sqlite = bool(dialect is not None and dialect.name == "sqlite")
-            except Exception:
-                pass
+            except (AttributeError, TypeError) as e:
+                # 方言探测失败时保守按非 SQLite 处理，但必须留痕——
+                # 静默吞掉会导致 SQLite 走 to_timestamp()/NOW() 分支，
+                # 运行时才报 SQL 错误，极难排查。
+                logger.warning("Dialect detection failed; assuming non-sqlite: %s", e)
             hb_expr = ":hb" if is_sqlite else "to_timestamp(:hb)"
             now_expr = ":hb_now" if is_sqlite else "NOW()"
             hb_now = time.time()

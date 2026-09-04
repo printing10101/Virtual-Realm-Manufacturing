@@ -87,6 +87,9 @@ class AdapterConfig:
     # Batching
     batch_size: int = 10  # flush after this many samples
     batch_interval: float = 5.0  # ...or after this many seconds
+    # 持久化失败时批次会回灌缓冲区等待重试；该上限防止 TDengine 长时间
+    # 不可用时缓冲无界增长。超出上限时丢弃最旧的样本并计入 dropped_samples。
+    max_buffer: int = 1000
 
     # Retry
     max_retries: int = 5  # bounded – never spin forever
@@ -104,6 +107,8 @@ class AdapterConfig:
         self.agent_url = self.agent_url.rstrip("/")
         if not self.agent_url.lower().startswith(("http://", "https://")):
             raise ValueError(f"agent_url must be an http(s) URL, got: {self.agent_url!r}")
+        if self.max_buffer < 1:
+            raise ValueError(f"max_buffer must be >= 1, got: {self.max_buffer!r}")
 
 
 # Adapter
@@ -149,6 +154,7 @@ class MTConnectAdapter:
         self._last_flush = time.monotonic()
         self._ingested_count = 0
         self._error_count = 0
+        self._dropped_count = 0
 
     def close(self) -> None:
         """Close the HTTP session and release connection pool resources."""
@@ -309,6 +315,9 @@ class MTConnectAdapter:
 
         Returns the number of rows written.  Safe to call from a
         background thread – the buffer is guarded by a lock.
+
+        持久化失败时批次不会被丢弃，而是回灌到缓冲区头部等待下一次
+        flush 重试（有界，见 :attr:`AdapterConfig.max_buffer`）。
         """
         with self._buffer_lock:
             if not self._buffer:
@@ -329,7 +338,32 @@ class MTConnectAdapter:
         if written > 0:
             self._ingested_count += written
             logger.info("Flushed batch of %d samples to TDengine", written)
+        if written < len(batch):
+            # 失败回灌：TDengine 故障时不丢采样数据，等下次 flush 重试。
+            # 注意：若 future 超时后协程实际落库成功，可能产生重复行——
+            # TDengine 同时间戳写入会覆盖，语义上可接受（宁重复勿丢失）。
+            self._requeue_failed(batch)
         return written
+
+    def _requeue_failed(self, batch: list[Sample]) -> None:
+        """把持久化失败的批次放回缓冲区头部（保持时序），超限则丢最旧。
+
+        flush() 已把缓冲清空，因此裁剪必须针对 ``批次 + 现存缓冲`` 的
+        合并结果进行，否则上限不生效。
+        """
+        with self._buffer_lock:
+            combined = batch + self._buffer
+            overflow = len(combined) - self.config.max_buffer
+            if overflow > 0:
+                self._dropped_count += overflow
+                logger.error(
+                    "MTConnect retry buffer overflow; dropping %d oldest samples (total dropped=%d)",
+                    overflow,
+                    self._dropped_count,
+                )
+                del combined[:overflow]
+            self._buffer = combined
+            logger.warning("MTConnect flush failed; %d samples re-queued for retry", len(batch))
 
     # Public, read-only state
 
@@ -340,6 +374,11 @@ class MTConnectAdapter:
     @property
     def error_count(self) -> int:
         return self._error_count
+
+    @property
+    def dropped_samples(self) -> int:
+        """因重试缓冲溢出而被丢弃的样本总数。"""
+        return self._dropped_count
 
     @property
     def buffer_size(self) -> int:
@@ -468,11 +507,16 @@ class MTConnectAdapter:
             # We're inside a running event loop (e.g., FastAPI async context).
             # Cannot use run_until_complete() or asyncio.run() here.
             # Use run_coroutine_threadsafe() to schedule on the loop from this thread.
+            # 注意：不要在事件循环线程内直接调用 flush()——那会先阻塞本循环
+            # 再等待调度回同一循环的协程，必然超时（样本会经 _requeue_failed 保住，
+            # 但白等 DEFAULT_MTCONNECT_FUTURE_TIMEOUT_SEC 秒）。
             try:
                 future = asyncio.run_coroutine_threadsafe(self._insert_async(client, insert, rows), loop)
                 return future.result(timeout=DEFAULT_MTCONNECT_FUTURE_TIMEOUT_SEC)
-            except (RuntimeError, TimeoutError, Exception) as exc:
-                logger.error("Failed to persist rows in async context: %s", exc, exc_info=True)
+            except Exception:
+                # 宽捕是有意的：调用方（轮询线程）必须存活，失败样本由
+                # flush() 的回灌机制兜底，这里只负责日志。
+                logger.exception("Failed to persist rows in async context")
                 return 0
         else:
             # No running loop - typical CLI scenario or sync context.

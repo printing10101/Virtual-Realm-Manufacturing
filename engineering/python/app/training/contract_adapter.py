@@ -100,9 +100,10 @@ class TrainingDataLakeAdapter(IDatasetStore):
             return stable_id
         except KeyError:
             pass
-        except Exception:
-            # 其他异常（如 DB 未初始化）兜底为 None，由 create 路径处理
-            pass
+        except Exception as e:
+            # 其他异常（如 DB 未初始化）兜底为 None，由 create 路径处理；
+            # 必须留痕：静默吞掉会让"DB 故障"与"数据集不存在"不可区分。
+            logger.debug("TrainingDataLakeAdapter: get_version(%s) failed (%s), falling back to create", stable_id, e)
 
         # 不存在则创建
         try:

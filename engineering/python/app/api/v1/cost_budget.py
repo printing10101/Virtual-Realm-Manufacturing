@@ -9,9 +9,7 @@ from pydantic import BaseModel, Field
 
 import logging
 
-from app.dependencies import get_budget_enforcer, get_cost_optimizer
-
-from app.dependencies import get_cost_tracker
+from app.dependencies import get_budget_enforcer, get_cost_optimizer, get_cost_tracker
 
 from app.models.budget import (
     BudgetLevel,
@@ -103,7 +101,7 @@ class ResetBudgetPeriodRequest(BaseModel):
 
 
 @router.get("/summary")
-async def get_cost_summary(
+def get_cost_summary(
     dimension: str = Query("agent", description="汇总维度: agent/project/goal/task/provider/model"),
     scope_id: str = Query("", description="范围ID"),
     start_time: float | None = Query(None, description="起始Unix时间戳"),
@@ -126,7 +124,7 @@ async def get_cost_summary(
 
 
 @router.get("/task/{task_id}")
-async def get_task_costs(task_id: str):
+def get_task_costs(task_id: str):
     tracker = get_cost_tracker()
     costs = tracker.get_task_costs(task_id)
     total = tracker.get_task_total_cost(task_id)
@@ -141,7 +139,7 @@ async def get_task_costs(task_id: str):
 
 
 @router.get("/trend")
-async def get_cost_trend(
+def get_cost_trend(
     days: int = Query(30, ge=1, le=365, description="查询天数"),
     interval_hours: int = Query(24, ge=1, le=168, description="数据间隔（小时）"),
 ):
@@ -151,13 +149,13 @@ async def get_cost_trend(
 
 
 @router.get("/unit-prices")
-async def get_unit_prices():
+def get_unit_prices():
     tracker = get_cost_tracker()
     return {"ok": True, "data": tracker.get_unit_prices()}
 
 
 @router.post("/unit-prices")
-async def set_unit_price(payload: SetUnitPriceRequest):
+def set_unit_price(payload: SetUnitPriceRequest):
     key = payload.key
     value = payload.value
 
@@ -178,7 +176,7 @@ async def set_unit_price(payload: SetUnitPriceRequest):
 
 
 @router.get("/policies")
-async def get_budget_policies(
+def get_budget_policies(
     level: str | None = Query(None, description="预算层级"),
     scope_id: str | None = Query(None, description="范围ID"),
 ):
@@ -191,7 +189,7 @@ async def get_budget_policies(
 
 
 @router.post("/policies")
-async def set_budget_policy(payload: SetBudgetPolicyRequest):
+def set_budget_policy(payload: SetBudgetPolicyRequest):
     enforcer = get_budget_enforcer()
 
     try:
@@ -216,7 +214,7 @@ async def set_budget_policy(payload: SetBudgetPolicyRequest):
 
 
 @router.post("/adjust-budget")
-async def adjust_budget(payload: AdjustBudgetRequest):
+def adjust_budget(payload: AdjustBudgetRequest):
     enforcer = get_budget_enforcer()
 
     try:
@@ -235,14 +233,14 @@ async def adjust_budget(payload: AdjustBudgetRequest):
 
 
 @router.get("/adjustment-history")
-async def get_adjustment_history(limit: int = Query(50, ge=1, le=100)):
+def get_adjustment_history(limit: int = Query(50, ge=1, le=100)):
     tracker = get_cost_tracker()
     history = tracker.get_budget_adjustments(limit)
     return {"ok": True, "data": history}
 
 
 @router.post("/check")
-async def check_budget(payload: CheckBudgetRequest):
+def check_budget(payload: CheckBudgetRequest):
     enforcer = get_budget_enforcer()
 
     try:
@@ -259,7 +257,7 @@ async def check_budget(payload: CheckBudgetRequest):
 
 
 @router.post("/check-cascade")
-async def check_budget_cascade(payload: CheckBudgetCascadeRequest):
+def check_budget_cascade(payload: CheckBudgetCascadeRequest):
     enforcer = get_budget_enforcer()
 
     agent_id = payload.agent_id
@@ -278,7 +276,7 @@ async def check_budget_cascade(payload: CheckBudgetCascadeRequest):
 
 
 @router.post("/enforce")
-async def enforce_budget(payload: EnforceBudgetRequest):
+def enforce_budget(payload: EnforceBudgetRequest):
     enforcer = get_budget_enforcer()
 
     try:
@@ -303,7 +301,7 @@ async def enforce_budget(payload: EnforceBudgetRequest):
 
 
 @router.post("/reset")
-async def reset_budget_period(payload: ResetBudgetPeriodRequest):
+def reset_budget_period(payload: ResetBudgetPeriodRequest):
     enforcer = get_budget_enforcer()
 
     try:
@@ -322,7 +320,7 @@ async def reset_budget_period(payload: ResetBudgetPeriodRequest):
 
 
 @router.get("/alerts")
-async def get_budget_alerts(
+def get_budget_alerts(
     status: str | None = Query(None, description="筛选状态: warning/exceeded"),
     unread_only: bool = Query(False, description="仅未读"),
     limit: int = Query(100, ge=1, le=100),
@@ -334,28 +332,28 @@ async def get_budget_alerts(
 
 
 @router.post("/alerts/{alert_id}/read")
-async def mark_alert_read(alert_id: int):
+def mark_alert_read(alert_id: int):
     enforcer = get_budget_enforcer()
     enforcer.mark_alert_read(alert_id)
     return {"ok": True, "message": "Alert marked as read"}
 
 
 @router.post("/alerts/read-all")
-async def mark_all_alerts_read():
+def mark_all_alerts_read():
     enforcer = get_budget_enforcer()
     enforcer.mark_all_alerts_read()
     return {"ok": True, "message": "All alerts marked as read"}
 
 
 @router.delete("/alerts/{alert_id}")
-async def delete_alert(alert_id: int):
+def delete_alert(alert_id: int):
     enforcer = get_budget_enforcer()
     enforcer.delete_alert(alert_id)
     return {"ok": True, "message": "Alert deleted"}
 
 
 @router.get("/suggestions")
-async def get_optimization_suggestions():
+def get_optimization_suggestions():
     optimizer = get_cost_optimizer()
     tracker = get_cost_tracker()
     optimizer.set_cost_tracker(tracker)
@@ -365,14 +363,14 @@ async def get_optimization_suggestions():
 
 
 @router.get("/enforcement-log")
-async def get_enforcement_log(limit: int = Query(100, ge=1, le=100)):
+def get_enforcement_log(limit: int = Query(100, ge=1, le=100)):
     enforcer = get_budget_enforcer()
     log_entries = enforcer.get_enforcement_log(limit)
     return {"ok": True, "data": log_entries}
 
 
 @router.get("/reset-log")
-async def get_reset_log(limit: int = Query(100, ge=1, le=100)):
+def get_reset_log(limit: int = Query(100, ge=1, le=100)):
     enforcer = get_budget_enforcer()
     log_entries = enforcer.get_reset_log(limit)
     return {"ok": True, "data": log_entries}

@@ -9,11 +9,14 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.config.environment import EnvironmentConfig
+
 from .exceptions import (
     AppException,
     ErrorLevel,
     CircuitBreakerOpenException,
 )
+from .log_sanitizer import sanitizer
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +54,12 @@ class GlobalExceptionMiddleware(BaseHTTPMiddleware):
     async def _handle_app_exception(self, request: Request, exc: AppException):
         """处理应用异常"""
         logger.warning(
-            "[AppException] %s: %s (code=%d, level=%s)",
+            "[AppException] %s: %s (code=%d, level=%s, detail=%s)",
             request.url.path,
             exc.message,
             exc.code,
             exc.error_level.value,
-            exc_detail=exc.detail,
+            exc.detail,
         )
 
         return JSONResponse(
@@ -94,8 +97,9 @@ class GlobalExceptionMiddleware(BaseHTTPMiddleware):
             str(exc),
         )
 
-        # 生产环境不返回详细错误信息
-        if "LNN_ENV" in request.headers.get("x-environment", ""):
+        # 环境判定以服务端环境变量为准（与 app/main.py 文档开关一致），
+        # 不信任客户端可任意伪造的 x-environment 请求头
+        if EnvironmentConfig().is_production:
             error_content = {
                 "code": 2001,
                 "message": "Internal server error",
@@ -118,25 +122,11 @@ class GlobalExceptionMiddleware(BaseHTTPMiddleware):
         )
 
     def _safe_traceback(self, exc: Exception) -> str:
-        """安全地获取异常栈（生产环境过滤敏感信息）"""
+        """安全地获取异常栈（过滤用户路径等敏感信息）"""
         import traceback
-        import os
 
         tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
-
-        # 过滤敏感路径
-        filtered_tb = []
-        for line in tb:
-            if "desktop_runtime" in line or "venv" in line:
-                # 生产环境显示相对路径
-                filtered_tb.append(line)
-            elif os.path.dirname(line).startswith("C:\\Users\\"):
-                # 本地路径脱敏
-                filtered_tb.append(line.replace("C:\\Users\\Lenovo\\", "[REDACTED]\\"))
-            else:
-                filtered_tb.append(line)
-
-        return "".join(filtered_tb)
+        return sanitizer.sanitize_paths("".join(tb))
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -241,8 +231,8 @@ def setup_exception_handlers(app: FastAPI):
             type(exc).__name__,
         )
 
-        # 生产环境不返回详细错误
-        if request.headers.get("x-environment", "").lower() != "production":
+        # 环境判定以服务端环境变量为准；详细信息仅开发环境返回且必须脱敏
+        if not EnvironmentConfig().is_production:
             import traceback
 
             return JSONResponse(
@@ -250,7 +240,7 @@ def setup_exception_handlers(app: FastAPI):
                 content={
                     "error": "INTERNAL_ERROR",
                     "message": str(exc),
-                    "traceback": traceback.format_exception(type(exc), exc, exc.__traceback__),
+                    "traceback": sanitizer.sanitize_paths(traceback.format_exc()),
                 },
             )
 

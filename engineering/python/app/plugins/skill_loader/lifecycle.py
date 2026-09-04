@@ -51,16 +51,17 @@ class SkillFileWatcher:
         logger.info("SkillFileWatcher stopped")
 
     def _watch_loop(self) -> None:
-        """文件监听主循环。"""
+        """文件监听主循环。
+
+        必须宽捕异常：插件回调抛出的任意异常（如 ValueError）若逃逸
+        会杀死监视线程且永不重启（threading excepthook 只打 stderr，
+        不进日志系统），技能热更新将静默失效。
+        """
         while not self._stop_event.is_set():
             try:
                 self._scan_changes()
-            except (OSError, RuntimeError) as e:
-                logger.warning(
-                    "SkillFileWatcher scan error: %s",
-                    e,
-                    exc_info=True,
-                )
+            except Exception:
+                logger.exception("SkillFileWatcher scan error")
             self._stop_event.wait(self.poll_interval)
 
     def _scan_changes(self) -> None:
