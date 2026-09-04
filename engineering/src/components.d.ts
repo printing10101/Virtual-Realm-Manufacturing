@@ -61,7 +61,9 @@ declare module "vue" {
     ElCard: (typeof import("element-plus/es"))["ElCard"];
     ElCheckbox: (typeof import("element-plus/es"))["ElCheckbox"];
     ElCol: (typeof import("element-plus/es"))["ElCol"];
+    ElCollapseTransition: (typeof import("element-plus/es"))["ElCollapseTransition"];
     ElConfigProvider: (typeof import("element-plus/es"))["ElConfigProvider"];
+    ElDatePicker: (typeof import("element-plus/es"))["ElDatePicker"];
     ElDescriptions: (typeof import("element-plus/es"))["ElDescriptions"];
     ElDescriptionsItem: (typeof import("element-plus/es"))["ElDescriptionsItem"];
     ElDialog: (typeof import("element-plus/es"))["ElDialog"];
@@ -76,7 +78,12 @@ declare module "vue" {
     ElIcon: (typeof import("element-plus/es"))["ElIcon"];
     ElInput: (typeof import("element-plus/es"))["ElInput"];
     ElInputNumber: (typeof import("element-plus/es"))["ElInputNumber"];
+    ElLink: (typeof import("element-plus/es"))["ElLink"];
     ElOption: (typeof import("element-plus/es"))["ElOption"];
+    ElOptionGroup: (typeof import("element-plus/es"))["ElOptionGroup"];
+    ElPageHeader: (typeof import("element-plus/es"))["ElPageHeader"];
+    ElPagination: (typeof import("element-plus/es"))["ElPagination"];
+    ElPopconfirm: (typeof import("element-plus/es"))["ElPopconfirm"];
     ElProgress: (typeof import("element-plus/es"))["ElProgress"];
     ElRadio: (typeof import("element-plus/es"))["ElRadio"];
     ElRadioButton: (typeof import("element-plus/es"))["ElRadioButton"];
@@ -93,7 +100,11 @@ declare module "vue" {
     ElTabPane: (typeof import("element-plus/es"))["ElTabPane"];
     ElTabs: (typeof import("element-plus/es"))["ElTabs"];
     ElTag: (typeof import("element-plus/es"))["ElTag"];
+    ElText: (typeof import("element-plus/es"))["ElText"];
+    ElTimeline: (typeof import("element-plus/es"))["ElTimeline"];
+    ElTimelineItem: (typeof import("element-plus/es"))["ElTimelineItem"];
     ElTooltip: (typeof import("element-plus/es"))["ElTooltip"];
+    ElTree: (typeof import("element-plus/es"))["ElTree"];
     ElUpload: (typeof import("element-plus/es"))["ElUpload"];
     EquipmentDetailDialog: (typeof import("./components/equipment/EquipmentDetailDialog.vue"))["default"];
     EquipmentDeviceTable: (typeof import("./components/equipment/EquipmentDeviceTable.vue"))["default"];

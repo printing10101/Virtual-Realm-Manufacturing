@@ -9,8 +9,6 @@ Copilot→copilot, CommandPalette→command-palette, Onboarding→onboarding
     python scripts/rename_directories.py             # 执行
 """
 import argparse
-import os
-import re
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parent.parent / "src"
