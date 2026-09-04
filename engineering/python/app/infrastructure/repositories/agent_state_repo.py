@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.state.manager import StatePersistenceManager, get_state_persistence
+from app.state.manager import StatePersistenceManager
 
 
 class AgentStateRepo:
@@ -16,5 +16,17 @@ class AgentStateRepo:
         return await self._p.load_state(agent_id)
 
 
-def get_agent_state_repo():
+def get_state_persistence() -> StatePersistenceManager:
+    """构造状态持久化管理器。
+
+    ``StatePersistenceManager`` 需要数据库连接参数（redis_client /
+    db_session_factory），无全局默认单例；请显式构造后注入。
+    """
+    raise NotImplementedError(
+        "StatePersistenceManager 需要数据库连接参数，请使用 "
+        "app.state.manager.StatePersistenceManager(...) 直接构造后传入 AgentStateRepo"
+    )
+
+
+def get_agent_state_repo() -> AgentStateRepo:
     return AgentStateRepo(get_state_persistence())

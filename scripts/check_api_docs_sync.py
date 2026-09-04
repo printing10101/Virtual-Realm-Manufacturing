@@ -15,12 +15,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import ast
 import os
 import re
 import sys
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 # Route Extraction from Python Source Code
@@ -100,7 +98,7 @@ def extract_routes_from_file(file_path: str) -> list[RouteInfo]:
 
         # Find the function definition after this decorator
         func_match = re.search(
-            rf"async\s+def\s+(\w+)",
+            r"async\s+def\s+(\w+)",
             content[match.end() : match.end() + 100],
         )
         func_name = func_match.group(1) if func_match else ""
@@ -108,31 +106,24 @@ def extract_routes_from_file(file_path: str) -> list[RouteInfo]:
         # Extract path parameters from route path
         path_params = re.findall(r"\{(\w+)\}", path)
 
-        # Extract query parameters from function signature
-        query_params = []
+        # Extract function signature for request model detection
         func_start = content.find(f"def {func_name}") if func_name else -1
+        func_sig = ""
         if func_start > 0:
             func_sig_end = content.find("):", func_start)
             if func_sig_end > 0:
                 func_sig = content[func_start:func_sig_end]
-                query_params = re.findall(
-                    r"Query\([^)]*\)\s*=\s*([^(,)]+)",
-                    func_sig,
-                )
 
         # Extract request model (Pydantic type annotation)
         request_model = ""
-        if func_start > 0:
-            func_sig_end = content.find("):", func_start)
-            if func_sig_end > 0:
-                func_sig = content[func_start:func_sig_end]
-                # Look for body: SomeModel or request: SomeModel patterns
-                body_match = re.search(
-                    r"(?:body|request):\s*([A-Z]\w+)",
-                    func_sig,
-                )
-                if body_match:
-                    request_model = body_match.group(1)
+        if func_sig:
+            # Look for body: SomeModel or request: SomeModel patterns
+            body_match = re.search(
+                r"(?:body|request):\s*([A-Z]\w+)",
+                func_sig,
+            )
+            if body_match:
+                request_model = body_match.group(1)
 
         full_path = prefix + path
 
@@ -172,7 +163,7 @@ def extract_main_routes(file_path: str) -> list[RouteInfo]:
             continue
 
         func_match = re.search(
-            rf"async\s+def\s+(\w+)",
+            r"async\s+def\s+(\w+)",
             content[match.end() : match.end() + 100],
         )
         func_name = func_match.group(1) if func_match else ""

@@ -19,16 +19,16 @@ import importlib
 import pkgutil
 from pathlib import Path
 
-# 将 python/ 目录加入 sys.path
-project_root = Path(__file__).resolve().parent.parent / "python"
+# 将 engineering/python/ 目录加入 sys.path（2.7 起后端位于 engineering/python）
+project_root = Path(__file__).resolve().parent.parent / "engineering" / "python"
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-# 切换到 python 目录以模拟真实运行环境
+# 切换到 engineering/python 目录以模拟真实运行环境
 os.chdir(project_root)
 
 # 加载 .env 文件（如果存在）
-env_file = project_root.parent / ".env"
+env_file = project_root.parent.parent / ".env"
 if env_file.exists():
     with open(env_file, encoding="utf-8") as f:
         for line in f:

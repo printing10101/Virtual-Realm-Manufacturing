@@ -21,7 +21,6 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -37,7 +36,7 @@ class VersionFile:
         self._reader = reader
         self._writer = writer
 
-    def read(self) -> Optional[str]:
+    def read(self) -> str | None:
         path = PROJECT_ROOT / self.relative_path
         if not path.exists():
             return None
@@ -55,7 +54,7 @@ def _read_raw(path: Path) -> str:
 
 
 def _read_json_key(key_path: str):
-    def reader(path: Path) -> Optional[str]:
+    def reader(path: Path) -> str | None:
         data = json.loads(path.read_text(encoding="utf-8"))
         keys = key_path.split(".")
         value = data
@@ -67,7 +66,7 @@ def _read_json_key(key_path: str):
 
 
 def _read_regex(pattern: str, group: int = 1):
-    def reader(path: Path) -> Optional[str]:
+    def reader(path: Path) -> str | None:
         content = path.read_text(encoding="utf-8")
         match = re.search(pattern, content)
         return match.group(group) if match else None
@@ -144,7 +143,7 @@ def _write_cargo_toml(path: Path, version: str) -> bool:
     return True
 
 
-def _read_cargo_toml(path: Path) -> Optional[str]:
+def _read_cargo_toml(path: Path) -> str | None:
     content = path.read_text(encoding="utf-8")
     match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', content)
     return match.group(1) if match else None
@@ -205,7 +204,7 @@ def _find_changelog_files() -> list[Path]:
     return sorted(docs_dir.glob("变更摘要*.md"))
 
 
-def get_all_versions() -> dict[str, Optional[str]]:
+def get_all_versions() -> dict[str, str | None]:
     results = {}
     for vf in VERSION_FILES:
         results[vf.relative_path] = vf.read()

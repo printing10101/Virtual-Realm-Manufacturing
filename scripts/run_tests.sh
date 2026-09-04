@@ -21,14 +21,14 @@ unset PYTHONPATH
 
 # 解释器探测（优先级从高到低）:
 #   1. PYTHON_BIN 环境变量显式指定
-#   2. py -3.11（Windows launcher → 系统 Python 3.11，已装 pytest 8.3.4）
+#   2. py -3.14（Windows launcher → 系统 Python 3.14，OCP/pydantic_core 依赖可加载）
 #   3. python（回退；注意 PATH 中的 python 可能是桌面宿主 venv，没有 pytest）
 run_pytest() {
     if [ -n "${PYTHON_BIN:-}" ]; then
         exec "$PYTHON_BIN" -m pytest "$@"
     fi
-    if command -v py >/dev/null 2>&1 && py -3.11 -m pytest --version >/dev/null 2>&1; then
-        exec py -3.11 -m pytest "$@"
+    if command -v py >/dev/null 2>&1 && py -3.14 -m pytest --version >/dev/null 2>&1; then
+        exec py -3.14 -m pytest "$@"
     fi
     exec python -m pytest "$@"
 }

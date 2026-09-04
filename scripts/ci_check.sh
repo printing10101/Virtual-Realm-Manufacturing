@@ -14,10 +14,10 @@ cd "$(dirname "$0")/.."
 
 unset PYTHONPATH
 
-# 与 run_tests.sh 相同的解释器探测：优先 py -3.11（系统 Python，有 pytest）
+# 与 run_tests.sh 相同的解释器探测：优先 py -3.14（系统 Python 3.14，见 AGENTS.md 环境说明）
 PY() {
-    if command -v py >/dev/null 2>&1 && py -3.11 -m pytest --version >/dev/null 2>&1; then
-        py -3.11 "$@"
+    if command -v py >/dev/null 2>&1 && py -3.14 -m pytest --version >/dev/null 2>&1; then
+        py -3.14 "$@"
     else
         python "$@"
     fi
