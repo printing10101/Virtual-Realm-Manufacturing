@@ -1,13 +1,9 @@
 <template>
   <div class="snapshot-list-panel">
     <div class="panel-header">
-      <span class="panel-title">{{ t('snapshotPanel.listTitle') }}</span>
-      <el-button
-        size="small"
-        link
-        @click="emit('resetFilters')"
-      >
-        {{ t('snapshotPanel.btnResetFilters') }}
+      <span class="panel-title">{{ t("snapshotPanel.listTitle") }}</span>
+      <el-button size="small" link @click="emit('resetFilters')">
+        {{ t("snapshotPanel.btnResetFilters") }}
       </el-button>
     </div>
 
@@ -17,7 +13,9 @@
         size="small"
         :placeholder="t('snapshotPanel.filterCreatedBy')"
         clearable
-        @update:model-value="(val: string | number) => emit('update:filterCreatedBy', String(val))"
+        @update:model-value="
+          (val: string | number) => emit('update:filterCreatedBy', String(val))
+        "
         @change="emit('filterChange')"
       />
       <el-input
@@ -25,7 +23,9 @@
         size="small"
         :placeholder="t('snapshotPanel.filterGitSha')"
         clearable
-        @update:model-value="(val: string | number) => emit('update:filterGitSha', String(val))"
+        @update:model-value="
+          (val: string | number) => emit('update:filterGitSha', String(val))
+        "
         @change="emit('filterChange')"
       />
       <el-input
@@ -33,15 +33,14 @@
         size="small"
         :placeholder="t('snapshotPanel.filterModelUri')"
         clearable
-        @update:model-value="(val: string | number) => emit('update:filterModelUri', String(val))"
+        @update:model-value="
+          (val: string | number) => emit('update:filterModelUri', String(val))
+        "
         @change="emit('filterChange')"
       />
     </div>
 
-    <div
-      v-loading="loading"
-      class="snapshot-list-body"
-    >
+    <div v-loading="loading" class="snapshot-list-body">
       <el-empty
         v-if="!loading && snapshots.length === 0"
         :description="t('snapshotPanel.emptyNoSnapshots')"
@@ -55,31 +54,38 @@
         @click="emit('select', snap.snapshot_id)"
       >
         <div class="snapshot-card-header">
-          <span class="snapshot-id">{{ snap.snapshot_id.substring(0, 8) }}</span>
-          <el-tag
-            size="small"
-            :type="snap.code_dirty ? 'warning' : 'success'"
-          >
-            {{ snap.code_dirty
-              ? t('snapshotPanel.dirtyDirty')
-              : t('snapshotPanel.dirtyClean') }}
+          <span class="snapshot-id">{{
+            snap.snapshot_id.substring(0, 8)
+          }}</span>
+          <el-tag size="small" :type="snap.code_dirty ? 'warning' : 'success'">
+            {{
+              snap.code_dirty
+                ? t("snapshotPanel.dirtyDirty")
+                : t("snapshotPanel.dirtyClean")
+            }}
           </el-tag>
         </div>
         <div class="snapshot-card-meta">
           <div class="meta-row">
-            <span class="meta-label">{{ t('snapshotPanel.colCreatedBy') }}:</span>
+            <span class="meta-label"
+              >{{ t("snapshotPanel.colCreatedBy") }}:</span
+            >
             <span class="meta-value">{{ snap.created_by }}</span>
           </div>
           <div class="meta-row">
-            <span class="meta-label">{{ t('snapshotPanel.colGitSha') }}:</span>
+            <span class="meta-label">{{ t("snapshotPanel.colGitSha") }}:</span>
             <span class="meta-value mono">{{ shortSha(snap.git_sha) }}</span>
           </div>
           <div class="meta-row">
-            <span class="meta-label">{{ t('snapshotPanel.colModelUri') }}:</span>
+            <span class="meta-label"
+              >{{ t("snapshotPanel.colModelUri") }}:</span
+            >
             <span class="meta-value mono">{{ snap.model_uri }}</span>
           </div>
           <div class="meta-row">
-            <span class="meta-label">{{ t('snapshotPanel.colCreatedAt') }}:</span>
+            <span class="meta-label"
+              >{{ t("snapshotPanel.colCreatedAt") }}:</span
+            >
             <span class="meta-value">{{ formatTime(snap.created_at) }}</span>
           </div>
         </div>
@@ -100,47 +106,40 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import type { SnapshotSummary } from '@/composables/useSnapshots'
+import { useI18n } from "vue-i18n";
+import type { SnapshotSummary } from "@/composables/useSnapshots";
+import { formatDateTimeSafe } from "@/utils/formatters";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 defineProps<{
-  snapshots: SnapshotSummary[]
-  loading: boolean
-  currentPage: number
-  pageSize: number
-  totalCount: number
-  currentSnapshotId: string | null | undefined
-  filterCreatedBy: string
-  filterGitSha: string
-  filterModelUri: string
-}>()
+  snapshots: SnapshotSummary[];
+  loading: boolean;
+  currentPage: number;
+  pageSize: number;
+  totalCount: number;
+  currentSnapshotId: string | null | undefined;
+  filterCreatedBy: string;
+  filterGitSha: string;
+  filterModelUri: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:filterCreatedBy', val: string): void
-  (e: 'update:filterGitSha', val: string): void
-  (e: 'update:filterModelUri', val: string): void
-  (e: 'select', snapshotId: string): void
-  (e: 'resetFilters'): void
-  (e: 'pageChange', page: number): void
-  (e: 'filterChange'): void
-}>()
+  (e: "update:filterCreatedBy", val: string): void;
+  (e: "update:filterGitSha", val: string): void;
+  (e: "update:filterModelUri", val: string): void;
+  (e: "select", snapshotId: string): void;
+  (e: "resetFilters"): void;
+  (e: "pageChange", page: number): void;
+  (e: "filterChange"): void;
+}>();
 
 function shortSha(sha?: string): string {
-  if (!sha) return '-'
-  return sha.length > 8 ? sha.substring(0, 8) : sha
+  if (!sha) return "-";
+  return sha.length > 8 ? sha.substring(0, 8) : sha;
 }
 
-function formatTime(iso?: string): string {
-  if (!iso) return '-'
-  try {
-    const d = new Date(iso)
-    return d.toLocaleString()
-  } catch {
-    return iso
-  }
-}
+const formatTime = (iso?: string): string => formatDateTimeSafe(iso);
 </script>
 
 <style scoped>

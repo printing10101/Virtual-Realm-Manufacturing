@@ -8,9 +8,10 @@
  * 设计参考：src/composables/useEventSource.ts（SSE 重连 + 事件分发）
  */
 
-import { ref, onUnmounted, unref, type Ref } from 'vue'
-import http, { resolveBackendUrl } from '@/utils/http'
-import { API_CONFIG, buildApiPath } from '@/config/api'
+import { ref, onUnmounted, unref, type Ref } from "vue";
+import http, { resolveBackendUrl } from "@/utils/http";
+import { API_CONFIG, buildApiPath } from "@/config/api";
+import { createSseConnection } from "@/composables/sseConnection";
 import type {
   Artifact,
   TaskStatus,
@@ -18,98 +19,100 @@ import type {
   WorkflowEventType,
   WorkflowRunStatus,
   WorkflowSpec,
-} from '@/contracts/task'
+} from "@/contracts/task";
 
 // 类型定义
 
 /** 工作流运行记录（列表项，对应 WorkflowRun.to_dict()）。 */
 export interface WorkflowRunRecord {
-  id: string
-  name: string
-  version: string
-  spec: WorkflowSpec
-  status: TaskStatus
-  inputs: Record<string, Artifact> | null
-  outputs: Record<string, unknown> | null
-  owner_id: string | null
-  error: string | null
-  metadata: Record<string, unknown>
-  created_at: string | null
-  updated_at: string | null
-  started_at: string | null
-  completed_at: string | null
+  id: string;
+  name: string;
+  version: string;
+  spec: WorkflowSpec;
+  status: TaskStatus;
+  inputs: Record<string, Artifact> | null;
+  outputs: Record<string, unknown> | null;
+  owner_id: string | null;
+  error: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string | null;
+  updated_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
 }
 
 /** 工作流列表查询参数。 */
 export interface ListWorkflowParams {
-  status?: string
-  owner_id?: string
-  limit?: number
-  offset?: number
+  status?: string;
+  owner_id?: string;
+  limit?: number;
+  offset?: number;
 }
 
 /** 工作流列表响应。 */
 export interface ListWorkflowResponse {
-  workflows: WorkflowRunRecord[]
-  limit: number
-  offset: number
+  workflows: WorkflowRunRecord[];
+  limit: number;
+  offset: number;
 }
 
 /** 提交/续跑请求体。 */
 export interface RunRequestBody {
-  spec: WorkflowSpec
-  inputs?: Record<string, Artifact>
-  owner_id?: string
+  spec: WorkflowSpec;
+  inputs?: Record<string, Artifact>;
+  owner_id?: string;
 }
 
 /** 校验结果。 */
 export interface ValidateResult {
-  valid: boolean
-  node_count: number
-  edge_count: number
+  valid: boolean;
+  node_count: number;
+  edge_count: number;
 }
 
 /** SSE 订阅选项。 */
 export interface UseWorkflowStreamOptions {
-  autoReconnect?: boolean
-  maxRetries?: number
-  baseDelay?: number
-  maxDelay?: number
+  autoReconnect?: boolean;
+  maxRetries?: number;
+  baseDelay?: number;
+  maxDelay?: number;
 }
 
 /** SSE 订阅状态。 */
 export interface WorkflowStreamState {
-  events: Ref<WorkflowEvent[]>
-  isConnected: Ref<boolean>
-  isDone: Ref<boolean>
-  currentStatus: Ref<TaskStatus | null>
-  nodeStatuses: Ref<Record<string, TaskStatus>>
-  error: Ref<string | null>
-  connect: () => void
-  close: () => void
-  reset: () => void
+  events: Ref<WorkflowEvent[]>;
+  isConnected: Ref<boolean>;
+  isDone: Ref<boolean>;
+  currentStatus: Ref<TaskStatus | null>;
+  nodeStatuses: Ref<Record<string, TaskStatus>>;
+  error: Ref<string | null>;
+  connect: () => void;
+  close: () => void;
+  reset: () => void;
 }
 
 // REST API 调用（无状态函数）
 
 /** 后端统一响应壳：{ code, message, data, request_id }，code !== 0 由 http 拦截器抛错。 */
 interface ApiEnvelope<T> {
-  data: T
-  message?: string
+  data: T;
+  message?: string;
 }
 
-const BASE = API_CONFIG.WORKFLOWS
+const BASE = API_CONFIG.WORKFLOWS;
 
 /**
  * 校验工作流 Spec（不执行）。
  * @returns valid=true 表示通过；否则抛错（由 http 拦截器统一报错）
  */
-export async function validateWorkflow(spec: WorkflowSpec): Promise<ValidateResult> {
+export async function validateWorkflow(
+  spec: WorkflowSpec,
+): Promise<ValidateResult> {
   const res = await http.post<ApiEnvelope<ValidateResult>>(
-    buildApiPath(BASE, '/validate'),
+    buildApiPath(BASE, "/validate"),
     spec,
-  )
-  return res.data.data
+  );
+  return res.data.data;
 }
 
 /**
@@ -119,11 +122,10 @@ export async function validateWorkflow(spec: WorkflowSpec): Promise<ValidateResu
 export async function runWorkflow(
   body: RunRequestBody,
 ): Promise<{ workflow_run_id: string; status: string }> {
-  const res = await http.post<ApiEnvelope<{ workflow_run_id: string; status: string }>>(
-    buildApiPath(BASE, '/run'),
-    body,
-  )
-  return res.data.data
+  const res = await http.post<
+    ApiEnvelope<{ workflow_run_id: string; status: string }>
+  >(buildApiPath(BASE, "/run"), body);
+  return res.data.data;
 }
 
 /**
@@ -134,11 +136,10 @@ export async function resumeWorkflow(
   workflowRunId: string,
   body: RunRequestBody,
 ): Promise<{ workflow_run_id: string; status: string }> {
-  const res = await http.post<ApiEnvelope<{ workflow_run_id: string; status: string }>>(
-    buildApiPath(BASE, `/${workflowRunId}/resume`),
-    body,
-  )
-  return res.data.data
+  const res = await http.post<
+    ApiEnvelope<{ workflow_run_id: string; status: string }>
+  >(buildApiPath(BASE, `/${workflowRunId}/resume`), body);
+  return res.data.data;
 }
 
 /**
@@ -149,8 +150,8 @@ export async function getWorkflowStatus(
 ): Promise<WorkflowRunStatus> {
   const res = await http.get<ApiEnvelope<WorkflowRunStatus>>(
     buildApiPath(BASE, `/${workflowRunId}`),
-  )
-  return res.data.data
+  );
+  return res.data.data;
 }
 
 /**
@@ -159,10 +160,10 @@ export async function getWorkflowStatus(
 export async function cancelWorkflow(
   workflowRunId: string,
 ): Promise<{ workflow_run_id: string; status: string }> {
-  const res = await http.post<ApiEnvelope<{ workflow_run_id: string; status: string }>>(
-    buildApiPath(BASE, `/${workflowRunId}/cancel`),
-  )
-  return res.data.data
+  const res = await http.post<
+    ApiEnvelope<{ workflow_run_id: string; status: string }>
+  >(buildApiPath(BASE, `/${workflowRunId}/cancel`));
+  return res.data.data;
 }
 
 /**
@@ -172,10 +173,10 @@ export async function listWorkflows(
   params: ListWorkflowParams = {},
 ): Promise<ListWorkflowResponse> {
   const res = await http.get<ApiEnvelope<ListWorkflowResponse>>(
-    buildApiPath(BASE, ''),
+    buildApiPath(BASE, ""),
     { params },
-  )
-  return res.data.data
+  );
+  return res.data.data;
 }
 
 /**
@@ -184,34 +185,36 @@ export async function listWorkflows(
 export async function deleteWorkflow(
   workflowRunId: string,
 ): Promise<{ workflow_run_id: string; deleted: boolean }> {
-  const res = await http.delete<ApiEnvelope<{ workflow_run_id: string; deleted: boolean }>>(
-    buildApiPath(BASE, `/${workflowRunId}`),
-  )
-  return res.data.data
+  const res = await http.delete<
+    ApiEnvelope<{ workflow_run_id: string; deleted: boolean }>
+  >(buildApiPath(BASE, `/${workflowRunId}`));
+  return res.data.data;
 }
 
 // SSE 订阅（基于 EventSource，参考 useEventSource.ts）
 
 /** 工作流事件类型全集（与后端 _serialize_event 对齐 + stream_error 本地兜底）。 */
 const WORKFLOW_EVENT_TYPES: readonly WorkflowEventType[] = [
-  'node_started',
-  'node_completed',
-  'node_failed',
-  'node_skipped',
-  'workflow_completed',
-  'workflow_failed',
-] as const
+  "node_started",
+  "node_completed",
+  "node_failed",
+  "node_skipped",
+  "workflow_completed",
+  "workflow_failed",
+] as const;
 
 /** 终态事件（触发后自动关闭连接）。 */
-const TERMINAL_EVENTS: ReadonlySet<WorkflowEventType> = new Set<WorkflowEventType>([
-  'workflow_completed',
-  'workflow_failed',
-])
+const TERMINAL_EVENTS: ReadonlySet<WorkflowEventType> =
+  new Set<WorkflowEventType>(["workflow_completed", "workflow_failed"]);
 
-export { TERMINAL_EVENTS }
+export { TERMINAL_EVENTS };
 
 /**
  * 订阅工作流事件流。
+ *
+ * EventSource 生命周期（epoch 竞态防护 / 指数退避重连）复用
+ * sseConnection.ts 通用核心；本函数只负责工作流事件语义
+ * （nodeStatuses 推导 / 终态收尾 / stream_error 兜底）。
  *
  * @param workflowRunId - 工作流运行 ID（字符串或 Ref，便于父组件切换 run 时自动重连）
  * @param options - SSE 重连参数
@@ -220,195 +223,115 @@ export function useWorkflowStream(
   workflowRunId: string | Ref<string>,
   options: UseWorkflowStreamOptions = {},
 ): WorkflowStreamState {
-  const {
-    autoReconnect = true,
-    maxRetries = 10,
-    baseDelay = 1000,
-    maxDelay = 30000,
-  } = options
+  const events = ref<WorkflowEvent[]>([]);
+  const isDone = ref(false);
+  const currentStatus = ref<TaskStatus | null>(null);
+  const nodeStatuses = ref<Record<string, TaskStatus>>({});
+  const error = ref<string | null>(null);
 
-  const events = ref<WorkflowEvent[]>([])
-  const isConnected = ref(false)
-  const isDone = ref(false)
-  const currentStatus = ref<TaskStatus | null>(null)
-  const nodeStatuses = ref<Record<string, TaskStatus>>({})
-  const error = ref<string | null>(null)
-
-  let eventSource: EventSource | null = null
-  let retryCount = 0
-  let retryTimer: number | null = null
-  // 修复竞态：每次 connect/reset 递增 streamEpoch，
-  // 异步事件回调与重连定时器执行时检查 epoch 是否仍为最新，
-  // 否则丢弃事件 / 取消重连，避免：
-  //   1. 快速切换 run（A → B）：A 的 SSE 事件仍在事件循环队列中，
-  //      reset 后被处理写入 events.value，造成 B 的事件列表中混入 A 的事件
-  //   2. 快速 close → connect：旧连接的 onerror 触发 scheduleReconnect，
-  //      retryTimer 到期后用新 id 建立连接（看似无害，但若期间已主动 close，
-  //      会建立意外的幽灵连接）
-  let streamEpoch = 0
-
-  const buildUrl = (): string => {
-    const id = unref(workflowRunId)
-    // 桌面模式：EventSource 不走 axios baseURL，必须显式解析为后端实际端口的完整 URL
-    return resolveBackendUrl(buildApiPath(BASE, `/${id}/stream`))
-  }
-
-  const handleEvent = (event: WorkflowEvent, epoch: number): void => {
-    // 竞态防御：仅处理与当前 epoch 匹配的事件
-    if (epoch !== streamEpoch) return
+  const handleEvent = (event: WorkflowEvent): void => {
     // 节点级事件：更新 nodeStatuses
     if (event.node_id) {
       switch (event.event_type) {
-        case 'node_started':
-          nodeStatuses.value[event.node_id] = 'running'
-          break
-        case 'node_completed':
-          nodeStatuses.value[event.node_id] = 'completed'
-          break
-        case 'node_failed':
-          nodeStatuses.value[event.node_id] = 'failed'
-          break
-        case 'node_skipped':
-          nodeStatuses.value[event.node_id] = 'skipped'
-          break
+        case "node_started":
+          nodeStatuses.value[event.node_id] = "running";
+          break;
+        case "node_completed":
+          nodeStatuses.value[event.node_id] = "completed";
+          break;
+        case "node_failed":
+          nodeStatuses.value[event.node_id] = "failed";
+          break;
+        case "node_skipped":
+          nodeStatuses.value[event.node_id] = "skipped";
+          break;
       }
     }
 
     // 工作流级事件：更新 currentStatus
     switch (event.event_type) {
-      case 'node_started':
-      case 'node_completed':
-        currentStatus.value = 'running'
-        break
-      case 'node_failed':
+      case "node_started":
+      case "node_completed":
+        currentStatus.value = "running";
+        break;
+      case "node_failed":
         // 单节点失败不立即置 workflow 为 failed，由 workflow_failed 事件统一收尾
-        currentStatus.value = 'running'
-        break
-      case 'workflow_completed':
-        currentStatus.value = 'completed'
-        isDone.value = true
-        close()
-        break
-      case 'workflow_failed': {
-        currentStatus.value = 'failed'
+        currentStatus.value = "running";
+        break;
+      case "workflow_completed":
+        currentStatus.value = "completed";
+        isDone.value = true;
+        stream.close();
+        break;
+      case "workflow_failed": {
+        currentStatus.value = "failed";
         // payload 为 TaskResult，error 字段非空时优先采用
-        const failedPayload = event.payload as { error?: string }
-        error.value = failedPayload?.error ?? '工作流执行失败'
-        isDone.value = true
-        close()
-        break
+        const failedPayload = event.payload as { error?: string };
+        error.value = failedPayload?.error ?? "工作流执行失败";
+        isDone.value = true;
+        stream.close();
+        break;
       }
     }
-  }
+  };
 
-  const connect = (): void => {
-    const id = unref(workflowRunId)
-    if (!id) return
-    if (eventSource) close()
-
-    // 递增 epoch 使任何前一个连接的 in-flight 事件回调失效
-    streamEpoch += 1
-    const currentEpoch = streamEpoch
-
-    const url = buildUrl()
-    eventSource = new EventSource(url)
-
-    eventSource.onopen = (): void => {
-      if (currentEpoch !== streamEpoch) return
-      isConnected.value = true
-      retryCount = 0
-    }
-
-    eventSource.onerror = (): void => {
-      if (currentEpoch !== streamEpoch) return
-      isConnected.value = false
-      if (autoReconnect && !isDone.value && retryCount < maxRetries) {
-        scheduleReconnect(currentEpoch)
-      } else if (!isDone.value) {
-        // 重连耗尽仍未完成：标记错误状态，避免 UI 永久等待
-        error.value = '工作流事件流连接失败，已达最大重试次数'
-      }
-    }
-
-    const source = eventSource
-    if (!source) {
-      console.warn('[useWorkflowStream] eventSource is null when registering listeners')
-      return
-    }
-
-    WORKFLOW_EVENT_TYPES.forEach(eventType => {
-      source.addEventListener(eventType, (e: MessageEvent) => {
-        // 事件到达时若 epoch 已不匹配，直接丢弃
-        if (currentEpoch !== streamEpoch) return
-        try {
-          const payload = JSON.parse(e.data) as WorkflowEvent
-          events.value.push(payload)
-          handleEvent(payload, currentEpoch)
-        } catch (err: unknown) {
-          // 单条事件解析失败不应断开整条流，记录后跳过
-          console.warn('[useWorkflowStream] event parse failed for', eventType, err)
-        }
-      })
-    })
-
+  const stream = createSseConnection({
+    tag: "[useWorkflowStream]",
+    eventTypes: WORKFLOW_EVENT_TYPES,
+    autoReconnect: options.autoReconnect,
+    maxRetries: options.maxRetries,
+    baseDelay: options.baseDelay,
+    maxDelay: options.maxDelay,
+    isDone: () => isDone.value,
+    canConnect: () => Boolean(unref(workflowRunId)),
+    buildUrl: () => {
+      const id = unref(workflowRunId);
+      // 桌面模式：EventSource 不走 axios baseURL，必须显式解析为后端实际端口的完整 URL
+      return resolveBackendUrl(buildApiPath(BASE, `/${id}/stream`));
+    },
+    onError: (exhausted) => {
+      if (!exhausted || isDone.value) return;
+      // 重连耗尽仍未完成：标记错误状态，避免 UI 永久等待
+      error.value = "工作流事件流连接失败，已达最大重试次数";
+    },
+    onEvent: (_eventType, raw) => {
+      const payload = raw as WorkflowEvent;
+      events.value.push(payload);
+      handleEvent(payload);
+    },
     // 后端在异常时主动推送 stream_error 事件（workflows.py line 331）
-    source.addEventListener('stream_error', (e: MessageEvent) => {
-      if (currentEpoch !== streamEpoch) return
-      try {
-        const data = JSON.parse(e.data) as { error?: string }
-        error.value = data.error ?? '工作流事件流异常'
-        isDone.value = true
-      } catch {
-        error.value = '工作流事件流异常（解析失败）'
-        isDone.value = true
-      } finally {
-        close()
-      }
-    })
-  }
+    extraListeners: (source, isCurrent) => {
+      source.addEventListener("stream_error", (e: MessageEvent) => {
+        if (!isCurrent()) return;
+        try {
+          const data = JSON.parse(e.data) as { error?: string };
+          error.value = data.error ?? "工作流事件流异常";
+          isDone.value = true;
+        } catch {
+          error.value = "工作流事件流异常（解析失败）";
+          isDone.value = true;
+        } finally {
+          stream.close();
+        }
+      });
+    },
+  });
 
-  const scheduleReconnect = (epoch: number): void => {
-    retryCount++
-    const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), maxDelay)
-    retryTimer = window.setTimeout(() => {
-      // 重连到期时若 epoch 已不匹配（已被新 connect / close 取代），放弃重连
-      if (epoch !== streamEpoch) return
-      connect()
-    }, delay)
-  }
-
-  const close = (): void => {
-    // 递增 epoch 使任何 in-flight 事件回调立即失效
-    streamEpoch += 1
-    if (eventSource) {
-      eventSource.close()
-      eventSource = null
-    }
-    if (retryTimer !== null) {
-      clearTimeout(retryTimer)
-      retryTimer = null
-    }
-    isConnected.value = false
-  }
+  const { connect, close } = stream;
 
   const reset = (): void => {
     // 递增 epoch 使 in-flight 事件不再写入旧 events 数组
-    streamEpoch += 1
-    events.value = []
-    currentStatus.value = null
-    nodeStatuses.value = {}
-    error.value = null
-    isDone.value = false
-    retryCount = 0
-  }
-
-  onUnmounted(() => {
-    close()
-  })
+    stream.invalidate();
+    events.value = [];
+    currentStatus.value = null;
+    nodeStatuses.value = {};
+    error.value = null;
+    isDone.value = false;
+  };
 
   return {
     events,
-    isConnected,
+    isConnected: stream.isConnected,
     isDone,
     currentStatus,
     nodeStatuses,
@@ -416,7 +339,7 @@ export function useWorkflowStream(
     connect,
     close,
     reset,
-  }
+  };
 }
 
 // 工作流管理 composable（聚合列表 + 提交 + 当前运行状态）
@@ -430,50 +353,50 @@ export function useWorkflowStream(
  *   - SSE 事件流状态
  */
 export function useWorkflow() {
-  const workflows = ref<WorkflowRunRecord[]>([])
-  const loading = ref(false)
-  const totalCount = ref(0)
-  const currentPage = ref(1)
-  const pageSize = ref(20)
-  const statusFilter = ref<string>('')
-  const ownerFilter = ref<string>('')
+  const workflows = ref<WorkflowRunRecord[]>([]);
+  const loading = ref(false);
+  const totalCount = ref(0);
+  const currentPage = ref(1);
+  const pageSize = ref(20);
+  const statusFilter = ref<string>("");
+  const ownerFilter = ref<string>("");
 
-  const currentRunId = ref<string>('')
-  const currentStatus = ref<WorkflowRunStatus | null>(null)
-  const currentLoading = ref(false)
+  const currentRunId = ref<string>("");
+  const currentStatus = ref<WorkflowRunStatus | null>(null);
+  const currentLoading = ref(false);
   // 修复竞态：refreshCurrentStatus 是 async，若用户在 A 的 HTTP 还在飞行时
   // 又切到 B（selectWorkflow(B)），A 的 await 完成后会用 A 的状态覆盖
   // currentStatus.value，导致 UI 短暂显示错误状态。每次发起 refresh 时
   // 递增 statusEpoch，await 完成后检查 epoch 是否仍匹配，不匹配则丢弃结果。
-  let statusEpoch = 0
+  let statusEpoch = 0;
 
   // SSE 订阅：run_id 切换时由 useWorkflowStream 内部重新建立连接
   const stream = useWorkflowStream(currentRunId, {
     autoReconnect: true,
     maxRetries: 10,
-  })
+  });
 
   /**
    * 加载工作流列表。
    */
   async function loadWorkflows(): Promise<void> {
-    loading.value = true
+    loading.value = true;
     try {
       const params: ListWorkflowParams = {
         limit: pageSize.value,
         offset: (currentPage.value - 1) * pageSize.value,
-      }
-      if (statusFilter.value) params.status = statusFilter.value
-      if (ownerFilter.value) params.owner_id = ownerFilter.value
+      };
+      if (statusFilter.value) params.status = statusFilter.value;
+      if (ownerFilter.value) params.owner_id = ownerFilter.value;
 
-      const res = await listWorkflows(params)
-      workflows.value = res.workflows
+      const res = await listWorkflows(params);
+      workflows.value = res.workflows;
       // 后端目前不返回 total 字段；以返回数量 + offset 估算是否有下一页
-      totalCount.value = res.workflows.length + res.offset
+      totalCount.value = res.workflows.length + res.offset;
     } catch (e: unknown) {
-      console.warn('[useWorkflow] loadWorkflows failed:', e)
+      console.warn("[useWorkflow] loadWorkflows failed:", e);
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
@@ -481,17 +404,15 @@ export function useWorkflow() {
    * 提交工作流运行并自动订阅 SSE。
    * @returns workflow_run_id
    */
-  async function submitWorkflow(
-    body: RunRequestBody,
-  ): Promise<string> {
-    const { workflow_run_id } = await runWorkflow(body)
+  async function submitWorkflow(body: RunRequestBody): Promise<string> {
+    const { workflow_run_id } = await runWorkflow(body);
     // 切换当前 run 并重置流状态后建立 SSE 连接
-    stream.reset()
-    currentRunId.value = workflow_run_id
-    stream.connect()
+    stream.reset();
+    currentRunId.value = workflow_run_id;
+    stream.connect();
     // 立即拉取一次状态，避免 SSE 首事件到达前的空窗
-    void refreshCurrentStatus()
-    return workflow_run_id
+    void refreshCurrentStatus();
+    return workflow_run_id;
   }
 
   /**
@@ -501,59 +422,60 @@ export function useWorkflow() {
     originalRunId: string,
     body: RunRequestBody,
   ): Promise<string> {
-    const { workflow_run_id } = await resumeWorkflow(originalRunId, body)
-    stream.reset()
-    currentRunId.value = workflow_run_id
-    stream.connect()
-    void refreshCurrentStatus()
-    return workflow_run_id
+    const { workflow_run_id } = await resumeWorkflow(originalRunId, body);
+    stream.reset();
+    currentRunId.value = workflow_run_id;
+    stream.connect();
+    void refreshCurrentStatus();
+    return workflow_run_id;
   }
 
   /**
    * 取消当前工作流。
    */
   async function cancelCurrent(): Promise<void> {
-    if (!currentRunId.value) return
-    await cancelWorkflow(currentRunId.value)
-    void refreshCurrentStatus()
+    if (!currentRunId.value) return;
+    await cancelWorkflow(currentRunId.value);
+    void refreshCurrentStatus();
   }
 
   /**
    * 删除工作流运行记录。
    */
   async function removeWorkflow(workflowRunId: string): Promise<void> {
-    await deleteWorkflow(workflowRunId)
+    await deleteWorkflow(workflowRunId);
     // 若删除的是当前正在订阅的 run，关闭 SSE
     if (currentRunId.value === workflowRunId) {
-      stream.close()
-      currentRunId.value = ''
-      currentStatus.value = null
+      stream.close();
+      currentRunId.value = "";
+      currentStatus.value = null;
     }
     // 从本地列表中移除
-    workflows.value = workflows.value.filter(w => w.id !== workflowRunId)
+    workflows.value = workflows.value.filter((w) => w.id !== workflowRunId);
   }
 
   /**
    * 刷新当前工作流状态。
    */
   async function refreshCurrentStatus(): Promise<void> {
-    if (!currentRunId.value) return
+    if (!currentRunId.value) return;
     // 递增 epoch 使前一个 in-flight refresh 的结果失效
-    statusEpoch += 1
-    const currentEpoch = statusEpoch
-    const targetRunId = currentRunId.value
-    currentLoading.value = true
+    statusEpoch += 1;
+    const currentEpoch = statusEpoch;
+    const targetRunId = currentRunId.value;
+    currentLoading.value = true;
     try {
-      const status = await getWorkflowStatus(targetRunId)
+      const status = await getWorkflowStatus(targetRunId);
       // 若期间 currentRunId 已被切换（selectWorkflow/submitWorkflow），丢弃结果
-      if (currentEpoch !== statusEpoch || currentRunId.value !== targetRunId) return
-      currentStatus.value = status
+      if (currentEpoch !== statusEpoch || currentRunId.value !== targetRunId)
+        return;
+      currentStatus.value = status;
     } catch (e: unknown) {
-      if (currentEpoch !== statusEpoch) return
-      console.warn('[useWorkflow] refreshCurrentStatus failed:', e)
+      if (currentEpoch !== statusEpoch) return;
+      console.warn("[useWorkflow] refreshCurrentStatus failed:", e);
     } finally {
       if (currentEpoch === statusEpoch) {
-        currentLoading.value = false
+        currentLoading.value = false;
       }
     }
   }
@@ -562,21 +484,21 @@ export function useWorkflow() {
    * 选择某个工作流作为当前查看对象（自动建立 SSE 订阅）。
    */
   async function selectWorkflow(workflowRunId: string): Promise<void> {
-    stream.reset()
-    currentRunId.value = workflowRunId
-    await refreshCurrentStatus()
+    stream.reset();
+    currentRunId.value = workflowRunId;
+    await refreshCurrentStatus();
     // 仅在未到达终态时建立 SSE
-    const st = currentStatus.value?.status
+    const st = currentStatus.value?.status;
     const isTerminal =
-      st === 'completed' || st === 'failed' || st === 'cancelled'
+      st === "completed" || st === "failed" || st === "cancelled";
     if (!isTerminal) {
-      stream.connect()
+      stream.connect();
     }
   }
 
   onUnmounted(() => {
-    stream.close()
-  })
+    stream.close();
+  });
 
   return {
     // 列表
@@ -602,5 +524,5 @@ export function useWorkflow() {
     stream,
     // 校验（直接暴露，无需状态）
     validate: validateWorkflow,
-  }
+  };
 }

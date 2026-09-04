@@ -7,7 +7,7 @@ export default {
     crashed: "已崩溃",
     failed: "启动失败",
     stopped: "已停止",
-    restart: "重启"
+    restart: "重启",
   },
   errorBoundary: {
     title: "应用出现了一些问题",
@@ -15,7 +15,7 @@ export default {
     reload: "重新加载",
     goHome: "返回首页",
     details: "错误详情",
-    returnedHome: "已返回首页"
+    returnedHome: "已返回首页",
   },
   backendStartup: {
     crashed: "后端服务已退出",
@@ -24,12 +24,13 @@ export default {
     restarting: "正在重新启动后端服务...",
     firstLaunchHint: "首次启动可能需要数秒到一分钟,请稍候...",
     errorDetails: "错误详情",
-    errorHint: "请检查您的安装包是否完整,或尝试重启后端服务。如问题持续存在,请联系技术支持。",
+    errorHint:
+      "请检查您的安装包是否完整,或尝试重启后端服务。如问题持续存在,请联系技术支持。",
     startingBtn: "正在启动...",
     close: "关闭",
     stopBackend: "停止后端",
     retry: "重试启动",
-    skip: "跳过等待"
+    skip: "跳过等待",
   },
   navigation: {
     home: "首页",
@@ -130,7 +131,8 @@ export default {
   },
   home: {
     welcome: "欢迎使用灵境制造 V4",
-    welcomeDesc: "AI驱动的智能制造平台，提供工具磨损预测、工艺参数优化与3D可视化功能",
+    welcomeDesc:
+      "AI驱动的智能制造平台，提供工具磨损预测、工艺参数优化与3D可视化功能",
     quickAccess: "快捷功能",
     recentProjects: "最近项目",
     noRecentProject: "暂无最近项目",
@@ -141,7 +143,7 @@ export default {
     stopped: "已停止",
     registeredModels: "模型注册数",
     fetchFailed: "状态获取失败",
-// Home.vue 追加键
+    // Home.vue 追加键
     pageTitle: "生产总览",
     greetingOperator: "，操作员",
     rangeToday: "今日",
@@ -349,7 +351,7 @@ export default {
       noGcode: "暂无可导出的G代码",
       requestFailed: "工艺规划请求失败",
     },
-// ProcessPlanning.vue 工艺路线管理页面追加键
+    // ProcessPlanning.vue 工艺路线管理页面追加键
     routePage: {
       pageTitle: "工艺规划",
       pageSubtitle: "管理和配置制造工艺路线",
@@ -540,7 +542,8 @@ export default {
   },
   settings: {
     versionWarningTitle: "版本不一致警告",
-    versionWarningMsg: "检测到组件版本不一致，可能导致功能异常。建议重启应用以解决此问题。",
+    versionWarningMsg:
+      "检测到组件版本不一致，可能导致功能异常。建议重启应用以解决此问题。",
     versionInfo: "版本信息",
     versionConsistent: "版本一致",
     versionInconsistent: "版本不一致",
@@ -565,16 +568,22 @@ export default {
     hardwareTierStandard: "标准档（standard）",
     hardwareTierHigh: "高配档（high）",
     hardwareTierUltra: "Ultra 档（ultra）",
-    hardwareTierMinimalDesc: "4 核 CPU / 8 GB RAM / 无 GPU。仅启用规则引擎 + 云端 API，跳过 Ollama 加载。",
-    hardwareTierStandardDesc: "8 核 CPU / 16 GB RAM / 可选 GPU。默认档位，支持本地小模型。",
-    hardwareTierHighDesc: "8 核+ CPU / 32 GB RAM / NVIDIA GPU ≥ 6 GB。支持本地 7B-14B 模型。",
+    hardwareTierMinimalDesc:
+      "4 核 CPU / 8 GB RAM / 无 GPU。仅启用规则引擎 + 云端 API，跳过 Ollama 加载。",
+    hardwareTierStandardDesc:
+      "8 核 CPU / 16 GB RAM / 可选 GPU。默认档位，支持本地小模型。",
+    hardwareTierHighDesc:
+      "8 核+ CPU / 32 GB RAM / NVIDIA GPU ≥ 6 GB。支持本地 7B-14B 模型。",
     hardwareTierUltraDesc: "工作站级配置。支持本地 14B+ 模型 + GPU 训练。",
     lightweightMode: "轻量模式",
-    lightweightModeDesc: "跳过 Ollama 启动探测，强制使用云端 API 或规则引擎，限制 AI 并发数为 1。适用于老旧硬件或临时演示场景。",
+    lightweightModeDesc:
+      "跳过 Ollama 启动探测，强制使用云端 API 或规则引擎，限制 AI 并发数为 1。适用于老旧硬件或临时演示场景。",
     lightweightModeAutoEnabled: "极简档位已自动启用轻量模式",
-    hardwareTierChangeHint: "更改档位需重启应用后端以生效。前端设置仅作偏好记录。",
+    hardwareTierChangeHint:
+      "更改档位需重启应用后端以生效。前端设置仅作偏好记录。",
     hardwareTierSyncEnv: "同步环境变量",
-    hardwareTierSyncEnvDesc: "将所选档位写入 .env 文件（LNN_HARDWARE_TIER / LNN_LIGHTWEIGHT_MODE / LNN_SKIP_OLLAMA），下次启动后端时生效。",
+    hardwareTierSyncEnvDesc:
+      "将所选档位写入 .env 文件（LNN_HARDWARE_TIER / LNN_LIGHTWEIGHT_MODE / LNN_SKIP_OLLAMA），下次启动后端时生效。",
     hardwareTierSyncSuccess: "环境变量已同步，重启后端后生效",
     hardwareTierSyncFailed: "环境变量同步失败，请手动修改 .env 文件",
     saveSettings: "保存设置",
@@ -595,7 +604,8 @@ export default {
     autonomyModeDesc: "AI自主度控制AI系统的决策权限级别：",
     autonomyLevel0: "完全手动：所有AI建议均需用户明确确认后方可执行",
     autonomyLevel1: "建议需确认：AI提供建议，用户确认后执行",
-    autonomyLevel2: "推荐模式（默认）：AI提供推荐方案，用户可选择接受/修改/拒绝",
+    autonomyLevel2:
+      "推荐模式（默认）：AI提供推荐方案，用户可选择接受/修改/拒绝",
     autonomyLevel3: "半自动：高置信度AI建议自动执行，低置信度需确认",
     autonomyLevel4: "AI全自动：AI可直接执行推荐操作，但保留完整操作日志供审查",
     aiAutonomyLevel: "AI自主度",
@@ -604,11 +614,15 @@ export default {
     recommended: "推荐模式",
     semiAuto: "半自动",
     fullyAuto: "全自动",
-    autonomyDesc0: "完全手动模式：所有AI建议均需用户明确确认后方可执行，系统不进行任何自动决策。",
+    autonomyDesc0:
+      "完全手动模式：所有AI建议均需用户明确确认后方可执行，系统不进行任何自动决策。",
     autonomyDesc1: "建议需确认模式：AI提供建议，用户在审阅确认后执行。",
-    autonomyDesc2: "推荐模式（默认）：AI提供推荐方案，用户可选择接受、修改或拒绝。",
-    autonomyDesc3: "半自动模式：高置信度（≥80%）AI建议自动执行，低置信度需用户确认。",
-    autonomyDesc4: "全自动模式：AI可直接执行推荐操作，但保留完整操作日志供事后审查和追溯。",
+    autonomyDesc2:
+      "推荐模式（默认）：AI提供推荐方案，用户可选择接受、修改或拒绝。",
+    autonomyDesc3:
+      "半自动模式：高置信度（≥80%）AI建议自动执行，低置信度需用户确认。",
+    autonomyDesc4:
+      "全自动模式：AI可直接执行推荐操作，但保留完整操作日志供事后审查和追溯。",
     showConfidence: "显示置信度指示器",
     showAlternatives: "显示备选方案",
     showReasoning: "显示推理过程",
@@ -646,9 +660,12 @@ export default {
     revokeAllT: "撤销所有T类Token",
     createToken: "创建Token",
     agentTokenInfo: "Agent Token 说明",
-    agentTokenDesc1: "Agent Token 供外部 AI 工具（Cursor、Claude Code、Codex）调用 LNN 能力使用。",
-    agentTokenDesc2: "权限级别：R（读取）/ W（写入）/ B（训练）/ N（通知）/ C（管理）/ T（执行）",
-    agentTokenDesc3: "Paper-Only 模式：默认开启，T 类操作仅模拟不实际下发到机床。",
+    agentTokenDesc1:
+      "Agent Token 供外部 AI 工具（Cursor、Claude Code、Codex）调用 LNN 能力使用。",
+    agentTokenDesc2:
+      "权限级别：R（读取）/ W（写入）/ B（训练）/ N（通知）/ C（管理）/ T（执行）",
+    agentTokenDesc3:
+      "Paper-Only 模式：默认开启，T 类操作仅模拟不实际下发到机床。",
     simulateMode: "模拟模式",
     realExecute: "真实执行",
     revoke: "撤销",
@@ -661,7 +678,8 @@ export default {
     tokenCreatedSuccess: "Token 创建成功，请务必保存",
     selectScopeHint: "请至少选择一个权限范围",
     importantNotice: "重要：请妥善保存此 Token！",
-    importantNoticeMsg: "Token 完整值仅在创建时显示一次，关闭后将无法再次查看。",
+    importantNoticeMsg:
+      "Token 完整值仅在创建时显示一次，关闭后将无法再次查看。",
     iHaveSaved: "我已保存",
     tokenDetail: "Token 详情",
     tokenPrefix: "Token前缀",
@@ -672,7 +690,8 @@ export default {
     revokeSuccess: "Token 已撤销",
     revokeFailed: "撤销Token失败",
     emergencyStopTitle: "紧急停止确认",
-    emergencyStopMsg: "确定要撤销所有包含 T 类权限的 Token 吗？此操作为紧急停止，将立即中止所有 T 类 Token 的访问权限。",
+    emergencyStopMsg:
+      "确定要撤销所有包含 T 类权限的 Token 吗？此操作为紧急停止，将立即中止所有 T 类 Token 的访问权限。",
     emergencyStopConfirm: "确定撤销",
     revokeSuccessCount: "已撤销 {count} 个 T 类 Token",
     revokeTFailed: "撤销T类Token失败",
@@ -753,7 +772,7 @@ export default {
     llmLocalProviders: "本地 Provider",
     llmCloudProviders: "云端 Provider",
     llmConfigPath: "配置存储路径",
-// Settings.vue 页面级键
+    // Settings.vue 页面级键
     pageTitle: "系统设置",
     subtitle: "管理系统配置、版本信息和偏好设置",
     navGeneral: "通用设置",
@@ -781,7 +800,8 @@ export default {
       colDefaultModel: "默认模型",
       colDetectionMethod: "探测方式",
       colDescription: "描述",
-      importConfirmMessage: "将把所有探测到的 LLM 服务{action}（已存在同 ID 会被跳过），并自动激活第一个本地 Provider。继续？",
+      importConfirmMessage:
+        "将把所有探测到的 LLM 服务{action}（已存在同 ID 会被跳过），并自动激活第一个本地 Provider。继续？",
       importConfirmTitle: "确认导入",
       import: "导入",
       cancel: "取消",
@@ -888,7 +908,8 @@ export default {
       configStoragePath: "配置存储路径",
       providerList: "Provider 列表",
       addProvider: "新增 Provider",
-      confirmDeleteMessage: "确定删除 Provider「{name}」({id})？此操作不可撤销。",
+      confirmDeleteMessage:
+        "确定删除 Provider「{name}」({id})？此操作不可撤销。",
       deleteConfirmTitle: "删除确认",
       btnDelete: "删除",
       btnCancel: "取消",
@@ -1248,7 +1269,8 @@ export default {
     collisionAlert: {
       severityCritical: "严重",
       severityWarning: "警告",
-      confirmDismissAllMsg: "确认要忽略全部碰撞预警吗？此操作将清除所有未处理的碰撞记录。",
+      confirmDismissAllMsg:
+        "确认要忽略全部碰撞预警吗？此操作将清除所有未处理的碰撞记录。",
       confirmDismissAllTitle: "确认忽略全部",
       confirmDismissAllBtn: "确认忽略",
       dismissedAllMsg: "已忽略全部碰撞预警",
@@ -1300,7 +1322,8 @@ export default {
     ncCodeTitle: "NC 代码",
     uploadFile: "上传文件",
     clear: "清空",
-    gcodePlaceholder: "在此粘贴 G 代码，或点击右上角上传 .nc / .gcode 文件\n\n支持 Fanuc / Siemens / Heidenhain 格式",
+    gcodePlaceholder:
+      "在此粘贴 G 代码，或点击右上角上传 .nc / .gcode 文件\n\n支持 Fanuc / Siemens / Heidenhain 格式",
     gcodeLines: "{count} 行",
     gcodeGCommands: "{count} 条 G 指令",
     gcodeMCommands: "{count} 条 M 指令",
@@ -1339,7 +1362,8 @@ export default {
     suggest3: "确认进给速率和主轴转速是否合理",
     suggest4: "修改完成后点击「重新仿真」验证",
     passAlertTitle: "仿真通过 — NC 代码可安全上机执行",
-    passAlertDesc: "碰撞检测未发现异常，刀具路径安全。您可以下载仿真结果 STL 或导出仿真报告。",
+    passAlertDesc:
+      "碰撞检测未发现异常，刀具路径安全。您可以下载仿真结果 STL 或导出仿真报告。",
     downloadStl: "下载 STL",
     collisionDetail: "碰撞详情",
     viewReport: "查看检测报告",
@@ -1440,13 +1464,15 @@ export default {
     // 步骤1：描述零件
     step1Header: "描述你的零件",
     step1Hint: "使用自然语言描述你想要创建的零件形状和尺寸",
-    step1Placeholder: "例如：创建一个长50mm、宽30mm、高20mm的长方体，四个角倒圆角R2",
+    step1Placeholder:
+      "例如：创建一个长50mm、宽30mm、高20mm的长方体，四个角倒圆角R2",
     btnNext: "下一步",
     // 示例
     example1: "创建一个长50mm、宽30mm、高20mm的长方体",
     example2: "创建一个直径30mm、高50mm的圆柱体",
     example3: "创建一个半径15mm的球体",
-    example4: "创建一个长60mm、宽40mm、高25mm的长方体，顶部中心有一个直径10mm的通孔",
+    example4:
+      "创建一个长60mm、宽40mm、高25mm的长方体，顶部中心有一个直径10mm的通孔",
     // 步骤2：参数确认
     step2Header: "确认模型参数",
     step2Hint: "检查并编辑提取的参数，确保符合你的需求",
@@ -1778,7 +1804,8 @@ export default {
     pageTitle: "成本分析",
     // 预算超限告警
     alertBudgetExceededTitle: "预算超限警告",
-    alertBudgetExceededDesc: "部分预算已达到或超过限额，新任务可能被阻止执行。请尽快调整预算或减少资源消耗。",
+    alertBudgetExceededDesc:
+      "部分预算已达到或超过限额，新任务可能被阻止执行。请尽快调整预算或减少资源消耗。",
     // 图表标题
     chartCostDistribution: "成本维度分布",
     chartCostByType: "成本分类对比",
@@ -2157,100 +2184,105 @@ export default {
     warning: "警告",
   },
 
-// 切削实测数据采集 (CuttingExperienceDashboard)
-experience: {
-  // 页面头部
-  pageTitle: "切削实测数据",
-  pageSubtitle: "数据飞轮闭环 · 采集 → 存储 → 分析 → 优化 → 再采集",
-  
-  // 统计卡片
-  stats: {
-    totalRecords: "总记录数",
-    avgCycleTime: "平均节拍",
-    avgRoughness: "平均粗糙度",
-    avgToolWear: "平均磨损",
-    okRate: "合格率",
-    anomalyRate: "异常率",
-    machineId: "机床 ID",
-    toolId: "刀具 ID",
-  },
-  
-  // 单位
-  unit: {
-    records: "条",
-    seconds: "秒",
-  },
-  
-  // 过滤
-  filter: {
-    machineId: "机床 ID",
-    toolId: "刀具 ID",
-    material: "材料",
-    machiningType: "加工类型",
-    result: "结果",
-    hasAnomaly: "有异常",
-  },
-  
-  // 占位符
-  placeholder: {
-    enterMachineId: "请输入机床 ID",
-    enterToolId: "请输入刀具 ID",
-    enterMaterial: "请输入材料",
-    selectType: "选择加工类型",
-    selectResult: "选择结果",
-  },
-  
-  // 按钮
-  btn: {
-    search: "查询",
-    reset: "重置",
-    view: "查看",
-    delete: "删除",
-    refresh: "刷新",
-    importData: "导入数据",
-    submit: "提交",
-    cancel: "取消",
-    confirm: "确认",
-  },
-  
-  // 加工类型中文
-  machiningTypes: {
-    milling: "铣削",
-    turning: "车削",
-    drilling: "钻孔",
-    tapping: "攻丝",
-    boring: "镗孔",
-    grooving: "切槽",
-    threading: "螺纹加工",
-  },
-  
-  // 结果中文
-  results: {
-    ok: "合格",
-    rework: "返工",
-    scrap: "报废",
-  },
-  
-  // 消息
-  msg: {
-    refreshSuccess: "刷新成功",
-    refreshFailed: "刷新失败",
-    deleteSuccess: "删除成功",
-    deleteFailed: "删除失败",
-    importSuccess: "导入成功",
-    importFailed: "导入失败",
-    error: "操作失败，请稍后重试",
-  },
-  
-  // 确认框
-  confirm: {
-    delete: "确定要删除该记录吗？此操作不可恢复。",
-    import: "导入数据将覆盖当前列表，确定继续？",
-  },
-},
+  // 切削实测数据采集 (CuttingExperienceDashboard)
+  experience: {
+    // 页面头部
+    pageTitle: "切削实测数据",
+    pageSubtitle: "数据飞轮闭环 · 采集 → 存储 → 分析 → 优化 → 再采集",
 
-// 数据飞轮看板（FlywheelDashboard.vue）相关国际化键
-flywheel: {
+    // 统计卡片
+    stats: {
+      totalRecords: "总记录数",
+      avgCycleTime: "平均节拍",
+      avgRoughness: "平均粗糙度",
+      avgToolWear: "平均磨损",
+      okRate: "合格率",
+      anomalyRate: "异常率",
+      machineId: "机床 ID",
+      toolId: "刀具 ID",
+    },
+
+    // 单位
+    unit: {
+      records: "条",
+      seconds: "秒",
+    },
+
+    // 列表
+    list: {
+      empty: "暂无切削实测记录，完成一次数据采集后点击刷新",
+    },
+
+    // 过滤
+    filter: {
+      machineId: "机床 ID",
+      toolId: "刀具 ID",
+      material: "材料",
+      machiningType: "加工类型",
+      result: "结果",
+      hasAnomaly: "有异常",
+    },
+
+    // 占位符
+    placeholder: {
+      enterMachineId: "请输入机床 ID",
+      enterToolId: "请输入刀具 ID",
+      enterMaterial: "请输入材料",
+      selectType: "选择加工类型",
+      selectResult: "选择结果",
+    },
+
+    // 按钮
+    btn: {
+      search: "查询",
+      reset: "重置",
+      view: "查看",
+      delete: "删除",
+      refresh: "刷新",
+      importData: "导入数据",
+      submit: "提交",
+      cancel: "取消",
+      confirm: "确认",
+    },
+
+    // 加工类型中文
+    machiningTypes: {
+      milling: "铣削",
+      turning: "车削",
+      drilling: "钻孔",
+      tapping: "攻丝",
+      boring: "镗孔",
+      grooving: "切槽",
+      threading: "螺纹加工",
+    },
+
+    // 结果中文
+    results: {
+      ok: "合格",
+      rework: "返工",
+      scrap: "报废",
+    },
+
+    // 消息
+    msg: {
+      refreshSuccess: "刷新成功",
+      refreshFailed: "刷新失败",
+      deleteSuccess: "删除成功",
+      deleteFailed: "删除失败",
+      importSuccess: "导入成功",
+      importFailed: "导入失败",
+      error: "操作失败，请稍后重试",
+    },
+
+    // 确认框
+    confirm: {
+      delete: "确定要删除该记录吗？此操作不可恢复。",
+      import: "导入数据将覆盖当前列表，确定继续？",
+    },
+  },
+
+  // 数据飞轮看板（FlywheelDashboard.vue）相关国际化键
+  flywheel: {
     // 页面头部
     pageTitle: "数据飞轮",
     pageSubtitle: "反馈闭环 + 模型热更新 · 5 大指标全部来自真实数据源",
@@ -2293,7 +2325,8 @@ flywheel: {
     feedbackAdoptionRate: "采纳率",
     feedbackDelay: "回灌延迟",
     feedbackHealthScore: "健康分数",
-    feedbackAdoptionHint: "用户采纳率从 0% 开始，随系统使用和反馈采集持续增长。",
+    feedbackAdoptionHint:
+      "用户采纳率从 0% 开始，随系统使用和反馈采集持续增长。",
     metricDefinitionsTitle: "指标定义说明",
     btnReload: "重新加载",
     // 模型热更新
@@ -2392,7 +2425,7 @@ flywheel: {
     btnUninstallConfirm: "卸载",
     btnCancel: "取消",
   },
-// NLModeling.vue 自然语言建模页面
+  // NLModeling.vue 自然语言建模页面
   nlModeling: {
     pageTitle: "自然语言建模",
     pageSubtitle: "通过自然语言描述生成3D零件模型，支持工艺规划和NC代码生成",
@@ -2414,7 +2447,7 @@ flywheel: {
     msgViewReset: "模型视图已重置",
     msgComplete: "流程完成！",
   },
-// ProductionReport.vue 生产报表页面
+  // ProductionReport.vue 生产报表页面
   productionReport: {
     pageTitle: "生产报表",
     pageSubtitle: "查看和分析生产数据报表",
@@ -2464,7 +2497,7 @@ flywheel: {
     msgExportEmpty: "暂无可导出的数据",
     msgExportFailed: "报表导出失败",
   },
-// ProcessUnderstanding.vue 工艺理解与知识问答页面
+  // ProcessUnderstanding.vue 工艺理解与知识问答页面
   processUnderstanding: {
     pageTitle: "工艺理解与知识问答",
     pageSubtitle: "基于 LLM 的工艺咨询、故障诊断与方案生成",
@@ -2491,7 +2524,7 @@ flywheel: {
     taskTypeChat: "闲聊",
     taskTypeUnknown: "未知",
   },
-// QualityInspection.vue 质量检测页面
+  // QualityInspection.vue 质量检测页面
   qualityInspection: {
     pageTitle: "质量检测",
     pageSubtitle: "产品质量检测与分析管理",
@@ -2538,7 +2571,7 @@ flywheel: {
     msgDetailLoadFailed: "详情加载失败",
     msgFormIncomplete: "请填写完整信息",
   },
-// EquipmentMonitor.vue 设备监控页面
+  // EquipmentMonitor.vue 设备监控页面
   equipmentMonitor: {
     pageTitle: "设备监控",
     pageSubtitle: "实时监控设备运行状态",
@@ -2592,7 +2625,7 @@ flywheel: {
     msgRepairSuccess: "报修成功，设备已切换为维护中",
     msgOpFailed: "操作失败",
   },
-// MaterialManagement.vue 物料管理页面
+  // MaterialManagement.vue 物料管理页面
   materialManagement: {
     pageTitle: "物料管理",
     pageSubtitle: "管理生产物料和库存",
@@ -2650,7 +2683,7 @@ flywheel: {
     msgQuantityInvalid: "请输入有效数量",
     msgMaterialRequired: "请选择物料",
   },
-// PluginLogs.vue 插件日志页面
+  // PluginLogs.vue 插件日志页面
   pluginLogs: {
     pageTitle: "插件日志",
     placeholderSelectPlugin: "选择插件",
@@ -2664,19 +2697,19 @@ flywheel: {
     msgNoLogsToExport: "暂无日志可导出",
     msgExported: "已导出 {count} 条日志",
   },
-// PluginMarket.vue 插件市场页面
+  // PluginMarket.vue 插件市场页面
   pluginMarket: {
     pageTitle: "插件市场",
     placeholderSearch: "搜索插件...",
     btnInstall: "安装",
     btnDetail: "详情",
     emptyNoPlugin: "暂无可用插件",
-    msgInstallStarted: "插件 \"{name}\" 安装已开始",
+    msgInstallStarted: '插件 "{name}" 安装已开始',
     msgInstallSuccess: "插件「{name}」安装成功",
     msgInstallFailed: "插件安装失败",
     msgAlreadyInstalled: "插件「{name}」已安装",
     msgLoadFailed: "插件市场加载失败",
-    msgViewDetail: "查看插件 \"{name}\" 详情",
+    msgViewDetail: '查看插件 "{name}" 详情',
     labelInstalled: "已安装",
     labelBuiltin: "内置",
     dialogDetailTitle: "插件详情",
@@ -2703,10 +2736,11 @@ flywheel: {
     plugin3dMonitor: "3D监控",
     plugin3dMonitorDesc: "三维机床状态监控",
   },
-// NLInputPanel.vue
+  // NLInputPanel.vue
   nlInputPanel: {
     welcomeGreeting: "你好！我是灵境制造AI助手。",
-    welcomeHint: "请描述你想要创建的零件，例如：“创建一个长50mm、宽30mm、高20mm的长方体，四个角倒圆角R2”。",
+    welcomeHint:
+      "请描述你想要创建的零件，例如：“创建一个长50mm、宽30mm、高20mm的长方体，四个角倒圆角R2”。",
     paramsExtracted: "我已理解你的描述，提取到以下参数：",
     shapeTypeLabel: "形状类型:",
     dimensionsLabel: "尺寸:",
@@ -2725,11 +2759,11 @@ flywheel: {
     download: "下载",
     inputPlaceholder: "描述你想要创建的零件...",
     exampleBox: "示例: 长方体",
-          exampleCylinder: "示例: 圆柱体",
-          exampleSphere: "示例: 球体",
-          exampleBoxPrompt: "创建一个长50mm、宽30mm、高20mm的长方体",
-          exampleCylinderPrompt: "创建一个直径30mm、高50mm的圆柱体",
-          exampleSpherePrompt: "创建一个半径15mm的球体",
+    exampleCylinder: "示例: 圆柱体",
+    exampleSphere: "示例: 球体",
+    exampleBoxPrompt: "创建一个长50mm、宽30mm、高20mm的长方体",
+    exampleCylinderPrompt: "创建一个直径30mm、高50mm的圆柱体",
+    exampleSpherePrompt: "创建一个半径15mm的球体",
     editModelParamsTitle: "编辑模型参数",
     shapeTypeFormLabel: "形状类型",
     optionBox: "长方体",
@@ -2743,7 +2777,8 @@ flywheel: {
     materialFormLabel: "材料",
     materialPlaceholder: "可选",
     confirmEdit: "确认修改",
-    errorUnderstand: "抱歉，我暂时无法理解你的描述。请尝试更详细地描述零件的形状和尺寸。",
+    errorUnderstand:
+      "抱歉，我暂时无法理解你的描述。请尝试更详细地描述零件的形状和尺寸。",
     errorGenerateFailed: "模型生成失败，请稍后重试。",
     shapeBox: "长方体",
     shapeCylinder: "圆柱体",
@@ -2754,7 +2789,7 @@ flywheel: {
     featureHole: "孔",
     featureSlot: "槽",
   },
-// UXDemo.vue UX功能演示页面
+  // UXDemo.vue UX功能演示页面
   uxDemo: {
     pageTitle: "UX 功能演示",
     btnStartTour: "启动引导流程",
@@ -2772,15 +2807,20 @@ flywheel: {
     featureCommandDesc: "快捷键唤起、模糊搜索、智能排序、使用频率记忆",
     sectionGalleryPreview: "示例工程库预览",
     tourStep1Title: "欢迎使用灵境制造系统",
-    tourStep1Desc: "这是一个AI驱动的3D建模与工艺规划系统。让我们通过几个简单的步骤来了解主要功能。",
+    tourStep1Desc:
+      "这是一个AI驱动的3D建模与工艺规划系统。让我们通过几个简单的步骤来了解主要功能。",
     tourStep2Title: "文件管理",
-    tourStep2Desc: "在这里可以新建、打开、保存工程项目，支持导入STEP和DXF格式文件。",
+    tourStep2Desc:
+      "在这里可以新建、打开、保存工程项目，支持导入STEP和DXF格式文件。",
     tourStep3Title: "导航菜单",
-    tourStep3Desc: "通过顶部菜单可以快速访问工作区、设置、工艺规划等核心功能模块。",
+    tourStep3Desc:
+      "通过顶部菜单可以快速访问工作区、设置、工艺规划等核心功能模块。",
     tourStep4Title: "命令面板",
-    tourStep4Desc: "按 Ctrl+K 可以快速唤起命令面板，支持模糊搜索和智能排序，提升操作效率。",
+    tourStep4Desc:
+      "按 Ctrl+K 可以快速唤起命令面板，支持模糊搜索和智能排序，提升操作效率。",
     tourStep5Title: "准备开始",
-    tourStep5Desc: "引导已完成！您可以随时从帮助菜单重新启动引导流程。现在让我们开始探索系统的强大功能吧！",
+    tourStep5Desc:
+      "引导已完成！您可以随时从帮助菜单重新启动引导流程。现在让我们开始探索系统的强大功能吧！",
     cmdNewProjectName: "新建项目",
     cmdNewProjectDesc: "创建一个新的工程项目",
     cmdOpenProjectName: "打开项目",
@@ -2814,7 +2854,7 @@ flywheel: {
     msgTourCompleted: "引导流程已完成！",
     msgTourSkipped: "引导流程已跳过（从第 {step} 步）",
   },
-// ExampleGallery.vue
+  // ExampleGallery.vue
   exampleGallery: {
     placeholderSearch: "搜索示例...",
     placeholderCategory: "分类",
@@ -2854,7 +2894,7 @@ flywheel: {
     msgCopyFailed: "复制失败，请手动复制",
     msgImported: "示例 {name} 已导入到项目",
   },
-// SplashScreen.vue
+  // SplashScreen.vue
   splashScreen: {
     appName: "灵境制造",
     appSubtitle: "AI驱动的3D建模与工艺规划系统",
@@ -2863,7 +2903,7 @@ flywheel: {
     statusStartingBackend: "启动后端服务...",
     statusInit3dEngine: "初始化3D引擎...",
     statusLoadingConfig: "加载配置数据...",
-    statusReady: "准备就绪..."
+    statusReady: "准备就绪...",
   },
   branchManager: {
     pageTitle: "分支管理",
@@ -2898,7 +2938,7 @@ flywheel: {
     btnMerge: "合并",
     msgCannotDeleteMain: "不能删除主线分支",
     msgConfirmDelete: "确定删除此分支？",
-    titleConfirmDelete: "确认删除"
+    titleConfirmDelete: "确认删除",
   },
   templateMarket: {
     pageTitle: "模板市场",
@@ -2934,7 +2974,7 @@ flywheel: {
     errorFetchTrending: "获取热门模板失败:",
     errorFetchTemplates: "获取模板列表失败:",
     errorSubscribe: "订阅分类失败:",
-    errorPublish: "发布模板失败:"
+    errorPublish: "发布模板失败:",
   },
   goals: {
     tabTree: "目标树",
@@ -2976,9 +3016,9 @@ flywheel: {
     errorFetchFailed: "获取更新通知失败:",
     errorApplyFailed: "应用更新失败:",
     errorDismissFailed: "忽略更新失败:",
-    errorPreviewFailed: "获取预览数据失败:"
+    errorPreviewFailed: "获取预览数据失败:",
   },
-// ProviderFormDialog.vue Provider 表单对话框
+  // ProviderFormDialog.vue Provider 表单对话框
   providerFormDialog: {
     // 对话框标题
     titleCreate: "新增 LLM Provider",
@@ -3032,7 +3072,7 @@ flywheel: {
     ruleNameRequired: "请输入显示名称",
     ruleTypeRequired: "请选择类型",
   },
-// TestDialog.vue 调用测试对话框
+  // TestDialog.vue 调用测试对话框
   testDialog: {
     titleDefault: "调用测试",
     titleSuffix: "{name} - 调用测试",
@@ -3053,7 +3093,7 @@ flywheel: {
     errorInvokeFailed: "调用失败，请查看右上角错误提示",
     errorTestFailed: "调用测试失败",
   },
-// ModelsDialog.vue 模型列表对话框
+  // ModelsDialog.vue 模型列表对话框
   modelsDialog: {
     titleDefault: "模型列表",
     titleSuffix: "{name} - 可用模型",
@@ -3080,10 +3120,11 @@ flywheel: {
     warnClipboardUnavailable: "剪贴板不可用，请手动选择复制",
   },
 
-// ProviderList.vue Provider列表
+  // ProviderList.vue Provider列表
   providerList: {
     emptyTitle: "尚未配置任何 Provider",
-    emptyDescription: "当前未配置任何 LLM Provider。可点击上方\"新增 Provider\"手动添加，或使用自动探测扫描本机已安装的 LLM 服务。",
+    emptyDescription:
+      '当前未配置任何 LLM Provider。可点击上方"新增 Provider"手动添加，或使用自动探测扫描本机已安装的 LLM 服务。',
     colStatus: "状态",
     statusActive: "激活",
     statusEnabled: "已启用",
@@ -3108,33 +3149,33 @@ flywheel: {
     btnDelete: "删除",
   },
 
-// Copilot 组件（RecommendationCard / DecisionActions / CopilotConfidenceIndicator）
+  // Copilot 组件（RecommendationCard / DecisionActions / CopilotConfidenceIndicator）
   copilot: {
     card: {
-      title: 'AI 推荐',
-      recommendation: '推荐内容',
-      reasoning: '决策依据',
-      alternatives: '备选方案',
+      title: "AI 推荐",
+      recommendation: "推荐内容",
+      reasoning: "决策依据",
+      alternatives: "备选方案",
     },
     actions: {
-      accept: '采纳',
-      modify: '请求修改',
-      reject: '拒绝',
+      accept: "采纳",
+      modify: "请求修改",
+      reject: "拒绝",
     },
     confidence: {
-      label: '置信度',
-      high: '高',
-      medium: '中',
-      low: '低',
+      label: "置信度",
+      high: "高",
+      medium: "中",
+      low: "低",
     },
     messages: {
-      accepted: '已采纳',
-      modifyRequested: '已请求修改',
-      rejected: '已拒绝',
+      accepted: "已采纳",
+      modifyRequested: "已请求修改",
+      rejected: "已拒绝",
     },
   },
 
-// CommandPalette.vue 命令面板
+  // CommandPalette.vue 命令面板
   commandPalette: {
     inputPlaceholder: "输入命令名称或描述...",
     noMatchFound: "未找到匹配的命令",
@@ -3146,7 +3187,7 @@ flywheel: {
     pluginCategory: "插件",
   },
 
-// AppLayout.vue 应用布局
+  // AppLayout.vue 应用布局
   appLayout: {
     brandName: "灵境制造",
     searchPlaceholder: "搜索工单、设备、物料...",
@@ -3167,7 +3208,7 @@ flywheel: {
     logoutTitle: "退出登录",
     guest: "访客",
   },
-// Tour.vue 引导组件
+  // Tour.vue 引导组件
   onboardingTour: {
     prev: "上一步",
     next: "下一步",
@@ -3175,15 +3216,19 @@ flywheel: {
     finish: "完成",
     // [U-P0-1] 首次启动引导步骤内容
     step1Title: "欢迎使用灵境制造",
-    step1Desc: "这是一款面向机械加工的 AI 驱动 CAM 工具。让我们用 1 分钟快速了解主要功能。",
+    step1Desc:
+      "这是一款面向机械加工的 AI 驱动 CAM 工具。让我们用 1 分钟快速了解主要功能。",
     step2Title: "导航菜单",
-    step2Desc: "左侧导航栏按功能分组：工艺规划、AI 预测、数据管理、系统设置。点击任意菜单项进入对应模块。",
+    step2Desc:
+      "左侧导航栏按功能分组：工艺规划、AI 预测、数据管理、系统设置。点击任意菜单项进入对应模块。",
     step3Title: "顶部操作区",
-    step3Desc: "顶部提供工程管理（新建/打开/保存）、STEP/DXF 导入、刷新等快捷操作。",
+    step3Desc:
+      "顶部提供工程管理（新建/打开/保存）、STEP/DXF 导入、刷新等快捷操作。",
     step4Title: "搜索与命令",
     step4Desc: "在顶部搜索框快速定位功能或工程文件，提升操作效率。",
     step5Title: "Paper-Only 安全模式",
-    step5Desc: "默认采用纸面模式：所有 T 级操作（机床下发）仅模拟执行并记录审计日志，确保工业安全。实模式需班长双因子确认 + 机床安全前置校验。",
+    step5Desc:
+      "默认采用纸面模式：所有 T 级操作（机床下发）仅模拟执行并记录审计日志，确保工业安全。实模式需班长双因子确认 + 机床安全前置校验。",
     step6Title: "开始使用",
     step6Desc: "引导结束。如需重新查看，可在「帮助 → 重新引导」中再次启动。",
   },
@@ -3196,7 +3241,8 @@ flywheel: {
   // 后处理器方言管理页面（DialectManager.vue）
   dialectManager: {
     pageTitle: "后处理器方言",
-    pageHint: "管理机床后处理器方言：内置方言 + 本地声明式方言插件（dialect.yaml + 模板）。工艺员可查看模板并实时预览 NC 输出。",
+    pageHint:
+      "管理机床后处理器方言：内置方言 + 本地声明式方言插件（dialect.yaml + 模板）。工艺员可查看模板并实时预览 NC 输出。",
     btnRefresh: "刷新",
     searchPlaceholder: "搜索方言...",
     colName: "名称",
@@ -3250,4 +3296,4 @@ flywheel: {
     msgDetailFailed: "方言详情加载失败",
     msgPreviewFailed: "NC 预览生成失败",
   },
-}
+};

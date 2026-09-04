@@ -1,11 +1,8 @@
 <template>
   <div class="snapshot-detail-panel">
     <div class="panel-header">
-      <span class="panel-title">{{ t('snapshotPanel.detailTitle') }}</span>
-      <div
-        v-if="currentSnapshot"
-        class="panel-header-actions"
-      >
+      <span class="panel-title">{{ t("snapshotPanel.detailTitle") }}</span>
+      <div v-if="currentSnapshot" class="panel-header-actions">
         <el-button
           size="small"
           type="primary"
@@ -13,31 +10,21 @@
           :loading="reproducing"
           @click="emit('reproduce')"
         >
-          {{ t('snapshotPanel.btnReproduce') }}
+          {{ t("snapshotPanel.btnReproduce") }}
         </el-button>
-        <el-button
-          size="small"
-          :icon="Close"
-          @click="emit('closeDetail')"
-        >
-          {{ t('snapshotPanel.btnCloseDetail') }}
+        <el-button size="small" :icon="Close" @click="emit('closeDetail')">
+          {{ t("snapshotPanel.btnCloseDetail") }}
         </el-button>
       </div>
     </div>
 
-    <div
-      v-loading="currentLoading"
-      class="snapshot-detail-body"
-    >
+    <div v-loading="currentLoading" class="snapshot-detail-body">
       <el-empty
         v-if="!currentLoading && !currentSnapshot"
         :description="t('snapshotPanel.emptyNoSnapshots')"
         :image-size="80"
       />
-      <div
-        v-if="currentSnapshot"
-        class="snapshot-detail-content"
-      >
+      <div v-if="currentSnapshot" class="snapshot-detail-content">
         <el-descriptions :column="1" border>
           <el-descriptions-item :label="t('snapshotPanel.colId')">
             <span class="mono">{{ currentSnapshot.snapshot_id }}</span>
@@ -56,15 +43,19 @@
               size="small"
               :type="currentSnapshot.code_dirty ? 'warning' : 'success'"
             >
-              {{ currentSnapshot.code_dirty
-                ? t('snapshotPanel.dirtyDirty')
-                : t('snapshotPanel.dirtyClean') }}
+              {{
+                currentSnapshot.code_dirty
+                  ? t("snapshotPanel.dirtyDirty")
+                  : t("snapshotPanel.dirtyClean")
+              }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item :label="t('snapshotPanel.detailModelUri')">
             <span class="mono">{{ currentSnapshot.model_uri }}</span>
           </el-descriptions-item>
-          <el-descriptions-item :label="t('snapshotPanel.detailDatasetVersions')">
+          <el-descriptions-item
+            :label="t('snapshotPanel.detailDatasetVersions')"
+          >
             <div
               v-if="currentSnapshot.dataset_versions.length > 0"
               class="uri-list"
@@ -80,10 +71,14 @@
             <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item :label="t('snapshotPanel.detailMetrics')">
-            <pre class="json-block">{{ JSON.stringify(currentSnapshot.metrics, null, 2) }}</pre>
+            <pre class="json-block">{{
+              JSON.stringify(currentSnapshot.metrics, null, 2)
+            }}</pre>
           </el-descriptions-item>
           <el-descriptions-item :label="t('snapshotPanel.detailEnvironment')">
-            <pre class="json-block">{{ JSON.stringify(currentSnapshot.environment, null, 2) }}</pre>
+            <pre class="json-block">{{
+              JSON.stringify(currentSnapshot.environment, null, 2)
+            }}</pre>
           </el-descriptions-item>
           <el-descriptions-item
             v-if="currentSnapshot.lineage_record_id"
@@ -107,9 +102,11 @@
 
         <div class="config-section">
           <div class="config-section__title">
-            {{ t('snapshotPanel.detailConfig') }}
+            {{ t("snapshotPanel.detailConfig") }}
           </div>
-          <pre class="json-block json-block--large">{{ JSON.stringify(currentSnapshot.config, null, 2) }}</pre>
+          <pre class="json-block json-block--large">{{
+            JSON.stringify(currentSnapshot.config, null, 2)
+          }}</pre>
         </div>
       </div>
     </div>
@@ -117,32 +114,25 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { VideoPlay, Close } from '@element-plus/icons-vue'
-import type { ExperimentSnapshot } from '@/contracts/observability'
+import { useI18n } from "vue-i18n";
+import { VideoPlay, Close } from "@element-plus/icons-vue";
+import type { ExperimentSnapshot } from "@/contracts/observability";
+import { formatDateTimeSafe } from "@/utils/formatters";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 defineProps<{
-  currentSnapshot: ExperimentSnapshot | null
-  currentLoading: boolean
-  reproducing: boolean
-}>()
+  currentSnapshot: ExperimentSnapshot | null;
+  currentLoading: boolean;
+  reproducing: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'reproduce'): void
-  (e: 'closeDetail'): void
-}>()
+  (e: "reproduce"): void;
+  (e: "closeDetail"): void;
+}>();
 
-function formatTime(iso?: string): string {
-  if (!iso) return '-'
-  try {
-    const d = new Date(iso)
-    return d.toLocaleString()
-  } catch {
-    return iso
-  }
-}
+const formatTime = (iso?: string): string => formatDateTimeSafe(iso);
 </script>
 
 <style scoped>
