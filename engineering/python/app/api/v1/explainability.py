@@ -49,8 +49,7 @@ from app.contracts.explainability import (
 
 logger = logging.getLogger(__name__)
 
-# 骨架修复（2026-08-03 任务B）：原文件缺失 router/logger/域符号导入。
-# 补齐骨架但保持未接入（main/router_registry 未引用本文件）。
+# 注意：本 router 尚未接入（main/router_registry 未引用本文件），路由未挂载。
 router = APIRouter(prefix="/api/v1/explainability", tags=["Explainability"])
 
 

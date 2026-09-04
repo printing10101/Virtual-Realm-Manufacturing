@@ -1,5 +1,4 @@
-# 修复（2026-08-03 任务B）：原文件缺失 pydantic/typing 导入，运行时 NameError、
-# mypy 报 478 条 name-defined 中的大量条目。该文件未被引用但属真实缺陷，补全导入。
+# 注意：本文件当前未被引用（保留骨架），保持导入完整以备接入。
 
 from pydantic import BaseModel, Field
 

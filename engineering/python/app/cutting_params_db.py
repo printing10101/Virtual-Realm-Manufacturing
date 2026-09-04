@@ -248,9 +248,8 @@ def get_cutting_params(
     material = material.lower().strip()
 
     # Get material parameters or use defaults
-    # 修复（2026-08-18）：原 `BASE_PARAMETERS.get(material, DEFAULT_PARAMETERS[operation])`
-    # 的默认值层级错误——BASE_PARAMETERS[material] 是操作级字典，而 DEFAULT_PARAMETERS[operation]
-    # 是参数级字典，未知材料时 `params[operation]` 会 KeyError。现改为显式分支。
+    # 注意默认值层级：BASE_PARAMETERS[material] 是操作级字典，DEFAULT_PARAMETERS[operation]
+    # 是参数级字典；未知材料时不能直接嵌套 .get（`params[operation]` 会 KeyError），必须显式分支。
     material_params = BASE_PARAMETERS.get(material)
     if material_params is not None:
         operation_params = material_params[operation]

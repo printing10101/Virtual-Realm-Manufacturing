@@ -17,8 +17,7 @@ from app.plugins.plugin_worker import PluginWorkerManager, WorkerConfig
 
 logger = logging.getLogger(__name__)
 
-# 骨架修复（2026-08-03 任务B）：原文件缺失 router/logger/响应工具导入，
-# mypy 报 122 条 name-defined。补齐骨架但保持未接入（main/router_registry 未引用本文件）。
+# 注意：本 router 尚未接入（main/router_registry 未引用本文件），路由未挂载。
 router = APIRouter(
     prefix="/api/v1/plugins",
     tags=["Plugins (Capability Marketplace)"],
@@ -261,8 +260,7 @@ def get_plugin_detail(plugin_id: str):
 
         return success(data=info)
     except KeyError:
-        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
-        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        # 注意：error() 的 message/code 必须按关键字传参（与签名对齐，避免位置错位）。
         return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
@@ -280,8 +278,7 @@ def enable_plugin(plugin_id: str):
         manager.enable_plugin(plugin_id)
         return success(data={"message": f"Plugin '{plugin_id}' enabled"})
     except KeyError:
-        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
-        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        # 注意：error() 的 message/code 必须按关键字传参（与签名对齐，避免位置错位）。
         return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
@@ -299,8 +296,7 @@ def disable_plugin(plugin_id: str):
         manager.disable_plugin(plugin_id)
         return success(data={"message": f"Plugin '{plugin_id}' disabled"})
     except KeyError:
-        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
-        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        # 注意：error() 的 message/code 必须按关键字传参（与签名对齐，避免位置错位）。
         return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
@@ -318,8 +314,7 @@ def reload_plugin(plugin_id: str):
         manager._loader.reload_plugin(plugin_id)
         return success(data={"message": f"Plugin '{plugin_id}' reloaded"})
     except KeyError:
-        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
-        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        # 注意：error() 的 message/code 必须按关键字传参（与签名对齐，避免位置错位）。
         return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
@@ -337,8 +332,7 @@ def uninstall_plugin(plugin_id: str):
         manager.uninstall_plugin(plugin_id)
         return success(data={"message": f"Plugin '{plugin_id}' uninstalled"})
     except KeyError:
-        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
-        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        # 注意：error() 的 message/code 必须按关键字传参（与签名对齐，避免位置错位）。
         return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
@@ -363,8 +357,7 @@ def update_plugin_config(
         manager._registry.update_config(plugin_id, config)
         return success(data={"message": f"Plugin '{plugin_id}' config updated"})
     except KeyError:
-        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
-        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        # 注意：error() 的 message/code 必须按关键字传参（与签名对齐，避免位置错位）。
         return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
@@ -389,8 +382,7 @@ def get_plugin_dependencies(plugin_id: str):
             }
         )
     except KeyError:
-        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
-        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        # 注意：error() 的 message/code 必须按关键字传参（与签名对齐，避免位置错位）。
         return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
@@ -497,8 +489,7 @@ def start_worker(plugin_id: str):
 
         return success(data={"message": f"Worker for '{plugin_id}' started"})
     except KeyError:
-        # 修复（2026-08-03 任务B）：原 `error(msg, code=404)` 位置参数误传导致
-        # code 参数重复 + 类型不匹配（真实缺陷），改为规范签名。
+        # 注意：error() 的 message/code 必须按关键字传参（与签名对齐，避免位置错位）。
         return error(code=ErrorCode.NOT_FOUND, message=f"Plugin '{plugin_id}' not found")
     except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as e:
         # 兜底捕获：API 端点统一收口所有未预期的异常
