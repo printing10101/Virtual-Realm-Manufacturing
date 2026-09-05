@@ -144,17 +144,17 @@ class TestSiemens840DHooks:
         assert out.startswith("CYCLE85(")
 
     def test_tool_change_uses_d_comp(self, siemens_hooks) -> None:
-        ctx = _SiemensContext()
         h = siemens_hooks.Siemens840DHooks()
         out = h.format_tool_change(12)
         assert out == "T12 D1"
         assert "H" not in out  # Siemens 无 H 补偿
 
     def test_header_mpf_format(self, siemens_hooks) -> None:
-        ctx = _SiemensContext()
         h = siemens_hooks.Siemens840DHeaderHooks()
-        out = h.format_header()
+        # 签名与基类约定对齐：程序号由 format_header(program_number) 传入
+        out = h.format_header(1000)
         assert "%_N_1000_MPF" in out
+        assert ";$PATH=/_N_MPF_DIR" in out
         assert "TRAFOF" in out
         assert "G90 G71 G94" in out
 
@@ -189,9 +189,11 @@ class TestHeidenhainTNC640Hooks:
         for name in ("_fmt", "get_spindle_rpm", "get_feed_rate", "get_cycle_config", "rapid_feed"):
             if hasattr(ctx, name):
                 setattr(h, name, getattr(ctx, name))
-        out = h.format_cycle_tapping(10.0, 20.0, 5.0, 12.0)
+        # 签名与基类约定对齐：第 5 个参数是 pitch（旧实现此处是 dwell 且
+        # Q239 硬编码 1.5，与基类 format_cycle_tapping 调用约定不一致）
+        out = h.format_cycle_tapping(10.0, 20.0, 5.0, 12.0, pitch=1.5)
         assert "CYCL DEF 240 TAPPING" in out
-        assert "Q239=1.5" in out
+        assert "Q239=1.500" in out
 
     def test_tool_call_format(self, heidenhain_hooks) -> None:
         ctx = _SiemensContext()
@@ -213,9 +215,10 @@ class TestHeidenhainTNC640Hooks:
         assert out == "TCH PROBE 1 X12.500"
 
     def test_begin_end_pgm(self, heidenhain_hooks) -> None:
-        ctx = _SiemensContext()
         h = heidenhain_hooks.HeidenhainHeaderHooks()
-        out = h.format_header()
+        # 签名与基类约定对齐：format_header(program_number) 记录程序号，
+        # format_footer() 复用之（旧实现无参 header + 实例属性回退 1000）
+        out = h.format_header(1000)
         assert out == "BEGIN PGM 1000 MM"
         out2 = h.format_footer()
         assert out2 == "END PGM 1000 MM"

@@ -1,6 +1,6 @@
 %02000
 (PROGRAM 2000 - 2026-01-01)
-(POST: Fagor 8055 (Fagor Automation))
+(POST: Fagor 8055  Fagor Automation )
 G21 G17 G40 G49 G80 G90 G94
 G75 Z0.
 G75 X0. Y0.

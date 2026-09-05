@@ -50,7 +50,7 @@ class FagorPostProcessor(FanucPostProcessor):
             # Fagor 特色：% + 5位数字 程序号（必须单独一行）
             f"%{program_number:05d}",
             f"(PROGRAM {program_number} - {self._date_string()})",
-            f"(POST: {self.CONTROLLER_NAME})",
+            self._paren_comment(f"POST: {self.CONTROLLER_NAME}"),
             "G21 G17 G40 G49 G80 G90 G94",
             # Fagor 特色：G75 = 固定返回参考点
             "G75 Z0.",

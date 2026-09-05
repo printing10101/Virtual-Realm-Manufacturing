@@ -49,7 +49,7 @@ class GSKPostProcessor(FanucPostProcessor):
         lines = [
             "%",
             f"O{program_number:04d} (PROGRAM {program_number} - {self._date_string()})",
-            f"(POST: {self.CONTROLLER_NAME})",
+            self._paren_comment(f"POST: {self.CONTROLLER_NAME}"),
             "G21 G17 G40 G49 G80 G90 G94",
             # GSK 特色：先回 Z 再回 G30 平面
             "G00 G91 G28 Z0.",

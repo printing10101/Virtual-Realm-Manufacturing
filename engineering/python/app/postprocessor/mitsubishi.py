@@ -51,7 +51,7 @@ class MitsubishiPostProcessor(FanucPostProcessor):
         lines = [
             "%",
             f"O{program_number:04d} (PROGRAM {program_number} - {self._date_string()})",
-            f"(POST: {self.CONTROLLER_NAME})",
+            self._paren_comment(f"POST: {self.CONTROLLER_NAME}"),
             # Mitsubishi 特色：G05.1 Q1 启动 AI 先行控制
             "G21 G17 G40 G49 G80 G90 G94",
             "G05.1 Q1",

@@ -178,13 +178,13 @@ class DialectCompiler:
 
         # 1. hooks 方法（代码钩子，最高优先级）：module.path:ClassName
         if declaration.hooks:
-            hook_methods = self._load_hook_methods(declaration)
+            hook_methods = self._load_hook_methods(declaration, base_cls)
             namespace.update(hook_methods)
             logger.info(
                 "方言 %s 加载 hooks: %s (方法=%s)",
                 declaration.id,
                 declaration.hooks,
-                sorted(hook_methods.keys()),
+                sorted(k for k in hook_methods if k.startswith("format_")),
             )
 
         # 2. 模板方法（Jinja2，次优先级；hooks 同名方法不覆盖）
@@ -212,35 +212,70 @@ class DialectCompiler:
         )
         return dialect_cls
 
-    def _load_hook_methods(self, declaration: DialectDeclaration) -> dict[str, Callable[..., Any]]:
-        """加载 hooks entrypoint，提取其 format_* 方法。
+    def _load_hook_methods(
+        self,
+        declaration: DialectDeclaration,
+        base_cls: type[BasePostProcessor],
+    ) -> dict[str, Callable[..., Any]]:
+        """加载 hooks entrypoint，提取其 format_* 方法与私有辅助方法。
 
-        hooks 格式：``module.path:ClassName``（如 ``plugins.my_dialect.hooks:MyHooks``）。
-        hooks 类的方法（``format_*``）作为方言方法直接挂到编译子类；
+        hooks 支持两种写法：
+        - 单入口字符串 ``module.path:ClassName``（如 ``plugins.my_dialect.hooks:MyHooks``）
+        - 多入口列表（Phase E hooks 模式，from_yaml 已归一化为字符串列表）
+
+        提取规则：
+        - ``format_*`` 方法：作为方言方法挂到编译子类（同名后声明覆盖先声明）；
+        - 单下划线私有辅助方法（如 ``_program_number_safe``）：随 hooks 一并注入，
+          使 hooks 自包含；与基类已有方法同名时不注入（防止遮蔽框架内部方法，
+          如 _fmt / _next_block），仅记录警告。
         hooks 类自身不实例化（方法以方言实例为 self 调用，可访问 _fmt 等）。
         """
         if not declaration.hooks:
             return {}
-        module_path, _, class_name = declaration.hooks.partition(":")
-        if not module_path or not class_name:
-            raise DialectCompileError(
-                f"方言 '{declaration.id}' 的 hooks 格式错误（应为 module.path:ClassName）: {declaration.hooks}"
-            )
-        try:
-            import importlib
 
-            module = importlib.import_module(module_path)
-            hook_cls = getattr(module, class_name)
-        except (ImportError, AttributeError) as e:
-            raise DialectCompileError(f"方言 '{declaration.id}' 的 hooks 加载失败: {declaration.hooks} ({e})") from e
-
+        entries = declaration.hooks if isinstance(declaration.hooks, list) else [declaration.hooks]
         hook_methods: dict[str, Callable[..., Any]] = {}
-        for name, attr in inspect.getmembers(hook_cls, callable):
-            if name.startswith("format_") and not name.startswith("__"):
-                # 去绑定：提取原始函数（hooks 方法以方言实例为 self）
-                hook_methods[name] = attr
-        if not hook_methods:
-            raise DialectCompileError(f"方言 '{declaration.id}' 的 hooks 类 '{class_name}' 未定义任何 format_* 方法。")
+        import importlib
+
+        for entrypoint in entries:
+            module_path, _, class_name = entrypoint.partition(":")
+            if not module_path or not class_name:
+                raise DialectCompileError(
+                    f"方言 '{declaration.id}' 的 hooks 格式错误（应为 module.path:ClassName）: {entrypoint}"
+                )
+            try:
+                module = importlib.import_module(module_path)
+                hook_cls = getattr(module, class_name)
+            except (ImportError, AttributeError) as e:
+                raise DialectCompileError(f"方言 '{declaration.id}' 的 hooks 加载失败: {entrypoint} ({e})") from e
+
+            entry_methods: dict[str, Callable[..., Any]] = {}
+            helper_methods: dict[str, Callable[..., Any]] = {}
+            for name, attr in inspect.getmembers(hook_cls, callable):
+                if not name.startswith("__"):
+                    # 去绑定：提取原始函数（hooks 方法以方言实例为 self）
+                    if name.startswith("format_"):
+                        entry_methods[name] = attr
+                    elif name.startswith("_"):
+                        helper_methods[name] = attr
+            if not entry_methods:
+                raise DialectCompileError(
+                    f"方言 '{declaration.id}' 的 hooks 类 '{class_name}' 未定义任何 format_* 方法。"
+                )
+            # 同名方法：后声明的 hooks 类覆盖先声明的（声明顺序即优先级）
+            hook_methods.update(entry_methods)
+            # 私有辅助方法仅注入基类没有的名字（防遮蔽框架内部方法）
+            for hname, hfn in helper_methods.items():
+                if hasattr(base_cls, hname):
+                    logger.warning(
+                        "方言 %s 的 hooks 辅助方法 %s 与基类方法同名，忽略注入（防遮蔽）",
+                        declaration.id,
+                        hname,
+                    )
+                    continue
+                if hname in hook_methods and hname not in entry_methods:
+                    continue
+                hook_methods.setdefault(hname, hfn)
         return hook_methods
 
     # 模板渲染器构造

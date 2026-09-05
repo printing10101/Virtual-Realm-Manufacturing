@@ -58,6 +58,41 @@ class _HeidenhainCoreMixin:
         ]
         return "\n".join(lines)
 
+    def format_rapid_move(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        a: float | None = None,
+        c: float | None = None,
+    ) -> str:
+        """生成快速定位指令（Heidenhain 会话式 L 行 + FMAX）。
+
+        Heidenhain TNC 对话式编程不支持字地址 G 代码（G00/G01 属于 ISO
+        模式，与 BEGIN PGM 会话式程序头不兼容，混用会被控制器拒绝）。
+        快速定位在会话式语法下写作 ``L  X+.. Y+.. Z+.. R0 FMAX``。
+
+        注意：基类 `_FormatMixin` 的默认实现输出 G00 行，本覆写是
+        语法合规（手动锚定合规层 tests/utils/nc_dialect_checker.py）的要求。
+        """
+        return f"L  X+{self._fmt(x)} Y+{self._fmt(y)} Z+{self._fmt(z)} R0 FMAX"
+
+    def format_linear_move(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        feed: float | None = None,
+        a: float | None = None,
+        c: float | None = None,
+    ) -> str:
+        """生成直线插补指令（Heidenhain 会话式 L 行 + 进给）。
+
+        feed 为 None 时回退到 rapid_feed（与基类默认行为一致）。
+        """
+        feed_value = feed if feed is not None else self.rapid_feed
+        return f"L  X+{self._fmt(x)} Y+{self._fmt(y)} Z+{self._fmt(z)} R0 F{self._fmt(feed_value)}"
+
     def format_arc(
         self,
         start: tuple[float, float, float],
@@ -133,6 +168,18 @@ class _HeidenhainCoreMixin:
             f"{self._next_block()}  END PGM {self._last_program_number:04d} MM",
         ]
         return "\n".join(lines)
+
+    def format_rtcp_on(self, tool_length: float = 0.0) -> str:
+        """开启 RTCP（旋转刀具中心点）补偿模式（Heidenhain：M128/TCPM）。
+
+        基类默认实现输出 Fanuc 风格 G43.4，与对话式程序不兼容；
+        Heidenhain TNC 的 RTCP 指令为 M128（与 format_high_precision_mode 同族）。
+        """
+        return f"{self._next_block()}  M128"
+
+    def format_rtcp_off(self) -> str:
+        """关闭 RTCP 补偿模式（Heidenhain：M129）。"""
+        return f"{self._next_block()}  M129"
 
     def format_high_precision_mode(self, enable: bool = True) -> str:
         """生成高精度加工模式指令（M128）。

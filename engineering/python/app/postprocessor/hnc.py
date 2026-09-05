@@ -52,7 +52,7 @@ class HNCPostProcessor(FanucPostProcessor):
         lines = [
             "%",
             f"O{program_number:04d} (PROGRAM {program_number} - {self._date_string()})",
-            f"(POST: {self.CONTROLLER_NAME})",
+            self._paren_comment(f"POST: {self.CONTROLLER_NAME}"),
             "G21 G17 G40 G49 G80 G90 G94",
             # HNC 特色：G74 Z0（不是 G28）
             "G00 G91 G74 Z0.",

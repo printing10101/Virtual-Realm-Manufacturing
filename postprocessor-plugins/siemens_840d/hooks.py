@@ -41,10 +41,7 @@ class Siemens840DHooks:
         z_end = self._fmt(-abs(depth))
         if pecking:
             peck_depth = cfg.get("peck_depth", 5.0)
-            return (
-                f"CYCLE83({z_start}, {self._fmt(retract)}, {self._fmt(peck_depth)}, "
-                f"{z_end}, 0.0, 0.0, 1, 0, 1, 1)"
-            )
+            return f"CYCLE83({z_start}, {self._fmt(retract)}, {self._fmt(peck_depth)}, {z_end}, 0.0, 0.0, 1, 0, 1, 1)"
         return f"CYCLE81({z_start}, {self._fmt(retract)}, {z_end})"
 
     def format_cycle_tapping(
@@ -53,7 +50,8 @@ class Siemens840DHooks:
         y: float,
         z: float,
         depth: float,
-        dwell: float = 0.0,
+        pitch: float = 1.0,
+        spindle_rpm: float | None = None,
     ) -> str:
         """刚性攻丝循环 CYCLE84。
 
@@ -62,14 +60,11 @@ class Siemens840DHooks:
         """
         cfg = self.get_cycle_config("tapping", "CYCLE84")
         retract = cfg.get("retract", 2.0)
-        rpm = self.get_spindle_rpm()
+        rpm = spindle_rpm if spindle_rpm is not None else self.get_spindle_rpm()
         feed = self.get_feed_rate(rpm)
         z_start = self._fmt(z)
         z_end = self._fmt(-abs(depth))
-        return (
-            f"CYCLE84({z_start}, {self._fmt(retract)}, {z_end}, "
-            f"{self._fmt(feed)}, {int(rpm)}, 3)"
-        )
+        return f"CYCLE84({z_start}, {self._fmt(retract)}, {z_end}, {self._fmt(feed)}, {int(rpm)}, 3)"
 
     def format_cycle_boring(
         self,
@@ -77,6 +72,7 @@ class Siemens840DHooks:
         y: float,
         z: float,
         depth: float,
+        cycle_type: str = "G85",
         dwell: float = 0.0,
     ) -> str:
         """镗孔循环 CYCLE85（进给进/进给出）。
@@ -91,33 +87,29 @@ class Siemens840DHooks:
 
     def format_tool_change(
         self,
-        tool_number: int,
+        tool_id: int,
         length_comp: float = 0.0,
-        safe_z: float = 0.0,
+        radius_comp: float = 0.0,
     ) -> str:
-        """Siemens 换刀：T 指令 + D 补偿号（无 H 补偿）。"""
+        """Siemens 换刀：T 指令 + D 补偿号（无 H 补偿）。
+
+        参数名与基类 format_tool_change 调用约定对齐。
+        """
         z_comp = self._fmt(length_comp) if length_comp else "D1"
-        return f"T{int(tool_number):02d} {z_comp}"
+        return f"T{int(tool_id):02d} {z_comp}"
 
 
 class Siemens840DHeaderHooks:
     """Siemens 840D 程序头/尾 hooks。"""
 
-    def format_header(self) -> str:
-        """Siemens 840D 程序头：TRAFO 关闭 + 绝对编程 + 米制。"""
-        return (
-            "%%_N_%s_MPF\n"
-            ":PATH=/_N_MPF_DIR\n"
-            "G90 G71 G94\n"
-            "G17\n"
-            "TRAFOF\n"
-            "G0 X0 Y0 Z100\n" % self._program_number_safe()
-        )
+    def format_header(self, program_number: int = 1) -> str:
+        """Siemens 840D 程序头：TRAFO 关闭 + 绝对编程 + 米制（签名与基类约定对齐）。
 
-    def _program_number_safe(self) -> str:
-        """程序号安全格式化（避免负数/超长破坏 MPF 文件名）。"""
-        num = int(getattr(self, "program_number", 1000))
-        return f"{num:04d}"
+        程序号四位补零嵌入 MPF 文件名（避免负数/超长破坏文件名）；
+        ``;$PATH=`` 行是 Sinumerik 的程序路径元信息注释。
+        """
+        num = int(program_number)
+        return f"%_N_{num:04d}_MPF\n;$PATH=/_N_MPF_DIR\nG90 G71 G94\nG17\nTRAFOF\nG0 X0 Y0 Z100\n"
 
 
 __all__ = ["Siemens840DHooks", "Siemens840DHeaderHooks"]

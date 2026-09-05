@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Type
 
 import pytest
 
@@ -39,7 +38,7 @@ from app.postprocessor.siemens import SiemensPostProcessor
 from app.postprocessor.xmachine import XMachineXM100PostProcessor
 
 
-CONTROLLERS: dict[str, Type[BasePostProcessor]] = {
+CONTROLLERS: dict[str, type[BasePostProcessor]] = {
     "fanuc_0i": FanucPostProcessor,
     "siemens_840d": SiemensPostProcessor,
     "heidenhain_tnc": HeidenhainPostProcessor,
@@ -207,6 +206,63 @@ def test_golden_extended_matches(controller_id: str, monkeypatch):
     assert output == golden, (
         f"{controller_id} 后处理器扩展序列输出与黄金文件不一致。建议操作：若变更为预期，"
         f"执行 UPDATE_GOLDEN=1 更新黄金文件；否则回退后处理器改动。"
+    )
+
+
+# 声明式方言（hooks 模式，非内置镜像）的黄金覆盖
+
+
+# 仅覆盖「非内置镜像」的声明式方言：镜像型方言（gsk/hnc/knd/mitsubishi/fagor）
+# 已由 TestGoldenConsistency（tests/unit/test_postprocessor_dialect.py）保证与内置一致，
+# 不重复建黄金文件。这两个 hooks 模式方言曾因 declaration.py 不支持列表格式
+# hooks 而静默加载失败（2026-09 修复），黄金文件是其注册与输出的回归基线。
+DECLARED_ONLY_DIALECTS: list[str] = [
+    "heidenhain_tnc640_declared",
+    "siemens_840d_declared",
+]
+
+_DIALECT_PLUGIN_DIR = Path(__file__).resolve().parents[4] / "postprocessor-plugins"
+
+
+def _get_declared_processor(dialect_id: str) -> BasePostProcessor:
+    """通过方言插件编译注册后取处理器实例（每次 fresh registry，避免实例缓存串味）。"""
+    from app.postprocessor.dialect.registry import DialectRegistry
+    from app.postprocessor.registry import PostProcessorRegistry
+
+    registry = PostProcessorRegistry()
+    dialect_registry = DialectRegistry(plugin_root=_DIALECT_PLUGIN_DIR)
+    dialect_registry.discover()
+    dialect_registry.compile_all()
+    dialect_registry.register_to(registry)
+    return registry.get_processor(dialect_id)
+
+
+@pytest.mark.regression
+@pytest.mark.parametrize("dialect_id", DECLARED_ONLY_DIALECTS)
+@pytest.mark.parametrize("sequence", ["standard", "extended"])
+def test_golden_declared_dialect_matches(dialect_id: str, sequence: str, monkeypatch):
+    """声明式方言（hooks 模式）黄金比对：标准 + 扩展序列。"""
+    monkeypatch.setattr(BasePostProcessor, "_date_string", staticmethod(lambda: FIXED_DATE))
+    processor = _get_declared_processor(dialect_id)
+    output = build_standard_program(processor) if sequence == "standard" else build_extended_program(processor)
+    suffix = "" if sequence == "standard" else "_extended"
+    golden_path = GOLDEN_DIR / f"{dialect_id}{suffix}.nc"
+
+    if os.environ.get("UPDATE_GOLDEN") == "1":
+        golden_path.parent.mkdir(parents=True, exist_ok=True)
+        golden_path.write_text(output, encoding="utf-8")
+        pytest.skip(f"UPDATE_GOLDEN=1：已重新生成 {dialect_id}{suffix} 黄金文件")
+
+    if not golden_path.exists():
+        pytest.fail(
+            f"声明式方言黄金文件缺失: {golden_path}。建议操作：审阅当前输出后执行 "
+            f"UPDATE_GOLDEN=1 pytest tests/regression/test_postprocessor_golden.py 生成。"
+        )
+
+    golden = golden_path.read_text(encoding="utf-8")
+    assert output == golden, (
+        f"声明式方言 {dialect_id}（{sequence}）输出与黄金文件不一致。建议操作：若变更为预期，"
+        f"执行 UPDATE_GOLDEN=1 更新黄金文件；否则回退方言/模板/hooks 改动。"
     )
 
 

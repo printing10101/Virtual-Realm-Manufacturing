@@ -30,6 +30,17 @@ class _FormatMixin:
         """
         return f"; {text}"
 
+    def _paren_comment(self, text: str) -> str:
+        """生成括号注释行（Fanuc 字地址族），并净化文本内嵌的括号。
+
+        Fanuc 族控制器的注释以第一个 ``)`` 结束且不支持嵌套：注释文本中
+        出现内层括号（如控制器名 "(Guangzhou CNC)"）会导致注释被提前
+        终止，剩余文本被当作代码解释从而触发报警。因此注释文本中的
+        括号统一替换为空格。
+        """
+        sanitized = text.replace("(", " ").replace(")", " ")
+        return f"({sanitized})"
+
     @staticmethod
     def _calc_arc_radius(
         end: tuple[float, float, float],

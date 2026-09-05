@@ -81,7 +81,11 @@ class DialectDeclaration:
         templates: 模板覆盖 {方法名: 相对 dialect.yaml 的模板路径}；
             未声明的模板方法继承 extends 基类实现
         params: 参数覆盖（与 postprocessor_config.yaml 的 controllers.<name> 语义一致）
-        hooks: 可选代码钩子 entrypoint（"module.path:ClassName"），默认无
+        hooks: 可选代码钩子 entrypoint，支持两种写法（默认无）：
+            - 单入口字符串 "module.path:ClassName"
+            - 多入口列表（Phase E hooks 模式）：
+              ``[{module: pkg.hooks, class: MyHooks}, ...]``
+              加载时归一化为 ["pkg.hooks:MyHooks", ...]
         author / description: 元信息
     """
 
@@ -92,7 +96,7 @@ class DialectDeclaration:
     target_controller: str | None = None
     templates: dict[str, Path] = field(default_factory=dict)
     params: dict[str, Any] = field(default_factory=dict)
-    hooks: str | None = None
+    hooks: str | list[str] | None = None
     author: str = ""
     description: str = ""
 
@@ -153,12 +157,27 @@ class DialectDeclaration:
                 raise DialectDeclarationError(f"方言 '{raw['id']}' 模板文件不存在: {template_path}")
             templates[method] = template_path
 
-        # hooks：可选，格式校验（module.path:ClassName）
+        # hooks：可选，支持两种写法（归一化为 entrypoint 列表语义，str 保持兼容）
         hooks = raw.get("hooks")
         if hooks is not None:
-            if not isinstance(hooks, str) or ":" not in hooks:
+            if isinstance(hooks, str):
+                if ":" not in hooks:
+                    raise DialectDeclarationError(
+                        f"方言 '{raw['id']}' 的 hooks 格式错误（应为 module.path:ClassName）: {hooks}"
+                    )
+            elif isinstance(hooks, list):
+                normalized: list[str] = []
+                for entry in hooks:
+                    if not isinstance(entry, dict) or not entry.get("module") or not entry.get("class"):
+                        raise DialectDeclarationError(
+                            f"方言 '{raw['id']}' 的 hooks 列表项格式错误（应为 {{module: 路径, class: 类名}}）: {entry}"
+                        )
+                    normalized.append(f"{entry['module']}:{entry['class']}")
+                hooks = normalized
+            else:
                 raise DialectDeclarationError(
-                    f"方言 '{raw['id']}' 的 hooks 格式错误（应为 module.path:ClassName）: {hooks}"
+                    f"方言 '{raw['id']}' 的 hooks 格式错误（应为字符串 entrypoint 或 "
+                    f"[{{module, class}}] 列表）: {hooks}"
                 )
 
         # params：可选，必须是映射

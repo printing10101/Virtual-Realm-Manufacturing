@@ -47,7 +47,8 @@ class KNDPostProcessor(FanucPostProcessor):
 
         lines = [
             "%",
-            f"O{program_number:04d} ({self.CONTROLLER_NAME} PROGRAM {program_number} - {self._date_string()})",
+            f"O{program_number:04d} "
+            + self._paren_comment(f"{self.CONTROLLER_NAME} PROGRAM {program_number} - {self._date_string()}"),
             "G21 G17 G40 G49 G80 G90 G94",
             "G00 G91 G28 Z0.",
             "G00 G91 G28 X0. Y0.",

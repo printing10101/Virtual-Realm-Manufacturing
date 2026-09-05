@@ -39,12 +39,7 @@ class HeidenhainTNC640Hooks:
                 f"Q206={feed} ;FEED RATE\n"
                 f"Q202={self._fmt(peck_depth)} ;PLNGNG DEPTH"
             )
-        return (
-            f"CYCL DEF 200 DRILLING\n"
-            f"Q200=2.0 ;SET-UP CLEARANCE\n"
-            f"Q201={z_end} ;DEPTH\n"
-            f"Q206={feed} ;FEED RATE"
-        )
+        return f"CYCL DEF 200 DRILLING\nQ200=2.0 ;SET-UP CLEARANCE\nQ201={z_end} ;DEPTH\nQ206={feed} ;FEED RATE"
 
     def format_cycle_tapping(
         self,
@@ -52,11 +47,14 @@ class HeidenhainTNC640Hooks:
         y: float,
         z: float,
         depth: float,
-        dwell: float = 0.0,
+        pitch: float = 1.0,
+        spindle_rpm: float | None = None,
     ) -> str:
-        """刚性攻丝：CYCL DEF 240 TAPPING（带 Q239 螺距）。"""
-        cfg = self.get_cycle_config("tapping", "240")
-        rpm = self.get_spindle_rpm()
+        """刚性攻丝：CYCL DEF 240 TAPPING（带 Q239 螺距）。
+
+        参数名与基类 format_cycle_tapping 调用约定对齐（pitch / spindle_rpm）。
+        """
+        rpm = spindle_rpm if spindle_rpm is not None else self.get_spindle_rpm()
         feed = self._fmt(self.get_feed_rate(rpm))
         z_end = self._fmt(-abs(depth))
         return (
@@ -64,18 +62,22 @@ class HeidenhainTNC640Hooks:
             f"Q200=2.0 ;SET-UP CLEARANCE\n"
             f"Q201={z_end} ;DEPTH\n"
             f"Q206={feed} ;FEED RATE\n"
-            f"Q239=1.5 ;PITCH"
+            f"Q239={self._fmt(pitch)} ;PITCH"
         )
 
     def format_tool_change(
         self,
-        tool_number: int,
+        tool_id: int,
         length_comp: float = 0.0,
-        safe_z: float = 0.0,
+        radius_comp: float = 0.0,
     ) -> str:
-        """Heidenhain 换刀：TOOL CALL（刀具号 + Z 安全高度 + 主轴转速）。"""
+        """Heidenhain 换刀：TOOL CALL（刀具号 + Z 安全高度 + 主轴转速）。
+
+        参数名与基类 format_tool_change 调用约定对齐（tool_id / length_comp /
+        radius_comp），hooks 方法以方言实例为 self 被调用。
+        """
         rpm = int(self.get_spindle_rpm())
-        return f"TOOL CALL {int(tool_number):02d} Z S{rpm}"
+        return f"TOOL CALL {int(tool_id):02d} Z S{rpm}"
 
     def format_probe(self, probe_number: int = 1, x_pos: float = 0.0) -> str:
         """测头循环：TCH PROBE（Heidenhain 特色）。"""
@@ -85,20 +87,19 @@ class HeidenhainTNC640Hooks:
 class HeidenhainHeaderHooks:
     """Heidenhain TNC640 程序头/尾 hooks。"""
 
-    def format_header(self) -> str:
-        """程序头：BEGIN PGM ... MM。"""
-        num = self._program_number_safe()
-        return f"BEGIN PGM {num} MM"
+    def format_header(self, program_number: int = 1) -> str:
+        """程序头：BEGIN PGM ... MM（签名与基类约定对齐）。
+
+        程序号记录到 ``_last_program_number``（与内置后处理器约定一致），
+        供 format_footer 复用。
+        """
+        self._last_program_number = int(program_number)
+        return f"BEGIN PGM {int(program_number):04d} MM"
 
     def format_footer(self) -> str:
-        """程序尾：END PGM ... MM。"""
-        num = self._program_number_safe()
-        return f"END PGM {num} MM"
-
-    def _program_number_safe(self) -> str:
-        """程序号安全格式化。"""
-        num = int(getattr(self, "program_number", 1000))
-        return f"{num:04d}"
+        """程序尾：END PGM ... MM（复用 format_header 记录的程序号）。"""
+        num = int(getattr(self, "_last_program_number", 1))
+        return f"END PGM {num:04d} MM"
 
 
 __all__ = ["HeidenhainTNC640Hooks", "HeidenhainHeaderHooks"]

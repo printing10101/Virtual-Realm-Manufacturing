@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
 from app.postprocessor.base import BasePostProcessor
@@ -98,12 +99,22 @@ class DialectRegistry:
     def compile_all(self) -> dict[str, type[BasePostProcessor]]:
         """编译全部已发现声明为方言类。
 
+        hooks 模块的导入路径解析：插件目录本身作为包根加入 ``sys.path``
+        （如 ``heidenhain_tnc640.hooks`` 相对插件根解析，PEP 420 命名空间
+        包，无需 ``__init__.py``）。已存在则不重复插入。
+
         Returns:
             {方言 id: 编译后的类}（仅成功项）
 
         Raises:
             DialectCompileError: 任一声明编译失败（fail-fast，声明错误必须暴露）
         """
+        # hooks 模块以插件根为包根导入（如 heidenhain_tnc640.hooks），
+        # 编译前确保插件根在 sys.path 上（PEP 420 命名空间包，无需 __init__.py）
+        plugin_root_str = str(self.plugin_root.resolve())
+        if plugin_root_str not in sys.path:
+            sys.path.insert(0, plugin_root_str)
+
         for dialect_id, declaration in self._declarations.items():
             try:
                 self._compiled_classes[dialect_id] = self.compiler.compile(declaration)
