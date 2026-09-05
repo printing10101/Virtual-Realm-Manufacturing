@@ -21,7 +21,10 @@ permissions:
   contents: read
 
 env:
-  PYTHON_VERSION: '3.10'
+  # 统一非矩阵 job 的 Python 版本。不能用 3.10：代码已使用 3.11+ 的 enum.StrEnum
+  # （如 app/core/response.py）；不能跳 3.14：pydantic 2.9.2 无 cp314 wheel，依赖
+  # 锁定（requirements.txt）升级前 CI 先与 unit 矩阵上限保持一致。
+  PYTHON_VERSION: '3.12'
   NODE_VERSION: '18'
   PIP_CACHE_DIR: ~/.cache/pip
   PNPM_CACHE_DIR: ~/.local/share/pnpm/store

@@ -529,3 +529,6 @@ research/datasets/uniwear/uniwear/uniwear.csv
 engineering/python/data/templates/
 # LNN 推理 trace 运行时目录
 engineering/python/data/traces/
+
+# 软著申请材料（个人材料不入库，与 application_unitree/ 同策略）
+/output/软著材料/
