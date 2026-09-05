@@ -194,6 +194,13 @@ VERSION_FILES: list[VersionFile] = [
         _read_json_key("info.version"),
         _write_json_key("info.version"),
     ),
+    VersionFile(
+        # 2026-09-05 补录：docs-site 版本此前停更于 2.7.0（不在同步清单内漏更）
+        "docs-site/package.json",
+        "docs-site/package.json (VitePress site)",
+        _read_json_key("version"),
+        _write_json_key("version"),
+    ),
 ]
 
 
