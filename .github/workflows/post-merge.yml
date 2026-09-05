@@ -64,7 +64,9 @@ jobs:
       - name: 配置 pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          # 锁文件 lockfileVersion 9.0，pnpm 8 会视为不兼容而忽略 →
+          # frozen-lockfile 报 NO_LOCKFILE（2026-09-05 与 ci.yml 对齐为 9）
+          version: 9
 
       - name: 缓存 pip 依赖
         uses: actions/cache@v4

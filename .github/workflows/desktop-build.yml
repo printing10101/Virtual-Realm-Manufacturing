@@ -53,10 +53,18 @@ jobs:
 
       - name: 安装 Python ${{ env.PYTHON_VERSION }}（python-build-standalone）
         # [2026-09-05 修复] Windows runner 默认 shell 是 pwsh，不识别 export，
-        # 原 step 未声明 bash 导致三平台矩阵在 Windows 上第一步即挂
+        # 原 step 未声明 bash 导致三平台矩阵在 Windows 上第一步即挂。
+        # UV_PYTHON_INSTALL_DIR 显式锚定 build_desktop_runtime.find_uv_python()
+        # 的探测路径（win32: ~/AppData/Roaming/uv/python，其余: ~/.local/share/uv/python），
+        # 避免 uv 版本默认值漂移导致"未找到完整版 Python"。
         shell: bash
         run: |
           export PATH="$HOME/.local/bin:$PATH"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            export UV_PYTHON_INSTALL_DIR="$HOME/AppData/Roaming/uv/python"
+          else
+            export UV_PYTHON_INSTALL_DIR="$HOME/.local/share/uv/python"
+          fi
           uv python install ${{ env.PYTHON_VERSION }}
 
       - name: 设置 Node.js ${{ env.NODE_VERSION }}

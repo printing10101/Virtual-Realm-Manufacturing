@@ -70,12 +70,19 @@ jobs:
           python tests/benchmarks/check_regression.py latest --json > regression_check.json 2>&1 || true
           echo "Regression check result:"
           cat regression_check.json
+          # 空库/上游无数据时上一行会把错误文本写进 regression_check.json，
+          # 直接 json.load 会崩（2026-09-05 修复：无效 JSON 视为 NO_DATA 放行）
           STATUS=$(python -c "
           import json
-          with open('regression_check.json') as f:
-              data = json.load(f)
+          try:
+              with open('regression_check.json') as f:
+                  data = json.load(f)
+          except (json.JSONDecodeError, ValueError):
+              data = {}
           summary = data.get('summary', {})
-          if summary.get('critical_regression_detected', False):
+          if not data:
+              print('NO_DATA')
+          elif summary.get('critical_regression_detected', False):
               print('CRITICAL')
           elif summary.get('critical', 0) > 0 or summary.get('warning', 0) > 0:
               print('WARNING')
