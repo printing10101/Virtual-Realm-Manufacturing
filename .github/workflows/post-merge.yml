@@ -179,6 +179,11 @@ jobs:
           build-args: |
             BUILD_VERSION=${{ needs.build.outputs.version }}
             BUILD_TIMESTAMP=${{ needs.build.outputs.build_timestamp }}
+            # CI runner 在海外，直接用 Docker Hub 官方镜像；华为云 SWR 公共库
+            # 没有 python:3.12-slim（2026-09-05 实测 not found）。
+            # 国内本地构建保持 Dockerfile 默认的华为云源，无需改动。
+            BASE_REGISTRY=docker.io/library
+            PIP_INDEX_URL=https://pypi.org/simple/
 
       # P2-DEV-2 修复：镜像签名 - 使用 Sigstore cosign 对推送的镜像进行签名，保证供应链完整性
       - name: Install cosign
