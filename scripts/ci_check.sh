@@ -34,6 +34,7 @@ else
 fi
 
 echo "==> [3/3] 单元测试"
-bash scripts/run_tests.sh -m unit --no-cov -q "$@"
+# 覆盖率由 CI 显式传 --cov 启用（pytest.ini 已不再全局注入），本地默认全速运行
+bash scripts/run_tests.sh -m unit -q "$@"
 
 echo "==> 全部通过 ✓"
