@@ -11,7 +11,9 @@ permissions:
   contents: read
 
 env:
-  PYTHON_VERSION: '3.10'
+  # 代码已使用 3.11+ 特性（typing.NotRequired、enum.StrEnum），3.10 收集即崩；
+  # 与 ci.yml 统一为 3.12（2026-09-05）
+  PYTHON_VERSION: '3.12'
   NODE_VERSION: '18'
   PIP_CACHE_DIR: ~/.cache/pip
   PNPM_CACHE_DIR: ~/.local/share/pnpm/store
