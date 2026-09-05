@@ -524,3 +524,8 @@ research/datasets/uniwear/uniwear/phm2010_bundle_high_resolution.csv
 # research 公开数据集：按原始来源获取（延续上方"大数据集不入库"策略；
 # test_model_benchmark 缺失该文件时按 README 记录的已知遗留降级）
 research/datasets/uniwear/uniwear/uniwear.csv
+
+# 模板 A/B 测试与分支的运行时状态（ab_testing.db / branches.db / branches/*.json）
+engineering/python/data/templates/
+# LNN 推理 trace 运行时目录
+engineering/python/data/traces/
