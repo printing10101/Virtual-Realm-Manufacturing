@@ -1,6 +1,6 @@
 """设备元数据→MCP 工具自动生成 单元测试（Phase 2：② A2M 思路）。
 
-运行：unset PYTHONPATH && python -m pytest engineering/python/tests/unit/test_device_tools.py -v --no-cov
+运行：unset PYTHONPATH && python -m pytest engineering/python/tests/unit/test_device_tools.py -v
 """
 
 from __future__ import annotations
@@ -158,6 +158,7 @@ class TestToolGeneration:
 
 class TestRegisterOnFastMCP:
     def test_register_device_tools_returns_names(self) -> None:
+        pytest.importorskip("mcp", reason="mcp 未安装（requirements 未声明），跳过 FastMCP 集成点")
         from mcp.server.fastmcp import FastMCP
 
         server = FastMCP("test-device-tools")
@@ -167,6 +168,7 @@ class TestRegisterOnFastMCP:
         assert "cnc_mill_01_read_status" in names
 
     def test_register_all_demo_devices(self) -> None:
+        pytest.importorskip("mcp", reason="mcp 未安装（requirements 未声明），跳过 FastMCP 集成点")
         from mcp.server.fastmcp import FastMCP
 
         server = FastMCP("test-demo")

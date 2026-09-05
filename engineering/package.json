@@ -71,7 +71,7 @@
     "src/**/*.{css,scss}": [
       "prettier --write"
     ],
-    "python/**/*.py": [
+    "python/app/**/*.py": [
       "ruff check --fix",
       "ruff format"
     ],

@@ -1212,6 +1212,8 @@ class TestReconstructMesh:
 
     def test_with_skimage_marching_cubes(self):
         pytest.importorskip("trimesh", reason="需要 trimesh")
+        # 本测试强制走 skimage marching cubes 路径，缺 scikit-image 时无意义
+        pytest.importorskip("skimage", reason="需要 scikit-image")
         # 构造一个 5x5x5 实心球
         grid = np.zeros((10, 10, 10), dtype=bool)
         for i in range(10):

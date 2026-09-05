@@ -27,6 +27,8 @@ from app.ai.lnn.ssm_inference import SsmOnnxMeta, SsmOnnxPredictor, register_ssm
 
 def _build_trained_fixture(tmp_path) -> tuple[str, SsmOnnxMeta, object]:
     """经 research 桥接构建小型 TorchMambaLNN 并导出 ONNX（夹具）。"""
+    # torch.onnx.export 依赖 onnx/onnxscript（训练侧依赖，工程侧 requirements 仅装 onnxruntime）
+    pytest.importorskip("onnxscript", reason="需要 onnx/onnxscript（ONNX 导出路径）")
     factory = get_torch_mamba_lnn_factory()
     config_factory = get_lnn_config_factory()
     if factory is None or config_factory is None:
