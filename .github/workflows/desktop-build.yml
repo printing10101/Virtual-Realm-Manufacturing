@@ -52,6 +52,9 @@ jobs:
         shell: bash
 
       - name: 安装 Python ${{ env.PYTHON_VERSION }}（python-build-standalone）
+        # [2026-09-05 修复] Windows runner 默认 shell 是 pwsh，不识别 export，
+        # 原 step 未声明 bash 导致三平台矩阵在 Windows 上第一步即挂
+        shell: bash
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           uv python install ${{ env.PYTHON_VERSION }}

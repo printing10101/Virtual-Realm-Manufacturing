@@ -78,7 +78,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.PNPM_CACHE_DIR }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          # 锁文件位于 engineering/（2026-09-05 修复：原 key 指向根目录不存在的
+          # pnpm-lock.yaml，且安装/构建步骤缺 working-directory 导致 frozen-lockfile 必挂）
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('engineering/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
@@ -89,9 +91,11 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: 安装前端依赖
+        working-directory: engineering
         run: pnpm install --frozen-lockfile
 
       - name: 构建前端
+        working-directory: engineering
         run: |
           echo "=== 构建前端项目 ==="
           pnpm run build

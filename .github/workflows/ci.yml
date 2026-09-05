@@ -1089,16 +1089,16 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f response-model-report.json ]; then
             python -c "
-            import json
-            with open('response-model-report.json') as f:
-                data = json.load(f)
-            total = data.get('total_routes', 0)
-            with_rm = data.get('with_response_model', 0)
-            without_rm = data.get('without_response_model', 0)
-            pct = (with_rm / total * 100) if total > 0 else 0
-            print(f'| 总路由数 | 已声明 response_model | 未声明 | 覆盖率 |')
-            print(f'|----------|----------------------|--------|--------|')
-            print(f'| {total} | {with_rm} | {without_rm} | {pct:.1f}% |')
+          import json
+          with open('response-model-report.json') as f:
+              data = json.load(f)
+          total = data.get('total_routes', 0)
+          with_rm = data.get('with_response_model', 0)
+          without_rm = data.get('without_response_model', 0)
+          pct = (with_rm / total * 100) if total > 0 else 0
+          print(f'| 总路由数 | 已声明 response_model | 未声明 | 覆盖率 |')
+          print(f'|----------|----------------------|--------|--------|')
+          print(f'| {total} | {with_rm} | {without_rm} | {pct:.1f}% |')
             " >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ 报告文件未生成" >> $GITHUB_STEP_SUMMARY
@@ -1238,6 +1238,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      # 契约域第三方依赖仅 pydantic（2026-09-05 修复：原 job 未装任何依赖，
+      # export 一步 ModuleNotFoundError: pydantic 必挂）
+      - name: Install dependencies
+        run: pip install pydantic
 
       - name: Run OpenAPI consistency check
         working-directory: engineering/python
@@ -1430,11 +1435,11 @@ jobs:
           # Check unit test coverage
           if [ -f "test-results/unit-test-results-py310/coverage-unit.json" ]; then
             UNIT_COV=$(python -c "
-            import json
-            with open('test-results/unit-test-results-py310/coverage-unit.json') as f:
-                data = json.load(f)
-            pct = data.get('totals', {}).get('percent_covered', 0)
-            print(f'{pct:.2f}%')
+          import json
+          with open('test-results/unit-test-results-py310/coverage-unit.json') as f:
+              data = json.load(f)
+          pct = data.get('totals', {}).get('percent_covered', 0)
+          print(f'{pct:.2f}%')
             ")
             echo "| Unit Tests | $UNIT_COV | 24% | ✓ |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -1442,11 +1447,11 @@ jobs:
           # Check integration test coverage
           if [ -f "test-results/integration-test-results/coverage-integration.json" ]; then
             INTEG_COV=$(python -c "
-            import json
-            with open('test-results/integration-test-results/coverage-integration.json') as f:
-                data = json.load(f)
-            pct = data.get('totals', {}).get('percent_covered', 0)
-            print(f'{pct:.2f}%')
+          import json
+          with open('test-results/integration-test-results/coverage-integration.json') as f:
+              data = json.load(f)
+          pct = data.get('totals', {}).get('percent_covered', 0)
+          print(f'{pct:.2f}%')
             ")
             echo "| Integration Tests | $INTEG_COV | 24% | ✓ |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -1454,11 +1459,11 @@ jobs:
           # Check full test coverage
           if [ -f "test-results/full-test-suite-results/coverage-full.json" ]; then
             FULL_COV=$(python -c "
-            import json
-            with open('test-results/full-test-suite-results/coverage-full.json') as f:
-                data = json.load(f)
-            pct = data.get('totals', {}).get('percent_covered', 0)
-            print(f'{pct:.2f}%')
+          import json
+          with open('test-results/full-test-suite-results/coverage-full.json') as f:
+              data = json.load(f)
+          pct = data.get('totals', {}).get('percent_covered', 0)
+          print(f'{pct:.2f}%')
             ")
             echo "| Full Suite | $FULL_COV | 24% | ✓ |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -1466,11 +1471,11 @@ jobs:
           # Check contracts coverage (ADR-005 阶段 0)
           if [ -f "test-results/contracts-test-results/coverage-contracts.json" ]; then
             CONTRACTS_COV=$(python -c "
-            import json
-            with open('test-results/contracts-test-results/coverage-contracts.json') as f:
-                data = json.load(f)
-            pct = data.get('totals', {}).get('percent_covered', 0)
-            print(f'{pct:.2f}%')
+          import json
+          with open('test-results/contracts-test-results/coverage-contracts.json') as f:
+              data = json.load(f)
+          pct = data.get('totals', {}).get('percent_covered', 0)
+          print(f'{pct:.2f}%')
             ")
             echo "| Core Contracts (ADR-005) | $CONTRACTS_COV | 90% | ✓ |" >> $GITHUB_STEP_SUMMARY
           fi

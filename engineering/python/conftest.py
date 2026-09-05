@@ -27,7 +27,7 @@ from pathlib import Path
 # 生产环境不受影响（连接池正常工作时不会进入等待分支）。
 os.environ.setdefault("LNN_SQLITE_POOL_FAIL_FAST", "1")
 
-# WinSock 损坏绕过补丁
+# WinSock 损坏绕过补丁（仅 Windows）
 # 本机 _overlapped 模块因系统级 WinSock 损坏无法导入（WinError 10038），
 # 导致 anyio asyncio.windows_events _overlapped 导入链失败，
 # 进而使 pytest 启动阶段（load_setuptools_entrypoints）崩溃。
@@ -35,13 +35,17 @@ os.environ.setdefault("LNN_SQLITE_POOL_FAIL_FAST", "1")
 # 测试用例中需要真实异步 IO 的场景应使用 asyncio.SelectorEventLoop，
 # 或在 fixture 内显式 patch asyncio.ProactorEventLoop。
 # 根因修复：以管理员身份运行 `netsh winsock reset` 并重启系统。
-try:
-    import _overlapped  # noqa: F401
-except OSError:
-    _patch = types.ModuleType("_overlapped")
-    _patch.Overlapped = type("Overlapped", (), {})
-    sys.modules["_overlapped"] = _patch
-    print("[warn] _overlapped 模块加载失败，已注入空实现绕过 WinSock 损坏。")
+# [2026-09-05] 必须限定 win32：Linux 上 _overlapped 本就不存在，import 抛出的
+# ModuleNotFoundError 不是 OSError 子类，原 except 会直接穿透导致 CI 全部
+# pytest job 在 conftest 加载期崩溃（exit 4，零测试运行）。
+if sys.platform == "win32":
+    try:
+        import _overlapped  # noqa: F401
+    except OSError:
+        _patch = types.ModuleType("_overlapped")
+        _patch.Overlapped = type("Overlapped", (), {})
+        sys.modules["_overlapped"] = _patch
+        print("[warn] _overlapped 模块加载失败，已注入空实现绕过 WinSock 损坏。")
 
 # 强制使用 SelectorEventLoop（避免 IOCP/_overlapped 不完整问题）
 # 背景：_overlapped stub 仅提供 Overlapped 属性，但 ProactorEventLoop 的
