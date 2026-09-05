@@ -1019,12 +1019,13 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Run API documentation sync check
-        # Note: --fail-on-unsync is intentionally omitted because gen-api-docs.py
-        # only documents a subset of routes (LNN + wear), while check_api_docs_sync.py
-        # compares against all routes in code. The check is informational only.
+        # --fail-on-unsync 仅对 code_only（代码新增路由未入文档）失败；
+        # docs_only（文档滞后于已删路由）只报告不阻断。脚本语义已按
+        # gen-api-docs.py 只覆盖部分路由的现状设计，可直接作硬门禁。
         run: |
           python scripts/check_api_docs_sync.py \
             --docs-path docs/api-reference.md \
+            --fail-on-unsync \
             --verbose \
             --json-output api-sync-report.json
 
