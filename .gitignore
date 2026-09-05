@@ -532,3 +532,6 @@ engineering/python/data/traces/
 
 # 软著申请材料（个人材料不入库，与 application_unitree/ 同策略）
 /output/软著材料/
+
+# engineering 子目录的本地扫描缓存
+engineering/.mimosa/
