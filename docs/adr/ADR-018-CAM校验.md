@@ -622,6 +622,32 @@ s7-12 独立验证脚本（`_verify_s7_12.py`）3/3 通过：
 - [x] 内部预校验局限告知文本明确标注「不可替代 CAM 软件二次校验」
 - [x] ADR-018 文档完整（本文件）
 
+## 补记（2026-09）：体素材料去除仿真层 + DNC 下发闸门
+
+优化升级路线图 A 线「仿真强制闭环」在本 ADR 的双层校验中插入第三层，
+并新增下发侧闸门：
+
+1. **VoxelValidator（第三层，闭环核心）**：`app/cam_validation/voxel_validator.py`。
+   真实体素材料去除仿真（区别于 CollisionDetector 的 AABB 预筛）：合成盒状
+   毛坯体素网格（零 trimesh/STL 依赖），复用 `VoxelCutter` 切削原语（Rust
+   compute-core 加速、自动回退 Python），检测**切削段过切毛坯底面**与
+   **快速段安全高度下切入材料**两类致命碰撞。按 `line_range` 归因到特征
+   （口径与 InternalValidator 一致）。结果写入任务级 `voxel_check_passed`
+   （None = 未执行，DNC 闸门按未通过处理）并随 cam_report.json 导出。
+   无开关（硬约束，与 cam_validation_required 同级）；性能旋钮
+   `LNN_CAM_VOXEL_SIZE_MM` / `LNN_CAM_VOXEL_TOOL_DIAMETER_MM` /
+   `LNN_CAM_VOXEL_TOOL_TYPE` / `LNN_CAM_VOXEL_MAX_SEGMENTS`（超限 fail-closed）。
+2. **DNC 下发闸门**：`app/dnc/nc_gate.py` + `api/v1/dnc.py` 发送端点。
+   NC 程序必须追溯到一个 SUCCEEDED 且 `voxel_check_passed=True` 的阶段 7
+   任务才允许发送到机床，否则 403 + `ErrorCode.NC_NOT_VALIDATED`（8013）。
+   逃生阀 `LNN_DNC_ALLOW_UNVALIDATED_NC=1`（fail-closed + warning 审计日志）。
+3. **测试**：`tests/unit/test_voxel_validator.py`、`tests/unit/test_cam_voxel_pipeline.py`、
+   `tests/unit/test_dnc_nc_gate.py`、`tests/api/test_dnc_api.py`（闸门契约）。
+
+「导出」侧不设闸的决策：阶段 6 的导出产物（report.json + G 代码文件）是阶段 7
+的输入，在导出处拦截会造成流水线死锁；阶段 6 的响应与 disclaimer 已声明产物
+仅供校验参考。闭环的强制点在「下发」（唯一通向物理机床的动作）。
+
 ## 后续工作
 
 1. **CAM 软件实际接入**：当 NX Open / PowerMill SDK 可用时，完善 `_NxOpenBackend` /

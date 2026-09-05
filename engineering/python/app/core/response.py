@@ -26,6 +26,8 @@ class ErrorCode(StrEnum):
     FILE_NOT_FOUND = "FILE_NOT_FOUND"
     CAD_GENERATION_ERROR = "CAD_GENERATION_ERROR"
     SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
+    # NC 程序未通过阶段 7 校验（含体素仿真），DNC 下发被闸门拦截
+    NC_NOT_VALIDATED = "NC_NOT_VALIDATED"
 
 
 _ERROR_CODE_TO_NUMERIC: dict[ErrorCode, int] = {
@@ -38,6 +40,8 @@ _ERROR_CODE_TO_NUMERIC: dict[ErrorCode, int] = {
     ErrorCode.CAD_GENERATION_ERROR: 7001,
     ErrorCode.INTERNAL_ERROR: 2001,
     ErrorCode.SERVICE_UNAVAILABLE: 2002,
+    # 8xxx = NC 代码段（与 app.core.exceptions 的 NCCodeException 家族对齐）
+    ErrorCode.NC_NOT_VALIDATED: 8013,
 }
 
 _NUMERIC_TO_ERROR_CODE: dict[int, ErrorCode] = {v: k for k, v in _ERROR_CODE_TO_NUMERIC.items()}

@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
-from app.config._utils import _bool_env, _env, _int_env, _path, logger
+from app.config._utils import _bool_env, _env, _float_env, _int_env, _path, logger
 
 
 @dataclass
@@ -96,6 +96,24 @@ class CamValidationConfig:
     # 系统绝不直接接口 CNC 控制器，CAM 校验报告 JSON 为阶段 7 最终产物
     cam_validation_required: bool = field(default_factory=lambda: _bool_env("LNN_CAM_VALIDATION_REQUIRED", True))
 
+    # ── 体素材料去除仿真（仿真强制闭环，优化升级路线图 A 线）──
+    # 注意：本校验层无开关（硬约束，与 cam_validation_required 同级），
+    # DNC 下发闸门（app.dnc.nc_gate）要求 voxel_check_passed=True 才放行。
+    # 以下仅提供性能/几何参数。
+
+    # 体素边长（mm）：越小越精细越慢。推荐 0.5-2.0（粗仿 2.0，精仿 0.5）
+    voxel_size_mm: float = field(default_factory=lambda: _float_env("LNN_CAM_VOXEL_SIZE_MM", 1.0))
+
+    # 体素仿真用刀具直径（mm）：阶段 6 report.json 未携带刀具直径，
+    # 使用配置默认值；与实际装刀不符时仿真结论无效，工程师审核界面需核对
+    voxel_tool_diameter_mm: float = field(default_factory=lambda: _float_env("LNN_CAM_VOXEL_TOOL_DIAMETER_MM", 10.0))
+
+    # 体素仿真用刀具类型（flat / ball / bullnose / tapered / drill）
+    voxel_tool_type: str = field(default_factory=lambda: _env("LNN_CAM_VOXEL_TOOL_TYPE", "flat"))
+
+    # 运动段数上限：超过即拒绝仿真（fail-closed，不允许部分仿真冒充完整校验）
+    voxel_max_segments: int = field(default_factory=lambda: _int_env("LNN_CAM_VOXEL_MAX_SEGMENTS", 50000))
+
     def __post_init__(self) -> None:
         """启动时校验配置合法性。"""
         # precision_tier 接受阶段 1-6 已有的档位
@@ -157,3 +175,34 @@ class CamValidationConfig:
                 "系统绝不直接接口 CNC 控制器），强制重置为 true。"
             )
             self.cam_validation_required = True
+
+        # 体素仿真参数合法性（性能参数，非法时回退默认值）
+        if not (0.05 <= self.voxel_size_mm <= 5.0):
+            logger.warning(
+                "LNN_CAM_VOXEL_SIZE_MM=%s 非法（允许 0.05-5.0mm），回退 1.0。",
+                self.voxel_size_mm,
+            )
+            self.voxel_size_mm = 1.0
+
+        if not (0.5 <= self.voxel_tool_diameter_mm <= 300.0):
+            logger.warning(
+                "LNN_CAM_VOXEL_TOOL_DIAMETER_MM=%s 非法（允许 0.5-300mm），回退 10.0。",
+                self.voxel_tool_diameter_mm,
+            )
+            self.voxel_tool_diameter_mm = 10.0
+
+        valid_voxel_tool_types = {"flat", "ball", "bullnose", "tapered", "drill"}
+        if self.voxel_tool_type not in valid_voxel_tool_types:
+            logger.warning(
+                "LNN_CAM_VOXEL_TOOL_TYPE='%s' 非法（允许 %s），回退 'flat'。",
+                self.voxel_tool_type,
+                sorted(valid_voxel_tool_types),
+            )
+            self.voxel_tool_type = "flat"
+
+        if self.voxel_max_segments < 100:
+            logger.warning(
+                "LNN_CAM_VOXEL_MAX_SEGMENTS=%s 过小（<100），回退 50000。",
+                self.voxel_max_segments,
+            )
+            self.voxel_max_segments = 50000

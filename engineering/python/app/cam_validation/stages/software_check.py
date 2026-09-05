@@ -51,6 +51,7 @@ class SoftwareCheckMixin:
     _loader: Any
     _store: Any
     _validator: Any
+    _voxel_validator: Any
 
     """CAM 软件校验阶段 mixin：双层校验的核心执行逻辑。
 
@@ -199,7 +200,60 @@ class SoftwareCheckMixin:
             mode=_DEFAULT_MODE,
         )
 
-        # 4. 执行 CAM 软件二次校验（_cam_call_lock 串行化）
+        # 4. 体素材料去除仿真校验（闭环强制层，无开关——项目记忆硬约束）
+        # 检测两类致命碰撞：切削段过切毛坯底面 / 快速段在安全高度下切入材料。
+        # voxel_validator 为 None 仅出现在 cfg=None 的测试注入场景。
+        if self._voxel_validator is not None:
+            voxel_report = self._voxel_validator.validate(
+                gcode_text=load_result.gcode_text,
+                controller_type=task.controller_type,
+                safe_z=task.safe_z,
+                stock_top_z=task.stock_top_z,
+                stock_length=_DEFAULT_STOCK_LENGTH_MM,
+                stock_width=_DEFAULT_STOCK_WIDTH_MM,
+                stock_height=stock_height,
+            )
+            task.voxel_check_passed = voxel_report.passed
+            task.voxel_collision_count = voxel_report.collision_count
+            task.voxel_engine = voxel_report.engine
+
+            # 按特征 line_range 归因碰撞 block（口径与 InternalValidator 一致：
+            # 未归因的碰撞不上挂特征，由任务级判定 + 警告兜底）
+            collision_blocks = set(voxel_report.collision_blocks)
+            if collision_blocks:
+                attributed: set[int] = set()
+                for fr in updated_features:
+                    start, end = fr.line_range
+                    hits = sorted(b for b in collision_blocks if start > 0 and end > 0 and start <= b <= end)
+                    fr.voxel_collision_blocks = hits
+                    fr.voxel_check_passed = not hits
+                    attributed.update(hits)
+                unattributed = collision_blocks - attributed
+                if unattributed:
+                    task.warnings.append(
+                        f"体素仿真存在 {len(unattributed)} 个未归因到任何特征的碰撞 block：{sorted(unattributed)[:20]}"
+                    )
+            else:
+                for fr in updated_features:
+                    fr.voxel_collision_blocks = []
+                    fr.voxel_check_passed = True
+
+            for w in voxel_report.warnings:
+                if w not in task.warnings:
+                    task.warnings.append(w)
+
+            if not voxel_report.passed:
+                task.errors.append(
+                    f"体素材料去除仿真未通过：{voxel_report.collision_count} 处碰撞"
+                    f"（severity={voxel_report.severity}，engine={voxel_report.engine}）。"
+                    f"DNC 下发将被闸门拦截，请回阶段 6 修改刀轨后重新生成。"
+                )
+        else:
+            # 测试注入场景未提供体素校验器：保持 None（DNC 闸门会拦截，
+            # 不允许"未知"状态冒充通过）
+            task.warnings.append("体素材料去除仿真未执行（校验器未注入）")
+
+        # 5. 执行 CAM 软件二次校验（_cam_call_lock 串行化）
         with self._store.cam_call_lock:
             cam_report = self._adapter.validate(
                 gcode_file_path=load_result.gcode_file_path,
@@ -217,7 +271,7 @@ class SoftwareCheckMixin:
                 f"原因：{cam_report.degradation_reason}"
             )
 
-        # 5. 合并两层校验结果到 feature_validation_results
+        # 6. 合并两层校验结果到 feature_validation_results
         # CAM 软件二次校验是任务级别的整体判定（NX/PowerMill 返回的 collisions
         # 不一定按特征归因），所有特征共享同一个 cam_check_passed 值
         cam_check_passed = cam_report.safe
@@ -226,21 +280,21 @@ class SoftwareCheckMixin:
             fr.cam_messages = list(cam_report.messages)
             fr.cam_backend_used = cam_report.backend_used
 
-        # 6. 计算统计
+        # 7. 计算统计
         passed = sum(1 for fr in updated_features if fr.overall_passed)
         failed = len(updated_features) - passed
         task.feature_validation_results = updated_features
         task.passed_features = passed
         task.failed_features = failed
 
-        # 7. 缓存 InternalValidationReport（供 confirm_task 导出 internal_report.json）
+        # 8. 缓存 InternalValidationReport（供 confirm_task 导出 internal_report.json）
         # 通过 _store 间接传递：写入 task.warnings 末尾的标记（避免新增字段）
         # 实际实现：在 confirm_task 时重新构建，这里仅追加 CollisionReport.warnings
         for w in collision_report.warnings:
             if w not in task.warnings:
                 task.warnings.append(w)
 
-        # 8. 状态置为 VALIDATED
+        # 9. 状态置为 VALIDATED
         task.status = CamValidationTaskStatus.VALIDATED.value
         self._store.update_task(task)
 

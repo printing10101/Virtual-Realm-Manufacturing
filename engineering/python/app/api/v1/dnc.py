@@ -19,11 +19,13 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
 
 from app.dnc.dnc_manager import dnc_manager, ProtocolType
+from app.dnc.nc_gate import get_dispatch_block_reason
 from app.dnc.unified_adapter import (
     UnifiedDNCAdapter,
     discover_machines,
@@ -138,6 +140,11 @@ async def send_nc_program(req: NCSendRequest):
     将 NC 程序远程传输到指定机床。
 
     目前仅 OPC UA 协议支持程序传输。
+
+    仿真强制闭环（硬约束）：程序必须能追溯到一个 SUCCEEDED 且体素仿真
+    通过的阶段 7 校验任务，否则下发被拦截（错误码 8013）。
+    外部/历史程序可显式设置 LNN_DNC_ALLOW_UNVALIDATED_NC=1 绕过
+    （每次下发留 warning 审计日志）。
     """
     # 验证文件存在
     program_path = Path(req.program_path)
@@ -145,6 +152,24 @@ async def send_nc_program(req: NCSendRequest):
         # 修复：避免向客户端回显服务器文件路径（可能泄露目录结构），改为通用提示，路径详情仅记日志
         logger.warning("NC 程序文件不存在: machine_id=%s path=%s", req.machine_id, req.program_path)
         raise HTTPException(status_code=400, detail="文件不存在，请检查路径后重试")
+
+    # 仿真强制闭环闸门（fail-closed：未通过阶段 7 校验（含体素仿真）的程序不允许上机）
+    block_reason = get_dispatch_block_reason(str(program_path))
+    if block_reason:
+        logger.warning(
+            "NC 程序下发被闸门拦截: machine_id=%s path=%s reason=%s",
+            req.machine_id,
+            req.program_path,
+            block_reason,
+        )
+        return JSONResponse(
+            status_code=403,
+            content=error(
+                code=ErrorCode.NC_NOT_VALIDATED,
+                message=block_reason,
+                suggestion="请先在阶段 7 完成 CAM 校验（含体素仿真）与工程师确认，再下发该程序。",
+            ),
+        )
 
     program_name = req.program_name or program_path.stem
     ok = await dnc_manager.send_nc_program(req.machine_id, str(program_path), program_name)

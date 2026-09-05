@@ -50,7 +50,13 @@ async def async_client():
 
 @pytest.fixture(autouse=True)
 def mock_manager(monkeypatch):
-    """Mock dnc_manager 网络操作，保持测试 hermetic（不真实连接机床）。"""
+    """Mock dnc_manager 网络操作，保持测试 hermetic（不真实连接机床）。
+
+    同时默认开启 LNN_DNC_ALLOW_UNVALIDATED_NC=1（下发闸门逃生阀）：
+    本文件的传输用例针对「API 契约」而非闸门逻辑；闸门行为由
+    TestNCProgramDispatchGate 与 tests/unit/test_dnc_nc_gate.py 覆盖。
+    """
+    monkeypatch.setenv("LNN_DNC_ALLOW_UNVALIDATED_NC", "1")
     monkeypatch.setattr(dnc_manager, "add_machine", AsyncMock(return_value=True))
     monkeypatch.setattr(dnc_manager, "remove_machine", AsyncMock())
     monkeypatch.setattr(dnc_manager, "list_machines", lambda: [])
@@ -223,6 +229,102 @@ class TestNCProgramTransfer:
             # 业务错误信封：HTTP 200 + 非零错误码（success/error 统一信封约定）
             assert response.status_code == 200
             assert response.json()["code"] != 0
+        finally:
+            os.unlink(temp_path)
+
+
+# 仿真强制闭环：DNC 下发闸门测试（闸门逻辑单测见 tests/unit/test_dnc_nc_gate.py）
+
+
+class TestNCProgramDispatchGate:
+    """NC 下发闸门 API 契约测试（关闭逃生阀，验证端到端拦截/放行）。"""
+
+    @pytest.fixture
+    def cam_store(self):
+        from app.cam_validation.cam_store import CamTaskStore
+
+        store = CamTaskStore()
+        yield store
+        store.clear()
+
+    def _register_cam_task(self, cam_store, program_path: str, status: str, voxel: bool | None) -> None:
+        import time
+
+        from app.cam_validation.cam_store import CamValidationTask
+
+        cam_store.add_task(
+            CamValidationTask(
+                task_id=f"cam_gate_{abs(hash(program_path)) % 10**8}",
+                source_gcode_report_path=str(program_path) + ".report.json",
+                source_gcode_file_path=program_path,
+                controller_type="fanuc_0i",
+                status=status,
+                voxel_check_passed=voxel,
+                completed_at=time.time(),
+            )
+        )
+
+    def test_unvalidated_program_rejected_with_8013(self, client, monkeypatch):
+        """未通过阶段 7 校验的程序下发 → 403 + 错误码 8013 + 可执行补救建议"""
+        monkeypatch.delenv("LNN_DNC_ALLOW_UNVALIDATED_NC", raising=False)
+        import os
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".nc", delete=False) as f:
+            f.write("O0001\nG90 G54\nM30\n")
+            temp_path = f.name
+        try:
+            response = client.post(
+                "/api/v1/dnc/nc-program/send",
+                json={"machine_id": "TEST-CNC-001", "program_path": temp_path},
+            )
+            assert response.status_code == 403
+            data = response.json()
+            assert data["code"] == 8013
+            assert "校验记录" in data["message"]
+            assert data["suggestion"]
+        finally:
+            os.unlink(temp_path)
+
+    def test_validated_program_dispatch_allowed(self, client, monkeypatch, cam_store):
+        """SUCCEEDED + 体素通过的任务导出程序 → 正常下发（200 sent）"""
+        monkeypatch.delenv("LNN_DNC_ALLOW_UNVALIDATED_NC", raising=False)
+        import os
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".nc", delete=False) as f:
+            f.write("O0001\nG90 G54\nM30\n")
+            temp_path = f.name
+        self._register_cam_task(cam_store, temp_path, status="succeeded", voxel=True)
+        try:
+            response = client.post(
+                "/api/v1/dnc/nc-program/send",
+                json={"machine_id": "TEST-CNC-001", "program_path": temp_path},
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["code"] == 0
+            assert data["data"]["status"] == "sent"
+        finally:
+            os.unlink(temp_path)
+
+    def test_partially_validated_program_rejected(self, client, monkeypatch, cam_store):
+        """校验任务未 SUCCEEDED（如 validated 待审核）→ 403 拦截"""
+        monkeypatch.delenv("LNN_DNC_ALLOW_UNVALIDATED_NC", raising=False)
+        import os
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".nc", delete=False) as f:
+            f.write("O0001\nG90 G54\nM30\n")
+            temp_path = f.name
+        self._register_cam_task(cam_store, temp_path, status="validated", voxel=True)
+        try:
+            response = client.post(
+                "/api/v1/dnc/nc-program/send",
+                json={"machine_id": "TEST-CNC-001", "program_path": temp_path},
+            )
+            assert response.status_code == 403
+            assert response.json()["code"] == 8013
         finally:
             os.unlink(temp_path)
 

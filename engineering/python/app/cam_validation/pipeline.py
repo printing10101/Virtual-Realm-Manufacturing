@@ -57,8 +57,8 @@ God class 已按阶段职责拆分为 ``app.cam_validation.stages`` 子包的 3 
 向后兼容：
     - ``from app.cam_validation.pipeline import CamValidationPipeline`` 仍可用
     - ``from app.cam_validation.pipeline import CamValidationResult`` 仍可用
-    - 类与函数签名不变（``__init__`` 4 个参数 cfg / loader / validator /
-      adapter 保持原样，便于测试注入）
+    - 类与函数签名不变（``__init__`` 参数 cfg / loader / validator /
+      adapter 保持原样，便于测试注入；新增第 5 个可选参数 voxel_validator）
 """
 
 from __future__ import annotations
@@ -78,6 +78,7 @@ from app.cam_validation.cam_adapter import CamAdapter
 from app.cam_validation.cam_store import get_task_store
 from app.cam_validation.gcode_loader import GCodeLoader
 from app.cam_validation.internal_validator import InternalValidator
+from app.cam_validation.voxel_validator import VoxelValidator
 
 if TYPE_CHECKING:
     from app.config import CamValidationConfig
@@ -135,6 +136,7 @@ class CamValidationPipeline(
         loader: GCodeLoader | None = None,
         validator: InternalValidator | None = None,
         adapter: CamAdapter | None = None,
+        voxel_validator: VoxelValidator | None = None,
     ) -> None:
         """初始化流水线。
 
@@ -143,6 +145,8 @@ class CamValidationPipeline(
             loader: GCodeLoader 实例（默认用 GCodeLoader()，便于测试注入）
             validator: InternalValidator 实例（默认用 InternalValidator(cfg)）
             adapter: CamAdapter 实例（默认用 CamAdapter(cfg)）
+            voxel_validator: VoxelValidator 实例（默认用 VoxelValidator(cfg)，
+                体素材料去除仿真为闭环强制层，测试可注入替身）
         """
         self._cfg = cfg
         self._store = get_task_store()
@@ -157,6 +161,14 @@ class CamValidationPipeline(
             # （InternalValidator 需要 config.precision_tier 等字段，
             # 此分支仅用于单元测试注入 validator 时跳过构造）
             self._validator = validator
+
+        # 体素校验器：cfg 为 None 且未显式注入时保持 None（测试场景跳过体素层）
+        if voxel_validator is not None:
+            self._voxel_validator = voxel_validator
+        elif cfg is not None:
+            self._voxel_validator = VoxelValidator(cfg)
+        else:
+            self._voxel_validator = voxel_validator
 
         if adapter is not None:
             self._adapter = adapter

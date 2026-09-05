@@ -267,6 +267,7 @@ class MergeReportMixin:
             - gcode_total_lines
             - cam_backend_requested / cam_backend_used / cam_backend_fallback_reason
             - cam_software_report（CAM 软件二次校验归一化报告）
+            - voxel_simulation_report（体素材料去除仿真摘要，闭环强制层）
             - total_features / passed_features / failed_features
             - feature_validation_results（每条特征的双层校验 + 审核记录）
             - industrial_hard_gates_note（工业硬门槛告知）
@@ -301,6 +302,13 @@ class MergeReportMixin:
             "cam_backend_fallback_reason": task.cam_backend_fallback_reason,
             # CAM 软件二次校验报告
             "cam_software_report": cam_software_report_dict,
+            # 体素材料去除仿真摘要（闭环强制层；passed=null 表示未执行，
+            # DNC 下发闸门对 null 按"未通过"处理）
+            "voxel_simulation_report": {
+                "passed": task.voxel_check_passed,
+                "engine": task.voxel_engine,
+                "collision_count": task.voxel_collision_count,
+            },
             # 双层校验统计
             "total_features": task.total_features,
             "passed_features": task.passed_features,

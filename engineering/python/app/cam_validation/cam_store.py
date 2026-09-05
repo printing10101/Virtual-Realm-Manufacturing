@@ -166,6 +166,17 @@ class CamAdapterError(CamValidationError):
     """
 
 
+class VoxelValidationError(CamValidationError):
+    """体素材料去除仿真校验异常（VoxelValidator）。
+
+    可能原因：
+    - ToolpathParser 解析 G 代码失败
+    - 运动段数超过 voxel_max_segments 上限（fail-closed，拒绝部分仿真）
+    - safe_z 不高于 stock_top_z
+    - 切削内核执行异常
+    """
+
+
 class ReviewError(CamValidationError):
     """审核操作异常。
 
@@ -212,6 +223,9 @@ class FeatureValidationResult:
     # InternalValidator 结果
     internal_check_passed: bool = True
     internal_events: list[dict[str, Any]] = field(default_factory=list)
+    # VoxelValidator 结果（体素材料去除仿真，闭环强制层）
+    voxel_check_passed: bool = True
+    voxel_collision_blocks: list[int] = field(default_factory=list)
     # CamAdapter 结果
     cam_check_passed: bool = True
     cam_messages: list[str] = field(default_factory=list)
@@ -234,6 +248,8 @@ class FeatureValidationResult:
             "line_range": list(self.line_range),
             "internal_check_passed": self.internal_check_passed,
             "internal_events": self.internal_events,
+            "voxel_check_passed": self.voxel_check_passed,
+            "voxel_collision_blocks": list(self.voxel_collision_blocks),
             "cam_check_passed": self.cam_check_passed,
             "cam_messages": self.cam_messages,
             "cam_backend_used": self.cam_backend_used,
@@ -249,13 +265,13 @@ class FeatureValidationResult:
 
     @property
     def overall_passed(self) -> bool:
-        """综合判定：内部预校验 + CAM 软件二次校验均通过。
+        """综合判定：内部预校验 + 体素仿真 + CAM 软件二次校验均通过。
 
         工程师审核时以此为基础，但最终是否上机仍由工程师决定。
         manual 后端 cam_check_passed=True 仅表示「校验清单已生成，等待工程师回填」，
         实际是否通过需工程师审核 manual_checklist 字段后手动设置 review_status。
         """
-        return self.internal_check_passed and self.cam_check_passed
+        return self.internal_check_passed and self.voxel_check_passed and self.cam_check_passed
 
 
 # CamValidationTask：CAM 校验任务
@@ -316,6 +332,10 @@ class CamValidationTask:
     # 导出产物
     cam_report_path: str = ""
     internal_report_path: str = ""
+    # 体素材料去除仿真（闭环强制层；None = 本任务产生于闭环上线前/未执行）
+    voxel_check_passed: bool | None = None
+    voxel_collision_count: int = 0
+    voxel_engine: str = ""
     # 项目记忆硬约束
     cam_validation_required: bool = True
     # 流程元数据
@@ -352,6 +372,9 @@ class CamValidationTask:
             "cam_backend_fallback_reason": self.cam_backend_fallback_reason,
             "cam_report_path": self.cam_report_path,
             "internal_report_path": self.internal_report_path,
+            "voxel_check_passed": self.voxel_check_passed,
+            "voxel_collision_count": self.voxel_collision_count,
+            "voxel_engine": self.voxel_engine,
             "cam_validation_required": self.cam_validation_required,
             "workspace_dir": self.workspace_dir,
             "error_message": self.error_message,
@@ -438,6 +461,7 @@ __all__ = [
     "GCodeReportLoadError",
     "InternalValidationError",
     "CamAdapterError",
+    "VoxelValidationError",
     "ReviewError",
     "CamValidationPipelineError",
     # dataclass

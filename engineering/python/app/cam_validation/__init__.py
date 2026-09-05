@@ -79,6 +79,7 @@ from app.cam_validation.cam_store import (
     ReviewError,
     SAFETY_MARGIN_RATIO,
     VALID_CAM_BACKENDS,
+    VoxelValidationError,
     generate_task_id,
     get_task_store,
     is_valid_cam_backend,
@@ -96,6 +97,10 @@ from app.cam_validation.gcode_loader import (
 from app.cam_validation.internal_validator import (
     InternalValidationReport,
     InternalValidator,
+)
+from app.cam_validation.voxel_validator import (
+    VoxelValidationReport,
+    VoxelValidator,
 )
 from app.cam_validation.cam_adapter import (
     CamAdapter,
@@ -119,6 +124,7 @@ __all__: list[str] = [
     "GCodeReportLoadError",
     "InternalValidationError",
     "CamAdapterError",
+    "VoxelValidationError",
     "ReviewError",
     "CamValidationPipelineError",
     # cam_store：dataclass
@@ -140,6 +146,9 @@ __all__: list[str] = [
     # internal_validator
     "InternalValidationReport",
     "InternalValidator",
+    # voxel_validator（体素材料去除仿真，闭环强制层）
+    "VoxelValidationReport",
+    "VoxelValidator",
     # cam_adapter
     "CamAdapter",
     "CamSoftwareReport",
