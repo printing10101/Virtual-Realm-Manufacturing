@@ -510,3 +510,17 @@ research/datasets/uniwear/uniwear/phm2010_bundle_high_resolution.csv
 
 # 天才少年计划申请材料（个人材料不入库）
 /application_unitree/
+
+# ============================================================
+# 仓库卫生（2026-09-05 优化批次）
+# ============================================================
+# 损坏的 Python 3.11 venv（pydantic_core 损坏已废弃，仅 .venv 系列除外皆不入库）
+.venv*/
+# 运行时用户存储（服务首次启动自动创建，含用户凭据不入库）
+.lnn_users.json
+# 会话/本地工具产物
+/.mimosa/
+/conversation_modes/
+# research 公开数据集：按原始来源获取（延续上方"大数据集不入库"策略；
+# test_model_benchmark 缺失该文件时按 README 记录的已知遗留降级）
+research/datasets/uniwear/uniwear/uniwear.csv
