@@ -41,6 +41,16 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # engineering/python
 ENGINEERING = PROJECT_ROOT.parent                    # engineering
 
+# CI Windows runner 的 stdout 默认是 cp1252，中文日志会 UnicodeEncodeError；
+# 本地旧控制台同理。统一重配置为 UTF-8（errors=replace 兜底）。
+for _stream in (sys.stdout, sys.stderr):
+    _enc = getattr(_stream, "encoding", "") or ""
+    if _enc.lower().replace("-", "") != "utf8":
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError):
+            pass
+
 
 def log(msg: str) -> None:
     print(f"[build-runtime] {msg}", flush=True)
