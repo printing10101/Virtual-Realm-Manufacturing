@@ -1,7 +1,7 @@
 # 灵境制造（Virtual Realm Manufacturing）· 项目概览
 
-> 探查时间：2026-07-29　|　当前版本：V2.7.0　|　当前分支：`refactor/decouple-research-engineering`
-> 仓库根目录：`C:\Users\Lenovo\Desktop\灵境制造（上线版）`
+> 探查时间：2026-07-29　|　更新时间：2026-09-05　|　当前版本：V2.8.0　|　当前分支：`main`
+> 仓库根目录：`D:\灵境制造`
 
 ---
 
@@ -150,7 +150,7 @@
 
 ## 6. 当前开发状态（Status）
 
-- **版本与分支**：V2.7.0，当前工作于 `refactor/decouple-research-engineering`；最近提交 `592aedb feat: V2.7.0 工程与研究模块解耦重构`（其上 `27b9c2a` V2.6.0 架构重构与契约层建设）。
+- **版本与分支**：V2.8.0（2026-09-05 发布），当前分支 `main`（2026-08-19 分支收敛：refactor 分支已并入 main，旧 main 存档于 tag `backup/main-2026-08-03`；历史合并点 `592aedb` V2.7.0 解耦重构、`27b9c2a` V2.6.0 架构重构与契约层建设）。版本演进见根 `CHANGELOG.md`。
 - **成熟度**：功能面已较完整（Roadmap 中 LNN、11 后处理器、DNC 适配、RAG、知识图谱、Tauri 打包均已 ✅）；代码质量处于持续改进中（V2.7 静态审查评定 C 级，核心架构项——单例→DI 迁移、分层整理、前端 API 层激活——仍在分阶段推进中，详见 `output/AI代码质量综合评价.html`）。
 - **进行中的重构（REFACTOR_PLAN_V2.6.1，2026-07-20）**：
   - ✅ 已修：XSS（`ExampleGallery.vue` 三层防御）、`skill_compiler` 降级路径补 AST 审计、`logging_config` 自测守卫、UTC 时区统一。
