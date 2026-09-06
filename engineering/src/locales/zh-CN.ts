@@ -3277,6 +3277,31 @@ export default {
       "默认采用纸面模式：所有 T 级操作（机床下发）仅模拟执行并记录审计日志，确保工业安全。实模式需班长双因子确认 + 机床安全前置校验。",
     step6Title: "开始使用",
     step6Desc: "引导结束。如需重新查看，可在「帮助 → 重新引导」中再次启动。",
+    // [W10.2] 制造流程引导
+    flowStep1Title: "制造全流程",
+    flowStep1Desc:
+      "灵境制造打通「图纸/语言 → 3D 模型 → 工艺规划 → 物理仿真 → NC 代码」全链路，每一步都有物理校验把关。花一分钟认识各个入口。",
+    flowStep2Title: "自然语言建模",
+    flowStep2Desc:
+      "用一句话或一张图纸生成 3D 模型——建模、工艺、NC 在同一条链路上完成，不需要在多个软件间来回倒腾。",
+    flowStep3Title: "工艺规划",
+    flowStep3Desc:
+      "自动识别特征、编排工序、推荐切削参数；参数推荐带物理钳制，不会给出机床做不到的数字。",
+    flowStep4Title: "仿真模拟",
+    flowStep4Desc:
+      "颤振稳定性、切削力与体素切削仿真。原则只有一条：AI 说的不算，物理说了算。",
+    flowStep5Title: "刀具路径",
+    flowStep5Desc:
+      "编辑与复核刀轨；NC 代码按 11 种控制器方言生成，每种方言都经过语法合规基线校验。",
+    flowStep6Title: "数据飞轮",
+    flowStep6Desc:
+      "「它学会了什么」看板展示 AI 的每一步自我改进——全部可审计、可回滚，用得越久越懂你的车间。",
+    flowStep7Title: "审批中心",
+    flowStep7Desc:
+      "AI 起草、人确认。在较低自主等级下，每一条 AI 建议都会送到这里等你拍板。",
+    flowStep8Title: "物理校验兜底",
+    flowStep8Desc:
+      "AI 生成的 NC 必须通过体素仿真校验才能下发机床（硬闸，绕不过去）；推理与数据全程留在你自己的电脑里。现在，去导入第一张图纸吧！",
   },
   dependencyTree: {
     statusMissing: "缺失",

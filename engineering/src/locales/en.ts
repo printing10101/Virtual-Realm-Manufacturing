@@ -3338,6 +3338,31 @@ export default {
       "Paper-only mode is the default: all T-level operations (machine dispatch) are simulated and audit-logged for industrial safety. Live mode requires supervisor dual-factor confirmation and machine safety pre-checks.",
     step6Title: "Get Started",
     step6Desc: "Tour complete. To replay, use 'Help → Replay Tour'.",
+    // [W10.2] Manufacturing flow tour
+    flowStep1Title: "The manufacturing flow",
+    flowStep1Desc:
+      "Lingjing connects drawing/language → 3D model → process planning → physical simulation → NC code, with physical verification at every step. Take a minute to meet the entry points.",
+    flowStep2Title: "NL Modeling",
+    flowStep2Desc:
+      "Generate a 3D model from a sentence or a drawing — modeling, process and NC live on one pipeline, no more juggling tools.",
+    flowStep3Title: "Process Planning",
+    flowStep3Desc:
+      "Automatic feature recognition, operation sequencing and cutting-parameter recommendation; parameters are physically clamped to what the machine can actually do.",
+    flowStep4Title: "Simulation",
+    flowStep4Desc:
+      "Chatter stability, cutting force and voxel material-removal simulation. One principle: the AI doesn't get the final say — physics does.",
+    flowStep5Title: "Toolpath",
+    flowStep5Desc:
+      "Review and edit toolpaths; NC code is generated for 11 controller dialects, each covered by syntax-compliance baselines.",
+    flowStep6Title: "Data Flywheel",
+    flowStep6Desc:
+      "The 'What it learned' board shows every self-improvement the AI makes — fully auditable and reversible. It gets to know your shop over time.",
+    flowStep7Title: "Approval Center",
+    flowStep7Desc:
+      "AI drafts, humans confirm. At lower autonomy levels every recommendation lands here for your sign-off.",
+    flowStep8Title: "Physical verification, always",
+    flowStep8Desc:
+      "AI-generated NC must pass voxel simulation before it can be sent to a machine (a hard gate, no bypass); inference and data never leave your own computer. Now go import your first drawing!",
   },
   dependencyTree: {
     statusMissing: "Missing",
