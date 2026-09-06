@@ -345,11 +345,22 @@ Content-Type: application/json
 | `DELETE` | `/api/v1/documents/{doc_id}` | 删除文档。 |
 | `GET` | `/api/v1/documents/{doc_id}` | 获取单个文档详情（浏览量+1）。 |
 | `PUT` | `/api/v1/documents/{doc_id}` | 更新文档。 |
+| `GET` | `/api/v1/dreaming/learnings` | 「它这周学会了什么」：窗口期内新增规则草稿与灰度事件流。 |
+| `POST` | `/api/v1/dreaming/reflect` | 触发完整离线反思（提取→反思→合成→报告，产物一律 draft 状态）。 |
+| `GET` | `/api/v1/dreaming/rules` | 规则草稿 × 灰度发布状态联查。 |
+| `POST` | `/api/v1/dreaming/rules/{rule_id}/promote` | 灰度晋级（SHADOW→CANARY→FULL，FULL 强制双重沙箱校验）。 |
+| `POST` | `/api/v1/dreaming/rules/{rule_id}/publish` | 人工放行：草稿进入灰度 SHADOW（AI 起草，人确认）。 |
+| `POST` | `/api/v1/dreaming/rules/{rule_id}/rollback` | 一键回滚（经 RollbackManager，含冷却期与历史留痕）。 |
+| `GET` | `/api/v1/dreaming/status` | 子系统状态（阶段分布 / 草稿数 / 最近反思）。 |
 | `POST` | `/api/v1/dynamic-adjustment/calibrate-wear` | 使用实时传感器数据 EWMA 校正磨损预测。 |
 | `POST` | `/api/v1/dynamic-adjustment/closed-loop` | 端到端闭环：磨损 → 决策 → NC 改写（单次调用完成全链路）。 |
 | `POST` | `/api/v1/dynamic-adjustment/decide` | 根据刀具磨损状态生成切削参数调整决策。 |
 | `GET` | `/api/v1/dynamic-adjustment/health` | 动态调参闭环模块健康检查。 |
 | `POST` | `/api/v1/dynamic-adjustment/rewrite-nc` | 按调整决策改写 NC 代码中的主轴转速与进给速度。 |
+| `POST` | `/api/v1/embedding/encode` | 三模态特征 → 512 维统一制造语义嵌入（纯 NumPy 投影，零模型加载）。 |
+| `POST` | `/api/v1/embedding/index` | 为指定层（cognitive/perception/execution）构建 kd-tree ANN 索引。 |
+| `POST` | `/api/v1/embedding/query` | 跨层检索（支持语义轴加权 axis_weights 与模态过滤）。 |
+| `GET` | `/api/v1/embedding/status` | 已建索引统计（层名/规模/维度）。 |
 | `GET` | `/api/v1/equipment` | 获取设备列表，可按状态过滤并分页。 |
 | `GET` | `/api/v1/equipment/alarms/` | 获取告警列表，支持多条件过滤和分页。 |
 | `PUT` | `/api/v1/equipment/alarms/{alarm_id}/status` | 更新告警状态。 |
@@ -383,6 +394,7 @@ Content-Type: application/json
 | `GET` | `/api/v1/flywheel/metrics` | 获取飞轮指标详情（含历史数据） |
 | `GET` | `/api/v1/flywheel/report/weekly` | 生成每周飞轮报告 |
 | `GET` | `/api/v1/flywheel/status` | 获取飞轮当前状态 |
+| `POST` | `/api/v1/flywheel/synthetic/generate` | W4.1 仿真合成数据：体素校验+切削力模型参数扫描，生成「参数→仿真结果」样本对并提交为带血缘的不可变数据集版本。 |
 | `GET` | `/api/v1/gcode-generation/precision_info` | 查询当前精度档位信息、控制器类型与工业硬门槛（不创建任务）。 |
 | `GET` | `/api/v1/gcode-generation/tasks` | 列出最近任务 |
 | `POST` | `/api/v1/gcode-generation/tasks` | 创建 G 代码生成任务 |
@@ -443,6 +455,9 @@ Content-Type: application/json
 | `POST` | `/api/v1/heartbeat/tasks/{task_id}/pause` | 暂停任务 |
 | `POST` | `/api/v1/heartbeat/tasks/{task_id}/resume` | 恢复任务 |
 | `POST` | `/api/v1/heartbeat/tasks/{task_id}/trigger` | 立即触发任务执行 |
+| `GET` | `/api/v1/governance/sovereignty` | 读取数据主权/自主等级设置（W9.1）。 |
+| `PUT` | `/api/v1/governance/sovereignty` | 更新主权/自主等级设置（影响 AI 介入强度）。 |
+| `POST` | `/api/v1/governance/sovereignty/reset` | 恢复默认主权/自主等级设置。 |
 | `GET` | `/api/v1/image_to_3d/precision_info` | 查询当前精度档位信息（不创建任务）。 |
 | `GET` | `/api/v1/image_to_3d/tasks` | 列出最近任务 |
 | `POST` | `/api/v1/image_to_3d/tasks` | 上传多张照片创建重建任务 |
@@ -477,6 +492,7 @@ Content-Type: application/json
 | `GET` | `/api/v1/llm-providers/{provider_id}/health` | 健康检查指定 Provider |
 | `GET` | `/api/v1/llm-providers/{provider_id}/models` | 列出指定 Provider 可用的模型 |
 | `POST` | `/api/v1/llm-providers/{provider_id}/test` | 测试 Provider 调用（发送一条对话） |
+| `POST` | `/api/v1/llm/chat/stream` | LLM 流式对话补全（SSE）。原生流（Ollama NDJSON/OpenAI SSE）逐 token 输出，其余后端伪流式降级；6xxx 分级错误以错误帧返回。 |
 | `POST` | `/api/v1/lnn/batch-inference` | 异步启动批量推理,立即返回 job_id。 |
 | `DELETE` | `/api/v1/lnn/cache/clear` | 清空所有模型缓存 |
 | `GET` | `/api/v1/lnn/cache/stats` | 获取模型缓存统计信息 |
@@ -767,6 +783,7 @@ Content-Type: application/json
 | `POST` | `/api/v1/workflow-templates/{template_id}/rate` | 给模板评分（1.0-5.0），增量更新 avg_rating / rating_count. |
 | `POST` | `/api/v1/workflow-templates/{template_id}/unpublish` | 下架模板（status -> unpublished，不删除数据）. |
 | `GET` | `/api/v1/workflow-templates/{template_id}/versions` | 列出某模板的所有版本（按创建时间倒序）. |
+| `POST` | `/api/v1/world-model/preview` | 世界模型预演卡：给定工艺/参数上下文预测切削力、颤振倾向、碰撞概率（确认页事前预演）。 |
 | `GET` | `/api/v1/workflows` | 列出工作流运行记录。 |
 | `POST` | `/api/v1/workflows/run` | 提交工作流，返回 workflow_run_id。 |
 | `POST` | `/api/v1/workflows/validate` | 仅校验 WorkflowSpec，不执行。返回校验错误列表（空表示通过）。 |

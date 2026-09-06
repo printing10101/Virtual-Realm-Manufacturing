@@ -24,8 +24,10 @@ from fastapi import FastAPI
 
 from app.api.v1 import (
     dynamic_adjustment as dynamic_adjustment_routes,
+    embedding_retrieval,
     knowledge_graph as knowledge_graph_routes,
     llm_providers,
+    llm_stream,
     lnn_uncertain,
     process_explainer as process_explainer_routes,
     sharp as sharp_routes,
@@ -64,6 +66,12 @@ def register(app: FastAPI, *, ollama_available: bool = False) -> None:
 
     # LLM Provider 网关
     app.include_router(llm_providers.router)
+
+    # LLM 流式对话（SSE，2026-09 全量升格）
+    app.include_router(llm_stream.router)
+
+    # 统一制造语义嵌入检索（W8 出口，2026-09 全量升格）
+    app.include_router(embedding_retrieval.router)
 
     # SHARP 三元组验证智能体
     app.include_router(sharp_routes.router)

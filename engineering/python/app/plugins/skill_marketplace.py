@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import zipfile
 from dataclasses import dataclass, field
@@ -17,6 +18,16 @@ from app.plugins.skill_loader import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_MARKET_DIR = ".lingjing/skills/.marketplace"
+
+# 安全加固（2026-09）：skill_id / version 会拼进 .skz 包文件路径，必须过
+# 白名单正则——字母/数字/下划线开头，仅含 [\w.-]，杜绝 ``..`` 与路径分隔符
+# 等穿越载荷经 API 进入文件名。
+_SAFE_NAME_RE = re.compile(r"^[\w][\w.\-]{0,127}$")
+
+
+def _ensure_safe_skill_id(skill_id: str) -> None:
+    if not _SAFE_NAME_RE.match(skill_id or ""):
+        raise ValueError(f"非法 skill_id（仅允许字母数字与 ._- ，且不得包含路径分隔符）：{skill_id!r}")
 
 
 @dataclass
@@ -88,6 +99,7 @@ class SkillMarketplace:
         level: SkillLevel = SkillLevel.PROJECT,
         sub_id: str | None = None,
     ) -> dict[str, Any] | None:
+        _ensure_safe_skill_id(skill_id)
         loader = get_skill_loader()
         package = loader.export_skill(skill_id)
         if package is None:
@@ -124,10 +136,12 @@ class SkillMarketplace:
 
     def _build_package(self, package: dict[str, Any]) -> str:
         skill_id = package["skill_id"]
-        package_file = os.path.join(
-            self.market_dir,
-            f"{skill_id}_{package.get('metadata', {}).get('version', '1.0.0')}.skz",
-        )
+        _ensure_safe_skill_id(skill_id)
+        version = str(package.get("metadata", {}).get("version", "1.0.0"))
+        if not _SAFE_NAME_RE.match(version):
+            # version 来自技能元数据（半可信输入），不合法时宁可拒绝也不落盘
+            raise ValueError(f"非法技能版本号，拒绝打包：{version!r}")
+        package_file = os.path.join(self.market_dir, f"{skill_id}_{version}.skz")
 
         with zipfile.ZipFile(package_file, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(
@@ -208,6 +222,7 @@ class SkillMarketplace:
         target_level: SkillLevel = SkillLevel.PROJECT,
         target_sub_id: str | None = None,
     ) -> dict[str, Any] | None:
+        _ensure_safe_skill_id(skill_id)
         loader = get_skill_loader()
 
         matching_files = [f for f in os.listdir(self.market_dir) if f.startswith(f"{skill_id}_") and f.endswith(".skz")]
@@ -264,6 +279,7 @@ class SkillMarketplace:
         }
 
     def unpublish(self, skill_id: str) -> bool:
+        _ensure_safe_skill_id(skill_id)
         # 修复 [并发安全]：持锁删除 + 落盘 + 文件清理。
         with self._lock:
             if skill_id not in self._listings:

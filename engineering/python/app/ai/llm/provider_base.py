@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -148,6 +149,17 @@ class LLMProvider:
         self._last_status: ProviderStatus = ProviderStatus.UNKNOWN
         self._last_latency_ms: float | None = None
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # 韧性层自动安装：子类自定义的 chat_completion / chat_completion_stream
+        # 一次性包装上「熔断 + 重试 + 6xxx 异常桥接」。惰性导入避免模块循环
+        # （_resilience 顶层 import 本模块的异常类，此处调用时本模块已加载完毕）。
+        try:
+            from app.ai.llm._resilience import install_resilience
+        except ImportError:  # pragma: no cover - 仅在异常裁剪环境触发
+            return
+        install_resilience(cls)
+
     @property
     def provider_id(self) -> str:
         return self.config.provider_id
@@ -217,6 +229,34 @@ class LLMProvider:
 
     # 共享工具方法
 
+    async def chat_completion_stream(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """流式对话补全（统一 chunk 契约）。
+
+        chunk 格式：``{"content": str, "model": str, "done": bool,
+        "stream_mode": "native"|"pseudo", "usage": dict(仅 done 时)}``。
+
+        默认实现为 **pseudo 流**：调用非流式 chat_completion 后整体作为
+        单个 chunk 输出——保证所有 Provider 在 API 契约层面都"可流式"，
+        与能力标签 ``ProviderCapability.STREAMING`` 不再自相矛盾。支持
+        原生流式的 Provider（Ollama NDJSON / OpenAI 兼容 SSE）覆盖本方法
+        （stream_mode="native"）。子类覆盖会被韧性层自动包装（熔断 +
+        异常桥接；流式不做重试，避免重复输出）。
+        """
+        result = await self.chat_completion(messages, max_tokens=max_tokens, temperature=temperature, model=model)
+        yield {
+            "content": result.get("content", ""),
+            "model": result.get("model", self._resolve_model(model)),
+            "done": True,
+            "stream_mode": "pseudo",
+            "usage": result.get("usage", {}),
+        }
+
     async def _http_get(self, url: str, headers: dict[str, str] | None = None) -> httpx.Response:
         """发起 GET 请求（复用共享连接池）。"""
         from app.ai.llm_client import get_shared_http_client
@@ -276,6 +316,21 @@ class LLMProvider:
 
 class ProviderError(Exception):
     """Provider 通用错误。"""
+
+
+class ProviderHTTPError(ProviderError):
+    """带 HTTP 状态码的 Provider 错误。
+
+    韧性层（``app.ai.llm._resilience``）依赖 ``status_code`` 区分瞬态错误
+    （429/5xx，可重试、计入熔断）与永久错误（401/403 等，直接上抛）。
+    Provider 实现在 ``response.status_code != 200`` 时必须抛本类而不是
+    无状态码的 ``ProviderError``。
+    """
+
+    def __init__(self, message: str, status_code: int = 0, body: str = "") -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.body = body
 
 
 class ProviderUnavailableError(ProviderError):

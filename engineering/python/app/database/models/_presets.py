@@ -10,6 +10,7 @@ from __future__ import annotations
 PRESET_PERMISSIONS = [
     # 原有 12 个权限码
     {"code": "system:config", "name": "系统配置管理", "description": "修改系统全局配置参数"},
+    {"code": "llm:chat", "name": "LLM对话", "description": "调用 LLM 流式/非流式对话补全"},
     {"code": "user:manage", "name": "用户管理", "description": "查看、创建、修改、禁用用户账号"},
     {"code": "project:create", "name": "项目创建", "description": "创建新的加工项目"},
     {"code": "project:delete", "name": "项目删除", "description": "删除已有加工项目"},

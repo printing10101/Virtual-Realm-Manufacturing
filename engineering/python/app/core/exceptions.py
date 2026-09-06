@@ -216,10 +216,18 @@ class LLMException(AppException):
 
 
 class LLMProviderException(LLMException):
-    """AI 提供商服务失败"""
+    """AI 提供商服务失败
+
+    修复历史 bug：原实现以 ``super().__init__(code=...)`` 调用
+    ``LLMException.__init__(message, detail)``，签名不匹配——本类一旦
+    被真正 raise 就抛 TypeError（这也是 6xxx 异常长期"零使用"未被发现
+    的原因）。现显式调用 ``AppException.__init__``，兼容双继承桥接
+    （见 ``app.ai.llm._resilience``）。
+    """
 
     def __init__(self, provider: str, message: str = None, detail: Any = None):
-        super().__init__(
+        AppException.__init__(
+            self,
             code=6010,
             message=message or f"{provider} 服务异常",
             detail=detail,
@@ -232,7 +240,8 @@ class LLMTimeoutException(LLMException):
     """AI 服务超时"""
 
     def __init__(self, provider: str, timeout_sec: float = None, detail: Any = None):
-        super().__init__(
+        AppException.__init__(
+            self,
             code=6011,
             message=f"{provider} 服务响应超时" + (f" ({timeout_sec}s)" if timeout_sec else ""),
             detail=detail,
@@ -245,7 +254,8 @@ class LLMRateLimitException(LLMException):
     """AI 服务限流"""
 
     def __init__(self, provider: str, retry_after: int = None, detail: Any = None):
-        super().__init__(
+        AppException.__init__(
+            self,
             code=6012,
             message=f"{provider} 服务达到限流阈值",
             detail=detail,
@@ -258,7 +268,8 @@ class LLMAuthException(LLMException):
     """AI 认证失败"""
 
     def __init__(self, provider: str, message: str = None, detail: Any = None):
-        super().__init__(
+        AppException.__init__(
+            self,
             code=6013,
             message=message or f"{provider} 认证失败",
             detail=detail,

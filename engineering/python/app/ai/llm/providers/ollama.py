@@ -2,21 +2,25 @@
 
 支持探测 Ollama 服务、列出已安装模型、调用对话补全 API。
 Ollama 默认端口 11434，API 端点 /api/chat 和 /api/tags。
+
+流式：原生 NDJSON 流（``chat_completion_stream``，stream_mode="native"），
+由韧性层（``app.ai.llm._resilience``）自动包装熔断与异常桥接。
 """
 
 from __future__ import annotations
 
-import asyncio
+import json
 import logging
 from typing import Any
+from collections.abc import AsyncIterator
 import time
 
-import aiohttp
+import httpx
 
 from app.ai.llm.provider_base import (
     LLMProvider,
     ProviderConfig,
-    ProviderError,
+    ProviderHTTPError,
     ProviderStatus,
     ProviderType,
 )
@@ -43,10 +47,10 @@ class OllamaProvider(LLMProvider):
         try:
             response = await self._http_get(f"{self.config.base_url}/api/tags")
             return response.status_code == 200
-        except asyncio.TimeoutError as e:
+        except httpx.TimeoutException as e:
             logger.debug("Ollama detect timeout: %s", e)
             return False
-        except aiohttp.ClientConnectionError as e:
+        except httpx.TransportError as e:
             logger.debug("Ollama detect connection failed: %s", e)
             return False
         except Exception as e:
@@ -61,14 +65,8 @@ class OllamaProvider(LLMProvider):
                 self._update_status(ProviderStatus.ONLINE)
             else:
                 self._update_status(ProviderStatus.OFFLINE)
-        except asyncio.TimeoutError as e:
-            logger.debug("Ollama health check timeout: %s", e)
-            self._update_status(ProviderStatus.OFFLINE)
-        except aiohttp.ClientConnectionError as e:
-            logger.debug("Ollama health check connection failed: %s", e)
-            self._update_status(ProviderStatus.OFFLINE)
-        except aiohttp.ClientResponseError as e:
-            logger.debug("Ollama health check HTTP error: %s", e)
+        except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPError) as e:
+            logger.debug("Ollama health check failed: %s", e)
             self._update_status(ProviderStatus.OFFLINE)
         except Exception as e:
             logger.debug("Ollama health check failed: %s", e)
@@ -87,6 +85,27 @@ class OllamaProvider(LLMProvider):
             logger.warning("Ollama list_models failed: %s", e)
             return []
 
+    async def _chat_payload(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        model: str | None,
+        stream: bool,
+    ) -> tuple[str, dict[str, Any]]:
+        target_model = self._resolve_model(model)
+        payload = {
+            "model": target_model,
+            "messages": messages,
+            "stream": stream,
+            "think": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+        return target_model, payload
+
     async def chat_completion(
         self,
         messages: list[dict[str, str]],
@@ -103,22 +122,16 @@ class OllamaProvider(LLMProvider):
             等所有结构化 JSON 输出场景）。对不支持思考模式的老模型
             （如 llama3.2）该参数无影响。
         """
-        target_model = self._resolve_model(model)
-        payload = {
-            "model": target_model,
-            "messages": messages,
-            "stream": False,
-            "think": False,
-            "options": {
-                "temperature": temperature,
-                "num_predict": max_tokens,
-            },
-        }
+        target_model, payload = await self._chat_payload(messages, max_tokens, temperature, model, stream=False)
         start = time.time()
         response = await self._http_post(f"{self.config.base_url}/api/chat", payload)
         self._measure_latency(start)
         if response.status_code != 200:
-            raise ProviderError(f"Ollama API error: {response.status_code} - {response.text}")
+            raise ProviderHTTPError(
+                f"Ollama API error: {response.status_code} - {response.text}",
+                status_code=response.status_code,
+                body=response.text,
+            )
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         return {
@@ -127,3 +140,54 @@ class OllamaProvider(LLMProvider):
             "finish_reason": "stop",
             "usage": data.get("usage", {}),
         }
+
+    async def chat_completion_stream(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """原生流式：Ollama /api/chat NDJSON（每行一个 JSON 对象）。"""
+        from app.ai.llm_client import get_shared_http_client
+
+        target_model, payload = await self._chat_payload(messages, max_tokens, temperature, model, stream=True)
+        client = await get_shared_http_client()
+        async with client.stream(
+            "POST",
+            f"{self.config.base_url}/api/chat",
+            json=payload,
+            timeout=self.config.timeout,
+        ) as response:
+            if response.status_code != 200:
+                body = (await response.aread()).decode("utf-8", errors="replace")
+                raise ProviderHTTPError(
+                    f"Ollama API error: {response.status_code} - {body}",
+                    status_code=response.status_code,
+                    body=body,
+                )
+            async for line in response.aiter_lines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    logger.debug("Ollama stream 跳过非 JSON 行: %.80s", line)
+                    continue
+                message = data.get("message") or {}
+                piece = message.get("content", "") or ""
+                done = bool(data.get("done", False))
+                if piece or not done:
+                    yield {"content": piece, "model": target_model, "done": done, "stream_mode": "native"}
+                if done:
+                    yield {
+                        "content": "",
+                        "model": target_model,
+                        "done": True,
+                        "stream_mode": "native",
+                        "usage": {},
+                    }
+                    return
+            # 服务端未发 done 帧即断流：补一个终止帧，保证契约完整
+            yield {"content": "", "model": target_model, "done": True, "stream_mode": "native"}

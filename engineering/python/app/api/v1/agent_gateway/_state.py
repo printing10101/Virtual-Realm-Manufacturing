@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from app.agent.orchestrator import AgentOrchestrator
 from app.dependencies import get_model_registry_service
 
 logger = logging.getLogger(__name__)
@@ -97,4 +96,16 @@ agent_model_cache = registry_service.model_cache
 training_tasks = registry_service.get_training_tasks()
 
 # Agent Orchestrator for workflow pipeline execution
-orchestrator = AgentOrchestrator()
+# 2026-09 修复「双实例分裂」：此处原为 ``orchestrator = AgentOrchestrator()``
+# 直接实例化，与 ``app.dependencies.get_orchestrator()``（线程安全单例）各持
+# 一个实例，导致 REST API 的 pipeline history/trace 与单例侧各看各的。
+# 现通过 PEP 562 模块级 __getattr__ 惰性转发到全局单例，保持
+# ``from app.api.v1.agent_gateway._state import orchestrator`` 导入面不变。
+
+
+def __getattr__(name: str):
+    if name == "orchestrator":
+        from app.agent.orchestrator import get_orchestrator
+
+        return get_orchestrator()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

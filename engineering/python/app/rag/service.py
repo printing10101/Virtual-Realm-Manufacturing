@@ -115,6 +115,66 @@ def _get_process_index():
     return index
 
 
+def _normalize_rag_items(results: Any) -> list[dict[str, Any]]:
+    """把两条管线的检索结果统一为扁平条目（W8.2 引用抽取用）。
+
+    - enhanced（RagRetrievalEngine.retrieve）：扁平列表 [{document, metadata,
+      distance, id, ...}]
+    - baseline（kb.query）：ChromaDB 嵌套结构 {ids/documents/metadatas/distances}
+    """
+    if isinstance(results, dict):
+        docs_row = (results.get("documents") or [[]])[0] if results.get("documents") else []
+        metas = results.get("metadatas") or []
+        metas_row = metas[0] if metas else []
+        dists = results.get("distances") or []
+        dists_row = dists[0] if dists else []
+        ids = results.get("ids") or []
+        ids_row = ids[0] if ids else []
+        return [
+            {
+                "document": docs_row[i] if i < len(docs_row) else "",
+                "metadata": metas_row[i] if i < len(metas_row) else {},
+                "distance": dists_row[i] if i < len(dists_row) else None,
+                "id": ids_row[i] if i < len(ids_row) else None,
+            }
+            for i in range(len(docs_row))
+        ]
+    if isinstance(results, list):
+        return [r for r in results if isinstance(r, dict)]
+    return []
+
+
+def _extract_citations(items: list[dict[str, Any]], max_preview: int = 120) -> list[dict[str, Any]]:
+    """抽取引用溯源字段（W8.2：知识建议必须带出处）。
+
+    与 W2 血缘体系对齐：``doc_id`` 即知识条目 ID，可反查来源文档。
+    """
+    citations: list[dict[str, Any]] = []
+    for rank, item in enumerate(items, start=1):
+        metadata = item.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
+        score = item.get("score")
+        distance = item.get("distance")
+        if isinstance(score, (int, float)):
+            similarity: float | None = round(float(score), 6)
+        elif isinstance(distance, (int, float)):
+            similarity = round(max(0.0, 1.0 - float(distance)), 6)
+        else:
+            similarity = None
+        document = item.get("document") or item.get("content") or ""
+        citations.append(
+            {
+                "rank": rank,
+                "source": metadata.get("source") or item.get("_retrieval_source_filter") or "",
+                "doc_id": item.get("id") or metadata.get("id") or "",
+                "similarity": similarity,
+                "preview": str(document)[:max_preview],
+            }
+        )
+    return citations
+
+
 async def query_knowledge(
     q: str = Query(..., description="查询文本"),
     n_results: int = Query(5, ge=1, le=50, description="返回结果数量"),
@@ -141,7 +201,9 @@ async def query_knowledge(
         use_enhanced: 是否启用增强 pipeline（默认 True）
 
     Returns:
-        增强检索结果，包含 results / detected_intent / enhancements 等字段
+        增强检索结果，包含 results / detected_intent / enhancements 等字段；
+        W8.2 起额外返回 ``sources``（引用溯源：rank/source/doc_id/similarity/
+        preview）——每条答案建议均可回溯到知识出处。
     """
     try:
         if use_enhanced:
@@ -173,6 +235,7 @@ async def query_knowledge(
             return {
                 "query": q,
                 "results": result,
+                "sources": _extract_citations(_normalize_rag_items(result)),
                 "pipeline": "enhanced",
                 "n_results": n_results,
             }
@@ -182,6 +245,7 @@ async def query_knowledge(
             return {
                 "query": q,
                 "results": result,
+                "sources": _extract_citations(_normalize_rag_items(result)),
                 "pipeline": "baseline",
                 "n_results": n_results,
             }

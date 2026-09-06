@@ -3,27 +3,26 @@
     <el-card>
       <template #header>
         <div class="header-with-actions">
-          <span>{{ $t('workspace.header') }}</span>
-          <el-tag
-            type="info"
-            size="small"
-          >
-            {{ $t('workspace.userSovereignty') }}
+          <span>{{ $t("workspace.header") }}</span>
+          <el-tag type="info" size="small">
+            {{ $t("workspace.userSovereignty") }}
           </el-tag>
         </div>
       </template>
       <el-tabs v-model="activeTab">
-        <el-tab-pane
-          :label="$t('workspace.predictTab')"
-          name="predict"
-        >
+        <el-tab-pane :label="$t('workspace.predictTab')" name="predict">
           <WorkspacePredictTab />
         </el-tab-pane>
 
+        <!-- W6 物理预演卡：确认前查看 AI 对物理结果的预判 -->
         <el-tab-pane
-          :label="$t('workspace.trainTab')"
-          name="train"
+          :label="$t('workspace.previewTab')"
+          name="physical-preview"
         >
+          <WorkspacePreviewTab />
+        </el-tab-pane>
+
+        <el-tab-pane :label="$t('workspace.trainTab')" name="train">
           <WorkspaceTrainForm
             :train-form="trainForm"
             :dry-running="dryRunning"
@@ -37,7 +36,15 @@
             :dry-run-result="dryRunResult"
             :train-result="trainResult"
             :current-job-id="currentJobId"
-            :sse="{ currentStatus: sse.currentStatus ?? null, progress: sse.progress ?? 0, lastProgressData: (sse.lastProgressData ?? null) as Record<string, unknown> | null, error: sse.error ?? null }"
+            :sse="{
+              currentStatus: sse.currentStatus ?? null,
+              progress: sse.progress ?? 0,
+              lastProgressData: (sse.lastProgressData ?? null) as Record<
+                string,
+                unknown
+              > | null,
+              error: sse.error ?? null,
+            }"
             :loss-history="lossHistory"
             :val-loss-history="valLossHistory"
             :cancelling="cancelling"
@@ -47,17 +54,11 @@
           />
         </el-tab-pane>
 
-        <el-tab-pane
-          :label="$t('workspace.modelsTab')"
-          name="models"
-        >
+        <el-tab-pane :label="$t('workspace.modelsTab')" name="models">
           <WorkspaceModelsTab />
         </el-tab-pane>
 
-        <el-tab-pane
-          :label="$t('workspace.pluginsTab')"
-          name="plugins"
-        >
+        <el-tab-pane :label="$t('workspace.pluginsTab')" name="plugins">
           <!-- 扩展点面板宿主：渲染插件向 workspace.panel 注册的面板（如方言管理） -->
           <WorkspacePanelHost
             layout="tabs"
@@ -73,187 +74,217 @@
 // 注：本文件已从 1087 行拆至 379 行——训练表单/监控/预测/模型列表
 // 已分别抽为 WorkspaceTrainForm / WorkspaceTrainMonitor / WorkspacePredictTab /
 // WorkspaceModelsTab，插件面板由 WorkspacePanelHost 渲染。剩余编排逻辑保持内联。
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import http from '@/utils/http'
-import WorkspacePredictTab from '@/components/workspace/WorkspacePredictTab.vue'
-import WorkspaceModelsTab from '@/components/workspace/WorkspaceModelsTab.vue'
-import WorkspaceTrainForm from '@/components/workspace/WorkspaceTrainForm.vue'
-import WorkspaceTrainMonitor from '@/components/workspace/WorkspaceTrainMonitor.vue'
-import WorkspacePanelHost from '@/components/WorkspacePanelHost.vue'
-import { useEventSource } from '@/composables/useEventSource'
-import { API_CONFIG, buildApiPath } from '@/config/api'
+import { ref, reactive, onMounted, computed } from "vue";
+import { useI18n } from "vue-i18n";
+import { ElMessage, ElMessageBox } from "element-plus";
+import http from "@/utils/http";
+import WorkspacePredictTab from "@/components/workspace/WorkspacePredictTab.vue";
+import WorkspacePreviewTab from "@/components/workspace/WorkspacePreviewTab.vue";
+import WorkspaceModelsTab from "@/components/workspace/WorkspaceModelsTab.vue";
+import WorkspaceTrainForm from "@/components/workspace/WorkspaceTrainForm.vue";
+import WorkspaceTrainMonitor from "@/components/workspace/WorkspaceTrainMonitor.vue";
+import WorkspacePanelHost from "@/components/WorkspacePanelHost.vue";
+import { useEventSource } from "@/composables/useEventSource";
+import { API_CONFIG, buildApiPath } from "@/config/api";
 
-const { t } = useI18n()
-const activeTab = ref('predict')
-const training = ref(false)
-const dryRunning = ref(false)
-const trainPlanConfirmed = ref(false)
+const { t } = useI18n();
+const activeTab = ref("predict");
+const training = ref(false);
+const dryRunning = ref(false);
+const trainPlanConfirmed = ref(false);
 
 interface DryRunResult {
-  is_dry_run: boolean
+  is_dry_run: boolean;
   training_plan: {
-    estimated_duration_minutes: number
-    estimated_memory_mb: number
-    estimated_gpu_memory_mb?: number
-    dataset_samples: number
-    train_val_split: { train: number; validation: number; ratio: string }
-    potential_risks: string[]
-    recommendations: string[]
-  }
-  confidence: number
-  reasoning: string
+    estimated_duration_minutes: number;
+    estimated_memory_mb: number;
+    estimated_gpu_memory_mb?: number;
+    dataset_samples: number;
+    train_val_split: { train: number; validation: number; ratio: string };
+    potential_risks: string[];
+    recommendations: string[];
+  };
+  confidence: number;
+  reasoning: string;
 }
 
 interface TrainResult {
-  job_id: string
-  status: string
-  message?: string
+  job_id: string;
+  status: string;
+  message?: string;
 }
 
 interface ModelInfo {
-  name: string
-  model_type: string
-  version: string
-  input_features?: string[]
+  name: string;
+  model_type: string;
+  version: string;
+  input_features?: string[];
 }
 
 const trainForm = reactive({
-  modelName: '',
-  dataPath: '',
+  modelName: "",
+  dataPath: "",
   hyperparameters: {
     learning_rate: 0.001,
     epochs: 100,
     batch_size: 32,
-    optimizer: 'adam',
+    optimizer: "adam",
   },
-  device: 'auto',
-})
+  device: "auto",
+});
 
-const dryRunResult = ref<DryRunResult | null>(null)
-const trainResult = ref<TrainResult | null>(null)
-const modelList = ref<ModelInfo[]>([])
+const dryRunResult = ref<DryRunResult | null>(null);
+const trainResult = ref<TrainResult | null>(null);
+const modelList = ref<ModelInfo[]>([]);
 
-const currentJobId = ref<string | null>(null)
-const sseJobId = ref('')
-const sse = reactive(useEventSource(sseJobId, { autoReconnect: true, maxRetries: 10 }))
-const cancelling = ref(false)
+const currentJobId = ref<string | null>(null);
+const sseJobId = ref("");
+const sse = reactive(
+  useEventSource(sseJobId, { autoReconnect: true, maxRetries: 10 }),
+);
+const cancelling = ref(false);
 
 function connectToJob(jobId: string) {
-  sseJobId.value = jobId
-  sse.reset()
-  sse.connect()
+  sseJobId.value = jobId;
+  sse.reset();
+  sse.connect();
 }
 
 const lossHistory = computed(() => {
-  const losses: number[] = []
-  if (!sse.events) return losses
+  const losses: number[] = [];
+  if (!sse.events) return losses;
   for (const event of sse.events) {
-    if (event.type === 'progress' && event.data.metrics?.train_loss !== undefined) {
-      losses.push(event.data.metrics.train_loss as number)
+    if (
+      event.type === "progress" &&
+      event.data.metrics?.train_loss !== undefined
+    ) {
+      losses.push(event.data.metrics.train_loss as number);
     }
   }
-  return losses
-})
+  return losses;
+});
 
 const valLossHistory = computed(() => {
-  const losses: number[] = []
-  if (!sse.events) return losses
+  const losses: number[] = [];
+  if (!sse.events) return losses;
   for (const event of sse.events) {
-    if (event.type === 'progress' && event.data.metrics?.val_loss !== undefined) {
-      losses.push(event.data.metrics.val_loss as number)
+    if (
+      event.type === "progress" &&
+      event.data.metrics?.val_loss !== undefined
+    ) {
+      losses.push(event.data.metrics.val_loss as number);
     }
   }
-  return losses
-})
+  return losses;
+});
 
 async function handleDryRun() {
   if (!trainForm.modelName || !trainForm.dataPath) {
-    ElMessage.warning(t('common.inputPlaceholder'))
-    return
+    ElMessage.warning(t("common.inputPlaceholder"));
+    return;
   }
 
-  dryRunning.value = true
-  dryRunResult.value = null
-  trainPlanConfirmed.value = false
+  dryRunning.value = true;
+  dryRunResult.value = null;
+  trainPlanConfirmed.value = false;
 
   try {
-    const res = await http.post(buildApiPath(API_CONFIG.LNN, '/train/dry_run'), {
-      model_name: trainForm.modelName,
-      data_path: trainForm.dataPath,
-      hyperparameters: trainForm.hyperparameters,
-      device: trainForm.device,
-    })
+    const res = await http.post(
+      buildApiPath(API_CONFIG.LNN, "/train/dry_run"),
+      {
+        model_name: trainForm.modelName,
+        data_path: trainForm.dataPath,
+        hyperparameters: trainForm.hyperparameters,
+        device: trainForm.device,
+      },
+    );
 
-    dryRunResult.value = res.data.data as DryRunResult
-    ElMessage.success(t('workspace.trainingPlanSummary'))
+    dryRunResult.value = res.data.data as DryRunResult;
+    ElMessage.success(t("workspace.trainingPlanSummary"));
   } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error(errorMsg || t('common.unknownError'))
+    const errorMsg = e instanceof Error ? e.message : String(e);
+    ElMessage.error(errorMsg || t("common.unknownError"));
   } finally {
-    dryRunning.value = false
+    dryRunning.value = false;
   }
 }
 
 async function handleTrain() {
   if (!trainPlanConfirmed.value) {
-    ElMessage.warning(t('workspace.confirmTraining'))
-    return
+    ElMessage.warning(t("workspace.confirmTraining"));
+    return;
   }
 
-  training.value = true
-  trainResult.value = null
+  training.value = true;
+  trainResult.value = null;
 
   try {
-    const res = await http.post(buildApiPath(API_CONFIG.LNN, '/train'), {
+    const res = await http.post(buildApiPath(API_CONFIG.LNN, "/train"), {
       model_name: trainForm.modelName,
       data_path: trainForm.dataPath,
       hyperparameters: trainForm.hyperparameters,
       device: trainForm.device,
-    })
+    });
 
-    const jobId = res.data.data?.job_id
+    const jobId = res.data.data?.job_id;
     if (!jobId) {
-      ElMessage.error(t('workspace.jobId'))
-      return
+      ElMessage.error(t("workspace.jobId"));
+      return;
     }
 
-    currentJobId.value = jobId
-    connectToJob(jobId)
+    currentJobId.value = jobId;
+    connectToJob(jobId);
 
-    trainResult.value = res.data.data
-    ElMessage.success(t('workspace.trainingMonitor'))
+    trainResult.value = res.data.data;
+    ElMessage.success(t("workspace.trainingMonitor"));
 
-    await recordAuditLog('lnn_train', dryRunResult.value, 'accept', 'success', trainForm)
+    await recordAuditLog(
+      "lnn_train",
+      dryRunResult.value,
+      "accept",
+      "success",
+      trainForm,
+    );
   } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : String(e)
-    ElMessage.error(errorMsg || t('common.unknownError'))
-    await recordAuditLog('lnn_train', dryRunResult.value, 'reject', 'failed', trainForm)
+    const errorMsg = e instanceof Error ? e.message : String(e);
+    ElMessage.error(errorMsg || t("common.unknownError"));
+    await recordAuditLog(
+      "lnn_train",
+      dryRunResult.value,
+      "reject",
+      "failed",
+      trainForm,
+    );
   } finally {
-    training.value = false
+    training.value = false;
   }
 }
 
 async function handleCancelTraining() {
-  if (!currentJobId.value) return
+  if (!currentJobId.value) return;
 
   try {
-    await ElMessageBox.confirm(t('workspace.confirmCancelTraining'), t('workspace.confirmCancelTitle'), {
-      confirmButtonText: t('common.confirm'),
-      cancelButtonText: t('common.cancel'),
-      type: 'warning',
-    })
+    await ElMessageBox.confirm(
+      t("workspace.confirmCancelTraining"),
+      t("workspace.confirmCancelTitle"),
+      {
+        confirmButtonText: t("common.confirm"),
+        cancelButtonText: t("common.cancel"),
+        type: "warning",
+      },
+    );
 
-    cancelling.value = true
-    await http.post(buildApiPath(API_CONFIG.JOBS, `/${currentJobId.value}/cancel`))
-    ElMessage.info(t('workspace.trainingCancelled'))
+    cancelling.value = true;
+    await http.post(
+      buildApiPath(API_CONFIG.JOBS, `/${currentJobId.value}/cancel`),
+    );
+    ElMessage.info(t("workspace.trainingCancelled"));
   } catch (e: unknown) {
-    if (e !== 'cancel') {
-      ElMessage.error(t('common.failed'))
+    if (e !== "cancel") {
+      ElMessage.error(t("common.failed"));
     }
   } finally {
-    cancelling.value = false
+    cancelling.value = false;
   }
 }
 
@@ -265,31 +296,35 @@ async function recordAuditLog(
   finalExecution?: Record<string, unknown>,
 ) {
   try {
-    await http.post(buildApiPath(API_CONFIG.USER_SOVEREIGNTY, '/audit-log/record'), null, {
-      params: {
-        ai_module: aiModule,
-        ai_recommendation: JSON.stringify(aiRecommendation || {}),
-        user_decision: userDecision,
-        final_execution: JSON.stringify(finalExecution || {}),
-        operation_status: operationStatus,
-        confidence: dryRunResult.value?.confidence || null,
-        reasoning: dryRunResult.value?.reasoning || null,
+    await http.post(
+      buildApiPath(API_CONFIG.USER_SOVEREIGNTY, "/audit-log/record"),
+      null,
+      {
+        params: {
+          ai_module: aiModule,
+          ai_recommendation: JSON.stringify(aiRecommendation || {}),
+          user_decision: userDecision,
+          final_execution: JSON.stringify(finalExecution || {}),
+          operation_status: operationStatus,
+          confidence: dryRunResult.value?.confidence || null,
+          reasoning: dryRunResult.value?.reasoning || null,
+        },
       },
-    })
+    );
   } catch (e: unknown) {
     // 审计日志记录失败不应阻塞用户主流程，但需记录便于后续审计追溯
-    console.warn('[Workspace] recordAuditLog failed:', e)
+    console.warn("[Workspace] recordAuditLog failed:", e);
   }
 }
 
 onMounted(async () => {
   try {
-    const res = await http.get(buildApiPath(API_CONFIG.LNN, '/models'))
-    modelList.value = res.data?.data?.models || []
+    const res = await http.get(buildApiPath(API_CONFIG.LNN, "/models"));
+    modelList.value = res.data?.data?.models || [];
   } catch {
-    modelList.value = []
+    modelList.value = [];
   }
-})
+});
 </script>
 
 <style scoped>

@@ -36,7 +36,6 @@ declare module "vue" {
     CommandPalette: (typeof import("./components/CommandPalette/CommandPalette.vue"))["default"];
     ConditionEditor: (typeof import("./components/rule_edit/ConditionEditor.vue"))["default"];
     ConfidenceIndicator: (typeof import("./components/ConfidenceIndicator.vue"))["default"];
-    CopilotConfidenceIndicator: (typeof import("./components/Copilot/CopilotConfidenceIndicator.vue"))["default"];
     CostAlertsTable: (typeof import("./components/cost/CostAlertsTable.vue"))["default"];
     CostBudgetCards: (typeof import("./components/cost/CostBudgetCards.vue"))["default"];
     CostByTypeChart: (typeof import("./components/cost/CostByTypeChart.vue"))["default"];
@@ -44,7 +43,6 @@ declare module "vue" {
     CostSuggestions: (typeof import("./components/cost/CostSuggestions.vue"))["default"];
     CostTrendChart: (typeof import("./components/cost/CostTrendChart.vue"))["default"];
     CuttingExperienceDashboard: (typeof import("./components/experience/CuttingExperienceDashboard.vue"))["default"];
-    DecisionActions: (typeof import("./components/Copilot/DecisionActions.vue"))["default"];
     DependencyTree: (typeof import("./components/plugin/DependencyTree.vue"))["default"];
     DependencyTreeNode: (typeof import("./components/plugin/DependencyTreeNode.vue"))["default"];
     DxfFileUpload: (typeof import("./components/dxf_import/DxfFileUpload.vue"))["default"];
@@ -162,7 +160,6 @@ declare module "vue" {
     QualityStatsCards: (typeof import("./components/quality/QualityStatsCards.vue"))["default"];
     QuickActions: (typeof import("./components/home/QuickActions.vue"))["default"];
     RealTimeAlerts: (typeof import("./components/home/RealTimeAlerts.vue"))["default"];
-    RecommendationCard: (typeof import("./components/Copilot/RecommendationCard.vue"))["default"];
     ResultEditor: (typeof import("./components/rule_edit/ResultEditor.vue"))["default"];
     RightClickMenu: (typeof import("./components/toolpath-editor/RightClickMenu.vue"))["default"];
     RlAgentActionCard: (typeof import("./components/rl_agent/RlAgentActionCard.vue"))["default"];

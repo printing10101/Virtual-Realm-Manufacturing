@@ -246,6 +246,13 @@ def get_orchestrator():
     return _impl()
 
 
+def get_sovereignty_policy():
+    """AI 主权/自主等级策略引擎单例（W9.1）。"""
+    from app.services.sovereignty import get_sovereignty_policy as _impl
+
+    return _impl()
+
+
 def get_state_persistence_manager():
     """状态持久化管理器单例。"""
     raise NotImplementedError(

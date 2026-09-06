@@ -15,6 +15,7 @@ from app.ai.llm.provider_base import (
     LLMProvider,
     ProviderConfig,
     ProviderError,
+    ProviderHTTPError,
     ProviderStatus,
     ProviderType,
 )
@@ -100,7 +101,11 @@ class DeepSeekProvider(LLMProvider):
         self._measure_latency(start)
         if response.status_code != 200:
             self._update_status(ProviderStatus.OFFLINE)
-            raise ProviderError(f"API error: {response.status_code} - {response.text}")
+            raise ProviderHTTPError(
+                f"API error: {response.status_code} - {response.text}",
+                status_code=response.status_code,
+                body=response.text,
+            )
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         choices = data.get("choices", [])

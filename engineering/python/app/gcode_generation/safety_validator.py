@@ -403,8 +403,15 @@ class SafetyValidator:
                     )
                 )
 
-        # L6 负进给 / 零进给
+        # L6 负进给 / 零进给 / 进给范围（FEED_OUT_OF_RANGE）
+        # 模态感知：G95（每转进给）下 F 值为 mm/r（合法值可远小于 min_rate），
+        # 范围校验仅在 G94（每分钟进给，默认）模态生效，避免误报。
+        feed_mode_per_rev = False
         for i, ln in enumerate(lines, start=1):
+            if re.search(r"\bG95\b", ln, re.IGNORECASE):
+                feed_mode_per_rev = True
+            elif re.search(r"\bG94\b", ln, re.IGNORECASE):
+                feed_mode_per_rev = False
             m = re.search(r"F\s*(-?\d+(?:\.\d+)?)", ln, re.IGNORECASE)
             if m:
                 feed = float(m.group(1))
@@ -414,6 +421,20 @@ class SafetyValidator:
                     )
                 elif feed == 0:
                     report.issues.append(SafetyIssue(WARN_ZERO_FEED, "warning", f"第 {i} 行进给为 0", {"line": i}))
+                elif not feed_mode_per_rev and (feed < self._feed_min or feed > self._feed_max):
+                    # L1 文本级进给限界（2026-09 接线，此前 ERR_FEED_OUT_OF_RANGE
+                    # 从未产出）：越界为 error 并附 clamp 建议值，供修复闭环使用
+                    clamped = min(max(feed, self._feed_min), self._feed_max)
+                    report.issues.append(
+                        SafetyIssue(
+                            ERR_FEED_OUT_OF_RANGE,
+                            "error",
+                            f"第 {i} 行进给 F{feed:g} 超出机床能力范围 "
+                            f"[{self._feed_min:g}, {self._feed_max:g}]，建议 clamp 至 F{clamped:g}",
+                            {"line": i, "feed": feed, "min": self._feed_min, "max": self._feed_max},
+                            recommended=clamped,
+                        )
+                    )
 
         # L5 G/M 代码白名单
         for i, ln in enumerate(lines, start=1):

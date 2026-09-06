@@ -145,98 +145,40 @@ def _init_session_extractor():
 
 
 async def cmd_reflect(args: argparse.Namespace) -> int:
-    """执行完整反思流程。"""
+    """执行完整反思流程（W7.2 起委托 service.run_reflection，与 API 共用管线）。"""
     repo_root = _get_repo_root()
     os.chdir(repo_root)
 
     logger.info("启动 Dreaming 反思流程")
 
-    # 1. 提取 Session
-    extractor = _init_session_extractor()
-    sessions = extractor.extract_sessions(
+    from app.dreaming.service import run_reflection
+
+    summary = await run_reflection(
         lookback_days=args.lookback_days,
         max_sessions=args.max_sessions,
-        include_ar_02_pre_fix=args.include_ar_02,
+        instructions=args.instructions,
+        enable_llm=not args.no_llm,
+        include_ar_02=args.include_ar_02,
+        repo_root=repo_root,
     )
 
-    if not sessions:
-        logger.warning("未提取到任何 Session，反思终止")
-        print("未提取到任何 Session，请检查数据源配置")
+    if not summary.ok:
+        logger.warning("%s", summary.error)
+        print(summary.error or "反思失败")
         return 1
 
-    logger.info("提取到 %d 个 Session", len(sessions))
-
-    # 2. 初始化 Memory Store
-    try:
-        store = _init_memory_store(repo_root)
-    except Exception as e:
-        logger.error("Memory Store 初始化失败: %s", e)
-        print(f"Memory Store 初始化失败: {e}")
-        return 2
-
-    # 3. 执行反思
-    from app.dreaming.reflector import DreamReflector
-
-    reflector = DreamReflector(
-        memory_store=store,
-        repo_root=repo_root,
-        enable_llm=not args.no_llm,
-    )
-    reflection = await reflector.reflect(
-        sessions=sessions,
-        instructions=args.instructions,
-    )
-
-    # 4. 合成规则
-    from app.dreaming.rule_synthesizer import RuleSynthesizer
-
-    synthesizer = RuleSynthesizer(
-        output_dir="python/outputs/dreaming/rules",
-    )
-    rules = synthesizer.synthesize(reflection)
-
-    # 5. 生成报告
-    from app.dreaming.report_generator import ReportGenerator
-
-    report_gen = ReportGenerator(
-        output_dir="python/outputs/dreaming/reports",
-    )
-    report_path = report_gen.generate(
-        sessions=sessions,
-        reflection=reflection,
-        rules=rules,
-        instructions=args.instructions,
-    )
-
-    # 6. 输出摘要
     print("\n" + "=" * 60)
     print("Dreaming 反思完成")
     print("=" * 60)
-    print(f"输入 Session 数：{len(sessions)}")
-    print(f"去重合并：{reflection.deduplicated.merged_count} 条")
-    print(
-        f"过时更新：失效 {len(reflection.updated.invalidated_node_ids)} 条，"
-        f"标记 {len(reflection.updated.updated_node_ids)} 条"
-    )
-    print(f"洞察浮现：{len(reflection.insights)} 条")
-    print(f"规则候选：{len(rules)} 条（状态 draft）")
-    print(f"Memory Version：{reflection.new_memory_version or '(未提交)'}")
-    print(f"LLM 模型：{reflection.llm_model or '规则统计降级'}")
-    print(f"反思报告：{report_path}")
+    print(f"输入 Session 数：{summary.session_count}")
+    print(f"去重合并：{summary.merged_count} 条")
+    print(f"过时更新：失效 {summary.invalidated_count} 条，标记 {summary.updated_count} 条")
+    print(f"洞察浮现：{summary.insight_count} 条")
+    print(f"规则候选：{summary.draft_rule_count} 条（状态 draft）")
+    print(f"Memory Version：{summary.memory_version or '(未提交)'}")
+    print(f"LLM 模型：{summary.llm_model or '规则统计降级'}")
+    print(f"反思报告：{summary.report_path}")
     print("=" * 60)
-
-    # 7. 持久化反思结果（JSON，供 report 子命令使用）
-    reflection_json_path = (
-        Path("python/outputs/dreaming/reports") / f"reflection_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    )
-    reflection_json_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with open(reflection_json_path, "w", encoding="utf-8") as f:
-            json.dump(reflection.to_dict(), f, ensure_ascii=False, indent=2)
-        logger.info("反思结果已持久化：%s", reflection_json_path)
-    except OSError as e:
-        logger.warning("反思结果持久化失败：%s", e)
-
     return 0
 
 

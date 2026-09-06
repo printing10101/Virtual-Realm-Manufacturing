@@ -14,16 +14,18 @@ lmstudio / llamacpp / vllm / tgi / koboldcpp 五个本地推理服务的 API
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from app.ai.llm.provider_base import (
     LLMProvider,
     ProviderConfig,
-    ProviderError,
+    ProviderHTTPError,
     ProviderStatus,
     ProviderType,
 )
@@ -164,7 +166,11 @@ class OpenAICompatLocalProvider(LLMProvider):
         )
         self._measure_latency(start)
         if response.status_code != 200:
-            raise ProviderError(f"{self._display} API error: {response.status_code} - {response.text}")
+            raise ProviderHTTPError(
+                f"{self._display} API error: {response.status_code} - {response.text}",
+                status_code=response.status_code,
+                body=response.text,
+            )
         data = response.json()
         self._update_status(ProviderStatus.ONLINE)
         choices = data.get("choices", [])
@@ -180,3 +186,71 @@ class OpenAICompatLocalProvider(LLMProvider):
             "finish_reason": finish_reason,
             "usage": data.get("usage", {}),
         }
+
+    async def chat_completion_stream(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """原生流式：OpenAI 兼容 SSE（``data: {...}`` / ``data: [DONE]``）。"""
+        from app.ai.llm_client import get_shared_http_client
+
+        target_model = self._resolve_model(model)
+        payload = {
+            "model": target_model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": True,
+        }
+        client = await get_shared_http_client()
+        async with client.stream(
+            "POST",
+            self._chat_url(),
+            json=payload,
+            headers=self._build_auth_headers(),
+            timeout=self.config.timeout,
+        ) as response:
+            if response.status_code != 200:
+                body = (await response.aread()).decode("utf-8", errors="replace")
+                raise ProviderHTTPError(
+                    f"{self._display} API error: {response.status_code} - {body}",
+                    status_code=response.status_code,
+                    body=body,
+                )
+            async for line in response.aiter_lines():
+                line = line.strip()
+                if not line.startswith("data:"):
+                    continue
+                data_str = line[len("data:") :].strip()
+                if not data_str or data_str == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(data_str)
+                except json.JSONDecodeError:
+                    logger.debug("%s stream 跳过非 JSON 行: %.80s", self._display, line)
+                    continue
+                choices = chunk.get("choices") or [{}]
+                first = choices[0] or {}
+                delta = first.get("delta") or {}
+                piece = delta.get("content") or ""
+                finish = first.get("finish_reason")
+                chunk_model = chunk.get("model", target_model)
+                if piece or finish:
+                    yield {
+                        "content": piece,
+                        "model": chunk_model,
+                        "done": finish is not None,
+                        "stream_mode": "native",
+                    }
+                if finish:
+                    yield {
+                        "content": "",
+                        "model": chunk_model,
+                        "done": True,
+                        "stream_mode": "native",
+                    }
+                    return
+        yield {"content": "", "model": target_model, "done": True, "stream_mode": "native"}

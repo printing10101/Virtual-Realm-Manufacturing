@@ -535,3 +535,6 @@ engineering/python/data/traces/
 
 # engineering 子目录的本地扫描缓存
 engineering/.mimosa/
+
+# Mimosa 安全扫描缓存（任意深度）
+.mimosa/

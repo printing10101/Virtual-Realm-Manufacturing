@@ -11,6 +11,7 @@
 - explainability     — ADR-016 阶段 7 p7：可解释性可视化 API
 - world_model        — ADR-017 阶段 8 p8：世界模型 API
 - rl_agent           — ADR-017 阶段 8 p8：RL Agent API
+- dreaming           — ADR-021：离线反思 / 规则灰度发布 API（W7.2）
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from fastapi import FastAPI
 
 from app.api.v1 import (
     datasets,
+    dreaming,
     explainability,
     project_packages,
     project_sync,
@@ -60,3 +62,6 @@ def register(app: FastAPI) -> None:
     # ADR-017 阶段 8 p8：世界模型 / RL Agent
     app.include_router(world_model.router)
     app.include_router(rl_agent.router)
+
+    # ADR-021：离线反思 / 规则灰度发布（W7.2 最小 API 面）
+    app.include_router(dreaming.router)

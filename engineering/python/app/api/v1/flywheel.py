@@ -312,3 +312,68 @@ def _format_size(num_bytes: int) -> str:
             return f"{size:.1f} {unit}" if unit != "B" else f"{int(size)} B"
         size /= 1024
     return f"{size:.1f} TB"
+
+
+# ---------------------------------------------------------------------------
+# W4.1 仿真合成数据（飞轮充能：不等真机也能动的数据源，2026-09 全量升格）
+# ---------------------------------------------------------------------------
+
+
+class SyntheticGenerateRequest(BaseModel):
+    """合成数据生成请求（参数扫描网格）。"""
+
+    material: str = Field("45steel", description="材料标识（透传切削力预测器）")
+    tool: str = Field("endmill_d10", description="刀具标识")
+    rpm_values: list[float] | None = Field(None, description="转速扫描档（默认 3 档）")
+    feed_values: list[float] | None = Field(None, description="进给扫描档（默认 3 档）")
+    depth_values: list[float] | None = Field(None, description="切深扫描档（默认 3 档）")
+    stock: dict[str, float] | None = Field(None, description="毛坯尺寸 {length,width,height}")
+    dataset_name: str = Field("synthetic_machining_params_v1", description="目标数据集名")
+    use_pinn: bool = Field(False, description="切削力优先 PINN（无 torch 自动降级 Kienzle）")
+    max_combinations: int = Field(200, ge=1, le=200, description="网格上限")
+
+
+class SyntheticGenerateResponse(BaseModel):
+    """合成数据生成结果。"""
+
+    success: bool
+    dataset_id: str | None = None
+    version: str | None = None
+    total: int = 0
+    voxel_passed: int = 0
+    voxel_failed: int = 0
+    duration_seconds: float = 0.0
+    combos_skipped: int = 0
+    errors: list[str] = Field(default_factory=list)
+    message: str = ""
+
+
+@router.post("/synthetic/generate", response_model=SyntheticGenerateResponse)
+async def generate_synthetic_dataset(req: SyntheticGenerateRequest):
+    """体素仿真+切削力模型参数扫描，批量生成"参数→仿真结果"样本对落库。
+
+    每个样本含合成 G 代码、体素校验报告（通过/过切/撞刀）与切削力预测；
+    撞刀样本与通过样本同权重落库——voxel_passed=False 正是"敢上机"
+    闸门分类器的正样本。数据集经 DatasetStore 提交为不可变版本（带血缘），
+    写入即进入飞轮训练侧消费通道。
+    """
+    from app.pipelines.synthetic_data_gen import generate_synthetic_dataset as _gen
+    from app.pipelines.synthetic_data_gen import synthetic_enabled
+
+    if not synthetic_enabled():
+        return SyntheticGenerateResponse(
+            success=False,
+            message="合成数据生成已关闭（LNN_FLYWHEEL_SYNTHETIC_ENABLED=0）",
+        )
+    summary = await _gen(
+        material=req.material,
+        tool=req.tool,
+        rpm_values=req.rpm_values,
+        feed_values=req.feed_values,
+        depth_values=req.depth_values,
+        stock=req.stock,
+        dataset_name=req.dataset_name,
+        use_pinn=req.use_pinn,
+        max_combinations=req.max_combinations,
+    )
+    return SyntheticGenerateResponse(success=summary.total > 0, **summary.to_dict())

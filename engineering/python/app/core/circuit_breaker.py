@@ -175,6 +175,58 @@ class CircuitBreaker:
 
             raise
 
+    async def async_execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        """执行受保护的异步服务调用（await 版 execute）。
+
+        ``execute`` 直接调用 ``func`` 只会得到协程对象——协程从未被 await
+        就被记为成功，这是同步版不能用于 async 调用的原因。LLM Provider
+        等异步链路必须使用本方法。
+
+        状态机语义与 ``execute`` 完全一致：
+        - OPEN 时抛出 :class:`CircuitBreakerOpenException`（不执行 func）；
+        - 成功记录成功，失败记录失败并 re-raise（不吞异常，fallback 由调用方决定）。
+
+        Raises:
+            CircuitBreakerOpenException: 熔断器已打开，拒绝调用
+            Exception: func 执行失败，但已记录
+        """
+        with self._lock:
+            current_state = self.state
+            if current_state == CircuitState.OPEN:
+                raise CircuitBreakerOpenException(  # type: ignore[call-arg]
+                    service=self.name,
+                    opened_at=self._opened_at.isoformat() if self._opened_at else None,
+                )
+
+        try:
+            result = await func(*args, **kwargs)
+            self._record_success()
+            return result
+        except Exception as e:
+            self._record_failure(e)
+            raise
+
+    def record_success(self) -> None:
+        """手动记录一次成功（供无法包裹调用体的异步流式场景使用）。"""
+        self._record_success()
+
+    def record_failure(self, exception: Exception) -> None:
+        """手动记录一次失败（供无法包裹调用体的异步流式场景使用）。"""
+        self._record_failure(exception)
+
+    def check_available(self) -> None:
+        """检查熔断器是否放行，打开时抛出 CircuitBreakerOpenException。
+
+        供「先检查、后执行」的异步调用模式使用（执行体自身负责回填
+        record_success / record_failure）。
+        """
+        with self._lock:
+            if self.state == CircuitState.OPEN:
+                raise CircuitBreakerOpenException(  # type: ignore[call-arg]
+                    service=self.name,
+                    opened_at=self._opened_at.isoformat() if self._opened_at else None,
+                )
+
     def reset(self):
         """重置熔断器状态"""
         with self._lock:
@@ -184,6 +236,13 @@ class CircuitBreaker:
             self._opened_at = None
             self._last_failure_time = None
             self._last_success_time = None
+
+    # 上下文管理器协议：使 ``with circuit_breaker_context(...) as cb`` 成立
+    def __enter__(self) -> "CircuitBreaker":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        return None
 
     def get_status(self) -> dict:
         """获取熔断器状态信息"""
@@ -258,12 +317,13 @@ def circuit_breaker_context(
     fallback: Callable[[Exception], Any] | None = None,
 ) -> AbstractContextManager[CircuitBreaker]:
     """
-    熔断器上下文管理器
+    熔断器上下文管理器。
 
-    用法:
-        with circuit_breaker_context("llm_service") as cb:
-            result = cb.execute(lambda: call_ai())
+    用法：进入 with 得到熔断器实例后，用它的 execute 方法包裹受保护调用
+    （异步链路请用 async_execute）。
+
+    历史 bug 修复：原实现把 ``yield breaker`` 写成了 ``return breaker``，
+    函数根本不是生成器，``with`` 语句一进入就抛 AttributeError。
     """
     registry = CircuitBreakerRegistry()
-    breaker = registry.get_or_create(name, config, fallback)
-    yield breaker
+    return registry.get_or_create(name, config, fallback)

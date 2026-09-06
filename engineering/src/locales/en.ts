@@ -7,7 +7,7 @@ export default {
     crashed: "Crashed",
     failed: "Start Failed",
     stopped: "Stopped",
-    restart: "Restart"
+    restart: "Restart",
   },
   errorBoundary: {
     title: "Something went wrong",
@@ -15,21 +15,23 @@ export default {
     reload: "Reload",
     goHome: "Go Home",
     details: "Error Details",
-    returnedHome: "Returned to home page"
+    returnedHome: "Returned to home page",
   },
   backendStartup: {
     crashed: "Backend Service Exited",
     failed: "Backend Service Failed to Start",
     starting: "Backend Service Starting",
     restarting: "Restarting backend service...",
-    firstLaunchHint: "First launch may take a few seconds to a minute, please wait...",
+    firstLaunchHint:
+      "First launch may take a few seconds to a minute, please wait...",
     errorDetails: "Error Details",
-    errorHint: "Please check if your installation package is complete, or try restarting the backend service. If the problem persists, please contact technical support.",
+    errorHint:
+      "Please check if your installation package is complete, or try restarting the backend service. If the problem persists, please contact technical support.",
     startingBtn: "Starting...",
     close: "Close",
     stopBackend: "Stop Backend",
     retry: "Retry Start",
-    skip: "Skip Wait"
+    skip: "Skip Wait",
   },
   navigation: {
     home: "Home",
@@ -94,12 +96,13 @@ export default {
     selectPlaceholder: "Please select",
     inputPlaceholder: "Please input",
   },
-// Experience (Data Flywheel)
+  // Experience (Data Flywheel)
   experience: {
     // Page Header
     pageTitle: "Machining Measurements",
-    pageSubtitle: "Data Flywheel · Capture → Store → Analyze → Optimize → Recapture",
-    
+    pageSubtitle:
+      "Data Flywheel · Capture → Store → Analyze → Optimize → Recapture",
+
     // Stats Cards
     stats: {
       totalRecords: "Total Records",
@@ -111,13 +114,13 @@ export default {
       machineId: "Machine ID",
       toolId: "Tool ID",
     },
-    
+
     // Units
     unit: {
       records: "records",
       seconds: "seconds",
     },
-    
+
     // Filter
     filter: {
       machineId: "Machine ID",
@@ -127,7 +130,7 @@ export default {
       result: "Result",
       hasAnomaly: "Has Anomaly",
     },
-    
+
     // Placeholders
     placeholder: {
       enterMachineId: "Enter machine ID",
@@ -136,7 +139,7 @@ export default {
       selectType: "Select machining type",
       selectResult: "Select result",
     },
-    
+
     // Buttons
     btn: {
       search: "Search",
@@ -149,7 +152,7 @@ export default {
       cancel: "Cancel",
       confirm: "Confirm",
     },
-    
+
     // Machining Types (English)
     machiningTypes: {
       milling: "Milling",
@@ -160,14 +163,14 @@ export default {
       grooving: "Grooving",
       threading: "Threading",
     },
-    
+
     // Results (English)
     results: {
       ok: "OK",
       rework: "Rework",
       scrap: "Scrap",
     },
-    
+
     // Messages
     msg: {
       refreshSuccess: "Refresh successful",
@@ -175,12 +178,12 @@ export default {
       deleteSuccess: "Delete successful",
       deleteFailed: "Delete failed",
     },
-    
+
     // List
     list: {
       empty: "No machining measurement records found",
     },
-    
+
     // Anomaly Types
     anomalyTypes: {
       chatter: "Chatter",
@@ -221,20 +224,22 @@ export default {
     fileNamePlaceholder: "Enter file name (without extension)",
     saveAsBtn: "Save As",
     unsavedTitle: "Unsaved Changes",
-    unsavedMessage: "The current project has unsaved changes. Save before proceeding?",
+    unsavedMessage:
+      "The current project has unsaved changes. Save before proceeding?",
     importVrmHint: "Drag .vrm files here or",
     importVrmClick: "click to select",
   },
   home: {
     welcome: "Welcome to Lingjing Manufacturing V4",
-    welcomeDesc: "AI-powered intelligent manufacturing platform providing tool wear prediction, process parameter optimization, and 3D visualization",
+    welcomeDesc:
+      "AI-powered intelligent manufacturing platform providing tool wear prediction, process parameter optimization, and 3D visualization",
     systemStatus: "System Status",
     aiService: "AI Service",
     running: "Running",
     stopped: "Stopped",
     registeredModels: "Registered Models",
     fetchFailed: "Status fetch failed",
-// Home.vue added keys
+    // Home.vue added keys
     pageTitle: "Production Overview",
     greetingOperator: ", Operator",
     rangeToday: "Today",
@@ -294,9 +299,35 @@ export default {
     header: "Workspace - LNN Model Inference",
     userSovereignty: "User Sovereignty Mode",
     predictTab: "Prediction & Inference",
+    previewTab: "Physical Preview",
     trainTab: "Model Training",
     modelsTab: "Model List",
     pluginsTab: "Plugin Panels",
+    previewCurrentState: "Current state",
+    previewCandidateAction: "Candidate action",
+    previewBtn: "Run preview",
+    previewHint:
+      "See the AI's physical prediction (chatter / wear / roughness vs thresholds) before you confirm",
+    previewInvalidJson: "{field} is not a valid JSON object",
+    previewFailed:
+      "Physical preview failed — check that the world model is available",
+    previewVerdictSafe: "Preview passed",
+    previewVerdictWarning: "Caution",
+    previewVerdictDanger: "Not recommended",
+    previewDamped: "Damped by sovereignty level (×{factor})",
+    previewMaxChatter: "Max chatter probability",
+    previewCumulativeWear: "Cumulative tool wear",
+    previewRoughness: "Final roughness",
+    previewConfidence: "Model confidence (mean)",
+    previewBandSafe: "safe",
+    previewBandDanger: "danger",
+    previewShieldPassed: "Safety shield passed",
+    previewShieldBlocked: "Safety shield blocked",
+    previewFinalAction: "Final action",
+    previewSovereigntyConfirm:
+      "Autonomy level ({level}): this recommendation requires human confirmation before it can be applied",
+    previewSovereigntyAuto:
+      "Autonomy level ({level}): can be applied automatically, fully logged",
     pluginsEmpty: "No extension panels. Install plugins to see them here.",
     modelName: "Model Name",
     modelNamePlaceholder: "Enter model name",
@@ -334,14 +365,16 @@ export default {
     estGpuMemory: "Est. GPU Memory",
     potentialRisks: "Potential Risks",
     trainingRecommendations: "Training Recommendations",
-    confirmTraining: "I have reviewed the training plan and confirm to start training",
+    confirmTraining:
+      "I have reviewed the training plan and confirm to start training",
     trainingMonitor: "Training Monitor",
     jobId: "Job ID",
     cancelTraining: "Cancel Training",
     trainingCompleted: "Training Completed",
     trainingFailed: "Training Failed",
     trainingCancelled: "Training Cancelled",
-    confirmCancelTraining: "Are you sure you want to cancel the current training task?",
+    confirmCancelTraining:
+      "Are you sure you want to cancel the current training task?",
     confirmCancelTitle: "Confirm Cancel",
     modelListName: "Name",
     modelListType: "Type",
@@ -350,7 +383,8 @@ export default {
     trainingConfidence: "Training Success Confidence: {confidence}%",
     msgSelectModel: "Please select a model",
     msgInputData: "Please enter inference data",
-    msgInvalidNumber: "Input data contains invalid numbers, please check the input format",
+    msgInvalidNumber:
+      "Input data contains invalid numbers, please check the input format",
     msgEmptyInput: "Input data cannot be empty",
     msgOutOfRange: "Input value is out of valid range",
     errMsgFormat: "Response data format error",
@@ -359,7 +393,8 @@ export default {
   },
   processPlanning: {
     pageTitle: "Process Planning",
-    subtitle: "End-to-end visualization from feature selection to G-code generation",
+    subtitle:
+      "End-to-end visualization from feature selection to G-code generation",
     featurePanel: {
       title: "Workpiece Features",
       partInfo: "Part Parameters",
@@ -376,7 +411,8 @@ export default {
       plane: "Plane",
       count: "Count",
       addFeature: "Add Feature",
-      noFeature: "No features available. Please import or define a model first.",
+      noFeature:
+        "No features available. Please import or define a model first.",
     },
     // Machining feature names (demo / backend recognition)
     features: {
@@ -398,9 +434,11 @@ export default {
     },
     gcodePreview: {
       title: "G-code Preview",
-      empty: "No G-code available. It will be generated once planning is complete.",
+      empty:
+        "No G-code available. It will be generated once planning is complete.",
       lineNumbers: "Line",
-      editableHint: "Tip: You can edit the code below and regenerate via Replan.",
+      editableHint:
+        "Tip: You can edit the code below and regenerate via Replan.",
       download: "Download G-code",
     },
     threeViewer: {
@@ -433,7 +471,7 @@ export default {
       noGcode: "No G-code to export",
       requestFailed: "Process planning request failed",
     },
-// ProcessPlanning.vue Route Management Page additional keys
+    // ProcessPlanning.vue Route Management Page additional keys
     routePage: {
       pageTitle: "Process Planning",
       pageSubtitle: "Manage and configure manufacturing process routes",
@@ -466,14 +504,16 @@ export default {
       msgUpdateSuccess: "Updated: {name}",
       msgCopySuccess: "Copied: {name}",
       msgDeleteSuccess: "Deleted: {name}",
-      msgDeleteConfirm: "Are you sure you want to delete route \"{name}\"? This action cannot be undone.",
+      msgDeleteConfirm:
+        'Are you sure you want to delete route "{name}"? This action cannot be undone.',
       deleteConfirmTitle: "Delete Confirmation",
       btnConfirmDelete: "Confirm Delete",
     },
   },
   ruleEditor: {
     pageTitle: "Process Rule Editor",
-    subtitle: "Manage process rule knowledge for LNN cutting parameter recommendation system",
+    subtitle:
+      "Manage process rule knowledge for LNN cutting parameter recommendation system",
     totalRules: "Total Rules",
     activeRules: "Active Rules",
     draftRules: "Draft Rules",
@@ -529,7 +569,7 @@ export default {
     ruleCount: "Rule Count",
     operation: "Actions",
     edit: "Edit",
-    deleteConfirm: "Are you sure you want to delete group \"{name}\"?",
+    deleteConfirm: 'Are you sure you want to delete group "{name}"?',
     delete: "Delete",
     cancel: "Cancel",
     close: "Close",
@@ -549,12 +589,14 @@ export default {
     lowPrecision: "Low Precision (Fast)",
     mediumPrecision: "Medium Precision (Balanced)",
     highPrecision: "High Precision (Fine)",
-    lowPrecisionHint: "Suitable for large assemblies, fewer faces, faster loading",
+    lowPrecisionHint:
+      "Suitable for large assemblies, fewer faces, faster loading",
     mediumPrecisionHint: "Default option, balanced precision and performance",
     highPrecisionHint: "Suitable for precision parts, more faces, larger file",
     uploading: "Uploading file...",
     processing: "Parsing and processing model...",
-    processingDetail: "Parsing STEP geometry data and generating triangulated mesh, please wait...",
+    processingDetail:
+      "Parsing STEP geometry data and generating triangulated mesh, please wait...",
     importSuccess: "Import Successful",
     importSuccessWithWarning: "Import Successful (With Warnings)",
     modelOverview: "Model Overview",
@@ -624,7 +666,8 @@ export default {
   },
   settings: {
     versionWarningTitle: "Version Mismatch Warning",
-    versionWarningMsg: "Component version mismatch detected, which may cause unexpected behavior. It is recommended to restart the application to resolve this issue.",
+    versionWarningMsg:
+      "Component version mismatch detected, which may cause unexpected behavior. It is recommended to restart the application to resolve this issue.",
     versionInfo: "Version Information",
     versionConsistent: "Versions Consistent",
     versionInconsistent: "Versions Inconsistent",
@@ -649,18 +692,27 @@ export default {
     hardwareTierStandard: "Standard",
     hardwareTierHigh: "High",
     hardwareTierUltra: "Ultra",
-    hardwareTierMinimalDesc: "4-core CPU / 8 GB RAM / No GPU. Enables only rule engine + cloud API; skips Ollama loading.",
-    hardwareTierStandardDesc: "8-core CPU / 16 GB RAM / Optional GPU. Default tier; supports local small models.",
-    hardwareTierHighDesc: "8-core+ CPU / 32 GB RAM / NVIDIA GPU ≥ 6 GB. Supports local 7B-14B models.",
-    hardwareTierUltraDesc: "Workstation-class. Supports local 14B+ models + GPU training.",
+    hardwareTierMinimalDesc:
+      "4-core CPU / 8 GB RAM / No GPU. Enables only rule engine + cloud API; skips Ollama loading.",
+    hardwareTierStandardDesc:
+      "8-core CPU / 16 GB RAM / Optional GPU. Default tier; supports local small models.",
+    hardwareTierHighDesc:
+      "8-core+ CPU / 32 GB RAM / NVIDIA GPU ≥ 6 GB. Supports local 7B-14B models.",
+    hardwareTierUltraDesc:
+      "Workstation-class. Supports local 14B+ models + GPU training.",
     lightweightMode: "Lightweight Mode",
-    lightweightModeDesc: "Skips Ollama startup probe, forces cloud API or rule engine, limits AI concurrency to 1. Suitable for legacy hardware or demo scenarios.",
+    lightweightModeDesc:
+      "Skips Ollama startup probe, forces cloud API or rule engine, limits AI concurrency to 1. Suitable for legacy hardware or demo scenarios.",
     lightweightModeAutoEnabled: "Lightweight mode auto-enabled by minimal tier",
-    hardwareTierChangeHint: "Changing tier requires backend restart to take effect. Frontend setting is for preference recording only.",
+    hardwareTierChangeHint:
+      "Changing tier requires backend restart to take effect. Frontend setting is for preference recording only.",
     hardwareTierSyncEnv: "Sync Environment Variables",
-    hardwareTierSyncEnvDesc: "Write selected tier to .env file (LNN_HARDWARE_TIER / LNN_LIGHTWEIGHT_MODE / LNN_SKIP_OLLAMA). Takes effect on next backend startup.",
-    hardwareTierSyncSuccess: "Environment variables synced. Effective after backend restart.",
-    hardwareTierSyncFailed: "Failed to sync environment variables. Please manually edit .env file.",
+    hardwareTierSyncEnvDesc:
+      "Write selected tier to .env file (LNN_HARDWARE_TIER / LNN_LIGHTWEIGHT_MODE / LNN_SKIP_OLLAMA). Takes effect on next backend startup.",
+    hardwareTierSyncSuccess:
+      "Environment variables synced. Effective after backend restart.",
+    hardwareTierSyncFailed:
+      "Failed to sync environment variables. Please manually edit .env file.",
     saveSettings: "Save Settings",
     language: "Language",
     systemHealth: "System Health",
@@ -676,23 +728,34 @@ export default {
     aiSovereignty: "AI User Sovereignty",
     sovereigntyMode: "User Sovereignty Mode",
     autonomyModeTitle: "AI Autonomy Mode Description",
-    autonomyModeDesc: "AI Autonomy controls the decision-making permission level of the AI system:",
-    autonomyLevel0: "Fully Manual: All AI suggestions require explicit user confirmation before execution",
-    autonomyLevel1: "Confirmation Required: AI provides suggestions, user confirms before execution",
-    autonomyLevel2: "Recommended (Default): AI provides recommendations, user can accept/modify/reject",
-    autonomyLevel3: "Semi-Automatic: High-confidence AI suggestions execute automatically, low-confidence requires confirmation",
-    autonomyLevel4: "Fully Automatic: AI executes recommendations directly, with full audit logs for review",
+    autonomyModeDesc:
+      "AI Autonomy controls the decision-making permission level of the AI system:",
+    autonomyLevel0:
+      "Fully Manual: All AI suggestions require explicit user confirmation before execution",
+    autonomyLevel1:
+      "Confirmation Required: AI provides suggestions, user confirms before execution",
+    autonomyLevel2:
+      "Recommended (Default): AI provides recommendations, user can accept/modify/reject",
+    autonomyLevel3:
+      "Semi-Automatic: High-confidence AI suggestions execute automatically, low-confidence requires confirmation",
+    autonomyLevel4:
+      "Fully Automatic: AI executes recommendations directly, with full audit logs for review",
     aiAutonomyLevel: "AI Autonomy Level",
     fullyManual: "Fully Manual",
     confirmRequired: "Confirm Required",
     recommended: "Recommended",
     semiAuto: "Semi-Automatic",
     fullyAuto: "Fully Automatic",
-    autonomyDesc0: "Fully manual mode: All AI suggestions require explicit user confirmation before execution. The system performs no automatic decision-making.",
-    autonomyDesc1: "Confirmation required mode: AI provides suggestions for user review and confirmation before execution.",
-    autonomyDesc2: "Recommended mode (default): AI provides recommendations that users can accept, modify, or reject.",
-    autonomyDesc3: "Semi-automatic mode: High-confidence (≥80%) AI suggestions execute automatically, low-confidence requires user confirmation.",
-    autonomyDesc4: "Fully automatic mode: AI can execute recommendations directly, with complete operation logs retained for post-hoc review and traceability.",
+    autonomyDesc0:
+      "Fully manual mode: All AI suggestions require explicit user confirmation before execution. The system performs no automatic decision-making.",
+    autonomyDesc1:
+      "Confirmation required mode: AI provides suggestions for user review and confirmation before execution.",
+    autonomyDesc2:
+      "Recommended mode (default): AI provides recommendations that users can accept, modify, or reject.",
+    autonomyDesc3:
+      "Semi-automatic mode: High-confidence (≥80%) AI suggestions execute automatically, low-confidence requires user confirmation.",
+    autonomyDesc4:
+      "Fully automatic mode: AI can execute recommendations directly, with complete operation logs retained for post-hoc review and traceability.",
     showConfidence: "Show Confidence Indicator",
     showAlternatives: "Show Alternatives",
     showReasoning: "Show Reasoning Process",
@@ -730,9 +793,12 @@ export default {
     revokeAllT: "Revoke All T Tokens",
     createToken: "Create Token",
     agentTokenInfo: "About Agent Tokens",
-    agentTokenDesc1: "Agent Tokens allow external AI tools (Cursor, Claude Code, Codex) to access LNN capabilities.",
-    agentTokenDesc2: "Permission levels: R (Read) / W (Write) / B (Train) / N (Notify) / C (Manage) / T (Execute)",
-    agentTokenDesc3: "Paper-Only Mode: Enabled by default. T-class operations are simulated only and not actually sent to machines.",
+    agentTokenDesc1:
+      "Agent Tokens allow external AI tools (Cursor, Claude Code, Codex) to access LNN capabilities.",
+    agentTokenDesc2:
+      "Permission levels: R (Read) / W (Write) / B (Train) / N (Notify) / C (Manage) / T (Execute)",
+    agentTokenDesc3:
+      "Paper-Only Mode: Enabled by default. T-class operations are simulated only and not actually sent to machines.",
     simulateMode: "Simulated",
     realExecute: "Real Execution",
     revoke: "Revoke",
@@ -741,22 +807,26 @@ export default {
     validitySeconds: "Validity (seconds)",
     noExpiry: "Never Expires",
     paperOnlyHint: "T-class operations simulated only",
-    realExecuteHint: "Allows real execution of T-class operations (use with caution)",
+    realExecuteHint:
+      "Allows real execution of T-class operations (use with caution)",
     tokenCreatedSuccess: "Token created successfully. Please save it.",
     selectScopeHint: "Please select at least one permission scope",
     importantNotice: "Important: Please save this token!",
-    importantNoticeMsg: "The full token value is displayed only once. It cannot be viewed again after closing.",
+    importantNoticeMsg:
+      "The full token value is displayed only once. It cannot be viewed again after closing.",
     iHaveSaved: "I have saved it",
     tokenDetail: "Token Details",
     tokenPrefix: "Token Prefix",
     createTime: "Created At",
     expireTime: "Expires At",
     revokeConfirmTitle: "Warning",
-    revokeConfirmMsg: "Are you sure you want to revoke this token? This action cannot be undone.",
+    revokeConfirmMsg:
+      "Are you sure you want to revoke this token? This action cannot be undone.",
     revokeSuccess: "Token revoked",
     revokeFailed: "Failed to revoke token",
     emergencyStopTitle: "Emergency Stop Confirmation",
-    emergencyStopMsg: "Are you sure you want to revoke all tokens with T-class permissions? This is an emergency stop that will immediately terminate access for all T-class tokens.",
+    emergencyStopMsg:
+      "Are you sure you want to revoke all tokens with T-class permissions? This is an emergency stop that will immediately terminate access for all T-class tokens.",
     emergencyStopConfirm: "Confirm Revoke",
     revokeSuccessCount: "Revoked {count} T-class tokens",
     revokeTFailed: "Failed to revoke T-class tokens",
@@ -772,7 +842,8 @@ export default {
     noLogsToExport: "No log files to export",
     exportSavePath: "Save path",
     clearConfirmTitle: "Warning",
-    clearConfirmMsg: "Are you sure you want to clear all audit logs? This action cannot be undone.",
+    clearConfirmMsg:
+      "Are you sure you want to clear all audit logs? This action cannot be undone.",
     clearSuccess: "Cleared {count} log entries",
     copySuccess: "Token copied to clipboard",
     copyFailed: "Copy failed, please copy manually",
@@ -795,7 +866,8 @@ export default {
     getScopeName_C: "Manage",
     getScopeName_T: "Execute",
     systemHealthCheck: "System Health Check",
-    healthCheckDesc: "One-click environment diagnostics to quickly identify and fix common issues",
+    healthCheckDesc:
+      "One-click environment diagnostics to quickly identify and fix common issues",
     healthChecking: "Running system checks...",
     healthCheckComplete: "Health check complete",
     healthCheckFailed: "Health check failed",
@@ -837,9 +909,10 @@ export default {
     llmLocalProviders: "Local Providers",
     llmCloudProviders: "Cloud Providers",
     llmConfigPath: "Config Storage Path",
-// Settings.vue page-level keys
+    // Settings.vue page-level keys
     pageTitle: "System Settings",
-    subtitle: "Manage system configurations, version information and preferences",
+    subtitle:
+      "Manage system configurations, version information and preferences",
     navGeneral: "General Settings",
     navAiMonitor: "AI & Monitoring",
     navAiEngine: "AI Engine",
@@ -853,7 +926,8 @@ export default {
       emptyTitle: "No services detected",
       scanHintPrefix: "Please click",
       scanHintSuffix: "button to start detection",
-      scanMethodDesc: "Scans common LLM service ports and config files on this machine",
+      scanMethodDesc:
+        "Scans common LLM service ports and config files on this machine",
       scanningText: "Scanning...",
       scanResult: "Detected {total} services, {hit} online",
       duration: "Duration: {ms}ms",
@@ -865,7 +939,8 @@ export default {
       colDefaultModel: "Default Model",
       colDetectionMethod: "Detection Method",
       colDescription: "Description",
-      importConfirmMessage: "All detected LLM services will be imported{action} (existing IDs will be skipped), and the first local Provider will be automatically activated. Continue?",
+      importConfirmMessage:
+        "All detected LLM services will be imported{action} (existing IDs will be skipped), and the first local Provider will be automatically activated. Continue?",
       importConfirmTitle: "Confirm Import",
       import: "Import",
       cancel: "Cancel",
@@ -934,7 +1009,7 @@ export default {
     },
     providerList: {
       emptyTitle: "No Provider",
-      emptyDescription: "Click \"Add Provider\" button to create one",
+      emptyDescription: 'Click "Add Provider" button to create one',
       activate: "Activate",
       enabled: "Enabled",
       disabled: "Disabled",
@@ -972,7 +1047,8 @@ export default {
       configStoragePath: "Config Storage Path",
       providerList: "Provider List",
       addProvider: "Add Provider",
-      confirmDeleteMessage: "Delete Provider \"{name}\" ({id})? This action cannot be undone.",
+      confirmDeleteMessage:
+        'Delete Provider "{name}" ({id})? This action cannot be undone.',
       deleteConfirmTitle: "Delete Confirmation",
       btnDelete: "Delete",
       btnCancel: "Cancel",
@@ -1043,13 +1119,16 @@ export default {
     checkFailed: "Update check failed, please try again later",
     errorNetwork: "Cannot reach update server, please check your network",
     errorParse: "Update server returned an unexpected response",
-    description: "Intelligent manufacturing AI inference and training API service based on Liquid Neural Network (LNN)",
+    description:
+      "Intelligent manufacturing AI inference and training API service based on Liquid Neural Network (LNN)",
     coreTech: "Core Technologies",
-    techLnn: "LNN (Liquid Neural Network) - Liquid neural network inference engine",
+    techLnn:
+      "LNN (Liquid Neural Network) - Liquid neural network inference engine",
     techCfc: "CFC (Context-Free Grammar Network) - Fast inference model",
     techLtc: "LTC (Liquid Time Constant) - Time-series data analysis model",
     techHybrid: "Hybrid LNN - Multi-modal hybrid reasoning model",
-    techDempster: "Dempster-Shafer Evidence Theory - Multi-engine result fusion",
+    techDempster:
+      "Dempster-Shafer Evidence Theory - Multi-engine result fusion",
     dataSupport: "Data Foundation",
     dataBosch: "Bosch CNC Vibration Dataset - Tool condition monitoring",
     dataUniwearTc4: "Uniwear-NUAA TC4 - Titanium alloy wear experiment data",
@@ -1185,7 +1264,8 @@ export default {
     labelCurrentFeedRate: "Current Feed Rate",
     labelNewFeedRate: "New Feed Rate",
     labelRange: "Process Range",
-    rangeAlert: "Recommended range: 10 - 50000 mm/min (roughing 100-500, finishing 50-200)",
+    rangeAlert:
+      "Recommended range: 10 - 50000 mm/min (roughing 100-500, finishing 50-200)",
     confirm: "Apply Change",
   },
   // G-code export dialog (GCodeExportDialog) i18n keys
@@ -1248,12 +1328,17 @@ export default {
     labelLevel: "Level:",
     labelDescription: "Description:",
     labelRecommendation: "Recommendation:",
-    descHigh: "The AI is highly confident in this prediction. Direct adoption is recommended.",
-    descMedium: "The AI has moderate confidence in this prediction. Combine with human judgment.",
-    descLow: "The AI has low confidence in this prediction. Strongly consider alternatives or manual review.",
+    descHigh:
+      "The AI is highly confident in this prediction. Direct adoption is recommended.",
+    descMedium:
+      "The AI has moderate confidence in this prediction. Combine with human judgment.",
+    descLow:
+      "The AI has low confidence in this prediction. Strongly consider alternatives or manual review.",
     recHigh: "You can directly adopt the AI recommendation",
-    recMedium: "Recommend reviewing before adoption; pay attention to potential risks",
-    recLow: "Recommend modifying or rejecting the AI recommendation; use human judgment",
+    recMedium:
+      "Recommend reviewing before adoption; pay attention to potential risks",
+    recLow:
+      "Recommend modifying or rejecting the AI recommendation; use human judgment",
   },
   // System health check (HealthCheck) i18n keys
   healthCheck: {
@@ -1319,7 +1404,8 @@ export default {
       toolDiameter: "Tool Diameter (mm)",
       safeHeight: "Safe Height (mm)",
       gcode: "G-code",
-      gcodePlaceholder: "Enter G-code or leave empty to use default toolpath...",
+      gcodePlaceholder:
+        "Enter G-code or leave empty to use default toolpath...",
       runSimulation: "Run Simulation",
       toolpathPoint: "Segment {current} / {total}",
       msgEnterGcode: "Please enter G-code first",
@@ -1332,13 +1418,15 @@ export default {
     collisionAlert: {
       severityCritical: "Critical",
       severityWarning: "Warning",
-      confirmDismissAllMsg: "Dismiss all collision alerts? This will clear all unhandled collision records.",
+      confirmDismissAllMsg:
+        "Dismiss all collision alerts? This will clear all unhandled collision records.",
       confirmDismissAllTitle: "Confirm Dismiss All",
       confirmDismissAllBtn: "Confirm Dismiss",
       dismissedAllMsg: "All collision alerts dismissed",
       dialogTitle: "Collision Detection Alert",
       noCollision: "No collisions detected",
-      noCollisionHint: "The current simulation path has no collision risks and is safe to execute",
+      noCollisionHint:
+        "The current simulation path has no collision risks and is safe to execute",
       collisionDetectedPrefix: "Detected",
       collisionDetectedSuffix: "collision(s)",
       positionLabel: "Position:",
@@ -1384,7 +1472,8 @@ export default {
     ncCodeTitle: "NC Code",
     uploadFile: "Upload File",
     clear: "Clear",
-    gcodePlaceholder: "Paste G-code here, or upload .nc / .gcode file from top-right\n\nSupports Fanuc / Siemens / Heidenhain formats",
+    gcodePlaceholder:
+      "Paste G-code here, or upload .nc / .gcode file from top-right\n\nSupports Fanuc / Siemens / Heidenhain formats",
     gcodeLines: "{count} lines",
     gcodeGCommands: "{count} G commands",
     gcodeMCommands: "{count} M commands",
@@ -1416,14 +1505,16 @@ export default {
     collisionCount: "{count} collisions detected",
     collisionSeverity: "Severity: {severity}",
     viewDetail: "View Details",
-    failAlertTitle: "Simulation Failed — NC code has collision risks, please modify and re-run",
+    failAlertTitle:
+      "Simulation Failed — NC code has collision risks, please modify and re-run",
     suggestTitle: "Suggestions:",
     suggest1: "Adjust safe height to avoid collision during rapid moves",
     suggest2: "Check toolpath for interference with fixtures or workpiece",
     suggest3: "Verify feed rate and spindle speed are reasonable",
-    suggest4: "After modification, click \"Re-run Simulation\" to verify",
+    suggest4: 'After modification, click "Re-run Simulation" to verify',
     passAlertTitle: "Simulation Passed — NC code is safe for machine execution",
-    passAlertDesc: "No anomalies detected in collision check. Toolpath is safe. You can download the STL result or export the simulation report.",
+    passAlertDesc:
+      "No anomalies detected in collision check. Toolpath is safe. You can download the STL result or export the simulation report.",
     downloadStl: "Download STL",
     collisionDetail: "Collision Details",
     viewReport: "View Report",
@@ -1468,7 +1559,8 @@ export default {
     meshCountUnit: "{count}",
     // Export management
     exportGifTitle: "GIF Export",
-    exportGifDesc: "Export simulation animation as GIF for sharing and documentation.",
+    exportGifDesc:
+      "Export simulation animation as GIF for sharing and documentation.",
     exportResolution: "Resolution",
     exportFramerate: "Framerate",
     exportQuality: "Quality",
@@ -1477,7 +1569,8 @@ export default {
     qualityHigh: "High",
     exportGifBtn: "Export GIF",
     exportMp4Title: "MP4 Export",
-    exportMp4Desc: "Export simulation animation as MP4 with high quality and multiple codecs.",
+    exportMp4Desc:
+      "Export simulation animation as MP4 with high quality and multiple codecs.",
     exportCodec: "Codec",
     exportBitrate: "Bitrate",
     exportMp4Btn: "Export MP4",
@@ -1490,7 +1583,8 @@ export default {
     msgNoTaskId: "No task ID received",
     msgTaskSubmitted: "Simulation task submitted: {taskId}",
     msgSubmitFailed: "Simulation submission failed",
-    msgCollisionDetected: "Simulation complete, collisions detected! Please review details and modify NC code",
+    msgCollisionDetected:
+      "Simulation complete, collisions detected! Please review details and modify NC code",
     msgSimPassed: "Simulation passed, NC code is safe for machine execution",
     msgTaskNotFound: "Simulation task not found or expired",
     msgLocateCollision: "Locate collision #{index}: ({pos})",
@@ -1523,17 +1617,21 @@ export default {
     step6Desc: "Verify code",
     // Step 1: Describe Part
     step1Header: "Describe Your Part",
-    step1Hint: "Use natural language to describe the shape and dimensions of the part you want to create",
-    step1Placeholder: "e.g., Create a rectangular block 50mm long, 30mm wide, and 20mm high, with R2 fillets at the four corners",
+    step1Hint:
+      "Use natural language to describe the shape and dimensions of the part you want to create",
+    step1Placeholder:
+      "e.g., Create a rectangular block 50mm long, 30mm wide, and 20mm high, with R2 fillets at the four corners",
     btnNext: "Next",
     // Examples
     example1: "Create a rectangular block 50mm long, 30mm wide, and 20mm high",
     example2: "Create a cylinder with diameter 30mm and height 50mm",
     example3: "Create a sphere with radius 15mm",
-    example4: "Create a rectangular block 60mm long, 40mm wide, and 25mm high, with a 10mm diameter through hole at the center of the top",
+    example4:
+      "Create a rectangular block 60mm long, 40mm wide, and 25mm high, with a 10mm diameter through hole at the center of the top",
     // Step 2: Parameter Confirmation
     step2Header: "Confirm Model Parameters",
-    step2Hint: "Check and edit the extracted parameters to ensure they meet your needs",
+    step2Hint:
+      "Check and edit the extracted parameters to ensure they meet your needs",
     paramShapeType: "Shape Type",
     paramShapePlaceholder: "Select shape",
     shapeBox: "Box",
@@ -1551,7 +1649,8 @@ export default {
     btnGenerateModel: "Generate Model",
     // Step 3: Model Preview
     step3Header: "3D Model Preview",
-    step3Hint: "View the generated 3D model and confirm if it meets requirements",
+    step3Hint:
+      "View the generated 3D model and confirm if it meets requirements",
     step3Loading: "Generating 3D model...",
     infoShape: "Shape:",
     infoDimensions: "Dimensions:",
@@ -1560,7 +1659,8 @@ export default {
     btnProcessPlanning: "Process Planning",
     // Step 4: Process Planning
     step4Header: "Process Planning",
-    step4Hint: "Select machining material and process type, the system will automatically generate the process route",
+    step4Hint:
+      "Select machining material and process type, the system will automatically generate the process route",
     paramMaterialType: "Material Type",
     paramMaterialSelectPlaceholder: "Select material",
     materialAluminum6061: "Aluminum 6061-T6",
@@ -1774,20 +1874,22 @@ export default {
     detailCheckpointId: "Checkpoint ID",
     detailBestMetric: "Best Metric",
     memoryEntries: "Memory Entries ({count})",
-    noDetailData: "This agent has no detailed session context, checkpoint, or memory data.",
+    noDetailData:
+      "This agent has no detailed session context, checkpoint, or memory data.",
     none: "None",
     // Validation messages
     msgNameRequired: "Please enter agent name",
     msgTypeRequired: "Please select agent type",
     // Action messages
-    msgDeploySuccess: "Agent \"{name}\" deployed successfully",
+    msgDeploySuccess: 'Agent "{name}" deployed successfully',
     msgDeployFailed: "Deployment failed, please try again later",
     msgGetDetailFailed: "Failed to get agent details",
-    msgRestartSuccess: "Agent \"{id}\" restarted",
+    msgRestartSuccess: 'Agent "{id}" restarted',
     msgRestartFailed: "Restart failed, please try again later",
-    msgDeleteConfirm: "Are you sure you want to delete agent \"{id}\"? This action cannot be undone.",
+    msgDeleteConfirm:
+      'Are you sure you want to delete agent "{id}"? This action cannot be undone.',
     msgDeleteConfirmTitle: "Delete Confirmation",
-    msgDeleteSuccess: "Agent \"{id}\" deleted",
+    msgDeleteSuccess: 'Agent "{id}" deleted',
   },
   // Rule Edit Dialog (RuleEditDialog) i18n keys
   ruleEditDialog: {
@@ -1862,7 +1964,8 @@ export default {
     pageTitle: "Cost Analysis",
     // Budget exceeded alert
     alertBudgetExceededTitle: "Budget Exceeded Warning",
-    alertBudgetExceededDesc: "Some budgets have reached or exceeded their limits, and new tasks may be blocked. Please adjust budgets or reduce resource consumption as soon as possible.",
+    alertBudgetExceededDesc:
+      "Some budgets have reached or exceeded their limits, and new tasks may be blocked. Please adjust budgets or reduce resource consumption as soon as possible.",
     // Chart titles
     chartCostDistribution: "Cost Dimension Distribution",
     chartCostByType: "Cost Type Comparison",
@@ -2164,7 +2267,8 @@ export default {
     msgSpecParseError: "Spec parse failed, please check JSON format",
     msgNoCurrentRun: "No workflow selected, cannot resume",
     // Confirm dialogs
-    confirmCancel: "Cancel this workflow run? Pending nodes will be marked as skipped.",
+    confirmCancel:
+      "Cancel this workflow run? Pending nodes will be marked as skipped.",
     confirmDelete: "Delete this workflow record? This action cannot be undone.",
     warning: "Warning",
   },
@@ -2172,7 +2276,8 @@ export default {
   snapshotPanel: {
     // Page header
     pageTitle: "Experiment Snapshots",
-    pageSubtitle: "Reproducibility infrastructure · git SHA + data version + config + metrics",
+    pageSubtitle:
+      "Reproducibility infrastructure · git SHA + data version + config + metrics",
     btnRefresh: "Refresh",
     btnCreate: "New Snapshot",
     // List panel
@@ -2230,21 +2335,24 @@ export default {
     // Messages
     msgCreateSuccess: "Snapshot created, ID: {id}",
     msgReproduceSuccess: "Reproduction workflow started, Run ID: {id}",
-    msgReproduceNotSupported: "This snapshot does not support reproduction (missing workflow_spec)",
+    msgReproduceNotSupported:
+      "This snapshot does not support reproduction (missing workflow_spec)",
     msgReproduceFailed: "Reproduction failed: {error}",
     msgConfigEmpty: "Config cannot be empty",
     msgConfigInvalid: "Config JSON parse failed",
     msgMetricsInvalid: "Metrics JSON parse failed",
     msgDatasetVersionsEmpty: "Dataset versions empty (recommend at least one)",
     // Confirm
-    confirmReproduce: "Reproduce from this snapshot? A new workflow run will be started.",
+    confirmReproduce:
+      "Reproduce from this snapshot? A new workflow run will be started.",
     warning: "Warning",
   },
   // Data Flywheel dashboard (FlywheelDashboard.vue) i18n keys
   flywheel: {
     // Page header
     pageTitle: "Data Flywheel",
-    pageSubtitle: "Feedback loop + model hot-update · 5 metrics from real data sources",
+    pageSubtitle:
+      "Feedback loop + model hot-update · 5 metrics from real data sources",
     healthLabel: "Health",
     btnRefresh: "Refresh",
     // Tabs
@@ -2252,6 +2360,30 @@ export default {
     tabFeedback: "Feedback",
     tabModels: "Hot Update",
     tabMetrics: "Metrics History",
+    tabLearnings: "Learnings",
+    // Learnings (W7.2 offline-reflection board)
+    learningsTitle: "What it learned recently",
+    learningsSubtitle:
+      "Rule drafts from offline reflection and gray-release events — every self-improvement is auditable and reversible",
+    learningsDays7: "Last 7 days",
+    learningsDays14: "Last 14 days",
+    learningsDays30: "Last 30 days",
+    learningsEventDraft: "Learned a new rule",
+    learningsEventPublish: "Entered shadow",
+    learningsEventPromote: "Promoted",
+    learningsEventDemote: "Demoted",
+    learningsEventAutoDemote: "Auto-demoted (anomaly)",
+    learningsConfidence: "Confidence",
+    learningsEmpty:
+      "No learning events in this window — refresh, or wait for the next reflection run",
+    learningsStage: {
+      shadow: "Shadow",
+      canary: "Canary 1%",
+      rolling_10: "Rolling 10%",
+      rolling_50: "Rolling 50%",
+      full: "Full",
+      deprecated: "Deprecated",
+    },
     // Metric names
     metricHealthScore: "Health Score",
     metricDataVolume: "Data Volume",
@@ -2284,7 +2416,8 @@ export default {
     feedbackAdoptionRate: "Adoption Rate",
     feedbackDelay: "Feedback Delay",
     feedbackHealthScore: "Health Score",
-    feedbackAdoptionHint: "Adoption rate starts from 0% and grows with system usage and feedback collection.",
+    feedbackAdoptionHint:
+      "Adoption rate starts from 0% and grows with system usage and feedback collection.",
     metricDefinitionsTitle: "Metric Definitions",
     btnReload: "Reload",
     // Hot update
@@ -2378,21 +2511,24 @@ export default {
     msgConfigUpdated: "Configuration updated",
     msgInvalidJson: "Invalid JSON format",
     // Uninstall confirmation dialog
-    msgUninstallConfirm: "Are you sure you want to uninstall this plugin? This action cannot be undone.",
+    msgUninstallConfirm:
+      "Are you sure you want to uninstall this plugin? This action cannot be undone.",
     msgUninstallConfirmTitle: "Confirm Uninstall",
     btnUninstallConfirm: "Uninstall",
     btnCancel: "Cancel",
   },
-// NLModeling.vue Natural Language Modeling Page
+  // NLModeling.vue Natural Language Modeling Page
   nlModeling: {
     pageTitle: "Natural Language Modeling",
-    pageSubtitle: "Generate 3D part models from natural language descriptions, supporting process planning and NC code generation",
+    pageSubtitle:
+      "Generate 3D part models from natural language descriptions, supporting process planning and NC code generation",
     switchToChat: "Switch to Chat Mode",
     switchToGuide: "Switch to Guide Mode",
     previewTitle: "3D Preview",
     btnResetView: "Reset View",
     btnExportModel: "Export Model",
-    placeholderHint: "Enter a part description on the left to generate a 3D model",
+    placeholderHint:
+      "Enter a part description on the left to generate a 3D model",
     defaultDescription: "Generate a rectangular block",
     msgModelSuccess: "Model generated successfully",
     msgModelFailed: "Model generation failed, please retry",
@@ -2405,7 +2541,7 @@ export default {
     msgViewReset: "Model view reset",
     msgComplete: "Process complete!",
   },
-// ProductionReport.vue Production Report Page
+  // ProductionReport.vue Production Report Page
   productionReport: {
     pageTitle: "Production Report",
     pageSubtitle: "View and analyze production data reports",
@@ -2455,10 +2591,11 @@ export default {
     msgExportEmpty: "No data to export",
     msgExportFailed: "Failed to export report",
   },
-// ProcessUnderstanding.vue Process Understanding & Q&A Page
+  // ProcessUnderstanding.vue Process Understanding & Q&A Page
   processUnderstanding: {
     pageTitle: "Process Understanding & Q&A",
-    pageSubtitle: "LLM-based process consulting, fault diagnosis, and solution generation",
+    pageSubtitle:
+      "LLM-based process consulting, fault diagnosis, and solution generation",
     statusHealthy: "Service Available",
     statusUnavailable: "Service Unavailable",
     btnClearHistory: "Clear Conversation",
@@ -2469,9 +2606,11 @@ export default {
     sectionSources: "Knowledge Sources",
     sectionActions: "Suggested Actions",
     loadingThinking: "System is thinking...",
-    inputPlaceholder: "Enter a process question, e.g.: TC4 titanium alloy high-speed milling parameter recommendation?",
+    inputPlaceholder:
+      "Enter a process question, e.g.: TC4 titanium alloy high-speed milling parameter recommendation?",
     btnSend: "Send",
-    suggestionMilling: "TC4 titanium alloy high-speed milling parameter recommendation",
+    suggestionMilling:
+      "TC4 titanium alloy high-speed milling parameter recommendation",
     suggestionToolWear: "Cause analysis of rapid tool wear",
     suggestionRoughing: "6061-T6 aluminum alloy roughing process plan",
     suggestionChatter: "How to suppress cutting chatter",
@@ -2482,7 +2621,7 @@ export default {
     taskTypeChat: "Chitchat",
     taskTypeUnknown: "Unknown",
   },
-// QualityInspection.vue Quality Inspection Page
+  // QualityInspection.vue Quality Inspection Page
   qualityInspection: {
     pageTitle: "Quality Inspection",
     pageSubtitle: "Product quality inspection and analysis management",
@@ -2529,7 +2668,7 @@ export default {
     msgDetailLoadFailed: "Failed to load details",
     msgFormIncomplete: "Please fill in all required fields",
   },
-// EquipmentMonitor.vue Equipment Monitor page
+  // EquipmentMonitor.vue Equipment Monitor page
   equipmentMonitor: {
     pageTitle: "Equipment Monitor",
     pageSubtitle: "Real-time monitoring of equipment running status",
@@ -2577,13 +2716,14 @@ export default {
     btnCancel: "Cancel",
     msgSettingsSaved: "Equipment parameters saved",
     msgSettingsFailed: "Failed to save equipment parameters",
-    msgStopConfirm: "Confirm stopping equipment \"{name}\" (switch to standby)?",
+    msgStopConfirm: 'Confirm stopping equipment "{name}" (switch to standby)?',
     msgStopSuccess: "Equipment stopped",
-    msgRepairConfirm: "Confirm reporting repair for equipment \"{name}\" (switch to maintenance)?",
+    msgRepairConfirm:
+      'Confirm reporting repair for equipment "{name}" (switch to maintenance)?',
     msgRepairSuccess: "Repair reported, equipment switched to maintenance",
     msgOpFailed: "Operation failed",
   },
-// MaterialManagement.vue Material Management page
+  // MaterialManagement.vue Material Management page
   materialManagement: {
     pageTitle: "Material Management",
     pageSubtitle: "Manage production materials and inventory",
@@ -2641,7 +2781,7 @@ export default {
     msgQuantityInvalid: "Please enter a valid quantity",
     msgMaterialRequired: "Please select a material",
   },
-// PluginLogs.vue Plugin Logs page
+  // PluginLogs.vue Plugin Logs page
   pluginLogs: {
     pageTitle: "Plugin Logs",
     placeholderSelectPlugin: "Select Plugin",
@@ -2655,19 +2795,19 @@ export default {
     msgNoLogsToExport: "No logs to export",
     msgExported: "{count} logs exported",
   },
-// PluginMarket.vue Plugin Market page
+  // PluginMarket.vue Plugin Market page
   pluginMarket: {
     pageTitle: "Plugin Market",
     placeholderSearch: "Search plugins...",
     btnInstall: "Install",
     btnDetail: "Details",
     emptyNoPlugin: "No plugins available",
-    msgInstallStarted: "Plugin \"{name}\" installation started",
-    msgInstallSuccess: "Plugin \"{name}\" installed successfully",
+    msgInstallStarted: 'Plugin "{name}" installation started',
+    msgInstallSuccess: 'Plugin "{name}" installed successfully',
     msgInstallFailed: "Plugin installation failed",
-    msgAlreadyInstalled: "Plugin \"{name}\" is already installed",
+    msgAlreadyInstalled: 'Plugin "{name}" is already installed',
     msgLoadFailed: "Failed to load plugin market",
-    msgViewDetail: "View plugin \"{name}\" details",
+    msgViewDetail: 'View plugin "{name}" details',
     labelInstalled: "Installed",
     labelBuiltin: "Built-in",
     dialogDetailTitle: "Plugin Details",
@@ -2694,11 +2834,13 @@ export default {
     plugin3dMonitor: "3D Monitor",
     plugin3dMonitorDesc: "3D machine tool status monitoring",
   },
-// NLInputPanel.vue
+  // NLInputPanel.vue
   nlInputPanel: {
     welcomeGreeting: "Hello! I am the Lingjing Manufacturing AI Assistant.",
-    welcomeHint: "Please describe the part you want to create, e.g.: \"Create a box 50mm long, 30mm wide, 20mm high, with R2 fillets on all four corners\".",
-    paramsExtracted: "I have understood your description and extracted the following parameters:",
+    welcomeHint:
+      'Please describe the part you want to create, e.g.: "Create a box 50mm long, 30mm wide, 20mm high, with R2 fillets on all four corners".',
+    paramsExtracted:
+      "I have understood your description and extracted the following parameters:",
     shapeTypeLabel: "Shape Type:",
     dimLength: "L",
     dimWidth: "W",
@@ -2715,11 +2857,11 @@ export default {
     download: "Download",
     inputPlaceholder: "Describe the part you want to create...",
     exampleBox: "Example: Box",
-          exampleCylinder: "Example: Cylinder",
-          exampleSphere: "Example: Sphere",
-          exampleBoxPrompt: "Create a box 50mm long, 30mm wide, 20mm high",
-          exampleCylinderPrompt: "Create a cylinder 30mm diameter, 50mm high",
-          exampleSpherePrompt: "Create a sphere 15mm radius",
+    exampleCylinder: "Example: Cylinder",
+    exampleSphere: "Example: Sphere",
+    exampleBoxPrompt: "Create a box 50mm long, 30mm wide, 20mm high",
+    exampleCylinderPrompt: "Create a cylinder 30mm diameter, 50mm high",
+    exampleSpherePrompt: "Create a sphere 15mm radius",
     editModelParamsTitle: "Edit Model Parameters",
     shapeTypeFormLabel: "Shape Type",
     optionBox: "Box",
@@ -2733,7 +2875,8 @@ export default {
     materialFormLabel: "Material",
     materialPlaceholder: "Optional",
     confirmEdit: "Confirm Changes",
-    errorUnderstand: "Sorry, I cannot understand your description. Please try to describe the shape and dimensions of the part in more detail.",
+    errorUnderstand:
+      "Sorry, I cannot understand your description. Please try to describe the shape and dimensions of the part in more detail.",
     errorGenerateFailed: "Model generation failed, please try again later.",
     shapeBox: "Box",
     shapeCylinder: "Cylinder",
@@ -2744,7 +2887,7 @@ export default {
     featureHole: "Hole",
     featureSlot: "Slot",
   },
-// UXDemo.vue UX demo page
+  // UXDemo.vue UX demo page
   uxDemo: {
     pageTitle: "UX Feature Demo",
     btnStartTour: "Start Tour Guide",
@@ -2758,19 +2901,26 @@ export default {
     featureCommandLabel: "Command Palette",
     tagCompleted: "Completed",
     featureTourDesc: "5 steps, progress memory, responsive design",
-    featureGalleryDesc: "12 examples, search filter, code preview, one-click copy",
-    featureCommandDesc: "Shortcut activation, fuzzy search, smart sorting, usage frequency memory",
+    featureGalleryDesc:
+      "12 examples, search filter, code preview, one-click copy",
+    featureCommandDesc:
+      "Shortcut activation, fuzzy search, smart sorting, usage frequency memory",
     sectionGalleryPreview: "Example Projects Preview",
     tourStep1Title: "Welcome to Lingjing Manufacturing System",
-    tourStep1Desc: "This is an AI-driven 3D modeling and process planning system. Let us explore the main features through a few simple steps.",
+    tourStep1Desc:
+      "This is an AI-driven 3D modeling and process planning system. Let us explore the main features through a few simple steps.",
     tourStep2Title: "File Management",
-    tourStep2Desc: "Here you can create, open, and save project files, and import STEP and DXF format files.",
+    tourStep2Desc:
+      "Here you can create, open, and save project files, and import STEP and DXF format files.",
     tourStep3Title: "Navigation Menu",
-    tourStep3Desc: "Through the top menu, you can quickly access core functional modules such as workspace, settings, and process planning.",
+    tourStep3Desc:
+      "Through the top menu, you can quickly access core functional modules such as workspace, settings, and process planning.",
     tourStep4Title: "Command Palette",
-    tourStep4Desc: "Press Ctrl+K to quickly activate the command palette, supporting fuzzy search and smart sorting to improve efficiency.",
+    tourStep4Desc:
+      "Press Ctrl+K to quickly activate the command palette, supporting fuzzy search and smart sorting to improve efficiency.",
     tourStep5Title: "Ready to Start",
-    tourStep5Desc: "The tour is complete! You can restart it from the Help menu at any time. Now let us start exploring the powerful features of the system!",
+    tourStep5Desc:
+      "The tour is complete! You can restart it from the Help menu at any time. Now let us start exploring the powerful features of the system!",
     cmdNewProjectName: "New Project",
     cmdNewProjectDesc: "Create a new project",
     cmdOpenProjectName: "Open Project",
@@ -2804,7 +2954,7 @@ export default {
     msgTourCompleted: "Tour completed!",
     msgTourSkipped: "Tour skipped (from step {step})",
   },
-// ExampleGallery.vue
+  // ExampleGallery.vue
   exampleGallery: {
     placeholderSearch: "Search examples...",
     placeholderCategory: "Category",
@@ -2844,7 +2994,7 @@ export default {
     msgCopyFailed: "Copy failed, please copy manually",
     msgImported: "Example {name} imported to project",
   },
-// SplashScreen.vue
+  // SplashScreen.vue
   splashScreen: {
     appName: "Lingjing Manufacturing",
     appSubtitle: "AI-Powered 3D Modeling & Process Planning System",
@@ -2853,7 +3003,7 @@ export default {
     statusStartingBackend: "Starting backend services...",
     statusInit3dEngine: "Initializing 3D engine...",
     statusLoadingConfig: "Loading configuration data...",
-    statusReady: "Ready..."
+    statusReady: "Ready...",
   },
   templateMarket: {
     pageTitle: "Template Market",
@@ -2889,7 +3039,7 @@ export default {
     errorFetchTrending: "Failed to fetch trending templates:",
     errorFetchTemplates: "Failed to fetch template list:",
     errorSubscribe: "Failed to subscribe category:",
-    errorPublish: "Failed to publish template:"
+    errorPublish: "Failed to publish template:",
   },
   branchManager: {
     pageTitle: "Branch Management",
@@ -2924,7 +3074,7 @@ export default {
     btnMerge: "Merge",
     msgCannotDeleteMain: "Cannot delete main branch",
     msgConfirmDelete: "Are you sure you want to delete this branch?",
-    titleConfirmDelete: "Confirm Delete"
+    titleConfirmDelete: "Confirm Delete",
   },
   goals: {
     tabTree: "Goal Tree",
@@ -2966,9 +3116,9 @@ export default {
     errorFetchFailed: "Failed to fetch update notifications:",
     errorApplyFailed: "Failed to apply update:",
     errorDismissFailed: "Failed to dismiss update:",
-    errorPreviewFailed: "Failed to fetch preview data:"
+    errorPreviewFailed: "Failed to fetch preview data:",
   },
-// ProviderFormDialog.vue Provider Form Dialog
+  // ProviderFormDialog.vue Provider Form Dialog
   providerFormDialog: {
     // Dialog titles
     titleCreate: "Add LLM Provider",
@@ -2991,7 +3141,8 @@ export default {
     placeholderProviderId: "e.g. my-ollama / openai-prod",
     placeholderDisplayName: "e.g. My Ollama Service",
     placeholderSelectType: "Select Provider Type",
-    placeholderApiKeyEdit: "Leave empty to keep unchanged; enter new value to update",
+    placeholderApiKeyEdit:
+      "Leave empty to keep unchanged; enter new value to update",
     placeholderApiKeyCreate: "Enter API Key",
     placeholderDefaultModel: "e.g. qwen2.5-coder:7b / gpt-4o-mini",
     placeholderSelectCapabilities: "Select capabilities",
@@ -3000,9 +3151,11 @@ export default {
     tipBaseUrlDefault: "Base URL of the Provider service",
     tipApiKeyEdit: "Encrypted storage, leave empty to keep unchanged",
     tipApiKeyCreate: "Encrypted storage, required for first time",
-    tipDefaultModel: "Default model for this Provider, can be overridden at call time",
+    tipDefaultModel:
+      "Default model for this Provider, can be overridden at call time",
     tipPriority: "Higher number means higher priority in fallback routing",
-    tipEnabled: "When disabled, this Provider will not be selected by the router",
+    tipEnabled:
+      "When disabled, this Provider will not be selected by the router",
     // Type group labels
     groupLocal: "Local (Self-hosted)",
     groupCloud: "Cloud (API)",
@@ -3018,11 +3171,12 @@ export default {
     btnSave: "Save",
     // Validation rule messages
     ruleProviderIdRequired: "Please enter Provider ID",
-    ruleProviderIdPattern: "Only letters, numbers, underscores, and hyphens are allowed",
+    ruleProviderIdPattern:
+      "Only letters, numbers, underscores, and hyphens are allowed",
     ruleNameRequired: "Please enter display name",
     ruleTypeRequired: "Please select type",
   },
-// TestDialog.vue Chat Test Dialog
+  // TestDialog.vue Chat Test Dialog
   testDialog: {
     titleDefault: "Chat Test",
     titleSuffix: "{name} - Chat Test",
@@ -3040,10 +3194,11 @@ export default {
     labelModel: "Model",
     labelLatency: "Latency",
     defaultGreeting: "Hello, please introduce yourself in one sentence.",
-    errorInvokeFailed: "Invocation failed, please check the error prompt in the upper right corner",
+    errorInvokeFailed:
+      "Invocation failed, please check the error prompt in the upper right corner",
     errorTestFailed: "Chat test failed",
   },
-// ModelsDialog.vue Model List Dialog
+  // ModelsDialog.vue Model List Dialog
   modelsDialog: {
     titleDefault: "Model List",
     titleSuffix: "{name} - Available Models",
@@ -3056,7 +3211,8 @@ export default {
     toolbarCount: "Total {count} models",
     placeholderFilter: "Filter by ID/Name",
     btnRefresh: "Refresh",
-    emptyNoModels: "This Provider has no available models, or the service is not running",
+    emptyNoModels:
+      "This Provider has no available models, or the service is not running",
     colModelId: "Model ID",
     tagDefault: "Default",
     colName: "Name",
@@ -3064,16 +3220,18 @@ export default {
     colActions: "Actions",
     btnCopyId: "Copy ID",
     btnClose: "Close",
-    errorZeroModels: "This Provider returned 0 models, the service may not be started or no models are loaded",
+    errorZeroModels:
+      "This Provider returned 0 models, the service may not be started or no models are loaded",
     errorLoadFailed: "Failed to load model list",
     msgCopied: "Copied: {id}",
     warnClipboardUnavailable: "Clipboard unavailable, please copy manually",
   },
 
-// ProviderList.vue Provider List
+  // ProviderList.vue Provider List
   providerList: {
     emptyTitle: "No Provider Configured",
-    emptyDescription: "No LLM Provider is currently configured. Click \"Add Provider\" above to add manually, or use auto-detection to scan locally installed LLM services.",
+    emptyDescription:
+      'No LLM Provider is currently configured. Click "Add Provider" above to add manually, or use auto-detection to scan locally installed LLM services.',
     colStatus: "Status",
     statusActive: "Active",
     statusEnabled: "Enabled",
@@ -3098,7 +3256,7 @@ export default {
     btnDelete: "Delete",
   },
 
-// AppLayout.vue Application Layout
+  // AppLayout.vue Application Layout
   appLayout: {
     brandName: "Lingjing Manufacturing",
     searchPlaceholder: "Search work orders, equipment, materials...",
@@ -3119,33 +3277,33 @@ export default {
     logoutTitle: "Log out",
     guest: "Guest",
   },
-// Copilot components (RecommendationCard / DecisionActions / CopilotConfidenceIndicator)
+  // Copilot components (RecommendationCard / DecisionActions / CopilotConfidenceIndicator)
   copilot: {
     card: {
-      title: 'AI Recommendation',
-      recommendation: 'Recommendation',
-      reasoning: 'Reasoning',
-      alternatives: 'Alternatives',
+      title: "AI Recommendation",
+      recommendation: "Recommendation",
+      reasoning: "Reasoning",
+      alternatives: "Alternatives",
     },
     actions: {
-      accept: 'Accept',
-      modify: 'Request Changes',
-      reject: 'Reject',
+      accept: "Accept",
+      modify: "Request Changes",
+      reject: "Reject",
     },
     confidence: {
-      label: 'Confidence',
-      high: 'High',
-      medium: 'Medium',
-      low: 'Low',
+      label: "Confidence",
+      high: "High",
+      medium: "Medium",
+      low: "Low",
     },
     messages: {
-      accepted: 'Accepted',
-      modifyRequested: 'Changes Requested',
-      rejected: 'Rejected',
+      accepted: "Accepted",
+      modifyRequested: "Changes Requested",
+      rejected: "Rejected",
     },
   },
 
-// CommandPalette.vue Command Palette
+  // CommandPalette.vue Command Palette
   commandPalette: {
     inputPlaceholder: "Enter command name or description...",
     noMatchFound: "No matching commands found",
@@ -3156,7 +3314,7 @@ export default {
     otherCategory: "Other",
     pluginCategory: "Plugins",
   },
-// Tour.vue Onboarding Component
+  // Tour.vue Onboarding Component
   onboardingTour: {
     prev: "Previous",
     next: "Next",
@@ -3164,15 +3322,20 @@ export default {
     finish: "Finish",
     // [U-P0-1] First-launch onboarding tour step content
     step1Title: "Welcome to LingJing Manufacturing",
-    step1Desc: "This is an AI-driven CAM tool for machining. Let's take a 1-minute tour of the main features.",
+    step1Desc:
+      "This is an AI-driven CAM tool for machining. Let's take a 1-minute tour of the main features.",
     step2Title: "Navigation Menu",
-    step2Desc: "The left sidebar groups functions: process planning, AI prediction, data management, and system settings. Click any item to enter the corresponding module.",
+    step2Desc:
+      "The left sidebar groups functions: process planning, AI prediction, data management, and system settings. Click any item to enter the corresponding module.",
     step3Title: "Top Action Bar",
-    step3Desc: "The top bar provides project management (new/open/save), STEP/DXF import, refresh, and other shortcuts.",
+    step3Desc:
+      "The top bar provides project management (new/open/save), STEP/DXF import, refresh, and other shortcuts.",
     step4Title: "Search & Commands",
-    step4Desc: "Use the top search box to quickly locate features or project files.",
+    step4Desc:
+      "Use the top search box to quickly locate features or project files.",
     step5Title: "Paper-Only Safety Mode",
-    step5Desc: "Paper-only mode is the default: all T-level operations (machine dispatch) are simulated and audit-logged for industrial safety. Live mode requires supervisor dual-factor confirmation and machine safety pre-checks.",
+    step5Desc:
+      "Paper-only mode is the default: all T-level operations (machine dispatch) are simulated and audit-logged for industrial safety. Live mode requires supervisor dual-factor confirmation and machine safety pre-checks.",
     step6Title: "Get Started",
     step6Desc: "Tour complete. To replay, use 'Help → Replay Tour'.",
   },
@@ -3182,10 +3345,11 @@ export default {
   recommendationCard: {
     alternativeLabel: "Option {index}",
   },
-// DialectManager.vue Postprocessor Dialect Manager
+  // DialectManager.vue Postprocessor Dialect Manager
   dialectManager: {
     pageTitle: "Postprocessor Dialects",
-    pageHint: "Manage machine postprocessor dialects: built-in dialects + local declarative dialect plugins (dialect.yaml + templates). Process engineers can view templates and preview NC output in real time.",
+    pageHint:
+      "Manage machine postprocessor dialects: built-in dialects + local declarative dialect plugins (dialect.yaml + templates). Process engineers can view templates and preview NC output in real time.",
     btnRefresh: "Refresh",
     searchPlaceholder: "Search dialects...",
     colName: "Name",
@@ -3210,7 +3374,8 @@ export default {
     compileOk: "Compiled OK",
     compileError: "Compile Failed",
     btnSaveTemplate: "Save Template",
-    templatePlaceholder: "Edit Jinja2 template; save to preview NC output immediately",
+    templatePlaceholder:
+      "Edit Jinja2 template; save to preview NC output immediately",
     btnCreate: "New Dialect",
     createTitle: "Create Declarative Dialect",
     fieldId: "Dialect ID",
@@ -3219,7 +3384,8 @@ export default {
     placeholderName: "e.g. My Machine Dialect",
     fieldExtends: "Extends",
     fieldDescription: "Description",
-    placeholderDescription: "Optional: machines/controllers this dialect targets",
+    placeholderDescription:
+      "Optional: machines/controllers this dialect targets",
     btnCancel: "Cancel",
     btnDelete: "Delete",
     deleteTitle: "Delete Dialect",
@@ -3233,10 +3399,11 @@ export default {
     msgDeleteFailed: "Failed to delete dialect",
     sectionPreview: "NC Output Preview",
     btnPreview: "Generate Preview",
-    previewEmpty: "Click \"Generate Preview\" to see the full NC output of this dialect",
+    previewEmpty:
+      'Click "Generate Preview" to see the full NC output of this dialect',
     noSelection: "Select a dialect on the left to view details",
     msgLoadFailed: "Failed to load dialect list",
     msgDetailFailed: "Failed to load dialect detail",
     msgPreviewFailed: "Failed to generate NC preview",
   },
-}
+};

@@ -11,19 +11,22 @@
   { "event_id", "timestamp", "data": {...}, "event_type", "priority" }
   其中 event_type ∈ {data, alert}
 
-数据源（上机准备：本地模拟 Agent 联调）：
-- 默认读取环境变量 ``MTCONNECT_AGENT_URL``（未配置时为本地模拟 Agent
-  ``http://127.0.0.1:5010``，对应 :mod:`app.dnc.mock_agent.MockMTConnectAgent`）。
-- Agent 可达：通过 MTConnectAdapter 拉取真实数据，并用 :func:`check_alerts`
-  推送告警（模拟 Agent 周期性触发主轴过载，用于验证告警链路）。
-- Agent 不可达：优雅降级为内置 demo 数据（:func:`_demo_sample`），保证前端可调试。
+数据源（信任红线治理，2026-09）：
+- 配置了环境变量 ``MTCONNECT_AGENT_URL``：连接该真实 Agent，不可达时推送
+  「未连接」告警事件（不再静默虚构数据）。
+- 未配置 ``MTCONNECT_AGENT_URL`` 且 ``LNN_MONITOR_ALLOW_DEMO=1``：显式演示
+  模式，回落本地模拟 Agent（``http://127.0.0.1:5010``）+ demo 降级数据。
+- 未配置且未开启演示模式（**默认**）：不连接任何数据源，周期性推送
+  ``agent_disconnected`` 告警——设备监控页绝不展示虚构机床数据。
 
 设计要点：
-1. 优雅降级：MTConnect Agent 不可达时推送模拟数据（demo 模式），
-   保证前端面板可开发调试（与既有 demo.mtconnect.org 兼容）
-2. 心跳：每 15s 推送 ping 事件，检测断线
-3. 权限：require_permission("monitor:read")
-4. 并发安全：每连接独立订阅，断开自动清理
+1. 信任红线：默认不虚构数据；demo 数据必须在显式开启演示模式后才可用，
+   且 payload 带 source=demo 标记
+2. 优雅降级：允许演示时 Agent 不可达降级 demo；未允许时降级为「未连接」告警，
+   并周期性重探，Agent 恢复后自动切回真实数据
+3. 心跳：每 15s 推送 ping 事件，检测断线
+4. 权限：require_permission("monitor:read")
+5. 并发安全：每连接独立订阅，断开自动清理
 """
 
 from __future__ import annotations
@@ -31,6 +34,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from datetime import datetime, timezone
 from xml.etree import ElementTree as ET
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -50,13 +54,23 @@ _HEARTBEAT_INTERVAL_S = 15.0
 # 此前断连后永久降级且不再恢复，操作员会一直看假数据。
 _ADAPTER_REPROBE_TICKS = 30
 
-# 本地模拟 Agent 默认地址（无真实机床时用于联调验证；生产环境用 MTCONNECT_AGENT_URL 覆盖）
+# 本地模拟 Agent 默认地址（仅在显式演示模式下使用；生产环境用 MTCONNECT_AGENT_URL）
 _DEFAULT_AGENT_URL = "http://127.0.0.1:5010"
 
 
-def _resolve_agent_url() -> str:
-    """返回当前生效的 MTConnect Agent URL（环境变量优先）。"""
-    return os.getenv("MTCONNECT_AGENT_URL", _DEFAULT_AGENT_URL)
+def _demo_allowed() -> bool:
+    """演示数据需显式开启（信任红线：默认禁止向用户展示虚构机床数据）。"""
+    return os.getenv("LNN_MONITOR_ALLOW_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _resolve_agent_url() -> str | None:
+    """返回当前生效的 MTConnect Agent URL；未配置且未开演示模式时为 None。"""
+    env_url = os.getenv("MTCONNECT_AGENT_URL", "").strip()
+    if env_url:
+        return env_url
+    if _demo_allowed():
+        return _DEFAULT_AGENT_URL
+    return None
 
 
 def _close_adapter_quietly(adapter: MTConnectAdapter | None) -> None:
@@ -69,8 +83,10 @@ def _close_adapter_quietly(adapter: MTConnectAdapter | None) -> None:
 
 
 def _create_adapter() -> MTConnectAdapter | None:
-    """创建并探活 MTConnect 适配器；Agent 不可达时返回 None（demo 降级）。"""
+    """创建并探活 MTConnect 适配器；未配置数据源或 Agent 不可达时返回 None。"""
     agent_url = _resolve_agent_url()
+    if not agent_url:
+        return None
     cfg = AdapterConfig(
         agent_url=agent_url,
         interval=1.0,
@@ -130,9 +146,26 @@ async def machine_monitor_ws(websocket: WebSocket) -> None:
     machine_id = "VM-001"
     tick = 0
 
-    # 数据源：优先 MTConnect Agent；不可达时降级 demo（payload 带 source=demo
-    # 标记，前端可区分），并周期性重探，Agent 恢复后自动切回真实数据。
+    # 数据源：配置了 Agent（或显式演示模式）→ 真实/模拟数据；否则推送
+    # 「未连接」告警（绝不虚构数据），并周期性重探，Agent 恢复后自动切回。
+    demo_allowed = _demo_allowed()
     adapter = _create_adapter()
+
+    def _disconnected_notice() -> dict[str, object]:
+        url = _resolve_agent_url()
+        if url:
+            message = f"MTConnect Agent {url} 不可达，已停止推送机床数据"
+            if demo_allowed:
+                message += "（演示模式未对不可达 Agent 降级虚构数据）"
+        else:
+            message = "设备监控未连接：未配置 MTCONNECT_AGENT_URL。如需演示数据请设置 LNN_MONITOR_ALLOW_DEMO=1"
+        return {
+            "event_type": "alert",
+            "alert_type": "agent_disconnected",
+            "priority": 3,
+            "message": message,
+            "data": {"source": "disconnected", "machine_id": machine_id},
+        }
 
     try:
         while True:
@@ -152,38 +185,48 @@ async def machine_monitor_ws(websocket: WebSocket) -> None:
             except asyncio.TimeoutError:
                 pass
 
-            if adapter is None and tick % _ADAPTER_REPROBE_TICKS == 0:
+            # 仅在存在可连接的数据源时周期性重探
+            if adapter is None and _resolve_agent_url() and tick % _ADAPTER_REPROBE_TICKS == 0:
                 adapter = _create_adapter()
 
-            source = "demo"
+            sample: Sample | None = None
             if adapter is not None:
                 try:
                     sample = await asyncio.to_thread(adapter.fetch_sample)
-                    source = "agent"
                 except (ConnectionError, OSError, TimeoutError, ET.ParseError) as exc:
-                    logger.warning("monitor: fetch sample failed: %s；本轮降级 demo", exc)
+                    logger.warning("monitor: fetch sample failed: %s；本轮停止推送真实数据", exc)
                     _close_adapter_quietly(adapter)
                     adapter = None
-                    sample = _demo_sample(machine_id, tick)
-            else:
-                sample = _demo_sample(machine_id, tick)
 
-            # 告警事件 + 数据事件（告警优先推送，前端可即时感知）
-            alert_events = check_alerts(sample)
-            data_event = StreamEvent(data=sample, event_type="data", priority=1)
-            for event in alert_events + [data_event]:
-                payload = event.to_dict()
-                if event is data_event and source == "demo":
-                    # demo 降级必须对前端可见，避免模拟数据被当作真实机床状态
-                    payload["source"] = "demo"
-                    if isinstance(payload.get("data"), dict):
-                        payload["data"]["source"] = "demo"
-                await websocket.send_json(payload)
+            if sample is not None:
+                # 告警事件 + 数据事件（告警优先推送，前端可即时感知）
+                alert_events = check_alerts(sample)
+                data_event = StreamEvent(data=sample, event_type="data", priority=1)
+                for event in alert_events + [data_event]:
+                    payload = event.to_dict()
+                    await websocket.send_json(payload)
+            elif demo_allowed:
+                # 显式演示模式：Agent 不可达时降级 demo 数据（payload 带 source=demo
+                # 标记，前端可区分），避免模拟数据被当作真实机床状态
+                sample = _demo_sample(machine_id, tick)
+                alert_events = check_alerts(sample)
+                data_event = StreamEvent(data=sample, event_type="data", priority=1)
+                for event in alert_events + [data_event]:
+                    payload = event.to_dict()
+                    if event is data_event:
+                        payload["source"] = "demo"
+                        if isinstance(payload.get("data"), dict):
+                            payload["data"]["source"] = "demo"
+                    await websocket.send_json(payload)
+            elif tick % _ADAPTER_REPROBE_TICKS == 0:
+                # 信任红线：无真实数据源且演示未开启 → 推送「未连接」告警，
+                # 周期性提醒（每 30s）而非静默虚构机床数据
+                await websocket.send_json(_disconnected_notice())
             tick += 1
 
             # 心跳
             if tick % _HEARTBEAT_INTERVAL_S == 0:
-                await websocket.send_json({"event_type": "ping", "timestamp": data_event.timestamp.isoformat()})
+                await websocket.send_json({"event_type": "ping", "timestamp": datetime.now(timezone.utc).isoformat()})
 
             await asyncio.sleep(1.0)
 

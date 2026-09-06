@@ -209,6 +209,11 @@ class SafetyShield:
         if self._strict:
             # 严格模式：回退到上一次合法动作或默认安全动作
             fallback = self._resolve_fallback(ref)
+            # 修复 [安全回退正确性]：回退动作本身必须通过边界校验——当调用方
+            # 传入的 prev_action 恰为被检查的违规动作时（如单动作预演），
+            # ref 即违规动作，若不校验会把违规动作当作"安全动作"返回。
+            if self._check_bounds(fallback):
+                fallback = self._default_safe.copy()
             with self._lock:
                 self._last_safe = fallback.copy()
             logger.warning(

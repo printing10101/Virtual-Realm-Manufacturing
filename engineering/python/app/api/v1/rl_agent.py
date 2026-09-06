@@ -37,6 +37,7 @@ from pydantic import BaseModel, Field
 from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
 from app.dependencies import get_rl_agent_service
+from app.dependencies import get_sovereignty_policy
 from app.contracts.rl_agent import (
     OptimizationTarget,
     PolicyAlgorithm,
@@ -349,12 +350,18 @@ async def act(request: RLActRequestModel):
         return _handle_service_exception(e, action="RL 决策")
 
     payload = response.to_dict()
+    # W9.1 主权决策：告知调用方该推荐动作在当前自主等级下能否自动执行。
+    # 注意 /act 本身只产出建议不执行；真正落点（工作流应用动作）必须消费
+    # requires_confirmation，需确认时走审批流而非直接应用。
+    decision = get_sovereignty_policy().evaluate_action("agent_action")
+    payload["sovereignty"] = decision.to_dict()
     return success(
         data=payload,
         message=(
             f"RL 决策完成: 策略={response.policy_info.algorithm}，"
             f"候选数={len(response.action_evaluation)}，"
             f"推荐动作={'安全通过' if '违反' not in response.recommended_action.reasoning else '已回退'}"
+            + ("；主权策略要求人工确认后方可应用" if decision.requires_confirmation else "")
         ),
     )
 
@@ -438,6 +445,19 @@ async def start_training(request: TrainingStartRequestModel):
         return error(
             code=ErrorCode.INVALID_REQUEST,
             message=str(e),
+        )
+
+    # W9.1 主权硬挂点：自主等级/用户设置要求训练需确认时，拒绝自动启动。
+    # 这是后端真实行为，不再只是前端 localStorage 开关。
+    sovereignty = get_sovereignty_policy().evaluate_action("train")
+    if sovereignty.requires_confirmation:
+        return error(
+            code=ErrorCode.FORBIDDEN,
+            message=f"主权策略要求训练动作需人工确认，已拒绝自动启动：{sovereignty.reason}",
+            suggestion=(
+                f"请在「设置 → AI 主权」调整自主等级（当前 {sovereignty.autonomy_level}，"
+                f"{sovereignty.autonomy_label}），或确认 require_confirmation_for_train 后重试"
+            ),
         )
 
     service = get_rl_agent_service()

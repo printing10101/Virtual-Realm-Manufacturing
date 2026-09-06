@@ -3,18 +3,14 @@
     <!-- ===== Page Header ===== -->
     <div class="page-header">
       <div class="page-header__title">
-        <h1>{{ t('flywheel.pageTitle') }}</h1>
+        <h1>{{ t("flywheel.pageTitle") }}</h1>
         <span class="page-header__subtitle">
-          {{ t('flywheel.pageSubtitle') }}
+          {{ t("flywheel.pageSubtitle") }}
         </span>
       </div>
       <div class="page-header__actions">
-        <el-tag
-          v-if="store.status"
-          :type="store.healthTagType"
-          size="default"
-        >
-          {{ t('flywheel.healthLabel') }}: {{ store.healthStatusLabel }}
+        <el-tag v-if="store.status" :type="store.healthTagType" size="default">
+          {{ t("flywheel.healthLabel") }}: {{ store.healthStatusLabel }}
         </el-tag>
         <el-button
           size="small"
@@ -22,7 +18,7 @@
           :loading="store.anyLoading"
           @click="handleRefreshAll"
         >
-          {{ t('flywheel.btnRefresh') }}
+          {{ t("flywheel.btnRefresh") }}
         </el-button>
       </div>
     </div>
@@ -39,16 +35,9 @@
     />
 
     <!-- ===== Tabs ===== -->
-    <el-tabs
-      v-model="activeTab"
-      type="card"
-      class="flywheel-tabs"
-    >
+    <el-tabs v-model="activeTab" type="card" class="flywheel-tabs">
       <!-- ====== Tab 1: 概览 ====== -->
-      <el-tab-pane
-        :label="t('flywheel.tabOverview')"
-        name="overview"
-      >
+      <el-tab-pane :label="t('flywheel.tabOverview')" name="overview">
         <FlywheelOverview
           :status="store.status"
           :loading="store.loading"
@@ -61,10 +50,7 @@
       </el-tab-pane>
 
       <!-- ====== Tab 2: 反馈 ====== -->
-      <el-tab-pane
-        :label="t('flywheel.tabFeedback')"
-        name="feedback"
-      >
+      <el-tab-pane :label="t('flywheel.tabFeedback')" name="feedback">
         <FlywheelFeedback
           :feedback-stats="store.feedbackStats"
           :metric-definitions="store.metricDefinitions"
@@ -74,10 +60,7 @@
       </el-tab-pane>
 
       <!-- ====== Tab 3: 模型热更新 ====== -->
-      <el-tab-pane
-        :label="t('flywheel.tabModels')"
-        name="models"
-      >
+      <el-tab-pane :label="t('flywheel.tabModels')" name="models">
         <FlywheelModels
           :deployments-loading="store.deploymentsLoading"
           :active-deployments="store.activeDeployments"
@@ -88,10 +71,7 @@
       </el-tab-pane>
 
       <!-- ====== Tab 4: 指标历史 ====== -->
-      <el-tab-pane
-        :label="t('flywheel.tabMetrics')"
-        name="metrics"
-      >
+      <el-tab-pane :label="t('flywheel.tabMetrics')" name="metrics">
         <FlywheelMetrics
           :metrics-loading="store.metricsLoading"
           :current-metrics="store.currentMetrics"
@@ -102,61 +82,69 @@
           @refresh="handleRefreshMetrics"
         />
       </el-tab-pane>
+
+      <!-- ====== Tab 5: 它学会了什么（W7.2 离线反思/灰度事件流） ====== -->
+      <el-tab-pane :label="t('flywheel.tabLearnings')" name="learnings">
+        <FlywheelLearnings />
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { Refresh } from '@element-plus/icons-vue'
-import { useFlywheelStore } from '@/stores/flywheel'
-import type { DeploymentStatus } from '@/stores/flywheel'
-import FlywheelOverview from './flywheel/FlywheelOverview.vue'
-import FlywheelFeedback from './flywheel/FlywheelFeedback.vue'
-import FlywheelModels from './flywheel/FlywheelModels.vue'
-import FlywheelMetrics from './flywheel/FlywheelMetrics.vue'
+import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
+import { Refresh } from "@element-plus/icons-vue";
+import { useFlywheelStore } from "@/stores/flywheel";
+import type { DeploymentStatus } from "@/stores/flywheel";
+import FlywheelOverview from "./flywheel/FlywheelOverview.vue";
+import FlywheelFeedback from "./flywheel/FlywheelFeedback.vue";
+import FlywheelModels from "./flywheel/FlywheelModels.vue";
+import FlywheelMetrics from "./flywheel/FlywheelMetrics.vue";
+import FlywheelLearnings from "./flywheel/FlywheelLearnings.vue";
 
-const { t } = useI18n()
-const store = useFlywheelStore()
+const { t } = useI18n();
+const store = useFlywheelStore();
 
 // 本地状态
-const activeTab = ref<'overview' | 'feedback' | 'models' | 'metrics'>('overview')
-const metricsDays = ref<number>(7)
+const activeTab = ref<
+  "overview" | "feedback" | "models" | "metrics" | "learnings"
+>("overview");
+const metricsDays = ref<number>(7);
 
 // 事件处理
 async function handleRefreshAll(): Promise<void> {
-  await store.refreshAll(metricsDays.value)
+  await store.refreshAll(metricsDays.value);
 }
 
 async function handleFetchWeeklyReport(): Promise<void> {
-  await store.fetchWeeklyReport(false)
+  await store.fetchWeeklyReport(false);
 }
 
 async function handleRefreshMetrics(): Promise<void> {
-  await store.fetchMetrics(metricsDays.value)
+  await store.fetchMetrics(metricsDays.value);
 }
 
 async function handleMetricsDaysChange(days: number): Promise<void> {
-  metricsDays.value = days
-  await store.fetchMetrics(days)
+  metricsDays.value = days;
+  await store.fetchMetrics(days);
 }
 
 async function handleFilterDeployments(
   modelName: string | undefined,
   status: DeploymentStatus | undefined,
 ): Promise<void> {
-  await store.fetchDeployments(modelName, status)
+  await store.fetchDeployments(modelName, status);
 }
 
 async function handleResetDeploymentFilters(): Promise<void> {
-  await store.fetchDeployments()
+  await store.fetchDeployments();
 }
 
 // 生命周期
 onMounted(() => {
-  void store.refreshAll(metricsDays.value)
-})
+  void store.refreshAll(metricsDays.value);
+});
 </script>
 
 <style scoped>

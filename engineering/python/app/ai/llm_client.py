@@ -3,28 +3,57 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 
+from app.core.exceptions import AppException, LLMProviderException
+
 logger = logging.getLogger(__name__)
 
 
-class LLMError(Exception):
-    """Base exception for LLM client errors."""
+class LLMError(LLMProviderException):
+    """Base exception for LLM client errors。
+
+    2026-09 全量升格：legacy 客户端异常统一挂接 6xxx 分级异常体系
+    （默认 6010），走统一错误中间件时能返回 code/level/retryable 结构化
+    响应；``isinstance(e, LLMError)`` 等既有判断完全兼容。
+    """
+
+    def __init__(self, message: str = "大模型调用异常", detail: Any = None) -> None:
+        super().__init__(provider="LLM", message=message, detail=detail)
 
 
 class RateLimitError(LLMError):
-    """Raised when the API rate limit is exceeded (HTTP 429)."""
+    """Raised when the API rate limit is exceeded (HTTP 429)。错误码 6012。"""
+
+    def __init__(self, message: str = "LLM 服务达到限流阈值", detail: Any = None) -> None:
+        super().__init__(message, detail=detail)
+        self.code = 6012
+        self.retryable = True
+        self.hint = "请稍后重试"
 
 
 class ServiceUnavailableError(LLMError):
-    """Raised when the API service is temporarily unavailable (HTTP 5xx)."""
+    """Raised when the API service is temporarily unavailable (HTTP 5xx)。错误码 6010。"""
+
+    def __init__(self, message: str = "LLM 服务暂时不可用", detail: Any = None) -> None:
+        super().__init__(message, detail=detail)
+        self.retryable = True
+        self.hint = "请检查 AI 服务状态或稍后重试"
 
 
 class InvalidResponseError(LLMError):
-    """Raised when the API returns an empty or malformed response."""
+    """Raised when the API returns an empty or malformed response。错误码 6003。"""
+
+    def __init__(self, message: str = "LLM 响应无效", detail: Any = None) -> None:
+        super().__init__(message, detail=detail)
+        self.code = 6003
+        self.retryable = True
+        self.hint = "请重试请求"
 
 
 DEFAULT_MAX_RETRIES = 3
@@ -214,6 +243,28 @@ class BaseLLMClient:
             f"{type(self).__name__} API call failed after {self.max_retries} retries"
         ) from last_error
 
+    async def chat_completion_stream(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """流式对话补全（统一 chunk 契约）。
+
+        chunk 格式：``{"content": str, "model": str, "done": bool,
+        "stream_mode": "native"|"pseudo", "usage": dict(仅 done 时)}``。
+        基类默认为伪流式（单 chunk），支持原生流的客户端覆盖本方法。
+        """
+        result = await self.chat_completion(messages, max_tokens=max_tokens, temperature=temperature, model=model)
+        yield {
+            "content": result.get("content", ""),
+            "model": result.get("model", model or self._default_model()),
+            "done": True,
+            "stream_mode": "pseudo",
+            "usage": result.get("usage", {}),
+        }
+
 
 class OllamaClient(BaseLLMClient):
     """Client for Ollama API."""
@@ -260,6 +311,60 @@ class OllamaClient(BaseLLMClient):
             "finish_reason": "stop",
             "usage": data.get("usage", {}),
         }
+
+    async def chat_completion_stream(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """原生流式：Ollama /api/chat NDJSON（每行一个 JSON 对象）。"""
+        target_model = model or self.model
+        payload = {
+            "model": target_model,
+            "messages": messages,
+            "stream": True,
+            "think": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+        client = await get_shared_http_client()
+        async with client.stream(
+            "POST",
+            f"{self.base_url}/api/chat",
+            json=payload,
+            timeout=self.timeout,
+        ) as response:
+            if response.status_code != 200:
+                body = (await response.aread()).decode("utf-8", errors="replace")
+                raise ServiceUnavailableError(f"Ollama API error: {response.status_code} - {body}")
+            async for line in response.aiter_lines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    logger.debug("Ollama stream 跳过非 JSON 行: %.80s", line)
+                    continue
+                message = data.get("message") or {}
+                piece = message.get("content", "") or ""
+                done = bool(data.get("done", False))
+                if piece or not done:
+                    yield {"content": piece, "model": target_model, "done": done, "stream_mode": "native"}
+                if done:
+                    yield {
+                        "content": "",
+                        "model": target_model,
+                        "done": True,
+                        "stream_mode": "native",
+                        "usage": data.get("usage") or {},
+                    }
+                    return
+            yield {"content": "", "model": target_model, "done": True, "stream_mode": "native"}
 
 
 class CloudLLMClient(BaseLLMClient):
@@ -324,10 +429,15 @@ class ProviderAdapter(BaseLLMClient):
 
     让既有调用方（task_classifier / solution_generator / nl2cad / ...）
     可以无感切换到 ProviderRegistry 管理的 Provider 实例。
+
+    韧性说明（2026-09 全量升格）：Provider 的 ``chat_completion`` 已由
+    ``app.ai.llm._resilience`` 自动包装「熔断 + 线性退避重试 + 6xxx 异常
+    桥接」，本适配器不再叠加重试；桥接异常同时继承 6xxx AppException 与
+    ProviderError 旧体系，此处原样透传，保留分级错误码。
     """
 
     def __init__(self, provider: Any) -> None:
-        # 不调用 BaseLLMClient.__init__ 的 retry 参数，因为 Provider 自身已处理重试
+        # Provider 的重试/熔断在 _resilience 层实现，此处只做接口适配
         self._provider = provider
         # 同步关键属性以兼容外部读取
         self.timeout = getattr(provider.config, "timeout", 60)
@@ -357,10 +467,7 @@ class ProviderAdapter(BaseLLMClient):
         temperature: float = 0.7,
         model: str | None = None,
     ) -> dict[str, Any]:
-        """直接委托给封装的 LLMProvider。
-
-        Provider 自身已实现重试/超时/连接池复用，此处不再叠加 BaseLLMClient 的重试。
-        """
+        """直接委托给封装的 LLMProvider（重试/熔断由韧性层负责）。"""
         self._validate_inputs(messages, max_tokens, temperature)
         try:
             return await self._provider.chat_completion(
@@ -369,11 +476,32 @@ class ProviderAdapter(BaseLLMClient):
                 temperature=temperature,
                 model=model,
             )
+        except AppException:
+            # 6xxx 分级异常（含熔断快速失败）原样上抛，保留 code/level/retryable
+            raise
         except Exception as e:
             # 将 Provider 异常转换为 LLMError 体系，保持调用方错误处理一致
             if isinstance(e, LLMError):
                 raise
             raise LLMError(f"Provider {self._provider.provider_id} 调用失败: {e}") from e
+
+    async def chat_completion_stream(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+        model: str | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """流式透传：优先 Provider 原生流，Provider 不支持时回退伪流式。"""
+        provider_stream = getattr(self._provider, "chat_completion_stream", None)
+        if provider_stream is None:
+            async for chunk in super().chat_completion_stream(
+                messages, max_tokens=max_tokens, temperature=temperature, model=model
+            ):
+                yield chunk
+            return
+        async for chunk in provider_stream(messages, max_tokens=max_tokens, temperature=temperature, model=model):
+            yield chunk
 
 
 async def get_llm_client() -> BaseLLMClient:

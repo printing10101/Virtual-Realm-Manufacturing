@@ -179,9 +179,15 @@ class TestOrchestratorStep:
 
     @pytest.mark.asyncio
     async def test_safety_step_rejects_bad_gcode(self) -> None:
+        """W1.1 新契约：校验不通过不再抛异常中断管线，而是返回结构化失败
+        供修复闭环规划修复动作（预算耗尽后由编排器标记 FAILED 转人工）。"""
         orch = AgentOrchestrator()
-        with pytest.raises(ValueError):
-            await orch._step_validate_safety({"gcode": "O1000\nG1 F500", "controller_type": "fanuc_0i"}, {})
+        out = await orch._step_validate_safety(
+            {"gcode": "O1000\nG1 F500", "controller_type": "fanuc_0i"}, {}
+        )
+        assert out["safety_valid"] is False
+        assert out["status"] == "validation_failed"
+        assert "safety_report" in out
 
     @pytest.mark.asyncio
     async def test_safety_step_accepts_good_gcode(self) -> None:

@@ -14,12 +14,19 @@ import time
 from app.dependencies import get_approval_engine
 
 from app.dependencies import get_risk_identifier
+from app.dependencies import get_sovereignty_policy
 
 from app.models.governance import (
     ApprovalStatus,
     AgentRole,
 )
 from app.auth.permissions import require_permission
+from app.core.response import ErrorCode, error, success
+from app.services.sovereignty import (
+    AUTONOMY_CONFIDENCE_THRESHOLD,
+    AUTONOMY_LABELS,
+    ACTION_TYPES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +41,68 @@ router = APIRouter(
     tags=["Governance & Approval"],
     dependencies=[Depends(require_permission("governance:read"))],
 )
+
+
+# ---- W9.1 AI 主权/自主等级（后端真实行为，前端 useSovereigntySettings 同步源） ----
+
+
+class SovereigntyUpdateRequest(BaseModel):
+    """主权设置部分更新：仅提交需要修改的字段。"""
+
+    ai_autonomy_level: int | None = Field(None, ge=0, le=4, description="自主等级 0-4")
+    require_confirmation_for_predict: bool | None = Field(None, description="预测动作是否需确认")
+    require_confirmation_for_train: bool | None = Field(None, description="训练动作是否需确认")
+    show_confidence_indicator: bool | None = None
+    show_alternatives: bool | None = None
+    show_reasoning: bool | None = None
+
+
+@router.get("/sovereignty")
+async def get_sovereignty_settings():
+    """读取 AI 主权设置（前端设置面板的权威数据源）。"""
+    settings = get_sovereignty_policy().get_settings()
+    return success(
+        data={
+            "settings": settings.to_dict(),
+            "autonomy_labels": list(AUTONOMY_LABELS),
+            "confidence_threshold": AUTONOMY_CONFIDENCE_THRESHOLD,
+            "action_types": list(ACTION_TYPES),
+            "storage": "backend",  # 标识设置已后端持久化，前端据此显示同步状态
+        },
+        message="AI 主权设置已读取",
+    )
+
+
+@router.put(
+    "/sovereignty",
+    dependencies=[Depends(require_permission("governance:write"))],
+)
+async def update_sovereignty_settings(req: SovereigntyUpdateRequest):
+    """更新 AI 主权设置（部分更新），立即持久化并影响后端 AI 动作决策。"""
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    if not updates:
+        return error(code=ErrorCode.INVALID_REQUEST, message="未提供任何需更新的字段")
+    try:
+        settings = get_sovereignty_policy().update_settings(updates)
+    except ValueError as e:
+        return error(code=ErrorCode.INVALID_REQUEST, message=str(e))
+    return success(
+        data={"settings": settings.to_dict()},
+        message=f"AI 主权设置已更新：自主等级 {settings.ai_autonomy_level}",
+    )
+
+
+@router.post(
+    "/sovereignty/reset",
+    dependencies=[Depends(require_permission("governance:write"))],
+)
+async def reset_sovereignty_settings():
+    """恢复默认主权设置（推荐模式，等级 2）。"""
+    settings = get_sovereignty_policy().reset()
+    return success(
+        data={"settings": settings.to_dict()},
+        message="AI 主权设置已恢复默认（推荐模式）",
+    )
 
 
 @router.get("/approval-requests")
