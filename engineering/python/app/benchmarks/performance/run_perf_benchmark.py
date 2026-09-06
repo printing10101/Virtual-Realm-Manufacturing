@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -147,249 +148,45 @@ class PerformanceBenchmarkRunner:
         timestamp = time.strftime("%Y%m%d_%H%M%S")
 
         current_results: dict[str, float] = {}
+        suite_errors: list[str] = []
 
-        logger.info("=" * 60)
-        logger.info("性能基准测试")
-        logger.info("=" * 60)
+        def run_suite(name: str, body: Callable[[], dict[str, Any]]) -> None:
+            """按套件容错执行：单个套件失败仅记录，不拖垮整个基准运行（W9.4）。"""
+            logger.info("\n%s", name)
+            try:
+                for k, v in (body() or {}).items():
+                    if isinstance(v, (int, float)):
+                        current_results[k] = v
+                        logger.info("  %s: %s", k, v)
+            except Exception as exc:  # noqa: BLE001 - 编排层必须容错单套件失败
+                suite_errors.append(f"{name}: {exc}")
+                logger.warning("套件失败，跳过: %s — %s", name, exc)
 
-        # [1/10] LNN推理性能测试
-        logger.info("\n[1/10] LNN推理性能测试...")
-        lnn = LNNPerfBenchmark()
-        lnn.setup()
-        single = lnn.run_single_inference()
-        for k, v in single.items():
-            current_results[k] = v
-            logger.info("  %s: %s", k, v)
-
-        batch10 = lnn.run_batch_10_inference()
-        for k, v in batch10.items():
-            current_results[k] = v
-            logger.info("  %s: %s", k, v)
-
-        batch50 = lnn.run_batch_50_inference()
-        for k, v in batch50.items():
-            current_results[k] = v
-            logger.info("  %s: %s", k, v)
-
-        batch100 = lnn.run_batch_100_inference()
-        for k, v in batch100.items():
-            current_results[k] = v
-            logger.info("  %s: %s", k, v)
-
-        gpu = lnn.run_gpu_single_inference()
-        if gpu:
-            for k, v in gpu.items():
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-        else:
-            logger.info("  GPU: 不可用（跳过）")
-
-        lnn_path = str(self.output_dir / f"lnn_inference_{timestamp}.json")
-        lnn.save_results(lnn_path)
-        logger.info("  -> %s", lnn_path)
-
-        # [2/10] NC代码生成全流程测试
-        logger.info("\n[2/10] NC代码生成全流程测试...")
-        nc = NCGenerationBenchmark()
-        nc.setup()
-        pipeline = nc.run_full_pipeline(n_parts=3)
-        for k, v in pipeline.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-            elif k == "bottlenecks" and v:
-                logger.info("  瓶颈分析: %s", v)
-            elif k == "threshold_violations" and v:
-                logger.info("  违规: %s", v)
-
-        nc_path = str(self.output_dir / f"nc_generation_{timestamp}.json")
-        nc.save_results(nc_path)
-        logger.info("  -> %s", nc_path)
-
-        # [3/10] 三视图解析性能测试
-        logger.info("\n[3/10] 三视图解析性能测试...")
-        dp = DrawingParseBenchmark()
-        dp.setup()
-        parse_results = dp.run_parse(n_iterations=5)
-        for k, v in parse_results.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        dp_path = str(self.output_dir / f"drawing_parse_{timestamp}.json")
-        dp.save_results(dp_path)
-        logger.info("  -> %s", dp_path)
-
-        # [4/10] API接口性能测试
-        logger.info("\n[4/10] API接口性能测试...")
-        api = APIPerfBenchmark()
-        api_results = api.run_all()
-        for k, v in api_results.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        api_path = str(self.output_dir / f"api_performance_{timestamp}.json")
-        api.save_results(api_path)
-        logger.info("  -> %s", api_path)
-
-        # [5/10] 数据库性能测试
-        logger.info("\n[5/10] 数据库性能测试...")
-        db = DatabasePerfBenchmark()
-        db_results = db.run_all()
-        for k, v in db_results.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        db_path = str(self.output_dir / f"database_performance_{timestamp}.json")
-        db.save_results(db_path)
-        logger.info("  -> %s", db_path)
-
-        # [6/10] 业务逻辑性能测试
-        # 阶段2 解耦改造：business_logic_bench 已迁移到 research/，
-        # 工程侧无此模块时跳过此基准测试项，不影响其他项的执行。
+        run_suite("[1/10] LNN推理性能测试", lambda: self._suite_lnn(timestamp))
+        run_suite("[2/10] NC代码生成全流程测试", lambda: self._suite_nc(timestamp))
+        run_suite("[3/10] 三视图解析性能测试", lambda: self._suite_drawing(timestamp))
+        run_suite("[4/10] API接口性能测试（需本地运行中的后端服务）", lambda: self._suite_api(timestamp))
+        run_suite("[5/10] 数据库性能测试", lambda: self._suite_database(timestamp))
         if _HAS_BUSINESS_LOGIC_BENCH:
-            logger.info("\n[6/10] 业务逻辑性能测试...")
-            biz = BusinessLogicPerfBenchmark()
-            biz_results = biz.run_all()
-            for k, v in biz_results.items():
-                if isinstance(v, (int, float)):
-                    current_results[k] = v
-                    logger.info("  %s: %s", k, v)
-
-            biz_path = str(self.output_dir / f"business_logic_performance_{timestamp}.json")
-            biz.save_results(biz_path)
-            logger.info("  -> %s", biz_path)
+            run_suite("[6/10] 业务逻辑性能测试", lambda: self._suite_business(timestamp))
         else:
             logger.info("\n[6/10] 业务逻辑性能测试... 跳过（business_logic_bench 已迁移到 research/）")
+        run_suite("[7/10] 并发与压力测试", lambda: self._suite_concurrency(timestamp))
+        run_suite("[8/10] 世界模型轨迹预测性能测试", lambda: self._suite_world_model(timestamp))
+        run_suite("[9/10] RL agent 决策 + SafetyShield 性能测试", lambda: self._suite_rl_agent(timestamp))
+        run_suite("[10/10] 闭环加工优化工作流端到端性能测试", lambda: self._suite_closed_loop(timestamp))
 
-        # [7/10] 并发与压力测试
-        logger.info("\n[7/10] 并发与压力测试...")
-        conc = ConcurrencyPerfBenchmark()
-        conc_results = conc.run_all()
-        for k, v in conc_results.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
+        if suite_errors:
+            logger.warning("本次运行共 %d 个套件失败: %s", len(suite_errors), " | ".join(suite_errors))
 
-        conc_path = str(self.output_dir / f"concurrency_performance_{timestamp}.json")
-        conc.save_results(conc_path)
-        logger.info("  -> %s", conc_path)
-
-        # [8/10] 世界模型轨迹预测性能测试（阶段 8 新增）
-        logger.info("\n[8/10] 世界模型轨迹预测性能测试...")
-        wm = WorldModelPerfBenchmark()
-        wm.setup()
-        wm_single = wm.run_single_prediction()
-        for k, v in wm_single.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        wm_horizon = wm.run_horizon_scaling()
-        for k, v in wm_horizon.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        wm_batch = wm.run_batch_prediction()
-        for k, v in wm_batch.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        wm_plugin = wm.run_plugin_execute()
-        for k, v in wm_plugin.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        wm_cache = wm.run_model_cache_hit()
-        for k, v in wm_cache.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        wm_path = str(self.output_dir / f"world_model_{timestamp}.json")
-        wm.save_results(wm_path)
-        logger.info("  -> %s", wm_path)
-
-        # [9/10] RL agent 决策 + SafetyShield 性能测试（阶段 8 新增）
-        logger.info("\n[9/10] RL agent 决策 + SafetyShield 性能测试...")
-        rl = RLAgentPerfBenchmark()
-        rl.setup()
-        rl_single = rl.run_single_decision()
-        for k, v in rl_single.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        rl_shield = rl.run_safety_shield_filter()
-        for k, v in rl_shield.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        rl_batch = rl.run_batch_decisions()
-        for k, v in rl_batch.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        rl_cache = rl.run_policy_cache_hit()
-        for k, v in rl_cache.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        rl_violation = rl.run_safety_violation_rate()
-        for k, v in rl_violation.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        rl_path = str(self.output_dir / f"rl_agent_{timestamp}.json")
-        rl.save_results(rl_path)
-        logger.info("  -> %s", rl_path)
-
-        # [10/10] 闭环加工优化工作流端到端性能测试（阶段 8 新增）
-        logger.info("\n[10/10] 闭环加工优化工作流端到端性能测试...")
-        cl = ClosedLoopPerfBenchmark()
-        cl.setup()
-        cl_pipeline = cl.run_full_pipeline()
-        for k, v in cl_pipeline.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-            elif k == "cl_bottlenecks" and v:
-                logger.info("  闭环瓶颈: %s", v)
-            elif k == "cl_threshold_violations" and v:
-                logger.info("  闭环违规: %s", v)
-
-        cl_breakdown = cl.run_node_breakdown()
-        for k, v in cl_breakdown.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        cl_throughput = cl.run_throughput()
-        for k, v in cl_throughput.items():
-            if isinstance(v, (int, float)):
-                current_results[k] = v
-                logger.info("  %s: %s", k, v)
-
-        cl_path = str(self.output_dir / f"closed_loop_{timestamp}.json")
-        cl.save_results(cl_path)
-        logger.info("  -> %s", cl_path)
-
-        # Save current results
+        # Save current results（含失败套件清单，供白皮书如实记录覆盖面）
         current_path = self.output_dir / f"current_results_{timestamp}.json"
         with open(current_path, "w", encoding="utf-8") as f:
             json.dump(
                 {
                     "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
                     "results": current_results,
+                    "suite_errors": suite_errors,
                 },
                 f,
                 indent=2,
@@ -416,6 +213,125 @@ class PerformanceBenchmarkRunner:
             json.dump(report.to_dict(), f, indent=2, ensure_ascii=False)
 
         return report
+
+    # ---- 各基准套件（原 run_all 内联块，W9.4 重构为独立方法以支持按套件容错）----
+
+    def _suite_lnn(self, timestamp: str) -> dict[str, Any]:
+        lnn = LNNPerfBenchmark()
+        lnn.setup()
+        results: dict[str, Any] = {}
+        results.update(lnn.run_single_inference())
+        results.update(lnn.run_batch_10_inference())
+        results.update(lnn.run_batch_50_inference())
+        results.update(lnn.run_batch_100_inference())
+        gpu = lnn.run_gpu_single_inference()
+        if gpu:
+            results.update(gpu)
+        else:
+            logger.info("  GPU: 不可用（跳过）")
+        lnn_path = str(self.output_dir / f"lnn_inference_{timestamp}.json")
+        lnn.save_results(lnn_path)
+        logger.info("  -> %s", lnn_path)
+        return results
+
+    def _suite_nc(self, timestamp: str) -> dict[str, Any]:
+        nc = NCGenerationBenchmark()
+        nc.setup()
+        results = nc.run_full_pipeline(n_parts=3)
+        if results.get("bottlenecks"):
+            logger.info("  瓶颈分析: %s", results["bottlenecks"])
+        if results.get("threshold_violations"):
+            logger.info("  违规: %s", results["threshold_violations"])
+        nc_path = str(self.output_dir / f"nc_generation_{timestamp}.json")
+        nc.save_results(nc_path)
+        logger.info("  -> %s", nc_path)
+        return results
+
+    def _suite_drawing(self, timestamp: str) -> dict[str, Any]:
+        dp = DrawingParseBenchmark()
+        dp.setup()
+        results = dp.run_parse(n_iterations=5)
+        dp_path = str(self.output_dir / f"drawing_parse_{timestamp}.json")
+        dp.save_results(dp_path)
+        logger.info("  -> %s", dp_path)
+        return results
+
+    def _suite_api(self, timestamp: str) -> dict[str, Any]:
+        api = APIPerfBenchmark()
+        results = api.run_all()
+        api_path = str(self.output_dir / f"api_performance_{timestamp}.json")
+        api.save_results(api_path)
+        logger.info("  -> %s", api_path)
+        return results
+
+    def _suite_database(self, timestamp: str) -> dict[str, Any]:
+        db = DatabasePerfBenchmark()
+        results = db.run_all()
+        db_path = str(self.output_dir / f"database_performance_{timestamp}.json")
+        db.save_results(db_path)
+        logger.info("  -> %s", db_path)
+        return results
+
+    def _suite_business(self, timestamp: str) -> dict[str, Any]:
+        biz = BusinessLogicPerfBenchmark()
+        results = biz.run_all()
+        biz_path = str(self.output_dir / f"business_logic_performance_{timestamp}.json")
+        biz.save_results(biz_path)
+        logger.info("  -> %s", biz_path)
+        return results
+
+    def _suite_concurrency(self, timestamp: str) -> dict[str, Any]:
+        conc = ConcurrencyPerfBenchmark()
+        results = conc.run_all()
+        conc_path = str(self.output_dir / f"concurrency_performance_{timestamp}.json")
+        conc.save_results(conc_path)
+        logger.info("  -> %s", conc_path)
+        return results
+
+    def _suite_world_model(self, timestamp: str) -> dict[str, Any]:
+        wm = WorldModelPerfBenchmark()
+        wm.setup()
+        results: dict[str, Any] = {}
+        results.update(wm.run_single_prediction())
+        results.update(wm.run_horizon_scaling())
+        results.update(wm.run_batch_prediction())
+        results.update(wm.run_plugin_execute())
+        results.update(wm.run_model_cache_hit())
+        wm_path = str(self.output_dir / f"world_model_{timestamp}.json")
+        wm.save_results(wm_path)
+        logger.info("  -> %s", wm_path)
+        return results
+
+    def _suite_rl_agent(self, timestamp: str) -> dict[str, Any]:
+        rl = RLAgentPerfBenchmark()
+        rl.setup()
+        results: dict[str, Any] = {}
+        results.update(rl.run_single_decision())
+        results.update(rl.run_safety_shield_filter())
+        results.update(rl.run_batch_decisions())
+        results.update(rl.run_policy_cache_hit())
+        results.update(rl.run_safety_violation_rate())
+        rl_path = str(self.output_dir / f"rl_agent_{timestamp}.json")
+        rl.save_results(rl_path)
+        logger.info("  -> %s", rl_path)
+        return results
+
+    def _suite_closed_loop(self, timestamp: str) -> dict[str, Any]:
+        cl = ClosedLoopPerfBenchmark()
+        cl.setup()
+        results: dict[str, Any] = {}
+        pipeline = cl.run_full_pipeline()
+        results.update(pipeline)
+        if pipeline.get("cl_bottlenecks"):
+            logger.info("  闭环瓶颈: %s", pipeline["cl_bottlenecks"])
+        if pipeline.get("cl_threshold_violations"):
+            logger.info("  闭环违规: %s", pipeline["cl_threshold_violations"])
+        results.update(cl.run_node_breakdown())
+        results.update(cl.run_throughput())
+        cl_path = str(self.output_dir / f"closed_loop_{timestamp}.json")
+        cl.save_results(cl_path)
+        logger.info("  -> %s", cl_path)
+        return results
 
 
 def check_regression(

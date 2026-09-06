@@ -538,3 +538,6 @@ engineering/.mimosa/
 
 # Mimosa 安全扫描缓存（任意深度）
 .mimosa/
+
+# 性能基准历史产物（每次运行生成，白皮书为准）
+engineering/python/app/benchmarks/performance/history/

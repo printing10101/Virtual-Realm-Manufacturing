@@ -24,6 +24,12 @@ try:
 except ImportError:
     HAS_TORCH = False
     HAS_CUDA = False
+except OSError as _torch_os_err:
+    # torch 安装损坏（如 DLL 缺失）抛 OSError 而非 ImportError——
+    # 基准必须能在无 torch/坏 torch 的工程环境（ONNX 运行时路径）下运行
+    logger.warning("torch 可导入但加载失败，LNN 基准降级为合成模型: %s", _torch_os_err)
+    HAS_TORCH = False
+    HAS_CUDA = False
 
 if __package__ in (None, ""):
     import _bootstrap  # noqa: F401  # 脚本直跑时引导 engineering/python 入 sys.path

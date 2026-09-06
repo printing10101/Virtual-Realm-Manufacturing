@@ -273,15 +273,21 @@ async def wait_for_training(
 def register_tools(server) -> None:
     """在MCP Server实例上注册所有工具。
 
-    注册6个标准化工具：
+    注册 6 个标准化 LNN 工具 + 仿真工厂 4 个工具 + 演示设备自动生成工具
+    （W10.1 扩面）：
     - lnn_list_models: 列出所有模型 (R)
     - lnn_get_model_info: 获取模型详情 (R)
     - lnn_predict: 预测推理 (R)
     - lnn_train: 启动训练 (B)
     - lnn_get_train_status: 查询训练状态 (R)
     - lnn_wait_for_training: 等待训练完成 (R)
+    - factory_run_cycle / factory_get_status / factory_get_kpis / factory_step:
+      语言驱动仿真工厂（闭环生产 / 感知状态 / KPI / 单步推进）
+    - {device_id}_*: 演示设备描述符自动生成工具（AAS 元数据 → 工具，A2M 思路）
 
     权限类: R = Read, B = Budgeted Write
+    扩面开关: ``LINGJING_MCP_FACTORY_TOOLS=0`` 关闭工厂/设备工具。
+    故障隔离: 工厂/设备注册失败仅告警，不影响 LNN 工具可用性。
     """
 
     @server.tool(name="lnn_list_models", description="列出所有已注册的LNN模型及其基本元数据")
@@ -380,19 +386,28 @@ def register_tools(server) -> None:
     # 按 DeviceDescriptor 的 capabilities 自动注册 {device_id}_{op} 工具，
     # 后端为仿真设备（SimulatedDevice），参数越界 fail-closed。
     # 注册失败不影响既有 6 个 LNN 工具。
-    try:
-        from mcp_server.device_registry import build_demo_registry
-        from mcp_server.device_tools import register_device_tools
+    factory_tools_enabled = os.environ.get("LINGJING_MCP_FACTORY_TOOLS", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+    if factory_tools_enabled:
+        try:
+            from mcp_server.device_registry import build_demo_registry
+            from mcp_server.device_tools import register_device_tools
 
-        for descriptor in build_demo_registry():
-            register_device_tools(server, descriptor)
-    except Exception as exc:  # noqa: BLE001 - 设备工具注册失败不阻断 LNN 工具
-        logger.warning("设备工具注册失败（不影响 LNN 工具）: %s", exc)
+            for descriptor in build_demo_registry():
+                register_device_tools(server, descriptor)
+        except Exception as exc:  # noqa: BLE001 - 设备工具注册失败不阻断 LNN 工具
+            logger.warning("设备工具注册失败（不影响 LNN 工具）: %s", exc)
 
-    # 仿真工厂工具（升级①：语言驱动仿真工厂，SUPCON 思路）
-    try:
-        from mcp_server.factory_tools import register_factory_tools
+        # 仿真工厂工具（升级①：语言驱动仿真工厂，SUPCON 思路）
+        try:
+            from mcp_server.factory_tools import register_factory_tools
 
-        register_factory_tools(server)
-    except Exception as exc:  # noqa: BLE001 - 工厂工具注册失败不影响既有工具
-        logger.warning("仿真工厂工具注册失败（不影响 LNN/设备工具）: %s", exc)
+            register_factory_tools(server)
+        except Exception as exc:  # noqa: BLE001 - 工厂工具注册失败不影响既有工具
+            logger.warning("仿真工厂工具注册失败（不影响 LNN/设备工具）: %s", exc)
+    else:
+        logger.info("LINGJING_MCP_FACTORY_TOOLS=0：工厂/设备工具未注册（仅 LNN 工具面）")
