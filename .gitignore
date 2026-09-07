@@ -541,3 +541,8 @@ engineering/.mimosa/
 
 # 性能基准历史产物（每次运行生成，白皮书为准）
 engineering/python/app/benchmarks/performance/history/
+
+# 会话调试临时产物（CI 查询草稿、OpenAPI 冒烟导出等，用完即弃）
+.tmp_*
+*_smoke_*.json
+engineering/python/_smoke_*
