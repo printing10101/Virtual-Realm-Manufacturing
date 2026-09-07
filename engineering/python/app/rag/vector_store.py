@@ -19,7 +19,10 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 DEFAULT_COLLECTION = "knowledge_base"
-DEFAULT_PERSIST_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "chroma_db")
+# W 引擎验证修复：必须 normpath——chromadb 1.0.0 的 Rust sqlite 层处理
+# 含 ``..`` 段的路径会 panic（rust\sqlite\src\db.rs:157 slice 越界），
+# 未规范化的 ``app/rag/../../data/chroma_db`` 曾导致 RAG 向量库整库不可用。
+DEFAULT_PERSIST_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "chroma_db"))
 
 # HNSW 索引调优参数（参考 ChromaDB 官方文档与 HNSW 论文最佳实践）
 # 这些参数显著影响向量检索的召回率、索引构建质量和查询延迟。
@@ -103,7 +106,11 @@ class VectorStore:
             logger.warning("ChromaDB 未安装，RAG 向量存储不可用。请安装 chromadb 以启用持久化向量检索。")
             self._client = None
             raise RuntimeError("ChromaDB 未安装，RAG 功能无法启动。请安装 chromadb（pip install chromadb）后重试。")
-        except Exception as e:
+        except BaseException as e:  # noqa: BLE001 - pyo3 PanicException 不继承 Exception
+            if type(e).__name__ in ("KeyboardInterrupt", "SystemExit"):
+                raise
+            # W 引擎验证修复：legacy 库（旧版 chromadb schema）触发 Rust 迁移
+            # panic 时给出可检索的明确错误，而非裸 500（处理方式：归档旧库重建）
             logger.error("ChromaDB 初始化失败: %s", e, exc_info=True)
             self._client = None
             raise RuntimeError(f"向量存储初始化失败: {e}") from e
