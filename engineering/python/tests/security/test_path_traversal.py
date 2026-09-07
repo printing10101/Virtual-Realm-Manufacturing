@@ -157,15 +157,26 @@ class TestPathTraversal:
     def test_long_path_attack(self, allowed_root, tmp_path):
         # 创建深嵌套，构造一个超长但仍在白名单内的合法路径
         # 同时构造一个超长但逃逸白名单的非法路径
+        #
+        # 2026-09 Windows 适配：未开启长路径清单的 Windows 上，深嵌套
+        # mkdir 会先撞 MAX_PATH（WinError 206/3）——这本身说明超长路径
+        # 在 OS 层已被阻断。改为逐层创建，OS 阻断时跳过 must_exist 分支，
+        # 回溯攻击分支不依赖文件创建、始终验证。
         nested = allowed_root
+        created = True
         for i in range(20):
             nested = nested / f"segment_{i}"
-        nested.mkdir(parents=True, exist_ok=True)
-        ok_path = nested / "leaf.txt"
-        ok_path.write_text("x", encoding="utf-8")
-        # 合法的深嵌套路径应当通过
-        errors = validate_file_path(str(ok_path), must_exist=True)
-        assert errors == []
+            try:
+                nested.mkdir(exist_ok=True)
+            except OSError:
+                created = False
+                break
+        if created:
+            ok_path = nested / "leaf.txt"
+            ok_path.write_text("x", encoding="utf-8")
+            # 合法的深嵌套路径应当通过
+            errors = validate_file_path(str(ok_path), must_exist=True)
+            assert errors == []
 
         # 构造超长回溯
         huge = str(allowed_root) + "/../" * 200 + "secret"

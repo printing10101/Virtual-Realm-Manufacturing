@@ -1625,11 +1625,10 @@ class TestMainAppIntegration:
         """T67: 当模块可用且 enabled=True 时路由已注册到 FastAPI app。"""
         from app.main import app
 
-        # 收集所有路由的 path
-        all_paths = set()
-        for route in app.routes:
-            if hasattr(route, "path"):
-                all_paths.add(route.path)
+        # 收集所有路由的 path（2026-09 适配：新版 Starlette 把 include_router
+        # 挂为无顶层 path 的 _IncludedRouter，遍历 app.routes 只能看到 docs——
+        # 改用 openapi schema 拉平全部真实路径）
+        all_paths = set(app.openapi().get("paths", {}).keys())
 
         # 至少 precision_info 应已注册（若模块未启用，则不应包含任何 pg 路由）
         from app.config import config

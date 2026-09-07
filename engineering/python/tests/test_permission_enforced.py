@@ -478,5 +478,5 @@ class TestOtherConfigsSmoke:
         assert isinstance(cfg.process_planning, ProcessPlanningConfig)
         assert isinstance(cfg.environment, EnvironmentConfig)
         assert cfg.app_name == "灵境制造"
-        assert cfg.app_version == "2.7.0"
+        assert cfg.app_version == "2.8.0"  # 与 VERSION / app_config 默认值同步
         assert cfg.offline_mode is False

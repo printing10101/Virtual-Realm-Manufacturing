@@ -17,12 +17,21 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limiter():
-    """每测试前清空限流器：IP 限流状态跨测试累积会导致 429 断言提前触发。"""
+    """每测试前清空限流器：IP 限流状态跨测试累积会导致 429 断言提前触发。
+
+    存量测试隔离修复（2026-09）：注册端点有两层限流——
+    1. ``permission_checker._rate_limiter``（自研，IP 级）；
+    2. slowapi ``@limiter.limit("3/hour")``（注册专用，MemoryStorage）。
+    此前只清了前者：同进程内更早执行的测试文件只要调用过注册端点，
+    slowapi 计数就会累积，本文件的 429/409 断言被提前触发的 429 击穿。
+    """
     from app.auth.permissions import permission_checker
 
     permission_checker._rate_limiter.clear()
+    _registration_limiter.reset()
     yield
     permission_checker._rate_limiter.clear()
+    _registration_limiter.reset()
 
 
 from app.config import config

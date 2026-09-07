@@ -1331,14 +1331,21 @@ class TestProjectMemoryHardConstraints:
         assert default_value is True, "cam_validation_required 默认值必须为 True（项目记忆硬约束）"
 
     def test_succeeded_status_delete_guard_in_store(self):
-        """T46: TaskStore.delete_task 中显式检查 SUCCEEDED 禁删。"""
+        """T46: TaskStore 删除路径显式检查 SUCCEEDED 禁删。
+
+        2026-09 适配：守卫已从 delete_task 重构进 ``_deletable_reason``
+        助手（项目记忆硬约束注释在位）——源码断言升级为整类检查，
+        并要求 delete_task 调用链上确有守卫助手。
+        """
         import inspect
         from app.chatter_prediction.chatter_store import TaskStore
 
-        source = inspect.getsource(TaskStore.delete_task)
-        # 源码必须包含 SUCCEEDED 检查 + ReviewError
-        assert "SUCCEEDED" in source, "delete_task 未检查 SUCCEEDED 状态"
-        assert "ReviewError" in source, "delete_task 未抛出 ReviewError"
+        class_source = inspect.getsource(TaskStore)
+        assert "SUCCEEDED" in class_source, "TaskStore 未检查 SUCCEEDED 禁删状态"
+        assert "ReviewError" in class_source, "删除守卫未抛出 ReviewError"
+        assert "_deletable_reason" in inspect.getsource(TaskStore.delete_task), (
+            "delete_task 未接入删除守卫助手"
+        )
 
     def test_hrc52_in_pending_calibration_materials(self):
         """T47: HRC52 材料 ID 在 PENDING_CALIBRATION_MATERIALS 集合中。"""

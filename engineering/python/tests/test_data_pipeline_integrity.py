@@ -345,6 +345,9 @@ class TestFullPipelineIntegrity:
         遵循 [S7] 硬约束：torch 不可用时跳过，而非用桩模块伪装通过。
         """
         pytest.importorskip("sentence_transformers")
+        # 图像模态走 torchvision ResNet（且需要下载预训练权重）——缺失时
+        # CNN 随机权重降级，完整性断言失效（2026-09 存量失败治理）
+        pytest.importorskip("torchvision", reason="图像模态完整性需要 torchvision + 预训练权重")
         inputs = {
             "image": ImageInput(
                 data=np.random.randint(0, 256, (128, 128, 3), dtype=np.uint8),
@@ -372,6 +375,10 @@ class TestFullPipelineIntegrity:
                 controller_type="fanuc", source_id="full_gcode",
             ),
         }
+
+        # 无 torch 时融合器随机权重降级（官方警告：结果不具备物理意义），
+        # 完整性断言无从谈起——诚实 skip 而非伪失败
+        pytest.importorskip("torch", reason="完整管线完整性断言需要真实模型权重（torch）")
 
         result = pipeline.process(inputs)
         assert result.success
@@ -437,6 +444,10 @@ class TestFullPipelineIntegrity:
         error_rate = errors / n_samples
         missing_rate = missing_fields / max(n_samples, 1)
         dim_consistency_rate = 1 - (dim_errors / max(n_samples, 1))
+
+        # 无 torch/torchvision 时错误率必然超标（随机权重降级）——诚实 skip
+        pytest.importorskip("torch", reason="错误率断言需要真实模型权重（torch）")
+        pytest.importorskip("torchvision", reason="错误率断言需要真实模型权重（torchvision）")
 
         assert error_rate < 0.01, f"错误率过高: {error_rate}"
         assert missing_rate < 0.001, f"字段缺失率过高: {missing_rate}"
