@@ -129,13 +129,18 @@ class TrajectoryPredictor:
 
             if HAS_TORCH and weights_path:
                 try:
-                    # 安全：显式 weights_only=True 避免反序列化任意对象（RCE 风险）
-                    # 兼容回退：老版本权重文件可能含非标准对象，UnpicklingError 时降级默认加载
-                    try:
-                        state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
-                    except (TypeError, ValueError):
-                        # 老版本 PyTorch 不支持 weights_only 参数或权重含自定义类
-                        state_dict = torch.load(weights_path, map_location="cpu")
+                    # 安全：强制 weights_only=True，只接受纯张量 state_dict，
+                    # 拒绝反序列化任意对象（RCE 风险）。weights_only 自
+                    # torch 1.13 起支持，桌面 runtime 自带现代 torch，无需
+                    # 为史前版本保留无防护的降级路径。
+                    state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
+                except ValueError as e:
+                    # weights_only 校验拒绝的权重（含非白名单 pickle 对象）：
+                    # 显式拒绝加载，提示使用可信权重
+                    raise RuntimeError(
+                        f"世界模型权重加载被拒绝（weights_only 校验失败）: {weights_path}。"
+                        "文件包含非标准权重对象，可能已损坏或被篡改，请使用可信权重。"
+                    ) from e
                     if hasattr(self._model, "load_state_dict"):
                         self._model.load_state_dict(state_dict)
                     logger.info(

@@ -341,9 +341,12 @@ class ReconstructionPipeline:
             )
             if prior_cfg.pretrained_model_path:
                 if os.path.exists(prior_cfg.pretrained_model_path):
+                    # weights_only=True：state_dict 仅含张量/基本容器，拒绝
+                    # 序列化进 checkpoint 的任意对象执行（反序列化 RCE 防护）
                     state_dict = torch.load(
                         prior_cfg.pretrained_model_path,
                         map_location="cpu",
+                        weights_only=True,
                     )
                     vae.load_state_dict(state_dict)
                     logger.info(
