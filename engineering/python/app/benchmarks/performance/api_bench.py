@@ -29,8 +29,11 @@ class APIPerfBenchmark:
     _BENCH_USERNAME = os.environ.get("LJ_BENCH_USERNAME", "BENCH_USER_PLACEHOLDER")
     _BENCH_PASSWORD = os.environ.get("LJ_BENCH_PASSWORD", "BENCH_PASSWORD_PLACEHOLDER")
 
-    def __init__(self, base_url: str = "http://localhost:8000") -> None:
-        self.base_url = base_url
+    def __init__(self, base_url: str | None = None) -> None:
+        # 默认对齐后端实际端口 8765（start_server.py 约定），可用
+        # ``LNN_API_BENCH_BASE_URL`` 覆盖——此前硬编码 8000 导致 API 套件
+        # 长期静默拿不到数据（服务从来不在 8000 监听）。
+        self.base_url = base_url or os.environ.get("LNN_API_BENCH_BASE_URL", "http://127.0.0.1:8765")
         self._results: dict[str, Any] = {}
         self._session: aiohttp.ClientSession | None = None
         self._auth_token: str | None = None
