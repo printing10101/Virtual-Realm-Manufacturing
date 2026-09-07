@@ -67,11 +67,12 @@ class WorldModelConfig:
     seed : int
         随机种子（保证初始化可复现）。
     use_fusion : bool
-        是否启用 ADR-020 思路 1 的统一表示融合模式。默认 False 保持
-        向后兼容（原 state_dim 字段拼接路径）。启用后 LSTM 输入层
-        接受融合 embedding（fused_dim + action_dim），LTC 解码器
-        自回归路径仍用 state_dim + action_dim，state_head 输出
-        仍是 state_dim 维，保证 ADR-017 输出契约不变。
+        是否启用 ADR-020 思路 1 的统一表示融合模式。**默认 True**（生产服务
+        经 ``WORLD_MODEL_USE_FUSION`` 环境变量显式控制）。融合模式下 LSTM
+        输入层接受融合 embedding（fused_dim + action_dim）；关闭则走原始
+        state_dim 字段拼接路径（如性能基准的 StateField 8 维输入）。两种
+        模式下 LTC 解码器自回归路径都用 state_dim + action_dim，state_head
+        输出仍是 state_dim 维，保证 ADR-017 输出契约不变。
     feature_dim : int
         几何特征向量维度（ADR-007 平面/圆柱/孔统计向量，默认 32）。
         仅 use_fusion=True 时生效。

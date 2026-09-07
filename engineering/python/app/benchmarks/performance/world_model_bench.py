@@ -73,7 +73,12 @@ class WorldModelPerfBenchmark:
         from app.plugins.world_model.predictor import TrajectoryPredictor
         from app.plugins.world_model.plugin import WorldModelPlugin
 
-        config = WorldModelConfig()
+        # W9.4 修复：本基准测原始 state_dim 字段拼接路径（StateField 8 维），
+        # 必须显式 use_fusion=False——WorldModelConfig 默认 use_fusion=True
+        # （ADR-020 融合模式，encoder 输入 fused_dim+action_dim=132），
+        # 与本基准的 8 维状态输入不匹配会导致整组预测崩溃。
+        # 融合模式性能由 research/ 侧 fusion_trainer 专项覆盖。
+        config = WorldModelConfig(use_fusion=False)
         self._predictor = TrajectoryPredictor(config=config, device="auto")
         # 加载随机初始化权重（model_uri 不对应真实文件，ModelRegistry 回退随机初始化）
         self._predictor.load_model(
