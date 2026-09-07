@@ -15,7 +15,7 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from .exceptions import CircuitBreakerOpenException
+from .exceptions import CircuitBreakerHalfOpenException, CircuitBreakerOpenException
 
 
 class CircuitState(Enum):
@@ -67,6 +67,10 @@ class CircuitBreaker:
         self._last_failure_time: datetime | None = None
         self._opened_at: datetime | None = None
         self._last_success_time: datetime | None = None
+        # P2-1 修复：半开探测并发闸门计数（此前 half_open_max_calls 是
+        # 死配置——恢复窗口一开，全部积压请求同时打到刚恢复的服务，
+        # 极易立即再熔断）
+        self._half_open_in_flight = 0
         self._lock = threading.RLock()
 
     @property
@@ -76,6 +80,7 @@ class CircuitBreaker:
             if self._state == CircuitState.OPEN and self._is_recovery_timeout_expired():
                 self._state = CircuitState.HALF_OPEN
                 self._success_count = 0
+                self._half_open_in_flight = 0
         return self._state
 
     @property
@@ -121,12 +126,14 @@ class CircuitBreaker:
         self._state = CircuitState.OPEN
         self._opened_at = datetime.now()
         self._success_count = 0
+        self._half_open_in_flight = 0
 
     def _transition_to_closed(self):
         """转换到 CLOSED 状态"""
         self._state = CircuitState.CLOSED
         self._opened_at = None
         self._failure_count = 0
+        self._half_open_in_flight = 0
 
     def _transition_to_half_open(self):
         """转换到 HALF_OPEN 状态"""
@@ -190,14 +197,7 @@ class CircuitBreaker:
             CircuitBreakerOpenException: 熔断器已打开，拒绝调用
             Exception: func 执行失败，但已记录
         """
-        with self._lock:
-            current_state = self.state
-            if current_state == CircuitState.OPEN:
-                raise CircuitBreakerOpenException(  # type: ignore[call-arg]
-                    service=self.name,
-                    opened_at=self._opened_at.isoformat() if self._opened_at else None,
-                )
-
+        self.try_acquire_half_open()
         try:
             result = await func(*args, **kwargs)
             self._record_success()
@@ -205,6 +205,8 @@ class CircuitBreaker:
         except Exception as e:
             self._record_failure(e)
             raise
+        finally:
+            self.release_half_open()
 
     def record_success(self) -> None:
         """手动记录一次成功（供无法包裹调用体的异步流式场景使用）。"""
@@ -226,6 +228,38 @@ class CircuitBreaker:
                     service=self.name,
                     opened_at=self._opened_at.isoformat() if self._opened_at else None,
                 )
+
+    def try_acquire_half_open(self) -> None:
+        """半开探测并发闸门（P2-1：让 half_open_max_calls 真正生效）。
+
+        - OPEN：抛 CircuitBreakerOpenException（快速失败）；
+        - HALF_OPEN 且在途探测数已达 ``half_open_max_calls``：抛
+          CircuitBreakerHalfOpenException（多余的探测请求被拒）；
+        - 其余情况：在途计数 +1 并放行。
+
+        调用方必须在调用完成后执行 :meth:`release_half_open`（成功/
+        失败路径都要释放，建议 try/finally）。
+        """
+        with self._lock:
+            state = self.state
+            if state == CircuitState.OPEN:
+                raise CircuitBreakerOpenException(  # type: ignore[call-arg]
+                    service=self.name,
+                    opened_at=self._opened_at.isoformat() if self._opened_at else None,
+                )
+            if state == CircuitState.HALF_OPEN:
+                if self._half_open_in_flight >= self.config.half_open_max_calls:
+                    raise CircuitBreakerHalfOpenException(  # type: ignore[call-arg]
+                        service=self.name,
+                        attempts=self.config.half_open_max_calls,
+                    )
+                self._half_open_in_flight += 1
+
+    def release_half_open(self) -> None:
+        """释放一个半开探测在途名额（与 try_acquire_half_open 配对）。"""
+        with self._lock:
+            if self._half_open_in_flight > 0:
+                self._half_open_in_flight -= 1
 
     def reset(self):
         """重置熔断器状态"""

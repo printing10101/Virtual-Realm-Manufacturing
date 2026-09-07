@@ -425,3 +425,86 @@ def json_line(obj: dict) -> str:
     import json
 
     return json.dumps(obj, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# P2 行为回归
+# ---------------------------------------------------------------------------
+
+
+class TestP2Behavior:
+    def test_half_open_concurrency_cap(self):
+        """P2-1：half_open_max_calls 闸门真正生效（此前是死配置）。"""
+        from app.core.exceptions import CircuitBreakerHalfOpenException
+
+        breaker = get_llm_breaker("prov_halfopen")
+        breaker.config = CircuitBreakerConfig(
+            failure_threshold=1, recovery_timeout=0.0, half_open_max_calls=1
+        )
+        breaker.record_failure(RuntimeError("x"))  # → OPEN
+        assert breaker.state in (CircuitState.OPEN, CircuitState.HALF_OPEN)
+        # 第一个探测名额发放
+        breaker.try_acquire_half_open()
+        # 第二个探测被拒（9002）
+        with pytest.raises(CircuitBreakerHalfOpenException) as ei:
+            breaker.try_acquire_half_open()
+        assert ei.value.code == 9002
+        breaker.release_half_open()
+        # 释放后可再次探测
+        breaker.try_acquire_half_open()
+        breaker.release_half_open()
+
+    async def test_stream_client_disconnect_not_counted(self, monkeypatch):
+        """P2-2：客户端停止生成导致的 RemoteProtocolError 不计入熔断。"""
+        from app.ai.llm.providers.ollama import OllamaProvider
+
+        breaker = get_llm_breaker("prov_test")
+
+        class _DisconnectStreamCtx:
+            status_code = 200
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args: Any) -> bool:
+                return False
+
+            async def aread(self) -> bytes:
+                return b""
+
+            async def aiter_lines(self):  # noqa: D401
+                raise httpx.RemoteProtocolError("peer closed connection")
+                yield  # pragma: no cover
+
+        class _FakeClient:
+            def stream(self, *args: Any, **kwargs: Any):
+                return _DisconnectStreamCtx()
+
+        async def _get_client():
+            return _FakeClient()
+
+        monkeypatch.setattr("app.ai.llm_client.get_shared_http_client", _get_client)
+        provider = OllamaProvider(_make_config())
+        with pytest.raises(ProviderLLMError):
+            async for _ in provider.chat_completion_stream([{"role": "user", "content": "hi"}]):
+                pass
+        assert breaker.get_status()["failure_count"] == 0
+
+    async def test_legacy_rate_limit_passthrough_after_retries(self, monkeypatch):
+        """P2-10：legacy 客户端重试耗尽后 429 保持 6012 限流语义。"""
+        from types import SimpleNamespace
+
+        from app.ai import llm_client as mod
+
+        class _FakePostClient:
+            async def post(self, url, headers=None, json=None, timeout=None):
+                return SimpleNamespace(status_code=429, text="rate limited", json=lambda: {})
+
+        async def _get_client():
+            return _FakePostClient()
+
+        monkeypatch.setattr(mod, "_shared_http_client", _FakePostClient())
+        client = mod.OllamaClient(base_url="http://x", model="m", retry_delay=0.0, max_retries=2)
+        with pytest.raises(mod.RateLimitError) as ei:
+            await client.chat_completion([{"role": "user", "content": "hi"}])
+        assert ei.value.code == 6012

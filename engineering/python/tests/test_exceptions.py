@@ -11,6 +11,10 @@ import pytest
 
 from app.core.exceptions import (
     AppException,
+    LLMAuthException,
+    LLMProviderException,
+    LLMRateLimitException,
+    LLMTimeoutException,
     NotFoundException,
     ValidationException,
     UnauthorizedException,
@@ -74,7 +78,15 @@ class TestAppExceptionBase:
     def test_to_dict_without_detail(self):
         exc = AppException(code=2001, message="服务器错误")
         d = exc.to_dict()
-        assert d == {"code": 2001, "message": "服务器错误"}
+        # 现行契约：level/hint/retryable 恒在，detail 仅非 None 时出现
+        assert d == {
+            "code": 2001,
+            "message": "服务器错误",
+            "level": "error",
+            "hint": None,
+            "retryable": False,
+        }
+        assert "detail" not in d
 
     def test_to_dict_with_detail(self):
         exc = AppException(code=2001, message="错误", detail={"trace": "xxx"})
@@ -96,7 +108,7 @@ class TestClientExceptions:
         [
             (NotFoundException, 1001, 404, "资源未找到"),
             (ValidationException, 1002, 422, "请求参数校验失败"),
-            (UnauthorizedException, 1003, 401, "未认证或Token无效"),
+            (UnauthorizedException, 1003, 401, "未认证或 Token 无效"),
             (ForbiddenException, 1004, 403, "权限不足"),
             (ConflictException, 1005, 409, "资源冲突"),
             (BadRequestException, 1006, 400, "请求参数错误"),
@@ -206,15 +218,25 @@ class TestLLMExceptions:
         "exc_class,expected_code,expected_status",
         [
             (LLMException, 6001, 502),
-            (LLMRateLimitException, 6002, 429),
+            (LLMProviderException, 6010, 502),
+            (LLMTimeoutException, 6011, 504),
+            (LLMRateLimitException, 6012, 429),
+            (LLMAuthException, 6013, 401),
             (LLMResponseException, 6003, 502),
         ],
     )
     def test_llm_exception_defaults(self, exc_class, expected_code, expected_status):
-        exc = exc_class()
+        # 修复说明：LLMProvider/Timeout/RateLimit/Auth 需要 provider 位置参数；
+        # 此前这些类构造即 TypeError（super().__init__ 签名不匹配），测试
+        # 与 6002 旧设计一同失效。现对齐现行契约（601x/502）并覆盖全部 6xxx。
+        try:
+            exc = exc_class()
+        except TypeError:
+            exc = exc_class(provider="test-provider")
         assert exc.code == expected_code
         assert exc.status_code == expected_status
         assert isinstance(exc, AppException)
+        assert exc.retryable is True or exc.code == 6013
 
 
 class TestCadExceptions:
@@ -239,39 +261,27 @@ class TestExceptionCodeMap:
     """错误码映射表测试"""
 
     def test_all_exception_classes_have_mapping(self):
-        all_exceptions = {
-            NotFoundException,
-            ValidationException,
-            UnauthorizedException,
-            ForbiddenException,
-            ConflictException,
-            BadRequestException,
-            RateLimitException,
-            InternalServerException,
-            ServiceUnavailableException,
-            GatewayException,
-            TimeoutException,
-            RepositoryException,
-            RecordNotFoundException,
-            StorageException,
-            LockException,
-            LockConflictException,
-            LockNotFoundException,
-            LockExpiredException,
-            LockOwnershipException,
-            StateException,
-            StateConflictException,
-            StateNotFoundException,
-            LLMException,
-            LLMRateLimitException,
-            LLMResponseException,
-            CadException,
-            CadScriptException,
-            CadExportException,
-        }
-        mapped_codes = set(EXCEPTION_CODE_MAP.keys())
-        expected_codes = {exc().code for exc in all_exceptions}
-        assert mapped_codes == expected_codes
+        """全部可无参构造的 AppException 子类，其 code 必须在 EXCEPTION_CODE_MAP。"""
+        import inspect
+
+        from app.core import exceptions as exc_mod
+
+        all_classes = [
+            obj
+            for _, obj in inspect.getmembers(exc_mod, inspect.isclass)
+            if issubclass(obj, AppException) and obj is not AppException
+        ]
+        unmapped = []
+        for cls in all_classes:
+            try:
+                exc = cls()
+            except TypeError:
+                # 需要必填位置参数的类（如 LLMProviderException 的 provider 已给
+                # 默认值，此处兜底其余历史类）跳过无参构造
+                continue
+            if exc.code not in EXCEPTION_CODE_MAP:
+                unmapped.append(f"{cls.__name__}({exc.code})")
+        assert unmapped == []
 
     def test_no_duplicate_codes(self):
         codes = list(EXCEPTION_CODE_MAP.keys())

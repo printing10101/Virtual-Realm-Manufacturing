@@ -24,7 +24,7 @@ import logging
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.auth.permissions import require_permission
 from app.core.exceptions import AppException
@@ -34,6 +34,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/llm", tags=["LLM Stream"])
 
+#: 允许的对话角色（非法 role 会在上游产生难解的 4xx，前置校验）
+_ALLOWED_ROLES = frozenset({"system", "user", "assistant", "tool"})
+
 
 class ChatStreamRequest(BaseModel):
     """流式对话请求。"""
@@ -42,6 +45,19 @@ class ChatStreamRequest(BaseModel):
     max_tokens: int = Field(2048, ge=1, le=32768)
     temperature: float = Field(0.7, ge=0.0, le=2.0)
     model: str | None = Field(None, description="模型名，None 使用当前激活模型")
+
+    @field_validator("messages")
+    @classmethod
+    def _validate_messages(cls, value: list[dict[str, str]]) -> list[dict[str, str]]:
+        if not value:
+            raise ValueError("messages 不能为空")
+        for i, msg in enumerate(value):
+            role = msg.get("role", "")
+            if role not in _ALLOWED_ROLES:
+                raise ValueError(f"messages[{i}].role 非法: {role!r}（允许 {sorted(_ALLOWED_ROLES)}）")
+            if not isinstance(msg.get("content"), str):
+                raise ValueError(f"messages[{i}].content 必须为字符串")
+        return value
 
 
 def _sse_frame(payload: dict) -> str:

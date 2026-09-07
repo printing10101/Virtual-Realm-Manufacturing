@@ -225,10 +225,11 @@ class LLMProviderException(LLMException):
     （见 ``app.ai.llm._resilience``）。
     """
 
-    def __init__(self, provider: str, message: str = None, detail: Any = None):
+    def __init__(self, provider: str = "LLM", message: str = None, detail: Any = None):
         AppException.__init__(
             self,
             code=6010,
+            status_code=502,
             message=message or f"{provider} 服务异常",
             detail=detail,
             hint=f"请检查 {provider} 服务状态或切换备用提供商",
@@ -239,10 +240,11 @@ class LLMProviderException(LLMException):
 class LLMTimeoutException(LLMException):
     """AI 服务超时"""
 
-    def __init__(self, provider: str, timeout_sec: float = None, detail: Any = None):
+    def __init__(self, provider: str = "LLM", timeout_sec: float = None, detail: Any = None):
         AppException.__init__(
             self,
             code=6011,
+            status_code=504,
             message=f"{provider} 服务响应超时" + (f" ({timeout_sec}s)" if timeout_sec else ""),
             detail=detail,
             hint="请检查网络状态或增加超时时间",
@@ -253,10 +255,11 @@ class LLMTimeoutException(LLMException):
 class LLMRateLimitException(LLMException):
     """AI 服务限流"""
 
-    def __init__(self, provider: str, retry_after: int = None, detail: Any = None):
+    def __init__(self, provider: str = "LLM", retry_after: int = None, detail: Any = None):
         AppException.__init__(
             self,
             code=6012,
+            status_code=429,
             message=f"{provider} 服务达到限流阈值",
             detail=detail,
             hint="请稍后重试" + (f"或等待{retry_after}s" if retry_after else ""),
@@ -267,10 +270,11 @@ class LLMRateLimitException(LLMException):
 class LLMAuthException(LLMException):
     """AI 认证失败"""
 
-    def __init__(self, provider: str, message: str = None, detail: Any = None):
+    def __init__(self, provider: str = "LLM", message: str = None, detail: Any = None):
         AppException.__init__(
             self,
             code=6013,
+            status_code=401,
             message=message or f"{provider} 认证失败",
             detail=detail,
             hint="请检查 API Key 配置",

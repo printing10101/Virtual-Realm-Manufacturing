@@ -40,6 +40,20 @@ def _parse_frames(events: list[str]) -> list[dict[str, Any]]:
     return parsed
 
 
+def test_messages_role_validation():
+    """备忘项：非法 role/content 在请求模型层前置拒绝。"""
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        ChatStreamRequest(messages=[{"role": "hacker", "content": "x"}])
+    with pytest.raises(pydantic.ValidationError):
+        ChatStreamRequest(messages=[{"role": "user", "content": 123}])
+    with pytest.raises(pydantic.ValidationError):
+        ChatStreamRequest(messages=[])
+    # 合法角色通过
+    ChatStreamRequest(messages=[{"role": "system", "content": "s"}, {"role": "user", "content": "u"}])
+
+
 @pytest.mark.asyncio
 async def test_stream_content_frames_and_done(monkeypatch: pytest.MonkeyPatch):
     from app.ai import llm_client as mod

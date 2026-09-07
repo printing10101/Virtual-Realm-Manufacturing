@@ -89,6 +89,10 @@ class ProviderConfig:
     api_key: str = ""  # 云端 API Key（本地为空）
     default_model: str = ""  # 默认模型
     timeout: int = 60  # 超时秒数
+    # 注意语义：max_retries 是「总尝试次数」而非「重试次数」（韧性层
+    # 实现为 `for attempt in range(1, max_retries + 1)`）——3 表示最多
+    # 打 3 次上游（重试 2 次），与字段名直觉相反，改动前先读
+    # app/ai/llm/_resilience.py 的包装逻辑
     max_retries: int = 3
     retry_delay: float = 1.0
     enabled: bool = True  # 是否启用

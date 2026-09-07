@@ -35,7 +35,6 @@ from app.core.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitBreakerRegistry,
-    CircuitState,
 )
 from app.core.exceptions import (
     CircuitBreakerOpenException,
@@ -122,22 +121,24 @@ def translate_exception(provider_label: str, exc: Exception) -> Exception:
     """
     if isinstance(exc, ProviderHTTPError):
         status = exc.status_code
-        body_snippet = (exc.body or "")[:200]
+        # 安全纪律：上游响应体可能含账号/配额/内部端点信息，一律不进
+        # message/detail（AppException 会被中间件原样回传客户端）
         if status == 429:
-            return ProviderLLMRateLimitError(provider=provider_label, detail={"body": body_snippet})
+            return ProviderLLMRateLimitError(provider=provider_label)
         if status in (401, 403):
             return ProviderLLMAuthError(
                 provider=provider_label,
                 message=f"{provider_label} 认证失败 (HTTP {status})",
-                detail={"body": body_snippet},
             )
         if status in RETRYABLE_STATUS_CODES:
             return ProviderLLMError(
                 provider=provider_label,
                 message=f"{provider_label} 服务暂时不可用 (HTTP {status})",
-                detail={"body": body_snippet},
             )
-        return ProviderLLMError(provider=provider_label, message=str(exc))
+        return ProviderLLMError(
+            provider=provider_label,
+            message=f"{provider_label} 服务错误 (HTTP {status})",
+        )
     if isinstance(exc, (httpx.TimeoutException, asyncio.TimeoutError)):
         return ProviderLLMTimeoutError(provider=provider_label)
     if isinstance(exc, httpx.TransportError):
@@ -184,8 +185,11 @@ def wrap_chat_completion(impl: Callable[..., Any]) -> Callable[..., Any]:
 
         last_exc: Exception | None = None
         for attempt in range(1, max_retries + 1):
-            if breaker.state == CircuitState.OPEN:
-                raise ProviderCircuitOpenError(service=breaker.name)
+            # P2-1：半开并发闸门（超过 half_open_max_calls 的探测被拒）
+            try:
+                breaker.try_acquire_half_open()
+            except CircuitBreakerOpenException as e:
+                raise ProviderCircuitOpenError(service=breaker.name) from e
             try:
                 result = await impl(
                     self,
@@ -213,6 +217,8 @@ def wrap_chat_completion(impl: Callable[..., Any]) -> Callable[..., Any]:
                     delay,
                 )
                 await asyncio.sleep(delay)
+            finally:
+                breaker.release_half_open()
 
         raise last_exc if last_exc else ProviderLLMError(provider=label, message="unreachable")
 
@@ -241,8 +247,10 @@ def wrap_chat_stream(impl: Callable[..., Any]) -> Callable[..., AsyncIterator[di
         breaker = get_llm_breaker(label)
 
         async def gen() -> AsyncIterator[dict[str, Any]]:
-            if breaker.state == CircuitState.OPEN:
-                raise ProviderCircuitOpenError(service=breaker.name)
+            try:
+                breaker.try_acquire_half_open()
+            except CircuitBreakerOpenException as e:
+                raise ProviderCircuitOpenError(service=breaker.name) from e
             try:
                 async for chunk in impl(
                     self,
@@ -254,9 +262,14 @@ def wrap_chat_stream(impl: Callable[..., Any]) -> Callable[..., AsyncIterator[di
                     yield chunk
             except Exception as exc:
                 translated = translate_exception(label, exc)
-                if is_transient_error(exc):
+                # P2-2：客户端提前断开（停止生成）会让 provider 侧抛
+                # RemoteProtocolError——这是消费方行为，不是服务健康问题，
+                # 不计入熔断（否则频繁"停止生成"会误熔断 provider）
+                if is_transient_error(exc) and not isinstance(exc, httpx.RemoteProtocolError):
                     breaker.record_failure(translated)
                 raise translated from exc
+            finally:
+                breaker.release_half_open()
             breaker.record_success()
 
         return gen()

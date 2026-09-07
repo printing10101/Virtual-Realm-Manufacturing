@@ -160,11 +160,9 @@ class OllamaProvider(LLMProvider):
             timeout=self.config.timeout,
         ) as response:
             if response.status_code != 200:
-                body = (await response.aread()).decode("utf-8", errors="replace")
                 raise ProviderHTTPError(
-                    f"Ollama API error: {response.status_code} - {body}",
+                    f"Ollama API error (HTTP {response.status_code})",
                     status_code=response.status_code,
-                    body=body,
                 )
             async for line in response.aiter_lines():
                 line = line.strip()

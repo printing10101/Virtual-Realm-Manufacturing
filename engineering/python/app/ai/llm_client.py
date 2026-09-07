@@ -115,11 +115,13 @@ async def close_shared_http_client() -> None:
 
 
 def _classify_error(status_code: int, body: str) -> LLMError:
+    # 安全纪律：body 不进异常消息（AppException 会被中间件原样回传客户端，
+    # 上游响应体可能含账号/配额/内部端点信息）
     if status_code == 429:
-        return RateLimitError(f"Rate limit exceeded: {status_code} - {body}")
+        return RateLimitError("LLM 服务达到限流阈值 (HTTP 429)")
     if 500 <= status_code < 600:
-        return ServiceUnavailableError(f"Service temporarily unavailable: {status_code} - {body}")
-    return LLMError(f"API error: {status_code} - {body}")
+        return ServiceUnavailableError(f"LLM 服务暂时不可用 (HTTP {status_code})")
+    return LLMError(f"LLM 服务错误 (HTTP {status_code})")
 
 
 class BaseLLMClient:
@@ -239,6 +241,10 @@ class BaseLLMClient:
             if attempt < self.max_retries:
                 await asyncio.sleep(self.retry_delay * attempt)
 
+        # P2-10：按末次错误类型透传——限流耗尽重试仍应报 6012 限流语义
+        # （"稍后重试"提示），而不是被统一降级为 6010
+        if isinstance(last_error, RateLimitError):
+            raise last_error
         raise ServiceUnavailableError(
             f"{type(self).__name__} API call failed after {self.max_retries} retries"
         ) from last_error
@@ -339,8 +345,7 @@ class OllamaClient(BaseLLMClient):
             timeout=self.timeout,
         ) as response:
             if response.status_code != 200:
-                body = (await response.aread()).decode("utf-8", errors="replace")
-                raise ServiceUnavailableError(f"Ollama API error: {response.status_code} - {body}")
+                raise ServiceUnavailableError(f"Ollama API error (HTTP {response.status_code})")
             async for line in response.aiter_lines():
                 line = line.strip()
                 if not line:
@@ -493,6 +498,7 @@ class ProviderAdapter(BaseLLMClient):
         model: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """流式透传：优先 Provider 原生流，Provider 不支持时回退伪流式。"""
+        self._validate_inputs(messages, max_tokens, temperature)
         provider_stream = getattr(self._provider, "chat_completion_stream", None)
         if provider_stream is None:
             async for chunk in super().chat_completion_stream(
