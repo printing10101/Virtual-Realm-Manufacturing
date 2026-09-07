@@ -385,9 +385,9 @@ class RLAgentService(BaseSingletonService):
 
             # 4. 策略前向 原始推荐动作
             with self._infer_lock:
-                policy_out = policy_net(state_arr)
+                policy_out = policy_net(self._to_net_input(policy_net, state_arr))
                 raw_action = self._extract_action(policy_out)
-                value_out = value_net(state_arr)
+                value_out = value_net(self._to_net_input(value_net, state_arr))
                 state_value = self._extract_value(value_out)
 
             # 安全过滤推荐动作
@@ -621,6 +621,33 @@ class RLAgentService(BaseSingletonService):
 
     # ── 内部辅助方法：网络加载与推理 ────────────────────────────────
 
+    @staticmethod
+    def _set_inference_mode(net: Any) -> None:
+        """torch 网络切到 eval 模式（nn.Module 默认 training=True 会让策略
+        走随机采样分支，推理动作非确定）；NumPy 回退实现无 eval，跳过。"""
+        if hasattr(net, "eval") and hasattr(net, "encoder"):
+            net.eval()
+
+    @staticmethod
+    def _to_net_input(net: Any, state_arr: "np.ndarray") -> Any:
+        """状态数组 → 网络输入。
+
+        torch 实现（nn.Module，带 encoder）需要 float32 Tensor——此前直接
+        传 ndarray 导致 ``linear(): argument 'input' must be Tensor`` 崩溃
+        （W 引擎验证发现）；NumPy 回退实现自带 ndarray 适配，原样传入。
+        """
+        if not hasattr(net, "encoder"):
+            return state_arr
+        try:
+            import torch
+
+            state = torch.as_tensor(np.asarray(state_arr, dtype=np.float32), dtype=torch.float32)
+            if state.ndim == 1:
+                state = state[None, :]
+            return state
+        except ImportError:
+            return state_arr
+
     def _get_or_load_policy(self, model_uri: str):
         """获取或加载 PolicyNet（LRU 缓存，limit=4）."""
         # 快速路径
@@ -638,6 +665,7 @@ class RLAgentService(BaseSingletonService):
 
             net = PolicyNet(PolicyConfig())
             self._load_weights(net, model_uri, kind="policy")
+            self._set_inference_mode(net)
 
             # LRU 淘汰
             if len(self._policy_cache) >= self._NET_CACHE_LIMIT:
@@ -668,6 +696,7 @@ class RLAgentService(BaseSingletonService):
             )
             net = ValueNet(value_config)
             self._load_weights(net, model_uri, kind="value")
+            self._set_inference_mode(net)
 
             if len(self._value_cache) >= self._NET_CACHE_LIMIT:
                 oldest = next(iter(self._value_cache))

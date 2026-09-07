@@ -496,8 +496,11 @@ class WorldModelService(BaseSingletonService):
                 return default
 
         config = WorldModelConfig(
-            # ADR-020 P3：默认启用融合模式（torch 不可用时自动降级）
-            use_fusion=_env_bool("WORLD_MODEL_USE_FUSION", True),
+            # W 引擎验证修复：默认关闭融合模式。原始 /predict 路径（StateField
+            # 8 维 + action 4 维 = 12 维输入）与融合模式的 132 维输入层不匹配，
+            # 默认 True 会让所有未提供 unified_state 的预测崩溃。融合调用方
+            # （提供 unified_state）显式设置 WORLD_MODEL_USE_FUSION=true。
+            use_fusion=_env_bool("WORLD_MODEL_USE_FUSION", False),
             feature_dim=_env_int("WORLD_MODEL_FEATURE_DIM", 32),
             d_model=_env_int("WORLD_MODEL_D_MODEL", 64),
             fused_dim=_env_int("WORLD_MODEL_FUSED_DIM", 128),
