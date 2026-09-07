@@ -22,6 +22,24 @@ class TestNormalizeRagItems:
         assert len(items) == 1
         assert items[0]["id"] == "c1"
 
+    def test_enhanced_dict_shape_unwrapped(self):
+        """增强管线实际返回 dict（缓存条目形状，results 键下为条目列表）——
+        W 引擎验证发现此前只处理 list 形状导致 sources 恒为 0。"""
+        enhanced = {
+            "query": "q",
+            "results": [
+                {"document": "d1", "metadata": {"source": "s"}, "distance": 0.2, "id": "c1"},
+                {"document": "d2", "metadata": {"source": "s"}, "distance": 0.4, "id": "c2"},
+            ],
+            "detected_intent": "cutting_params",
+            "_cache_hit": False,
+        }
+        items = rag_service._normalize_rag_items(enhanced)
+        assert [i["id"] for i in items] == ["c1", "c2"]
+        citations = rag_service._extract_citations(items)
+        assert [c["rank"] for c in citations] == [1, 2]
+        assert citations[0]["doc_id"] == "c1"
+
     def test_baseline_nested_chroma_normalized(self):
         nested = {
             "documents": [["docA", "docB"]],

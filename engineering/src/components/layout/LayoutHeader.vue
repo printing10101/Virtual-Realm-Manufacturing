@@ -8,26 +8,17 @@
         type="text"
         :placeholder="t('appLayout.searchPlaceholder')"
         class="search-input"
-      >
+      />
     </div>
     <div class="header-actions">
-      <el-tooltip
-        :content="t('appLayout.refresh')"
-        placement="bottom"
-      >
-        <button
-          class="header-btn"
-          @click="emit('refresh')"
-        >
+      <el-tooltip :content="t('appLayout.refresh')" placement="bottom">
+        <button class="header-btn" @click="emit('refresh')">
           <el-icon :size="18">
             <Refresh />
           </el-icon>
         </button>
       </el-tooltip>
-      <el-dropdown
-        trigger="click"
-        placement="bottom-end"
-      >
+      <el-dropdown trigger="click" placement="bottom-end">
         <button class="header-btn notification-btn">
           <el-icon :size="18">
             <Bell />
@@ -37,13 +28,11 @@
         <template #dropdown>
           <el-dropdown-menu class="notification-dropdown">
             <div class="notification-header">
-              <span class="notification-title">{{ t('appLayout.notifications') }}</span>
-              <el-button
-                text
-                size="small"
-                @click="markAllRead"
-              >
-                {{ t('appLayout.markAllRead') }}
+              <span class="notification-title">{{
+                t("appLayout.notifications")
+              }}</span>
+              <el-button text size="small" @click="markAllRead">
+                {{ t("appLayout.markAllRead") }}
               </el-button>
             </div>
             <el-divider style="margin: 4px 0" />
@@ -53,10 +42,7 @@
               class="notification-item"
               :class="{ unread: !n.read }"
             >
-              <div
-                class="notification-dot-indicator"
-                :class="n.type"
-              />
+              <div class="notification-dot-indicator" :class="n.type" />
               <div class="notification-content">
                 <span class="notification-text">{{ n.text }}</span>
                 <span class="notification-time">{{ n.time }}</span>
@@ -64,21 +50,15 @@
             </div>
             <el-divider style="margin: 4px 0" />
             <div class="notification-footer">
-              <el-button
-                text
-                size="small"
-              >
-                {{ t('appLayout.viewAllNotifications') }}
+              <el-button text size="small">
+                {{ t("appLayout.viewAllNotifications") }}
               </el-button>
             </div>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
       <BackendStatusIndicator />
-      <el-dropdown
-        trigger="click"
-        @command="handleFileCommand"
-      >
+      <el-dropdown trigger="click" @command="handleFileCommand">
         <button class="header-btn file-btn">
           <el-icon :size="18">
             <Folder />
@@ -88,98 +68,95 @@
           <el-dropdown-menu>
             <el-dropdown-item command="new">
               <el-icon :size="16">
-                <DocumentAdd />
-              </el-icon>{{ t('appLayout.newProject') }}
+                <DocumentAdd /> </el-icon
+              >{{ t("appLayout.newProject") }}
             </el-dropdown-item>
             <el-dropdown-item command="open">
               <el-icon :size="16">
-                <FolderOpened />
-              </el-icon>{{ t('appLayout.openProject') }}
+                <FolderOpened /> </el-icon
+              >{{ t("appLayout.openProject") }}
             </el-dropdown-item>
-            <el-dropdown-item
-              divided
-              command="save"
-            >
+            <el-dropdown-item divided command="save">
               <el-icon :size="16">
-                <Document />
-              </el-icon>{{ t('appLayout.save') }}
+                <Document /> </el-icon
+              >{{ t("appLayout.save") }}
             </el-dropdown-item>
             <el-dropdown-item command="save-as">
               <el-icon :size="16">
-                <CopyDocument />
-              </el-icon>{{ t('appLayout.saveAs') }}
+                <CopyDocument /> </el-icon
+              >{{ t("appLayout.saveAs") }}
             </el-dropdown-item>
-            <el-dropdown-item
-              divided
-              command="download"
-            >
+            <el-dropdown-item divided command="download">
               <el-icon :size="16">
-                <Download />
-              </el-icon>{{ t('appLayout.downloadProject') }}
+                <Download /> </el-icon
+              >{{ t("appLayout.downloadProject") }}
             </el-dropdown-item>
-            <el-dropdown-item
-              divided
-              command="import-step"
-            >
+            <el-dropdown-item divided command="import-step">
               <el-icon :size="16">
-                <Upload />
-              </el-icon>{{ t('appLayout.importStep') }}
+                <Upload /> </el-icon
+              >{{ t("appLayout.importStep") }}
             </el-dropdown-item>
             <el-dropdown-item command="import-dxf">
               <el-icon :size="16">
-                <DocumentCopy />
-              </el-icon>{{ t('appLayout.importDxf') }}
+                <DocumentCopy /> </el-icon
+              >{{ t("appLayout.importDxf") }}
             </el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
-      <span
-        v-if="projectName"
-        class="project-indicator"
-      >
+      <!-- 帮助菜单：引导重放（W10.2）——修复「帮助 → 重新引导」断线承诺 -->
+      <el-dropdown trigger="click" @command="handleHelpCommand">
+        <button class="header-btn help-btn" data-testid="header-help-menu">
+          <el-icon :size="18">
+            <QuestionFilled />
+          </el-icon>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="replay-tour">
+              <el-icon :size="16">
+                <Guide /> </el-icon
+              >{{ t("appLayout.replayTour") }}
+            </el-dropdown-item>
+            <el-dropdown-item command="replay-flow-tour">
+              <el-icon :size="16">
+                <MapLocation /> </el-icon
+              >{{ t("appLayout.replayFlowTour") }}
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+      <span v-if="projectName" class="project-indicator">
         {{ projectName }}
-        <el-tag
-          v-if="isModified"
-          size="small"
-          type="warning"
-          effect="plain"
-        >{{ t('appLayout.unsaved') }}</el-tag>
+        <el-tag v-if="isModified" size="small" type="warning" effect="plain">{{
+          t("appLayout.unsaved")
+        }}</el-tag>
       </span>
       <el-dropdown
         trigger="click"
         placement="bottom-end"
         @command="handleUserCommand"
       >
-        <button
-          class="header-btn user-btn"
-          data-testid="header-user-menu"
-        >
-          <el-avatar
-            :size="24"
-            class="user-avatar"
-          >
+        <button class="header-btn user-btn" data-testid="header-user-menu">
+          <el-avatar :size="24" class="user-avatar">
             {{ avatarText }}
           </el-avatar>
-          <span class="user-name">{{ authStore.user?.username || t('appLayout.guest') }}</span>
+          <span class="user-name">{{
+            authStore.user?.username || t("appLayout.guest")
+          }}</span>
           <el-icon :size="12">
             <ArrowDown />
           </el-icon>
         </button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item
-              disabled
-              class="user-info-item"
-            >
+            <el-dropdown-item disabled class="user-info-item">
               <span class="user-role-tag">{{ roleLabel }}</span>
             </el-dropdown-item>
-            <el-dropdown-item
-              divided
-              command="logout"
-            >
+            <el-dropdown-item divided command="logout">
               <el-icon :size="16">
-                <SwitchButton />
-              </el-icon>{{ t('appLayout.logout') }}
+                <SwitchButton /> </el-icon
+              >{{ t("appLayout.logout") }}
             </el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -189,117 +166,151 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
+import { ElMessageBox } from "element-plus";
 import {
-  Search, Refresh, Bell, Folder, DocumentAdd, FolderOpened,
-  Document, CopyDocument, Download, Upload, DocumentCopy,
-  SwitchButton, ArrowDown,
-} from '@element-plus/icons-vue'
-import BackendStatusIndicator from '@/components/BackendStatusIndicator.vue'
-import { useAuthStore } from '@/stores/auth'
-import http from '@/utils/http'
-import { API_CONFIG, buildApiPath } from '@/config/api'
-import { extractErrorMessage } from '@/utils/error-handler'
+  Search,
+  Refresh,
+  Bell,
+  Folder,
+  DocumentAdd,
+  FolderOpened,
+  Document,
+  CopyDocument,
+  Download,
+  Upload,
+  DocumentCopy,
+  SwitchButton,
+  ArrowDown,
+  QuestionFilled,
+  Guide,
+  MapLocation,
+} from "@element-plus/icons-vue";
+import BackendStatusIndicator from "@/components/BackendStatusIndicator.vue";
+import { useAuthStore } from "@/stores/auth";
+import http from "@/utils/http";
+import { API_CONFIG, buildApiPath } from "@/config/api";
+import { extractErrorMessage } from "@/utils/error-handler";
 
-const { t } = useI18n()
-const router = useRouter()
-const authStore = useAuthStore()
+const { t } = useI18n();
+const router = useRouter();
+const authStore = useAuthStore();
 
 const emit = defineEmits<{
-  (e: 'file-command', cmd: string): void
-  (e: 'refresh'): void
-}>()
+  (e: "file-command", cmd: string): void;
+  (e: "refresh"): void;
+}>();
 
 defineProps<{
-  projectName?: string
-  isModified?: boolean
-}>()
+  projectName?: string;
+  isModified?: boolean;
+}>();
 
-const avatarText = computed(() => (authStore.user?.username || '?').slice(0, 1).toUpperCase())
+const avatarText = computed(() =>
+  (authStore.user?.username || "?").slice(0, 1).toUpperCase(),
+);
 
 const roleLabel = computed(() => {
   const map: Record<string, string> = {
-    admin: '管理员',
-    operator: '操作员',
-    viewer: '访客',
-    guest: '游客',
-  }
-  return map[authStore.userRole] || authStore.userRole
-})
+    admin: "管理员",
+    operator: "操作员",
+    viewer: "访客",
+    guest: "游客",
+  };
+  return map[authStore.userRole] || authStore.userRole;
+});
 
 async function handleUserCommand(cmd: string) {
-  if (cmd !== 'logout') return
+  if (cmd !== "logout") return;
   try {
     await ElMessageBox.confirm(
-      t('appLayout.logoutConfirm'),
-      t('appLayout.logoutTitle'),
+      t("appLayout.logoutConfirm"),
+      t("appLayout.logoutTitle"),
       {
-        confirmButtonText: t('appLayout.logout'),
-        cancelButtonText: t('common.cancel'),
-        type: 'warning',
+        confirmButtonText: t("appLayout.logout"),
+        cancelButtonText: t("common.cancel"),
+        type: "warning",
       },
-    )
-    authStore.logout()
-    router.replace('/login')
+    );
+    authStore.logout();
+    router.replace("/login");
   } catch {
     // 用户取消退出
   }
 }
 
-const notifications = ref<Array<{ id: number; text: string; time: string; type: string; read: boolean }>>([])
+const notifications = ref<
+  Array<{ id: number; text: string; time: string; type: string; read: boolean }>
+>([]);
 
 async function fetchNotifications() {
   try {
-    const resp = await http.get(buildApiPath(API_CONFIG.V1, '/notifications'))
+    const resp = await http.get(buildApiPath(API_CONFIG.V1, "/notifications"));
     if (resp.data.code === 0 && resp.data.data) {
-      notifications.value = resp.data.data.map((item: { notification_id: string; title: string; created_at: number; priority: string }, index: number) => ({
-        id: index + 1,
-        text: item.title,
-        time: formatTime(item.created_at),
-        type: mapPriorityToType(item.priority),
-        read: false,
-      }))
+      notifications.value = resp.data.data.map(
+        (
+          item: {
+            notification_id: string;
+            title: string;
+            created_at: number;
+            priority: string;
+          },
+          index: number,
+        ) => ({
+          id: index + 1,
+          text: item.title,
+          time: formatTime(item.created_at),
+          type: mapPriorityToType(item.priority),
+          read: false,
+        }),
+      );
     }
   } catch (error) {
-    console.warn('获取通知失败:', extractErrorMessage(error))
+    console.warn("获取通知失败:", extractErrorMessage(error));
   }
 }
 
 function formatTime(timestamp: number): string {
-  const now = Date.now()
-  const diff = now - timestamp * 1000
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
+  const now = Date.now();
+  const diff = now - timestamp * 1000;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
 
-  if (minutes < 60) return t('home.timeMinutesAgo', { n: minutes })
-  if (hours < 24) return t('home.timeHoursAgo', { n: hours })
-  return t('home.timeDaysAgo', { n: days })
+  if (minutes < 60) return t("home.timeMinutesAgo", { n: minutes });
+  if (hours < 24) return t("home.timeHoursAgo", { n: hours });
+  return t("home.timeDaysAgo", { n: days });
 }
 
 function mapPriorityToType(priority: string): string {
   const priorityMap: Record<string, string> = {
-    critical: 'error',
-    high: 'warning',
-    medium: 'info',
-    low: 'success',
-  }
-  return priorityMap[priority] || 'info'
+    critical: "error",
+    high: "warning",
+    medium: "info",
+    low: "success",
+  };
+  return priorityMap[priority] || "info";
 }
 
 onMounted(() => {
-  fetchNotifications()
-})
+  fetchNotifications();
+});
 
 function markAllRead() {
-  notifications.value.forEach(n => n.read = true)
+  notifications.value.forEach((n) => (n.read = true));
 }
 
 function handleFileCommand(cmd: string) {
-  emit('file-command', cmd)
+  emit("file-command", cmd);
+}
+
+// 帮助菜单：通过 window 事件把重放请求转给 App.vue 的 Tour 实例（W10.2）
+function handleHelpCommand(cmd: string) {
+  if (cmd === "replay-tour" || cmd === "replay-flow-tour") {
+    window.dispatchEvent(new Event(cmd));
+  }
 }
 </script>
 
@@ -328,7 +339,10 @@ function handleFileCommand(cmd: string) {
   background-color: var(--bg-200);
   border-radius: var(--radius-md);
   border: 1px solid transparent;
-  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
   width: 280px;
 }
 
@@ -491,10 +505,18 @@ function handleFileCommand(cmd: string) {
   flex-shrink: 0;
 }
 
-.notification-dot-indicator.error { background-color: var(--error); }
-.notification-dot-indicator.success { background-color: var(--success); }
-.notification-dot-indicator.info { background-color: var(--info); }
-.notification-dot-indicator.warning { background-color: var(--warning); }
+.notification-dot-indicator.error {
+  background-color: var(--error);
+}
+.notification-dot-indicator.success {
+  background-color: var(--success);
+}
+.notification-dot-indicator.info {
+  background-color: var(--info);
+}
+.notification-dot-indicator.warning {
+  background-color: var(--warning);
+}
 
 .notification-content {
   flex: 1;

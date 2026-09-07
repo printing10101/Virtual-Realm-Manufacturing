@@ -3253,6 +3253,8 @@ export default {
     logoutConfirm: "确定要退出当前账号吗？",
     logoutTitle: "退出登录",
     guest: "访客",
+    replayTour: "新手引导",
+    replayFlowTour: "制造流程引导",
   },
   // Tour.vue 引导组件
   onboardingTour: {

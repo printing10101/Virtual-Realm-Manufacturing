@@ -3276,6 +3276,8 @@ export default {
     logoutConfirm: "Are you sure you want to log out?",
     logoutTitle: "Log out",
     guest: "Guest",
+    replayTour: "Getting-started Tour",
+    replayFlowTour: "Manufacturing Flow Tour",
   },
   // Copilot components (RecommendationCard / DecisionActions / CopilotConfidenceIndicator)
   copilot: {

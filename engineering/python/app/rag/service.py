@@ -118,11 +118,14 @@ def _get_process_index():
 def _normalize_rag_items(results: Any) -> list[dict[str, Any]]:
     """把两条管线的检索结果统一为扁平条目（W8.2 引用抽取用）。
 
-    - enhanced（RagRetrievalEngine.retrieve）：扁平列表 [{document, metadata,
-      distance, id, ...}]
+    - enhanced（RagRetrievalEngine.retrieve）：字典，``results`` 键下为
+      扁平条目列表 [{document, metadata, distance, id, ...}]（W 引擎验证
+      发现此前只处理 list 形状导致增强管线 sources 恒为 0）
     - baseline（kb.query）：ChromaDB 嵌套结构 {ids/documents/metadatas/distances}
     """
     if isinstance(results, dict):
+        if isinstance(results.get("results"), list):
+            return [r for r in results["results"] if isinstance(r, dict)]
         docs_row = (results.get("documents") or [[]])[0] if results.get("documents") else []
         metas = results.get("metadatas") or []
         metas_row = metas[0] if metas else []

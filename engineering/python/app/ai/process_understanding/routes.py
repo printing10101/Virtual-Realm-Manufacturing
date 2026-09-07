@@ -41,6 +41,32 @@ class ExplainRequest(BaseModel):
     anomaly_prob: float = Field(0.0, description="异常概率 (%)")
 
 
+class QueryRequest(BaseModel):
+    """工艺理解主接口请求。"""
+
+    query: str = Field(..., min_length=1, max_length=2000, description="用户自然语言输入")
+
+
+@router.post("/query", summary="工艺理解主接口")
+async def process_query(request: QueryRequest) -> dict[str, Any]:
+    """工艺理解主接口：任务分类 → 知识检索 → 方案生成。
+
+    LLM 不可用时自动降级为规则模式（与引擎行为一致）。
+    W 引擎验证修复：引擎与测试齐备但本接口此前从未注册——主入口缺失。
+    """
+    try:
+        engine = get_process_understanding_engine()
+        output = await engine.process(request.query)
+        return success(data=output.to_dict(), message="工艺理解完成")
+    except (ValueError, TypeError, KeyError, AttributeError, OSError) as e:
+        safe = safe_error_message(e, context="process_understanding.query", fallback="工艺理解处理失败")
+        return error(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=safe["message"],
+            detail={"error_id": safe.get("error_id")} if safe.get("error_id") else None,
+        )
+
+
 @router.post("/explain", summary="模型预测结果解释")
 async def explain_prediction(request: ExplainRequest) -> dict[str, Any]:
     """将LNN/JEPA模型预测结果转化为操作员可理解的指导信息。

@@ -244,6 +244,18 @@ function handleReplayTour() {
   }, 100);
 }
 
+// [W10.2] 制造流程引导重放：帮助菜单 replay-flow-tour 事件
+function handleReplayFlowTour() {
+  try {
+    localStorage.removeItem(FLOW_TOUR_COMPLETED_KEY);
+  } catch {
+    // 静默忽略
+  }
+  setTimeout(() => {
+    flowTourRef.value?.start();
+  }, 100);
+}
+
 const versionStore = useVersionStore();
 const projectStore = useProjectStore();
 
@@ -321,11 +333,13 @@ onMounted(async () => {
 
   // 注册重新引导事件监听（供帮助菜单触发）
   window.addEventListener("replay-tour", handleReplayTour);
+  window.addEventListener("replay-flow-tour", handleReplayFlowTour);
 });
 
 onBeforeUnmount(() => {
   // 清理事件监听，防止内存泄漏
   window.removeEventListener("replay-tour", handleReplayTour);
+  window.removeEventListener("replay-flow-tour", handleReplayFlowTour);
 });
 </script>
 
