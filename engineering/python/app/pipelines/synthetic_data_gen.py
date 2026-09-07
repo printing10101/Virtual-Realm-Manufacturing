@@ -222,9 +222,15 @@ async def generate_synthetic_dataset(
     """
     start = time.perf_counter()
     summary = SyntheticGenSummary()
-    rpm_values = rpm_values or [2000.0, 4000.0, 6000.0]
-    feed_values = feed_values or [200.0, 400.0, 800.0]
-    depth_values = depth_values or [0.5, 1.0, 2.0]
+    # P2-12：入口统一 float 强转——非数值档位在此报错，而不是混进
+    # records 后在错误路径的 f-string 格式化里二次异常逃出整批保护
+    try:
+        rpm_values = [float(v) for v in (rpm_values or [2000.0, 4000.0, 6000.0])]
+        feed_values = [float(v) for v in (feed_values or [200.0, 400.0, 800.0])]
+        depth_values = [float(v) for v in (depth_values or [0.5, 1.0, 2.0])]
+        stock = {k: float(v) for k, v in (stock or {"length": 100.0, "width": 100.0, "height": 30.0}).items()}
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"扫描档位必须为数值: {e}") from e
     stock = stock or {"length": 100.0, "width": 100.0, "height": 30.0}
 
     combos = list(itertools.product(rpm_values, feed_values, depth_values))
@@ -255,12 +261,32 @@ async def generate_synthetic_dataset(
 
         store = get_dataset_store()
         schema = DatasetSchema(fields=dict(DATASET_SCHEMA_FIELDS), primary_key=["sample_id"])
-        dataset_id = await store.create(
-            dataset_name,
-            schema,
-            owner_id=owner_id,
-            description="体素仿真+切削力模型参数扫描合成数据（W4.1 飞轮充能）",
-        )
+        # 重名数据集复用 id（create 对重名抛 ValueError）——重复生成追加
+        # 版本而非崩溃，保证飞轮可持续运转
+        dataset_id = None
+        try:
+            for ds in await store.list_datasets(limit=1000):
+                if ds.get("name") == dataset_name:
+                    dataset_id = ds.get("id")
+                    break
+        except (ValueError, RuntimeError, OSError) as e:
+            logger.debug("查询既有数据集失败（尝试直接创建）: %s", e)
+        if dataset_id is None:
+            try:
+                dataset_id = await store.create(
+                    dataset_name,
+                    schema,
+                    owner_id=owner_id,
+                    description="体素仿真+切削力模型参数扫描合成数据（W4.1 飞轮充能）",
+                )
+            except ValueError:
+                # 并发窗口内被他人创建：回查复用
+                for ds in await store.list_datasets(limit=1000):
+                    if ds.get("name") == dataset_name:
+                        dataset_id = ds.get("id")
+                        break
+                if dataset_id is None:
+                    raise
         version_contract = await store.commit_version(
             dataset_id,
             records,

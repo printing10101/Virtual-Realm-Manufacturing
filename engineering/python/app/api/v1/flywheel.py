@@ -348,7 +348,13 @@ class SyntheticGenerateResponse(BaseModel):
     message: str = ""
 
 
-@router.post("/synthetic/generate", response_model=SyntheticGenerateResponse)
+# P2-13：重型副作用端点（200 组仿真 + 数据集写入）不适用 router 级
+# flywheel:read——升级为 dataset:write（工程角色已持有该码）
+@router.post(
+    "/synthetic/generate",
+    response_model=SyntheticGenerateResponse,
+    dependencies=[Depends(require_permission("dataset:write"))],
+)
 async def generate_synthetic_dataset(req: SyntheticGenerateRequest):
     """体素仿真+切削力模型参数扫描，批量生成"参数→仿真结果"样本对落库。
 

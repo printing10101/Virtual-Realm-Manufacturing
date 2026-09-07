@@ -252,6 +252,7 @@ PRESET_ROLES = [
             "report:export",
             "model:train",
             "model:predict",
+            "llm:chat",
             "rule:edit",
             "toolpath:edit",
             # 补充的全部新增权限码（管理员拥有全部权限）
@@ -393,6 +394,7 @@ PRESET_ROLES = [
             "result:view",
             "report:export",
             "model:predict",
+            "llm:chat",
             "rule:edit",
             "toolpath:edit",
             "workflow:read",
@@ -434,6 +436,7 @@ PRESET_ROLES = [
             "result:view",
             "report:export",
             "model:predict",
+            "llm:chat",
         ],
     },
 ]

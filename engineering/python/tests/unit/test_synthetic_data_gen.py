@@ -29,10 +29,18 @@ class _FakeDatasetStore:
     def __init__(self):
         self.created: list[tuple[str, Any]] = []
         self.committed: list[tuple[str, list[dict], dict | None]] = []
+        self._names: dict[str, str] = {}  # name -> dataset_id（模拟重名约束）
+
+    async def list_datasets(self, *, owner_id=None, status=None, limit=100, offset=0):
+        return [{"id": ds_id, "name": name} for name, ds_id in self._names.items()]
 
     async def create(self, name, schema, *, owner_id, description=""):
+        if name in self._names:
+            raise ValueError(f"数据集 name 已存在: {name}")
         self.created.append((name, schema))
-        return f"ds_{name}"
+        ds_id = f"ds_{name}"
+        self._names[name] = ds_id
+        return ds_id
 
     async def commit_version(self, dataset_id, records, *, version=None, lineage=None):
         self.committed.append((dataset_id, records, lineage))
@@ -101,6 +109,22 @@ async def test_grid_cap_truncates(fake_store):
     )
     assert summary.combos_skipped == 250 - 5
     assert summary.total <= 5
+
+
+async def test_duplicate_dataset_name_reuses_id(fake_store):
+    """P1-2 回归：第二次生成不得因重名数据集崩溃，而是追加版本。"""
+    s1 = await generate_synthetic_dataset(
+        rpm_values=[2000.0], feed_values=[300.0], depth_values=[0.5],
+        dataset_name="synth_reuse",
+    )
+    s2 = await generate_synthetic_dataset(
+        rpm_values=[4000.0], feed_values=[300.0], depth_values=[0.5],
+        dataset_name="synth_reuse",
+    )
+    assert s1.dataset_id == s2.dataset_id == "ds_synth_reuse"
+    # 只 create 一次，commit 两次（两个版本）
+    assert len(fake_store.created) == 1
+    assert len(fake_store.committed) == 2
 
 
 async def test_disabled_env_short_circuits_at_api_layer(monkeypatch):

@@ -28,6 +28,20 @@ class MaterialEntry:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MaterialEntry:
+        # 2026-09 schema 适配：新版 materials.json（物理参数体系）没有
+        # cutting_performance 字段，此前 17 条材料全部因缺该键被
+        # "跳过不兼容"清空（知识库冷启动缺失）。该字段仅作描述性消费
+        # （知识图谱/SHARP 匹配），规划数学不依赖——缺省时按比切削力
+        # 推导粗粒度等级。
+        cutting_performance = data.get("cutting_performance")
+        if not cutting_performance:
+            kcs = data.get("specific_cutting_force")
+            if isinstance(kcs, (int, float)) and kcs > 0:
+                cutting_performance = (
+                    "excellent" if kcs <= 1500 else "good" if kcs <= 2000 else "fair" if kcs <= 2500 else "poor"
+                )
+            else:
+                cutting_performance = "standard"
         return cls(
             id=data["id"],
             name=data["name"],
@@ -35,7 +49,7 @@ class MaterialEntry:
             density_gcm3=data["density_gcm3"],
             hardness_hb=data["hardness_hb"],
             tensile_strength_mpa=data["tensile_strength_mpa"],
-            cutting_performance=data["cutting_performance"],
+            cutting_performance=cutting_performance,
             description=data.get("description", ""),
         )
 
