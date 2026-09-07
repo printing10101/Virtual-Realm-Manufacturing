@@ -93,27 +93,67 @@ class VectorStore:
     def persist_directory(self) -> str:
         return self._persist_directory
 
+    def _open_client(self):
+        import chromadb
+
+        os.makedirs(self._persist_directory, exist_ok=True)
+        return chromadb.PersistentClient(path=self._persist_directory)
+
+    def _archive_persist_dir(self) -> str | None:
+        """把 persist 目录整体改名归档（legacy schema / 损坏库自愈用）。
+
+        Returns:
+            归档后的新路径；目录不存在或改名失败返回 None。
+        """
+        persist = self._persist_directory
+        if not os.path.isdir(persist):
+            return None
+        base = f"{persist}.legacy-{time.strftime('%Y%m%d_%H%M%S')}"
+        target = base
+        counter = 2
+        while os.path.exists(target):
+            target = f"{base}_{counter}"
+            counter += 1
+        try:
+            os.rename(persist, target)
+        except OSError:
+            logger.warning("ChromaDB 旧库归档失败: %s -> %s", persist, target, exc_info=True)
+            return None
+        return target
+
     def _ensure_client(self):
         if self._client is not None:
             return
         try:
-            import chromadb
-
-            os.makedirs(self._persist_directory, exist_ok=True)
-            self._client = chromadb.PersistentClient(path=self._persist_directory)
-            logger.info("ChromaDB client initialized: %s", self._persist_directory)
+            self._client = self._open_client()
         except ImportError:
             logger.warning("ChromaDB 未安装，RAG 向量存储不可用。请安装 chromadb 以启用持久化向量检索。")
             self._client = None
-            raise RuntimeError("ChromaDB 未安装，RAG 功能无法启动。请安装 chromadb（pip install chromadb）后重试。")
+            raise RuntimeError(
+                "ChromaDB 未安装，RAG 功能无法启动。请安装 chromadb（pip install chromadb）后重试。"
+            ) from None
         except BaseException as e:  # noqa: BLE001 - pyo3 PanicException 不继承 Exception
             if type(e).__name__ in ("KeyboardInterrupt", "SystemExit"):
                 raise
-            # W 引擎验证修复：legacy 库（旧版 chromadb schema）触发 Rust 迁移
-            # panic 时给出可检索的明确错误，而非裸 500（处理方式：归档旧库重建）
-            logger.error("ChromaDB 初始化失败: %s", e, exc_info=True)
-            self._client = None
-            raise RuntimeError(f"向量存储初始化失败: {e}") from e
+            # 引擎验证修复（2026-09）：legacy 库（旧版 chromadb schema）触发
+            # Rust 迁移 panic。归档机制此前为一次性手工操作——客户机从旧版本
+            # 升级仍会复现。此处自动归档旧库并重建空库一次，升级路径自愈；
+            # 归档失败或重建仍失败才显式报错。
+            archived = self._archive_persist_dir()
+            if archived is None:
+                logger.error("ChromaDB 初始化失败: %s", e, exc_info=True)
+                self._client = None
+                raise RuntimeError(f"向量存储初始化失败: {e}") from e
+            logger.warning("ChromaDB 初始化失败（%s），旧库已归档至 %s，正在重建空库", e, archived)
+            try:
+                self._client = self._open_client()
+            except BaseException as retry_err:  # noqa: BLE001
+                if type(retry_err).__name__ in ("KeyboardInterrupt", "SystemExit"):
+                    raise
+                logger.error("ChromaDB 归档重建后仍初始化失败: %s", retry_err, exc_info=True)
+                self._client = None
+                raise RuntimeError(f"向量存储初始化失败（归档重建后）: {retry_err}") from retry_err
+        logger.info("ChromaDB client initialized: %s", self._persist_directory)
 
     def _ensure_collection(self):
         self._ensure_client()
