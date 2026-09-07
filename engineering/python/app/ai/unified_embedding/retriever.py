@@ -381,6 +381,10 @@ class CrossLayerRetriever:
             self._metadata[layer].extend([{}] * len(new_embeddings))
         self.build_index(layer, self._embeddings[layer], self._metadata[layer])
 
+    def get_all_layer_stats(self) -> dict[str, dict[str, float]]:
+        """返回全部已建层的统计（公开接口，供 REST 层使用）。"""
+        return {layer: dict(stats) for layer, stats in self._stats.items()}
+
     def get_layer_stats(self, layer: str) -> dict[str, float]:
         return self._stats.get(layer, {})
 

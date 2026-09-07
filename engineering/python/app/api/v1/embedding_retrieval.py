@@ -21,6 +21,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 from typing import Any
@@ -39,6 +40,12 @@ router = APIRouter(prefix="/api/v1/embedding", tags=["Unified Embedding"])
 
 _RETRIEVER: Any = None
 _RETRIEVER_LOCK = threading.Lock()
+# P2-11：CrossLayerRetriever 内部无锁——build/query 并发有读到半构建
+# 索引的窗口；REST 层用进程级互斥串行化全部检索操作（检索为毫秒级，
+# 串行化开销可忽略）
+_RETRIEVER_IO_LOCK = threading.Lock()
+#: 单次索引构建/查询的向量规模上限（防认证后大 payload 打爆内存/事件循环）
+_MAX_VECTORS = 5000
 
 
 def _get_retriever() -> Any:
@@ -153,17 +160,28 @@ async def encode_embeddings(req: EmbeddingEncodeRequest):
 async def build_embedding_index(req: EmbeddingIndexRequest):
     """为指定层构建 kd-tree ANN 索引（进程内，重启后需重建）。"""
     vectors = _as_array(req.vectors, "vectors", 512)
+    if vectors.shape[0] > _MAX_VECTORS:
+        raise ValidationException(
+            f"单次索引构建向量数超上限 {_MAX_VECTORS}",
+            detail={"limit": _MAX_VECTORS, "actual": vectors.shape[0]},
+        )
     if req.metadata is not None and len(req.metadata) != vectors.shape[0]:
         raise ValidationException(
             "metadata 行数必须与 vectors 行数对齐",
             detail={"vectors": vectors.shape[0], "metadata": len(req.metadata)},
         )
     retriever = _get_retriever()
+
+    def _build() -> dict[str, Any]:
+        with _RETRIEVER_IO_LOCK:
+            retriever.build_index(req.layer, vectors, req.metadata)
+            return retriever.get_layer_stats(req.layer)
+
+    # P2-11：kd-tree 构建是 CPU 密集操作，移出事件循环
     try:
-        retriever.build_index(req.layer, vectors, req.metadata)
+        stats = await asyncio.to_thread(_build)
     except ValueError as e:
         raise ValidationException(str(e)) from e
-    stats = retriever._stats.get(req.layer, {})
     return success({"layer": req.layer, "size": stats.get("size", int(vectors.shape[0])), "dim": 512})
 
 
@@ -172,14 +190,19 @@ async def query_embeddings(req: EmbeddingQueryRequest):
     """跨层检索（kd-tree ANN，支持语义轴加权与模态过滤）。"""
     query_vec = _as_array(req.query_vector, "query_vector", 512)
     retriever = _get_retriever()
+
+    def _query():
+        with _RETRIEVER_IO_LOCK:
+            return retriever.query(
+                req.layer,
+                query_vec[0],
+                k=req.k,
+                axis_weights=req.axis_weights,
+                modality_filter=req.modality_filter,
+            )
+
     try:
-        results = retriever.query(
-            req.layer,
-            query_vec[0],
-            k=req.k,
-            axis_weights=req.axis_weights,
-            modality_filter=req.modality_filter,
-        )
+        results = await asyncio.to_thread(_query)
     except ValueError as e:
         raise ValidationException(str(e)) from e
     return success({"layer": req.layer, "results": [r.to_dict() for r in results], "count": len(results)})
@@ -189,4 +212,4 @@ async def query_embeddings(req: EmbeddingQueryRequest):
 async def embedding_status():
     """已建索引统计（层名 / 规模 / 维度）。"""
     retriever = _get_retriever()
-    return success({"layers": dict(retriever._stats)})
+    return success({"layers": retriever.get_all_layer_stats()})
