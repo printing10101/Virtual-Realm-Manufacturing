@@ -290,8 +290,9 @@ class AgentOrchestrator:
 
             context: dict[str, Any] = {"input": input_data}
 
-            # 跨管线记忆：把同类任务的历史经验注入上下文（只作参考，不作决策）
-            memory_hits = self._recall_memory(pipeline_type, input_data)
+            # 跨管线记忆：把同类任务的历史经验注入上下文（只作参考，不作决策）。
+            # P2-5：checkpoint 反序列化是同步 I/O，移出事件循环
+            memory_hits = await asyncio.to_thread(self._recall_memory, pipeline_type, input_data)
             if memory_hits:
                 context["memory"] = memory_hits
                 result.memory_used = len(memory_hits)
@@ -356,7 +357,7 @@ class AgentOrchestrator:
         result.total_duration_ms = (time.perf_counter() - start_time) * 1000
         self._pipeline_history.append(result)
         self._write_trace(result)
-        self._record_memory(pipeline_type, input_data, result)
+        await asyncio.to_thread(self._record_memory, pipeline_type, input_data, result)
 
         return result
 
@@ -452,14 +453,23 @@ class AgentOrchestrator:
             from app.ai.llm_client import get_llm_client
 
             client = await get_llm_client()
-            response = await client.chat_completion(
-                [
-                    {"role": "system", "content": "你是严格的 JSON 输出规划器，无 markdown 围栏。"},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=256,
-                temperature=0.1,
+            # P2-4：锦上添花调用不陪葬——短超时（默认 15s），超时回退静态表，
+            # 不等韧性层 60s×3 次满配
+            planning_timeout = float(os.getenv("LNN_AI_LLM_PLANNING_TIMEOUT", "15"))
+            response = await asyncio.wait_for(
+                client.chat_completion(
+                    [
+                        {"role": "system", "content": "你是严格的 JSON 输出规划器，无 markdown 围栏。"},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=256,
+                    temperature=0.1,
+                ),
+                timeout=planning_timeout,
             )
+        except asyncio.TimeoutError:
+            logger.info("CONDITIONAL 规划 LLM 超时（回退静态步骤表）")
+            return base_steps, {"source": "llm_fallback", "rationale": "规划超时"}
         except Exception as e:
             logger.info("CONDITIONAL 规划 LLM 不可用（回退静态步骤表）: %s", type(e).__name__)
             return base_steps, {"source": "llm_fallback", "rationale": "LLM 不可用"}
@@ -479,10 +489,11 @@ class AgentOrchestrator:
             if name not in self._DROPPABLE_STEPS:
                 chosen.add(name)
         # 连通性守卫：保留某步则其全部上游必需（传递闭包）。
-        # 注：process_understanding 不在此列——其输入缺失时 _execute_step
-        # 会优雅回退到 context["input"]，因此依赖 dxf_parse 是软依赖。
+        # 注：process_understanding 不设上游（P2-3）——parameter_recommend
+        # 直接从 DXF 桥接特征构建 part_description（_build_part_description），
+        # 不再依赖过程理解输出；其自身输入缺失时 _execute_step 也会优雅
+        # 回退到 context["input"]。因此 LLM 规划器可以真正剔除它。
         upstream_of = {
-            "parameter_recommend": {"process_understanding"},
             "gcode_generate": {"parameter_recommend"},
             "validate_safety": {"gcode_generate"},
         }
@@ -592,9 +603,14 @@ class AgentOrchestrator:
             llm_repaired = await self._llm_repair_gcode(report, context)
             if llm_repaired is not None:
                 attempt = repair_attempt + 1
-                context["gcode_generate"]["gcode"] = llm_repaired
-                warnings = context["gcode_generate"].setdefault("repair_warnings", [])
-                warnings.append("LLM 诊断修复（已经安全重验）")
+                # P2-9：新 dict 替换而非原地改写——原 dict 已被 append 进
+                # result.steps，原地改写会让 trace 中上一步显示修复后文本，
+                # 原始失败产物不可追溯
+                context["gcode_generate"] = {
+                    **context["gcode_generate"],
+                    "gcode": llm_repaired,
+                    "repair_warnings": ["LLM 诊断修复（已经安全重验）"],
+                }
                 result.repair_count = attempt
                 result.repair_history.append(
                     {
@@ -911,7 +927,13 @@ class AgentOrchestrator:
     # Default step handlers
 
     async def _step_dxf_parse(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
-        """Parse DXF file and extract features."""
+        """Parse DXF file and extract normalized machining features.
+
+        2026-09 P1 特征桥修复：此前 ``features`` 直接放置
+        ``DxfProcessResult.features``（StageResult 聚合统计对象），下游规划器
+        拿不到孔明细——真实 DXF 端到端必然"工序规划结果为空"。现桥接为
+        规划器兼容的规范化特征列表（holes/planes dict）。
+        """
         dxf_path = input_data if isinstance(input_data, str) else input_data.get("dxf_path", "")
         if not dxf_path:
             raise ValueError("dxf_path is required")
@@ -922,31 +944,84 @@ class AgentOrchestrator:
             svc = DxfProcessService()
             # [A-H9] DXF 解析涉及文件 I/O + CPU 计算，用 asyncio.to_thread 包装
             parse_result = await asyncio.to_thread(svc.process, dxf_path)
-
-            # parse_result 是 DxfProcessResult 对象，需要转换为 dict
-            if hasattr(parse_result, "features"):
-                features: Any = parse_result.features
-            elif isinstance(parse_result, dict):
-                features = parse_result.get("features", [])
-            else:
-                features = []
-
-            if hasattr(parse_result, "metadata"):
-                metadata = parse_result.metadata
-            elif isinstance(parse_result, dict):
-                metadata = parse_result.get("metadata", {})
-            else:
-                metadata = {}
-
-            return {
-                "status": "success",
-                "features": features,
-                "metadata": metadata,
-                "dxf_path": dxf_path,
-            }
         except ImportError as e:
             logger.error("DXF module not available: %s", e)
             raise RuntimeError(f"DXF解析模块不可用，请确保已安装依赖: {e}") from e
+
+        features, metadata = self._normalize_dxf_output(parse_result)
+        return {
+            "status": "success",
+            "features": features,
+            "metadata": metadata,
+            "dxf_path": dxf_path,
+        }
+
+    @staticmethod
+    def _normalize_dxf_output(parse_result: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """把 ``DxfProcessResult`` 桥接为规划器兼容的规范化特征列表。
+
+        HoleFeatureInfo → 规划器孔 dict 契约：
+        ``{type, id, hole_type, position{x,y}, diameter, depth,
+        tolerance_grade, surface}``。通孔深度缺失（=0）时以板厚
+        （overall_height）推断——规划器校验要求通孔深度 > 0。
+        """
+        features: list[dict[str, Any]] = []
+        stage = getattr(parse_result, "features", None)
+        summary = getattr(stage, "summary", None) if stage is not None else None
+        if not isinstance(summary, dict):
+            summary = {}
+        plate_thickness = float(summary.get("overall_height") or 0.0)
+
+        for h in summary.get("holes_detail") or []:
+            if not isinstance(h, dict):
+                continue
+            hole_type = str(h.get("hole_type") or "through_hole")
+            depth = float(h.get("depth") or 0.0)
+            if depth <= 0 and hole_type == "through_hole":
+                depth = plate_thickness
+            features.append(
+                {
+                    "type": "hole",
+                    "id": h.get("hole_id") or f"H{len(features) + 1:03d}",
+                    "hole_type": hole_type,
+                    "position": {
+                        "x": float(h.get("center_x") or 0.0),
+                        "y": float(h.get("center_y") or 0.0),
+                    },
+                    "diameter": float(h.get("diameter") or 0.0),
+                    "depth": depth,
+                    "tolerance_grade": h.get("tolerance_grade") or "IT8",
+                    "surface": h.get("surface") or "A",
+                }
+            )
+        for p in summary.get("planes_detail") or []:
+            if not isinstance(p, dict):
+                continue
+            features.append(
+                {
+                    "type": "plane",
+                    "id": p.get("plane_id") or f"P{len(features) + 1:03d}",
+                    "position": {
+                        "x": float(p.get("center_x") or 0.0),
+                        "y": float(p.get("center_y") or 0.0),
+                    },
+                    "length": float(p.get("length") or 0.0),
+                    "width": float(p.get("width") or 0.0),
+                    "surface": p.get("surface") or "A",
+                }
+            )
+        metadata = {
+            "feature_stage_success": bool(getattr(stage, "success", False)),
+            "feature_stage_error": getattr(stage, "error", "") or "",
+            "hole_count": len([f for f in features if f["type"] == "hole"]),
+            "plane_count": len([f for f in features if f["type"] == "plane"]),
+            "overall": {
+                "length": summary.get("overall_length"),
+                "width": summary.get("overall_width"),
+                "height": summary.get("overall_height"),
+            },
+        }
+        return features, metadata
 
     async def _step_process_understanding(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
         """Analyze part features and determine process requirements."""
@@ -969,42 +1044,52 @@ class AgentOrchestrator:
             raise RuntimeError(f"过程理解模块不可用，请确保已安装依赖: {e}") from e
 
     async def _step_parameter_recommend(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
-        """Recommend machining parameters based on features and material."""
+        """Recommend machining parameters based on features and material.
+
+        2026-09 P1 特征桥修复：此前把过程理解输出直接当规划器输入（无 holes
+        明细），且读取规划器 PipelineResult 上不存在的 ``.parameters/.operations``
+        属性（真实字段是 ``operation_plan``）——真实链路必然产出空参数。
+        现构建正确的 part_description 并从 ``operation_plan`` 提取工序/参数。
+        """
         try:
             from app.process_planning.pipeline import ProcessPlanningPipeline
 
             pipeline = ProcessPlanningPipeline()
-            part_desc = input_data if isinstance(input_data, dict) else {"description": str(input_data)}
+            input_dict = input_data if isinstance(input_data, dict) else {}
+            part_desc = self._build_part_description(input_dict, context)
+            if not part_desc.get("holes") and not part_desc.get("planes"):
+                raise ValueError("无可规划特征：输入缺少 holes/planes 明细，且 DXF 桥接未产出特征")
             # [A-H9] 工艺规划流水线涉及多步计算，用 asyncio.to_thread 包装
             plan_result = await asyncio.to_thread(pipeline.run, part_desc)
 
-            # plan_result 是 PipelineResult 对象，需要提取属性
-            if hasattr(plan_result, "parameters"):
-                parameters = plan_result.parameters
-            elif isinstance(plan_result, dict):
-                parameters = plan_result.get("parameters", {})
-            else:
-                parameters = {}
+            if not getattr(plan_result, "success", False):
+                stage_errors = "; ".join(s.error for s in getattr(plan_result, "stages", []) if getattr(s, "error", ""))
+                raise RuntimeError(f"工艺规划失败: {stage_errors or getattr(plan_result, 'summary', '')}")
 
-            if hasattr(plan_result, "operations"):
-                operations = plan_result.operations
-            elif isinstance(plan_result, dict):
-                operations = plan_result.get("operations", [])
-            else:
-                operations = []
-
-            if hasattr(plan_result, "confidence"):
-                confidence = plan_result.confidence
-            elif isinstance(plan_result, dict):
-                confidence = plan_result.get("confidence", 0.0)
-            else:
-                confidence = 0.0
+            op_plan = getattr(plan_result, "operation_plan", None)
+            plan_dict = (
+                op_plan.to_dict()
+                if op_plan is not None
+                else {"operations": [], "setups": [], "estimated_time_min": 0.0, "face_change_count": 0}
+            )
+            parameters = self._aggregate_cutting_parameters(plan_dict.get("operations", []))
+            pipeline_input = context.get("input", {}) if isinstance(context.get("input"), dict) else {}
 
             output = {
                 "status": "success",
                 "parameters": parameters,
-                "operations": operations,
-                "confidence": confidence,
+                "operations": plan_dict.get("operations", []),
+                "setups": plan_dict.get("setups", []),
+                "estimated_time_min": plan_dict.get("estimated_time_min", 0.0),
+                "face_change_count": plan_dict.get("face_change_count", 0),
+                # gcode_generate 步骤从本输出读取这些键（此前从未透传，一直
+                # 落默认值）；显式输入优先，规划器未提供时回退
+                "material_name": (input_dict.get("material_name") or part_desc.get("material") or "45#钢"),
+                "controller_type": pipeline_input.get("controller_type", "fanuc_0i"),
+                "safe_z": pipeline_input.get("safe_z", 50.0),
+                "program_number": pipeline_input.get("program_number", 1000),
+                "confidence": 0.8 if parameters else 0.4,
+                "decision_source": "rule",
             }
 
             # 2026-09 全量升格：知识增强（工艺四元组/长期记忆检索 → LLM 提案
@@ -1018,6 +1103,90 @@ class AgentOrchestrator:
         except ImportError as e:
             logger.error("Parameter recommendation module not available: %s", e)
             raise RuntimeError(f"参数推荐模块不可用，请确保已安装依赖: {e}") from e
+
+    # 参数键名归一化：规划器知识库体系（cutting_speed_mpm/feed_mmpr 等）
+    # → 四元组/增强器标准键（spindle_rpm/feed_rate_mm_per_min 等）
+    _PARAM_KEY_ALIASES: dict[str, str] = {
+        "rpm": "spindle_rpm",
+        "spindle_speed": "spindle_rpm",
+        "spindle": "spindle_rpm",
+        "feed_rate": "feed_rate_mm_per_min",
+        "feed": "feed_rate_mm_per_min",
+        "feed_mm_min": "feed_rate_mm_per_min",
+        "depth": "depth_of_cut_mm",
+        "depth_of_cut": "depth_of_cut_mm",
+        "width_of_cut": "width_of_cut_mm",
+        "stepover": "stepover_pct",
+    }
+
+    @classmethod
+    def _aggregate_cutting_parameters(cls, operations: list[Any]) -> dict[str, Any]:
+        """从工序列表聚合代表性切削参数（键名归一化，供知识增强消费）。
+
+        只聚合数值型参数，首次出现的键优先——不同工序的同名参数以先
+        出现者为准（粗加工优先，偏保守）。
+        """
+        merged: dict[str, Any] = {}
+        for op in operations or []:
+            if not isinstance(op, dict):
+                continue
+            params = op.get("cutting_params")
+            if not isinstance(params, dict):
+                continue
+            for key, value in params.items():
+                std_key = cls._PARAM_KEY_ALIASES.get(str(key).lower(), str(key).lower())
+                if std_key not in merged and isinstance(value, (int, float)):
+                    merged[std_key] = value
+        return merged
+
+    def _build_part_description(
+        self,
+        input_data: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """组装规划器 part_description：显式输入优先，其次 DXF 桥接特征。
+
+        真实链路中 ``input_data`` 是过程理解输出（无 material/holes），
+        用户原始输入在 ``context["input"]``——两者都要取。
+        """
+        input_data = input_data if isinstance(input_data, dict) else {}
+        pipeline_input = context.get("input") if isinstance(context.get("input"), dict) else {}
+        dxf_output = context.get("dxf_parse") or {}
+        dxf_features = dxf_output.get("features")
+        dxf_features = dxf_features if isinstance(dxf_features, list) else []
+
+        def _first_list(*candidates: Any) -> list[Any]:
+            for c in candidates:
+                if isinstance(c, list) and c:
+                    return c
+            return []
+
+        holes = _first_list(input_data.get("holes"), pipeline_input.get("holes")) or [
+            f for f in dxf_features if isinstance(f, dict) and f.get("type") == "hole"
+        ]
+        planes = _first_list(input_data.get("planes"), pipeline_input.get("planes")) or [
+            f for f in dxf_features if isinstance(f, dict) and f.get("type") == "plane"
+        ]
+
+        material_raw = (
+            input_data.get("material_name")
+            or input_data.get("material")
+            or pipeline_input.get("material_name")
+            or pipeline_input.get("material")
+            or ""
+        )
+        part_desc: dict[str, Any] = {
+            # 材料名归一化：知识库材料名为"45钢"形态，用户输入常见
+            # "45#钢"——去除井号与空白提升命中率；未命中时规划器有
+            # 通用刀具建议兜底
+            "material": re.sub(r"[#\s]", "", str(material_raw)),
+            "part_type": input_data.get("part_type") or pipeline_input.get("part_type", "general"),
+        }
+        if holes:
+            part_desc["holes"] = holes
+        if planes:
+            part_desc["planes"] = planes
+        return part_desc
 
     async def _step_gcode_generate(self, input_data: Any, context: dict[str, Any]) -> dict[str, Any]:
         """Generate G-code from process plan and parameters."""

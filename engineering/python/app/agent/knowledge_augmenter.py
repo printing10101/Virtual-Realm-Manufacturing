@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import math
@@ -256,7 +257,16 @@ class KnowledgeAugmenter:
             else:
                 client = self._llm_client
             messages = self._build_prompt(material, feature_types, rule_parameters, knowledge_refs, memory_refs)
-            response = await client.chat_completion(messages, max_tokens=512, temperature=0.2)
+            # P2-4：锦上添花调用不陪葬——短超时（默认 20s，可 env 调），
+            # 超时直接回退规则参数，不等韧性层 60s×3 次满配
+            proposal_timeout = float(os.getenv("LNN_AI_LLM_PROPOSAL_TIMEOUT", "20"))
+            response = await asyncio.wait_for(
+                client.chat_completion(messages, max_tokens=512, temperature=0.2),
+                timeout=proposal_timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.info("参数增强 LLM 提案超时（回退纯规则）")
+            return None
         except Exception as e:  # LLMError/AppException 等一律降级
             logger.info("参数增强 LLM 提案不可用（回退纯规则）: %s", type(e).__name__)
             return None
@@ -266,13 +276,25 @@ class KnowledgeAugmenter:
     # 物理钳制
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def clamp_parameter(key: str, value: Any) -> tuple[float | None, str]:
+    #: 可调参数精确白名单（P2-7：子串匹配过宽，如 feed_override_pct 会被
+    #: 误按 mm/min 上下限校验——单位错配）
+    _ADJUSTABLE_KEYS: frozenset = frozenset(
+        {"spindle_rpm", "feed_rate_mm_per_min", "depth_of_cut_mm", "width_of_cut_mm", "stepover_pct"}
+    )
+    #: 切深/切宽保守绝对上界（mm）：最终仍有 validate_safety 兜底，
+    #: 但"物理钳制"应在提案阶段就挡掉荒谬值
+    MAX_DEPTH_MM = 50.0
+    MAX_WIDTH_MM = 100.0
+
+    @classmethod
+    def clamp_parameter(cls, key: str, value: Any) -> tuple[float | None, str]:
         """对单个调整值做物理边界校验。
 
         Returns:
             (合法值 or None, 说明)。None 表示该调整被丢弃。
         """
+        if key not in cls._ADJUSTABLE_KEYS:
+            return None, f"{key} 不在可调参数白名单，丢弃"
         try:
             v = float(value)
         except (TypeError, ValueError):
@@ -284,20 +306,20 @@ class KnowledgeAugmenter:
             hi = float(DEFAULT_MACHINE_CONFIG["spindle"]["max_rpm"])
             if v < lo or v > hi:
                 return None, f"{key}={v:g} 超出机床能力 [{lo:g}, {hi:g}]，丢弃"
-        elif "feed" in key:
+        elif key == "feed_rate_mm_per_min":
             lo = float(DEFAULT_MACHINE_CONFIG["feed"]["min_rate"])
             hi = float(DEFAULT_MACHINE_CONFIG["feed"]["max_rate"])
             if v <= 0 or v < lo or v > hi:
                 return None, f"{key}={v:g} 超出进给范围 ({lo:g}, {hi:g}]，丢弃"
-        elif "depth" in key or "width" in key:
-            if v <= 0:
-                return None, f"{key}={v:g} 必须为正数，丢弃"
+        elif key == "depth_of_cut_mm":
+            if v <= 0 or v > cls.MAX_DEPTH_MM:
+                return None, f"{key}={v:g} 超出合理切深范围 (0, {cls.MAX_DEPTH_MM:g}]，丢弃"
+        elif key == "width_of_cut_mm":
+            if v <= 0 or v > cls.MAX_WIDTH_MM:
+                return None, f"{key}={v:g} 超出合理切宽范围 (0, {cls.MAX_WIDTH_MM:g}]，丢弃"
         elif key == "stepover_pct":
             if not (0 < v <= 100):
                 return None, f"{key}={v:g} 必须在 (0, 100]，丢弃"
-        else:
-            # 未知参数键：不接受 AI 调整（保守）
-            return None, f"{key} 不在可调参数白名单，丢弃"
         return v, ""
 
     # ------------------------------------------------------------------
@@ -323,6 +345,10 @@ class KnowledgeAugmenter:
         if not isinstance(rule_parameters, dict) or not rule_parameters:
             return enriched
 
+        # P2-8：开关判断前置——关闭时不做任何检索/播种副作用
+        if not self._enabled:
+            return enriched
+
         input_data = context.get("input", {}) if isinstance(context, dict) else {}
         material = normalize_material(input_data.get("material_name") or input_data.get("material"))
         feature_types = extract_feature_types(context or {})
@@ -335,9 +361,7 @@ class KnowledgeAugmenter:
             except (RuntimeError, ValueError, TypeError, AttributeError) as e:
                 logger.debug("记忆检索失败（跳过）: %s", e)
 
-        # 关闭开关 / 无任何参考知识：保持纯规则（不打无谓的 LLM 调用）
-        if not self._enabled:
-            return enriched
+        # 无任何参考知识：保持纯规则（不打无谓的 LLM 调用）
         if not knowledge_refs and not memory_refs:
             return enriched
 

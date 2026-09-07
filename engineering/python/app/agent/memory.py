@@ -31,6 +31,7 @@ import logging
 import re
 import threading
 import time
+import zlib
 from typing import Any
 
 from app.state.checkpoint import CheckpointLifecycleManager
@@ -69,7 +70,9 @@ class OrchestratorMemory:
     def _load(self) -> None:
         try:
             raw = self._lifecycle.load_checkpoint_file(self._agent_id, _MEMORY_CHECKPOINT_ID)
-        except (OSError, ValueError) as e:
+        except (OSError, ValueError, zlib.error, EOFError) as e:
+            # zlib.error/EOFError：checkpoint 截断或损坏（持久化层最常见故障）——
+            # 以空记忆启动，绝不让记忆故障击穿管线
             logger.warning("OrchestratorMemory 加载失败（以空记忆启动）: %s", e)
             raw = None
         if not raw:
@@ -131,9 +134,9 @@ class OrchestratorMemory:
         return entry
 
     def _prune(self) -> None:
-        """按 (importance 升序, created_at 升序) 剪枝至 MAX_MEMORY_ENTRIES 以内。"""
+        """超过阈值即剪回阈值（P2-6：原实现剪到 MAX 反而是 no-op 区间）。"""
         self._entries.sort(key=lambda e: (e.get("importance", 0.0), e.get("created_at", 0.0)))
-        self._entries = self._entries[-MAX_MEMORY_ENTRIES:]
+        self._entries = self._entries[-MEMORY_PRUNING_THRESHOLD:]
 
     # ------------------------------------------------------------------
     # 检索

@@ -170,6 +170,14 @@ class TestKnowledgeAugmenter:
         out = await aug.augment(_rule_output(), _context())
         assert out["decision_source"] == "ai_confirmed_rule"
 
+    def test_clamp_upper_bounds_and_exact_whitelist(self):
+        """P2-7：切深/切宽上界 + 精确键名白名单。"""
+        assert KnowledgeAugmenter.clamp_parameter("depth_of_cut_mm", 1e9)[0] is None
+        assert KnowledgeAugmenter.clamp_parameter("width_of_cut_mm", 1e9)[0] is None
+        assert KnowledgeAugmenter.clamp_parameter("depth_of_cut_mm", 5.0) == (5.0, "")
+        # 子串键不再放行（feed_override_pct 不按 mm/min 校验）
+        assert KnowledgeAugmenter.clamp_parameter("feed_override_pct", 10)[0] is None
+
     def test_normalize_material(self):
         assert normalize_material("TC4钛合金") == "titanium"
         assert normalize_material("6061铝合金") == "aluminum"
@@ -236,10 +244,11 @@ class TestConditionalPlanner:
         orch = _orchestrator(tmp_path)
         steps, meta = await orch._plan_steps_conditionally("dxf_to_gcode", {"description": "钛合金件"})
         names = [n for n, _ in steps]
-        # LLM 未选 dxf_parse；连通性闭包回补 process_understanding（下游的上游），
-        # dxf_parse 不被任何保留步骤依赖 → 保持剔除
+        # P2-3 修复后：process_understanding 无上游依赖（parameter_recommend
+        # 直接从 DXF 桥接特征构建 part_description）——LLM 未选它即真正剔除；
+        # dxf_parse 同理剔除。LLM 规划获得真实的裁剪自由度。
         assert meta["source"] == "llm"
-        assert names == ["process_understanding", "parameter_recommend", "gcode_generate", "validate_safety"]
+        assert names == ["parameter_recommend", "gcode_generate", "validate_safety"]
 
     async def test_validate_safety_cannot_be_dropped(self, tmp_path, monkeypatch):
         from app.ai import llm_client as mod
