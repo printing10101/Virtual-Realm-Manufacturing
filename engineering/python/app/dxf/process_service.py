@@ -304,6 +304,12 @@ class DxfProcessService:
                     "overall_length": r.overall_length,
                     "overall_width": r.overall_width,
                     "overall_height": r.overall_height,
+                    # 2026-09 P1 特征桥：孔/平面明细此前在此处被丢弃（只留计数），
+                    # 导致编排器 dxf_to_gcode 链拿不到规划器所需的 holes 数据，
+                    # 真实 DXF 端到端必然"工序规划结果为空"。明细已由
+                    # FeatureExtractor 算出，序列化随 summary 下发。
+                    "holes_detail": [h.to_dict() for h in r.holes],
+                    "planes_detail": [p.to_dict() for p in r.planes],
                 },
                 error="; ".join(r.errors) if r.errors else "",
             )
