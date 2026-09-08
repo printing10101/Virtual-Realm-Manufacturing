@@ -36,7 +36,7 @@
 | **工程化** | Docker（docker-compose + Dockerfile）、Git LFS、GitHub Actions（11 工作流）、Husky + commitlint + lint-staged + ruff/black + eslint/prettier |
 | **数据存储** | SQLite（结构化：加工/刀具/训练）、ChromaDB（嵌入）、Redis（缓存，可选）、Git LFS（PyTorch 权重） |
 
-> **关键解耦（V2.7.0）**：训练侧依赖（torch/torchdiffeq/mlflow/xgboost）已迁移至 `research/requirements.txt`；工程运行侧仅用 ONNX Runtime 消费训练好的模型，运行时不再依赖 torch（约 2GB → 50MB）。
+> **关键解耦（V2.7.0）**：训练侧依赖（torch/torchdiffeq/mlflow/xgboost）已迁移至 `research/requirements.txt`；LNN 推理侧仅用 ONNX Runtime 消费模型（无 torch）。注意口径：RAG 嵌入（sentence-transformers/transformers）仍硬依赖 CPU-only torch（≈476MB，须随桌面运行时分发，见 `engineering/python/requirements.txt`）；切削力/颤振预测的降级路径为 Kienzle/T-lusty 解析解（非 ONNX）。**随包权重（2026-09 更新）**：`cutting_force` 与 `wear_prediction` 已由训练管线产出真实权重（`engineering/python/models/lnn/`，v2 npz + manifest，见 `models/README.md`）；`surface_roughness`/`temperature` 数据不足未训练，运行时以 `weights_source=random_init` 显式标记；精度口径见 `engineering/python/models/lnn/*.manifest.json` 与 `docs/development/lnn-权重训练与分发接线方案.md` 执行记录。
 
 ---
 
@@ -55,7 +55,7 @@
 | `mcp_server/` | Agent Gateway：把 LNN 能力包装为 MCP 工具 |
 | `shared/` | 跨工程/科研的共享 Python 库（常量、数据契约、LNN 类型） |
 | `config/` | 运行时 YAML：`data_pipeline.yaml`、`postprocessor_config.yaml`、`safety_rules.yaml` |
-| `models/` | LNN 模型权重（Git LFS，含 `embedding_cache`） |
+| `models/` | LNN 权重分发目录（2026-09 起真实权重随包：cutting_force + wear_prediction，v2 npz + manifest；`engineering/python/models/lnn/`，训练复现见 `models/README.md`） |
 | `docs/`、`docs-site/` | 文档体系（20+ 子目录）、VitePress 文档站 |
 | `tests/`、`engineering/python/app/benchmarks/` | Vitest 前端测试 + pytest 全套 + 性能基准 |
 

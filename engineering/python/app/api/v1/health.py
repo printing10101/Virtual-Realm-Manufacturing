@@ -123,6 +123,34 @@ def _get_memory_info() -> dict[str, Any]:
         return {"error": f"unavailable: {type(e).__name__}"}
 
 
+def _get_lnn_weights_status() -> dict[str, Any]:
+    """LNN 随包权重装载状态（weights_source 显式化）。
+
+    叙事红线配套：随机初始化权重必须可辨识，不得被当作 AI 能力对外宣称
+    （docs/development/lnn-权重训练与分发接线方案.md WP1/WP4）。
+    """
+    try:
+        from app.ai.lnn.inference.registry import LNNModelRegistry
+        from app.services.model_registry_service import _default_registry_model_dir
+
+        registry = LNNModelRegistry(model_dir=_default_registry_model_dir())
+        models: dict[str, Any] = {}
+        trained = 0
+        for name in registry.list_models():
+            verdict = registry.validate_model(name)
+            models[name] = {
+                "weights_source": verdict.get("weights_source"),
+                "weights_loaded": bool(verdict.get("load_test_passed")),
+                "path": verdict.get("model_path"),
+            }
+            if verdict.get("weights_source") == "trained":
+                trained += 1
+        return {"trained_count": trained, "total": len(models), "models": models}
+    except (OSError, ValueError, RuntimeError, ImportError) as e:
+        logger.warning("Failed to get LNN weights status: %s", e, exc_info=True)
+        return {"error": f"unavailable: {type(e).__name__}"}
+
+
 @router.get("/system")
 async def system_health(config: AppConfig = Depends(get_config)):
     """Full system health check — returns status of all components."""
@@ -292,6 +320,19 @@ async def system_health(config: AppConfig = Depends(get_config)):
             else ("warning" if tdengine_status == "disabled" else "error"),
             "version": None,
             "details": tdengine_health,
+        }
+    )
+
+    # LNN 随包权重（无已训练权重为 warning 而非 error：随机初始化可降级运行，
+    # 但状态必须显式可辨）
+    lnn_weights = _get_lnn_weights_status()
+    items.append(
+        {
+            "component": "lnn_weights",
+            "name": "LNN 随包权重",
+            "status": "ok" if lnn_weights.get("trained_count") else "warning",
+            "version": None,
+            "details": lnn_weights,
         }
     )
 
