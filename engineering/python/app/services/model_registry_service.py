@@ -13,11 +13,23 @@ each created their own LNNModelRegistry, causing data inconsistency.
 from __future__ import annotations
 
 import threading
+from pathlib import Path
 from typing import Any
 
 from app.ai.lnn.inference.registry import LNNModelRegistry, ModelRegistry
 from app.ai.lnn.inference.model_cache import get_model_cache, ModelCache
 from app.services._shared.service_base import BaseSingletonService
+
+
+def _default_registry_model_dir() -> str | None:
+    """解析随包权重目录 engineering/python/models/lnn（CWD 无关）。
+
+    注册表预定义模型的相对路径（models/lnn/*.npz）按进程 CWD 解析，
+    服务可能从任意目录启动——这里显式锚定到随包目录，保证权重加载
+    不受启动目录影响。目录不存在时返回 None（保持相对路径行为）。
+    """
+    model_dir = Path(__file__).resolve().parents[2] / "models" / "lnn"
+    return str(model_dir) if model_dir.is_dir() else None
 
 
 class ModelRegistryService(BaseSingletonService):
@@ -30,7 +42,7 @@ class ModelRegistryService(BaseSingletonService):
     """
 
     def __init__(self):
-        self._model_registry: LNNModelRegistry = LNNModelRegistry()
+        self._model_registry: LNNModelRegistry = LNNModelRegistry(model_dir=_default_registry_model_dir())
         self._pytorch_registry: ModelRegistry = ModelRegistry()
         self._model_cache: ModelCache = get_model_cache()
         self._training_tasks: dict[str, dict[str, Any]] = {}

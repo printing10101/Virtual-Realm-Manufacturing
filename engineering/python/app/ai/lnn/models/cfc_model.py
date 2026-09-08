@@ -46,7 +46,7 @@ Example:
 import numpy as np
 from typing import Any
 
-from .base_lnn import BaseLNNModel, DEFAULT_WEIGHT_DECAY
+from .base_lnn import BaseLNNModel, DEFAULT_WEIGHT_DECAY, _collect_indexed_arrays
 
 
 class CFCModel(BaseLNNModel):
@@ -373,6 +373,32 @@ class CFCModel(BaseLNNModel):
             }
         )
         return info
+
+    def state_arrays(self) -> dict[str, np.ndarray]:
+        """导出全部参数：weights / biases。"""
+        if not self._initialized:
+            self.build()
+        arrays: dict[str, np.ndarray] = {}
+        for i, w in enumerate(self.weights):
+            arrays[f"weights.{i}"] = w
+        for i, b in enumerate(self.biases):
+            arrays[f"biases.{i}"] = b
+        return arrays
+
+    def load_state_arrays(self, arrays: dict[str, np.ndarray]) -> None:
+        """从数组字典恢复完整参数结构（含维度派生属性），无需再 build()。"""
+        weights = _collect_indexed_arrays(arrays, "weights")
+        biases = _collect_indexed_arrays(arrays, "biases")
+        if not weights:
+            raise ValueError("CFC 加载失败：权重文件缺少 weights.* 参数数组")
+        if len(weights) != len(biases):
+            raise ValueError(f"CFC 加载失败：weights 层数（{len(weights)}）与 biases 层数（{len(biases)}）不一致")
+        self.weights = weights
+        self.biases = biases
+        # 维度派生属性与 build() 保持一致
+        self.hidden_dim = int(weights[0].shape[1])
+        self.num_layers = len(weights) - 1
+        self._initialized = True
 
     def to_torch(self, device: str = "cpu"):
         """

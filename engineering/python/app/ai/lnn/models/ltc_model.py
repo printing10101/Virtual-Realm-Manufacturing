@@ -53,7 +53,7 @@ research 侧的 torch 变体，运行时仅使用 NumPy 推理。
 import numpy as np
 from typing import Any
 
-from .base_lnn import BaseLNNModel, DEFAULT_WEIGHT_DECAY
+from .base_lnn import BaseLNNModel, DEFAULT_WEIGHT_DECAY, _collect_indexed_arrays
 
 
 class LTCModel(BaseLNNModel):
@@ -470,6 +470,45 @@ class LTCModel(BaseLNNModel):
         """重置记忆状态"""
         if self._initialized:
             self.memory_state = np.zeros((1, self.memory_size))
+
+    def state_arrays(self) -> dict[str, np.ndarray]:
+        """导出全部参数：weights / biases / memory_weights / memory_state。"""
+        if not self._initialized:
+            self.build()
+        arrays: dict[str, np.ndarray] = {}
+        for i, w in enumerate(self.weights):
+            arrays[f"weights.{i}"] = w
+        for i, b in enumerate(self.biases):
+            arrays[f"biases.{i}"] = b
+        for i, m in enumerate(self.memory_weights):
+            arrays[f"memory_weights.{i}"] = m
+        if self.memory_state is not None:
+            arrays["memory_state"] = self.memory_state
+        return arrays
+
+    def load_state_arrays(self, arrays: dict[str, np.ndarray]) -> None:
+        """从数组字典恢复完整参数结构（含维度派生属性），无需再 build()。"""
+        weights = _collect_indexed_arrays(arrays, "weights")
+        biases = _collect_indexed_arrays(arrays, "biases")
+        if not weights:
+            raise ValueError("LTC 加载失败：权重文件缺少 weights.* 参数数组")
+        if len(weights) != len(biases):
+            raise ValueError(f"LTC 加载失败：weights 层数（{len(weights)}）与 biases 层数（{len(biases)}）不一致")
+        memory_weights = _collect_indexed_arrays(arrays, "memory_weights")
+        if len(memory_weights) != 2:
+            raise ValueError(f"LTC 加载失败：memory_weights.* 需 2 个数组（实际 {len(memory_weights)} 个）")
+        self.weights = weights
+        self.biases = biases
+        self.memory_weights = memory_weights
+        # 维度派生属性与 build() 保持一致（input_dim/output_dim 已由基类 load 恢复）
+        self.hidden_dim = int(weights[0].shape[1])
+        self.num_layers = len(weights) - 1
+        if "memory_state" in arrays:
+            self.memory_state = np.asarray(arrays["memory_state"])
+        else:
+            self.memory_state = np.zeros((1, int(memory_weights[0].shape[1])))
+        self.memory_size = int(self.memory_state.shape[1])
+        self._initialized = True
 
     def get_model_info(self) -> dict[str, Any]:
         """获取LTC模型信息"""

@@ -128,28 +128,60 @@ class ModelRegistry(BaseModelRegistry):
         entry = self.registry[model_name]
         config = self._require_config(entry)
 
-        model_class = self.MODEL_CLASS_MAP.get(config.model_type)
-        if model_class is None:
-            raise ValueError(
-                f"模型加载失败：未知的模型类型 '{config.model_type}'。支持的模型类型可通过 registry.MODEL_CLASS_MAP.keys() 查看。请检查 ModelConfig 中的 model_type 配置，或调用 GET /api/v1/lnn/models 查看支持的模型类型。"
+        hyperparams = config.hyperparameters or {}
+        input_dim = hyperparams.get("input_dim", 128)
+        output_dim = hyperparams.get("output_dim", 10)
+
+        weights_source = "random_init"
+        weights_path: str | None = None
+
+        if config.model_path and config.model_path.endswith(".onnx") and os.path.exists(config.model_path):
+            # ONNX 工件（训练管线产出，torch parity 已在导出时验证）
+            from app.ai.lnn.models.onnx_runtime_model import OnnxLNNModel
+
+            model: BaseLNNModel = OnnxLNNModel(
+                model_name=config.model_name,
+                input_dim=input_dim,
+                output_dim=output_dim,
+                device=config.device,
+                **hyperparams,
+            )
+            model.load(config.model_path)
+            weights_source = "trained"
+            weights_path = config.model_path
+        else:
+            model_class = self.MODEL_CLASS_MAP.get(config.model_type)
+            if model_class is None:
+                raise ValueError(
+                    f"模型加载失败：未知的模型类型 '{config.model_type}'。支持的模型类型可通过 registry.MODEL_CLASS_MAP.keys() 查看。请检查 ModelConfig 中的 model_type 配置，或调用 GET /api/v1/lnn/models 查看支持的模型类型。"
+                )
+
+            # hyperparams 可能携带 input_dim/output_dim/device（注册时写入）——
+            # 剔除后再解包，避免与显式实参重复（曾触发 TypeError: got multiple values）
+            extra_params = {
+                k: v for k, v in hyperparams.items() if k not in ("input_dim", "output_dim", "device", "model_name")
+            }
+            model = model_class(
+                model_name=config.model_name,
+                input_dim=input_dim,
+                output_dim=output_dim,
+                device=config.device,
+                **extra_params,
             )
 
-        hyperparams = config.hyperparameters or {}
-        model = model_class(
-            model_name=config.model_name,
-            input_dim=hyperparams.get("input_dim", 128),
-            output_dim=hyperparams.get("output_dim", 10),
-            device=config.device,
-            **hyperparams,
-        )
-
-        if config.model_path and os.path.exists(config.model_path):
-            model.load(config.model_path)
+            if config.model_path and os.path.exists(config.model_path):
+                model.load(config.model_path)
+                # v2 npz 携带 is_trained；v1 仅元数据文件与未训练文件都不算已训练权重
+                weights_source = "trained" if getattr(model, "is_trained", False) else "file_untrained"
+                weights_path = config.model_path
+            # 权重文件缺失时不阻断（保住「可降级演示」的既有契约），
+            # 但必须以 random_init 显式标记——随机权重不得被上层当作 AI 能力对外宣称
 
         model.build()
 
         entry.model = model
         entry.is_loaded = True
+        entry.metadata = {**(entry.metadata or {}), "weights_source": weights_source, "weights_path": weights_path}
         self._evict_cache()
 
     def _evict_cache(self) -> None:
@@ -175,6 +207,7 @@ class ModelRegistry(BaseModelRegistry):
                     "is_loaded": entry.is_loaded,
                     "access_count": entry.access_count,
                     "version": config.version,
+                    "weights_source": (entry.metadata or {}).get("weights_source"),
                 }
             )
         return models
@@ -197,6 +230,8 @@ class ModelRegistry(BaseModelRegistry):
             "hyperparameters": config.hyperparameters,
             "access_count": entry.access_count,
             "last_accessed": entry.last_accessed,
+            "weights_source": (entry.metadata or {}).get("weights_source"),
+            "weights_path": (entry.metadata or {}).get("weights_path"),
         }
 
         if entry.model is not None:

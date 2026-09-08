@@ -9,6 +9,7 @@ research/。train() 内对 research 侧 ``training.reproducibility`` 的依赖
 
 from abc import ABC, abstractmethod
 from typing import Any
+import json
 import numpy as np
 import time
 import logging
@@ -18,6 +19,34 @@ logger = logging.getLogger(__name__)
 
 # AdamW 优化器默认权重衰减系数（L2 正则化）
 DEFAULT_WEIGHT_DECAY: float = 1e-5
+
+#: npz 权重文件格式版本：
+#: - v1 = 仅元数据（历史缺陷：不含任何参数数组，加载后权重仍为初始化值）
+#: - v2 = 元数据 + ``param.*`` 参数数组 + config_json，save/load 完整往返
+NPZ_FORMAT_VERSION = 2
+
+#: npz 中参数数组的键前缀（与元数据键区分）
+_PARAM_PREFIX = "param."
+
+
+def _collect_indexed_arrays(arrays: dict[str, np.ndarray], prefix: str) -> list[np.ndarray]:
+    """按 ``prefix.0, prefix.1, ...`` 收集连续索引的参数数组。
+
+    检测索引空洞（如 0/2 缺 1）——空洞意味着文件损坏，静默截断会加载出
+    错位的权重，必须显式失败。
+
+    Raises:
+        ValueError: 索引不连续时抛出。
+    """
+    out: list[np.ndarray] = []
+    i = 0
+    while f"{prefix}.{i}" in arrays:
+        out.append(np.asarray(arrays[f"{prefix}.{i}"]))
+        i += 1
+    total = sum(1 for k in arrays if k.startswith(prefix + "."))
+    if total != len(out):
+        raise ValueError(f"权重文件损坏：{prefix}.* 参数数组索引不连续（共 {total} 个，连续段仅 {len(out)}）。")
+    return out
 
 
 class BaseLNNModel(ABC):
@@ -497,23 +526,77 @@ class BaseLNNModel(ABC):
             "training_epochs": len(self.training_history.get("loss", [])),
         }
 
+    def state_arrays(self) -> dict[str, np.ndarray]:
+        """导出全部可学习参数数组（键不含 ``param.`` 前缀，save 时自动加）。
+
+        子类必须重写以纳入自有参数（weights/biases/memory 等）；
+        基类默认无参数。
+        """
+        return {}
+
+    def load_state_arrays(self, arrays: dict[str, np.ndarray]) -> None:
+        """从数组字典恢复参数（键与 :meth:`state_arrays` 一致，子类重写）。
+
+        实现必须重建完整的参数结构（含维度派生属性）并置 ``_initialized=True``，
+        使模型无需再调用 build() 即可前向推理。
+        """
+        if arrays:
+            raise ValueError(
+                f"{type(self).__name__} 未实现 load_state_arrays，无法加载含参数的权重文件"
+                f"（{len(arrays)} 个参数数组被忽略）。"
+            )
+
     def save(self, path: str) -> None:
-        """保存模型到文件。"""
-        np.savez(
-            path,
-            model_name=self.model_name,
-            input_dim=self.input_dim,
-            output_dim=self.output_dim,
-            is_trained=self.is_trained,
-        )
+        """保存模型到 .npz（元数据 + 全部可学习参数）。
+
+        Args:
+            path: 目标文件路径（建议 .npz 后缀；np.savez 缺后缀时自动补）。
+        """
+        # build 幂等：未构建时先构建，保证参数数组存在（保存随机初始化权重合法，
+        # is_trained=False 已表明其未经训练）
+        self.build()
+        payload: dict[str, Any] = {
+            "format_version": NPZ_FORMAT_VERSION,
+            "model_name": self.model_name,
+            "input_dim": self.input_dim,
+            "output_dim": self.output_dim,
+            "is_trained": self.is_trained,
+            "config_json": json.dumps(self.config, default=str),
+        }
+        for key, arr in self.state_arrays().items():
+            payload[f"{_PARAM_PREFIX}{key}"] = np.asarray(arr)
+        np.savez(path, **payload)
 
     def load(self, path: str) -> None:
-        """从文件加载模型。"""
-        data = np.load(path)
-        self.model_name = str(data["model_name"])
-        self.input_dim = int(data["input_dim"])
-        self.output_dim = int(data["output_dim"])
-        self.is_trained = bool(data["is_trained"])
+        """从 .npz 加载模型（元数据 + 参数）。
+
+        兼容历史 v1 格式（仅元数据、无 ``param.*``）：仅恢复元数据并告警，
+        参数保持当前初始化——调用方应通过运行时的 ``weights_source`` 语义
+        辨识此类文件（不得视为已训练权重）。
+        """
+        data = np.load(path, allow_pickle=False)
+        if "model_name" in data.files:
+            self.model_name = str(data["model_name"])
+        if "input_dim" in data.files:
+            self.input_dim = int(data["input_dim"])
+        if "output_dim" in data.files:
+            self.output_dim = int(data["output_dim"])
+        if "is_trained" in data.files:
+            self.is_trained = bool(data["is_trained"])
+        if "config_json" in data.files:
+            try:
+                self.config = json.loads(str(data["config_json"]))
+            except (ValueError, TypeError):
+                logger.warning("权重文件 %s 的 config_json 解析失败，保留当前 config", path)
+
+        arrays = {key[len(_PARAM_PREFIX) :]: data[key] for key in data.files if key.startswith(_PARAM_PREFIX)}
+        if not arrays:
+            logger.warning(
+                "权重文件 %s 为 v1 仅元数据格式（不含 param.* 参数数组）——参数保持初始化状态，不得视为已训练权重。",
+                path,
+            )
+            return
+        self.load_state_arrays(arrays)
 
     def measure_inference_time(self, x: np.ndarray, n_runs: int = 100) -> dict[str, float]:
         """

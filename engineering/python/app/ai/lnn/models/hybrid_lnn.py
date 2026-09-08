@@ -27,7 +27,7 @@ research/models/hybrid_lnn.py 回迁；训练转换路径（to_torch/_train_step
 import numpy as np
 from typing import Any
 
-from .base_lnn import BaseLNNModel, DEFAULT_WEIGHT_DECAY
+from .base_lnn import BaseLNNModel, DEFAULT_WEIGHT_DECAY, _collect_indexed_arrays
 
 
 class HybridLNNModel(BaseLNNModel):
@@ -536,6 +536,48 @@ class HybridLNNModel(BaseLNNModel):
         predictions = self.forward(val_data)
         loss = self._cross_entropy_loss(predictions, val_labels)
         return float(loss)
+
+    def state_arrays(self) -> dict[str, np.ndarray]:
+        """导出全部参数：cnn_weights/cnn_biases + lnn_weights/lnn_biases。
+
+        fusion_weights/fusion_bias 为从未参与前向计算的死属性，不序列化。
+        """
+        if not self._initialized:
+            self.build()
+        arrays: dict[str, np.ndarray] = {}
+        for i, w in enumerate(self.cnn_weights):
+            arrays[f"cnn_weights.{i}"] = w
+        for i, b in enumerate(self.cnn_biases):
+            arrays[f"cnn_biases.{i}"] = b
+        for i, w in enumerate(self.lnn_weights):
+            arrays[f"lnn_weights.{i}"] = w
+        for i, b in enumerate(self.lnn_biases):
+            arrays[f"lnn_biases.{i}"] = b
+        return arrays
+
+    def load_state_arrays(self, arrays: dict[str, np.ndarray]) -> None:
+        """从数组字典恢复完整参数结构（含维度派生属性），无需再 build()。"""
+        cnn_weights = _collect_indexed_arrays(arrays, "cnn_weights")
+        cnn_biases = _collect_indexed_arrays(arrays, "cnn_biases")
+        lnn_weights = _collect_indexed_arrays(arrays, "lnn_weights")
+        lnn_biases = _collect_indexed_arrays(arrays, "lnn_biases")
+        if not cnn_weights or not lnn_weights:
+            raise ValueError("HybridLNN 加载失败：权重文件缺少 cnn_weights.*/lnn_weights.* 参数数组")
+        if len(cnn_weights) != len(cnn_biases) or len(lnn_weights) != len(lnn_biases):
+            raise ValueError(
+                "HybridLNN 加载失败：CNN/LNN 的 weights 与 biases 层数不一致"
+                f"（cnn {len(cnn_weights)}/{len(cnn_biases)}，lnn {len(lnn_weights)}/{len(lnn_biases)}）"
+            )
+        self.cnn_weights = cnn_weights
+        self.cnn_biases = cnn_biases
+        self.lnn_weights = lnn_weights
+        self.lnn_biases = lnn_biases
+        # 维度派生属性与 build() 保持一致
+        self.cnn_filters = [int(w.shape[-1]) for w in cnn_weights]
+        self.cnn_kernel_sizes = [int(w.shape[0]) for w in cnn_weights]
+        self.lnn_hidden_dim = int(lnn_weights[0].shape[1])
+        self.lnn_num_layers = len(lnn_weights) - 1
+        self._initialized = True
 
     def get_model_info(self) -> dict[str, Any]:
         """获取Hybrid模型信息"""

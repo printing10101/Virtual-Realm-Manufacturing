@@ -42,8 +42,8 @@ class ModelInfo:
         if not self.model_path:
             raise ValueError(
                 "Model registration failed: model_path cannot be empty. "
-                "Path must point to a trained weight file (.pt or .pth), "
-                "e.g. 'models/cutting_force_v1.pt'."
+                "Path must point to a trained weight file (.npz v2 或 .onnx), "
+                "e.g. 'models/lnn/cutting_force.npz'."
             )
         if not self.input_features:
             raise ValueError(
