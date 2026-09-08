@@ -241,6 +241,18 @@ class DatasetStore(IDatasetStore):
         if not dataset_id:
             raise ValueError("dataset_id 不能为空")
 
+        # 血缘必须先独立落库：dataset_versions.lineage_record_id 带
+        # ForeignKey(lineage_records.id)，历史上只把 id 字符串写进版本行、
+        # 从不持久化 LineageRecord 本体 → 插入版本必炸 FOREIGN KEY
+        # constraint failed（2026-09 修复）。
+        if lineage is not None:
+            from app.data.lineage_store import get_lineage_store
+
+            await get_lineage_store().record(lineage)
+            lineage_id: str | None = lineage.record_id
+        else:
+            lineage_id = None
+
         async with await self._get_session() as session:
             ds_orm = await session.execute(select(DatasetORM).where(DatasetORM.id == dataset_id))
             dataset = ds_orm.scalar_one_or_none()
@@ -270,11 +282,7 @@ class DatasetStore(IDatasetStore):
             _, size_bytes = _write_records(content_hash, records)
             storage_uri = _storage_uri_for_hash(content_hash)
 
-            # lineage 关联（若调用方提供）
-            lineage_id: str | None = None
-            if lineage is not None:
-                lineage_id = lineage.record_id
-
+            # lineage 关联（已在上方面持久化，此处仅引用 id）
             orm = DatasetVersionORM(
                 dataset_id=dataset_id,
                 version=resolved_version,
