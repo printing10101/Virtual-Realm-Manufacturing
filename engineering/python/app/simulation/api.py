@@ -19,6 +19,7 @@ Example:
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import time
 import uuid
@@ -467,6 +468,130 @@ async def check_tool_slot_conflict(
     )
 
 
+def _render_toolpath_animation(nc_code: str, fmt: str, tool_diameter: float) -> tuple["io.BytesIO", str, str]:
+    """同步渲染刀具路径动画（GIF/MP4），供 asyncio.to_thread 在工作线程调用。
+
+    性能：历史轨迹采用"增量历史层"——已经过的段按 50% 亮度逐段累积到常驻
+    图层，每帧只拷贝图层再画当前亮段，总绘制量 O(段数) 而非 O(帧数×段数)。
+
+    Raises:
+        ValueError: G 代码无可识别运动段。
+    """
+    import io
+
+    import numpy as np
+    from PIL import Image, ImageDraw
+
+    parser = ToolpathParser(controller_type="fanuc")
+    segments = parser.parse_gcode(nc_code) if nc_code.strip() else []
+
+    if not segments:
+        raise ValueError("No valid toolpath segments found in G-code")
+
+    def map_coord(x: float, y: float, z: float) -> tuple[int, int]:
+        canvas_x = int(100 + (x + 100) * 3)
+        canvas_y = int(500 - (z * 5))
+        return canvas_x, canvas_y
+
+    colors = {
+        "rapid": (244, 67, 54),
+        "linear": (76, 175, 80),
+        "arc": (33, 150, 243),
+        "dwell": (255, 193, 7),
+    }
+
+    def faded(color: tuple[int, int, int]) -> tuple[int, int, int]:
+        return (int(color[0] * 0.5), int(color[1] * 0.5), int(color[2] * 0.5))
+
+    num_frames = min(len(segments), 50)  # Limit to 50 frames for performance
+    frame_indices = np.linspace(0, len(segments) - 1, num_frames, dtype=int)
+
+    # 常驻历史图层：底色 + 毛坯框 + 已经过的段（50% 亮度）
+    history = Image.new("RGB", (800, 600), color=(26, 26, 46))
+    history_draw = ImageDraw.Draw(history)
+    history_draw.rectangle([100, 100, 700, 500], outline=(100, 100, 100), width=2)
+
+    frames: list = []
+    drawn_upto = -1  # history 已包含 segments[0..drawn_upto]
+    for idx in frame_indices:
+        while drawn_upto < idx - 1:
+            drawn_upto += 1
+            prev_seg = segments[drawn_upto]
+            history_draw.line(
+                [map_coord(*prev_seg.start_point), map_coord(*prev_seg.end_point)],
+                fill=faded(colors.get(prev_seg.type, (200, 200, 200))),
+                width=2,
+            )
+
+        img = history.copy()
+        draw = ImageDraw.Draw(img)
+
+        segment = segments[idx]
+        line_color = colors.get(segment.type, (200, 200, 200))
+
+        # Draw current segment (bright)
+        draw.line(
+            [map_coord(*segment.start_point), map_coord(*segment.end_point)],
+            fill=line_color,
+            width=3,
+        )
+
+        # Draw tool position
+        end_2d = map_coord(*segment.end_point)
+        tool_radius = max(int(tool_diameter / 2), 1)
+        draw.ellipse(
+            [end_2d[0] - tool_radius, end_2d[1] - tool_radius, end_2d[0] + tool_radius, end_2d[1] + tool_radius],
+            fill=(255, 255, 0),
+            outline=(255, 200, 0),
+            width=2,
+        )
+
+        # Add frame info
+        draw.text((10, 10), f"Frame {idx + 1}/{num_frames}", fill=(200, 200, 200))
+        draw.text((10, 30), f"Segment: {segment.type}", fill=line_color)
+
+        frames.append(img)
+
+    buffer = io.BytesIO()
+
+    if fmt == "gif":
+        frames[0].save(
+            buffer,
+            format="GIF",
+            save_all=True,
+            append_images=frames[1:],
+            duration=100,  # 100ms per frame
+            loop=0,
+        )
+        media_type = "image/gif"
+        filename = f"simulation_{uuid.uuid4().hex[:8]}.gif"
+    else:  # mp4
+        # For MP4, we'll use imageio if available, otherwise fallback to GIF
+        try:
+            import imageio
+
+            frames_array = [np.array(frame) for frame in frames]
+            # imageio.v2.mimsave 接受 fps 参数（v3 默认模块的 stub 不完整）
+            imageio.v2.mimsave(buffer, frames_array, format="MP4", fps=10)  # type: ignore[call-overload]
+            media_type = "video/mp4"
+            filename = f"simulation_{uuid.uuid4().hex[:8]}.mp4"
+        except ImportError:
+            # Fallback to GIF if imageio not available
+            frames[0].save(
+                buffer,
+                format="GIF",
+                save_all=True,
+                append_images=frames[1:],
+                duration=100,
+                loop=0,
+            )
+            media_type = "image/gif"
+            filename = f"simulation_{uuid.uuid4().hex[:8]}.gif"
+
+    buffer.seek(0)
+    return buffer, media_type, filename
+
+
 @router.post("/export-animation")
 async def export_simulation_animation(
     request: ExportAnimationRequest,
@@ -487,120 +612,15 @@ async def export_simulation_animation(
     Raises:
         HTTPException: 400 if animation generation fails.
     """
-    import io
-    import numpy as np
-    from PIL import Image, ImageDraw
-
     try:
-        # Parse G-code into toolpath segments
-        parser = ToolpathParser(controller_type="fanuc")
-        segments = parser.parse_gcode(request.nc_code) if request.nc_code.strip() else []
-
-        if not segments:
-            raise ValueError("No valid toolpath segments found in G-code")
-
-        # Create animation frames
-        frames = []
-        num_frames = min(len(segments), 50)  # Limit to 50 frames for performance
-        frame_indices = np.linspace(0, len(segments) - 1, num_frames, dtype=int)
-
-        for idx in frame_indices:
-            # Create frame image
-            img = Image.new("RGB", (800, 600), color=(26, 26, 46))
-            draw = ImageDraw.Draw(img)
-
-            # Draw stock bounding box (simplified 2D projection)
-            stock_color = (100, 100, 100)
-            draw.rectangle([100, 100, 700, 500], outline=stock_color, width=2)
-
-            # Draw toolpath up to current frame
-            segment = segments[idx]
-            sx, sy, sz = segment.start_point
-            ex, ey, ez = segment.end_point
-
-            # Map 3D coordinates to 2D canvas
-            def map_coord(x, y, z):
-                canvas_x = int(100 + (x + 100) * 3)
-                canvas_y = int(500 - (z * 5))
-                return canvas_x, canvas_y
-
-            start_2d = map_coord(sx, sy, sz)
-            end_2d = map_coord(ex, ey, ez)
-
-            # Color by motion type
-            colors = {
-                "rapid": (244, 67, 54),
-                "linear": (76, 175, 80),
-                "arc": (33, 150, 243),
-                "dwell": (255, 193, 7),
-            }
-            line_color = colors.get(segment.type, (200, 200, 200))
-
-            # Draw previous segments (faded)
-            for prev_idx in range(idx):
-                prev_seg = segments[prev_idx]
-                prev_start = map_coord(*prev_seg.start_point)
-                prev_end = map_coord(*prev_seg.end_point)
-                faded_color = tuple(int(c * 0.5) for c in colors.get(prev_seg.type, (200, 200, 200)))
-                draw.line([prev_start, prev_end], fill=faded_color, width=2)
-
-            # Draw current segment (bright)
-            draw.line([start_2d, end_2d], fill=line_color, width=3)
-
-            # Draw tool position
-            tool_radius = int(request.tool_diameter / 2)
-            draw.ellipse(
-                [end_2d[0] - tool_radius, end_2d[1] - tool_radius, end_2d[0] + tool_radius, end_2d[1] + tool_radius],
-                fill=(255, 255, 0),
-                outline=(255, 200, 0),
-                width=2,
-            )
-
-            # Add frame info
-            draw.text((10, 10), f"Frame {idx + 1}/{num_frames}", fill=(200, 200, 200))
-            draw.text((10, 30), f"Segment: {segment.type}", fill=line_color)
-
-            frames.append(img)
-
-        # Generate output file
-        buffer = io.BytesIO()
-
-        if request.format == "gif":
-            # Save as animated GIF
-            frames[0].save(
-                buffer,
-                format="GIF",
-                save_all=True,
-                append_images=frames[1:],
-                duration=100,  # 100ms per frame
-                loop=0,
-            )
-            media_type = "image/gif"
-            filename = f"simulation_{uuid.uuid4().hex[:8]}.gif"
-        else:  # mp4
-            # For MP4, we'll use imageio if available, otherwise fallback to GIF
-            try:
-                import imageio
-
-                frames_array = [np.array(frame) for frame in frames]
-                # imageio.v2.mimsave 接受 fps 参数（v3 默认模块的 stub 不完整）
-                imageio.v2.mimsave(buffer, frames_array, format="MP4", fps=10)  # type: ignore[call-overload]
-                media_type = "video/mp4"
-                filename = f"simulation_{uuid.uuid4().hex[:8]}.mp4"
-            except ImportError:
-                # Fallback to GIF if imageio not available
-                frames[0].save(
-                    buffer,
-                    format="GIF",
-                    save_all=True,
-                    append_images=frames[1:],
-                    duration=100,
-                    loop=0,
-                )
-                media_type = "image/gif"
-                filename = f"simulation_{uuid.uuid4().hex[:8]}.gif"
-
-        buffer.seek(0)
+        # 渲染与编码为 CPU 密集型（PIL 逐帧绘制 + GIF/MP4 编码），
+        # 必须放工作线程，避免阻塞事件循环（与 /run、auto-diff 同口径）
+        buffer, media_type, filename = await asyncio.to_thread(
+            _render_toolpath_animation,
+            request.nc_code,
+            request.format,
+            request.tool_diameter,
+        )
 
         return StreamingResponse(
             buffer,

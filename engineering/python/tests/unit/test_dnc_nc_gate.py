@@ -28,6 +28,8 @@ def _make_task(
     status: str = "succeeded",
     voxel_check_passed: bool | None = True,
     voxel_collision_count: int = 0,
+    kinematics_check_passed: bool | None = True,
+    kinematics_error_count: int = 0,
     completed_at: float = 0.0,
 ) -> CamValidationTask:
     """构造最小 CamValidationTask（直接注入 store）。"""
@@ -39,6 +41,8 @@ def _make_task(
         status=status,
         voxel_check_passed=voxel_check_passed,
         voxel_collision_count=voxel_collision_count,
+        kinematics_check_passed=kinematics_check_passed,
+        kinematics_error_count=kinematics_error_count,
         completed_at=completed_at or time.time(),
     )
 
@@ -109,6 +113,36 @@ class TestDispatchGate:
         program.write_text("G90 G21\nM30\n", encoding="utf-8")
         cam_store.add_task(_make_task("cam_gate_004", str(program), voxel_check_passed=True))
         assert get_dispatch_block_reason(str(program)) is None
+
+    @pytest.mark.unit
+    def test_succeeded_without_kinematics_blocks(self, cam_store: CamTaskStore, tmp_path: Path):
+        """SUCCEEDED 但运动学校验未执行（None，闭环上线前任务）→ 拦截。"""
+        program = tmp_path / "part.nc"
+        program.write_text("G90 G21\nM30\n", encoding="utf-8")
+        cam_store.add_task(
+            _make_task("cam_gate_kin_none", str(program), kinematics_check_passed=None)
+        )
+        reason = get_dispatch_block_reason(str(program))
+        assert reason is not None
+        assert "运动学" in reason
+
+    @pytest.mark.unit
+    def test_succeeded_with_failed_kinematics_blocks(self, cam_store: CamTaskStore, tmp_path: Path):
+        """SUCCEEDED 但运动学校验未通过（超行程/无主轴等）→ 拦截。"""
+        program = tmp_path / "part.nc"
+        program.write_text("G90 G21\nM30\n", encoding="utf-8")
+        cam_store.add_task(
+            _make_task(
+                "cam_gate_kin_fail",
+                str(program),
+                kinematics_check_passed=False,
+                kinematics_error_count=2,
+            )
+        )
+        reason = get_dispatch_block_reason(str(program))
+        assert reason is not None
+        assert "运动学" in reason
+        assert "2" in reason
 
     @pytest.mark.unit
     @pytest.mark.skipif(os.name != "nt", reason="路径大小写不敏感是 Windows 文件系统行为（normcase 在 Linux 为恒等）")

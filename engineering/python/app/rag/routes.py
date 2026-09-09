@@ -10,7 +10,6 @@ from fastapi import APIRouter, Body, Depends, Query, UploadFile, File, Form
 
 from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
-from app.dependencies import get_knowledge_base
 from .service import (  # noqa: E402
     query_knowledge as query_knowledge_service,
     get_stats as get_stats_service,
@@ -49,7 +48,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/rag", tags=["RAG 知识库"])
 
-kb = get_knowledge_base()
+# 注意：不得在模块级初始化 ChromaDB/知识库（曾导致桌面运行时 import 期 panic）；
+# 重型组件一律经 FastAPI Depends 或懒加载单例在请求期构建。
 
 
 # v2 增强：懒加载单例（避免在导入时初始化重型组件）

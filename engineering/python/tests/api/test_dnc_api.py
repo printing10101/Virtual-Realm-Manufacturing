@@ -260,6 +260,7 @@ class TestNCProgramDispatchGate:
                 controller_type="fanuc_0i",
                 status=status,
                 voxel_check_passed=voxel,
+                kinematics_check_passed=True if voxel is not None else None,
                 completed_at=time.time(),
             )
         )

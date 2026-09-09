@@ -101,6 +101,15 @@ class CamValidationConfig:
     # DNC 下发闸门（app.dnc.nc_gate）要求 voxel_check_passed=True 才放行。
     # 以下仅提供性能/几何参数。
 
+    # ── 程序级运动学校验（行程/主轴/进给/快移扎刀/装刀）──
+    # 与体素仿真同为 DNC 下发闸门条件（kinematics_check_passed=True 才放行）。
+    # 关闭后闸门按"未知"处理（不放行），因此实际上不可跳过——此开关仅供
+    # 调试对照（如隔离运动学误报）使用。
+    kinematics_enabled: bool = field(default_factory=lambda: _bool_env("LNN_CAM_KINEMATICS_ENABLED", True))
+
+    # 运动学校验机床画像（machines.json 的 id）；默认 vmc_850
+    kinematics_machine_id: str = field(default_factory=lambda: _env("LNN_CAM_KINEMATICS_MACHINE_ID", "vmc_850"))
+
     # 体素边长（mm）：越小越精细越慢。推荐 0.5-2.0（粗仿 2.0，精仿 0.5）
     voxel_size_mm: float = field(default_factory=lambda: _float_env("LNN_CAM_VOXEL_SIZE_MM", 1.0))
 

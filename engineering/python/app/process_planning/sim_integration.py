@@ -193,13 +193,15 @@ class SimulationIntegration:
                 result.recommendation = "not_recommended"
                 logger.warning("仿真超时: material=%s, tool=%s", material, tool)
 
-            except (RuntimeError, ValueError, TypeError, OSError, KeyError) as e:
+            except Exception as e:
+                # future.result() 会把工作线程的任意异常原样重抛——
+                # 仿真是决策辅助，内部崩溃必须降级为 failed 结果而非击穿工艺管线
                 result.status = "failed"
                 result.error_message = f"仿真执行失败: {type(e).__name__}"
                 result.recommendation = "not_recommended"
                 logger.error("仿真执行失败: %s", e, exc_info=True)
 
-        except (RuntimeError, ValueError, TypeError, OSError, KeyError) as e:
+        except Exception as e:
             result.status = "failed"
             result.error_message = f"仿真服务调用失败: {type(e).__name__}"
             result.recommendation = "not_recommended"

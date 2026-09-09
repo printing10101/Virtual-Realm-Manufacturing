@@ -138,7 +138,7 @@ class CronParser:
         hour_set = CronParser._compile_field(hour_field, 0, 23)
         day_set = CronParser._compile_field(day_field, 1, 31)
         month_set = CronParser._compile_field(month_field, 1, 12)
-        dow_set = CronParser._compile_field(dow_field, 0, 6)
+        dow_set = CronParser._compile_dow(dow_field)
 
         now = datetime.now(timezone.utc)
         timestamps = []
@@ -161,6 +161,19 @@ class CronParser:
                         timestamps.append(exec_time.timestamp())
 
         return sorted(timestamps)
+
+    @staticmethod
+    def _compile_dow(field_str: str) -> frozenset:
+        """编译 cron 星期字段为 Python weekday 值集合。
+
+        语义修正（2026-09-08）：cron 星期约定为 0=周日..6=周六（7 亦为周日），
+        而 Python ``date.weekday()`` 为 0=周一..6=周日。此前实现直接比较两者，
+        导致所有指定星期的表达式**整体错位一天**（如 ``* * * 0`` 实际在周一触发）。
+
+        映射：cron d → python weekday (d + 6) % 7（0/7→周日=6，1→周一=0）。
+        """
+        cron_vals = CronParser._compile_field(field_str, 0, 7)
+        return frozenset((v + 6) % 7 for v in cron_vals)
 
     @staticmethod
     def _compile_field(field_str: str, min_val: int, max_val: int) -> frozenset:

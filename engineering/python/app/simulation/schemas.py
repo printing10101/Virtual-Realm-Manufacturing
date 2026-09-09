@@ -199,7 +199,8 @@ class ExportAnimationRequest(BaseModel):
 
     nc_code: str = Field(
         default="",
-        description="G-code text content for toolpath visualization.",
+        max_length=200_000,
+        description="G-code text content for toolpath visualization (capped at 200KB to bound render cost).",
     )
     format: str = Field(
         default="gif",

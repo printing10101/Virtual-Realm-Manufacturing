@@ -33,7 +33,11 @@ from app.cam_validation.internal_validator import InternalValidator
 from app.config import CamValidationConfig
 
 # 与 pipeline stages._common 的默认毛坯一致（pipeline 固定传入）
+# 注意：fixture 是"真实可上机程序"口径——含装刀（T..M06）与主轴启动（M03），
+# 否则阶段 7 的程序级运动学校验（K002/K007）会正确地判错。
 SAFE_GCODE = """G90 G21 G17
+T01 M06
+M03 S2000
 G00 X100 Y75 Z60
 G01 Z45 F200
 G00 Z60
@@ -43,8 +47,10 @@ G00 Z80
 M30
 """
 
-# 第 3 行快速下扎进材料（毛坯顶面 Z=50，下扎到 Z20）
+# 第 5 行快速下扎进材料（毛坯顶面 Z=50，下扎到 Z20）
 PLUNGE_GCODE = """G90 G21 G17
+T01 M06
+M03 S2000
 G00 X100 Y75 Z60
 G00 Z20
 G01 Z45 F200
@@ -102,7 +108,7 @@ class TestVoxelStageInPipeline:
     @pytest.mark.unit
     def test_safe_program_passes_and_exports_voxel_report(self, tmp_path: Path):
         """安全程序：体素通过 + 特征归因 True + cam_report.json 含体素摘要。"""
-        report_path = _build_report(tmp_path, SAFE_GCODE, feature_line_ranges=[[4, 4], [6, 6]])
+        report_path = _build_report(tmp_path, SAFE_GCODE, feature_line_ranges=[[5, 5], [8, 8]])
         pipeline = _make_pipeline(tmp_path)
         task = pipeline.create_task(source_gcode_report_path=report_path, cam_backend="internal_only")
 
@@ -129,8 +135,8 @@ class TestVoxelStageInPipeline:
 
     @pytest.mark.unit
     def test_rapid_plunge_fails_voxel_and_atributes_feature(self, tmp_path: Path):
-        """快速下扎：任务级体素失败，涉事特征被归因（block 3）。"""
-        report_path = _build_report(tmp_path, PLUNGE_GCODE, feature_line_ranges=[[3, 3], [4, 4]])
+        """快速下扎：任务级体素失败，涉事特征被归因（block 5，fixture 加装刀/主轴后行号平移）。"""
+        report_path = _build_report(tmp_path, PLUNGE_GCODE, feature_line_ranges=[[5, 5], [6, 6]])
         pipeline = _make_pipeline(tmp_path)
         task = pipeline.create_task(source_gcode_report_path=report_path, cam_backend="internal_only")
 
@@ -143,10 +149,10 @@ class TestVoxelStageInPipeline:
 
         store_task = pipeline._store.get_task(task.task_id)
         by_id = {fr.feature_id: fr for fr in store_task.feature_validation_results}
-        # feat_001 覆盖第 3 行（下扎段）→ 归因碰撞
+        # feat_001 覆盖第 5 行（下扎段）→ 归因碰撞
         assert by_id["feat_001"].voxel_check_passed is False
-        assert 3 in by_id["feat_001"].voxel_collision_blocks
-        # feat_002 覆盖第 4 行（正常切削）→ 不被误归因
+        assert 5 in by_id["feat_001"].voxel_collision_blocks
+        # feat_002 覆盖第 6 行（正常切削）→ 不被误归因
         assert by_id["feat_002"].voxel_check_passed is True
         # 任务 errors 含 DNC 拦截提示（闭环语义）
         assert any("DNC" in e for e in store_task.errors)
@@ -154,7 +160,7 @@ class TestVoxelStageInPipeline:
     @pytest.mark.unit
     def test_voxel_engine_error_fails_task(self, tmp_path: Path, monkeypatch):
         """体素校验器抛错 → 任务 FAILED（fail-closed，不允许带未知状态下发）。"""
-        report_path = _build_report(tmp_path, SAFE_GCODE, feature_line_ranges=[[4, 4], [6, 6]])
+        report_path = _build_report(tmp_path, SAFE_GCODE, feature_line_ranges=[[5, 5], [8, 8]])
         pipeline = _make_pipeline(tmp_path)
         task = pipeline.create_task(source_gcode_report_path=report_path, cam_backend="internal_only")
 

@@ -182,6 +182,7 @@ class OperationSequencer:
                     "feed_rate_factor": feed_rate_factor,
                     "recommended_feed": self._recommend_feed(fe, material),
                     "recommended_speed": self._recommend_speed(fe, material),
+                    "geometry": self._extract_feature_geometry(fe),
                 },
                 estimated_time_min=estimated_time,
                 notes=self._generate_operation_notes(fe, method),
@@ -244,6 +245,12 @@ class OperationSequencer:
             return "倒角"
         if fe.type in ("plane_surface",):
             return "粗铣平面" if is_rough else "精铣平面"
+        if fe.type in ("through_pocket", "blind_pocket", "pocket"):
+            # 挖槽特征必须走铣削分支（此前落入"精加工-{type}"通用分支，不生成 G 代码）
+            return "粗铣挖槽" if is_rough else "精铣挖槽"
+        if fe.type in ("rectangular_boss", "circular_boss", "boss"):
+            # 凸台特征走外形铣削分支（外轮廓偏置刀轨）
+            return "粗铣外形" if is_rough else "精铣外形"
         if fe.type in ("keyway",):
             return "铣键槽"
         if fe.type in ("slot",):
@@ -256,6 +263,44 @@ class OperationSequencer:
         if is_rough:
             return f"粗加工-{fe.type}"
         return f"精加工-{fe.type}"
+
+    def _extract_feature_geometry(self, fe: MachiningFeature) -> dict[str, Any]:
+        """从特征尺寸提取铣削几何，供平面刀轨引擎构造刀心轨迹。
+
+        键语义：
+        - x/y: 轮廓中心或角点坐标（由 anchor 区分）
+        - anchor: "center"（x/y 为中心，挖槽/凸台）或 "corner"（x/y 为角点，平面）
+        - length/width: 包络尺寸 (mm)
+        - depth: 加工深度，正值向下 (mm)
+        - orientation: 旋转角（度，绕中心，可选）
+        - diameter/height: 凸台类特征的直径/高度（透传，供参考）
+
+        钻孔类特征（diameter/depth/position_*）不在此注入，保持钻孔分支
+        现有坐标来源不变。
+        """
+        dims = fe.dimensions or {}
+        if not dims:
+            return {}
+
+        geom: dict[str, Any] = {}
+        for key in ("length", "width", "depth", "orientation", "diameter", "height"):
+            if key in dims:
+                try:
+                    geom[key] = float(dims[key])
+                except (TypeError, ValueError):
+                    continue
+
+        center_x = dims.get("center_x", dims.get("position_x"))
+        center_y = dims.get("center_y", dims.get("position_y"))
+        if center_x is not None and center_y is not None:
+            geom["x"] = float(center_x)
+            geom["y"] = float(center_y)
+            geom["anchor"] = "center"
+        else:
+            geom.setdefault("x", 0.0)
+            geom.setdefault("y", 0.0)
+            geom["anchor"] = "corner"
+        return geom
 
     def _select_tool(self, fe: MachiningFeature, method: str) -> str:
         if "车" in method:

@@ -107,4 +107,17 @@ def get_dispatch_block_reason(program_path: str) -> str | None:
             "DNC 下发被仿真强制闭环拦截。请回阶段 6 修改刀轨/参数后重新生成并校验。"
         )
 
+    # 程序级运动学校验（行程/主轴/进给/快移扎刀/装刀）
+    if latest.kinematics_check_passed is None:
+        return (
+            "该 NC 程序的校验任务产生于运动学校验闭环上线前（kinematics_check_passed 未知），"
+            "DNC 下发被仿真强制闭环拦截。请对阶段 6 任务重新执行阶段 7 校验后再下发。"
+        )
+    if latest.kinematics_check_passed is False:
+        return (
+            f"该 NC 程序的程序级运动学校验未通过（{latest.kinematics_error_count} 处 error："
+            "行程/主轴/进给/快移扎刀/装刀），"
+            "DNC 下发被仿真强制闭环拦截。请修正程序后重新执行阶段 7 校验。"
+        )
+
     return None

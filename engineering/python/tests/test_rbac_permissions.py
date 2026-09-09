@@ -492,8 +492,8 @@ class TestGetUserPermissions:
             assert perms == set()
 
     @pytest.mark.asyncio
-    async def test_get_user_permissions_guest_has_full_permissions(self):
-        """访客（guest_ 前缀、不落用户存储）默认拥有全部功能权限。"""
+    async def test_get_user_permissions_guest_has_readonly_permissions(self):
+        """访客（guest_ 前缀、不落用户存储）仅拥有只读权限（2026-09 安全评审 P1）。"""
         from app.auth.permissions import get_user_permissions
         from app.database.models._presets import PRESET_PERMISSIONS
 
@@ -501,9 +501,14 @@ class TestGetUserPermissions:
             mock_store.return_value.get_user.return_value = None
 
             perms = await get_user_permissions("guest_abcd1234")
-            assert perms == {p["code"] for p in PRESET_PERMISSIONS}
+            expected = {
+                p["code"] for p in PRESET_PERMISSIONS
+                if p["code"].rsplit(":", 1)[-1] in ("read", "view")
+            }
+            assert perms == expected
             assert "process:read" in perms
-            assert "simulation:run" in perms
+            assert "simulation:run" not in perms  # 写/执行类一律不授予
+            assert "dataset:write" not in perms
 
     @pytest.mark.asyncio
     async def test_get_user_permissions_registered_user_has_full_permissions(self):
@@ -521,14 +526,14 @@ class TestGetUserPermissions:
 
     @pytest.mark.asyncio
     async def test_check_user_has_permission_guest_granted(self):
-        """访客可通过任意 require_permission 校验（process:read 等）。"""
+        """访客可通过只读 require_permission 校验，写/执行类被拒。"""
         from app.auth.permissions import check_user_has_permission
 
         with patch("app.dependencies.get_user_store") as mock_store:
             mock_store.return_value.get_user.return_value = None
 
             assert await check_user_has_permission("guest_abcd1234", "process:read") is True
-            assert await check_user_has_permission("guest_abcd1234", "simulation:run") is True
+            assert await check_user_has_permission("guest_abcd1234", "simulation:run") is False
             assert await check_user_has_permission("guest_abcd1234", "lnn:read") is True
 
     @pytest.mark.asyncio

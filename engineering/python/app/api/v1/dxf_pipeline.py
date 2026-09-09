@@ -8,8 +8,11 @@
 用于：CI、研发自测、研究模块的 shadow mode 触发。
 """
 
+import asyncio
 import logging
 import os
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +80,28 @@ def _validate_dxf_path(user_path: str) -> Path:
 # 请求/响应模型
 
 
+def _validate_output_dir(user_path: str) -> Path:
+    """校验用户提供的输出目录，防止任意目录写入（与 DXF 输入同源白名单，无扩展名限制）。
+
+    Raises:
+        HTTPException: 400 当路径逃逸允许范围。
+    """
+    try:
+        return validate_user_path(
+            user_path=user_path,
+            allowed_base_dirs=_ALLOWED_DXF_BASE_DIRS,
+            allowed_extensions=None,
+            project_root=_ALLOWED_DXF_BASE_DIRS[0],
+        )
+    except ValueError as exc:
+        safe = safe_error_message(exc, context="dxf_pipeline.validate_output_dir", fallback="输出目录校验失败")
+        raise HTTPException(
+            status_code=400,
+            detail=safe["message"],
+            headers={"X-Error-ID": safe["error_id"]},
+        ) from exc
+
+
 class DxfProcessRequest(BaseModel):
     dxf_path: str
     output_dir: str | None = None
@@ -88,6 +113,14 @@ class DxfProcessRequest(BaseModel):
     def _validate_dxf_path_field(cls, v: str) -> str:
         """在模型层校验 DXF 路径，防止路径遍历。"""
         _validate_dxf_path(v)  # 抛出 HTTPException 即终止
+        return v
+
+    @field_validator("output_dir")
+    @classmethod
+    def _validate_output_dir_field(cls, v: str | None) -> str | None:
+        """输出目录同样不得逃逸白名单（防任意目录写入）。"""
+        if v is not None:
+            _validate_output_dir(v)
         return v
 
 
@@ -105,12 +138,24 @@ class DxfBatchRequest(BaseModel):
             _validate_dxf_path(p)
         return v
 
+    @field_validator("output_dir")
+    @classmethod
+    def _validate_output_dir_field(cls, v: str | None) -> str | None:
+        if v is not None:
+            _validate_output_dir(v)
+        return v
+
 
 class DxfE2EFixtureRequest(BaseModel):
     fixtures_dir: str = "data/test_fixtures"
     output_dir: str = "data/outputs/e2e"
     postprocessor: str = "fanuc_0i"
     user_id: str | None = "e2e_runner"
+
+    @field_validator("fixtures_dir", "output_dir")
+    @classmethod
+    def _validate_dirs_field(cls, v: str) -> str:
+        return str(_validate_output_dir(v))
 
 
 # 端点
@@ -153,6 +198,97 @@ def process_batch(req: DxfBatchRequest) -> dict[str, Any]:
         "failed": len(results) - success_count,
         "results": results,
     }
+
+
+# ── 批量异步任务（避免 20 文件串行长请求占用 worker）──
+
+# 进程级批量任务注册表：仅保留最近 _BATCH_JOBS_MAX 个，防内存泄漏
+_batch_jobs: dict[str, dict[str, Any]] = {}
+_batch_jobs_order: list[str] = []
+_BATCH_JOBS_MAX = 50
+# 防止后台任务被 GC（asyncio.create_task 文档要求外部保留强引用）
+_batch_tasks: set[asyncio.Task] = set()
+
+
+def _prune_batch_jobs() -> None:
+    while len(_batch_jobs_order) > _BATCH_JOBS_MAX:
+        stale = _batch_jobs_order.pop(0)
+        _batch_jobs.pop(stale, None)
+
+
+async def _run_batch_job(job_id: str, req: DxfBatchRequest) -> None:
+    """逐文件执行批量任务；每文件结果实时写入注册表供轮询。"""
+    from app.dxf.process_service import DxfProcessService
+
+    job = _batch_jobs.get(job_id)
+    if job is None:
+        return
+    svc = DxfProcessService()
+    try:
+        for p in req.dxf_paths:
+            r = await asyncio.to_thread(
+                lambda pp=p: svc.process(
+                    dxf_path=pp,
+                    output_dir=req.output_dir,
+                    postprocessor=req.postprocessor,
+                    user_id=req.user_id,
+                )
+            )
+            rd = r.to_dict()
+            job["results"].append(rd)
+            job["done"] += 1
+            if rd.get("success"):
+                job["success"] += 1
+            else:
+                job["failed"] += 1
+        job["status"] = "completed"
+    except Exception as e:
+        safe = safe_error_message(e, context="dxf_pipeline.batch_job")
+        job["status"] = "failed"
+        job["error"] = safe.get("message", str(e))
+        logger.error("批量任务 %s 失败: %s", job_id, safe.get("error_id"), exc_info=True)
+
+
+@router.post("/batch-async")
+async def process_batch_async(req: DxfBatchRequest) -> dict[str, Any]:
+    """批量处理多个 DXF（异步任务模式）。
+
+    立即返回 job_id，处理在后台进行；用 GET /batch-status/{job_id} 轮询进度。
+    """
+    job_id = f"batch_{uuid.uuid4().hex[:12]}"
+    now = datetime.now().isoformat()
+    _batch_jobs[job_id] = {
+        "job_id": job_id,
+        "status": "running",
+        "total": len(req.dxf_paths),
+        "done": 0,
+        "success": 0,
+        "failed": 0,
+        "results": [],
+        "created_at": now,
+    }
+    _batch_jobs_order.append(job_id)
+    _prune_batch_jobs()
+
+    task = asyncio.create_task(_run_batch_job(job_id, req))
+    _batch_tasks.add(task)
+    task.add_done_callback(_batch_tasks.discard)
+
+    return {
+        "job_id": job_id,
+        "status": "running",
+        "total": len(req.dxf_paths),
+        "status_url": "/api/v1/dxf/batch-status/" + job_id,
+    }
+
+
+@router.get("/batch-status/{job_id}")
+def batch_job_status(job_id: str) -> dict[str, Any]:
+    """查询批量处理任务进度。"""
+    job = _batch_jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+    return dict(job)
 
 
 @router.post("/e2e-fixture")

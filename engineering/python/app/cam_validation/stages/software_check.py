@@ -35,6 +35,11 @@ from app.cam_validation.cam_store import (
     FeatureValidationResult,
 )
 from app.core.safe_errors import safe_error_message
+from app.simulation.kinematics import (
+    KinematicsValidator,
+    auto_work_offset,
+    load_profile,
+)
 
 from ._common import (
     _DEFAULT_MODE,
@@ -199,6 +204,38 @@ class SoftwareCheckMixin:
             stock_height=stock_height,
             mode=_DEFAULT_MODE,
         )
+
+        # 3.5 程序级运动学校验（行程/主轴/进给/快移扎刀/装刀/程序完整性）。
+        # kinematics_check_passed 是 DNC 下发闸门条件之一（与 voxel 同级）；
+        # cfg 为 None 的测试注入场景跳过（与 voxel_validator None 同口径）。
+        cfg = getattr(self, "_cfg", None)
+        if cfg is not None and getattr(cfg, "kinematics_enabled", True):
+            kin_profile = load_profile(getattr(cfg, "kinematics_machine_id", "vmc_850"))
+            kin_validator = KinematicsValidator(kin_profile)
+            kin_report = kin_validator.validate(
+                load_result.gcode_text,
+                work_offset=auto_work_offset(kin_profile, task.stock_top_z),
+                stock_top_z=task.stock_top_z,
+            )
+            task.kinematics_check_passed = kin_report.passed
+            task.kinematics_error_count = kin_report.error_count
+            for issue in kin_report.issues:
+                if issue.severity != "error":
+                    continue
+                msg = f"运动学校验 {issue.code}（行 {issue.line_no}）：{issue.message}" + (
+                    f" {issue.suggestion}" if issue.suggestion else ""
+                )
+                if msg not in task.errors:
+                    task.errors.append(msg)
+            if not kin_report.passed:
+                task.warnings.append(
+                    f"程序级运动学校验未通过：{kin_report.error_count} 处 error"
+                    f"（machine={kin_report.machine_id}）。"
+                    f"DNC 下发将被闸门拦截，请修正程序后重新校验。"
+                )
+            for w in kin_report.warnings:
+                if w not in task.warnings:
+                    task.warnings.append(w)
 
         # 4. 体素材料去除仿真校验（闭环强制层，无开关——项目记忆硬约束）
         # 检测两类致命碰撞：切削段过切毛坯底面 / 快速段在安全高度下切入材料。

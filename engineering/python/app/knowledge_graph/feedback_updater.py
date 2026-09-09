@@ -15,12 +15,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import re
 from typing import Any
 
 from app.knowledge_graph.graph_store import GraphStore
 
 logger = logging.getLogger(__name__)
+
+# 与 graph_store._NODE_ID_PATTERN 对齐的本地副本（避免依赖私有符号）
+_NODE_ID_SAFE_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$")
 
 
 class FeedbackUpdater:
@@ -180,6 +185,34 @@ class FeedbackUpdater:
 
         return updated_count
 
+    # material 可读名 → 合法 node_id 的稳定映射缓存（进程级，避免重复散列）
+    _material_id_cache: dict[str, str] = {}
+
+    @classmethod
+    def _material_node_id(cls, material: str) -> str:
+        """把材料可读名归一为图存储允许的 node_id（幂等）。
+
+        graph_store 的 node_id 模式为 ``^[a-zA-Z_][a-zA-Z0-9_.\\-]{0,127}$``，
+        而加工记录的 workpiece_material 通常是可读名（如 "45号钢"），
+        直接入图会被校验拒绝（导致整条回灌链路中断）。
+        归一规则：
+        - 已符合模式的输入原样返回（兼容既有节点 id）；
+        - 否则取 ``material-<ASCII清洗>-<md5前8位>``，同一材料名恒定映射。
+        """
+        if cls._material_id_cache.get(material):
+            return cls._material_id_cache[material]
+
+        node_id: str
+        if _NODE_ID_SAFE_PATTERN.match(material):
+            node_id = material
+        else:
+            sanitized = re.sub(r"[^a-zA-Z0-9_.\-]+", "_", material).strip("_") or "mat"
+            digest = hashlib.sha256(material.encode("utf-8")).hexdigest()[:8]
+            node_id = f"material-{sanitized[:80]}-{digest}"
+
+        cls._material_id_cache[material] = node_id
+        return node_id
+
     def _update_tool_material_relationship(self, tool_id: str, material: str, record: dict[str, Any]) -> int:
         """更新Tool-Material关系
 
@@ -187,27 +220,33 @@ class FeedbackUpdater:
 
         Args:
             tool_id: 刀具ID
-            material: 材料ID
+            material: 材料ID（可读名，如 "45号钢"；入图前经 _material_node_id 归一）
             record: 加工记录
 
         Returns:
             更新的关系数量（0或1）
         """
+        material_node_id = self._material_node_id(material)
+
         # 确保节点存在
         if not self.graph_store.has_node(tool_id):
             self.graph_store.add_node(node_type="tool", node_id=tool_id, properties={"name": tool_id})
 
-        if not self.graph_store.has_node(material):
-            self.graph_store.add_node(node_type="material", node_id=material, properties={"name": material})
+        if not self.graph_store.has_node(material_node_id):
+            self.graph_store.add_node(
+                node_type="material",
+                node_id=material_node_id,
+                properties={"name": material},
+            )
 
         # 检查关系是否存在
         edge_type = "SUITABLE_FOR"
-        if not self.graph_store.has_edge(tool_id, material, edge_type):
+        if not self.graph_store.has_edge(tool_id, material_node_id, edge_type):
             # 创建新关系
             initial_confidence = 0.5
             self.graph_store.add_edge(
                 source_id=tool_id,
-                target_id=material,
+                target_id=material_node_id,
                 edge_type=edge_type,
                 properties={
                     "confidence": initial_confidence,
@@ -215,11 +254,11 @@ class FeedbackUpdater:
                     "success_count": 1 if record.get("first_pass_acceptance", False) else 0,
                 },
             )
-            logger.debug("Created new %s relationship: %s -> %s", edge_type, tool_id, material)
+            logger.debug("Created new %s relationship: %s -> %s", edge_type, tool_id, material_node_id)
             return 1
 
         # 更新现有关系
-        edge = self.graph_store.get_edge(tool_id, material, edge_type)
+        edge = self.graph_store.get_edge(tool_id, material_node_id, edge_type)
         if not edge:
             return 0
 
@@ -240,7 +279,7 @@ class FeedbackUpdater:
         # 更新关系属性
         self.graph_store.update_edge_properties(
             source_id=tool_id,
-            target_id=material,
+            target_id=material_node_id,
             edge_type=edge_type,
             properties={
                 "confidence": new_confidence,

@@ -229,13 +229,20 @@ async def _get_role_permissions_from_db(role_code: str) -> set[str]:
 # 自助注册用户与访客的默认权限策略（2026-08-23 注册/访客功能落地）：
 # - 自助注册用户默认角色为 "user"，而 DB 预设角色仅含 admin/engineer/operator，
 # 若不加处理将导致注册用户权限为空、所有 require_permission 端点返回 403。
-# - 访客（guest）为临时身份，不落用户存储（username 形如 guest_<hex>），
-# 同样需要覆盖全部功能权限。
-# 二者统一授予全部功能权限码（与 PRESET_PERMISSIONS 保持同步），
-# 保证「注册 / 访客可用全部功能」；敏感能力（T 级机床执行、系统配置等）
-# 仍由 PaperOnlyGuard（LNN_LIVE_EXECUTION_ENABLED）与 require_role("admin")
-# 单独把关，此处仅解决"功能权限缺失"问题。
+# - 访客（guest）为临时身份，不落用户存储（username 形如 guest_<hex>）。
+#
+# 权限策略（2026-09 安全评审 P1 修订）：
+# - 角色 "user"（本地桌面自助注册，主使用场景）→ 授予全部功能权限码；
+# - 角色 "guest" / guest_ 前缀临时身份 → 仅授予**只读**权限码
+#   （动作 ∈ {read, view}）。背景：/auth/guest 位于公开路径白名单，
+#   若授予全量权限码，任何能触达服务的调用方（远程 MCP/SSE 模式下含外部代理）
+#   可自助获得 dataset:write、backup:export 等写权限，RBAC 形同虚设。
+# 敏感能力（T 级机床执行、系统配置等）仍由 PaperOnlyGuard
+# （LNN_LIVE_EXECUTION_ENABLED）与 require_role("admin") 单独把关。
 _SELF_SERVICE_ROLES = frozenset({"user", "guest"})
+
+# 访客允许的权限动作白名单（只读）
+_GUEST_ALLOWED_ACTIONS = frozenset({"read", "view"})
 
 
 def _default_full_permissions() -> set[str]:
@@ -245,19 +252,29 @@ def _default_full_permissions() -> set[str]:
     return {p["code"] for p in PRESET_PERMISSIONS}
 
 
+def _guest_read_permissions() -> set[str]:
+    """返回访客只读权限码集合（动作 ∈ {read, view}，与 PRESET_PERMISSIONS 保持同步）。"""
+    from app.database.models._presets import PRESET_PERMISSIONS
+
+    return {p["code"] for p in PRESET_PERMISSIONS if p["code"].rsplit(":", 1)[-1] in _GUEST_ALLOWED_ACTIONS}
+
+
 async def get_user_permissions(username: str) -> set[str]:
     from app.dependencies import get_user_store
 
     store = get_user_store()
     user = store.get_user(username)
     if user is None:
-        # 访客：临时身份不落用户存储（guest_ 前缀），默认授予全部功能权限
+        # 访客：临时身份不落用户存储（guest_ 前缀），仅授予只读权限（安全评审 P1）
         if username.startswith("guest_"):
-            return _default_full_permissions()
+            return _guest_read_permissions()
         return set()
 
     if user.role in _SELF_SERVICE_ROLES:
-        # 自助注册用户（默认角色 user）/ 显式 guest 角色：授予全部功能权限
+        # 自助注册用户（默认角色 user）→ 全部功能权限；
+        # 显式 guest 角色 → 只读权限
+        if user.role == "guest":
+            return _guest_read_permissions()
         return _default_full_permissions()
 
     return await _get_role_permissions_from_db(user.role)

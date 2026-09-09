@@ -2,11 +2,21 @@
 
 from __future__ import annotations
 
+import logging
+import math
 from typing import Any
+
+import numpy as np
 
 from app.cutting_params_db import get_cutting_params
 from app.postprocessor.base import BasePostProcessor
 from app.process_planning.operation_sequencer import Operation
+from app.toolpath.planar_engine import (
+    PlanarToolpathEngine,
+    PlanarToolpathError,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class _FeatureCodeMixin:
@@ -154,8 +164,24 @@ class _FeatureCodeMixin:
             mill_length = length if length is not None else 10.0
             mill_width = width if width is not None else 10.0
 
-            # 刀具半径补偿 (G41/G42)
-            if radius_comp in ["G41", "G42"]:
+            # 平面刀轨引擎：能从真实几何计算刀心轨迹时优先，
+            # 替换模板式的直线走线（无几何刀轨层的旧路径保留为回退）
+            planar_lines: list[str] | None = None
+            if not is_five_axis:
+                planar_lines = self._generate_planar_milling_lines(
+                    op=op,
+                    postprocessor=postprocessor,
+                    geom=geom,
+                    cut_params=cut_params,
+                    stock_top_z=stock_top_z,
+                    feed_rate=feed_rate,
+                    tool_diameter=tool_diameter,
+                )
+
+            if planar_lines is not None:
+                lines.extend(planar_lines)
+            # 刀具半径补偿 (G41/G42)——仅模板走线路径需要（引擎刀心轨迹已含偏置）
+            elif radius_comp in ["G41", "G42"]:
                 lines.append(postprocessor._comment(f"启用刀具半径补偿: {radius_comp}"))
                 # 抬刀到安全平面后再快速定位（避免G00在切削深度处移动引发碰撞）
                 lines.append(f"G00 Z{safe_z:.3f}")
@@ -166,71 +192,72 @@ class _FeatureCodeMixin:
                 # 启用半径补偿
                 lines.append(f"{radius_comp} D{int(tool_diameter)}")
 
-            if is_five_axis and hasattr(postprocessor, "format_rtcp_on"):
-                # 五轴铣削：RTCP + FiveAxisToolpathPlanner 生成 A/C 轴联动
-                lines.append(postprocessor.format_rtcp_on())
+            if planar_lines is None:
+                if is_five_axis and hasattr(postprocessor, "format_rtcp_on"):
+                    # 五轴铣削：RTCP + FiveAxisToolpathPlanner 生成 A/C 轴联动
+                    lines.append(postprocessor.format_rtcp_on())
 
-                # 使用五轴规划器生成刀具姿态序列
-                start_x, start_y, start_z = x_pos, y_pos, mill_depth
-                end_x, end_y, end_z = x_pos + mill_length, y_pos + mill_width, mill_depth
+                    # 使用五轴规划器生成刀具姿态序列
+                    start_x, start_y, start_z = x_pos, y_pos, mill_depth
+                    end_x, end_y, end_z = x_pos + mill_length, y_pos + mill_width, mill_depth
 
-                orientations = self._five_axis_planner.plan_lead_angle_toolpath(
-                    start_x=start_x,
-                    start_y=start_y,
-                    start_z=start_z,
-                    end_x=end_x,
-                    end_y=end_y,
-                    end_z=end_z,
-                    surface_normal_i=0.0,
-                    surface_normal_j=0.0,
-                    surface_normal_k=1.0,
-                    num_points=4,
-                )
+                    orientations = self._five_axis_planner.plan_lead_angle_toolpath(
+                        start_x=start_x,
+                        start_y=start_y,
+                        start_z=start_z,
+                        end_x=end_x,
+                        end_y=end_y,
+                        end_z=end_z,
+                        surface_normal_i=0.0,
+                        surface_normal_j=0.0,
+                        surface_normal_k=1.0,
+                        num_points=4,
+                    )
 
-                # 根据刀具姿态生成带 A/C 轴的直线插补
-                for idx, orient in enumerate(orientations):
-                    t = idx / max(1, len(orientations) - 1)
-                    interp_x = start_x + t * (end_x - start_x)
-                    interp_y = start_y + t * (end_y - start_y)
+                    # 根据刀具姿态生成带 A/C 轴的直线插补
+                    for idx, orient in enumerate(orientations):
+                        t = idx / max(1, len(orientations) - 1)
+                        interp_x = start_x + t * (end_x - start_x)
+                        interp_y = start_y + t * (end_y - start_y)
 
+                        lines.append(
+                            postprocessor.format_linear_move(
+                                x=interp_x,
+                                y=interp_y,
+                                z=mill_depth,
+                                feed=feed_rate,
+                                a=orient.a_angle,
+                                c=orient.c_angle,
+                            )
+                        )
+
+                    lines.append(postprocessor.format_rtcp_off())
+                else:
+                    # 三轴铣削 - 使用实际坐标
+                    if radius_comp not in ["G41", "G42"]:
+                        # 抬刀到安全平面后再快速定位（避免G00在切削深度处移动引发碰撞）
+                        lines.append(f"G00 Z{safe_z:.3f}")
+                        lines.append(f"G00 X{x_pos:.3f} Y{y_pos:.3f}")
+                        lines.append(f"G01 Z{mill_depth:.3f} F{feed_rate}")
                     lines.append(
                         postprocessor.format_linear_move(
-                            x=interp_x,
-                            y=interp_y,
+                            x=x_pos + mill_length,
+                            y=y_pos,
                             z=mill_depth,
                             feed=feed_rate,
-                            a=orient.a_angle,
-                            c=orient.c_angle,
+                        )
+                    )
+                    lines.append(
+                        postprocessor.format_linear_move(
+                            x=x_pos + mill_length,
+                            y=y_pos + mill_width,
+                            z=mill_depth,
+                            feed=feed_rate,
                         )
                     )
 
-                lines.append(postprocessor.format_rtcp_off())
-            else:
-                # 三轴铣削 - 使用实际坐标
-                if radius_comp not in ["G41", "G42"]:
-                    # 抬刀到安全平面后再快速定位（避免G00在切削深度处移动引发碰撞）
-                    lines.append(f"G00 Z{safe_z:.3f}")
-                    lines.append(f"G00 X{x_pos:.3f} Y{y_pos:.3f}")
-                    lines.append(f"G01 Z{mill_depth:.3f} F{feed_rate}")
-                lines.append(
-                    postprocessor.format_linear_move(
-                        x=x_pos + mill_length,
-                        y=y_pos,
-                        z=mill_depth,
-                        feed=feed_rate,
-                    )
-                )
-                lines.append(
-                    postprocessor.format_linear_move(
-                        x=x_pos + mill_length,
-                        y=y_pos + mill_width,
-                        z=mill_depth,
-                        feed=feed_rate,
-                    )
-                )
-
-            # 取消刀具半径补偿
-            if radius_comp in ["G41", "G42"]:
+            # 取消刀具半径补偿（仅模板走线路径启用过补偿）
+            if planar_lines is None and radius_comp in ["G41", "G42"]:
                 lines.append("G40")  # 取消半径补偿
                 lines.append(postprocessor._comment("取消刀具半径补偿"))
 
@@ -387,3 +414,151 @@ class _FeatureCodeMixin:
             lines.append(f"G00 Z{safe_z:.3f}")
 
         return lines
+
+    # ------------------------------------------------------------------
+    # 平面刀轨引擎集成（2.5D 几何刀轨层）
+    # ------------------------------------------------------------------
+
+    def _generate_planar_milling_lines(
+        self,
+        op: Operation,
+        postprocessor: BasePostProcessor,
+        geom: dict[str, Any],
+        cut_params: dict[str, Any],
+        stock_top_z: float,
+        feed_rate: float,
+        tool_diameter: float,
+    ) -> list[str] | None:
+        """用平面刀轨引擎从真实几何生成铣削指令段。
+
+        返回 None 表示几何不可用或引擎失败（如轮廓过窄），调用方应回退
+        到模板走线路径。错误日志会记录回退原因。
+        """
+        kind, polygon, rect = self._milling_geometry(op.machining_method, geom)
+        if kind is None:
+            return None
+
+        # 深度：几何 depth/z_depth 优先（与钻孔语义一致：正值向下），
+        # 其次数据库 depth_of_cut
+        depth = geom.get("depth", geom.get("z_depth"))
+        if depth is None:
+            depth = float(cut_params.get("depth_of_cut", 5.0) or 5.0)
+        z_top = float(stock_top_z)
+        z_bottom = z_top - abs(float(depth))
+
+        # Z 分层默认取数据库切深，且不超过刀具直径（防止每层过深）
+        db_doc = float(cut_params.get("depth_of_cut", 0.0) or 0.0)
+        stepdown = min(db_doc, tool_diameter) if db_doc > 0 else min(2.0, tool_diameter)
+        stepdown = max(stepdown, 0.1)
+
+        engine = PlanarToolpathEngine(
+            tool_diameter=tool_diameter,
+            feed_rate=feed_rate,
+            stepdown=stepdown,
+        )
+        try:
+            if kind == "pocket":
+                tp = engine.pocket(polygon, z_top, z_bottom)
+            elif kind == "profile":
+                tp = engine.profile(polygon, z_top, z_bottom)
+            else:
+                x_min, y_min, x_max, y_max = rect  # type: ignore[misc]
+                tp = engine.face_raster(x_min, y_min, x_max, y_max, z_top, z_bottom)
+        except PlanarToolpathError as exc:
+            logger.warning(
+                "平面刀轨引擎回退到模板走线: op=%s reason=%s detail=%s",
+                op.feature_name,
+                exc.code,
+                exc.detail,
+            )
+            return None
+
+        lines: list[str] = [
+            postprocessor._comment(
+                f"刀轨策略: {tp.strategy} | Z层数={len(tp.z_levels)} 环数={tp.ring_count} "
+                f"切削长度={tp.cut_length_mm:.0f}mm 预估切削={tp.est_cut_time_min:.1f}min"
+            ),
+            postprocessor._comment("刀心轨迹已按刀具半径偏置，不使用刀具半径补偿(G41/G42)"),
+        ]
+        for mv in tp.moves:
+            if mv.kind == "rapid_z":
+                lines.append(f"G00 Z{mv.z:.3f}")
+            elif mv.kind == "rapid_xy":
+                lines.append(f"G00 X{mv.x:.3f} Y{mv.y:.3f}")
+            else:
+                lines.append(postprocessor.format_linear_move(x=mv.x, y=mv.y, z=mv.z, feed=mv.feed))
+        return lines
+
+    @staticmethod
+    def _milling_geometry(
+        method: str, geom: dict[str, Any]
+    ) -> tuple[str, np.ndarray | None, tuple[float, float, float, float] | None]:
+        """把 geometry 字典解析为刀轨引擎输入。
+
+        Returns:
+            (kind, polygon, rect)：kind ∈ {"pocket","profile","raster"}；
+            raster 时 polygon 为 None、rect=(x_min,y_min,x_max,y_max)；
+            无法构造时返回 (None, None, None)——调用方回退模板走线。
+        """
+        if "外形" in method or "轮廓" in method or "凸台" in method:
+            kind = "profile"
+        elif "平面" in method or "端面" in method:
+            kind = "raster"
+        elif "槽" in method or "腔" in method or "挖" in method or "型腔" in method:
+            kind = "pocket"
+        elif geom.get("contour"):
+            kind = "pocket"
+        else:
+            return None, None, None
+
+        length = geom.get("length")
+        width = geom.get("width")
+        orientation = float(geom.get("orientation", 0.0) or 0.0)
+        cx = float(geom.get("x", 0.0))
+        cy = float(geom.get("y", 0.0))
+        anchor = geom.get("anchor", "center")
+
+        contour = geom.get("contour")
+        if contour:
+            try:
+                pts = np.asarray(contour, dtype=float)
+            except (TypeError, ValueError):
+                logger.warning("刀轨几何 contour 不可解析: %r", type(contour))
+                return None, None, None
+            if pts.ndim != 2 or pts.shape[1] != 2 or len(pts) < 3:
+                logger.warning("刀轨几何 contour 顶点不足: %s", pts.shape)
+                return None, None, None
+            if kind == "raster":
+                half = (pts.min(axis=0), pts.max(axis=0))
+                rect = (float(half[0][0]), float(half[0][1]), float(half[1][0]), float(half[1][1]))
+                return kind, pts, rect
+            return kind, pts, None
+
+        try:
+            length_f = float(length)
+            width_f = float(width)
+        except (TypeError, ValueError):
+            return None, None, None
+        if not (math.isfinite(length_f) and math.isfinite(width_f)) or length_f <= 0 or width_f <= 0:
+            return None, None, None
+
+        if anchor == "center":
+            x0, y0 = cx - length_f / 2.0, cy - width_f / 2.0
+        else:
+            x0, y0 = cx, cy
+        x1, y1 = x0 + length_f, y0 + width_f
+        rect = (x0, y0, x1, y1)
+        polygon = np.array([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], dtype=float)
+        if orientation != 0.0:
+            angle = math.radians(orientation)
+            rot = np.array(
+                [
+                    [math.cos(angle), -math.sin(angle)],
+                    [math.sin(angle), math.cos(angle)],
+                ]
+            )
+            center = np.array([(x0 + x1) / 2.0, (y0 + y1) / 2.0])
+            polygon = (polygon - center) @ rot.T + center
+        if kind == "raster":
+            return kind, None, rect
+        return kind, polygon, rect

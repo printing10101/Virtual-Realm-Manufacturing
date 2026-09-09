@@ -808,6 +808,18 @@ Content-Type: application/json
 |------|------|------|
 | `POST` | `/dxf/batch` | 批量处理多个 DXF（最多 20 个）。 |
 
+### /dxf/batch-async
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/dxf/batch-async` | 批量处理多个 DXF（异步任务模式），立即返回 job_id。 |
+
+### /dxf/batch-status/{job_id}
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/dxf/batch-status/{job_id}` | 查询批量处理任务进度（done/success/failed/results）。 |
+
 ### /dxf/e2e-fixture
 
 | 方法 | 路径 | 说明 |

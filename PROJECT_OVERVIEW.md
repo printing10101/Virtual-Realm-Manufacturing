@@ -70,9 +70,9 @@
 | | `ai/process_explainer`、`ai/process_understanding`、`ai/unified_embedding` | AI 决策可解释化、任务分类+知识检索+方案生成、多源统一嵌入空间 |
 | **CAM 制造链** | `dxf/`、`step_import/`、`cad/`、`cadquery/`、`parametric_geometry/`、`image_to_3d/`、`nl2cad/` | 图纸/三维导入、参数化几何、图生 3D、自然语言→CAD |
 | | `feature_extraction/`、`process_planning/` | 特征识别（孔/腔/凸台/型腔）、装夹/工序排序/物理约束验证 |
-| | `postprocessor/` | **11 种 CNC 后处理器**（Fanuc/Siemens/Heidenhain/Mitsubishi/Fagor/GSK/HNC/KND/xmachine…），基于后处理 DSL + 控制器语法树 |
-| | `simulation/`（chatter/cutting_force/kinematics/voxel_cutter） | 颤振稳定性叶瓣图 + LNN 时序预测、切削力、运动学、体素切削仿真（voxel 调用 Rust compute-core） |
-| | `gcode_generation/`、`toolpath/` | NC 代码生成、刀具路径编辑 |
+| | `postprocessor/` | **9 种内置 CNC 后处理器**（Fanuc/Siemens/Heidenhain/Mitsubishi/Fagor/GSK/HNC/KND/xmachine），基于后处理 DSL + 控制器语法树（另有 YAML 方言包变体） |
+| | `simulation/`（chatter/cutting_force/kinematics/voxel_cutter） | 颤振稳定性叶瓣图 + LNN 时序预测、切削力、**程序级运动学校验**（3 轴行程/主轴/进给/快移扎刀/装刀，K001-K009，DNC 闸门条件）、体素切削仿真（voxel 调用 Rust compute-core）；多轴 RTCP 逆解与刀柄/夹具干涉仿真未实现 |
+| | `gcode_generation/`、`toolpath/` | NC 代码生成；`toolpath/planar_engine.py` 提供 2.5D 几何刀轨层（挖槽环切/外形偏置/端面 raster、Z 分层、斜坡下刀），铣削 G 代码从真实轮廓计算刀心轨迹，几何不可用时回退模板走线 |
 | **工业集成** | `dnc/`、`integrations/`（mtconnect/opcua/mes） | 统一 adapter 抽象，多协议并发对接车间设备/MES |
 | **知识层** | `rag/`（BM25+向量+RRF+Cross-Encoder 重排）、`knowledge_graph/`（LLM/PDF 抽取+校验+查询） | 混合检索 + 实体关系图谱 |
 | **智能体/插件** | `agent/`（auth/middleware/audit/gateway）、`plugins/`（rl_agent/skill_loader/skill_marketplace/world_model/workflow_templates） | 多智能体系统、RL 智能体、技能编译器（RestrictedPython + AST 审计）、技能市场、世界模型 |

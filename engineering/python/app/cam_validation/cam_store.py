@@ -336,6 +336,9 @@ class CamValidationTask:
     voxel_check_passed: bool | None = None
     voxel_collision_count: int = 0
     voxel_engine: str = ""
+    # 程序级运动学校验（行程/主轴/进给/快移扎刀/装刀；None = 未执行/旧任务）
+    kinematics_check_passed: bool | None = None
+    kinematics_error_count: int = 0
     # 项目记忆硬约束
     cam_validation_required: bool = True
     # 流程元数据
@@ -375,6 +378,8 @@ class CamValidationTask:
             "voxel_check_passed": self.voxel_check_passed,
             "voxel_collision_count": self.voxel_collision_count,
             "voxel_engine": self.voxel_engine,
+            "kinematics_check_passed": self.kinematics_check_passed,
+            "kinematics_error_count": self.kinematics_error_count,
             "cam_validation_required": self.cam_validation_required,
             "workspace_dir": self.workspace_dir,
             "error_message": self.error_message,

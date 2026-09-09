@@ -22,6 +22,30 @@ from app.metrics.flywheel_metrics import (
 
 logger = logging.getLogger(__name__)
 
+# 周报保存目录白名单基（项目根），防任意目录写入
+_REPORT_BASE_DIR = Path(__file__).resolve().parents[3]
+
+
+def _validate_report_dir(user_dir: str) -> Path:
+    """校验周报输出目录，仅允许项目根下的相对路径。"""
+    import os
+
+    from app.utils.utils import validate_user_path
+
+    try:
+        return validate_user_path(
+            user_path=user_dir,
+            allowed_base_dirs=[Path(os.getenv("LNN_PROJECT_ROOT", str(_REPORT_BASE_DIR))).resolve()],
+            allowed_extensions=None,
+            project_root=_REPORT_BASE_DIR,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="报告输出目录不合法或超出允许范围（仅允许项目根下相对路径）",
+        ) from exc
+
+
 router = APIRouter(
     prefix="/api/v1/flywheel",
     tags=["Flywheel"],
@@ -165,7 +189,7 @@ async def get_flywheel_metrics(
 )
 async def generate_weekly_report(
     save: bool = Query(default=False, description="是否同时保存报告到文件"),
-    output_dir: str = Query(default="reports", description="报告保存目录"),
+    output_dir: str = Query(default="reports", description="报告保存目录（仅允许项目根下相对路径）"),
 ) -> dict[str, Any]:
     """生成每周飞轮报告。
 
@@ -176,7 +200,8 @@ async def generate_weekly_report(
         report = await collector.generate_weekly_report_async()
 
         if save:
-            filepath = save_report_to_file(report, output_dir)
+            safe_dir = _validate_report_dir(output_dir)
+            filepath = save_report_to_file(report, safe_dir)
             report["saved_to"] = str(filepath)
 
         return report
