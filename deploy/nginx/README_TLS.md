@@ -140,17 +140,13 @@ location / {
 确保证书文件是 PEM 格式（Base64 编码），文件内容类似：
 
 ```
------BEGIN CERTIFICATE-----
-MIIDXTCCAkWgAwIBAgIJAJC1HiIAZAiUMA0GCSqGSIb3Qw8BA...
------END CERTIFICATE-----
+<PEM 示例内容已省略>
 ```
 
 私钥文件格式：
 
 ```
------BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBA...
------END PRIVATE KEY-----
+<PEM 示例内容已省略>
 ```
 
 ## 安全建议
