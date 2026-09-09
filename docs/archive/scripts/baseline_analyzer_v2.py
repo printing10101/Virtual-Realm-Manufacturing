@@ -12,7 +12,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 
-ROOT = Path(r"c:\Users\Lenovo\Desktop\灵境制造（上线版）")
+ROOT = Path(r"C:\Users\<user>\Desktop\灵境制造（上线版）")
 TRACE_FILE = ROOT / "data" / "traces" / "trace_log.jsonl"
 AUDIT_FILE = ROOT / "logs" / "audit" / "audit_log.jsonl"
 WORKFLOW_DIR = ROOT / "logs" / "workflows"

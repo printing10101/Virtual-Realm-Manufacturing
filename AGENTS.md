@@ -23,7 +23,7 @@ Tauri(Rust) + Vue3 + Python/FastAPI 全栈 monorepo。当前分支为 `main`（2
 
 ```bash
 unset PYTHONPATH                       # 坑 1：桌面宿主环境注入的 PYTHONPATH 可能遮蔽 tests.utils 命名空间
-PY314="C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\python.exe"
+PY314="C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe"
 # 坑 2：用系统 Python 3.14（OCP 原生依赖在 3.14.3 可正常加载；.venv/.venv5 基于 3.11 且 pydantic_core 损坏）
 & $PY314 -m pytest                     # 失败时再用 python --version 核对路径
 & $PY314 -m pytest -m unit             # 快速：只跑单元测试
@@ -79,7 +79,7 @@ pnpm dev  # http://127.0.0.1:1420，proxy /api→8765
 
 1. **PYTHONPATH 遮蔽**：桌面宿主环境注入的 PYTHONPATH 可能含额外目录 → `ModuleNotFoundError('tests.utils')`。跑 pytest 前必须 `unset PYTHONPATH`。
 
-2. **需用系统 Python 3.14.3 跑测试**：仓库自带 `.venv`/`.venv5` 基于 Python 3.11 且 pydantic_core 已损坏，且 OCP 原生依赖（cadquery）在 3.11 无法加载；须用系统 Python 3.14（`C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\python.exe`），并 `python -m pytest` 而不是 `pytest`。默认 `python` 指向宿主 hermes venv（3.11.9），务必显式指定 3.14。
+2. **需用系统 Python 3.14.3 跑测试**：仓库自带 `.venv`/`.venv5` 基于 Python 3.11 且 pydantic_core 已损坏，且 OCP 原生依赖（cadquery）在 3.11 无法加载；须用系统 Python 3.14（`C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe`），并 `python -m pytest` 而不是 `pytest`。默认 `python` 指向宿主 hermes venv（3.11.9），务必显式指定 3.14。
 
 3. research/ 与 engineering/ 物理解耦中：工程侧 pytest 已排除 research/、shared/、app（norecursedirs + collect_ignore 双重防护）；改测试收集逻辑时不要破坏此防护。
 

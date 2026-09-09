@@ -428,7 +428,7 @@ if event:
 
 ```bash
 cd python
-$env:PYTHONPATH="C:\Users\Lenovo\Desktop\灵境制造（上线版）\python"
+$env:PYTHONPATH="C:\Users\<user>\Desktop\灵境制造（上线版）\python"
 pytest app/ai/active_learning/tests/test_triggers.py -v
 ```
 

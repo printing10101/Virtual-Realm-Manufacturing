@@ -8,13 +8,13 @@ import docx as docxlib
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-DOCX_PATH = r"C:\Users\Lenovo\Desktop\LAM激光主动抑颤论文_初稿v5.docx"
-OUT_PREFIX = r"C:\Users\Lenovo\Desktop\灵境制造（上线版）\docs\review_outputs\review_v5_run"
+DOCX_PATH = r"C:\Users\<user>\Desktop\LAM激光主动抑颤论文_初稿v5.docx"
+OUT_PREFIX = r"C:\Users\<user>\Desktop\灵境制造（上线版）\docs\review_outputs\review_v5_run"
 URL = "http://127.0.0.1:11434/api/chat"
 MODEL = "qwen3:14b-128k"
 TEMPERATURE = 0.4
 
-pathlib.Path(r"C:\Users\Lenovo\Desktop\灵境制造（上线版）\docs\review_outputs").mkdir(exist_ok=True)
+pathlib.Path(r"C:\Users\<user>\Desktop\灵境制造（上线版）\docs\review_outputs").mkdir(exist_ok=True)
 
 d = docxlib.Document(DOCX_PATH)
 parts = []
@@ -75,6 +75,6 @@ valid = [s for s in scores if s is not None]
 n_yes = sum(verdicts)
 print("SCORES=", scores, "MEDIAN=", statistics.median(valid) if valid else None)
 print(f"Q1_YES={n_yes}/8（目标 ≥5）")
-pathlib.Path(r"C:\Users\Lenovo\Desktop\灵境制造（上线版）\docs\review_outputs\review_v5_verdicts.json").write_text(
+pathlib.Path(r"C:\Users\<user>\Desktop\灵境制造（上线版）\docs\review_outputs\review_v5_verdicts.json").write_text(
     json.dumps({"scores": scores, "verdicts": verdicts, "median": statistics.median(valid) if valid else None,
                 "q1_yes": n_yes}, ensure_ascii=False, indent=2), encoding="utf-8")

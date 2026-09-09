@@ -17,9 +17,9 @@
 
 $ErrorActionPreference = "Continue"
 
-$PROJECT_ROOT = "c:\Users\Lenovo\Desktop\灵境制造（上线版）"
-$PYTHON = "C:\Users\Lenovo\AppData\Local\Programs\Python\Python311\python.exe"
-$PYTHONW = "C:\Users\Lenovo\AppData\Local\Programs\Python\Python311\pythonw.exe"
+$PROJECT_ROOT = "C:\Users\<user>\Desktop\灵境制造（上线版）"
+$PYTHON = "C:\Users\<user>\AppData\Local\Programs\Python\Python311\python.exe"
+$PYTHONW = "C:\Users\<user>\AppData\Local\Programs\Python\Python311\pythonw.exe"
 $RESULTS_DIR = Join-Path $PROJECT_ROOT "论文相关\脚本\results"
 $LOGS_DIR = Join-Path $RESULTS_DIR "task_scheduler_logs"
 

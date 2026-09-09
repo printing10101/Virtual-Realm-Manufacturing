@@ -662,7 +662,7 @@ fn append_log_line(path: &std::path::Path, line: &str) {
 /// 4. 用户级 Python 安装路径（通过 %LOCALAPPDATA% 动态获取）
 /// 5. 回退到 `python`（依赖 PATH）
 ///
-/// 安全修复 (P0): 原有代码硬编码了 `C:\Users\Lenovo` 路径，分发到其他用户机器
+/// 安全修复 (P0): 原有代码硬编码了 `C:\Users\<user>` 路径，分发到其他用户机器
 /// 会自动失败。现已移除所有硬编码个人路径，改用环境变量动态获取。
 fn resolve_python_path(resource_dir: Option<&std::path::Path>) -> String {
     // 1. 嵌入式运行时（自包含，目标机器无需 Python）

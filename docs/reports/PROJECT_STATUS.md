@@ -281,7 +281,7 @@ app.include_router(template_market.router) # 模板市场
 
 ## 六、联系方式
 
-- **项目地址**: `c:\Users\Lenovo\Desktop\灵境制造（上线版）`
+- **项目地址**: `C:\Users\<user>\Desktop\灵境制造（上线版）`
 - **版本**: V4 (2.5.0)
 - **最后更新**: 2026-06-25
 - **技术支持**: GitHub Issues

@@ -18,7 +18,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-ROOT = r"C:\Users\Lenovo\Desktop\灵境制造（上线版）"
+ROOT = r"C:\Users\<user>\Desktop\灵境制造（上线版）"
 OUT_DIR = os.path.join(ROOT, "output", "软著材料")
 
 SOFT_NAME = "灵境制造 AI-CAM 一体化软件"

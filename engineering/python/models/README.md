@@ -26,7 +26,7 @@
 
 ```bash
 cd engineering/python
-PY314="C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\python.exe"
+PY314="C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe"
 
 # 1. 合成数据充能（切削力）
 $PY314 -c "import asyncio; from app.pipelines.synthetic_data_gen import generate_synthetic_dataset; \

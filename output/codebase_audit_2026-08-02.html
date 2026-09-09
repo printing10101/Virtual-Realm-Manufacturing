@@ -94,17 +94,17 @@ tr:hover { background: rgba(99,102,241,0.05); }
 </div>
 <div class="issue-path">📁 engineering/src-tauri/src/sidecar.rs:667</div>
 <div class="issue-desc">
-<code>resolve_python_path()</code> 中硬编码了 <code>C:\Users\Lenovo\anaconda3\python.exe</code> 等多个含用户名的路径。
+<code>resolve_python_path()</code> 中硬编码了 <code>C:\Users\<user>\anaconda3\python.exe</code> 等多个含用户名的路径。
 当应用分发给其他用户时，Python 解释器查找将失败，导致整个桌面应用无法启动。
 虽然也定义了 <code>LINGJING_PYTHON_PATH</code> 环境变量优先级更高，但默认回落路径中不该包含硬编码的个人目录。
 </div>
 <pre>let candidates = [
-    r"C:\Users\Lenovo\anaconda3\python.exe",        // ← P0: 硬编码用户名
+    r"C:\Users\<user>\anaconda3\python.exe",        // ← P0: 硬编码用户名
     r"C:\ProgramData\anaconda3\python.exe",
     r"C:\Python313\python.exe",
-    r"C:\Users\Lenovo\AppData\Local\Programs\Python\Python313\python.exe",  // ← 同上
+    r"C:\Users\<user>\AppData\Local\Programs\Python\Python313\python.exe",  // ← 同上
 ];</pre>
-<div class="issue-action">🔧 <strong>修复方案：</strong>移除所有含 <code>C:\Users\Lenovo</code> 的路径，保留通用路径（ProgramData、C:\Python3xx、%LOCALAPPDATA%）。使用 <code>std::env::var("LOCALAPPDATA")</code> 动态获取用户 AppData 目录。</div>
+<div class="issue-action">🔧 <strong>修复方案：</strong>移除所有含 <code>C:\Users\<user></code> 的路径，保留通用路径（ProgramData、C:\Python3xx、%LOCALAPPDATA%）。使用 <code>std::env::var("LOCALAPPDATA")</code> 动态获取用户 AppData 目录。</div>
 </div>
 
 <div class="issue">

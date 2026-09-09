@@ -16,7 +16,7 @@
 
 | 检查项 | 状态 | 详情 |
 |--------|------|------|
-| 工作目录 | ✅ 通过 | `C:\Users\Lenovo\Desktop\灵境制造（上线版）` |
+| 工作目录 | ✅ 通过 | `C:\Users\<user>\Desktop\灵境制造（上线版）` |
 | Python版本 | ✅ 通过 | Python 3.11.0rc2 (>=3.8) |
 | 依赖安装 | ✅ 通过 | fastapi, uvicorn, pydantic, chromadb, httpx 均可正常导入 |
 

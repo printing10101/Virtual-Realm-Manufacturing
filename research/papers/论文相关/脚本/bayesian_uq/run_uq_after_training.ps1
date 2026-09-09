@@ -18,7 +18,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $weightsFile = Join-Path $scriptDir "results\full_weights.pt"
 $uqLog       = Join-Path $scriptDir "uq_experiment.log"
 $uqErr       = Join-Path $scriptDir "uq_experiment.err.log"
-$pythonExe   = "C:\Users\Lenovo\AppData\Local\Programs\Python\Python311\python.exe"
+$pythonExe   = "C:\Users\<user>\AppData\Local\Programs\Python\Python311\python.exe"
 $uqScript    = Join-Path $scriptDir "bayesian_uq_experiment.py"
 
 # 训练进程 PID（rerun_full_save_weights.py）—— 用于判断训练是否结束

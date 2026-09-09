@@ -76,7 +76,7 @@
 ## 3. 已通过的关键验证明细
 
 ### 3.1 后端全量测试（G2）
-- 环境：系统 Python **3.14.3**（`C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\python.exe`），`unset PYTHONPATH` 规避宿主遮蔽
+- 环境：系统 Python **3.14.3**（`C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe`），`unset PYTHONPATH` 规避宿主遮蔽
 - 结果：**3441 passed, 9 skipped**（含 OCP/cadquery 原生依赖正常加载）
 - 本轮 agent state 专项：**82 passed**（`test_agent_persistence.py` + `test_state_manager_coverage.py`，含新增 4 个 SQLite DB 层回归测试）
 

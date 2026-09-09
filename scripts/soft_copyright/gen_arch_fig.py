@@ -13,7 +13,7 @@ from matplotlib.patches import FancyBboxPatch
 plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei"]
 plt.rcParams["axes.unicode_minus"] = False
 
-OUT = r"C:\Users\Lenovo\Desktop\灵境制造（上线版）\output\软著材料\fig_architecture.png"
+OUT = r"C:\Users\<user>\Desktop\灵境制造（上线版）\output\软著材料\fig_architecture.png"
 
 
 def box(ax, x, y, w, h, text, fc, ec="#334155", fs=10, bold=False):

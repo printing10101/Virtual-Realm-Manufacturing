@@ -12,7 +12,7 @@ import os
 
 def test_python_version():
     """测试必须使用 Python 3.14"""
-    python_exe = Path(r"C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\python.exe")
+    python_exe = Path(r"C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe")
     
     assert python_exe.exists(), f"❌ Python 3.14 not found at {python_exe}"
     
@@ -42,7 +42,7 @@ def test_no_pythonpath_shading():
     # 运行一个简单的模块导入测试
     result = subprocess.run(
         [
-            str(Path(r"C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\python.exe")),
+            str(Path(r"C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe")),
             "-c",
             "import sys; sys.path.insert(0, 'engineering/python'); from app.core.exceptions import ValidationException; print('OK')",
         ],
@@ -117,7 +117,7 @@ def test_key_modules_import():
     for module in modules_to_test:
         result = subprocess.run(
             [
-                str(Path(r"C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\python.exe")),
+                str(Path(r"C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe")),
                 "-c",
                 f"import sys; sys.path.insert(0, 'engineering/python'); import {module}; print('OK')",
             ],
@@ -145,7 +145,7 @@ def test_exceptions_import():
     for exc_name in exceptions_to_test:
         result = subprocess.run(
             [
-                str(Path(r"C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\python.exe")),
+                str(Path(r"C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe")),
                 "-c",
                 f"import sys; sys.path.insert(0, 'engineering/python'); from app.core.exceptions import {exc_name}; print('OK')",
             ],

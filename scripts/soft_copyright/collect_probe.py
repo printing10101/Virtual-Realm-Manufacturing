@@ -7,7 +7,7 @@ import re
 import sys
 from collections import Counter
 
-ROOT = r"C:\Users\Lenovo\Desktop\灵境制造（上线版）"
+ROOT = r"C:\Users\<user>\Desktop\灵境制造（上线版）"
 
 # 自研代码目录（按逻辑顺序：后端 前端 桌面壳/rust）
 INCLUDE_DIRS = [

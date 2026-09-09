@@ -375,6 +375,6 @@ def convert_md_to_docx(md_path, docx_path):
 
 
 if __name__ == "__main__":
-    md_file = r"c:\Users\Lenovo\Desktop\灵境制造（上线版）\docs\research\pi-lnn-mssp-draft-v0.1.md"
-    docx_file = r"c:\Users\Lenovo\Desktop\灵境制造（上线版）\docs\research\pi-lnn-mssp-draft-v0.1.docx"
+    md_file = r"C:\Users\<user>\Desktop\灵境制造（上线版）\docs\research\pi-lnn-mssp-draft-v0.1.md"
+    docx_file = r"C:\Users\<user>\Desktop\灵境制造（上线版）\docs\research\pi-lnn-mssp-draft-v0.1.docx"
     convert_md_to_docx(md_file, docx_file)

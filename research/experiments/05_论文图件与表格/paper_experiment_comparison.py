@@ -350,7 +350,7 @@ def generate_report(paper_content, json_results, figures_status, table_status):
 
 def main():
     # 设置路径 - 使用绝对路径
-    base_dir = Path(r"c:\Users\Lenovo\Desktop\灵境制造（上线版）")
+    base_dir = Path(r"C:\Users\<user>\Desktop\灵境制造（上线版）")
     paper_path = base_dir / "docs" / "DL-LNN-论文-最终版.docx"
     results_dir = base_dir / "python" / "experiments" / "results"
     figures_dir = results_dir / "figures"

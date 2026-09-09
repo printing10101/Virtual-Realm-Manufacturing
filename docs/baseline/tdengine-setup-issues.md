@@ -64,7 +64,7 @@ open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specifie
 
 ```bash
 # 进入项目根目录
-cd "c:\Users\Lenovo\Desktop\灵境制造（上线版）"
+cd "C:\Users\<user>\Desktop\灵境制造（上线版）"
 
 # 复制环境变量模板（如尚未复制）
 cp .env.example .env        # Linux/Mac
@@ -205,7 +205,7 @@ app\sservices\tests\test_tdengine_client.py::TestExecutionTime::test_holder_sing
 在 Docker Desktop 可正常运行的开发机上，复制以下命令即可一次性走完全部验收：
 
 ```powershell
-cd 'C:\Users\Lenovo\Desktop\灵境制造（上线版'
+cd 'C:\Users\<user>\Desktop\灵境制造（上线版'
 Copy-Item .env.example .env -Force
 docker compose up -d lnn-tdengine
 # 等待 10-30 秒
