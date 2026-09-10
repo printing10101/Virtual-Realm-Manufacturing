@@ -177,8 +177,9 @@ jobs:
 
       - name: 运行前端测试
         working-directory: engineering
-        run: |
-          pnpm test:run -- --coverage
+        # test:ci 参数固化在 package.json；`pnpm test:run -- --coverage` 的 `--`
+        # 会被 pnpm 字面传给 vitest，coverage 参数从未生效（2026-09-10 修复）
+        run: pnpm test:ci
 
       - name: Python 代码质量检查
         run: |
