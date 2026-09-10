@@ -9,11 +9,20 @@ import subprocess
 from pathlib import Path
 import os
 
+import pytest
+
+# 本文件是本地开发环境守卫：断言 Python 3.14、desktop_runtime/ 存在、仓库根
+# 相对路径布局等仅在本机成立的前提。CI（ubuntu + 3.11/3.12）必然不满足，
+# 由 CI 的 -m "not skip_ci" 排除（与 tests/performance、tests/image_to_3d 同模式）。
+pytestmark = pytest.mark.skip_ci
+
 
 def test_python_version():
     """测试必须使用 Python 3.14"""
-    python_exe = Path(r"C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe")
-    
+    # 环境守卫验证的是"当前解释器"：路径硬编码会随机器/用户名漂移（曾把
+    # AGENTS.md 的 <user> 占位符原样写进路径），改用 sys.executable。
+    python_exe = Path(sys.executable)
+
     assert python_exe.exists(), f"❌ Python 3.14 not found at {python_exe}"
     
     # 验证版本
@@ -42,7 +51,7 @@ def test_no_pythonpath_shading():
     # 运行一个简单的模块导入测试
     result = subprocess.run(
         [
-            str(Path(r"C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe")),
+            str(Path(sys.executable)),
             "-c",
             "import sys; sys.path.insert(0, 'engineering/python'); from app.core.exceptions import ValidationException; print('OK')",
         ],
@@ -117,7 +126,7 @@ def test_key_modules_import():
     for module in modules_to_test:
         result = subprocess.run(
             [
-                str(Path(r"C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe")),
+                str(Path(sys.executable)),
                 "-c",
                 f"import sys; sys.path.insert(0, 'engineering/python'); import {module}; print('OK')",
             ],
@@ -145,7 +154,7 @@ def test_exceptions_import():
     for exc_name in exceptions_to_test:
         result = subprocess.run(
             [
-                str(Path(r"C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe")),
+                str(Path(sys.executable)),
                 "-c",
                 f"import sys; sys.path.insert(0, 'engineering/python'); from app.core.exceptions import {exc_name}; print('OK')",
             ],
