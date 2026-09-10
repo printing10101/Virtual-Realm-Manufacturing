@@ -27,7 +27,9 @@ env:
   # （如 app/core/response.py）；不能跳 3.14：pydantic 2.9.2 无 cp314 wheel，依赖
   # 锁定（requirements.txt）升级前 CI 先与 unit 矩阵上限保持一致。
   PYTHON_VERSION: '3.12'
-  NODE_VERSION: '18'
+  # 2026-09-11 与 release/desktop-build 统一为 22：Node 18 已 EOL（2025-04），
+  # 测试与发版必须构建在同一 Node 上
+  NODE_VERSION: '22'
   PIP_CACHE_DIR: ~/.cache/pip
   PNPM_CACHE_DIR: ~/.local/share/pnpm/store
 
@@ -85,10 +87,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install pytest pytest-cov pytest-asyncio httpx
+          pip install pytest pytest-cov pytest-asyncio httpx pytest-timeout
 
       - name: Run unit tests with coverage
         working-directory: engineering/python
+        # P0-1: 原 '-m unit' 漏掉 tests/unit/ 下 41 个未标记单元测试。
+        # 收集策略改为目录收集 + 仅排除 skip_ci，与 full suite 对齐。
+        # 2026-09-11 修复：上述两行注释此前写在续行符 \ 之后、-m 参数之前——bash 会把
+        # 注释拼进命令并在该行终止，-m "not skip_ci" 沦为独立命令（exit 127），
+        # 导致 skip_ci 过滤从未生效，且本步骤即便测试全绿也必然失败。
+        # --timeout=300 与 full suite 一致：用例挂起 5 分钟即失败并在日志/junit 留名，
+        # 而非拖到 job 超时被杀（此前 nl2cad 退化几何用例静默挂死 56 分钟、junit 未生成）。
         run: |
           pytest tests/unit/ -v \
             --cov=app \
@@ -98,8 +107,7 @@ jobs:
             --cov-report=html:coverage-unit-html \
             --cov-report=term-missing \
             --junitxml=junit-unit.xml \
-            # P0-1: 原 '-m unit' 漏掉 tests/unit/ 下 41 个未标记单元测试。
-            # 收集策略改为目录收集 + 仅排除 skip_ci，与 full suite 对齐。
+            --timeout=300 \
             -m "not skip_ci"
 
       - name: Check unit test coverage threshold (24%)
@@ -687,12 +695,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Setup pnpm
+        # 版本取自根 package.json 的 packageManager 字段（pnpm@9.15.9，与
+        # lockfileVersion 9.0 同代）。不再浮动指定 version，保证 CI、本地与
+        # 发版流水线使用同一 pnpm 版本
         uses: pnpm/action-setup@v4
-        with:
-          # 锁文件 lockfileVersion 9.0，pnpm 8 会视为不兼容而忽略 →
-          # frozen-lockfile 报 ERR_PNPM_NO_LOCKFILE（2026-09-10 与 post-merge.yml 对齐为 9；
-          # 该修复此前只落在 post-merge.yml，导致 ci/pr/release/dependency-scan 长期红）
-          version: 9
 
       - name: Cache pnpm dependencies
         uses: actions/cache@v4
@@ -995,10 +1001,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Setup pnpm
+        # 同上：版本取自根 package.json 的 packageManager 字段（pnpm@9.15.9）
         uses: pnpm/action-setup@v4
-        with:
-          # 同上：必须与 lockfileVersion 9.0 同代（pnpm >= 9）
-          version: 9
 
       - name: Install Python lint tools
         # 固定 ruff 版本与 .pre-commit-config.yaml 对齐（v0.15.12），
