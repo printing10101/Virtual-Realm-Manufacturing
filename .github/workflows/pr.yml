@@ -56,7 +56,7 @@ jobs:
       - name: 配置 pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
 
       - name: 安装 Python lint 工具
         # 固定 ruff 版本与 .pre-commit-config.yaml 对齐（v0.15.12），防止默认规则/format 漂移
@@ -293,7 +293,7 @@ jobs:
       - name: 配置 pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
 
       - name: 缓存 pnpm 依赖
         uses: actions/cache@v4

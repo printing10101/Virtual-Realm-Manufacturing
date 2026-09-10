@@ -486,7 +486,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install pytest pytest-cov pytest-asyncio httpx
+          # pytest-timeout: 本 job 的 pytest 命令带 --timeout=300 兜底防挂起，
+          # 插件缺失时 pytest 直接报 unrecognized arguments 退出（exit 4，2026-09-10 实测）
+          pip install pytest pytest-cov pytest-asyncio httpx pytest-timeout
 
       - name: Run full test suite
         working-directory: engineering/python
@@ -683,7 +685,10 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          # 锁文件 lockfileVersion 9.0，pnpm 8 会视为不兼容而忽略 →
+          # frozen-lockfile 报 ERR_PNPM_NO_LOCKFILE（2026-09-10 与 post-merge.yml 对齐为 9；
+          # 该修复此前只落在 post-merge.yml，导致 ci/pr/release/dependency-scan 长期红）
+          version: 9
 
       - name: Cache pnpm dependencies
         uses: actions/cache@v4
@@ -976,7 +981,8 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          # 同上：必须与 lockfileVersion 9.0 同代（pnpm >= 9）
+          version: 9
 
       - name: Install Python lint tools
         # 固定 ruff 版本与 .pre-commit-config.yaml 对齐（v0.15.12），
@@ -1139,9 +1145,13 @@ jobs:
         working-directory: engineering/python
         run: |
           python -m pip install --upgrade pip
-          # 契约层仅依赖 dataclasses/abc/enum/datetime，无第三方依赖
-          # 但仍安装 pytest 工具链以运行测试
-          pip install pytest pytest-cov pytest-asyncio
+          # 契约测试代码本身无第三方依赖，但 tests/conftest.py 顶层的
+          # _install_lazy_app_api_v1() 在收集期就会执行 app/api/v1/* 的 import
+          # （如 auth.py 的 import fastapi）→ 必须装完整 requirements.txt，
+          # 与 unit job 对齐。2026-09-10：原"只装 pytest 工具链"假设失效，
+          # ModuleNotFoundError: fastapi 导致本 job 长期红。
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-cov pytest-asyncio httpx
 
       - name: Run core contracts tests
         working-directory: engineering/python

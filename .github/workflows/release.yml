@@ -146,7 +146,7 @@ jobs:
       - name: 配置 pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
 
       - name: 缓存依赖
         uses: actions/cache@v4
@@ -217,7 +217,7 @@ jobs:
       - name: 配置 pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
 
       - name: 安装 Python 依赖
         run: |

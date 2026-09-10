@@ -83,7 +83,7 @@ jobs:
       - name: 安装 pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
       - name: 运行 pnpm audit（高危/严重阻断）
         run: pnpm audit --audit-level high --json > pnpm-audit.json 2>&1 || true
       - name: 上传审计结果
