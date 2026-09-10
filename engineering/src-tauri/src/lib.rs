@@ -269,7 +269,9 @@ pub fn run() {
                     .fullscreen(false)
                     .center()
                     .decorations(true)
-                    .transparent(false)
+                    // .transparent(false) 已移除（2026-09-10）：false 本就是默认值，
+                    // 且该方法在 macOS 目标被 macos-private-api feature 门控，
+                    // 未启用 feature 时 macOS 编译直接 E0599（CI 实测）
                     .visible(false)
                     .build()
                     {

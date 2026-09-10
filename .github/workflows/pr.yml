@@ -95,8 +95,8 @@ jobs:
   python-unit-tests:
     name: Python 单元测试
     runs-on: ubuntu-latest
-    # 2026-09-10：套件增长后 30 分钟不足（job 超时表现为 cancelled），与 ci.yml 对齐为 75
-    timeout-minutes: 75
+    # 2026-09-10：与 ci.yml 对齐（75 分钟实测跑满被 cancelled，放宽至 120）
+    timeout-minutes: 120
 
     steps:
       - name: 检出代码
