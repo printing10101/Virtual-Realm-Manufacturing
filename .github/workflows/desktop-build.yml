@@ -26,7 +26,9 @@ jobs:
   desktop-build:
     name: 桌面构建 ${{ matrix.name }}
     runs-on: ${{ matrix.platform }}
-    timeout-minutes: 60
+    # 2026-09-10：三平台构建（含嵌入式 Python 运行时 + Rust 全量编译）
+    # 实测超过 60 分钟（macOS 排队+构建共约 70 分钟即被 cancelled）
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:

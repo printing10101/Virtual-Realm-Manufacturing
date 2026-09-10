@@ -53,7 +53,9 @@ jobs:
   python-unit-tests:
     name: Python Unit Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 2026-09-10：套件增长后实测 30 分钟不够，跑满即被 GitHub 以 cancelled
+    # （job 超时表现为 cancelled 而非 failure）终止，连续多轮 CI 假性红
+    timeout-minutes: 75
 
     strategy:
       matrix:
@@ -463,7 +465,7 @@ jobs:
   python-full-test-suite:
     name: Python Full Test Suite
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
 
     steps:
