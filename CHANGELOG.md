@@ -3,6 +3,32 @@
 本文件记录灵境制造的版本变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 修复（Fixed）
+
+**CI / 版本管理**
+
+- 单元测试 job 的 pytest 命令中，两行注释写在续行符之后、`-m "not skip_ci"` 之前，
+  bash 将注释拼入命令并提前终止，`-m` 沦为独立命令（exit 127）：skip_ci 过滤从未生效，
+  且该步骤即便测试全绿也必然失败。注释移出命令，并补 `--timeout=300`（与 full suite 一致）。
+- 本地环境守卫 `tests/unit/test_environment_check.py`（断言 Python 3.14、desktop_runtime 存在）
+  标注 `skip_ci`，不再在 Linux CI 上必挂；硬编码的 `<user>` 占位路径改为 `sys.executable`。
+- 全部工作流统一 Node 22（ci/pr/post-merge/dependency-scan 此前为已 EOL 的 Node 18，
+  与 release/desktop-build 的 22 不一致）；pnpm 由根 `package.json` 的 `packageManager`
+  字段钉死为 9.15.9，工作流不再浮动指定 `version: 9`；补 `engines.node >= 22`。
+- 发版流水线新增 tag 与 `VERSION` 文件一致性校验（tag 推送路径），杜绝"tag v2.9.0 打出
+  2.8.0 产物"；发布说明改为从本文件提取对应版本小节，不再用 `git log` 覆盖 CHANGELOG.md。
+- dependency-scan 对齐 Python 3.12；pnpm audit 步骤名与其非阻断行为一致，stderr 不再混入 JSON 产物。
+
+### 已知问题（Known Issues）
+
+- **NL2CAD 退化几何在 Linux 上挂死**：`cq.Workplane('XY').box(0, 0, 0)` 在 Linux
+  cadquery-ocp 下于 OCCT 原生层挂死，`_run_cadquery_script` 的线程 join 超时无法中断
+  原生执行，泄漏线程会令同进程后续 CadQuery 调用一并卡死。Docker 生产镜像即 Linux，
+  LLM 产出退化几何时线上请求同样会挂。临时以 `skip_ci` 排除对应用例
+  （`test_nl2cad_llm.py::test_zero_dim_then_valid`）；根因修复需将沙箱执行改为可强杀的子进程隔离。
+
 ## [2.8.0] - 2026-09-05
 
 本版本为质量专项版本：以稳定性修复、重复代码收敛、仓库结构与内容治理为主线，
