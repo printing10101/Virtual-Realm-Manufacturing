@@ -78,32 +78,73 @@ jobs:
           echo "发布版本: ${VERSION}"
           echo "发布类型: ${RELEASE_TYPE}"
 
+      - name: 校验版本一致性
+        run: |
+          echo "=== 校验版本一致性 ==="
+          # tag 推送：tag 必须与 VERSION 文件一致（先 version_sync --set 再打标），
+          # 防止"tag v2.9.0 打出 2.8.0 产物"；workflow_dispatch 的版本来自输入，
+          # 由后续"更新版本号"步骤统一改写，此处跳过比对
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG_VERSION=${GITHUB_REF#refs/tags/v}
+            FILE_VERSION=$(tr -d '[:space:]' < VERSION)
+            if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
+              echo "::error::tag v${TAG_VERSION} 与 VERSION 文件 (${FILE_VERSION}) 不一致。请运行 python scripts/version_sync.py --set ${TAG_VERSION} 后重新打标"
+              exit 1
+            fi
+          fi
+          python scripts/version_sync.py --check
+          echo "✓ 版本一致性校验通过"
+
       - name: 生成变更日志
         id: changelog
         run: |
           echo "=== 生成变更日志 ==="
-          
-          # 获取上一个 tag
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          
-          if [ -z "$PREV_TAG" ]; then
-            echo "首次发布，生成完整变更日志"
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # 发布说明优先取自仓库维护的 CHANGELOG.md 对应版本小节。
+          # 此前用 git log 覆盖整个 CHANGELOG.md，导致 Release 正文是 commit
+          # 标题流水账，curated 版本说明从未真正发布；现不再改写仓库文件，
+          # 后续打包步骤拿到的也是原始 curated CHANGELOG.md
+          python3 - "$VERSION" > release-notes.tmp.md <<'PYEOF'
+          import re
+          import sys
+
+          version = sys.argv[1]
+          try:
+              text = open("CHANGELOG.md", encoding="utf-8").read()
+          except FileNotFoundError:
+              sys.exit(3)
+
+          match = re.search(
+              rf"(?ms)^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)",
+              text,
+          )
+          if not match:
+              sys.exit(3)
+          sys.stdout.write(match.group(1).strip() + "\n")
+          PYEOF
+
+          if [ -s release-notes.tmp.md ]; then
+            CHANGELOG=$(cat release-notes.tmp.md)
+            echo "✓ 已从 CHANGELOG.md 提取 [${VERSION}] 小节"
           else
-            echo "从 ${PREV_TAG} 生成变更日志"
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            echo "::warning::CHANGELOG.md 中未找到 [${VERSION}] 小节，回退为 git log 摘要"
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -z "$PREV_TAG" ]; then
+              CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+            else
+              CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            fi
           fi
-          
+          rm -f release-notes.tmp.md
+
           # 保存到输出
           {
             echo 'changelog<<EOF'
             echo "$CHANGELOG"
             echo 'EOF'
           } >> $GITHUB_OUTPUT
-          
-          # 保存到文件
-          echo "$CHANGELOG" > CHANGELOG.md
-          
+
           echo "✓ 变更日志生成完成"
 
       - name: 验证版本号
@@ -144,9 +185,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: 配置 pnpm
+        # 版本取自根 package.json 的 packageManager 字段（pnpm@9.15.9）
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: 缓存依赖
         uses: actions/cache@v4
@@ -216,9 +256,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: 配置 pnpm
+        # 版本取自根 package.json 的 packageManager 字段（pnpm@9.15.9）
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: 安装 Python 依赖
         run: |
