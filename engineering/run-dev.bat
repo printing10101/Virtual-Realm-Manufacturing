@@ -9,23 +9,38 @@ REM        避免 .bat 以 GBK 读取 UTF-8 中文路径导致 cd 失败。
 REM ============================================================
 
 REM 1) 配置 MSVC 构建环境（Tauri/Rust 桌面壳编译依赖 MSVC 工具链 link.exe + Windows SDK）
-call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"
-if errorlevel 1 (
-  echo [错误] 无法加载 MSVC 环境 (vcvars64.bat)。
-  echo        请确认已安装 Visual Studio 2022/2026 且勾选"使用 C++ 的桌面开发"工作负载。
-  pause
-  exit /b 1
-)
+REM    Locate the VS installation dynamically via vswhere, instead of hardcoding an
+REM    edition/version path. A future VS upgrade or an x86/x64 layout change will
+REM    no longer break this launcher (previously pinned to a non-existent
+REM    "Program Files\Microsoft Visual Studio\18\Community" install).
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+set "VSINSTALL="
+if not exist "%VSWHERE%" goto :no_msvc
+for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSINSTALL=%%i"
+if not defined VSINSTALL goto :no_msvc
+call "%VSINSTALL%\VC\Auxiliary\Build\vcvars64.bat"
+if errorlevel 1 goto :no_msvc
+echo [info] MSVC env loaded from: %VSINSTALL%
+goto :msvc_ok
+
+:no_msvc
+echo [ERROR] MSVC toolchain not found (vswhere probe failed).
+echo         Install Visual Studio 2022/2026 with the "Desktop development with C++" workload.
+echo         Expected vswhere at: %VSWHERE%
+pause
+exit /b 1
+
+:msvc_ok
 
 REM 2) 取得本脚本所在目录（engineering/），中文/空格路径均由系统正确解析
 set "SCRIPT_DIR=%~dp0"
 
 REM 3) 指向本地 Python 虚拟环境（含全部后端依赖，由 requirements.txt 安装）
-set "LINGJING_PYTHON_PATH=%SCRIPT_DIR%python\.venv5\Scripts\python.exe"
+set "LINGJING_PYTHON_PATH=%SCRIPT_DIR%python\.venv6\Scripts\python.exe"
 if not exist "%LINGJING_PYTHON_PATH%" (
   echo [错误] 未找到后端虚拟环境: %LINGJING_PYTHON_PATH%
   echo        请先创建虚拟环境并安装依赖:
-  echo          python -m venv --without-pip python\.venv5
+  echo          python -m venv --without-pip python\.venv6
   echo          ... 再用系统 pip 注入完整 pip 后 pip install -r requirements.txt
   pause
   exit /b 1

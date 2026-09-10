@@ -566,3 +566,8 @@ data/real_judgments/
 *.pem
 *.key
 !**/*.example
+# ---- 会话产物与一次性输出（2026-09-10）----
+# output/ 已有 29 个文件被追踪（文档图等），本规则仅阻止新的会话产物（如 output/paper-writer/）入库
+output/
+outputs/
+*.bak-*
