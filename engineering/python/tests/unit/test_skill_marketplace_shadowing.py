@@ -40,13 +40,23 @@ class TestModuleResolution:
         assert MarketListing is not None
         assert DEFAULT_MARKET_DIR.endswith(".marketplace")
 
-    def test_stub_only_signature_is_gone(self):
+    def test_stub_only_signature_is_gone(self, tmp_path):
         """旧 stub 的 get_stats() 返回 {'total','published','downloaded'}，
-        真实现返回 {'total_listings',...}——API 契约必须是真实现语义。"""
-        import app.plugins.skill_marketplace as m
+        真实现返回 {'total_listings',...}——API 契约必须是真实现语义。
 
-        # 真实现 get_stats 返回 total_listings 键（用 __code__ 常量检查，不实例化）
-        assert "total_listings" in m.SkillMarketplace.get_stats.__code__.co_consts
+        用真实返回值断言而非 __code__.co_consts：co_consts 的常量组织
+        随 CPython 版本变化（3.12 把 dict 字面量 keys 编译为嵌套元组，
+        3.14 平铺为顶层常量），按顶层 `in` 检查在 3.12 上必挂（2026-09-10 CI 实测）。"""
+        from app.plugins.skill_marketplace import SkillMarketplace
+
+        market = SkillMarketplace(market_dir=str(tmp_path / "market"))
+        stats = market.get_stats()
+        assert set(stats) == {
+            "total_listings",
+            "market_dir",
+            "most_downloaded",
+            "highest_rated",
+        }
 
 
 class TestPathTraversalGuard:
