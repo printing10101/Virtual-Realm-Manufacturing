@@ -36,9 +36,46 @@ import argparse
 import ast
 import json
 import sys
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
+from collections.abc import Iterable
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _normalize_path(file_path: str | Path) -> str:
+    """把文件路径归一化为相对项目根的 POSIX 路径，保证基准文件跨机器可移植。
+
+    历史基准文件曾写入原开发机的绝对路径（例如
+    ``C:/Users/<user>/Desktop/灵境制造（上线版）/python/app/api/v1/xxx.py``），
+    换机或换盘后与当前扫描出的路径永不相等，基准条目会整体失配。
+    本函数把比对双方统一拍平到同一坐标系。
+    """
+    raw = str(file_path).replace("\\", "/")
+    try:
+        return Path(raw).resolve().relative_to(PROJECT_ROOT).as_posix()
+    except (ValueError, OSError):
+        # 不在当前项目根下（旧机器路径、外部扫描目录）→ 退化为 app/api 之后的尾部
+        if "/app/api/" in raw:
+            return "engineering/python/app/api/" + raw.split("/app/api/", 1)[1]
+        return raw.rsplit("/", 1)[-1]
+
+
+def _baseline_key(finding: dict) -> str:
+    """基准比对键：归一化文件路径 + 方法 + 路由路径 + 函数名。
+
+    刻意 **不含行号**：行号会随上方代码增删而漂移，一旦纳入键，任何无关改动都会
+    让整份基准失效（2026-09-10 实测：含行号的旧键在本仓库命中 0/504，
+    全部路由被误判为"新增"，该 CI 门禁因此长期为红）。
+    """
+    return "|".join(
+        (
+            _normalize_path(finding.get("file", "")),
+            str(finding.get("method", "")),
+            str(finding.get("path", "")),
+            str(finding.get("function_name", "")),
+        )
+    )
 
 
 @dataclass
@@ -70,7 +107,8 @@ class ScanReport:
                 "without_response_model": self.without_response_model,
                 "findings_without": [
                     {
-                        "file": f.file,
+                        # 归一化为项目相对路径，避免把本机绝对路径写进基准文件
+                        "file": _normalize_path(f.file),
                         "line": f.line,
                         "method": f.method,
                         "path": f.path,
@@ -196,6 +234,9 @@ def compare_with_baseline(report: ScanReport, baseline_path: Path) -> list[Route
 
     基准文件格式：JSON，包含 findings_without 列表。
     如果基准文件不存在，返回当前所有未声明路由（视为全部新增）。
+
+    比对键为 ``归一化路径|方法|路由路径|函数名``（见 :func:`_baseline_key`），
+    不含行号，也不含本机绝对路径前缀，因此基准可跨机器、跨代码漂移复用。
     """
     if not baseline_path.exists():
         return report.findings_without
@@ -206,14 +247,21 @@ def compare_with_baseline(report: ScanReport, baseline_path: Path) -> list[Route
         return report.findings_without
 
     baseline_keys = {
-        f"{f['file']}:{f['line']}:{f['function_name']}"
-        for f in baseline_data.get("findings_without", [])
+        _baseline_key(f) for f in baseline_data.get("findings_without", [])
     }
+    baseline_total = len(baseline_keys)
 
     new_findings = [
-        f for f in report.findings_without
-        if f"{f.file}:{f.line}:{f.function_name}" not in baseline_keys
+        f for f in report.findings_without if _baseline_key(asdict(f)) not in baseline_keys
     ]
+
+    if new_findings:
+        growth = len(report.findings_without) - baseline_total
+        print(
+            f"  基准债务: {baseline_total} 条 → 当前 {len(report.findings_without)} 条"
+            f"（净增 {growth:+d}）",
+            file=sys.stderr,
+        )
     return new_findings
 
 
@@ -291,7 +339,7 @@ def main() -> int:
             if report.total_routes > 0
             else 0
         )
-        print(f"[E-P0-1] 路由 response_model 覆盖率报告")
+        print("[E-P0-1] 路由 response_model 覆盖率报告")
         print(f"  扫描目录: {scan_root}")
         print(f"  总路由数: {report.total_routes}")
         print(f"  已声明 response_model: {report.with_response_model}")
@@ -300,10 +348,9 @@ def main() -> int:
         print()
 
         if report.findings_without:
-            print(f"未声明 response_model 的路由（前 20 条）:")
+            print("未声明 response_model 的路由（前 20 条）:")
             for f in report.findings_without[:20]:
-                rel_path = Path(f.file).relative_to(project_root)
-                print(f"  {rel_path}:{f.line}  {f.method} {f.path}  ({f.function_name})")
+                print(f"  {_normalize_path(f.file)}:{f.line}  {f.method} {f.path}  ({f.function_name})")
             if len(report.findings_without) > 20:
                 print(f"  ... 还有 {len(report.findings_without) - 20} 条")
 
@@ -313,8 +360,7 @@ def main() -> int:
             print()
             print(f"⚠️  发现 {len(new_findings)} 条新增未声明路由（相对基准）：")
             for f in new_findings:
-                rel_path = Path(f.file).relative_to(project_root)
-                print(f"  {rel_path}:{f.line}  {f.method} {f.path}  ({f.function_name})")
+                print(f"  {_normalize_path(f.file)}:{f.line}  {f.method} {f.path}  ({f.function_name})")
             print()
             print("修复建议：在路由装饰器添加 response_model=SuccessResponse[YourDataModel]")
             print("         并在 responses 字典声明错误模型 {404: {\"model\": ErrorResponse}}")

@@ -150,7 +150,11 @@ def main() -> int:
     python_src = args.python_src
     if python_src is None:
         python_src = find_uv_python()
-    if python_src is None or not (python_src / "python.exe").exists():
+    # 可执行文件名按平台区分：win32 为根目录 python.exe，posix 为 bin/python3。
+    # 2026-09-10 修复：原判断在所有平台硬编码 python.exe，导致 Linux/macOS
+    # 即使探测成功也必然报"未找到完整版 Python"（桌面构建 CI 连红的根因）。
+    _py_entry = "python.exe" if sys.platform == "win32" else "bin/python3"
+    if python_src is None or not (python_src / _py_entry).exists():
         log("ERROR: 未找到完整版 Python（可用 --python-src 指定 python-build-standalone 目录）")
         return 1
     log(f"Python 来源: {python_src}")
