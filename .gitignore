@@ -124,6 +124,8 @@ data/outputs/e2e/
 
 # 测试追踪与日志
 test_traces/
+# 前端 vitest junit 报告（pnpm test:ci 产物）
+junit-frontend.xml
 
 # ============================================================
 # 日志

@@ -3,6 +3,10 @@
   "version": "2.8.0",
   "description": "灵境制造 V4 - AI驱动的3D建模与工艺规划系统",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",

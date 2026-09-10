@@ -14,7 +14,8 @@ env:
   # 代码已使用 3.11+ 特性（typing.NotRequired、enum.StrEnum），3.10 收集即崩；
   # 与 ci.yml 统一为 3.12（2026-09-05）
   PYTHON_VERSION: '3.12'
-  NODE_VERSION: '18'
+  # 2026-09-11 与 release/desktop-build 统一为 22：Node 18 已 EOL（2025-04）
+  NODE_VERSION: '22'
   PIP_CACHE_DIR: ~/.cache/pip
   PNPM_CACHE_DIR: ~/.local/share/pnpm/store
   DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY || 'ghcr.io' }}
@@ -64,11 +65,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: 配置 pnpm
+        # 版本取自根 package.json 的 packageManager 字段（pnpm@9.15.9，与
+        # lockfileVersion 9.0 同代）
         uses: pnpm/action-setup@v4
-        with:
-          # 锁文件 lockfileVersion 9.0，pnpm 8 会视为不兼容而忽略 →
-          # frozen-lockfile 报 NO_LOCKFILE（2026-09-05 与 ci.yml 对齐为 9）
-          version: 9
 
       - name: 缓存 pip 依赖
         uses: actions/cache@v4
