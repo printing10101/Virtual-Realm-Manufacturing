@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -314,11 +315,43 @@ class ProcessPlanningDataManager:
             entry = ProcessRuleEntry.from_dict(item)
             self._process_rules[entry.id] = entry
 
+    # 常见英文/泛化材料名 → 知识库材料 id（键为 _normalize_material_name
+    # 形态）。nl2cad 等对外接口的默认值是英文名（如 "steel"），知识库
+    # 规范名是中文（如 "45钢"），不做映射则默认参数必然查询失败。映射取
+    # 机械加工惯例：泛化 "steel" 对应最常用的 45 号碳素结构钢。
+    _MATERIAL_ALIASES: dict[str, str] = {
+        "steel": "steel_45",
+        "carbonsteel": "steel_45",
+        "45steel": "steel_45",
+        "alloysteel": "steel_40cr",
+        "stainlesssteel": "ss_304",
+        "aluminum": "al_6061",
+        "aluminium": "al_6061",
+        "titanium": "ti_tc4",
+        "grayiron": "cast_iron_ht250",
+        "castiron": "cast_iron_ht250",
+        "brass": "brass_c36000",
+        "copper": "copper_c11000",
+    }
+
+    @classmethod
+    def _normalize_material_name(cls, name: str) -> str:
+        """归一化材料名：去井号与空白。
+
+        知识库材料名为"45钢"形态，用户输入与各调用方默认值常见"45#钢"
+        （与 agent/orchestrator.py 的入口归一化规则一致）。归一化放在
+        查询层使所有调用路径（dxf pipeline / gcode / cam_validation /
+        agent）统一命中。
+        """
+        return re.sub(r"[#\s_]", "", name).lower()
+
     def get_material_by_name(self, name: str) -> MaterialEntry | None:
         """按材料名称查询材料属性。
 
         Args:
-            name: 材料名称，支持模糊匹配
+            name: 材料名称，支持模糊匹配（忽略井号与空白差异，如
+                "45#钢" 与 "45钢" 等价；常见英文名如 "steel" 映射到
+                知识库规范材料）
 
         Returns:
             MaterialEntry: 匹配的材料条目，未找到返回None
@@ -328,10 +361,15 @@ class ProcessPlanningDataManager:
         """
         if not name or not name.strip():
             raise QueryError("材料名称不能为空")
-        search_name = name.strip().lower()
+        search_name = self._normalize_material_name(name)
         for material in self._materials.values():
-            if material.name.lower() == search_name or search_name in material.name.lower():
+            material_name = self._normalize_material_name(material.name)
+            if material_name == search_name or search_name in material_name:
                 return material
+        # 精确/子串未命中时尝试英文别名表
+        alias = self._MATERIAL_ALIASES.get(search_name)
+        if alias:
+            return self._materials.get(alias)
         return None
 
     def get_tools_by_material_and_process(self, material_category: str, process: str) -> list[ToolEntry]:

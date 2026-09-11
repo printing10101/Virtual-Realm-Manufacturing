@@ -94,8 +94,17 @@ class DxfProcessService:
         output_dir: str | Path | None = None,
         postprocessor: str | None = None,
         user_id: str | None = None,
+        material: str = "45钢",
     ) -> DxfProcessResult:
-        """一站式处理 DXF 文件。"""
+        """一站式处理 DXF 文件。
+
+        Args:
+            dxf_path: DXF 文件路径
+            output_dir: 输出目录；提供时才执行 3D 导出与 G 代码落盘
+            postprocessor: 目标控制器方言（fanuc_0i / siemens_840d / ...）
+            user_id: 触发用户（用于影子模式/审计）
+            material: 零件材料名（工艺规划知识库查询用）
+        """
         t0 = time.time()
         path = Path(dxf_path)
         result = DxfProcessResult(file_path=str(path), file_name=path.name)
@@ -121,10 +130,11 @@ class DxfProcessService:
         if not result.model3d.success and not result.model3d.summary:
             result.warnings.append(f"3D 转换失败: {result.model3d.error}")
 
-        # 4. G 代码（可选）
+        # 4. G 代码（可选，依赖 output_dir 落盘）
         if out_dir is not None:
             ctl = postprocessor or self._default_postprocessor
-            result.gcode = self._run_gcode(path, out_dir, ctl, user_id)
+            features_summary = result.features.summary if result.features else {}
+            result.gcode = self._run_gcode(path, out_dir, ctl, user_id, features_summary, material)
 
         # 收集输出文件
         if out_dir is not None:
@@ -375,27 +385,79 @@ class DxfProcessService:
         out_dir: Path,
         controller: str,
         user_id: str | None,
+        features_summary: dict[str, Any] | None = None,
+        material: str = "45钢",
     ) -> StageResult:
         t0 = time.time()
         try:
+            # 方言校验：未知控制器回退 fanuc_0i（与 PostProcessorRegistry 语义一致）
             from app.postprocessor.registry import PostProcessorRegistry
 
             regs = PostProcessorRegistry()
             try:
-                proc = regs.get_processor(controller)
+                regs.get_processor(controller)
             except KeyError:
-                proc = regs.get_processor("fanuc_0i")
                 controller = "fanuc_0i"
-            # 简单生成一个空程序（含 header/footer）作 smoke test
-            gcode = proc.format_header(program_number=1) + "\n"
-            gcode += proc.format_footer() + "\n"
+
+            # 真实工艺规划链：特征明细 → ProcessPlanningPipeline → 完整程序文本。
+            # 此前此处只写 header/footer 空程序作冒烟占位，HTTP 层"端到端"
+            # 实际产不出可用 NC 代码。
+            from app.process_planning.pipeline import ProcessPlanningPipeline
+
+            summary = features_summary or {}
+            holes = [
+                {
+                    "id": h.get("hole_id", f"H{i + 1:03d}"),
+                    "type": h.get("hole_type", "through_hole"),
+                    "position": [h.get("center_x", 0.0), h.get("center_y", 0.0), 0.0],
+                    "diameter": h.get("diameter", 0.0),
+                    "depth": h.get("depth", 0.0),
+                    "tolerance_grade": h.get("tolerance_grade", "H8"),
+                    "surface": h.get("surface", "A"),
+                }
+                for i, h in enumerate(summary.get("holes_detail", []))
+            ]
+            part_description: dict[str, Any] = {
+                "material": material,
+                "part_type": "general",
+                "holes": holes,
+                "overall_dimensions": {
+                    "length": summary.get("overall_length", 0.0),
+                    "width": summary.get("overall_width", 0.0),
+                    "height": summary.get("overall_height", 0.0),
+                },
+            }
+            process_result = ProcessPlanningPipeline().run(
+                part_description=part_description,
+                controller_type=controller,
+            )
+            if not process_result.success or not process_result.gcode_result:
+                errs = "; ".join(
+                    e for s in process_result.stages for e in (s.errors or [])
+                )
+                return StageResult(
+                    name="gcode",
+                    success=False,
+                    latency_ms=(time.time() - t0) * 1000,
+                    error=f"gcode generation failed: {errs or process_result.summary}",
+                )
+
+            gcode = process_result.gcode_result.program_text
             g_path = out_dir / f"{path.stem}.{controller}.nc"
             g_path.write_text(gcode, encoding="utf-8")
+            op = process_result.operation_plan
             return StageResult(
                 name="gcode",
                 success=True,
                 latency_ms=(time.time() - t0) * 1000,
-                summary={"controller": controller, "output": str(g_path), "lines": gcode.count("\n")},
+                summary={
+                    "controller": controller,
+                    "output": str(g_path),
+                    "lines": process_result.gcode_result.total_lines,
+                    "operations": len(op.operations) if op else 0,
+                    "estimated_time_min": round(op.estimated_time_min, 1) if op else 0.0,
+                    "holes": len(holes),
+                },
             )
         except (OSError, RuntimeError, KeyError, ValueError, TypeError) as e:
             logger.error("GCode generation failed: %s", e, exc_info=True)

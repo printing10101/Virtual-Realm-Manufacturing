@@ -107,6 +107,7 @@ class DxfProcessRequest(BaseModel):
     output_dir: str | None = None
     postprocessor: str | None = "fanuc_0i"
     user_id: str | None = None
+    material: str = "45钢"
 
     @field_validator("dxf_path")
     @classmethod
@@ -129,6 +130,7 @@ class DxfBatchRequest(BaseModel):
     output_dir: str | None = None
     postprocessor: str | None = "fanuc_0i"
     user_id: str | None = None
+    material: str = "45钢"
 
     @field_validator("dxf_paths")
     @classmethod
@@ -172,6 +174,7 @@ def process_dxf(req: DxfProcessRequest) -> dict[str, Any]:
         output_dir=req.output_dir,
         postprocessor=req.postprocessor,
         user_id=req.user_id,
+        material=req.material,
     )
     return r.to_dict()
 
@@ -189,6 +192,7 @@ def process_batch(req: DxfBatchRequest) -> dict[str, Any]:
             output_dir=req.output_dir,
             postprocessor=req.postprocessor,
             user_id=req.user_id,
+            material=req.material,
         )
         results.append(r.to_dict())
     success_count = sum(1 for x in results if x["success"])

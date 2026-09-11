@@ -257,8 +257,11 @@ class ProcessPlanningPipeline(_StagesMixin):
         result.operation_plan = operation_plan
 
         # Stage 4.5: 仿真验证
+        # 传 KB 解析出的 material_id（如 steel_45 / al_6061）而非原始输入：
+        # 仿真侧 Kienzle 系数别名表按库 ID 覆盖，原始输入（"steel"、
+        # "45#钢" 等任意形态）不再依赖仿真层逐个认识。
         simulation_result = self._run_simulation(
-            material=material_name,
+            material=material_id,
             operation_plan=operation_plan,
         )
 

@@ -573,3 +573,7 @@ data/real_judgments/
 output/
 outputs/
 *.bak-*
+# ---- 本地备份与恢复现场（2026-09-11）----
+.git.corrupt-20260910/
+_local-backup/
+engineering/python/_wheels/
