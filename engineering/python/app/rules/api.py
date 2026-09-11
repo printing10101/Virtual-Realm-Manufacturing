@@ -10,7 +10,9 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
+from typing import Protocol
 
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
@@ -104,7 +106,20 @@ class GroupUpdateRequest(BaseModel):
     description: str | None = None
 
 
-def _validate_rule_data(conditions: list[ConditionItem], result: ResultItem, logic_operator: str) -> str | None:
+# 创建路径传入请求模型（ConditionItem/ResultItem），更新路径传入 DB 模型
+# （RuleCondition/RuleResult），两者共享 parameter/operator/value 字段，
+# 用 Protocol 结构化约束，避免联合类型在迭代处退化。
+class _FieldLike(Protocol):
+    parameter: str
+    operator: str
+    value: str
+
+
+def _validate_rule_data(
+    conditions: Sequence[_FieldLike],
+    result: _FieldLike,
+    logic_operator: str,
+) -> str | None:
     if not conditions:
         return "规则条件不能为空"
 
@@ -362,7 +377,8 @@ async def list_groups():
 
     result = []
     for g in groups:
-        count = db.get_group_rule_count(g.id)
+        # g.id 为自增主键，持久化分组必非空；None 仅可能来自未落库对象，按 0 计数兜底
+        count = db.get_group_rule_count(g.id) if g.id is not None else 0
         result.append(_group_to_dict(g, count))
 
     return success(data={"groups": result, "total": len(result)})
