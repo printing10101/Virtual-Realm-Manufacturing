@@ -8,6 +8,8 @@ import json
 import logging
 import os
 import struct
+import subprocess
+import sys
 import threading
 from pathlib import Path
 from typing import Any
@@ -141,25 +143,34 @@ else:
 
 
 def _run_cadquery_script(script: str, task_id: str) -> None:
-    """在受控环境中执行 CadQuery 脚本。
+    """在可强杀的隔离子进程中执行 CadQuery 脚本（根因修复 Linux OCCT 挂死）。
 
-    使用 exec() 替代 subprocess.run()，避免创建临时文件带来的注入风险。
-    在隔离的命名空间中执行脚本，限制可用的模块和函数。
+    背景：退化几何（如 box(0,0,0)）在 cadquery-ocp 的 Linux 轮子上会于 OCCT
+    原生层挂死；下方沙箱原以 daemon 子线程 + PyThreadState 异步异常实现超时，
+    而异步异常只能在 Python 字节码边界生效，无法打断原生调用，泄漏的工作线程
+    随后令同进程内所有 CadQuery 调用一并卡死。
 
-    安全措施：
+    修复方式：父进程把脚本派发到一次性子进程中回环调用本函数（子进程通过
+    环境变量 ``_LNN_CADQUERY_IN_CHILD`` 识别自身，直接进入下方沙箱逻辑）。
+    超时由 ``subprocess.run`` 强杀子进程（POSIX SIGKILL / Windows
+    TerminateProcess）兜底——无论脚本卡在 OCCT 原生层还是死循环，均可彻底回收，
+    父进程的 OCCT 状态不受影响。
+
+    沙箱约束保持不变（子进程内逐字沿用原实现）：
     1. AST 审计：使用 _CadQueryScriptValidator 拒绝危险属性访问（如 __class__, __globals__ 等）
     2. 禁止 import：脚本无法动态导入模块，只能使用预注入的 cq/cadquery
-    3. 受限内置函数：移除 __import__, eval, exec 等危险内置函数
+    3. 受限内置函数：移除 __import__ 与 type 等危险内置函数
     4. 白名单机制：仅允许访问安全的内置函数和 cadquery 模块
-    5. S5 修复：执行超时（默认 30s）+ 内存上限（默认 2GB，Unix only）
-       防止恶意脚本通过死循环 / 无限递归 / 大对象分配导致 DoS。
+    5. 超时（默认 30s，子进程口径含解释器与 cadquery 导入耗时）+
+       内存上限（默认 2GB，Unix only）防 DoS。
 
-    注意：虽然采取了多层安全防护，但 exec() 本质上仍存在一定风险。
-    建议在生产环境中：
-    - 仅允许受信任的用户提交脚本
-    - 对脚本内容进行预审查
-    - 在资源受限的容器中执行
+    代价：每次执行需在子进程重新导入 cadquery（约 1-3s）。NL2CAD 单任务仅
+    执行 1-3 次，可接受。
     """
+    # 延迟导入避免循环依赖；必须在进入沙箱前无条件绑定——嵌套的反射 wrapper
+    # 引用此名字，若仅在异常分支绑定会因自由变量未关联而退化为 NameError。
+    from app.cad.cadquery_gen import CadQueryScriptError
+
     # 安全修复：先进行 AST 审计，拒绝危险属性访问和 import 语句
     try:
         tree = ast.parse(script)
@@ -169,8 +180,6 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
     except SyntaxError as e:
         error_msg = f"Script syntax error (task {task_id}): {e}"
         logger.error(error_msg, exc_info=True)
-        from app.cad.cadquery_gen import CadQueryScriptError
-
         raise CadQueryScriptError(error_msg) from e
 
     # 安全修复：用 wrapper 包装反射 API，阻止字符串形式的 dunder 属性访问
@@ -240,6 +249,12 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
 
     # S5 修复：通过子线程执行 exec()，主线程用 join(timeout) 实现超时控制
     # 超时后通过 PyThreadState_SetAsyncExc 向子线程注入异常以中断 exec
+    # 子进程回环：一次性子进程以 _WORKER_BOOTSTRAP 重新进入本函数（见模块 docstring），
+    # 父进程绝不直接运行用户脚本，超时可强杀整个子进程。
+    if os.environ.get("_LNN_CADQUERY_IN_CHILD") != "1":
+        _run_in_killable_child(script, task_id)
+        return
+
     timeout_seconds = float(os.environ.get("LNN_CADQUERY_TIMEOUT", "30"))
     memory_limit_mb = int(os.environ.get("LNN_CADQUERY_MEMORY_LIMIT_MB", "2048"))
 
@@ -312,11 +327,100 @@ def _run_cadquery_script(script: str, task_id: str) -> None:
         else:
             error_msg = f"Script execution failed with unexpected exception (task {task_id}): {exc}"
             logger.error(error_msg, exc_info=True)
-        from app.cad.cadquery_gen import CadQueryScriptError
-
         raise CadQueryScriptError(error_msg) from exc
 
     logger.debug("Script for task %s completed successfully", task_id)
+
+
+# 子进程引导脚本：仅做环境标记、stdin 元数据解析与模块回环调用，
+# 自身不包含任何动态代码构造；真正的沙箱执行全部复用本模块原有逻辑。
+_WORKER_BOOTSTRAP = """\
+import json
+import os
+import sys
+
+os.environ["_LNN_CADQUERY_IN_CHILD"] = "1"
+meta = json.loads(sys.stdin.readline())
+sys.path.insert(0, meta["python_root"])
+from app.cad.cadquery_gen import CadQueryScriptError
+from app.cad._cadquery_helpers import _run_cadquery_script
+
+try:
+    _run_cadquery_script(meta["script"], meta.get("task_id", "worker"))
+except CadQueryScriptError as exc:
+    print(json.dumps({"status": "error", "error": str(exc)}))
+except BaseException as exc:
+    print(json.dumps({"status": "error", "error": "%s: %s" % (type(exc).__name__, exc)}))
+else:
+    print(json.dumps({"status": "ok"}))
+"""
+
+
+def _run_in_killable_child(script: str, task_id: str) -> None:
+    """把脚本派发到一次性子进程执行，超时强杀（见 _run_cadquery_script docstring）。"""
+    from app.cad.cadquery_gen import CadQueryScriptError
+
+    timeout_seconds = float(os.environ.get("LNN_CADQUERY_TIMEOUT", "30"))
+    python_root = str(Path(__file__).resolve().parents[2])
+    envelope = json.dumps({"script": script, "task_id": task_id, "python_root": python_root})
+
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", _WORKER_BOOTSTRAP],
+            input=envelope,
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        # subprocess.run 超时时已强杀并回收子进程，无需（也无法）再清理
+        error_msg = f"CadQuery script execution timed out after {timeout_seconds}s (task {task_id})"
+        logger.error(error_msg)
+        raise CadQueryScriptError(error_msg) from None
+    except OSError as e:
+        error_msg = (
+            f"CadQuery 沙箱子进程启动失败（task {task_id}）：{e}。"
+            f"建议检查 sys.executable（当前为 {sys.executable!r}）是否可用。"
+        )
+        logger.error(error_msg, exc_info=True)
+        raise CadQueryScriptError(error_msg) from e
+
+    result = _parse_worker_result(proc.stdout, proc.stderr)
+    if result.get("status") == "ok":
+        logger.debug("Script for task %s completed in child process", task_id)
+        return
+
+    error_msg = f"Script execution failed (task {task_id}): {result.get('error', 'unknown error')}"
+    logger.error("%s | exit=%s | stderr tail: %s", error_msg, proc.returncode, proc.stderr[-2000:])
+    raise CadQueryScriptError(error_msg)
+
+
+def _parse_worker_result(stdout: str | None, stderr: str | None) -> dict[str, Any]:
+    """解析子进程回传结果。
+
+    协议：stdout 的最后一个非空行为 JSON ``{"status": "ok"|"error", ...}``；
+    脚本自身的 print 输出出现在更早的行，按行倒序跳过。子进程未按协议输出
+    （如解释器或 cadquery 导入即崩溃）时返回失败占位，附 stderr 尾部辅助定位。
+    """
+    for line in reversed((stdout or "").splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            parsed = json.loads(line)
+        except json.JSONDecodeError:
+            break
+        if isinstance(parsed, dict):
+            return parsed
+        break
+    stderr_tail = (stderr or "").strip()[-500:]
+    detail = (
+        f"cadquery 沙箱子进程未按协议回传即退出；stderr: {stderr_tail}"
+        if stderr_tail
+        else ("cadquery 沙箱子进程未按协议回传即退出")
+    )
+    return {"status": "error", "error": detail}
 
 
 def _async_raise_thread(thread: threading.Thread, exc_type: type) -> None:

@@ -76,16 +76,17 @@ class TestGenerateWithRetry:
         assert "上一次生成未通过校验" in mock.prompts[1]
         assert any("AST" in fb for fb in result.feedback_used)
 
-    @pytest.mark.skip_ci
-    def test_zero_dim_then_valid(self, tmp_path) -> None:
+    def test_zero_dim_then_valid(self, monkeypatch) -> None:
         """第一次执行失败（box(0,0,0)）→ 反馈 → 第二次成功。
 
-        skip_ci：Linux CI（cadquery-ocp Linux wheel）上执行 box(0,0,0) 在 OCCT 原生层
-        挂死；_run_cadquery_script 的"子线程 exec + join 超时"无法中断原生执行，泄漏的
-        工作线程随后令同进程内所有 CadQuery 调用一并卡死（unit job 曾静默挂 56 分钟至
-        被杀，full suite 中表现为其后 CadQuery 用例逐个 300s 超时）。Windows 本地 OCP
-        对同一输入立即抛错，用例 0.07s 通过。根因修复需把沙箱执行改为可强杀的子进程隔离。
+        历史上标注 skip_ci：Linux CI（cadquery-ocp Linux 轮子）上执行 box(0,0,0)
+        在 OCCT 原生层挂死，旧的"子线程 + 异步异常"超时无法打断原生执行，泄漏的
+        工作线程随后令同进程内所有 CadQuery 调用一并卡死（unit job 曾静默挂
+        56 分钟至被杀）。现脚本执行已迁移到可强杀的一次性子进程（见
+        _run_cadquery_script），超时强杀兜底，用例恢复进入 CI；超时预算压到
+        15s 以约束 Linux 上挂死回收的时长，Windows 上 OCCT 对同一输入立即抛错。
         """
+        monkeypatch.setenv("LNN_CADQUERY_TIMEOUT", "15")
         mock = _MockLLM([_BAD_ZERO, _VALID_BOX])
         result = _run(
             generate_cadquery_script(

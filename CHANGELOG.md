@@ -21,6 +21,17 @@
   2.8.0 产物"；发布说明改为从本文件提取对应版本小节，不再用 `git log` 覆盖 CHANGELOG.md。
 - dependency-scan 对齐 Python 3.12；pnpm audit 步骤名与其非阻断行为一致，stderr 不再混入 JSON 产物。
 
+**后端稳定性**
+
+- **NL2CAD 沙箱迁移到可强杀子进程**（修复 Linux 挂死）：退化几何（如
+  `box(0,0,0)`）在 cadquery-ocp Linux 轮子上于 OCCT 原生层挂死，原「子线程 +
+  异步异常」超时无法打断原生调用，泄漏线程令同进程后续 CadQuery 调用一并卡死
+  （Docker 生产镜像为 Linux，LLM 产出退化几何时线上请求同样会挂）。现父进程把
+  脚本派发到一次性子进程回环执行，沙箱约束（AST 审计/受限内置/反射过滤/RLIMIT）
+  逐字保留，超时由 `subprocess.run` 强杀兜底；`test_zero_dim_then_valid` 解除
+  `skip_ci` 回归 CI，新增 `tests/unit/test_cadquery_sandbox.py` 覆盖审计前置/
+  异常回传/反射逃逸拦截/强杀路径。
+
 **后端 / 工程化**
 
 - `app/rules/api.py` 在补齐缺失的请求模型后从未重新纳入 mypy 检查：修复
@@ -40,14 +51,6 @@
   目录的引用；后处理器数量统一为「9 种内置 + YAML 方言包」（原「11 种」为
   过时口径）；巨型组件/巨型文件状态更新（V2.8.0 已拆完前端巨型组件与 4/5
   后端巨型文件，剩余 `agent/orchestrator.py`）。
-
-### 已知问题（Known Issues）
-
-- **NL2CAD 退化几何在 Linux 上挂死**：`cq.Workplane('XY').box(0, 0, 0)` 在 Linux
-  cadquery-ocp 下于 OCCT 原生层挂死，`_run_cadquery_script` 的线程 join 超时无法中断
-  原生执行，泄漏线程会令同进程后续 CadQuery 调用一并卡死。Docker 生产镜像即 Linux，
-  LLM 产出退化几何时线上请求同样会挂。临时以 `skip_ci` 排除对应用例
-  （`test_nl2cad_llm.py::test_zero_dim_then_valid`）；根因修复需将沙箱执行改为可强杀的子进程隔离。
 
 ## [2.8.0] - 2026-09-05
 
