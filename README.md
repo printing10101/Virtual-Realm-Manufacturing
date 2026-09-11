@@ -73,7 +73,7 @@ docker compose --profile full up -d
 
 - **图纸解析**：DXF / STEP 导入 → 三维重建
 - **工艺规划**：自动识别孔/槽/面特征，生成加工工艺
-- **NC 代码**：11 种后处理器（Fanuc / Siemens / Heidenhain 等）
+- **NC 代码**：9 种内置后处理器 + YAML 方言包（Fanuc / Siemens / Heidenhain 等）
 - **AI 预测**：LNN/LTC 铣削颤振预测、刀具磨损预测（本地推理，数据不出设备）
 - **智能交互**：NL2CAD 自然语言建模、RAG 工艺知识库问答
 - **车间集成**：OPC UA 机床数据采集、MES/ERP 对接（可选）

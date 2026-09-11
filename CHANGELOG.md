@@ -21,6 +21,26 @@
   2.8.0 产物"；发布说明改为从本文件提取对应版本小节，不再用 `git log` 覆盖 CHANGELOG.md。
 - dependency-scan 对齐 Python 3.12；pnpm audit 步骤名与其非阻断行为一致，stderr 不再混入 JSON 产物。
 
+**后端 / 工程化**
+
+- `app/rules/api.py` 在补齐缺失的请求模型后从未重新纳入 mypy 检查：修复
+  `_validate_rule_data` 签名（创建路径传请求模型、更新路径传 DB 模型，改用
+  Protocol 结构化约束避免联合类型迭代退化）与 `list_groups` 可空主键守卫，
+  3 处 mypy 错误清零；同步撤销 `mypy.ini` 中已失去前提的
+  `exclude = app/rules/api\.py`。
+- 仓库治理：`output/` 中 4 个个人求职/自荐材料移出 git 追踪（磁盘文件保留，
+  借助既有 `output/` 忽略规则不再进入公开仓快照）；清理根目录 5 个
+  `.tmp_*.log` 一次性日志。
+
+### 变更（Changed）
+
+**文档与代码现状同步**
+
+- `AGENTS.md` / `PROJECT_OVERVIEW.md` / `README.md`：移除对已删除 `shared/`
+  目录的引用；后处理器数量统一为「9 种内置 + YAML 方言包」（原「11 种」为
+  过时口径）；巨型组件/巨型文件状态更新（V2.8.0 已拆完前端巨型组件与 4/5
+  后端巨型文件，剩余 `agent/orchestrator.py`）。
+
 ### 已知问题（Known Issues）
 
 - **NL2CAD 退化几何在 Linux 上挂死**：`cq.Workplane('XY').box(0, 0, 0)` 在 Linux

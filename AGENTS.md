@@ -7,7 +7,7 @@ Tauri(Rust) + Vue3 + Python/FastAPI 全栈 monorepo。当前分支为 `main`（2
 
 | 路径 | 内容 |
 |---|---|
-| `engineering/python/app/` | **工程侧主代码**（FastAPI 后端）：`api/` 路由、`ai/`（lnn 等）、`cad/` `dxf/` `step_import/` 图纸解析、`gcode_generation/` `postprocessor/`（11 种后处理器）、`process_planning/` `cam_validation/` 工艺、`rag/` 知识库、`simulation/`、`workflow/` `tasks/` `pipelines/`、`plugins/`、`agent/`、`services/` `infrastructure/` 等 70+ 模块 |
+| `engineering/python/app/` | **工程侧主代码**（FastAPI 后端）：`api/` 路由、`ai/`（lnn 等）、`cad/` `dxf/` `step_import/` 图纸解析、`gcode_generation/` `postprocessor/`（9 种内置后处理器 + YAML 方言包）、`process_planning/` `cam_validation/` 工艺、`rag/` 知识库、`simulation/`、`workflow/` `tasks/` `pipelines/`、`plugins/`、`agent/`、`services/` `infrastructure/` 等 70+ 模块 |
 | `engineering/python/plugins/` | 业务插件（`data_flywheel` 等），绝对导入 `from plugins.xxx import ...` |
 | `engineering/python/tests/` | **工程侧测试（CI 默认收集目标）**：unit/integration/api/plugins/security/e2e/architecture 等 |
 | `engineering/python/app/**/tests/` | 模块自测，**不进入默认 CI 收集**，显式路径才跑 |
@@ -81,7 +81,7 @@ pnpm dev  # http://127.0.0.1:1420，proxy /api→8765
 
 2. **需用系统 Python 3.14.3 跑测试**：仓库自带 `.venv`/`.venv5` 基于 Python 3.11 且 pydantic_core 已损坏，且 OCP 原生依赖（cadquery）在 3.11 无法加载；须用系统 Python 3.14（`C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe`），并 `python -m pytest` 而不是 `pytest`。默认 `python` 指向宿主 hermes venv（3.11.9），务必显式指定 3.14。
 
-3. research/ 与 engineering/ 物理解耦中：工程侧 pytest 已排除 research/、shared/、app（norecursedirs + collect_ignore 双重防护）；改测试收集逻辑时不要破坏此防护。
+3. research/ 与 engineering/ 物理解耦中：工程侧 pytest 已排除 research/ 与 app（`norecursedirs` + `collect_ignore` 双重防护；`shared/` 目录已移除，`norecursedirs` 中保留该项为无害的防复发配置）；改测试收集逻辑时不要破坏此防护。
 
 4. 新模块自测若留在 `app/**/tests/`，必须用绝对导入（`from app.xxx import yyy`）。
 

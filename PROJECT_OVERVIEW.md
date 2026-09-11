@@ -53,13 +53,12 @@
 | `engineering/src-tauri/` | Tauri 2 桌面壳（Rust）：`commands.rs` / `sidecar.rs` / `main.rs` / `lib.rs`（含 `tauri.conf.json`，唯一可构建副本） |
 | `rust/compute/` | Rust 计算 crate（体素切削仿真，PyO3 暴露给 Python） |
 | `mcp_server/` | Agent Gateway：把 LNN 能力包装为 MCP 工具 |
-| `shared/` | 跨工程/科研的共享 Python 库（常量、数据契约、LNN 类型） |
 | `config/` | 运行时 YAML：`data_pipeline.yaml`、`postprocessor_config.yaml`、`safety_rules.yaml` |
 | `models/` | LNN 权重分发目录（2026-09 起真实权重随包：cutting_force + wear_prediction，v2 npz + manifest；`engineering/python/models/lnn/`，训练复现见 `models/README.md`） |
 | `docs/`、`docs-site/` | 文档体系（20+ 子目录）、VitePress 文档站 |
 | `tests/`、`engineering/python/app/benchmarks/` | Vitest 前端测试 + pytest 全套 + 性能基准 |
 
-> ⚠️ **README 与实际布局的差异（重要）**：README 中的 `python/app/...` 与 `src/` 是旧描述，实际路径为 `engineering/python/app/...` 与 `engineering/src/`。V2.7 重构把前端与后端统一收纳到 `engineering/`，并新增 `rust/compute`、`shared/`、`mcp_server/`、`config/`。阅读源码请以磁盘实际结构为准。
+> ⚠️ **README 与实际布局的差异（重要）**：README 中的 `python/app/...` 与 `src/` 是旧描述，实际路径为 `engineering/python/app/...` 与 `engineering/src/`。V2.7 重构把前端与后端统一收纳到 `engineering/`，并新增 `rust/compute`、`mcp_server/`、`config/`（`shared/` 共享库已在后续重构中移除，其内容并入 engineering 侧）。阅读源码请以磁盘实际结构为准。
 
 ### 3.2 后端模块（`engineering/python/app/`）核心职责
 
@@ -137,7 +136,7 @@
 | 模块 | 职责 | 技术底座 |
 |------|------|----------|
 | **LNN 引擎** | 切削颤振时序预测（LTC/CFC/Hybrid，训练/推理/量化/任务路由） | ONNX Runtime + Rust 加速 |
-| **NC 后处理** | 11 种控制器 G 代码生成 | 后处理 DSL + 控制器语法树 |
+| **NC 后处理** | 9 种内置控制器 G 代码生成（另支持 YAML 方言包变体） | 后处理 DSL + 控制器语法树 |
 | **工艺规划** | 特征识别 + 装夹/工序/物理验证 | 数学规划 + LLM 工艺理解 |
 | **仿真引擎** | 颤振叶瓣图、切削力、体素切削 | Three.js + Rust compute-core |
 | **RAG + 知识图谱** | 混合检索 + 实体关系抽取/查询 | BM25+向量+RRF+Cross-Encoder 重排 |
@@ -152,9 +151,10 @@
 
 - **版本与分支**：V2.8.0（2026-09-05 发布），当前分支 `main`（2026-08-19 分支收敛：refactor 分支已并入 main，旧 main 存档于 tag `backup/main-2026-08-03`；历史合并点 `592aedb` V2.7.0 解耦重构、`27b9c2a` V2.6.0 架构重构与契约层建设）。版本演进见根 `CHANGELOG.md`。
 - **成熟度**：功能面已较完整（Roadmap 中 LNN、11 后处理器、DNC 适配、RAG、知识图谱、Tauri 打包均已 ✅）；代码质量处于持续改进中（V2.7 静态审查评定 C 级，核心架构项——单例→DI 迁移、分层整理、前端 API 层激活——仍在分阶段推进中，详见 `output/AI代码质量综合评价.html`）。
-- **进行中的重构（REFACTOR_PLAN_V2.6.1，2026-07-20）**：
+- **进行中的重构（REFACTOR_PLAN_V2.6.1，2026-07-20；V2.8.0 已消化大半）**：
   - ✅ 已修：XSS（`ExampleGallery.vue` 三层防御）、`skill_compiler` 降级路径补 AST 审计、`logging_config` 自测守卫、UTC 时区统一。
-  - ⏸ 已评估/延后：Vue 巨型组件（Simulation/TaskBoard/Workspace）、5 个 >40KB Python 巨型文件拆分、异常处理（AST 审查确认 ~533 处静默/仅日志 catch 中绝大多数为正确的 asyncio/logging 惯用法，仅 2 处需补 debug 日志）。
+  - ✅ V2.8.0 已拆分：前端巨型组件（Simulation/TaskBoard/Workspace 等，当前最大视图约 18KB）；>40KB Python 巨型文件已拆 4 个（仅剩 `agent/orchestrator.py` 约 65KB，仍在活跃演进）。
+  - ⏸ 剩余：`agent/orchestrator.py` 拆分、30–40KB 档约 24 个文件的分层整理、29 处裸 `except...pass` 补日志（AST 审查确认原 ~533 处静默 catch 中绝大多数为正确的 asyncio/logging 惯用法）。
 - **安全加固**：CORS 启动期强制校验（通配符+凭据即非零退出）、Bearer 鉴权 + RBAC 4 级、MCP Token 强度校验与入站 Bearer 鉴权（`LINGJING_MCP_INGRESS_TOKEN`，`hmac` 防时序攻击）、OPC UA 缺省拒绝匿名（需 `LNN_OPCUA_ALLOW_ANON=1` 显式允许）+ 安全策略强制（默认 `Basic256Sha256`，需 `LNN_OPCUA_ALLOW_NOSECURITY=1` 才降级）、生产环境关闭 `/docs`/`/redoc`/`/openapi`、空闲自动关机、sidecar 优雅关闭。
 - **测试与基准**：pytest 全套（`.coverage` 覆盖率数据在）、Vitest 前端、7 类性能基准（api/business/concurrency/database/drawing_parse/lnn_inference/nc_generation）。
 - **待办（Roadmap ⬜）**：实时颤振在线监测插件、工艺数字孪生、多语言 UI（英/日/德）、移动端工艺看板。
