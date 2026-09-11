@@ -53,6 +53,10 @@ from app.gcode_generation.gcode_disclaimer import (
     GCodeDisclaimer,
     build_gcode_disclaimer,
 )
+from app.gcode_generation.failure_case_store import (
+    FailureCase,
+    get_failure_case_store,
+)
 from app.gcode_generation.gcode_store import (
     ChatterReportLoadError,
     FeatureGCodeResult,
@@ -314,6 +318,16 @@ class GCodeGenerationPipeline:
                     report.unstable_features,
                     len(task.errors),
                 )
+                self._record_outcome(
+                    task,
+                    outcome="failure",
+                    source="unstable_features",
+                    error_codes=["UNSTABLE_FEATURES"],
+                    error_messages=list(base_result.errors),
+                    gcode_text=base_result.program_text,
+                    total_features=report.total_features,
+                    unstable_features=report.unstable_features,
+                )
                 return self._build_result(task, error_message=task.error_message)
 
             # 4.5 统一多层安全门禁（SafetyValidator，借鉴 NumCraft）：
@@ -337,6 +351,16 @@ class GCodeGenerationPipeline:
                 )
                 self._store.update_task(task)
                 logger.warning("任务 %s 安全校验未通过 codes=%s", task_id, safety_report.error_codes)
+                self._record_outcome(
+                    task,
+                    outcome="failure",
+                    source="safety_validator",
+                    error_codes=list(safety_report.error_codes),
+                    error_messages=[i.message for i in safety_report.errors],
+                    gcode_text=base_result.program_text,
+                    total_features=report.total_features,
+                    unstable_features=report.unstable_features,
+                )
                 return self._build_result(task, error_message=task.error_message)
             for _sw in safety_report.warnings:
                 task.warnings.append(_sw.message)
@@ -353,6 +377,12 @@ class GCodeGenerationPipeline:
             task.prediction_method = report.prediction_method
             task.status = GCodeGenerationTaskStatus.GENERATED.value
             self._store.update_task(task)
+            self._record_outcome(
+                task,
+                outcome="success",
+                total_features=report.total_features,
+                unstable_features=report.unstable_features,
+            )
 
             logger.info(
                 "任务 %s G 代码生成完成 controller=%s total_features=%d stable=%d unstable=%d "
@@ -379,6 +409,13 @@ class GCodeGenerationPipeline:
             task.status = GCodeGenerationTaskStatus.FAILED.value
             task.error_message = safe.get("message", "")
             self._store.update_task(task)
+            self._record_outcome(
+                task,
+                outcome="failure",
+                source="pipeline_exception",
+                error_codes=[type(e).__name__],
+                error_messages=[safe.get("message", "")],
+            )
             logger.error(
                 "任务 %s 执行失败 error_id=%s message=%s",
                 task_id,
@@ -391,6 +428,13 @@ class GCodeGenerationPipeline:
             task.status = GCodeGenerationTaskStatus.FAILED.value
             task.error_message = safe.get("message", "")
             self._store.update_task(task)
+            self._record_outcome(
+                task,
+                outcome="failure",
+                source="pipeline_exception",
+                error_codes=[type(e).__name__],
+                error_messages=[safe.get("message", "")],
+            )
             logger.error(
                 "任务 %s 执行失败（未捕获异常）error_id=%s message=%s",
                 task_id,
@@ -614,6 +658,38 @@ class GCodeGenerationPipeline:
         self._store.delete_task(task_id, allow_delete_succeeded=False)
 
     # 内部辅助
+
+    def _record_outcome(
+        self,
+        task: GCodeGenerationTask,
+        outcome: str,
+        source: str = "",
+        error_codes: list[str] | None = None,
+        error_messages: list[str] | None = None,
+        gcode_text: str = "",
+        total_features: int = 0,
+        unstable_features: int = 0,
+    ) -> None:
+        """把运行结果沉淀进失败案例库（Phase 0 自进化管道）。
+
+        绝不影响主流程：案例库任何异常只记 warning，不向上抛。
+        """
+        try:
+            case = FailureCase(
+                task_id=task.task_id,
+                outcome=outcome,
+                source=source,
+                controller_type=task.controller_type,
+                material_name=task.material_name,
+                error_codes=error_codes or [],
+                error_messages=error_messages or [],
+                gcode_text=gcode_text,
+                total_features=total_features,
+                unstable_features=unstable_features,
+            )
+            get_failure_case_store().record(case)
+        except Exception as e:  # noqa: BLE001 - 案例库失败绝不阻断生成主流程
+            logger.warning("失败案例库记录失败（不影响主流程）: %s", e)
 
     def _resolve_output_dir(self) -> Path:
         """解析输出目录。cfg 为 None 时使用默认 outputs/gcode。"""
