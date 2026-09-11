@@ -300,6 +300,7 @@ def register_tools(server) -> None:
     - gcode_create_job (B) / gcode_get_job_status / gcode_list_jobs:
       G 代码生成任务 job 化（W12；输入路径后端白名单 fail-closed）
     - dxf_describe_file: DXF 图纸解析摘要（W13；CAM 链路最上游感知）
+    - process_plan_run (B): 端到端工艺规划（W14；孔描述→知识库→排序→G 代码）
 
     权限类: R = Read, B = Budgeted Write
     扩面开关: ``LINGJING_MCP_FACTORY_TOOLS=0`` 关闭工厂/设备工具。
@@ -482,3 +483,22 @@ def register_tools(server) -> None:
             logger.warning("DXF 工具注册失败（不影响既有工具）: %s", exc)
     else:
         logger.info("LINGJING_MCP_DXF_TOOLS=0：DXF 工具未注册")
+
+    # 工艺规划工具（W14 扩面 · 写类同步）
+    process_tools_enabled = os.environ.get(
+        "LINGJING_MCP_PROCESS_TOOLS", "1"
+    ).strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+    if process_tools_enabled:
+        try:
+            from mcp_server.process_planning_tools import register_process_planning_tools
+
+            register_process_planning_tools(server)
+        except Exception as exc:  # noqa: BLE001 - 注册失败不影响既有工具
+            logger.warning("工艺规划工具注册失败（不影响既有工具）: %s", exc)
+    else:
+        logger.info("LINGJING_MCP_PROCESS_TOOLS=0：工艺规划工具未注册")

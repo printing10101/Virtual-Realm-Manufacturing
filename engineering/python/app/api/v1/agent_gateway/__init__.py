@@ -21,7 +21,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1.agent_gateway import cam, dxf, gcode_jobs, inference, sse_stream, training
+from app.api.v1.agent_gateway import (
+    cam,
+    dxf,
+    gcode_jobs,
+    inference,
+    process_planning_api,
+    sse_stream,
+    training,
+)
 
 # 主 router：保留原 ``APIRouter(prefix="/api/agent/v1", tags=["Agent Gateway"])``
 # 的 prefix 与 tags，子模块的 sub-router 不带 prefix，include_router 后路径
@@ -33,6 +41,7 @@ router.include_router(sse_stream.router)
 router.include_router(cam.router)
 router.include_router(gcode_jobs.router)
 router.include_router(dxf.router)
+router.include_router(process_planning_api.router)
 
 
 __all__ = ["router"]
