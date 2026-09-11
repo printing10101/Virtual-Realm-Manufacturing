@@ -112,6 +112,14 @@ jobs:
 
       - name: 构建桌面安装包
         working-directory: engineering
+        # NO_STRIP: linuxdeploy 自带旧版 strip 处理不了新版 binutils 编译的库
+        # （.relr.dyn 段报 "Unable to recognise the format"），tauri 只报
+        # "failed to run linuxdeploy"，官方 workaround 是 NO_STRIP=true。
+        # APPIMAGE_EXTRACT_AND_RUN: runner 无 /dev/fuse，linuxdeploy AppImage
+        # 以解包方式运行，绕开 FUSE 挂载。
+        env:
+          NO_STRIP: "1"
+          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: pnpm tauri build
 
       - name: 上传桌面安装包

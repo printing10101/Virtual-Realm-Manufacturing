@@ -132,9 +132,11 @@ jobs:
     timeout-minutes: 60
     needs: [build]
     # 安全修复：此 job 需要推送镜像到 Registry，覆盖默认只读权限
+    # id-token: write 供 cosign keyless 签名获取 OIDC token（缺失时签名必失败）
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - name: 检出代码
