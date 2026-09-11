@@ -61,6 +61,9 @@ class OpenAICompatLocalProvider(LLMProvider):
 
     preset: ClassVar[OpenAICompatPreset]
 
+    # 本地推理服务：请求绕过系统代理环境变量（防止 Clash 等劫持 127.0.0.1）
+    _bypass_env_proxy = True
+
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         # 回填基类声明的类属性接口，保持与其它 Provider 的内省兼容
@@ -77,10 +80,13 @@ class OpenAICompatLocalProvider(LLMProvider):
         if prefix and config.base_url.rstrip("/").endswith(prefix):
             config.base_url = config.base_url.rstrip("/")[: -len(prefix)]
         # 占位 Key：环境变量优先（在实例化时读取，便于测试注入），
-        # 回退到预设的公开占位字符串
-        if self.preset.default_api_key is not None and not config.api_key:
+        # 回退到预设的公开占位字符串。default_api_key 为 None 且声明了
+        # api_key_env 时为「纯环境变量」模式：环境变量缺失则不注入
+        # （保持 api_key 为空，由调用方显式配置），供 llama-server 的
+        # --api-key-file 这类无公开占位值的部署使用。
+        if not config.api_key and (self.preset.default_api_key is not None or self.preset.api_key_env):
             env_key = os.environ.get(self.preset.api_key_env or "", "")
-            config.api_key = env_key or self.preset.default_api_key
+            config.api_key = env_key or (self.preset.default_api_key or "")
         # 确保类型正确
         config.provider_type = self.preset.provider_type
         super().__init__(config)
@@ -195,8 +201,6 @@ class OpenAICompatLocalProvider(LLMProvider):
         model: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """原生流式：OpenAI 兼容 SSE（``data: {...}`` / ``data: [DONE]``）。"""
-        from app.ai.llm_client import get_shared_http_client
-
         target_model = self._resolve_model(model)
         payload = {
             "model": target_model,
@@ -205,7 +209,7 @@ class OpenAICompatLocalProvider(LLMProvider):
             "temperature": temperature,
             "stream": True,
         }
-        client = await get_shared_http_client()
+        client = await self._get_http_client()
         async with client.stream(
             "POST",
             self._chat_url(),

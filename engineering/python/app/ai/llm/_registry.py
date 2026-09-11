@@ -437,7 +437,7 @@ class ProviderRegistry:
             active = conn.execute("SELECT COUNT(*) FROM llm_providers WHERE is_active = 1").fetchone()[0]
             local_count = conn.execute(
                 "SELECT COUNT(*) FROM llm_providers WHERE provider_type IN "
-                "('ollama','lmstudio','llamacpp','vllm','tgi','koboldcpp')"
+                "('ollama','lmstudio','llamacpp','llama','vllm','tgi','koboldcpp')"
             ).fetchone()[0]
             cloud_count = total - local_count
 

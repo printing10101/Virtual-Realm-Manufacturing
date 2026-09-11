@@ -54,6 +54,15 @@ _PROBE_TARGETS: list[dict[str, Any]] = [
         "display_name": "llama.cpp",
     },
     {
+        "provider_type": ProviderType.LLAMA,
+        "port": 8081,
+        "host": "127.0.0.1",
+        "process_names": ["llama-server", "llama"],
+        "health_path": "/v1/models",
+        "default_base_url": "http://127.0.0.1:8081/v1",
+        "display_name": "Llama (llama-server)",
+    },
+    {
         "provider_type": ProviderType.VLLM,
         "port": 8000,
         "host": "127.0.0.1",

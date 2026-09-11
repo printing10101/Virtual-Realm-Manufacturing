@@ -33,6 +33,8 @@ class OllamaProvider(LLMProvider):
 
     DEFAULT_PORT = 11434
     DEFAULT_BASE_URL = "http://127.0.0.1:11434"
+    # 本地推理服务：请求绕过系统代理环境变量（防止 Clash 等劫持 127.0.0.1）
+    _bypass_env_proxy = True
 
     def __init__(self, config: ProviderConfig) -> None:
         # 如果未指定 base_url，使用默认本地地址
@@ -149,10 +151,8 @@ class OllamaProvider(LLMProvider):
         model: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """原生流式：Ollama /api/chat NDJSON（每行一个 JSON 对象）。"""
-        from app.ai.llm_client import get_shared_http_client
-
         target_model, payload = await self._chat_payload(messages, max_tokens, temperature, model, stream=True)
-        client = await get_shared_http_client()
+        client = await self._get_http_client()
         async with client.stream(
             "POST",
             f"{self.config.base_url}/api/chat",

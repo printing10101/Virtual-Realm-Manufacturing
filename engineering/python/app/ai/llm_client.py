@@ -102,9 +102,34 @@ async def get_shared_http_client() -> httpx.AsyncClient:
         return _shared_http_client
 
 
+# 本地推理服务专用客户端（trust_env=False）。
+# 背景：httpx 默认 trust_env=True 会读取 HTTP(S)_PROXY 环境变量，
+# 用户机器上常驻 Clash 等系统代理时，发往 127.0.0.1 的 LLM 请求会被
+# 代理劫持（实测出现流式 404 / 连接复用异常）。本地服务直连，必须
+# 绕过环境代理；云端 Provider 仍走默认客户端（可能需要代理出境）。
+_shared_http_client_no_proxy: httpx.AsyncClient | None = None
+
+
+async def get_shared_http_client_no_proxy() -> httpx.AsyncClient:
+    """获取绕过系统代理环境变量的共享客户端（本地推理服务专用）。"""
+    global _shared_http_client_no_proxy
+    if _shared_http_client_no_proxy is not None:
+        return _shared_http_client_no_proxy
+    async with _get_shared_http_client_lock():
+        if _shared_http_client_no_proxy is not None:
+            return _shared_http_client_no_proxy
+        _shared_http_client_no_proxy = httpx.AsyncClient(
+            timeout=_SHARED_TIMEOUT,
+            limits=_SHARED_LIMITS,
+            trust_env=False,
+        )
+        logger.info("Shared no-proxy httpx.AsyncClient initialized (local inference)")
+        return _shared_http_client_no_proxy
+
+
 async def close_shared_http_client() -> None:
     """关闭共享的 httpx.AsyncClient（FastAPI shutdown 时调用）。"""
-    global _shared_http_client
+    global _shared_http_client, _shared_http_client_no_proxy
     if _shared_http_client is not None:
         try:
             await _shared_http_client.aclose()
@@ -112,6 +137,12 @@ async def close_shared_http_client() -> None:
             logger.debug("Shared httpx client close failed: %s", e, exc_info=True)
         _shared_http_client = None
         logger.info("Shared httpx.AsyncClient closed")
+    if _shared_http_client_no_proxy is not None:
+        try:
+            await _shared_http_client_no_proxy.aclose()
+        except (RuntimeError, httpx.HTTPError) as e:
+            logger.debug("Shared no-proxy httpx client close failed: %s", e, exc_info=True)
+        _shared_http_client_no_proxy = None
 
 
 def _classify_error(status_code: int, body: str) -> LLMError:

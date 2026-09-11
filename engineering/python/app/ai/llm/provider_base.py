@@ -26,6 +26,7 @@ class ProviderType(str, Enum):
     OLLAMA = "ollama"
     LMSTUDIO = "lmstudio"
     LLAMACPP = "llamacpp"
+    LLAMA = "llama"  # Meta Llama 系模型（llama-server / llama.cpp 推理栈直连）
     VLLM = "vllm"
     TGI = "tgi"
     KOBOLDCPP = "koboldcpp"
@@ -45,6 +46,7 @@ class ProviderType(str, Enum):
             ProviderType.OLLAMA,
             ProviderType.LMSTUDIO,
             ProviderType.LLAMACPP,
+            ProviderType.LLAMA,
             ProviderType.VLLM,
             ProviderType.TGI,
             ProviderType.KOBOLDCPP,
@@ -146,6 +148,10 @@ class LLMProvider:
     # 子类必须覆盖：该 Provider 类型的默认端口（本地）或默认 API 端点（云端）
     DEFAULT_PORT: int | None = None
     DEFAULT_BASE_URL: str = ""
+    # 本地推理服务置 True：请求绕过系统代理环境变量（HTTP(S)_PROXY），
+    # 避免 127.0.0.1 请求被 Clash 等系统代理劫持。云端 Provider 保持
+    # 默认 False（可能需要代理出境）。
+    _bypass_env_proxy: bool = False
 
     def __init__(self, config: ProviderConfig) -> None:
         self.config = config
@@ -261,11 +267,17 @@ class LLMProvider:
             "usage": result.get("usage", {}),
         }
 
+    async def _get_http_client(self) -> httpx.AsyncClient:
+        """按 Provider 类别选取共享客户端（本地服务绕过系统代理）。"""
+        from app.ai.llm_client import get_shared_http_client, get_shared_http_client_no_proxy
+
+        if self._bypass_env_proxy:
+            return await get_shared_http_client_no_proxy()
+        return await get_shared_http_client()
+
     async def _http_get(self, url: str, headers: dict[str, str] | None = None) -> httpx.Response:
         """发起 GET 请求（复用共享连接池）。"""
-        from app.ai.llm_client import get_shared_http_client
-
-        client = await get_shared_http_client()
+        client = await self._get_http_client()
         return await client.get(url, headers=headers, timeout=self.config.timeout)
 
     async def _http_post(
@@ -275,9 +287,7 @@ class LLMProvider:
         headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         """发起 POST 请求（复用共享连接池）。"""
-        from app.ai.llm_client import get_shared_http_client
-
-        client = await get_shared_http_client()
+        client = await self._get_http_client()
         return await client.post(
             url,
             headers=headers,

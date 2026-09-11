@@ -8,6 +8,7 @@ export type ProviderType =
   | 'ollama'
   | 'lmstudio'
   | 'llamacpp'
+  | 'llama'
   | 'vllm'
   | 'tgi'
   | 'koboldcpp'

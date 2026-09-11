@@ -181,6 +181,7 @@ const PROVIDER_DEFAULT_BASE_URLS = {
   ollama: 'http://127.0.0.1:11434',
   lmstudio: 'http://127.0.0.1:1234/v1',
   llamacpp: 'http://127.0.0.1:8080/v1',
+  llama: 'http://127.0.0.1:8081/v1',
   vllm: 'http://127.0.0.1:8000/v1',
   tgi: 'http://127.0.0.1:8090/v1',
 } as const;
@@ -213,6 +214,15 @@ export const PROVIDER_TYPE_META: Record<ProviderType, ProviderTypeInfo> = {
     default_capabilities: ['chat'],
     needs_api_key: false,
     description: 'llama.cpp HTTP 服务器，OpenAI 兼容 API',
+  },
+  llama: {
+    value: 'llama',
+    label: 'Llama',
+    category: 'local',
+    default_base_url: PROVIDER_DEFAULT_BASE_URLS.llama,
+    default_capabilities: ['chat', 'streaming'],
+    needs_api_key: false,
+    description: 'Llama 模型（llama-server 本地推理栈，OpenAI 兼容 API；服务端启用 --api-key-file 时需配置 Key）',
   },
   vllm: {
     value: 'vllm',

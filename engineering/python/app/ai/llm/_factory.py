@@ -33,6 +33,7 @@ def _load_all_provider_classes() -> None:
             OllamaProvider,
             LMStudioProvider,
             LlamaCppProvider,
+            LlamaProvider,
             VllmProvider,
             TGIProvider,
             KoboldCppProvider,
@@ -49,6 +50,7 @@ def _load_all_provider_classes() -> None:
         _register_provider_class(ProviderType.OLLAMA, OllamaProvider)
         _register_provider_class(ProviderType.LMSTUDIO, LMStudioProvider)
         _register_provider_class(ProviderType.LLAMACPP, LlamaCppProvider)
+        _register_provider_class(ProviderType.LLAMA, LlamaProvider)
         _register_provider_class(ProviderType.VLLM, VllmProvider)
         _register_provider_class(ProviderType.TGI, TGIProvider)
         _register_provider_class(ProviderType.KOBOLDCPP, KoboldCppProvider)
@@ -82,6 +84,7 @@ _PROVIDER_DEFAULT_BASE_URLS: dict[str, str] = {
     "ollama": "http://127.0.0.1:11434",
     "lmstudio": "http://127.0.0.1:1234/v1",
     "llamacpp": "http://127.0.0.1:8080/v1",
+    "llama": "http://127.0.0.1:8081/v1",
     "vllm": "http://127.0.0.1:8000/v1",
     "openai": "https://api.openai.com/v1",
     "anthropic": "https://api.anthropic.com/v1",
@@ -129,6 +132,16 @@ def _default_provider_templates() -> list[ProviderConfig]:
             enabled=False,
             priority=8,
             capabilities=[ProviderCapability.CHAT],
+        ),
+        ProviderConfig(
+            provider_id="llama-default",
+            name="Llama (本地 llama-server)",
+            provider_type=ProviderType.LLAMA,
+            base_url=_provider_base_url("llama"),
+            default_model="",
+            enabled=False,
+            priority=8,
+            capabilities=[ProviderCapability.CHAT, ProviderCapability.STREAMING],
         ),
         ProviderConfig(
             provider_id="vllm-default",

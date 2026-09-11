@@ -360,7 +360,9 @@ def _install_fake_http(monkeypatch: pytest.MonkeyPatch, lines_or_exc: Any) -> No
     async def _get_client():
         return fake
 
+    # 本地 Provider 走 no-proxy 客户端缝隙，两个入口都要打桩
     monkeypatch.setattr(llm_client_mod, "get_shared_http_client", _get_client)
+    monkeypatch.setattr(llm_client_mod, "get_shared_http_client_no_proxy", _get_client)
 
 
 async def test_ollama_provider_native_stream_ndjson(monkeypatch: pytest.MonkeyPatch):
@@ -484,6 +486,7 @@ class TestP2Behavior:
             return _FakeClient()
 
         monkeypatch.setattr("app.ai.llm_client.get_shared_http_client", _get_client)
+        monkeypatch.setattr("app.ai.llm_client.get_shared_http_client_no_proxy", _get_client)
         provider = OllamaProvider(_make_config())
         with pytest.raises(ProviderLLMError):
             async for _ in provider.chat_completion_stream([{"role": "user", "content": "hi"}]):

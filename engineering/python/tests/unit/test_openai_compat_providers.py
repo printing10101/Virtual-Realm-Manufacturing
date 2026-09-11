@@ -1,6 +1,6 @@
 """本地 OpenAI 兼容 Provider（preset 基类）测试。
 
-五个本地推理服务（lmstudio/llamacpp/vllm/tgi/koboldcpp）共享
+本地推理服务（lmstudio/llamacpp/llama/vllm/tgi/koboldcpp）共享
 ``openai_compat_base.OpenAICompatLocalProvider`` 实现。
 本测试锁定：URL 拼接（含 llama.cpp 前缀规范化）、类型注入、占位 Key、
 类属性接口（DEFAULT_PORT/DEFAULT_BASE_URL）与工厂注册链路。
@@ -12,13 +12,14 @@ from app.ai.llm.provider_base import ProviderConfig, ProviderType
 from app.ai.llm.providers import (
     KoboldCppProvider,
     LlamaCppProvider,
+    LlamaProvider,
     LMStudioProvider,
     TGIProvider,
     VllmProvider,
 )
 from app.ai.llm.providers.openai_compat_base import OpenAICompatLocalProvider
 
-ALL_LOCAL = [LMStudioProvider, LlamaCppProvider, VllmProvider, TGIProvider, KoboldCppProvider]
+ALL_LOCAL = [LMStudioProvider, LlamaCppProvider, LlamaProvider, VllmProvider, TGIProvider, KoboldCppProvider]
 
 
 def _cfg(base_url: str = "") -> ProviderConfig:
@@ -67,6 +68,44 @@ def test_lmstudio_placeholder_key(monkeypatch):
 def test_other_providers_do_not_inject_key():
     for cls in (VllmProvider, LlamaCppProvider, TGIProvider, KoboldCppProvider):
         assert cls(_cfg()).config.api_key == ""
+
+
+def test_llama_env_key_injection(monkeypatch):
+    """Llama：环境变量 LLAMA_LOCAL_API_KEY 优先，配置值最高，缺失则不鉴权。"""
+    monkeypatch.delenv("LLAMA_LOCAL_API_KEY", raising=False)
+    assert LlamaProvider(_cfg()).config.api_key == ""
+
+    monkeypatch.setenv("LLAMA_LOCAL_API_KEY", "env-key")
+    assert LlamaProvider(_cfg()).config.api_key == "env-key"
+
+    cfg = _cfg()
+    cfg.api_key = "explicit-key"
+    assert LlamaProvider(cfg).config.api_key == "explicit-key"
+
+
+def test_llama_urls_and_defaults():
+    """Llama 默认直连 llama-server 上游（本机约定 8081），/v1 前缀正确。"""
+    provider = LlamaProvider(_cfg())
+    assert provider.config.base_url == "http://127.0.0.1:8081"
+    assert provider._models_url() == "http://127.0.0.1:8081/v1/models"
+    assert provider._chat_url() == "http://127.0.0.1:8081/v1/chat/completions"
+    assert provider.config.provider_type == ProviderType.LLAMA
+    assert LlamaProvider.DEFAULT_PORT == 8081
+
+
+def test_llama_factory_registration():
+    """工厂能按 ProviderType.LLAMA 创建实例（注册链路打通）。"""
+    from app.ai.llm._factory import create_provider
+
+    cfg = ProviderConfig(
+        provider_id="llama-x",
+        name="x",
+        provider_type=ProviderType.LLAMA,
+        base_url="",
+    )
+    provider = create_provider(cfg)
+    assert isinstance(provider, LlamaProvider)
+    assert provider.config.base_url == "http://127.0.0.1:8081"
 
 
 def test_class_attr_interface_preserved():
