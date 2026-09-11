@@ -33,15 +33,34 @@ def input_set(tmp_path: Path) -> list:
 
 
 class TestSeedInputSet:
-    def test_three_cases_written(self, input_set) -> None:
+    def test_ten_cases_written(self, input_set) -> None:
         assert [c.case_id for c in input_set] == [
             "case_a_stable",
             "case_b_unstable",
             "case_c_rejected",
+            "case_d_plane_alu",
+            "case_e_hole_alu",
+            "case_f_profile_steel",
+            "case_g_plane_titanium",
+            "case_h_combo_steel",
+            "case_i_profile_alu",
+            "case_j_boss_steel",
         ]
         for c in input_set:
             assert c.chatter_path.exists()
             assert c.plan_path.exists()
+
+    def test_sample_count_reaches_gate_min(self, input_set) -> None:
+        """10 例达到回归门控 min_samples=10，一轮重放即可出可信判定。"""
+        assert len(input_set) >= GateThresholds().min_samples
+
+    def test_expected_outcomes_consistent(self, input_set) -> None:
+        by_id = {c.case_id: c for c in input_set}
+        assert by_id["case_a_stable"].expected_outcome == "success"
+        assert by_id["case_b_unstable"].expected_hint == "UNSTABLE_FEATURES"
+        assert by_id["case_c_rejected"].expected_hint == "ChatterReportLoadError"
+        successes = [c for c in input_set if c.expected_outcome == "success"]
+        assert len(successes) == 8
 
     def test_json_payloads_valid(self, input_set) -> None:
         report = json.loads(input_set[0].chatter_path.read_text(encoding="utf-8"))
@@ -82,7 +101,18 @@ class TestRunReplay:
 
         per_case = {c["case_id"]: c for c in report["per_case"]}
         # 全部案例走完真实管道
-        assert set(per_case) == {"case_a_stable", "case_b_unstable", "case_c_rejected"}
+        assert set(per_case) == {
+            "case_a_stable",
+            "case_b_unstable",
+            "case_c_rejected",
+            "case_d_plane_alu",
+            "case_e_hole_alu",
+            "case_f_profile_steel",
+            "case_g_plane_titanium",
+            "case_h_combo_steel",
+            "case_i_profile_alu",
+            "case_j_boss_steel",
+        }
 
         # case_a：预期成功 GENERATED
         assert per_case["case_a_stable"]["actual_outcome"] == (
@@ -99,15 +129,24 @@ class TestRunReplay:
             GCodeGenerationTaskStatus.FAILED.value
         )
 
-        # 灰度库落盘 3 条案例（隔离于生产库）
-        store = FailureCaseStore(db_path=tmp_path / "replay.db")
-        assert store.count() == 3
+        # 成功变体全部 GENERATED
+        for cid in ["case_d_plane_alu", "case_e_hole_alu", "case_f_profile_steel",
+                    "case_g_plane_titanium", "case_h_combo_steel", "case_i_profile_alu",
+                    "case_j_boss_steel"]:
+            assert per_case[cid]["actual_outcome"] == (
+                GCodeGenerationTaskStatus.GENERATED.value
+            ), f"{cid} 未按预期成功: {per_case[cid]}"
 
-        # stats 报表结构完整
+        # 灰度库落盘 10 条案例（隔离于生产库）
+        store = FailureCaseStore(db_path=tmp_path / "replay.db")
+        assert store.count() == 10
+
+        # stats 报表结构完整：8 成功 2 失败
         stats = report["stats"]
-        assert stats["total"] == 3
-        assert stats["successes"] == 1
+        assert stats["total"] == 10
+        assert stats["successes"] == 8
         assert stats["failures"] == 2
+        assert stats["one_pass_rate"] == pytest.approx(0.8)
         assert "UNSTABLE_FEATURES" in stats["by_code"]
         assert "ChatterReportLoadError" in stats["by_code"]
 
@@ -131,8 +170,8 @@ class TestRunReplay:
 
 
 class TestGateFromDbs:
-    def test_inconclusive_with_seed_samples(self, tmp_path: Path) -> None:
-        """种子集只有 3 例，低于最小样本 10 —— 门控应诚实判 inconclusive。"""
+    def test_gate_real_verdict_with_seed_samples(self, tmp_path: Path) -> None:
+        """种子集 10 例达到 min_samples，两轮一致重放 → 真实判定（非 inconclusive）。"""
         write_seed_input_set(tmp_path / "inputs")
         base_db, cand_db = tmp_path / "b.db", tmp_path / "c.db"
         run_replay(tmp_path / "inputs", base_db, work_dir=tmp_path / "w1")
@@ -140,8 +179,9 @@ class TestGateFromDbs:
 
         gate = gate_from_dbs(base_db, cand_db)
         assert gate.passed
-        assert gate.inconclusive
-        assert any("样本不足" in r for r in gate.reasons)
+        assert not gate.inconclusive  # 样本足够，给出真实判定
+        assert gate.baseline_summary["total"] == 10
+        assert gate.current_summary["one_pass_rate"] == gate.baseline_summary["one_pass_rate"]
 
     def test_gate_blocks_real_regression(self, tmp_path: Path) -> None:
         """构造两期差异库验证拦截路径（不走重放，直接写库）。"""

@@ -76,99 +76,307 @@ class ReplayCase:
 
 
 # ----------------------------------------------------------------------
-# 种子输入集（确定性）
+# 种子输入集（确定性，参数化构造）
 # ----------------------------------------------------------------------
 
-_PLANE_FEATURE = {
-    "feature_id": "plane_top",
-    "feature_type": "plane",
-    "material_id": "steel_45",
-    "spindle_rpm": 1800.0,
-    "axial_depth_mm": 1.0,
-    "limit_depth_mm": 5.0,
-    "stable": True,
-    "stability_margin": 0.8,
-    "method": "analytical",
-    "ltc_active": False,
-    "confidence": 0.9,
-}
-
-_HOLE_FEATURE_STABLE = {
-    "feature_id": "hole_d10",
-    "feature_type": "hole",
-    "material_id": "steel_45",
-    "spindle_rpm": 1200.0,
-    "axial_depth_mm": 12.0,
-    "limit_depth_mm": 20.0,
-    "stable": True,
-    "stability_margin": 0.6,
-    "method": "analytical",
-    "ltc_active": False,
-    "confidence": 0.85,
-}
-
-_HOLE_FEATURE_UNSTABLE = {
-    **_HOLE_FEATURE_STABLE,
-    "feature_id": "hole_d20",
-    "axial_depth_mm": 22.0,
-    "limit_depth_mm": 15.0,
-    "stable": False,
-    "stability_margin": -0.4,
-    "confidence": 0.3,
-}
-
-_PLANE_OP = {
-    "seq": 1,
-    "name": "面铣顶面",
-    "feature_name": "plane_top",
-    "machining_method": "平面铣削",
-    "surface": "top",
-    "tolerance_grade": "IT8",
-    "tool_type": "endmill_d50",
-    "cutting_params": {
-        "material": "steel",
-        "tool_diameter": 50.0,
-        "recommended_feed": "0.15 mm/r",
-        "recommended_speed": "120 m/min",
-        "geometry": {"x": 0.0, "y": 0.0, "z_depth": 1.0, "length": 100.0, "width": 80.0},
-    },
-    "estimated_time_min": 2.0,
-    "notes": "replay seed op",
-}
-
-_HOLE_OP = {
-    "seq": 2,
-    "name": "钻孔",
-    "feature_name": "hole_d10",
-    "machining_method": "钻孔",
-    "surface": "top",
-    "tolerance_grade": "IT9",
-    "tool_type": "drill_d10",
-    "cutting_params": {
-        "material": "steel",
-        "tool_diameter": 10.0,
-        "recommended_feed": "0.12 mm/r",
-        "recommended_speed": "80 m/min",
-        "geometry": {"x": 30.0, "y": 30.0, "z_depth": 12.0},
-    },
-    "estimated_time_min": 1.0,
-    "notes": "replay seed op",
-}
-
-_HOLE_D20_OP = {
-    **_HOLE_OP,
-    "seq": 1,
-    "name": "钻孔深孔",
-    "feature_name": "hole_d20",
-    "tool_type": "drill_d20",
-    "cutting_params": {
-        **_HOLE_OP["cutting_params"],
-        "tool_diameter": 20.0,
-        "geometry": {"x": 50.0, "y": 50.0, "z_depth": 22.0},
-    },
-}
-
 _SETUPS = [{"name": "平口钳装夹", "surface": "top", "fixture_type": "vise"}]
+
+
+def _stable_feature(
+    feature_id: str,
+    feature_type: str,
+    material_id: str,
+    rpm: float,
+    axial: float,
+    limit: float,
+    confidence: float = 0.9,
+) -> dict[str, Any]:
+    """构造一个稳定特征的 ChatterReport 特征条目。"""
+    return {
+        "feature_id": feature_id,
+        "feature_type": feature_type,
+        "material_id": material_id,
+        "spindle_rpm": rpm,
+        "axial_depth_mm": axial,
+        "limit_depth_mm": limit,
+        "stable": True,
+        "stability_margin": round(1.0 - axial / limit, 4),
+        "method": "analytical",
+        "ltc_active": False,
+        "confidence": confidence,
+    }
+
+
+def _unstable_feature(
+    feature_id: str,
+    feature_type: str,
+    material_id: str,
+    rpm: float,
+    axial: float,
+    limit: float,
+) -> dict[str, Any]:
+    """构造一个不稳定特征（切深超限，阶段 5 判颤振不稳定）。"""
+    return {
+        "feature_id": feature_id,
+        "feature_type": feature_type,
+        "material_id": material_id,
+        "spindle_rpm": rpm,
+        "axial_depth_mm": axial,
+        "limit_depth_mm": limit,
+        "stable": False,
+        "stability_margin": round(1.0 - axial / limit, 4),
+        "method": "analytical",
+        "ltc_active": False,
+        "confidence": 0.3,
+    }
+
+
+def _mill_op(
+    seq: int,
+    feature_name: str,
+    tool_type: str,
+    tool_diameter: float,
+    geometry: dict[str, Any],
+    method: str = "平面铣削",
+    name: str = "铣削",
+) -> dict[str, Any]:
+    """构造铣削工序（machining_method 须含「铣」触发生成器铣削分支）。"""
+    return {
+        "seq": seq,
+        "name": name,
+        "feature_name": feature_name,
+        "machining_method": method,
+        "surface": "top",
+        "tolerance_grade": "IT8",
+        "tool_type": tool_type,
+        "cutting_params": {
+            "material": "steel",
+            "tool_diameter": tool_diameter,
+            "recommended_feed": "0.15 mm/r",
+            "recommended_speed": "120 m/min",
+            "geometry": geometry,
+        },
+        "estimated_time_min": 2.0,
+        "notes": "replay seed op",
+    }
+
+
+def _drill_op(
+    seq: int,
+    feature_name: str,
+    tool_type: str,
+    tool_diameter: float,
+    geometry: dict[str, Any],
+) -> dict[str, Any]:
+    """构造钻孔工序（machining_method 含「钻」触发生成器钻孔分支）。"""
+    op = _mill_op(
+        seq, feature_name, tool_type, tool_diameter, geometry, method="钻孔", name="钻孔"
+    )
+    op["tolerance_grade"] = "IT9"
+    return op
+
+
+def _write_case(
+    target_dir: Path,
+    case_id: str,
+    features: list[dict[str, Any]],
+    operations: list[dict[str, Any]],
+    task_status: str = "succeeded",
+) -> ReplayCase:
+    """写一对 chatter_report.json + operation_plan.json 并返回案例描述。"""
+    case_dir = target_dir / case_id
+    material_ids = {f["material_id"] for f in features}
+    _write_json(
+        case_dir / "chatter_report.json",
+        {
+            "task_id": f"replay-{case_id}",
+            "task_status": task_status,
+            "material_id": sorted(material_ids)[0],
+            "prediction_method": "analytical",
+            "feature_results": features,
+        },
+    )
+    _write_json(case_dir / "operation_plan.json", {"operations": operations, "setups": _SETUPS})
+    if task_status != "succeeded":
+        expected, hint = "failure", "ChatterReportLoadError"
+    elif any(not f["stable"] for f in features):
+        expected, hint = "failure", "UNSTABLE_FEATURES"
+    else:
+        expected, hint = "success", "-"
+    return ReplayCase(
+        case_id=case_id,
+        chatter_path=case_dir / "chatter_report.json",
+        plan_path=case_dir / "operation_plan.json",
+        expected_outcome=expected,
+        expected_hint=hint,
+    )
+
+
+def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
+    """生成确定性种子输入集（10 例），返回案例清单。
+
+    构成（8 成功 + 2 失败，样本量达到回归门控 min_samples=10）：
+    - case_a_stable：钢件 铣平面+钻孔（全稳定）→ 预期 success；
+    - case_b_unstable：hole_d20 切深超限（stable=False）→ 预期
+      UNSTABLE_FEATURES 失败；
+    - case_c_rejected：ChatterReport task_status != succeeded → 预期
+      ChatterReportLoadError 失败；
+    - case_d~j：铝/钛/钢 × 平面/孔/外圆/凸台 的成功参数变体，
+      覆盖不同材料与特征类型的参数区间。
+    """
+    target_dir = Path(target_dir)
+    cases: list[ReplayCase] = []
+
+    # case A：钢件全稳定 → success
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_a_stable",
+            [
+                _stable_feature("plane_top", "plane", "steel_45", 1800.0, 1.0, 5.0),
+                _stable_feature("hole_d10", "hole", "steel_45", 1200.0, 12.0, 20.0, 0.85),
+            ],
+            [
+                _mill_op(
+                    1, "plane_top", "endmill_d50", 50.0,
+                    {"x": 0.0, "y": 0.0, "z_depth": 1.0, "length": 100.0, "width": 80.0},
+                ),
+                _drill_op(2, "hole_d10", "drill_d10", 10.0, {"x": 30.0, "y": 30.0, "z_depth": 12.0}),
+            ],
+        )
+    )
+
+    # case B：不稳定深孔 → UNSTABLE_FEATURES
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_b_unstable",
+            [
+                _stable_feature("plane_top", "plane", "steel_45", 1800.0, 1.0, 5.0),
+                _unstable_feature("hole_d20", "hole", "steel_45", 900.0, 22.0, 15.0),
+            ],
+            [
+                _mill_op(
+                    1, "plane_top", "endmill_d50", 50.0,
+                    {"x": 0.0, "y": 0.0, "z_depth": 1.0, "length": 100.0, "width": 80.0},
+                ),
+                _drill_op(2, "hole_d20", "drill_d20", 20.0, {"x": 50.0, "y": 50.0, "z_depth": 22.0}),
+            ],
+        )
+    )
+
+    # case C：阶段 5 未审核通过 → ChatterReportLoadError
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_c_rejected",
+            [_stable_feature("plane_top", "plane", "steel_45", 1800.0, 1.0, 5.0)],
+            [
+                _mill_op(
+                    1, "plane_top", "endmill_d50", 50.0,
+                    {"x": 0.0, "y": 0.0, "z_depth": 1.0, "length": 100.0, "width": 80.0},
+                )
+            ],
+            task_status="PENDING_REVIEW",
+        )
+    )
+
+    # case D~J：材料 × 特征类型的成功参数变体
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_d_plane_alu",
+            [_stable_feature("plane_top", "plane", "aluminum_6061", 3000.0, 1.2, 6.0)],
+            [
+                _mill_op(
+                    1, "plane_top", "endmill_d50", 50.0,
+                    {"x": 0.0, "y": 0.0, "z_depth": 1.2, "length": 120.0, "width": 90.0},
+                )
+            ],
+        )
+    )
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_e_hole_alu",
+            [_stable_feature("hole_d8", "hole", "aluminum_6061", 2500.0, 10.0, 25.0)],
+            [_drill_op(1, "hole_d8", "drill_d8", 8.0, {"x": 20.0, "y": 20.0, "z_depth": 10.0})],
+        )
+    )
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_f_profile_steel",
+            [_stable_feature("cyl_od", "cylinder", "steel_45", 1600.0, 1.5, 5.0)],
+            [
+                _mill_op(
+                    1, "cyl_od", "endmill_d20", 20.0,
+                    {"x": 0.0, "y": 0.0, "z_depth": 1.5, "length": 80.0, "width": 80.0},
+                    method="外圆铣削", name="外圆铣",
+                )
+            ],
+        )
+    )
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_g_plane_titanium",
+            [_stable_feature("plane_top", "plane", "titanium_ti6al4v", 800.0, 0.5, 3.0, 0.8)],
+            [
+                _mill_op(
+                    1, "plane_top", "endmill_d40", 40.0,
+                    {"x": 0.0, "y": 0.0, "z_depth": 0.5, "length": 60.0, "width": 60.0},
+                )
+            ],
+        )
+    )
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_h_combo_steel",
+            [
+                _stable_feature("plane_top", "plane", "steel_45", 2000.0, 1.5, 6.0),
+                _stable_feature("hole_d12", "hole", "steel_45", 1400.0, 15.0, 22.0, 0.85),
+            ],
+            [
+                _mill_op(
+                    1, "plane_top", "endmill_d50", 50.0,
+                    {"x": 0.0, "y": 0.0, "z_depth": 1.5, "length": 110.0, "width": 85.0},
+                ),
+                _drill_op(2, "hole_d12", "drill_d12", 12.0, {"x": 40.0, "y": 25.0, "z_depth": 15.0}),
+            ],
+        )
+    )
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_i_profile_alu",
+            [_stable_feature("cyl_od", "cylinder", "aluminum_6061", 2800.0, 2.0, 8.0)],
+            [
+                _mill_op(
+                    1, "cyl_od", "endmill_d16", 16.0,
+                    {"x": 0.0, "y": 0.0, "z_depth": 2.0, "length": 70.0, "width": 70.0},
+                    method="外圆铣削", name="外圆铣",
+                )
+            ],
+        )
+    )
+    cases.append(
+        _write_case(
+            target_dir,
+            "case_j_boss_steel",
+            [_stable_feature("boss_1", "boss", "steel_45", 1500.0, 1.0, 4.0)],
+            [
+                _mill_op(
+                    1, "boss_1", "endmill_d12", 12.0,
+                    {"x": 35.0, "y": 35.0, "z_depth": 1.0, "length": 30.0, "width": 30.0},
+                    method="凸台铣削", name="凸台铣",
+                )
+            ],
+        )
+    )
+
+    return cases
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
@@ -176,94 +384,6 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
-    """生成确定性种子输入集（3 例），返回案例清单。
-
-    - case_a_stable：全稳定（铣平面 + 钻孔）→ 预期 success；
-    - case_b_unstable：hole_d20 切深超限（stable=False）→ 预期
-      UNSTABLE_FEATURES 失败；
-    - case_c_rejected：ChatterReport task_status != SUCCEEDED → 预期
-      ChatterReportLoadError 失败。
-    """
-    target_dir = Path(target_dir)
-    cases: list[ReplayCase] = []
-
-    # case A：全稳定 → success
-    _write_json(
-        target_dir / "case_a_stable" / "chatter_report.json",
-        {
-            "task_id": "replay-case-a",
-            "task_status": "succeeded",
-            "material_id": "steel_45",
-            "prediction_method": "analytical",
-            "feature_results": [_PLANE_FEATURE, _HOLE_FEATURE_STABLE],
-        },
-    )
-    _write_json(
-        target_dir / "case_a_stable" / "operation_plan.json",
-        {"operations": [_PLANE_OP, _HOLE_OP], "setups": _SETUPS},
-    )
-    cases.append(
-        ReplayCase(
-            case_id="case_a_stable",
-            chatter_path=target_dir / "case_a_stable" / "chatter_report.json",
-            plan_path=target_dir / "case_a_stable" / "operation_plan.json",
-            expected_outcome="success",
-            expected_hint="-",
-        )
-    )
-
-    # case B：不稳定特征 → UNSTABLE_FEATURES
-    _write_json(
-        target_dir / "case_b_unstable" / "chatter_report.json",
-        {
-            "task_id": "replay-case-b",
-            "task_status": "succeeded",
-            "material_id": "steel_45",
-            "prediction_method": "analytical",
-            "feature_results": [_PLANE_FEATURE, _HOLE_FEATURE_UNSTABLE],
-        },
-    )
-    _write_json(
-        target_dir / "case_b_unstable" / "operation_plan.json",
-        {"operations": [_PLANE_OP, _HOLE_D20_OP], "setups": _SETUPS},
-    )
-    cases.append(
-        ReplayCase(
-            case_id="case_b_unstable",
-            chatter_path=target_dir / "case_b_unstable" / "chatter_report.json",
-            plan_path=target_dir / "case_b_unstable" / "operation_plan.json",
-            expected_outcome="failure",
-            expected_hint="UNSTABLE_FEATURES",
-        )
-    )
-
-    # case C：阶段 5 未审核通过 → ChatterReportLoadError
-    _write_json(
-        target_dir / "case_c_rejected" / "chatter_report.json",
-        {
-            "task_id": "replay-case-c",
-            "task_status": "PENDING_REVIEW",  # 非 SUCCEEDED，拒绝加载
-            "material_id": "steel_45",
-            "prediction_method": "analytical",
-            "feature_results": [_PLANE_FEATURE],
-        },
-    )
-    _write_json(
-        target_dir / "case_c_rejected" / "operation_plan.json",
-        {"operations": [_PLANE_OP], "setups": _SETUPS},
-    )
-    cases.append(
-        ReplayCase(
-            case_id="case_c_rejected",
-            chatter_path=target_dir / "case_c_rejected" / "chatter_report.json",
-            plan_path=target_dir / "case_c_rejected" / "operation_plan.json",
-            expected_outcome="failure",
-            expected_hint="ChatterReportLoadError",
-        )
-    )
-
-    return cases
 
 
 # ----------------------------------------------------------------------
