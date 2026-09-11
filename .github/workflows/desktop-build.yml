@@ -107,6 +107,7 @@ jobs:
             libxdo-dev \
             libssl-dev \
             build-essential \
+            libfuse2 \
             curl wget file
 
       - name: 构建桌面安装包

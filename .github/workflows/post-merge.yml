@@ -129,7 +129,7 @@ jobs:
   docker-build:
     name: 构建 Docker 镜像
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     needs: [build]
     # 安全修复：此 job 需要推送镜像到 Registry，覆盖默认只读权限
     permissions:
