@@ -301,3 +301,94 @@ class _FakeAdapterForHooks:
 
     def adapt(self, **kwargs):
         return self._base, self._features
+
+
+# pipeline 钩子（M4a：成功案例入工艺库）
+
+
+class _FakeQuadIndex:
+    """记录 add() 调用的工艺四元组索引桩（查重恒返回无重复）。"""
+
+    def __init__(self):
+        self.added = []
+        self.flushed = False
+
+    def add(self, quad):
+        self.added.append(quad)
+
+    def flush(self, force=False):
+        self.flushed = True
+        return True
+
+    def find_similar(self, feature, material="general", top_k=10):
+        return []
+
+
+class TestSuccessHarvestHook:
+    @pytest.mark.asyncio
+    async def test_success_harvest_ingests_stable_features(self, monkeypatch):
+        """成功出口把 stable 特征实证写入工艺四元组索引。"""
+        from app.process_planning.gcode_generator import GCodeResult
+        from app.gcode_generation.gcode_store import GCodeGenerationTaskStatus
+        from app.gcode_generation.pipeline import GCodeGenerationPipeline
+
+        _patch_store(monkeypatch)
+        fake_index = _FakeQuadIndex()
+        monkeypatch.setattr(
+            "app.rag.process_quadruple.get_process_quadruple_index",
+            lambda: fake_index,
+        )
+        base = GCodeResult(program_text="O1000\nM30", controller_type="fanuc_0i", total_lines=2)
+        adapter = _FakeAdapterForHooks(base, [_fgcr_hook(stable=True)])
+        p = GCodeGenerationPipeline(adapter=adapter)
+        p._loader = MagicMock()
+        p._loader.load.return_value = _fake_report_for_hooks(unstable=0)
+        p._safety_validator = MagicMock()
+        sr = MagicMock()
+        sr.is_valid = True
+        sr.warnings = []
+        p._safety_validator.validate_all.return_value = sr
+        task = _task_for_hooks(status=GCodeGenerationTaskStatus.PENDING.value)
+        p._store = MagicMock()
+        p._store.get_task.return_value = task
+
+        result = await p.run_pipeline(task.task_id)
+        assert result.status == GCodeGenerationTaskStatus.GENERATED.value
+        assert len(fake_index.added) == 1
+        quad = fake_index.added[0]
+        assert quad.feature == "face"  # plane → face
+        assert quad.source == "generated_validated"
+        assert quad.material == "steel"
+        assert fake_index.flushed
+
+    @pytest.mark.asyncio
+    async def test_harvest_failure_never_breaks_pipeline(self, monkeypatch):
+        """工艺索引异常时主流程必须照常 GENERATED（非致命钩子硬约束）。"""
+        from app.process_planning.gcode_generator import GCodeResult
+        from app.gcode_generation.gcode_store import GCodeGenerationTaskStatus
+        from app.gcode_generation.pipeline import GCodeGenerationPipeline
+
+        _patch_store(monkeypatch)
+
+        def _boom():
+            raise RuntimeError("rag index down")
+
+        monkeypatch.setattr(
+            "app.rag.process_quadruple.get_process_quadruple_index", _boom
+        )
+        base = GCodeResult(program_text="O1000\nM30", controller_type="fanuc_0i", total_lines=2)
+        adapter = _FakeAdapterForHooks(base, [_fgcr_hook(stable=True)])
+        p = GCodeGenerationPipeline(adapter=adapter)
+        p._loader = MagicMock()
+        p._loader.load.return_value = _fake_report_for_hooks(unstable=0)
+        p._safety_validator = MagicMock()
+        sr = MagicMock()
+        sr.is_valid = True
+        sr.warnings = []
+        p._safety_validator.validate_all.return_value = sr
+        task = _task_for_hooks(status=GCodeGenerationTaskStatus.PENDING.value)
+        p._store = MagicMock()
+        p._store.get_task.return_value = task
+
+        result = await p.run_pipeline(task.task_id)
+        assert result.status == GCodeGenerationTaskStatus.GENERATED.value  # 主流程不受影响

@@ -383,6 +383,7 @@ class GCodeGenerationPipeline:
                 total_features=report.total_features,
                 unstable_features=report.unstable_features,
             )
+            self._harvest_success_cases(task)
 
             logger.info(
                 "任务 %s G 代码生成完成 controller=%s total_features=%d stable=%d unstable=%d "
@@ -690,6 +691,39 @@ class GCodeGenerationPipeline:
             get_failure_case_store().record(case)
         except Exception as e:  # noqa: BLE001 - 案例库失败绝不阻断生成主流程
             logger.warning("失败案例库记录失败（不影响主流程）: %s", e)
+
+    def _harvest_success_cases(self, task: GCodeGenerationTask) -> None:
+        """把成功任务的稳定特征实证沉淀入工艺四元组库（Phase 0 · M4a）。
+
+        只收 stable 特征，映射为 ProcessQuadruple（source=generated_validated，
+        confidence=0.9）写入 RAG 工艺索引，供 recommend_process 检索复用。
+        RAG 依赖在方法内延迟导入，保持 pipeline 导入轻量并便于测试隔离。
+        绝不影响主流程：任何异常只记 warning，不向上抛。
+        """
+        try:
+            from app.gcode_generation.success_case_harvester import (
+                build_quadruples_from_success,
+                ingest_success_cases,
+            )
+            from app.rag.process_quadruple import get_process_quadruple_index
+
+            quads = build_quadruples_from_success(
+                task_id=task.task_id,
+                controller_type=task.controller_type,
+                feature_results=task.feature_gcode_results or [],
+            )
+            if not quads:
+                return
+            added, skipped = ingest_success_cases(quads, get_process_quadruple_index())
+            if added or skipped:
+                logger.info(
+                    "任务 %s 成功案例入工艺库：新增 %d 条，去重跳过 %d 条",
+                    task.task_id,
+                    added,
+                    skipped,
+                )
+        except Exception as e:  # noqa: BLE001 - 采集失败绝不阻断生成主流程
+            logger.warning("成功案例入工艺库失败（不影响主流程）: %s", e)
 
     def _resolve_output_dir(self) -> Path:
         """解析输出目录。cfg 为 None 时使用默认 outputs/gcode。"""
