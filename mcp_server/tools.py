@@ -136,6 +136,16 @@ def _headers() -> dict[str, str]:
     return h
 
 
+def _client() -> httpx.AsyncClient:
+    """共享 HTTP 客户端：目标为 localhost 网关，禁用环境代理。
+
+    trust_env=False 防止系统代理（HTTP(S)_PROXY / Clash 等）劫持
+    127.0.0.1 请求——实测代理会让本地请求 404/超时（与本地 LLM
+    推理同款修复，见 app/ai/llm/provider_base.py）。
+    """
+    return httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT, trust_env=False)
+
+
 def _generate_idempotency_key() -> str:
     import uuid
 
@@ -161,7 +171,7 @@ def _validate_range(name: str, value: float, constraints: tuple[float, float]) -
 
 
 async def list_models() -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
+    async with _client() as client:
         resp = await client.get(f"{BASE_URL}/api/agent/v1/models", headers=_headers())
         resp.raise_for_status()
         return resp.json()
@@ -169,7 +179,7 @@ async def list_models() -> dict[str, Any]:
 
 async def get_model_info(name: str) -> dict[str, Any]:
     name = _sanitize_model_name(name)
-    async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
+    async with _client() as client:
         resp = await client.get(f"{BASE_URL}/api/agent/v1/models/{name}/info", headers=_headers())
         resp.raise_for_status()
         return resp.json()
@@ -183,7 +193,7 @@ async def predict(model_name: str, input_data: list[float], return_confidence: b
         "input_data": input_data,
         "return_confidence": return_confidence,
     }
-    async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
+    async with _client() as client:
         resp = await client.post(
             f"{BASE_URL}/api/agent/v1/predict",
             headers={**_headers(), "Idempotency-Key": _generate_idempotency_key()},
@@ -229,7 +239,7 @@ async def train(
         },
         "device": device,
     }
-    async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
+    async with _client() as client:
         resp = await client.post(
             f"{BASE_URL}/api/agent/v1/train",
             headers={**_headers(), "Idempotency-Key": _generate_idempotency_key()},
@@ -241,7 +251,7 @@ async def train(
 
 async def get_train_status(job_id: str) -> dict[str, Any]:
     job_id = _sanitize_job_id(job_id)
-    async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
+    async with _client() as client:
         resp = await client.get(f"{BASE_URL}/api/agent/v1/train/{job_id}", headers=_headers())
         resp.raise_for_status()
         return resp.json()
@@ -274,7 +284,7 @@ def register_tools(server) -> None:
     """在MCP Server实例上注册所有工具。
 
     注册 6 个标准化 LNN 工具 + 仿真工厂 4 个工具 + 演示设备自动生成工具
-    （W10.1 扩面）：
+    （W10.1 扩面）+ CAM 主链路只读工具 4 个（W11 扩面）：
     - lnn_list_models: 列出所有模型 (R)
     - lnn_get_model_info: 获取模型详情 (R)
     - lnn_predict: 预测推理 (R)
@@ -284,6 +294,9 @@ def register_tools(server) -> None:
     - factory_run_cycle / factory_get_status / factory_get_kpis / factory_step:
       语言驱动仿真工厂（闭环生产 / 感知状态 / KPI / 单步推进）
     - {device_id}_*: 演示设备描述符自动生成工具（AAS 元数据 → 工具，A2M 思路）
+    - gcode_get_failure_stats / gcode_list_failure_cases /
+      cam_recommend_process / cam_get_quadruple_stats:
+      CAM 主链路只读（失败案例库 + 工艺四元组推荐，Phase 0 自进化感知面）
 
     权限类: R = Read, B = Budgeted Write
     扩面开关: ``LINGJING_MCP_FACTORY_TOOLS=0`` 关闭工厂/设备工具。
@@ -411,3 +424,21 @@ def register_tools(server) -> None:
             logger.warning("仿真工厂工具注册失败（不影响 LNN/设备工具）: %s", exc)
     else:
         logger.info("LINGJING_MCP_FACTORY_TOOLS=0：工厂/设备工具未注册（仅 LNN 工具面）")
+
+    # CAM 主链路只读工具组（W11 扩面：失败案例库 + 工艺四元组推荐）
+    # 独立开关，故障隔离——注册失败不影响 LNN/工厂/设备工具。
+    cam_tools_enabled = os.environ.get("LINGJING_MCP_CAM_TOOLS", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+    if cam_tools_enabled:
+        try:
+            from mcp_server.cam_tools import register_cam_tools
+
+            register_cam_tools(server)
+        except Exception as exc:  # noqa: BLE001 - CAM 工具注册失败不影响既有工具
+            logger.warning("CAM 工具注册失败（不影响既有工具）: %s", exc)
+    else:
+        logger.info("LINGJING_MCP_CAM_TOOLS=0：CAM 只读工具未注册")
