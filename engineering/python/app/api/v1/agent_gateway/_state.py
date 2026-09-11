@@ -89,6 +89,84 @@ class TrainingCoordinator:
 # _handle_training_done，保持行为等价
 training_coordinator = TrainingCoordinator(MAX_CONCURRENT_TRAINING)
 
+
+# ----------------------------------------------------------------------
+# Agent 输入文件白名单（W12/W13 共享：G-code job 与 DXF 端点）
+# ----------------------------------------------------------------------
+
+_AGENT_INPUT_DEFAULT_ROOTS = ("data", "output", "outputs")
+
+
+def agent_input_roots() -> list:
+    """智能体输入文件允许的根目录列表（resolve 后）。
+
+    环境变量优先级：LINGJING_AGENT_INPUT_ROOTS > LINGJING_GCODE_INPUT_ROOTS
+    （向后兼容）> 默认 cwd 下 data/output/outputs。
+    """
+    import os
+    from pathlib import Path
+
+    env_roots = (
+        os.environ.get("LINGJING_AGENT_INPUT_ROOTS", "")
+        or os.environ.get("LINGJING_GCODE_INPUT_ROOTS", "")
+    )
+    if env_roots.strip():
+        raw = [r for r in env_roots.split(os.pathsep) if r.strip()]
+    else:
+        cwd = Path.cwd()
+        raw = [str(cwd / name) for name in _AGENT_INPUT_DEFAULT_ROOTS]
+    return [Path(r.strip()).resolve() for r in raw]
+
+
+def resolve_agent_input_path(path: str, field: str, suffix: str):
+    """智能体输入文件白名单校验（fail-closed，防路径遍历）。
+
+    Args:
+        path: 文件路径（绝对或相对 cwd）
+        field: 字段名（错误消息用）
+        suffix: 必须的文件后缀（含点，如 ".json" / ".dxf"）
+
+    Returns:
+        resolve 后的绝对 Path。
+
+    Raises:
+        HTTPException: 422（空/超长/非法字符/后缀不符）、403（越界）、404（不存在）。
+    """
+    from pathlib import Path
+
+    from fastapi import HTTPException, status
+
+    if not path or len(path) > 1024:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{field} 不能为空且最长 1024 字符",
+        )
+    if "\x00" in path:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{field} 包含非法字符",
+        )
+    p = Path(path).resolve()
+    if p.suffix.lower() != suffix.lower():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{field} 仅接受 {suffix} 文件",
+        )
+    if not any(p.is_relative_to(root) for root in agent_input_roots()):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"{field} 必须位于允许的输入目录内（LINGJING_AGENT_INPUT_ROOTS 或 "
+                f"默认 {', '.join(_AGENT_INPUT_DEFAULT_ROOTS)}），拒绝路径遍历: {p}"
+            ),
+        )
+    if not p.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{field} 文件不存在: {p}",
+        )
+    return p
+
 # Use the unified service layer — do NOT instantiate LNNModelRegistry directly
 registry_service = get_model_registry_service()
 model_registry = registry_service.model_registry

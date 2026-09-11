@@ -70,48 +70,17 @@ def reset_shared_gcode_pipeline() -> None:
 
 
 def _allowed_input_roots() -> list[Path]:
-    """输入文件允许的根目录（resolve 后逐一校验前缀）。"""
-    env_roots = os.environ.get("LINGJING_GCODE_INPUT_ROOTS", "")
-    if env_roots.strip():
-        raw_roots = [r for r in env_roots.split(os.pathsep) if r.strip()]
-    else:
-        cwd = Path.cwd()
-        raw_roots = [str(cwd / name) for name in _DEFAULT_INPUT_ROOTS]
-    return [Path(r.strip()).resolve() for r in raw_roots]
+    """输入文件允许的根目录（W13 起统一走 _state 共享实现，保持兼容）。"""
+    from app.api.v1.agent_gateway._state import agent_input_roots
+
+    return agent_input_roots()
 
 
 def _validate_input_path(path: str, field: str) -> Path:
-    """输入文件白名单校验（防路径遍历，fail-closed）。"""
-    if not path or len(path) > 1024:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"{field} 不能为空且最长 1024 字符",
-        )
-    if "\x00" in path:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"{field} 包含非法字符",
-        )
-    p = Path(path).resolve()
-    if p.suffix.lower() != ".json":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"{field} 仅接受 .json 文件",
-        )
-    if not any(p.is_relative_to(root) for root in _allowed_input_roots()):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                f"{field} 必须位于允许的输入目录内（LINGJING_GCODE_INPUT_ROOTS 或 "
-                f"默认 {', '.join(_DEFAULT_INPUT_ROOTS)}），拒绝路径遍历: {p}"
-            ),
-        )
-    if not p.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"{field} 文件不存在: {p}",
-        )
-    return p
+    """输入文件白名单校验（W13 起统一走 _state 共享实现）。"""
+    from app.api.v1.agent_gateway._state import resolve_agent_input_path
+
+    return resolve_agent_input_path(path, field, ".json")
 
 
 class GCodeJobRequest(BaseModel):

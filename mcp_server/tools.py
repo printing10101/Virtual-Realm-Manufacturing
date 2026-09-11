@@ -299,6 +299,7 @@ def register_tools(server) -> None:
       CAM 主链路只读（失败案例库 + 工艺四元组推荐，Phase 0 自进化感知面）
     - gcode_create_job (B) / gcode_get_job_status / gcode_list_jobs:
       G 代码生成任务 job 化（W12；输入路径后端白名单 fail-closed）
+    - dxf_describe_file: DXF 图纸解析摘要（W13；CAM 链路最上游感知）
 
     权限类: R = Read, B = Budgeted Write
     扩面开关: ``LINGJING_MCP_FACTORY_TOOLS=0`` 关闭工厂/设备工具。
@@ -464,3 +465,20 @@ def register_tools(server) -> None:
             logger.warning("G 代码任务工具注册失败（不影响既有工具）: %s", exc)
     else:
         logger.info("LINGJING_MCP_GCODE_TOOLS=0：G 代码任务工具未注册")
+
+    # DXF 图纸解析只读工具（W13 扩面）
+    dxf_tools_enabled = os.environ.get("LINGJING_MCP_DXF_TOOLS", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+    if dxf_tools_enabled:
+        try:
+            from mcp_server.dxf_tools import register_dxf_tools
+
+            register_dxf_tools(server)
+        except Exception as exc:  # noqa: BLE001 - 注册失败不影响既有工具
+            logger.warning("DXF 工具注册失败（不影响既有工具）: %s", exc)
+    else:
+        logger.info("LINGJING_MCP_DXF_TOOLS=0：DXF 工具未注册")
