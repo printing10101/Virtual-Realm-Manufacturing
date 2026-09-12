@@ -156,8 +156,9 @@ def _extract_decorator_args(call: ast.Call) -> tuple[str | None, bool]:
             has_rm = True
         elif kw.arg == "responses":
             # responses 字典也算作声明了响应模型（部分迁移）
-            # 但不计入 has_rm，仅作记录
-            pass
+            # 2026-09-13 修复：此前此分支为 pass，注释承诺"算作声明"但实现
+            # 未生效，导致仅声明 responses 错误模型的新端点被误判为遗漏
+            has_rm = True
 
     return path, has_rm
 

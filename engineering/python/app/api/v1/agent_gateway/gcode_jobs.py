@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
@@ -103,10 +102,7 @@ async def gcode_create_job(req: GCodeJobRequest):
     if req.controller_type not in _VALID_CONTROLLERS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"controller_type 须为 {sorted(_VALID_CONTROLLERS)} 之一，"
-                f"当前: {req.controller_type!r}"
-            ),
+            detail=(f"controller_type 须为 {sorted(_VALID_CONTROLLERS)} 之一，当前: {req.controller_type!r}"),
         )
     chatter = _validate_input_path(req.chatter_report_path, "chatter_report_path")
     plan = _validate_input_path(req.operation_plan_path, "operation_plan_path")
@@ -138,9 +134,7 @@ async def gcode_create_job(req: GCodeJobRequest):
         if t.cancelled():
             logger.warning("G 代码任务 %s 被取消", task.task_id)
         elif t.exception() is not None:
-            logger.error(
-                "G 代码任务 %s 未捕获异常: %s", task.task_id, t.exception()
-            )
+            logger.error("G 代码任务 %s 未捕获异常: %s", task.task_id, t.exception())
 
     runner.add_done_callback(_log_done)
 
@@ -221,9 +215,7 @@ def gcode_get_job(
             gcode_len = len(payload.get("gcode_text") or "")
             payload["gcode_text"] = ""
             payload["gcode_text_length"] = gcode_len
-        payload["disclaimer"] = (
-            "生成结果仅供 CAM 软件（NX/PowerMill/PyCAM）二次校验，绝不直接接口 CNC 控制器"
-        )
+        payload["disclaimer"] = "生成结果仅供 CAM 软件（NX/PowerMill/PyCAM）二次校验，绝不直接接口 CNC 控制器"
         return success(data=payload)
     except HTTPException:
         raise

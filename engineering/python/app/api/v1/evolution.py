@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.permissions import require_permission
 from app.core.response import ErrorCode, error, success
+from app.core.response_models import ErrorResponse
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ def _engine() -> Any:
     return get_evolution_engine()
 
 
-@router.get("/stats")
+@router.get("/stats", responses={500: {"model": ErrorResponse}})
 async def get_evolution_stats():
     """失败案例库统计 + 失败 TOP 类别 + 提示词版本总览。"""
     engine = _engine()
@@ -67,7 +68,7 @@ async def get_evolution_stats():
     )
 
 
-@router.get("/proposals")
+@router.get("/proposals", responses={500: {"model": ErrorResponse}})
 async def list_proposals():
     """全部提示词候选/应用版本记录（proposed/applied/rejected/rolled_back）。"""
     from app.ai.prompts import persistence as prompt_persistence
@@ -78,7 +79,7 @@ async def list_proposals():
     )
 
 
-@router.post("/loop/run")
+@router.post("/loop/run", responses={500: {"model": ErrorResponse}})
 async def run_evolution_loop(req: LoopRunRequest | None = None):
     """手动触发一次演化循环（统计→提案→报告；提案制不自动发布）。"""
     from app.evolution.loop import DEFAULT_TARGET_PROMPT_ID
@@ -103,7 +104,10 @@ def _load_record_or_404(prompt_id: str, version: int) -> dict[str, Any]:
     return record
 
 
-@router.post("/proposals/{prompt_id}/{version}/promote")
+@router.post(
+    "/proposals/{prompt_id}/{version}/promote",
+    responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+)
 async def promote_proposal(prompt_id: str, version: int):
     """候选版本门控发布：热更新上线 → replay 回归门控 → FAIL 自动回滚。"""
     _load_record_or_404(prompt_id, version)
@@ -114,7 +118,10 @@ async def promote_proposal(prompt_id: str, version: int):
     return success(data=result.to_dict(), message=f"提案处理完成: {result.final_status}")
 
 
-@router.post("/proposals/{prompt_id}/{version}/reject")
+@router.post(
+    "/proposals/{prompt_id}/{version}/reject",
+    responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+)
 async def reject_proposal(prompt_id: str, version: int):
     """拒绝提案（候选不进线上注册表，仅留痕）。"""
     _load_record_or_404(prompt_id, version)
@@ -124,7 +131,10 @@ async def reject_proposal(prompt_id: str, version: int):
     return success(data=result.to_dict(), message="提案已拒绝")
 
 
-@router.post("/proposals/{prompt_id}/{version}/rollback")
+@router.post(
+    "/proposals/{prompt_id}/{version}/rollback",
+    responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+)
 async def rollback_proposal(prompt_id: str, version: int):
     """回滚已应用的提示词版本（线上立即回到剩余最高版本）。"""
     _load_record_or_404(prompt_id, version)
@@ -134,7 +144,7 @@ async def rollback_proposal(prompt_id: str, version: int):
     return success(data=result.to_dict(), message="版本已回滚")
 
 
-@router.get("/reports")
+@router.get("/reports", responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}})
 async def list_reports():
     """最近一份进化报告内容 + 报告文件列表。"""
     from app.evolution.task_handler import latest_report

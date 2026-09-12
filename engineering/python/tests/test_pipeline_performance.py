@@ -12,12 +12,20 @@ from __future__ import annotations
 
 import sys
 import time
+import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+# 端到端管道延迟断言（P95 < 500ms）对 CPU 调度敏感：xdist 并行时其他 worker
+# 抢占 CPU，P95 必然超标（2026-09-13 实测 -n 6 下 P95 784ms；串行独占通过）。
+pytestmark = pytest.mark.skipif(
+    os.environ.get("PYTEST_XDIST_WORKER") is not None,
+    reason="P95 延迟断言须独占运行（-p no:xdist）；xdist 并行下读数被其他 worker 污染",
+)
 
 from app.data.pipeline import (  # noqa: E402
     DataPipeline,

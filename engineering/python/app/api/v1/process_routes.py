@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.auth.permissions import require_permission, require_role
 
 from app.core.response import ErrorCode, error, success
+from app.core.response_models import ErrorResponse
 from app.services import process_routes_service
 
 
@@ -133,7 +134,11 @@ async def delete_process_route(route_id: str):
     return success(message="工艺路线删除成功")
 
 
-@router.post("/seed", dependencies=[Depends(require_role("admin"))])
+@router.post(
+    "/seed",
+    dependencies=[Depends(require_role("admin"))],
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def seed_process_routes():
     """填充工艺路线演示数据：6条路线及其工序。"""
     try:

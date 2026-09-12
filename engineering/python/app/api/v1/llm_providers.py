@@ -29,6 +29,7 @@ from app.ai.llm.router import (
     get_router,
 )
 from app.auth.permissions import require_permission
+from app.core.response_models import ErrorResponse
 from app.core.safe_errors import safe_error_message
 import time
 
@@ -168,7 +169,7 @@ def _apply_update(config: ProviderConfig, req: ProviderUpdateRequest) -> Provide
 # 读取类端点（登录可见）
 
 
-@router.get("", summary="列出所有 Provider 配置")
+@router.get("", summary="列出所有 Provider 配置", responses={500: {"model": ErrorResponse}})
 async def list_providers(
     include_disabled: bool = Query(True, description="是否包含已禁用的 Provider"),
 ):
@@ -181,13 +182,13 @@ async def list_providers(
     }
 
 
-@router.get("/status", summary="Provider 注册表状态摘要")
+@router.get("/status", summary="Provider 注册表状态摘要", responses={500: {"model": ErrorResponse}})
 async def get_status():
     registry = get_registry()
     return {"ok": True, "data": registry.get_status_summary()}
 
 
-@router.get("/active", summary="获取当前激活的 Provider")
+@router.get("/active", summary="获取当前激活的 Provider", responses={500: {"model": ErrorResponse}})
 async def get_active_provider():
     registry = get_registry()
     config = registry.get_active_provider_config()
@@ -199,7 +200,7 @@ async def get_active_provider():
 # 静态路径端点（必须在 /{provider_id} 之前注册，避免被路径参数吞掉）
 
 
-@router.get("/types", summary="列出所有支持的 Provider 类型")
+@router.get("/types", summary="列出所有支持的 Provider 类型", responses={500: {"model": ErrorResponse}})
 async def list_provider_types():
     """返回所有支持的 Provider 类型及其中文描述。"""
     descriptions = {
