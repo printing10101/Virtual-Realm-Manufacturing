@@ -1,7 +1,8 @@
-# 灵境制造 v2.7.0《发布就绪报告》
+# 灵境制造 v2.8.0《发布就绪报告》
 
-> 评估日期：2026-08-23 ｜ 分支：`main` ｜ 评估目标：为**试点部署**做发布就绪判定
-> 评估方法：对标西门子等顶级制造业企业的质量门禁（需求→验证全链路、V 模型校验、质量门、静态安全分析、全量测试、端到端浏览器验证）
+> 评估日期：2026-09-13 ｜ 分支：`main` ｜ 评估目标：为**试点部署与参赛证据链**做发布就绪判定
+> 评估方法：全量测试实跑 + CI 门禁逐 job 治理 + 环境口径统一 + 文档口径收敛（P0-A 工程基线恢复）
+> 上一版：《v2.7.0 发布就绪报告》（2026-08-23，3441 项测试）——**该版数字已过期**，本版为唯一有效口径
 
 ---
 
@@ -9,134 +10,120 @@
 
 | 维度 | 结论 |
 |---|---|
-| 核心业务后端（190+ 模块，3441 项单测） | ✅ 通过（Python 3.14.3，3441 passed / 9 skipped） |
-| CI 门禁（lint-and-typecheck、api-docs-sync、版本一致性） | ✅ 通过 |
-| 安全与静态分析 | ✅ 无高危依赖漏洞、无密钥泄露扫描问题 |
-| 前端构建 + 全站路由 E2E | ✅ 11/11 核心路由正常渲染，无致命错误页 |
-| 智能体状态持久化（agent_state） | ✅ **本轮修复 P0 静默失败 bug 并加回归测试** |
-| **综合判定** | 🟡 **「可试点，但需满足 2 项前置条件」** |
+| 全量测试（Python 3.14.4，`-n 6`） | ✅ **通过：7,923 passed / 0 failed / 115 skipped / 1 xfailed**（连续两轮结果一致，5 分 59 秒/轮） |
+| 测试稳定性 | ✅ 修复确定性失败 14 项（含 2 个真代码 bug）；并行敏感用例加"独占运行"守卫并注明原因 |
+| 静态质量门（ruff CI 口径） | ✅ 唯一 F401 已修复（gcode_jobs.py 未使用 os） |
+| Response Model 覆盖 | ✅ 13 个新增端点补齐；检查器判定 bug 已修（responses= 按注释承诺计入） |
+| 前端（vue-tsc + vitest） | ✅ 类型检查 0 错误；测试 1,923 项全绿（修复 AgentDashboard mock 缺失 + llama provider 常量） |
+| CI 门禁 | 🟡 本轮治理 6 类失败根因并推送；**待推送后核对一轮**（见 §3） |
+| **综合判定** | 🟢 **测试证据链已恢复完整；CI 以最近一次推送的实跑结果为准** |
 
-**一句话结论**：软件功能与质量已达到可进入试点验证的水平；此前发现的会阻断试点的 P0/P1 问题（前端类型错误、CI 失败、权限缺失、路由 307/CORS、agent 状态静默丢数据）**均已修复并验证**。**登录链路（UI→API→RBAC→登出）已在本轮浏览器 E2E 中真实走通**。剩余问题均为低严重度，不阻塞试点，建议在试点前完成桌面打包与 CI 干净环境的专项验证。
+**一句话结论**：8 月 23 日以来测试基线从 3,441 项增长到 8,039 项（收集口径），期间累积的 14 个失败用例已全部归因处置——其中 2 个是**真代码缺陷**（多模态管道期望维度表过时、注意力融合对变长输入崩溃），5 个是测试自身过期/污染，其余为并行执行下读数失真（已加独占守卫并注明原因）。**"评委现场跑一遍测试"这一答辩硬指标恢复成立。**
 
 ---
 
-## 1. 评估范围与方法
+## 1. 环境口径（本轮统一）
 
-按制造业软件发布的四道质量门执行：
+| 项 | 口径 |
+|---|---|
+| 标准测试解释器 | 系统 Python **3.14.4**（`C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe`），跑前 `unset PYTHONPATH` |
+| 本机并行参数 | `-n 6`（-n 8 曾两次触发 worker 原生崩溃：torch+OCP 多副本内存压力） |
+| 模型相关测试 | `HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1`（权重已本地缓存；在线校验在受限网络下会挂死） |
+| 依赖防漂移 | `mcp>=1.0.0,<2` 显式上界（mcp 2.x 将 FastMCP 更名 MCPServer，已致 device_tools 导入失败）；3.14 环境缺 pytest-xdist 已补装 |
+| venv 治理 | `.venv3/4/5`（基解释器已丢失）已删除；`.venv6`（3.11.16，225 包）保留为次环境；跨版本 `__pycache__` 已清理（1,331 个目录） |
 
-| 质量门 | 对应工作 | 结果 |
+---
+
+## 2. 本轮修复清单（全部带复现证据）
+
+### 2.1 真代码缺陷（2 项，修产品而非修测试）
+
+| # | 缺陷 | 修复 |
 |---|---|---|
-| **G1 静态质量门** | 前端 `vue-tsc` 类型检查 + ESLint；后端 ruff 格式 + E402 修复 | ✅ 通过 |
-| **G2 单元/集成测试门** | 后端全量 pytest（Python 3.14.3）+ 覆盖率统计 | ✅ 通过 |
-| **G3 安全门** | 依赖漏洞扫描、密钥泄露扫描、权限码审计 | ✅ 通过 |
-| **G4 端到端验证门** | 后端 API 冒烟（38 端点）+ agent 生命周期（13 项）+ 浏览器全站 E2E（11 路由） | ✅ 通过 |
+| 1 | **多模态管道期望维度表过时**：`pipeline._get_expected_dims()` 按单通道×1/原始字段数 9/手工特征 21 硬编码，与预处理器实际输出契约（window_size×通道数 / tool_state_dim=32 / gcode_embedding_dim=256）脱节——仅在装有完整模型库的环境暴露（此前因 importorskip 跳过而从未真跑） | 期望表改为与各预处理器契约一致；`test_data_pipeline_integrity` 23 passed |
+| 2 | **CrossModalAttentionFusion 对变长输入崩溃**：投影矩阵按首次维度缓存，时序特征维度随数据长度变化时 `shapes not aligned` | 既有模态维度变化时按新维度重建投影（随机占位权重语义不变，类 docstring 已声明） |
+
+### 2.2 测试自身缺陷（5 项）
+
+| # | 问题 | 处置 |
+|---|---|---|
+| 3 | lnn `validate_model_file_not_exists` 断言过时（cutting_force.npz 已于 9-9 真实产出） | 改用 DATA_INSUFFICIENT 占位模型 surface_roughness；**新增**权重存在时的正向用例 |
+| 4 | auth `register_value_error_returns_409` 测试污染（单跑 PASS 全量 FAIL，实测返回 200） | 改在 `UserStore` 类级别打补丁，不受 store 解析路径影响 |
+| 5 | AgentDashboard 12 个挂载测试失败（WIP 新增 activity* store 字段，mock 未同步） | 补齐 mock（字段名与真实 store 一一核对） |
+| 6 | llmProviders 常量测试 12→13（新增 llama provider） | 同步断言 |
+| 7 | `sovereignty_ratio.py` main() KeyError('ratio') | 已定位（:203，`--json` 分支不受影响）；修复排入下一批 |
+
+### 2.3 并行执行读数失真（独占运行守卫，非代码缺陷）
+
+以下用例断言系统级资源/延迟，xdist 并行下其他 worker 抢占 CPU/内存导致读数必然超标（实测例证：CPU 91.4%≥90、P95 62.9ms≥30ms、基准套件两次拖垮 worker 原生崩溃）。已加 `skipif(PYTEST_XDIST_WORKER)` 守卫并逐处注明原因，**串行独占运行时全部通过（99 passed 实测验证）**：
+
+- `tests/integration/test_resource_usage.py`（模块级，3 用例）
+- `tests/performance/test_critical_modules_performance.py::TestExceptionHandlerPerformance / TestMiddlewareStackPerformance / TestDatabaseConnectionPoolPerformance`
+- `tests/performance/test_memory_footprint.py::TestBatchOperationMemoryGrowth`
+- `tests/test_perf_benchmark.py`（模块级——基准套件内存压力叠加并行曾致原生崩溃）
+- `tests/test_pipeline_performance.py`（模块级，P95 784ms vs 串行通过）
+- `tests/process_understanding/test_knowledge_retrieval.py`（共享 chroma_db 并发初始化竞态）
+
+### 2.4 CI 配置与工具缺陷
+
+| # | 问题 | 处置 |
+|---|---|---|
+| 8 | `tests/e2e/`（飞轮 E2E）被 `.gitignore:99` 的 `e2e/` 规则误忽略，从未入库 → CI Torch Integrity job 找不到目录失败 | 忽略规则加否定例外，测试文件入库 |
+| 9 | `check_response_model.py` 判定 bug：注释承诺 responses 字典计入声明，实现 `pass` 忽略 | 修复为计入；13 个新增端点同时补齐 responses 错误模型声明 |
+| 10 | lint-staged 的 cargo fmt 在仓库根找不到 Cargo.toml，含 .rs 文件的提交全部被误拦 | 显式 `--manifest-path src-tauri/Cargo.toml` |
+
+### 2.5 文档口径收敛（A7）
+
+白盒化任务状态在 7 处文档存在互相矛盾的口径（✅/🟡/⬜/「唯一阻塞」并存）。已全部以 git 证据（`git log -S "can_execute"` → f3ee1e07，2026-08-23 接线完成）统一：MEMORY.md、自主化与护城河路线图 §5、交付总览 §3/§5、dxf-pipeline-六阶段声明化、最终验收报告。
 
 ---
 
-## 2. 发现清单（按严重度排序）
+## 3. CI 门禁现状与残余项
 
-### P0 — 阻断发布（本轮已全部修复并验证）
+上一推送（1a1e6a6）的 CI Pipeline 红色 job 及本轮处置：
 
-| # | 问题 | 影响 | 状态 |
-|---|---|---|---|
-| 1 | **agent_state 持久化在 SQLite 下静默失败**：`manager.py` 的 `_save_db` 硬编码 PostgreSQL 方言函数 `to_timestamp()` / `NOW()`，SQLite 抛 `no such function` 被 catch 吞掉，API 返回成功但数据从未落库（重启即丢失全部 agent 状态） | 试点部署使用 SQLite 时智能体状态不可靠，重启丢状态 | ✅ 已修复：按方言生成 SQL（SQLite 直接写 epoch 浮点值，PG 保留 `to_timestamp`/`NOW`），读取路径对称兼容；新增 4 个 SQLite DB 层回归测试 |
+| Job | 根因 | 处置 |
+|---|---|---|
+| Python Full/Integration/Regression | 同批本地测试失败 | ✅ 本轮修复，随推送生效 |
+| Python Torch Integrity | tests/e2e 未入库 + 管道真 bug | ✅ 已修 |
+| Lint & Type Check | gcode_jobs.py F401 | ✅ 已修 |
+| Response Model Coverage | 新端点未声明 + 检查器 bug | ✅ 已修（本地复验 exit 0） |
+| Frontend Tests | 测试 mock 未随组件演进 | ✅ 已修（本地 vitest 全绿） |
+| Performance Benchmarks | 回归检查步骤读空 JSON | ⚠️ **未处置**——perf-benchmark 独立工作流同口径为 success，疑似 ci.yml 内联步骤与 DB 状态相关，需单独排查 |
+| 桌面端构建 | 历史全败（81 次 0 成功） | ⚠️ 未处置，属独立专项 |
 
-### P1 — 高严重度（此前轮次已修复并验证）
+**数据建设缺口（P0-C 剩余项，非测试问题）**：切参库 12 条（目标 ≥200）、失败案例库 47 行（目标 ≥500）、cutting_force 仍为 100 行合成数据训练（重训排期 10 月）。uniwear.csv 已于本轮入库（cf4b22c0），数据血缘恢复可复现。
 
-| # | 问题 | 影响 | 状态 |
-|---|---|---|---|
-| 2 | 前端 50 个类型错误（12 个文件，BaseImportDialog 重复声明、StatsCards 重构问题等） | CI 的 lint-and-typecheck 门禁失败，无法合并/发布 | ✅ 已修复 |
-| 3 | 后端 15 个 E402 错误 + 383 文件 ruff 格式化 | 代码质量与 CI 门禁 | ✅ 已修复 |
-| 4 | 30 个权限码缺失（`require_permission` 引用了未注册的权限码，admin 角色未授权） | 受保护端点 403（image_to_3d/gcode/kg 等任务端点） | ✅ 已修复（补全 `_presets.py` 权限码 + admin 授权） |
-| 5 | API 路由尾斜杠不一致（前端无 `/`，后端有 `/`） | 307 重定向 → CORS 拒绝 → 页面数据加载失败 | ✅ 已修复（前端 10+ 处补齐尾斜杠） |
-| 6 | 任务列表端点响应模型不匹配（`TaskListResponse` vs `success()` 包装） | 500 响应校验错误 | ✅ 已修复（统一 `success()` 包装） |
-| 7 | 数据集 CRUD 参数错配 + 分页缺失 + 用户 ID 读取错误 | 数据驱动流程不可用 | ✅ 已修复（`count_datasets`/`get_metrics` 补齐） |
-| 8 | ResizeObserver 循环触发全局致命错误页 | 工作区白屏 | ✅ 已修复（非致命错误过滤） |
-| 9 | Vite 缺少 `/agents` 代理 | 前端无法访问 agent 端点 | ✅ 已修复（server + preview 双代理） |
-
-### P2 — 中严重度（需试点前专项验证）
-
-| # | 问题 | 影响 | 建议 |
-|---|---|---|---|
-| 10 | **登录链路（UI→API）未在浏览器 E2E 中走通**：此前 E2E 通过注入 JWT 到 `sessionStorage` 绕过登录，未验证真实登录页面/表单流程 | 试点用户首次使用可能受阻 | ✅ **已修复并验证**：新增独立 `/login` 页 + 路由守卫重定向 + 头部用户菜单/登出；浏览器 E2E 走通「未登录重定向 → 错误密码提示 → 正确登录 → 用户菜单 → 登出 → token 清除」全闭环 |
-| 11 | **Windows 桌面发布包**：OCP 原生依赖（cadquery/OCP DLL）在系统 Python 3.14.3 可正常加载，但需确认桌面安装包的 runtime 打包策略包含正确 Python 版本与依赖 | 桌面端试点的安装/启动体验 | 打包前用 `npm run app:build` 产出的安装包做一次全新机器验证 |
-| 12 | **CI 依赖解析**：CI 流水线需在干净环境确认 Python 3.14 + 依赖解析结果与本地一致 | CI 与实际环境漂移风险 | 核对 `.github/workflows` 中 Python 版本与 requirements 解析 |
-
-### P3 — 低严重度（不阻塞，记录在案）
-
-| # | 问题 | 影响 | 说明 |
-|---|---|---|---|
-| 13 | 通知接口浏览器端轮询超时 | 通知栏偶发刷新失败 | 后端 `GET /api/v1/notifications` 持续返回 200，疑似前端轮询超时设置过短或长轮询行为，建议优化轮询策略 |
-| 14 | Vite `TaskCard` 组件命名冲突警告 | 无功能影响 | `unplugin-vue-components` 自动注册冲突，被忽略，建议改名消除噪音 |
-| 15 | 第三方 `transformCallback` 控制台错误 | 无功能影响 | 非本仓库代码（库/扩展产生） |
-| 16 | `asyncio.WindowsSelectorEventLoopPolicy` deprecation 警告 | 无功能影响 | Python 3.16 才移除，非紧迫 |
+**新增已知问题（本轮发现，下一批处置）**：飞轮 E2E（`tests/e2e/test_flywheel_closed_loop.py`）每次运行向**已入库**的 `data/training_data/training_data_20260913.jsonl` 追加合成反馈记录——既污染数据文件又违反"训练数据禁止合成"政策；应改为写入 tmp_path 隔离目录。
 
 ---
 
-## 3. 已通过的关键验证明细
+## 4. Go/No-Go 清单
 
-### 3.1 后端全量测试（G2）
-- 环境：系统 Python **3.14.3**（`C:\Users\<user>\AppData\Local\Programs\Python\Python314\python.exe`），`unset PYTHONPATH` 规避宿主遮蔽
-- 结果：**3441 passed, 9 skipped**（含 OCP/cadquery 原生依赖正常加载）
-- 本轮 agent state 专项：**82 passed**（`test_agent_persistence.py` + `test_state_manager_coverage.py`，含新增 4 个 SQLite DB 层回归测试）
-
-### 3.2 API 冒烟与生命周期（G4）
-- 核心 API 冒烟：**38 端点全通过**（覆盖物料、工艺路线、任务、数据集 CRUD、生产报表等）
-- agent_state 生命周期：**13/13 通过**（save→get→heartbeat→context→checkpoint→clone→delete→404）
-- DB 落库直查：save 后 `SELECT ... FROM agent_states` 返回正确行（修复前为 0 行）
-
-### 3.3 浏览器端到端（G4）
-- **登录链路真实走通（本轮新增）**：未登录访问 `/workspace` 自动重定向 `/login` → 错误密码提示「用户名或密码错误」并停留登录页 → `admin/Admin@2026Dev` 登录成功跳转首页 → 头部用户菜单显示 `admin` → 退出登录（含确认弹窗）→ 回 `/login` 且 `auth_token` 已清除 → 登出后再次访问受保护路由仍被重定向回 `/login`
-- 注入 admin JWT 到 `sessionStorage`（`auth_token` + `auth_user`），验证 **11 个核心路由**：
-
-| 路由 | 页面 | 渲染 | 控制台错误 |
-|---|---|---|---|
-| `/workspace` | 3D 工作台（图纸导入 + LNN 推理） | ✅ | 无致命错误 |
-| `/process-planning` | 工艺规划 | ✅ | 无致命错误 |
-| `/simulation` | 3D 仿真/NC 仿真 | ✅ | 无致命错误 |
-| `/nl-modeling` | 自然语言建模（NC 生成向导） | ✅ | 无致命错误 |
-| `/toolpath-editor` | 刀路编辑器（3D 画布） | ✅ | 无致命错误 |
-| `/material-management` | 物料管理 | ✅ | 无致命错误 |
-| `/production-report` | 生产报表 | ✅ | 无致命错误 |
-| `/task-board` | 任务看板 | ✅ | 无致命错误 |
-| `/agent-dashboard` | 智能体看板 | ✅ | 无致命错误 |
-| `/equipment-monitor` | 设备监控 | ✅ | 无致命错误 |
-| `/quality-inspection` | 质量检测 | ✅ | 无致命错误 |
-
-### 3.4 安全与权限（G3）
-- 权限码审计：`require_permission` 引用与 `PRESET_PERMISSIONS`/admin 授权 100% 对齐（30 处补齐）
-- JWT 校验、RBAC 角色白名单（未知 role 降级 viewer 防提权）确认生效
-- 依赖与密钥扫描：无高危项
-
----
-
-## 4. 试点部署前置条件（Go/No-Go 清单）
-
-试点放行需满足以下 2 项（均为打包/环境性验证，非代码缺陷）：
-
-- [x] **1. 登录链路验证**：✅ **已完成（本轮浏览器 E2E 真实走通）**。新增独立 `/login` 页、路由守卫未登录重定向、头部用户菜单与登出；验证覆盖「未登录访问受保护路由重定向 → 错误密码提示 → 正确登录 → 用户菜单显示当前用户 → 退出登录清除 token → 登出后再访问仍被拦截」，前端 auth/router 相关单测 40 项全通过
-- [ ] **2. 桌面打包验证**：用 `npm run app:build` 产出安装包，在**全新机器**（无开发环境）安装并验证「图纸→3D→工艺→NC」全流程 + 重启后 agent 状态不丢失
-- [ ] **3. CI 干净环境验证**：确认 GitHub Actions 在干净 runner 上依赖解析 + 全量测试通过（与本地一致）
-
-> 若试点以**服务端（Web）形态**部署，第 2 项可降级为「Docker 镜像启动 + 首次启动建库」验证。
+- [x] 全量测试全绿且连跑结果一致（3.14，-n 6：run3/run4 均 7,923 passed / 0 failed）
+- [x] 静态质量门（CI 口径 ruff）0 违规
+- [x] 前端类型检查 + 单测全绿
+- [x] 文档口径统一（白盒化任务状态单一事实源）
+- [ ] CI Pipeline 推送后核对一轮（本轮修复全部就位）
+- [ ] Performance Benchmarks 内联 job 排查
+- [ ] 桌面端构建专项
+- [ ] P0-C 数据建设（切参扩容 / 案例库灌数 / 真实数据重训）
 
 ---
 
 ## 5. 结论
 
-灵境制造 v2.7.0 已通过静态质量、全量测试、安全分析、API 冒烟与浏览器端到端四道质量门。**本轮发现的唯一 P0（agent 状态持久化静默失败）已修复并通过回归测试验证**——这是试点能否放心长期运行的关键修复（确保重启/断电后智能体状态不丢失）。
+v2.8.0 的测试证据链已恢复完整：8,039 项收集、7,923 项实跑通过、0 失败、结果可重复。8 月下旬以来"测试红、CI 红、报告过期"的脏状态已系统性清理——**修复对象包括 2 个真产品缺陷与 3 个 CI 工具缺陷，而非简单放宽阈值；所有并行守卫均注明原因且串行下实测通过。**
 
-当前状态：**「可试点，需先完成 2 项前置验证（桌面打包、CI 干净环境）」**。登录链路已在本轮真实验证并关闭。建议按第 4 节清单逐项打勾后正式放行试点。
+当前判定：**「测试证据链就绪；CI 以最近推送实跑为准；数据建设与桌面构建为下一优先级」**。
 
 ---
 
-## 附录 A：本轮代码变更
+## 附录 A：本轮代码变更索引
 
-- `engineering/python/app/state/manager.py` — P0 修复：`_save_db` 方言适配（SQLite epoch 直写 / PG `to_timestamp`+`NOW`）
-- `engineering/python/tests/test_agent_persistence.py` — 新增 `TestDbTierSqlite` 4 个回归测试
-- `engineering/src/views/Login.vue`（新增）— 独立登录页（表单校验、loading、错误提示、防开放重定向）
-- `engineering/src/router/index.ts` — 新增 `/login` 公开路由；守卫将未登录用户重定向至 `/login`（原为 `/`）
-- `engineering/src/components/layout/LayoutHeader.vue` — 头部用户菜单（头像/用户名/角色 + 退出登录含确认弹窗）
-- `engineering/src/components/process_planning/ProcessRouteCard.vue` — `ProcessRouteCardItem` 补 `part_type` 字段（修复 vue-tsc 类型错误）
-- `engineering/src/locales/zh-CN.ts` / `en.ts` — 登录与用户菜单 i18n 文案
-- 测试/验证脚本：`_agent_state_test.py`、`_smoke_test_tmp.py`（API 级验证）
+- 测试治理：`37ced72a`（管道双 bug/lnn/auth/守卫/mcp 上界/e2e 入库）
+- 红门禁治理：`85f25ab5`（lint/响应模型+检查器修复/前端测试/并行守卫补全）
+- 文档收敛：`11206ff5`（白盒化状态七处统一）
+- 数据血缘：`cf4b22c0`（uniwear.csv 入库）
+- 工作树治理：`34252fe1..1a1e6a65`（WIP 分批入库，见 2026-09-13 会话记录）
+- 本报告：v3.0，替代 2026-08-23 版（3441 项测试口径已过期）
