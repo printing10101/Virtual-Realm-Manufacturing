@@ -34,6 +34,7 @@ __all__ = [
     "AUGMENTER_PARAM_PROPOSAL_SYSTEM_ID",
     "EVOLUTION_PROPOSE_SYSTEM_ID",
     "EVOLUTION_PROPOSE_USER_ID",
+    "AGENT_RUNTIME_REACT_SYSTEM_ID",
 ]
 
 # ---------------------------------------------------------------------------
@@ -46,6 +47,7 @@ ORCHESTRATOR_GCODE_REPAIR_SYSTEM_ID = "orchestrator.gcode_repair.system"
 AUGMENTER_PARAM_PROPOSAL_SYSTEM_ID = "knowledge_augmenter.param_proposal.system"
 EVOLUTION_PROPOSE_SYSTEM_ID = "evolution.propose_patch.system"
 EVOLUTION_PROPOSE_USER_ID = "evolution.propose_patch.user"
+AGENT_RUNTIME_REACT_SYSTEM_ID = "agent_runtime.react.system"
 
 # ---------------------------------------------------------------------------
 # v0 默认条目（正文与 2026-09 迁移前内联版本逐字一致，行为不变）
@@ -95,6 +97,23 @@ _EVOLUTION_PROPOSE_USER_V1 = (
     "请产出新版提示词（严格 JSON）。"
 )
 
+_AGENT_RUNTIME_REACT_SYSTEM_V1 = (
+    "你是数控加工领域的智能体，通过调用工具完成制造任务"
+    "（工艺规划 / G 代码评估 / 工艺知识检索 / 失败统计查询）。\n"
+    "可用工具：\n{tools_text}\n"
+    "每轮回复必须严格遵循以下两种格式之一。\n"
+    "格式一（需要调用工具）：\n"
+    "Thought: <一句话分析>\n"
+    "Action: <工具名>\n"
+    'Action Input: <JSON 对象，形如 {"参数名": 值}>\n'
+    "格式二（任务已完成）：\n"
+    "Thought: <一句话结论>\n"
+    "Final Answer: <面向用户的最终回答>\n"
+    "纪律：Action Input 必须是合法 JSON 且不带 markdown 围栏；"
+    "一次只调用一个工具；只能使用上面列出的工具；"
+    "观测结果足够回答任务时立即给出 Final Answer，不要无谓地连续调用工具。"
+)
+
 
 def _register_defaults(registry: PromptRegistry) -> None:
     """注册 v0 默认条目（幂等：同键覆盖）。"""
@@ -118,6 +137,12 @@ def _register_defaults(registry: PromptRegistry) -> None:
         1,
         _EVOLUTION_PROPOSE_USER_V1,
         "演化循环提示词补丁提案用户提示（占位符：prompt_id / current_template / failure_summary）",
+    )
+    registry.register(
+        AGENT_RUNTIME_REACT_SYSTEM_ID,
+        1,
+        _AGENT_RUNTIME_REACT_SYSTEM_V1,
+        "统一 AgentRuntime ReAct 系统提示（占位符：tools_text）",
     )
 
 

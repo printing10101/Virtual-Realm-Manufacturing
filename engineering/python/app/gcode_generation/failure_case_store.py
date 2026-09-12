@@ -49,7 +49,8 @@ __all__ = [
 ]
 
 # 合法 outcome / source 值（校验用）。
-# llm_* / nl2cad_* 五类为自进化 M0 新增的 LLM 提案位失败来源
+# llm_* / nl2cad_* 五类为自进化 M0 新增的 LLM 提案位失败来源；
+# react_agent 为自进化 M2 新增的 AgentRuntime ReAct 循环格式失败来源
 # （写入方与口径约定见 app/agent/failure_recorder.py）。
 VALID_OUTCOMES = ("failure", "success")
 VALID_SOURCES = (
@@ -60,6 +61,7 @@ VALID_SOURCES = (
     "llm_param_aug",
     "gcode_repair",
     "nl2cad_extract",
+    "react_agent",
     "",
 )
 
