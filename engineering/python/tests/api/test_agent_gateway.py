@@ -115,6 +115,44 @@ class TestAgentExecute:
         response = client.post("/api/agent/v1/execute", json={})
         assert response.status_code == 422
 
+    def test_live_mode_returns_501_until_dispatch_wired(self, client, monkeypatch):
+        """实模式（全部安全闸门通过）必须显式 501，不得谎报 'executed'。
+
+        回归测试（空壳修复）：此前实模式在双因子确认通过后直接返回写死的
+        ``{"status": "executed"}``，但机床下发通道从未接线——操作员会看到
+        "已下发"的假象。修复后必须返回 501 并说明原因。
+        """
+        monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "true")
+        payload = {
+            "machine_id": "vmc_850",
+            "parameters": {"spindle_speed": 8000.0},
+            "simulate": False,
+            "supervisor_confirmed": True,
+            "machine_safety_status": {
+                "emergency_stop_active": False,
+                "guard_door_closed": True,
+                "light_curtain_clear": True,
+                "operator_present": True,
+            },
+        }
+        response = client.post("/api/agent/v1/execute", json=payload)
+        assert response.status_code == 501
+        assert "下发通道未接线" in response.text
+        assert "Operation executed successfully" not in response.text
+
+    def test_paper_only_mode_still_simulates(self, client, monkeypatch):
+        """Paper-Only 模式（默认）不受影响：返回模拟结果而非 501。"""
+        monkeypatch.setenv("LNN_LIVE_EXECUTION_ENABLED", "false")
+        payload = {
+            "machine_id": "vmc_850",
+            "parameters": {"spindle_speed": 8000.0},
+            "simulate": True,
+        }
+        response = client.post("/api/agent/v1/execute", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["code"] == 0
+
 
 class TestAgentAudit:
     """Tests for GET /api/agent/v1/audit-log."""

@@ -115,7 +115,19 @@ class WearMLTrainer:
                 "feature_importance": [],
             }
 
-        records = loader.load_dataset(split="train")
+        try:
+            records = loader.load_dataset(split="train")
+        except (FileNotFoundError, ValueError) as e:
+            self._logger.error("Bosch CNC 数据不可用: %s", e)
+            return {
+                "error": f"Bosch CNC 数据不可用: {e}",
+                "accuracy": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "confusion_matrix": [],
+                "feature_importance": [],
+            }
         feature_names = ["tool_wear", "cutting_force", "vibration"]
         X = np.array(
             [[float(r.get(name, 0.0)) for name in feature_names] for r in records],
@@ -289,7 +301,18 @@ class WearMLTrainer:
                 "sample_count": 0,
                 "warning": "bosch_cnc_loader 模块不可用",
             }
-        samples = loader.load_dataset(machines=[machine], processes=[process], labels=["good"])
+        try:
+            samples = loader.load_dataset(machines=[machine], processes=[process], labels=["good"])
+        except (FileNotFoundError, ValueError) as e:
+            return {
+                "process": process,
+                "machine": machine,
+                "rms_ranges": {},
+                "dominant_frequencies": {},
+                "energy_distribution": {},
+                "sample_count": 0,
+                "warning": f"Bosch CNC 数据不可用: {e}",
+            }
 
         if not samples:
             return {
@@ -315,7 +338,7 @@ class WearMLTrainer:
         }
 
         for sample in samples:
-            feats = loader.extract_features(sample["data"])
+            feats = loader.extract_features(sample)
             for ax in ["x", "y", "z"]:
                 axis_data[f"{ax}_rms"].append(feats.get(f"time_{ax}_rms", 0))
                 axis_dom_freqs[f"{ax}_dom_freq"].append(feats.get(f"freq_{ax}_dominant_freq", 0))

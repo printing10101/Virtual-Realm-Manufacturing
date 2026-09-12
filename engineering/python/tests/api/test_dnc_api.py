@@ -364,7 +364,7 @@ class TestMachineAlarms:
         assert data["data"][0]["code"] == "A100"
 
     def test_get_machine_alarms_opcua(self, client, monkeypatch):
-        """测试查询 OPC UA 机床报警（暂未实现 → 空列表）"""
+        """测试查询 OPC UA 机床报警（能力未接入 → 显式 501，不冒充空报警）"""
         _set_connections(
             monkeypatch,
             {
@@ -378,10 +378,11 @@ class TestMachineAlarms:
         )
 
         response = client.get("/api/v1/dnc/machines/TEST-CNC-OPCUA-ALARM/alarms")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["code"] == 0
-        assert data["data"] == []
+        # 诚实失败：统一错误体 SERVICE_UNAVAILABLE(2002)，不再冒充"无报警"空列表
+        body = response.json()
+        assert body["code"] == 2002
+        assert "暂未实现" in body["message"]
+        assert "MTConnect" in body.get("suggestion", "")
 
 
 # 参数验证测试

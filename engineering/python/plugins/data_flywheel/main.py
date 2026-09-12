@@ -78,6 +78,14 @@ class Plugin(IPlugin):
 
     # IPlugin 契约实现
 
+    def get_feedback_collector(self) -> Optional[FeedbackCollector]:
+        """返回反馈采集器实例（自进化 M0 反馈提交入口使用）.
+
+        未加载 / 降级模式（dataset_store 不可用）时可能为 None，
+        调用方（如 ``POST /api/v1/flywheel/feedback``）需自行处理。
+        """
+        return self._feedback_collector
+
     def manifest(self) -> PluginManifest:
         """返回插件清单（从 plugin.yaml 加载，带缓存）."""
         if self._manifest is None:

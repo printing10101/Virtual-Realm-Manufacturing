@@ -43,11 +43,14 @@ class ValidationCalibrator:
         if cache_key in self._calibration_cache:
             return self._calibration_cache[cache_key]
 
-        samples = self.loader.load_dataset(
-            machines=[machine] if machine else None,
-            processes=[process] if process else None,
-            labels=["good"],
-        )
+        try:
+            samples = self.loader.load_dataset(
+                machines=[machine] if machine else None,
+                processes=[process] if process else None,
+                labels=["good"],
+            )
+        except (FileNotFoundError, ValueError) as e:
+            raise ValueError(f"校验数据加载失败：{e}") from e
 
         if not samples:
             raise ValueError(
@@ -63,7 +66,7 @@ class ValidationCalibrator:
         energy_x, energy_y, energy_z = [], [], []
 
         for sample in samples:
-            features = self.loader.extract_features(sample["data"])
+            features = self.loader.extract_features(sample)
 
             rms_x.append(features.get("time_x_rms", 0.0))
             rms_y.append(features.get("time_y_rms", 0.0))

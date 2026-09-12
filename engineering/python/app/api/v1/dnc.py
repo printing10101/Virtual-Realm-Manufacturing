@@ -195,7 +195,14 @@ async def get_machine_alarms(machine_id: str):
         alarms = await client.get_alarms()
         return success(data=alarms)
     else:
-        return success(data=[], message="OPC UA 报警查询暂未实现")
+        # 诚实失败：OPC UA 报警能力未接入（app/integrations/opcua 仅有数据
+        # 读取适配器），此前返回空列表冒充"无报警"会误导操作员。
+        return error(
+            code=ErrorCode.SERVICE_UNAVAILABLE,
+            message="OPC UA 机床报警查询暂未实现",
+            detail={"machine_id": machine_id, "protocol": "opc_ua"},
+            suggestion="请改用 MTConnect 协议连接该机床，或接入支持 AlarmAndCondition 模型的 OPC UA 适配器。",
+        )
 
 
 # ── 统一双协议适配器端点（落地 MachineMetrics Universal Connectivity） ─────

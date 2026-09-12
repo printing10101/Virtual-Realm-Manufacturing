@@ -128,8 +128,13 @@ def _default_provider_templates() -> list[ProviderConfig]:
             name="llama.cpp (本地)",
             provider_type=ProviderType.LLAMACPP,
             base_url=_provider_base_url("llamacpp"),
-            default_model="",
-            enabled=False,
+            default_model="qwen3-instruct-30b",
+            # llama.cpp llama-server / model-proxy 的 API Key（Bearer）。
+            # 从 LLAMA_API_KEY 环境变量读取，避免把 key 硬编码进源码；
+            # 未设置且该 server 启用了 --api-key 时，调用会被 401 拒绝。
+            api_key=os.environ.get("LLAMA_API_KEY", ""),
+            enabled=True,
+            is_active=True,
             priority=8,
             capabilities=[ProviderCapability.CHAT],
         ),

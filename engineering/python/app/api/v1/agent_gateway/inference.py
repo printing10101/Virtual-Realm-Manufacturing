@@ -5,7 +5,7 @@ P1-7：从原 ``agent_gateway.py`` 拆分而来，包含：
 - ``GET  /models`` —— 已注册模型列表
 - ``GET  /models/{name}/info`` —— 模型详细信息
 - ``POST /predict`` —— LNN 预测
-- ``POST /execute`` —— 工艺参数下发
+- ``POST /execute`` —— 工艺参数下发（Paper-Only 模拟；实模式在下发通道接线前显式 501）
 - ``GET  /audit-log`` —— 审计日志查询
 - ``POST /tokens`` —— 创建 Agent Token
 - ``GET  /tokens`` —— 列出 Agent Token
@@ -21,6 +21,7 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 
 from app.agent.auth import agent_token_store
 from app.agent.middleware import (
@@ -219,6 +220,7 @@ async def agent_predict(request: Request, body: AgentPredictRequest):
     responses={
         400: {"model": ErrorResponse},
         403: {"model": ErrorResponse},
+        501: {"model": ErrorResponse},
         500: {"model": ErrorResponse},
     },
 )
@@ -265,15 +267,31 @@ async def agent_execute(request: AgentExecuteRequest, http_request: Request):
             )
 
         # Actual execution (requires LNN_LIVE_EXECUTION_ENABLED=true + 双因子确认通过)
-        # Placeholder for actual machine dispatch
-        return success(
-            data={
-                "status": "executed",
-                "message": f"Parameters dispatched to machine {request.machine_id}",
-                "machine_id": request.machine_id,
-                "parameters": request.parameters,
-            },
-            message="Operation executed successfully",
+        # [学术诚信/安全修复] 此前此处直接返回写死的 "executed"，但机床下发通道
+        # （参数 → OPC UA 节点 / FOCAS 句柄的映射）从未接线，形成"已下发"假象。
+        # 实模式现在必须显式失败：没有任何真实通道时禁止谎报执行成功。
+        # 注意：用 JSONResponse 直接返回固定引导文案——HTTPException(5xx) 会被
+        # 全局异常处理器脱敏成"系统内部错误"，用户将看不到原因；本消息为
+        # 固定常量、不含任何异常内部细节，无泄露风险。
+        logger.warning(
+            "T operation reached live dispatch but no channel is wired | machine_id=%s | operator=%s | param_keys=%s",
+            request.machine_id,
+            operator,
+            list(request.parameters.keys()),
+        )
+        return JSONResponse(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            content=error(
+                code=ErrorCode.SERVICE_UNAVAILABLE,
+                message=(
+                    "实模式机床下发通道未接线：系统尚无工艺参数到 DNC/OPC UA 节点的映射，"
+                    "无法真实下发参数，已阻止本次执行。"
+                ),
+                suggestion=(
+                    "使用 simulate=true（Paper-Only 模式）获取模拟结果；或通过 DNC 模块下发经过校验的 NC 程序。"
+                ),
+                detail={"machine_id": request.machine_id, "guard": "live_dispatch_not_wired"},
+            ),
         )
 
     except (ValueError, KeyError, TypeError, OSError, RuntimeError) as e:
