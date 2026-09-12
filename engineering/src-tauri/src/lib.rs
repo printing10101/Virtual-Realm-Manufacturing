@@ -14,10 +14,9 @@ use std::sync::Arc;
 use tauri::{Manager, RunEvent, WebviewWindowBuilder, WindowEvent};
 
 use crate::commands::{
-    auto_fix_health, close_splashscreen, export_logs_cmd, get_app_version, get_backend_port,
-    get_backend_state, get_diagnostics_text, get_version_info, open_external_url, ping_backend,
-    restart_backend, retry_launch_step, run_health_check, run_single_health_check, start_backend,
-    stop_backend, AppState,
+    auto_fix_health, close_splashscreen, export_logs_cmd, get_backend_port, get_backend_state,
+    get_diagnostics_text, get_version_info, open_external_url, ping_backend, restart_backend,
+    run_health_check, run_single_health_check, start_backend, stop_backend, AppState,
 };
 use crate::sidecar::SidecarManager;
 
@@ -29,10 +28,7 @@ pub const DEFAULT_BACKEND_PORT: u16 = 8765;
 /// 获取应用数据目录路径（com.lingjing.manufacturing）
 fn app_data_dir() -> Option<std::path::PathBuf> {
     let local_app_data = std::env::var("LOCALAPPDATA").ok()?;
-    Some(
-        std::path::Path::new(&local_app_data)
-            .join("com.lingjing.manufacturing"),
-    )
+    Some(std::path::Path::new(&local_app_data).join("com.lingjing.manufacturing"))
 }
 
 /// 获取日志目录路径并确保目录存在
@@ -104,7 +100,7 @@ fn diag_log(msg: &str) {
 ///    - 新方案：不删除任何文件，改用新目录
 #[cfg(target_os = "windows")]
 fn cleanup_orphaned_webview2() {
-// 第一步：精准终止孤儿 WebView2 进程
+    // 第一步：精准终止孤儿 WebView2 进程
     let ps_script = r#"
         $killed = 0
         Get-CimInstance Win32_Process -Filter "name='msedgewebview2.exe'" |
@@ -126,13 +122,19 @@ fn cleanup_orphaned_webview2() {
             let stdout = String::from_utf8_lossy(&out.stdout);
             for line in stdout.lines() {
                 if let Some(pid_str) = line.strip_prefix("KILL:") {
-                    diag_log(&format!("[cleanup] 终止孤儿 WebView2 进程 PID={}", pid_str.trim()));
+                    diag_log(&format!(
+                        "[cleanup] 终止孤儿 WebView2 进程 PID={}",
+                        pid_str.trim()
+                    ));
                 } else if let Some(cnt_str) = line.strip_prefix("COUNT:") {
                     killed_count = cnt_str.trim().parse().unwrap_or(0);
                 }
             }
             if killed_count > 0 {
-                diag_log(&format!("[cleanup] 共终止 {} 个孤儿 WebView2 进程", killed_count));
+                diag_log(&format!(
+                    "[cleanup] 共终止 {} 个孤儿 WebView2 进程",
+                    killed_count
+                ));
                 // 等待进程退出
                 std::thread::sleep(std::time::Duration::from_millis(800));
             } else {
@@ -144,17 +146,25 @@ fn cleanup_orphaned_webview2() {
         }
     }
 
-// 第二步：设置 WEBVIEW2_USER_DATA_FOLDER 到可写的临时目录
+    // 第二步：设置 WEBVIEW2_USER_DATA_FOLDER 到可写的临时目录
     // 这是核心修复：不再尝试删除可能被锁/权限不足的 EBWebView 目录，
     // 而是让 WebView2 使用一个全新的目录，从根本上避免锁冲突。
     let webview2_dir = std::env::temp_dir().join("lingjing-webview2");
     match std::fs::create_dir_all(&webview2_dir) {
         Ok(()) => {
-            std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", webview2_dir.to_string_lossy().to_string());
-            diag_log(&format!("[cleanup] WEBVIEW2_USER_DATA_FOLDER 设为: {}", webview2_dir.display()));
+            std::env::set_var(
+                "WEBVIEW2_USER_DATA_FOLDER",
+                webview2_dir.to_string_lossy().to_string(),
+            );
+            diag_log(&format!(
+                "[cleanup] WEBVIEW2_USER_DATA_FOLDER 设为: {}",
+                webview2_dir.display()
+            ));
         }
         Err(e) => {
-            diag_log(&format!("[cleanup] 创建临时 WebView2 目录失败: {e}，使用默认路径"));
+            diag_log(&format!(
+                "[cleanup] 创建临时 WebView2 目录失败: {e}，使用默认路径"
+            ));
         }
     }
 }
@@ -166,14 +176,14 @@ fn cleanup_orphaned_webview2() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    match env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or("info"),
-    ).try_init() {
+    match env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .try_init()
+    {
         Ok(()) => {}
         Err(e) => eprintln!("[WARN] 日志初始化失败 (可能已有其他初始化器): {e}"),
     }
 
-// 清理 WebView2 状态
+    // 清理 WebView2 状态
     // 1. 精准终止孤儿 WebView2 进程（WMI 匹配 com.lingjing.manufacturing）
     // 2. 设置 WEBVIEW2_USER_DATA_FOLDER 到可写的临时目录
     //
@@ -206,7 +216,6 @@ pub fn run() {
             stop_backend,
             restart_backend,
             ping_backend,
-            get_app_version,
             get_version_info,
             get_backend_port,
             close_splashscreen,
@@ -216,7 +225,6 @@ pub fn run() {
             auto_fix_health,
             get_diagnostics_text,
             export_logs_cmd,
-            retry_launch_step,
             // 外部链接打开（关于页「前往下载」，自动更新过渡方案）
             open_external_url,
         ])

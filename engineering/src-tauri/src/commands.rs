@@ -34,6 +34,17 @@ pub struct InvokeExportLogsResult {
     pub total_size_bytes: u64,
 }
 
+/// 一键修复命令的返回结果（与前端 AutoFixResult 接口对齐）
+///
+/// `fixed=true` 表示已执行真实修复动作（如重启后端 sidecar）；
+/// `fixed=false` 表示该组件无法自动修复，message 为诚实的操作指引
+/// （前端应以 warning 而非 success 呈现，避免"假修复成功"）。
+#[derive(serde::Serialize)]
+pub struct AutoFixResult {
+    pub fixed: bool,
+    pub message: String,
+}
+
 /// 全局状态包装
 pub struct AppState {
     pub sidecar: Arc<SidecarManager>,
@@ -89,12 +100,6 @@ pub async fn ping_backend(state: State<'_, AppState>) -> Result<bool, String> {
         Ok(_) => Ok(false),
         Err(_) => Ok(false),
     }
-}
-
-/// 获取 Tauri 应用的版本号
-#[tauri::command]
-pub fn get_app_version<R: Runtime>(app: AppHandle<R>) -> String {
-    app.package_info().version.to_string()
 }
 
 /// 打开外部 URL（仅允许 http/https，防协议注入）
@@ -331,30 +336,71 @@ pub async fn run_single_health_check(
     }
 }
 
-/// 一键自动修复：后端目前没有 auto-fix 端点，返回操作指引文本
+/// 一键自动修复
 ///
 /// 前端 HealthCheck.vue `runAutoFix` 调用。
-/// 设计为软依赖：后端实现 auto-fix 端点后，可直接在此处改为 HTTP POST 调用。
+/// - `backend`：真实修复动作——重启后端 sidecar 并等待拉起；
+/// - 其他组件（ollama/models/postgresql/redis/tdengine/disk/memory 等）：
+///   属外部服务或宿主机资源，桌面端无可靠的自动修复手段，返回 `fixed=false`
+///   与操作指引文本（前端以 warning 呈现），不再伪装成修复成功。
 #[tauri::command]
-pub async fn auto_fix_health(
+pub async fn auto_fix_health<R: Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     component: String,
-) -> Result<String, String> {
+) -> Result<AutoFixResult, String> {
     log::info!("[auto_fix_health] component={component}");
-    // 后端暂无自动修复端点：根据 component 返回操作指引
-    let guidance = match component.as_str() {
-        "ollama" => "请手动启动 Ollama 服务：执行 `ollama serve` 或在系统服务中启动。".to_string(),
-        "models" => "请手动拉取模型：执行 `ollama pull qwen2.5:7b`。".to_string(),
-        "postgresql" => "请启动 PostgreSQL 服务并检查连接配置。".to_string(),
-        "redis" => "请启动 Redis 服务并检查连接配置。".to_string(),
-        "tdengine" => "请启动 TDengine 服务并检查连接配置。".to_string(),
-        "disk" => "请清理磁盘空间至剩余 5GB 以上。".to_string(),
-        "memory" => "请关闭其他大型程序释放内存。".to_string(),
-        _ => format!("组件 {component} 暂不支持自动修复，请参考详情中的修复指引。"),
-    };
-    // 静默引用 state 以保持签名一致（未来接入后端时复用）
-    let _ = state.sidecar.state().port;
-    Ok(guidance)
+    match component.as_str() {
+        "backend" => {
+            let pre_pid = state.sidecar.state().pid;
+            state.sidecar.restart(&app).await?;
+            let st = state.sidecar.state();
+            log::info!(
+                "[auto_fix_health] backend restarted: pre_pid={pre_pid:?} new_pid={:?} port={}",
+                st.pid,
+                st.port
+            );
+            Ok(AutoFixResult {
+                fixed: true,
+                message: format!(
+                    "后端已重启（端口 {}），正在重新检查健康状态…",
+                    st.port
+                ),
+            })
+        }
+        "ollama" => Ok(AutoFixResult {
+            fixed: false,
+            message: "该组件为外部服务，暂不支持自动修复。请手动启动 Ollama 服务：执行 `ollama serve` 或在系统服务中启动。".to_string(),
+        }),
+        "models" => Ok(AutoFixResult {
+            fixed: false,
+            message: "模型拉取需手动执行：`ollama pull qwen2.5:7b`。".to_string(),
+        }),
+        "postgresql" => Ok(AutoFixResult {
+            fixed: false,
+            message: "该组件为外部服务，暂不支持自动修复。请启动 PostgreSQL 服务并检查连接配置。".to_string(),
+        }),
+        "redis" => Ok(AutoFixResult {
+            fixed: false,
+            message: "该组件为外部服务，暂不支持自动修复。请启动 Redis 服务并检查连接配置。".to_string(),
+        }),
+        "tdengine" => Ok(AutoFixResult {
+            fixed: false,
+            message: "该组件为外部服务，暂不支持自动修复。请启动 TDengine 服务并检查连接配置。".to_string(),
+        }),
+        "disk" => Ok(AutoFixResult {
+            fixed: false,
+            message: "磁盘空间无法自动清理。请手动清理临时文件，将剩余空间恢复至 5GB 以上。".to_string(),
+        }),
+        "memory" => Ok(AutoFixResult {
+            fixed: false,
+            message: "内存占用无法自动释放。请手动关闭其他大型程序后重试。".to_string(),
+        }),
+        _ => Ok(AutoFixResult {
+            fixed: false,
+            message: format!("组件 {component} 暂不支持自动修复，请参考详情中的修复指引。"),
+        }),
+    }
 }
 
 /// 汇总系统诊断信息为文本（用于复制到剪贴板）
@@ -524,38 +570,6 @@ pub async fn export_logs_cmd<R: Runtime>(
         file_count,
         total_size_bytes: total_size,
     })
-}
-
-/// splashscreen 重试启动步骤
-///
-/// 前端 splashscreen.html `startRetry` 调用，参数 step 标识失败步骤。
-/// 当前实现：若后端尚未运行则尝试重启 sidecar，否则返回成功。
-/// 未来可扩展为针对不同 step 的细粒度重试。
-#[tauri::command]
-pub async fn retry_launch_step<R: Runtime>(
-    app: AppHandle<R>,
-    state: State<'_, AppState>,
-    step: String,
-) -> Result<String, String> {
-    log::info!("[retry_launch_step] step={step}");
-    let current = state.sidecar.state().status;
-    use crate::sidecar::BackendStatus;
-    match current {
-        BackendStatus::Failed
-        | BackendStatus::Crashed
-        | BackendStatus::Stopped
-        | BackendStatus::Idle => {
-            log::info!("[retry_launch_step] 后端状态为 {:?}，尝试重启", current);
-            state.sidecar.restart(&app).await?;
-            Ok(format!(
-                "步骤 {step} 已触发后端重启，请等待几秒后重试健康检查"
-            ))
-        }
-        BackendStatus::Running => Ok("后端已在运行，无需重试".to_string()),
-        BackendStatus::Starting | BackendStatus::Stopping => {
-            Err(format!("后端正在 {:?}，请稍候", current))
-        }
-    }
 }
 
 /// 关闭 splashscreen 窗口并显示主窗口

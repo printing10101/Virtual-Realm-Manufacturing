@@ -65,6 +65,16 @@ export interface AgentDetail {
   metadata: Record<string, unknown>;
 }
 
+/** Agent Gateway 审计日志条目（GET /api/agent/v1/audit-log 返回） */
+export interface AgentActivityEntry {
+  timestamp_ms: number;
+  agent_id: string;
+  route: string;
+  permission_class?: string;
+  status_code: number;
+  latency_ms: number;
+}
+
 export const useAgentStore = defineStore("agents", () => {
   const agents = ref<AgentSummary[]>([]);
   const currentAgent = ref<AgentDetail | null>(null);
@@ -300,6 +310,35 @@ export const useAgentStore = defineStore("agents", () => {
     }
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  平台活动日志（Agent Gateway 审计日志，真实数据）                     */
+  /* ------------------------------------------------------------------ */
+
+  const activityEntries = ref<AgentActivityEntry[]>([]);
+  const activityLoading = ref(false);
+  const activityError = ref<string | null>(null);
+
+  /**
+   * 拉取 Agent Gateway 最近的审计日志（/api/agent/v1/audit-log）。
+   * 需要 agent:audit:read 权限（管理员）；失败时记录 activityError，
+   * 由视图以诚实的空态呈现，不伪造活动数据。
+   */
+  async function fetchActivity(limit = 20): Promise<void> {
+    activityLoading.value = true;
+    activityError.value = null;
+    try {
+      const response = await http.get(
+        buildApiPath(API_CONFIG.AGENT_GATEWAY, "audit-log"),
+        { params: { limit } },
+      );
+      activityEntries.value = response.data?.data?.entries ?? [];
+    } catch (e: unknown) {
+      activityError.value = extractErrorMessage(e, "获取活动日志失败");
+    } finally {
+      activityLoading.value = false;
+    }
+  }
+
   return {
     agents,
     currentAgent,
@@ -322,5 +361,9 @@ export const useAgentStore = defineStore("agents", () => {
     cloneAgent,
     resumeAgent,
     deleteAgent,
+    activityEntries,
+    activityLoading,
+    activityError,
+    fetchActivity,
   };
 });

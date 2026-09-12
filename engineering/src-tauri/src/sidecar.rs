@@ -171,15 +171,18 @@ impl SidecarManager {
         let preferred_port = self.state.read().port;
         let port = find_available_port(preferred_port);
         if port != preferred_port {
-            log::warn!(
-                "[sidecar] 首选端口 {preferred_port} 已被占用，自动切换到空闲端口 {port}"
-            );
+            log::warn!("[sidecar] 首选端口 {preferred_port} 已被占用，自动切换到空闲端口 {port}");
         }
         {
             let mut s = self.state.write();
             s.port = port;
         }
-        self.update_status(app, BackendStatus::Starting, 5, "正在启动 Python 后端进程...");
+        self.update_status(
+            app,
+            BackendStatus::Starting,
+            5,
+            "正在启动 Python 后端进程...",
+        );
         self.emit_launch_progress(
             app,
             "start_backend",
@@ -215,7 +218,7 @@ impl SidecarManager {
             .to_string_lossy()
             .to_string();
 
-// 核心：直接运行 Python 脚本
+        // 核心：直接运行 Python 脚本
         // 嵌入式优先：打包分发时使用 bundle.resources 内的自包含运行时
         // （desktop_runtime/runtime/python.exe + desktop_runtime/backend/start_server.py），
         // 目标机器无需预装 Python；开发模式回退宿主 Python。
@@ -339,17 +342,11 @@ impl SidecarManager {
                         Ok(Some(status)) => {
                             // 进程已退出
                             let code = status.code();
-                            log::error!(
-                                "[sidecar] wait_ready 检测到进程已退出: code={:?}",
-                                code
-                            );
+                            log::error!("[sidecar] wait_ready 检测到进程已退出: code={:?}", code);
                             *guard = None; // 清空 child
                             drop(guard); // 释放锁
 
-                            let err_msg = format!(
-                                "后端进程意外退出 (code={:?})",
-                                code
-                            );
+                            let err_msg = format!("后端进程意外退出 (code={:?})", code);
                             let mut s = self.state.write();
                             s.status = BackendStatus::Crashed;
                             s.pid = None;
@@ -377,14 +374,21 @@ impl SidecarManager {
                 } else {
                     // child 已被清空（进程已退出）
                     let current_status = self.state.read().status.clone();
-                    if matches!(current_status, BackendStatus::Crashed | BackendStatus::Failed) {
+                    if matches!(
+                        current_status,
+                        BackendStatus::Crashed | BackendStatus::Failed
+                    ) {
                         let err = self
                             .state
                             .read()
                             .last_error
                             .clone()
                             .unwrap_or_else(|| "后端进程已退出".to_string());
-                        log::error!("[sidecar] wait_ready: child 已清空，状态={:?}, err={}", current_status, err);
+                        log::error!(
+                            "[sidecar] wait_ready: child 已清空，状态={:?}, err={}",
+                            current_status,
+                            err
+                        );
                         return Err(err);
                     }
                 }
@@ -447,13 +451,7 @@ impl SidecarManager {
             match self.http.get(&url).send().await {
                 Ok(resp) if resp.status().is_success() => {
                     self.update_status(app, BackendStatus::Running, 100, "后端服务已就绪");
-                    self.emit_launch_progress(
-                        app,
-                        "ready",
-                        100,
-                        "后端服务已就绪",
-                        "complete",
-                    );
+                    self.emit_launch_progress(app, "ready", 100, "后端服务已就绪", "complete");
                     return Ok(());
                 }
                 Ok(_) | Err(_) => {
@@ -461,12 +459,7 @@ impl SidecarManager {
                     if progress > last_progress {
                         last_progress = progress;
                         let desc = format!("等待后端就绪 ({progress}%)");
-                        self.update_status(
-                            app,
-                            BackendStatus::Starting,
-                            progress,
-                            desc.as_str(),
-                        );
+                        self.update_status(app, BackendStatus::Starting, progress, desc.as_str());
                         if attempt % 5 == 0 {
                             self.emit_launch_progress(
                                 app,
@@ -512,20 +505,18 @@ impl SidecarManager {
             .timeout(std::time::Duration::from_secs(2))
             .build()
         {
-            Ok(client) => {
-                match client.post(&shutdown_url).send().await {
-                    Ok(resp) => {
-                        log::info!(
-                            "[stop] graceful shutdown endpoint responded: {}",
-                            resp.status()
-                        );
-                        graceful_succeeded = true;
-                    }
-                    Err(e) => {
-                        log::debug!("[stop] HTTP shutdown 通知失败: {e}");
-                    }
+            Ok(client) => match client.post(&shutdown_url).send().await {
+                Ok(resp) => {
+                    log::info!(
+                        "[stop] graceful shutdown endpoint responded: {}",
+                        resp.status()
+                    );
+                    graceful_succeeded = true;
                 }
-            }
+                Err(e) => {
+                    log::debug!("[stop] HTTP shutdown 通知失败: {e}");
+                }
+            },
             Err(e) => {
                 log::warn!("[stop] 构建 HTTP 客户端失败: {e}");
             }
@@ -670,7 +661,11 @@ fn resolve_python_path(resource_dir: Option<&std::path::Path>) -> String {
         let embedded = rd
             .join("desktop_runtime")
             .join("runtime")
-            .join(if cfg!(windows) { "python.exe" } else { "bin/python3" });
+            .join(if cfg!(windows) {
+                "python.exe"
+            } else {
+                "bin/python3"
+            });
         if embedded.exists() {
             log::info!("[sidecar] 使用嵌入式运行时: {}", embedded.display());
             return embedded.to_string_lossy().to_string();
@@ -724,7 +719,10 @@ fn resolve_python_script_and_dir(
 ) -> (String, std::path::PathBuf) {
     // 1. 嵌入式后端（与运行时同目录打包）
     if let Some(rd) = resource_dir {
-        let script = rd.join("desktop_runtime").join("backend").join("start_server.py");
+        let script = rd
+            .join("desktop_runtime")
+            .join("backend")
+            .join("start_server.py");
         if script.exists() {
             let dir = script
                 .parent()
@@ -749,10 +747,7 @@ fn resolve_python_script_and_dir(
     let python_dir = std::path::Path::new(manifest_dir).join("..").join("python");
     let script = python_dir.join("start_server.py");
     if script.exists() {
-        return (
-            script.to_string_lossy().to_string(),
-            python_dir.clone(),
-        );
+        return (script.to_string_lossy().to_string(), python_dir.clone());
     }
     // 3. 回退
     log::warn!(
