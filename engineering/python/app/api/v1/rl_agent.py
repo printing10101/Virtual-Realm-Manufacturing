@@ -408,16 +408,16 @@ async def start_training(request: TrainingStartRequestModel):
     流程：
         1. Pydantic 自动校验 max_steps / algorithm / optimization_target
         2. 构造契约层 ``TrainingStartRequest``
-        3. 调用 ``RLAgentService.start_training()`` 创建 RUNNING 记录
-        4. 后台 worker 异步执行训练循环（v1 占位：实际训练循环由
-           ``app.plugins.rl_agent.training.PPOTrainer`` 驱动）
+        3. 调用 ``RLAgentService.start_training()`` —— 当前版本显式拒绝：
+           训练循环未接线（全仓库无 OfflineEnvironment 实现），
+           不创建假 RUNNING 记录（学术诚信要求）
 
     权限：``rl_agent:write``
 
     工程约束
     --------
-        - 若已有 RUNNING 训练，抛 ``TrainingAlreadyRunningError``
-        - v1 仅离线 RL：训练数据来自历史数据 + 仿真环境
+        - 若已有 RUNNING 训练（历史遗留记录），抛 ``TrainingAlreadyRunningError``
+        - 训练循环接入前本端点恒返回错误：不伪造"训练已启动"
         - 物理执行需"持证操作员 + 导师签字 + 保险"，本端点不涉及
     """
     # 前置校验：algorithm 合法性

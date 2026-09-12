@@ -469,10 +469,14 @@ class TestPolicyInfo:
             "policy_version",
             "training_episodes",
             "exploration_rate",
+            "weights_loaded",
         }
 
-
-# RecommendedAction
+    def test_weights_loaded_defaults_to_false(self):
+        """空壳修复回归：未加载真实权重时必须显式标记（随机策略不可信）."""
+        info = self._make()
+        assert info.weights_loaded is False
+        assert info.to_dict()["weights_loaded"] is False
 
 
 @pytest.mark.unit

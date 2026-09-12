@@ -360,8 +360,9 @@ class RLAgentPlugin:
                 return self._policy_cache[model_uri]
 
             net = PolicyNet(self._policy_config)
-            # 权重加载：实际部署中应调用 ModelRegistry.resolve(model_uri)
-            # 当前骨架使用随机初始化权重（torch 模式下）或 NumPy 回退权重
+            # 权重加载：从 ModelRegistry 解析 storage_uri 并真实加载
+            # （.pt/.pth via torch / .npz via numpy）；失败时 warning 并
+            # 保持随机初始化，由 policy_info.weights_loaded 标记可信性
             self._load_weights(net, model_uri, kind="policy")
 
             # LRU：限制缓存大小为 4
@@ -386,39 +387,25 @@ class RLAgentPlugin:
             self._value_cache[model_uri] = net
             return net
 
-    def _load_weights(self, net: Any, model_uri: str, *, kind: str) -> None:
+    def _load_weights(self, net: Any, model_uri: str, *, kind: str) -> bool:
         """从 ModelRegistry 加载权重到网络.
+
+        委托给 ``app.services._agent_helpers._load_weights`` 共享实现
+        （真实加载 torch/npz 权重；失败时 warning + 返回 False，
+        不再静默使用随机权重冒充训练结果）。
 
         Args:
             net: 策略或值网络实例.
             model_uri: 模型 URI.
             kind: "policy" 或 "value".
-        """
-        try:
-            from app.ai.lnn.inference.registry import LNNModelRegistry
 
-            # 使用具体子类实例调用 get()，避免在抽象基类上直接调用抽象方法
-            # （BaseModelRegistry.get() 是 @abstractmethod，需要 self 实例）
-            registry = LNNModelRegistry()
-            entry = registry.get(model_uri)
-            storage_uri = getattr(entry, "storage_uri", None) or (
-                entry.info.model_path if entry and entry.info else None
-            )
-            if storage_uri:
-                # 实际部署中调用 net.load_state_dict(torch.load(storage_uri))
-                logger.debug(
-                    "权重加载占位: kind=%s uri=%s storage=%s",
-                    kind,
-                    model_uri,
-                    storage_uri,
-                )
-        except (ImportError, AttributeError, KeyError, RuntimeError, TypeError) as exc:
-            logger.debug(
-                "ModelRegistry 解析失败，使用随机初始化: uri=%s kind=%s err=%s",
-                model_uri,
-                kind,
-                exc,
-            )
+        Returns:
+            True 表示成功加载真实权重；False 表示使用随机初始化（输出不可信）.
+        """
+        # 函数级导入：app.services 依赖 app.plugins，模块级导入会构成循环
+        from app.services._agent_helpers import _load_weights as _shared_load_weights
+
+        return _shared_load_weights(net, model_uri, kind=kind)
 
     def _extract_action(self, policy_out: dict[str, Any]) -> np.ndarray:
         """从策略输出提取动作向量.

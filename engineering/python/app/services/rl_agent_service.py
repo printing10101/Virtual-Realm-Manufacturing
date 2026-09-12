@@ -10,8 +10,9 @@
 2. **决策推理**：将前端结构化请求转换为 np.ndarray，调用
    ``PolicyNet`` + ``ValueNet`` + ``SafetyShield``，输出结构化
    ``RLActResponse``（含推荐动作 + 候选动作评估 + 策略元信息）
-3. **训练控制**：查询 / 启动 / 停止训练（v1 仅持久化训练状态记录，
-   实际训练由 Workflow 编排，见 ADR-017 第 4 节）
+3. **训练控制**：查询 / 启动 / 停止训练——启动基于真实轨迹回放环境
+   （``ReplayOfflineEnvironment`` + ``PPOTrainer``）在后台线程执行完整
+   PPO 循环，数据缺失时诚实拒绝（学术诚信）
 
 线程安全
 --------
@@ -22,7 +23,7 @@
 
 错误处理风格（与 WorldModelService / ExplainabilityService 对齐）：
 - 策略未找到 → PolicyNotFoundError
-- 训练已运行 → TrainingAlreadyRunningError
+- 训练数据缺失 → TrainingError（学术诚信：拒绝无数据/合成数据训练）
 - 安全约束全违反 → SafetyViolationError
 - 策略推理失败 → PolicyError
 - 训练失败 → TrainingError
@@ -38,9 +39,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import os
 import threading
 import time
+from pathlib import Path
 from app.utils.time import utcnow
 from typing import Any
 
@@ -60,7 +65,6 @@ from app.contracts.rl_agent import (
     RecommendedAction,
     SafetyConstraintsSpec,
     SafetyViolationError,
-    TrainingAlreadyRunningError,
     TrainingError,
     TrainingStartRequest,
     TrainingStatus,
@@ -71,6 +75,10 @@ from app.database.models.rl_agent import (
     RLAgentPolicyVersionORM,
     RLAgentTrainingRunORM,
 )
+from app.plugins.rl_agent.policy import PolicyConfig, PolicyNet
+from app.plugins.rl_agent.training.environment import ReplayOfflineEnvironment
+from app.plugins.rl_agent.training.trainer import PPOTrainer, TrainingConfig
+from app.plugins.rl_agent.value import ValueConfig, ValueNet
 from app.services._shared.service_base import BaseSingletonService
 
 from app.services._agent_helpers import (
@@ -99,6 +107,13 @@ _ACTION_FIELD_ORDER: list[str] = ActionField.all()
 """动作字段顺序（与 PolicyNet 输出维度对齐）."""
 
 _STATE_FIELD_INDEX: dict[str, int] = {name: idx for idx, name in enumerate(_STATE_FIELD_ORDER)}
+
+# 活跃训练线程注册表（run_id → PPOTrainer），供 stop_training 联动 request_stop
+_active_trainers: dict[str, PPOTrainer] = {}
+_active_trainers_lock = threading.Lock()
+
+# 训练轨迹数据集默认路径（可用环境变量 RL_AGENT_TRAINING_DATA 覆盖）
+_DEFAULT_TRAINING_DATA = Path(__file__).resolve().parents[4] / "data" / "rl_agent" / "trajectories.jsonl"
 
 
 # 单例
@@ -146,6 +161,8 @@ class RLAgentService(BaseSingletonService):
         # 记录最后一次合法动作（跨请求维持变化率约束的连续性）
         self._last_action: np.ndarray | None = None
         self._last_action_lock = threading.Lock()
+        # 各 model_uri 最近一次权重加载结果（True=真实权重，False=随机初始化）
+        self._weights_loaded: dict[str, bool] = {}
 
     # ── 版本管理 ──────────────────────────────────────────────────────
 
@@ -490,74 +507,205 @@ class RLAgentService(BaseSingletonService):
         return self._training_run_to_status_info(orm)
 
     async def start_training(self, request: TrainingStartRequest) -> TrainingStatusInfo:
-        """启动训练（v1 仅创建训练记录，实际训练由 Workflow 编排）.
+        """启动训练：真实训练循环（轨迹回放环境 + PPO），后台线程执行.
 
-        流程：
-            1. 检查是否已有 RUNNING 状态训练 → 抛 TrainingAlreadyRunningError
-            2. 创建新 ``RLAgentTrainingRunORM`` 记录，status=RUNNING
-            3. 返回训练状态信息
+        数据源与学术诚信约束
+        --------------------
+        训练需要真实历史轨迹数据集（JSONL，每行含 ``state`` / ``action`` /
+        ``next_state`` 数组，见 ``ReplayOfflineEnvironment.from_jsonl``），
+        通过环境变量 ``RL_AGENT_TRAINING_DATA`` 指定（缺省检查
+        ``<仓库>/data/rl_agent/trajectories.jsonl``）。数据集缺失时抛出
+        ``TrainingError`` 拒绝创建 RUNNING 记录——绝不制造"假训练"
+        （学术诚信要求）。
+
+        执行模型
+        --------
+        1. 构建环境与网络（同步，失败即拒绝）
+        2. 创建 status=RUNNING 的训练记录
+        3. 启动 daemon 线程执行 ``PPOTrainer.train()``；结束时回主循环
+           落库（COMPLETED / FAILED + 指标 JSON）
+        4. ``stop_training`` 置 STOPPING 并联动 ``trainer.request_stop()``
 
         Args:
-            request: 训练启动请求.
-
-        Returns
-        -------
-        TrainingStatusInfo
-            训练状态信息.
+            request: 训练启动请求（max_steps / seed / algorithm / optimization_target）.
 
         Raises
         ------
-        TrainingAlreadyRunningError
-            已有训练正在运行.
         TrainingError
-            创建训练记录失败.
+            训练数据缺失、环境/网络构建失败或训练记录创建失败.
         """
+        # 1. 构建环境（数据缺失 → 诚实拒绝，不触碰数据库）
+        trainer = self._prepare_trainer(request)
+        started_at = utcnow()
+
+        # 2. 创建 RUNNING 记录
         session = await self._get_session()
+        run_id: str | None = None
         try:
             async with session.begin():
-                # 检查是否有 RUNNING 状态训练
-                running_stmt = (
-                    select(RLAgentTrainingRunORM).where(RLAgentTrainingRunORM.status == TrainingStatus.RUNNING).limit(1)
-                )
-                running_result = await session.execute(running_stmt)
-                running_orm = running_result.scalars().first()
-                if running_orm is not None:
-                    raise TrainingAlreadyRunningError(
-                        f"训练已在运行: run_id={running_orm.id} step={running_orm.current_step}"
-                    )
-
-                # 创建新训练记录
-                orm = RLAgentTrainingRunORM(
+                run = RLAgentTrainingRunORM(
                     status=TrainingStatus.RUNNING,
                     current_step=0,
                     current_episode=0,
                     total_steps_target=request.max_steps,
-                    total_episodes_target=None,
-                    metrics_json=None,
-                    error_message=None,
-                    started_at=utcnow(),
-                    finished_at=None,
-                    created_at=utcnow(),
+                    started_at=started_at,
                 )
-                session.add(orm)
+                session.add(run)
+                await session.flush()
+                run_id = run.id
             await session.commit()
-            await session.refresh(orm)
-        except TrainingAlreadyRunningError:
-            await session.rollback()
-            raise
         except Exception as e:
             await session.rollback()
-            raise TrainingError(f"启动训练失败: {e}") from e
+            raise TrainingError(f"创建训练记录失败: {e}") from e
+        finally:
+            await session.close()
+        assert run_id is not None
+
+        # 3. 注册并启动训练线程（daemon：进程退出不悬挂）
+        main_loop = asyncio.get_running_loop()
+        self._register_active_trainer(run_id, trainer)
+        thread = threading.Thread(
+            target=self._training_worker,
+            args=(run_id, trainer, main_loop),
+            daemon=True,
+            name="rl-train-" + run_id,
+        )
+        thread.start()
+        logger.info("RL 训练已启动: run_id=%s 目标步数=%d", run_id, request.max_steps)
+
+        return TrainingStatusInfo(
+            status=TrainingStatus.RUNNING,
+            current_step=0,
+            max_steps=request.max_steps,
+            current_episode=0,
+            metrics=None,
+            started_at=started_at,
+            finished_at=None,
+            error_message=None,
+        )
+
+    def _prepare_trainer(self, request: TrainingStartRequest) -> PPOTrainer:
+        """构建 PPOTrainer（网络 + 回放环境）.
+
+        Raises:
+            TrainingError: 训练数据缺失或维度不合规（诚实拒绝，不创建记录）.
+        """
+        seed = request.seed if request.seed is not None else 0
+        state_dim = len(_STATE_FIELD_ORDER)
+        action_dim = len(_ACTION_FIELD_ORDER)
+
+        data_path = os.environ.get("RL_AGENT_TRAINING_DATA") or str(_DEFAULT_TRAINING_DATA)
+        if not Path(data_path).is_file():
+            raise TrainingError(
+                "训练数据不可用：未找到真实轨迹数据集（RL_AGENT_TRAINING_DATA 未设置，"
+                "或缺省路径不存在: " + str(_DEFAULT_TRAINING_DATA) + "）。"
+                "拒绝在无数据或合成数据上训练（学术诚信要求）。"
+                "建议操作：将历史轨迹导出为 JSONL（每行含 state/action/next_state 数组，"
+                "可选 episode 分组键），设置 RL_AGENT_TRAINING_DATA 指向该文件后重试；"
+                "在此之前可使用 /act 离线推理进行决策（响应中 weights_loaded=false 表示权重未经训练）。"
+            )
+        try:
+            env = ReplayOfflineEnvironment.from_jsonl(
+                data_path,
+                state_dim=state_dim,
+                action_dim=action_dim,
+                seed=seed,
+            )
+        except (FileNotFoundError, ValueError) as e:
+            raise TrainingError(f"训练环境构建失败: {e}") from e
+
+        config = TrainingConfig(
+            max_steps=request.max_steps,
+            seed=seed,
+            state_dim=state_dim,
+            action_dim=action_dim,
+        )
+        policy_net = PolicyNet(
+            PolicyConfig(state_dim=state_dim, action_dim=action_dim, hidden_dim=config.hidden_dim, seed=seed)
+        )
+        value_net = ValueNet(ValueConfig(state_dim=state_dim, hidden_dim=config.hidden_dim, seed=seed))
+        trainer = PPOTrainer(config=config)
+        trainer.setup(policy_net=policy_net, value_net=value_net, env=env)
+        return trainer
+
+    def _training_worker(self, run_id: str, trainer: PPOTrainer, main_loop: asyncio.AbstractEventLoop) -> None:
+        """训练线程主体：执行训练循环，结束后回主循环落库终态."""
+        try:
+            trainer.train()
+            metrics = trainer.metrics
+            payload = {
+                "step": metrics.step,
+                "episode": metrics.episode,
+                "policy_loss": metrics.policy_loss,
+                "value_loss": metrics.value_loss,
+                "entropy": metrics.entropy,
+                "mean_reward": metrics.mean_reward,
+                "mean_value": metrics.mean_value,
+                "epsilon": metrics.epsilon,
+                "elapsed_seconds": metrics.elapsed_seconds,
+            }
+            status = TrainingStatus.COMPLETED
+            error_message: str | None = None
+            if trainer.stop_requested:
+                logger.info("训练因外部停止请求而结束: run_id=%s step=%d", run_id, metrics.step)
+        except Exception as e:
+            logger.exception("RL 训练线程异常: run_id=%s", run_id)
+            status = TrainingStatus.FAILED
+            payload = None
+            error_message = str(e)
+        finally:
+            self._unregister_active_trainer(run_id)
+
+        future = asyncio.run_coroutine_threadsafe(
+            self._finalize_training(run_id, status=status, metrics_payload=payload, error_message=error_message),
+            main_loop,
+        )
+        try:
+            future.result(timeout=30)
+        except Exception:
+            logger.error("训练终态落库失败: run_id=%s", run_id, exc_info=True)
+
+    async def _finalize_training(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        metrics_payload: dict[str, Any] | None,
+        error_message: str | None,
+    ) -> None:
+        """将训练终态（COMPLETED/FAILED + 指标）写回训练记录."""
+        session = await self._get_session()
+        try:
+            async with session.begin():
+                target = await session.get(RLAgentTrainingRunORM, run_id)
+                if target is None:
+                    logger.warning("训练记录不存在，忽略终态落库: run_id=%s", run_id)
+                    return
+                target.status = status
+                if metrics_payload is not None:
+                    target.current_step = int(metrics_payload.get("step", 0))
+                    target.current_episode = int(metrics_payload.get("episode", 0))
+                    target.metrics_json = json.dumps(metrics_payload, ensure_ascii=False)
+                if error_message:
+                    target.error_message = error_message
+                target.finished_at = utcnow()
+            await session.commit()
+            logger.info("训练终态已落库: run_id=%s status=%s", run_id, status)
+        except Exception as e:
+            await session.rollback()
+            logger.error("训练终态落库异常: run_id=%s err=%s", run_id, e)
         finally:
             await session.close()
 
-        logger.info(
-            "RL 训练已启动: run_id=%s max_steps=%d algorithm=%s",
-            orm.id,
-            request.max_steps,
-            request.algorithm,
-        )
-        return self._training_run_to_status_info(orm)
+    @staticmethod
+    def _register_active_trainer(run_id: str, trainer: PPOTrainer) -> None:
+        with _active_trainers_lock:
+            _active_trainers[run_id] = trainer
+
+    @staticmethod
+    def _unregister_active_trainer(run_id: str) -> None:
+        with _active_trainers_lock:
+            _active_trainers.pop(run_id, None)
 
     async def stop_training(self) -> TrainingStatusInfo:
         """请求停止训练（状态置为 STOPPING，由训练线程检测后终止）.
@@ -594,8 +742,19 @@ class RLAgentService(BaseSingletonService):
         finally:
             await session.close()
 
+        # 联动训练线程：置 STOPPING 后立即请求训练循环停止（否则要等下一轮
+        # 指标查询才会观察到状态变化）。线程结束后由 _finalize_training 收敛终态。
+        active_trainer = self._pop_active_trainer(target.id)
+        if active_trainer is not None:
+            active_trainer.request_stop()
+
         logger.info("RL 训练停止请求已发送: run_id=%s", target.id)
         return self._training_run_to_status_info(target)
+
+    @staticmethod
+    def _pop_active_trainer(run_id: str) -> PPOTrainer | None:
+        with _active_trainers_lock:
+            return _active_trainers.pop(run_id, None)
 
     # ── 内部辅助方法：ORM dataclass ──────────────────────────────
 
@@ -664,7 +823,7 @@ class RLAgentService(BaseSingletonService):
             from app.plugins.rl_agent.policy import PolicyConfig, PolicyNet
 
             net = PolicyNet(PolicyConfig())
-            self._load_weights(net, model_uri, kind="policy")
+            self._weights_loaded[model_uri] = self._load_weights(net, model_uri, kind="policy")
             self._set_inference_mode(net)
 
             # LRU 淘汰
@@ -695,7 +854,7 @@ class RLAgentService(BaseSingletonService):
                 seed=policy_config.seed,
             )
             net = ValueNet(value_config)
-            self._load_weights(net, model_uri, kind="value")
+            self._weights_loaded[model_uri] = self._load_weights(net, model_uri, kind="value")
             self._set_inference_mode(net)
 
             if len(self._value_cache) >= self._NET_CACHE_LIMIT:
@@ -733,7 +892,8 @@ class RLAgentService(BaseSingletonService):
             self._shield_cache[cache_key] = shield
             return shield
 
-    def _load_weights(self, net: Any, model_uri: str, *, kind: str) -> None:
+    def _load_weights(self, net: Any, model_uri: str, *, kind: str) -> bool:
+        """加载权重并返回是否成功（False=随机初始化，输出不可信）."""
         return _load_weights(net, model_uri, kind=kind)
 
     def _extract_action(self, policy_out: Any) -> np.ndarray:
@@ -864,6 +1024,7 @@ class RLAgentService(BaseSingletonService):
             policy_version=version_str,
             training_episodes=training_episodes,
             exploration_rate=max(0.0, min(1.0, exploration_rate)),
+            weights_loaded=self._weights_loaded.get(model_uri, False),
         )
 
 

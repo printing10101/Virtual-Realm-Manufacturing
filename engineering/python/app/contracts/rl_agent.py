@@ -295,12 +295,16 @@ class PolicyInfo:
         训练 episode 数.
     exploration_rate : float
         探索率 ε [0, 1].
+    weights_loaded : bool
+        是否成功加载了真实训练权重。False 表示策略网络为随机初始化，
+        推荐动作不具备决策意义（仅接口验证），消费方必须显式提示.
     """
 
     algorithm: str
     policy_version: str
     training_episodes: int
     exploration_rate: float
+    weights_loaded: bool = False
 
     def __post_init__(self) -> None:
         if not PolicyAlgorithm.is_valid(self.algorithm):
@@ -311,6 +315,7 @@ class PolicyInfo:
             raise ValueError(f"training_episodes 不能为负数: {self.training_episodes}")
         if not 0.0 <= self.exploration_rate <= 1.0:
             raise ValueError(f"exploration_rate 必须在 [0, 1]: {self.exploration_rate}")
+        self.weights_loaded = bool(self.weights_loaded)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -318,6 +323,7 @@ class PolicyInfo:
             "policy_version": self.policy_version,
             "training_episodes": self.training_episodes,
             "exploration_rate": self.exploration_rate,
+            "weights_loaded": self.weights_loaded,
         }
 
 

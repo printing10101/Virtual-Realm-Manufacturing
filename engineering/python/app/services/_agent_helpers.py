@@ -147,11 +147,28 @@ def _extract_state_field(state_arr: np.ndarray, field_name: str, *, default: flo
     return float(state_arr[idx])
 
 
-def _load_weights(net: Any, model_uri: str, *, kind: str) -> None:
-    """从 ModelRegistry 加载权重到网络.
+def _load_weights(net: Any, model_uri: str, *, kind: str) -> bool:
+    """从 ModelRegistry 解析权重文件并加载到网络.
 
-    v1 实现：尝试从 ModelRegistry 解析，失败则使用随机初始化
-    （仅用于接口验证）。
+    v1 诚实化修复：此前此函数解析到 storage_uri 后只打 debug 日志、从不加载，
+    推理永远使用随机初始化权重却对外呈现"决策完成"。现在真实加载：
+
+    - torch 可用且权重为 ``.pt``/``.pth``：``torch.load(weights_only=True)`` +
+      ``load_state_dict``（weights_only 受限反序列化，避免 pickle 任意代码执行；
+      旧版 torch 不支持该参数时拒绝加载，绝不回退到不安全加载）；
+    - torch 不可用且权重为 ``.npz``：按属性名加载 NumPy 数组（键与网络属性名
+      一致，如 ``_w1``），形状不匹配视为加载失败；
+    - 注册表无记录 / 路径不可达 / 格式不支持：拒绝静默降级为"看起来正常"的
+      随机策略，改为 warning 日志并返回 False，由调用方在响应中标记
+      ``weights_loaded=false``。
+
+    Args:
+        net: 策略或值网络实例（torch nn.Module 或 NumPy 回退实现）.
+        model_uri: 模型 URI.
+        kind: "policy" 或 "value".
+
+    Returns:
+        True 表示成功加载真实权重；False 表示使用随机初始化（输出不可信）.
     """
     try:
         from app.ai.lnn.inference.registry import LNNModelRegistry
@@ -161,20 +178,105 @@ def _load_weights(net: Any, model_uri: str, *, kind: str) -> None:
         registry = LNNModelRegistry()
         entry = registry.get(model_uri)
         storage_uri = getattr(entry, "storage_uri", None) or (entry.info.model_path if entry and entry.info else None)
-        if storage_uri:
-            logger.debug(
-                "权重加载占位: kind=%s uri=%s storage=%s",
-                kind,
+        if not storage_uri:
+            logger.warning(
+                "RL 权重缺失: 注册表无 %s 记录，%s 网络使用随机初始化（输出不可信）",
                 model_uri,
-                storage_uri,
+                kind,
             )
-    except (ImportError, AttributeError, KeyError, RuntimeError, TypeError) as exc:
-        logger.debug(
-            "ModelRegistry 解析失败，使用随机初始化: uri=%s kind=%s err=%s",
-            model_uri,
+            return False
+
+        local_path = _resolve_weight_path(str(storage_uri))
+        if local_path is None:
+            logger.warning(
+                "RL 权重不可达: %s（仅支持本地路径/file:// URI），%s 网络使用随机初始化（输出不可信）",
+                storage_uri,
+                kind,
+            )
+            return False
+
+        return _load_state_into_net(net, local_path, kind=kind)
+    except (ImportError, AttributeError, KeyError, RuntimeError, TypeError, ValueError, OSError) as exc:
+        logger.warning(
+            "RL 权重加载失败，%s 网络使用随机初始化（输出不可信）: uri=%s err=%s",
             kind,
+            model_uri,
             exc,
         )
+        return False
+
+
+def _resolve_weight_path(storage_uri: str):
+    """将 storage_uri 解析为存在的本地文件路径；不可达/不支持的协议返回 None."""
+    from pathlib import Path
+    from urllib.parse import urlparse
+    from urllib.request import url2pathname
+
+    parsed = urlparse(storage_uri)
+    scheme = parsed.scheme
+    if scheme in ("", "file"):
+        raw = parsed.path if scheme == "file" else storage_uri
+        # Windows file:///C:/... 需经 url2pathname 还原盘符
+        path = Path(url2pathname(raw)) if scheme == "file" else Path(raw)
+        return path if path.is_file() else None
+    if len(scheme) == 1:
+        # Windows 盘符：urlparse 会把 "C:\a\b.npz" 解析成 scheme="c"，
+        # 必须按本地路径处理而非"不支持的协议"
+        path = Path(storage_uri)
+        return path if path.is_file() else None
+    return None
+
+
+def _load_state_into_net(net: Any, path, *, kind: str) -> bool:
+    """把本地权重文件加载进网络；成功返回 True，失败抛异常由上层统一处理."""
+    suffix = path.suffix.lower()
+
+    if suffix in (".pt", ".pth"):
+        try:
+            import torch
+        except ImportError:
+            logger.warning(
+                "RL %s 权重为 torch 格式但运行环境无 torch，无法加载: %s（输出不可信）",
+                kind,
+                path,
+            )
+            return False
+        # 安全：仅允许 weights_only=True 的受限反序列化。torch.load 底层是
+        # pickle，加载被篡改的权重文件可导致任意代码执行；旧版 torch 不支持
+        # 该参数时拒绝加载，绝不回退到不安全加载。
+        try:
+            state = torch.load(path, map_location="cpu", weights_only=True)
+        except TypeError as exc:
+            logger.warning(
+                "torch 版本过旧、不支持 weights_only 安全加载，拒绝加载 %s 权重: %s（输出不可信）",
+                kind,
+                exc,
+            )
+            return False
+        net.load_state_dict(state)
+        logger.info("RL %s 权重加载成功（torch）: %s", kind, path)
+        return True
+
+    if suffix == ".npz":
+        # allow_pickle=False 阻止 npz 内嵌对象反序列化（安全默认，显式声明）
+        with np.load(path, allow_pickle=False) as data:
+            arrays = {k: np.asarray(data[k], dtype=np.float32) for k in data.files}
+        applied = 0
+        for key, arr in arrays.items():
+            if not hasattr(net, key):
+                continue
+            current = getattr(net, key)
+            if hasattr(current, "shape") and tuple(current.shape) != tuple(arr.shape):
+                raise ValueError(f"权重形状不匹配: {key} 期望 {tuple(current.shape)} 实际 {tuple(arr.shape)}")
+            setattr(net, key, arr)
+            applied += 1
+        if applied == 0:
+            raise ValueError(f"npz 中无可识别的权重键（需与网络属性名一致）: {sorted(arrays)}")
+        logger.info("RL %s 权重加载成功（numpy npz，%d 项）: %s", kind, applied, path)
+        return True
+
+    logger.warning("RL %s 权重格式不支持: %s（支持 .pt/.pth/.npz），使用随机初始化（输出不可信）", kind, path)
+    return False
 
 
 def _extract_action(policy_out: Any) -> np.ndarray:
