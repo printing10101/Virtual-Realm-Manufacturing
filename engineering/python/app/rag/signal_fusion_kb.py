@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 import uuid
@@ -486,7 +487,9 @@ class SignalFusionKnowledgeBase:
 
         Args:
             samples: 信号样本列表（建议来自不同 signal_type）
-            strategy: 融合策略 "weighted" 或 "attention"
+            strategy: 融合策略 "weighted" 或 "attention"。
+                attention 依赖未经训练的随机权重，默认拒绝（学术诚信守卫），
+                需设置环境变量 ``LNN_SIGNAL_FUSION_ALLOW_UNTRAINED=1`` 方可使用
             weights: 可选自定义权重（仅 weighted 策略）
 
         Returns:
@@ -507,6 +510,17 @@ class SignalFusionKnowledgeBase:
             features_dict[st] = stacked.mean(axis=0)
 
         if strategy == "attention":
+            # [学术诚信守卫] CrossModalAttentionFusion 使用随机初始化权重
+            # （未经训练，模块内自带 runtime warning），融合结果不具备物理
+            # 意义。默认拒绝在知识库生产端点使用；仅显式设置环境变量后方可
+            # 用于开发调试。
+            if os.environ.get("LNN_SIGNAL_FUSION_ALLOW_UNTRAINED", "").strip().lower() not in ("1", "true", "yes"):
+                raise ValueError(
+                    "[学术诚信] attention 融合策略当前使用未经训练的随机权重"
+                    "（CrossModalAttentionFusion），融合结果不具备物理意义，默认禁止。"
+                    "建议操作：改用 strategy='weighted'（确定性加权平均，结果可信）；"
+                    "或仅在开发调试时设置环境变量 LNN_SIGNAL_FUSION_ALLOW_UNTRAINED=1。"
+                )
             fusion = self._get_attention_fusion()
             fused = fusion.fuse(features_dict)
             # 注意力融合的权重提取（取均值作为各模态贡献度）

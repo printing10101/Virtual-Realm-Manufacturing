@@ -18,6 +18,7 @@
 """
 
 import logging
+import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -316,7 +317,12 @@ async def retrieve_similar(request: Request, req: RetrieveRequest):
 # P2-4-5 修复：多源信号融合涉及加权/注意力计算，限制为 60/minute。
 @limiter.limit("60/minute")
 async def fuse_signals(request: Request, req: FuseRequest):
-    """将多个信号样本融合为统一特征向量。"""
+    """将多个信号样本融合为统一特征向量。
+
+    注意：``attention`` 策略因依赖未经训练的随机权重默认被拒绝
+    （学术诚信守卫），需显式设置 ``LNN_SIGNAL_FUSION_ALLOW_UNTRAINED=1``
+    方可使用；生产场景请使用 ``weighted`` 策略。
+    """
     try:
         if not req.sample_ids and not req.samples:
             return error(
@@ -328,6 +334,20 @@ async def fuse_signals(request: Request, req: FuseRequest):
                 ErrorCode.INVALID_REQUEST,
                 message=f"不支持的融合策略: {req.strategy}",
                 detail={"supported": ["weighted", "attention"]},
+            )
+        # [学术诚信守卫] attention 策略使用未经训练的随机权重（CrossModalAttentionFusion），
+        # 默认拒绝；此处显式返回引导信息（不经过 safe_error_message 脱敏，保证可读）。
+        if req.strategy == "attention" and os.environ.get(
+            "LNN_SIGNAL_FUSION_ALLOW_UNTRAINED", ""
+        ).strip().lower() not in ("1", "true", "yes"):
+            return error(
+                ErrorCode.INVALID_REQUEST,
+                message=(
+                    "attention 融合策略当前使用未经训练的随机权重，融合结果不具备物理意义，默认禁止。"
+                    "建议操作：改用 strategy='weighted'（确定性加权平均，结果可信）；"
+                    "或仅在开发调试时设置环境变量 LNN_SIGNAL_FUSION_ALLOW_UNTRAINED=1。"
+                ),
+                detail={"strategy": req.strategy, "guard": "untrained_attention_fusion"},
             )
 
         samples = _collect_samples(req.sample_ids, req.samples)
