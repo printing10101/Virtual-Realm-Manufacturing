@@ -301,10 +301,25 @@ class TestLNNModelRegistry:
         assert "not found" in result["reason"]
 
     def test_validate_model_file_not_exists(self):
+        """注册表有登记但权重文件缺失的模型应判定无效（fail-closed）。
+
+        历史说明：此用例曾以 cutting_force 为对象；2026-09-09 起
+        cutting_force.npz 已真实生成入库，"文件不存在"前提失效（这正是
+        权重产出落地的正面信号）。改用注册表内有登记、但按 DATA_INSUFFICIENT
+        策略从未产出权重的 surface_roughness 占位模型验证该路径。
+        """
         registry = LNNModelRegistry()
-        result = registry.validate_model("cutting_force")
+        result = registry.validate_model("surface_roughness")
         assert result["valid"] is False
         assert result["file_exists"] is False
+        assert result["model_name"] == "surface_roughness"
+
+    def test_validate_model_file_exists(self):
+        """权重文件真实存在且可加载的模型应判定有效。"""
+        registry = LNNModelRegistry()
+        result = registry.validate_model("cutting_force")
+        assert result["file_exists"] is True
+        assert result["valid"] is True
         assert result["model_name"] == "cutting_force"
 
 

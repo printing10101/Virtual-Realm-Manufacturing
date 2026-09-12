@@ -85,6 +85,8 @@ test_update_task_status_latency           | 单次   | <5 ms     | UPDATE+commit
 - 性能数据受系统负载影响，建议在无其他高负载进程时运行。
 """
 
+import os
+
 import pytest
 import time
 import asyncio
@@ -92,6 +94,15 @@ import threading
 from unittest.mock import MagicMock, patch
 
 pytestmark = pytest.mark.skip_ci
+
+# 延迟测量类（P95 断言）对 CPU 调度噪声敏感：xdist 多进程并行时其他 worker
+# 抢占 CPU，P95 必然超阈值（2026-09-13 实测 -n 8 下 exception_handler P95
+# 10.49ms≥10ms、request_id 中间件 62.9ms≥30ms；串行独占运行全绿）。
+# 标记该类测试须独占运行，xdist worker 中跳过并注明原因。
+requires_exclusive_machine = pytest.mark.skipif(
+    os.environ.get("PYTEST_XDIST_WORKER") is not None,
+    reason="P95 延迟断言须独占运行（-p no:xdist）；xdist 并行下读数被其他 worker 污染",
+)
 
 
 # WinSock 损坏环境检测
@@ -181,6 +192,7 @@ class TestDatabaseConnectionPoolPerformance:
         print(f"  P95时间: {p95_time:.3f}ms")
 
 
+@requires_exclusive_machine
 class TestExceptionHandlerPerformance:
     """异常处理性能测试"""
 
@@ -665,6 +677,7 @@ class TestResourceShutdownPerformance:
         print(f"  错误数: {len(errors)}")
 
 
+@requires_exclusive_machine
 class TestMiddlewareStackPerformance:
     """中间件链路性能基线
 

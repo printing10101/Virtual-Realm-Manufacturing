@@ -18,11 +18,20 @@
 from __future__ import annotations
 
 import gc
+import os
 import tracemalloc
 
 import pytest
 
 pytestmark = pytest.mark.skip_ci
+
+# 内存测量类断言对机器负载敏感：xdist 并行时其他 worker 的内存压力会污染
+# 增长读数（2026-09-13 实测 -n 8 下 add_task_memory_growth 失败、串行独占通过）。
+# 标记须独占运行，xdist worker 中跳过并注明原因。
+requires_exclusive_machine = pytest.mark.skipif(
+    os.environ.get("PYTEST_XDIST_WORKER") is not None,
+    reason="内存增长断言须独占运行（-p no:xdist）；xdist 并行下读数受其他 worker 内存压力干扰",
+)
 
 
 # 1. 模块级内存占用基线
@@ -228,6 +237,7 @@ class TestResourceReleaseMemory:
 # 3. 批量操作内存增长
 
 
+@requires_exclusive_machine
 class TestBatchOperationMemoryGrowth:
     """批量操作下的内存增长"""
 

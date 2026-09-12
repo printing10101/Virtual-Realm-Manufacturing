@@ -448,20 +448,22 @@ class TestRegisterValueErrorFallback:
     """注册时 store.create_user 抛 ValueError 时应返回 409。"""
 
     def test_register_value_error_returns_409(self, client, monkeypatch, isolated_user_store):
-        """当 store.create_user 抛出 ValueError 时返回 409。"""
+        """当 store.create_user 抛出 ValueError 时返回 409。
+
+        污染修复说明（2026-09-13）：此前通过 monkeypatch auth 模块全局
+        ``get_user_store`` 实现注入，单跑 PASS、全量跑 FAIL（实测返回 200，
+        路由用到了未被补丁覆盖的 store 解析路径）。改为在 ``UserStore``
+        类级别打补丁——无论路由经哪条路径拿到哪个 store 实例，
+        ``create_user`` 都会抛 ValueError，测试的是端点本身的契约。
+        """
         monkeypatch.setenv("LNN_REGISTRATION_CODE", "SECRET-1234")
 
-        # 直接 monkeypatch auth 模块中的 get_user_store 引用，避免缓存问题
-        from app.api.v1 import auth as auth_module
+        def _raising_create_user(
+            self, username, password_hash, role="user", must_change_password=False
+        ):
+            raise ValueError("user store corruption: simulated")
 
-        def _raising_store(file_path=None):
-            store = UserStore(file_path=file_path or str(isolated_user_store.USER_STORE_FILE))
-            store.create_user = lambda username, password_hash, role="user": (_ for _ in ()).throw(
-                ValueError("user store corruption: simulated")
-            )
-            return store
-
-        monkeypatch.setattr(auth_module, "get_user_store", _raising_store)
+        monkeypatch.setattr(UserStore, "create_user", _raising_create_user)
 
         response = client.post(
             "/api/v1/auth/register",

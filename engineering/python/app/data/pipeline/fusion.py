@@ -180,12 +180,16 @@ class CrossModalAttentionFusion:
         return (proj_q, proj_k, proj_v)
 
     def _ensure_projections(self, features: dict[str, np.ndarray]) -> None:
-        """确保所有模态都有投影矩阵；惰性补齐后续调用新增的模态。
+        """确保所有模态都有投影矩阵；惰性补齐新增模态与维度变化。
 
         此前投影矩阵仅在首次 ``fuse`` 调用时按当次模态集合初始化，管道以
         可变模态组合复用同一融合器时（如先 image+text、后追加 tool_state），
         新模态会触发 ``KeyError``。随机占位权重的补齐语义与 ``_init_weights``
         一致（未经训练，见类 docstring 警告）。
+
+        2026-09-13 修复：既有模态的特征维度发生变化（如变长时序的窗口数
+        随数据长度变化，展平后维度不同）时，旧投影矩阵会导致
+        ``ValueError: shapes not aligned``——按新维度重建该模态的投影。
         """
         if not self._initialized:
             input_dims = {m: f.size for m, f in features.items()}
@@ -194,10 +198,19 @@ class CrossModalAttentionFusion:
 
         d_k = self.target_dim // self.n_heads
         for modality, feat in features.items():
-            if modality not in self._projections:
-                in_dim = feat.flatten().size
+            in_dim = feat.flatten().size
+            cached = self._projections.get(modality)
+            if cached is None:
                 self._projections[modality] = self._make_projection(in_dim, d_k)
                 logger.info("CrossModalAttentionFusion 惰性补齐新模态投影: %s (dim=%d)", modality, in_dim)
+            elif cached[0].shape[0] != in_dim:
+                self._projections[modality] = self._make_projection(in_dim, d_k)
+                logger.info(
+                    "CrossModalAttentionFusion 模态特征维度变化，重建投影: %s (%d -> %d)",
+                    modality,
+                    cached[0].shape[0],
+                    in_dim,
+                )
 
     def _attention(self, q: np.ndarray, k: np.ndarray, v: np.ndarray) -> np.ndarray:
         """缩放点积注意力"""

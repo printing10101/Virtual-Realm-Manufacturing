@@ -36,3 +36,10 @@ ipdb>=0.13.13            # 交互式调试器
 
 # Benchmark 工具
 aiohttp>=3.9.0           # 异步 HTTP 基准测试客户端（benchmarks/performance/api_bench.py 依赖，P1-9 修复：原隐式依赖未声明）
+
+# MCP SDK —— mcp_server/ 与 device_tools 依赖 v1 API（mcp.server.fastmcp.FastMCP）；
+# 2026-09-13 实测 mcp 2.x 已将 FastMCP 更名为 MCPServer 导致导入失败，显式上界防漂移
+mcp>=1.0.0,<2
+# 3.14 标准测试环境补装记录（2026-09-13）：系统 Python 3.14.4 缺 pytest-xdist 已补；
+# 注意 pytest 大版本（3.14 环境为 9.1.1，本文件锁定 8.3.4）跨版本行为差异需在统一口径时评估
+

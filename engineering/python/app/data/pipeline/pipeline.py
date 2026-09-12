@@ -177,7 +177,7 @@ class DataPipeline:
         features: dict[str, np.ndarray] = {}
         error_log: list[str] = []
 
-        expected = expected_dims or self._get_expected_dims()
+        expected = expected_dims or self._get_expected_dims(inputs)
 
         t = time.perf_counter()
         for name, raw_input in inputs.items():
@@ -231,16 +231,26 @@ class DataPipeline:
 
         return result
 
-    def _get_expected_dims(self) -> dict[str, int]:
-        """获取预处理器输出的期望维度"""
+    def _get_expected_dims(self, inputs: dict[str, RawInput] | None = None) -> dict[str, int]:
+        """获取各模态预处理输出的期望维度.
+
+        各维度必须与对应 Preprocessor 的实际输出契约一致
+        （2026-09-13 修复：旧表按"单通道×1 / 原始字段数 9 / 手工特征 21"硬编码，
+        与预处理器实际的 window_size×通道数 / tool_state_dim(32) /
+        gcode_embedding_dim(256) 输出契约脱节，多通道或嵌入路径下必然误报
+        维度不一致——该缺陷仅在装有完整模型库（torchvision/sentence_transformers）
+        的环境中暴露，此前因 importorskip 跳过而未被发现）。
+        """
         ws = self.config.time_series.window_size
         ss = self.config.image.image_size
+        ts_input = inputs.get("time_series") if inputs else None
+        ts_channels = int(getattr(ts_input, "channels", 1) or 1) if ts_input else 1
         return {
             "image": ss * ss * 3,
-            "time_series": ws * 1,
+            "time_series": ws * ts_channels,
             "text": self.config.text.bge_embedding_dim,
-            "tool_state": len(self.config.tool_state.state_fields),
-            "gcode": 21,
+            "tool_state": self.config.tool_state.tool_state_dim,
+            "gcode": self.config.gcode.gcode_embedding_dim,
         }
 
     def process_batch(

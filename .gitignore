@@ -96,7 +96,10 @@ engineering/python/_sharp_*.log
 engineering/python/_sharp_*.json
 
 # Playwright E2E 套件已在 v2.5 移除，相关产物不再入库
+# 例外：engineering/python/tests/e2e/ 是 pytest 飞轮端到端测试（CI Torch Integrity
+# job 依赖），2026-09-13 起入库——否则 CI checkout 缺该目录直接失败
 e2e/
+!engineering/python/tests/e2e/
 playwright.config.ts
 tests/screenshots/
 

@@ -13,11 +13,22 @@
 
 from __future__ import annotations
 
+import os
 import statistics
 import time
 from typing import Any
 
 import pytest
+
+# ── 独占运行守卫（2026-09-13）───────────────────────────────────────────────
+# 本模块测量【系统级】CPU/内存/显存/带宽占用率。pytest-xdist 多进程并行时，
+# 其他 worker 抢占机器资源，读数必然失真（实测 -n 8：CPU 91.4%≥90、内存 98.8%≥75；
+# 串行独占运行 99 passed 全绿）。因此并行运行时跳过并注明原因，
+# 串行（-p no:xdist / -n 0）与 CI 串行任务中正常执行。
+pytestmark = pytest.mark.skipif(
+    os.environ.get("PYTEST_XDIST_WORKER") is not None,
+    reason="系统级资源测量须独占运行（-p no:xdist）；xdist 并行下读数被其他 worker 污染",
+)
 
 
 # 资源监控工具
