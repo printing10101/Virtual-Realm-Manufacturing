@@ -408,3 +408,138 @@ async def generate_synthetic_dataset(req: SyntheticGenerateRequest):
         max_combinations=req.max_combinations,
     )
     return SyntheticGenerateResponse(success=summary.total > 0, **summary.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# 用户反馈提交（自进化 M0：把 data_flywheel 反馈采集层接入业务调用方）
+# ---------------------------------------------------------------------------
+
+
+class FeedbackSubmitRequest(BaseModel):
+    """用户反馈提交请求（标注 / 采纳 / 修正三选一）。
+
+    ``prediction_id`` 建议传编排器返回的 ``pipeline_id`` 或 G 代码任务
+    ``task_id``，使反馈可与失败案例库 / trace 关联（自进化血缘）。
+    ``metadata`` 可携带 ``prompt_id`` / ``prompt_version`` / 评分摘要，
+    供提示词迭代按反馈质量分组。
+    """
+
+    feedback_type: str = Field(..., description="annotation | adoption | correction")
+    prediction_id: str | None = Field(None, description="关联的预测/管线 ID（pipeline_id 或 task_id）")
+    model_version: str | None = Field(None, description="被反馈的模型/提示词版本标识")
+    original_output: dict[str, Any] | None = Field(None, description="原始模型输出（correction 必填）")
+    corrected_output: dict[str, Any] | None = Field(None, description="用户修正后的输出（correction 必填）")
+    accepted: bool | None = Field(None, description="是否采纳（adoption 必填）")
+    notes: str = Field("", description="用户备注")
+    user_id: str = Field("local", description="反馈用户 ID")
+    metadata: dict[str, Any] | None = Field(None, description="扩展元数据（prompt_version 等）")
+    flush: bool = Field(False, description="提交后立即落盘（默认入缓冲区批量提交）")
+
+
+class FeedbackSubmitResponse(BaseModel):
+    """用户反馈提交结果。"""
+
+    feedback_id: str = Field(..., description="反馈唯一 ID")
+    feedback_type: str = Field(..., description="annotation | adoption | correction")
+    flushed: bool = Field(False, description="是否已立即落盘")
+    buffer_size: int = Field(0, description="采集器当前缓冲区条数")
+
+
+def _get_feedback_collector() -> Any:
+    """从插件注册表取数据飞轮插件的反馈采集器（未加载返回 None）。"""
+    from app.plugins.plugin_manager import PluginRegistry
+
+    plugin = PluginRegistry.get_instance().get_plugin_instance("data_flywheel")
+    if plugin is None or not hasattr(plugin, "get_feedback_collector"):
+        return None
+    return plugin.get_feedback_collector()
+
+
+# 写反馈即写 IDatasetStore：沿用合成数据端点的 dataset:write 权限码（工程角色已持有）
+@router.post(
+    "/feedback",
+    response_model=FeedbackSubmitResponse,
+    dependencies=[Depends(require_permission("dataset:write"))],
+)
+async def submit_feedback(req: FeedbackSubmitRequest):
+    """提交用户反馈到飞轮反馈数据集（annotation / adoption / correction）。
+
+    自进化 M0：此前 ``FeedbackCollector`` 无任何业务调用方（孤立骨架），
+    本端点补上 REST 提交入口——前端「采纳/修正」动作、MCP 客户端与
+    回放评估均可把人工判定回流为训练数据。
+    """
+    collector = _get_feedback_collector()
+    if collector is None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "feedback_collector_unavailable",
+                "message": "反馈采集器未就绪（数据飞轮插件未加载或数据集存储不可用）",
+            },
+        )
+
+    user_id = req.user_id or "local"
+    common: dict[str, Any] = {
+        "user_id": user_id,
+        "prediction_id": req.prediction_id,
+        "model_version": req.model_version,
+        "notes": req.notes,
+        "metadata": req.metadata,
+    }
+    try:
+        if req.feedback_type == "annotation":
+            feedback_id = await collector.record_annotation(original_output=req.original_output, **common)
+        elif req.feedback_type == "adoption":
+            if not isinstance(req.accepted, bool):
+                raise HTTPException(
+                    status_code=400,
+                    detail={"error": "invalid_feedback", "message": "adoption 反馈必须提供 accepted（bool）"},
+                )
+            feedback_id = await collector.record_adoption(
+                accepted=req.accepted, original_output=req.original_output, **common
+            )
+        elif req.feedback_type == "correction":
+            if not req.original_output or not req.corrected_output:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error": "invalid_feedback",
+                        "message": "correction 反馈必须同时提供 original_output 与 corrected_output",
+                    },
+                )
+            feedback_id = await collector.record_correction(
+                original_output=req.original_output, corrected_output=req.corrected_output, **common
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "invalid_feedback_type",
+                    "message": f"feedback_type 不合法: {req.feedback_type}（合法值: annotation/adoption/correction）",
+                },
+            )
+
+        flushed = False
+        if req.flush:
+            version = await collector.flush()
+            flushed = version is not None
+        return FeedbackSubmitResponse(
+            feedback_id=feedback_id,
+            feedback_type=req.feedback_type,
+            flushed=flushed,
+            buffer_size=int(getattr(collector, "buffer_size", 0)),
+        )
+    except HTTPException:
+        raise
+    except (ValueError, TypeError, KeyError) as e:
+        logger.warning("反馈提交参数非法: %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_feedback", "message": f"反馈内容不合法: {e}"},
+        ) from e
+    except (RuntimeError, AttributeError, OSError) as e:
+        logger.error("反馈提交失败: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "feedback_submit_failed", "message": "反馈提交失败，请稍后重试"},
+        ) from e

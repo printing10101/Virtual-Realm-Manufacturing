@@ -6,8 +6,10 @@ import json
 import logging
 import re
 import threading
+import uuid
 from typing import Any
 
+from app.agent.failure_recorder import record_agent_failure
 from app.ai.llm_client import BaseLLMClient, get_llm_client
 from app.api.v1.nl2cad.prompts import (
     SYSTEM_PROMPT,
@@ -57,21 +59,34 @@ class NL2CADService:
                 max_tokens=2048,
                 temperature=0.3,
             )
-
-            content = response.get("content", "")
-            params = self._parse_llm_response(content)
-
-            logger.info("Extracted params: %s", params)
-            return params
-
         except Exception as e:
-            # 软依赖降级：LLM 不可用时，使用基于规则的参数提取，避免整个 NL2CAD 功能崩溃。
-            # 与 app/rag/query_rewriter.py 的 _rule_based_rewrite 降级模式一致。
+            # LLM 不可用属环境信号：降级规则提取但不入案例库（口径见
+            # app/agent/failure_recorder.py——避免环境抖动污染一次通过率）。
             logger.warning("LLM 不可用，NL2CAD 降级到规则参数提取。原因: %s", e, exc_info=True)
             params = self._rule_based_extract_params(description)
             params["confidence"] = 0.3  # 降级标志：低置信度
             params["_fallback"] = "rule_based"
             return params
+
+        # LLM 应答了但输出解析失败：模型质量信号，入册 nl2cad_extract 后降级
+        content = response.get("content", "")
+        try:
+            params = self._parse_llm_response(content)
+        except ValueError as e:
+            record_agent_failure(
+                task_id=f"nl2cad:{uuid.uuid4().hex[:8]}",
+                source="nl2cad_extract",
+                error_codes=["LLM_INVALID_OUTPUT"],
+                error_messages=[f"NL2CAD 参数提取原始输出(截断): {str(content)[:400]}", str(e)],
+            )
+            logger.warning("NL2CAD 参数提取解析失败，降级规则参数提取: %s", e)
+            params = self._rule_based_extract_params(description)
+            params["confidence"] = 0.3
+            params["_fallback"] = "rule_based"
+            return params
+
+        logger.info("Extracted params: %s", params)
+        return params
 
     async def refine_params(
         self,
@@ -106,20 +121,34 @@ class NL2CADService:
                 max_tokens=2048,
                 temperature=0.2,
             )
-
-            content = response.get("content", "")
-            refined_params = self._parse_llm_response(content)
-
-            logger.info("Refined params: %s", refined_params)
-            return refined_params
-
         except Exception as e:
-            # 软依赖降级：LLM 不可用时，保持原参数不变，避免整个精炼流程崩溃。
+            # LLM 不可用属环境信号：保持原参数不变，不入案例库（口径见
+            # app/agent/failure_recorder.py）。
             logger.warning("LLM 不可用，NL2CAD 精炼降级为返回原参数。原因: %s", e, exc_info=True)
             fallback_params = dict(current_params)
             fallback_params["confidence"] = 0.3  # 降级标志：低置信度
             fallback_params["_fallback"] = "rule_based"
             return fallback_params
+
+        # LLM 应答了但输出解析失败：模型质量信号，入册后保持原参数
+        content = response.get("content", "")
+        try:
+            refined_params = self._parse_llm_response(content)
+        except ValueError as e:
+            record_agent_failure(
+                task_id=f"nl2cad:{uuid.uuid4().hex[:8]}",
+                source="nl2cad_extract",
+                error_codes=["LLM_INVALID_OUTPUT"],
+                error_messages=[f"NL2CAD 精炼原始输出(截断): {str(content)[:400]}", str(e)],
+            )
+            logger.warning("NL2CAD 精炼解析失败，降级为返回原参数: %s", e)
+            fallback_params = dict(current_params)
+            fallback_params["confidence"] = 0.3
+            fallback_params["_fallback"] = "rule_based"
+            return fallback_params
+
+        logger.info("Refined params: %s", refined_params)
+        return refined_params
 
     def _rule_based_extract_params(self, description: str) -> dict[str, Any]:
         """基于规则的 CAD 参数提取（LLM 不可用时的降级实现）。

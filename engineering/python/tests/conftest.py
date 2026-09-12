@@ -398,7 +398,54 @@ def _env_setup(monkeypatch, tmp_path):
         _sec._token_ban_list = None
     except Exception:
         pass
+    # 失败案例库隔离（自进化 M0）：编排器 / NL2CAD 的成败入册钩子会在
+    # 测试中触发写库，统一重定向到临时目录并重置单例，防止污染开发库
+    monkeypatch.setenv("FAILURE_CASES_DB", str(tmp_path / "failure_cases.db"))
+    try:
+        from app.gcode_generation.failure_case_store import (
+            reset_failure_case_store as _reset_fc_store,
+        )
+
+        _reset_fc_store()
+    except Exception:
+        pass
     yield
+    try:
+        from app.gcode_generation.failure_case_store import (
+            reset_failure_case_store as _reset_fc_store,
+        )
+
+        _reset_fc_store()
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter_state():
+    """每测试前后重置全部限流器状态，防止跨测试文件累积触发 429.
+
+    根因（2026-09 工程体检）：app/api/v1/auth.py 在同一 pytest 进程内可能被
+    执行两次（conftest 懒加载桩 _resolve("auth") 一次 + 正常 import 链一次，
+    是否发生取决于模块收集顺序，非确定）。slowapi 的 Limiter 按
+    "模块路径.函数名" 向 _route_limits 追加限流条目，双次执行产生两条相同
+    3/hour 条目 → 每请求计数两次 → test_auth_register 的 409/429 断言被
+    提前触发的 429 击穿（全量混跑偶发、单文件跑无法复现）。
+
+    清理实现见 tests/utils/rate_limiter_reset.py（可单测）。
+    """
+    try:
+        from tests.utils.rate_limiter_reset import reset_all_rate_limiters
+
+        reset_all_rate_limiters()
+    except Exception:
+        pass
+    yield
+    try:
+        from tests.utils.rate_limiter_reset import reset_all_rate_limiters
+
+        reset_all_rate_limiters()
+    except Exception:
+        pass
 
 
 # 集成测试专用 Fixtures

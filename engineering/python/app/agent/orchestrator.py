@@ -46,8 +46,15 @@ from enum import Enum
 from typing import Any
 from collections.abc import Callable
 
+from app.agent.failure_recorder import record_agent_failure, record_agent_success
 from app.agent.knowledge_augmenter import KnowledgeAugmenter
 from app.agent.memory import OrchestratorMemory, summarize_pipeline_for_memory
+from app.ai.prompts import (
+    ORCHESTRATOR_GCODE_REPAIR_SYSTEM_ID,
+    ORCHESTRATOR_PLANNING_SYSTEM_ID,
+    ORCHESTRATOR_PLANNING_USER_ID,
+    get_prompt_registry,
+)
 from app.core.safe_errors import safe_error_message
 
 logger = logging.getLogger(__name__)
@@ -120,6 +127,9 @@ class PipelineResult:
     # 2026-09 全量升格：规划来源（static / llm / llm_fallback）与记忆命中数
     planning_source: str = "static"
     planning_rationale: str = ""
+    # 自进化 M0：条件规划所用提示词版本（trace 可追溯到提示词迭代）
+    planning_prompt_id: str = ""
+    planning_prompt_version: int = 0
     memory_used: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -137,6 +147,8 @@ class PipelineResult:
             "repair_history": self.repair_history,
             "planning_source": self.planning_source,
             "planning_rationale": self.planning_rationale,
+            "planning_prompt_id": self.planning_prompt_id,
+            "planning_prompt_version": self.planning_prompt_version,
             "memory_used": self.memory_used,
         }
 
@@ -282,13 +294,18 @@ class AgentOrchestrator:
             # 2026-09 全量升格：CONDITIONAL 模式由 LLM 规划器在安全不变量
             # 约束下规划步骤子集；SEQUENTIAL 保持静态步骤表
             if mode == OrchestratorMode.CONDITIONAL:
-                steps, planning_meta = await self._plan_steps_conditionally(pipeline_type, input_data)
+                steps, planning_meta = await self._plan_steps_conditionally(pipeline_type, input_data, pipeline_id)
             else:
                 steps, planning_meta = self._get_pipeline_steps(pipeline_type, input_data), {}
             result.planning_source = planning_meta.get("source", "static")
             result.planning_rationale = planning_meta.get("rationale", "")
+            result.planning_prompt_id = str(planning_meta.get("prompt_id", "") or "")
+            result.planning_prompt_version = int(planning_meta.get("prompt_version", 0) or 0)
 
             context: dict[str, Any] = {"input": input_data}
+            # 自进化 M0：pipeline_id 注入共享上下文，供下游提案位
+            # （知识增强 / LLM 修复）的失败入册关联任务
+            context["pipeline_id"] = pipeline_id
 
             # 跨管线记忆：把同类任务的历史经验注入上下文（只作参考，不作决策）。
             # P2-5：checkpoint 反序列化是同步 I/O，移出事件循环
@@ -346,6 +363,8 @@ class AgentOrchestrator:
 
             result.success = all(s.status in (StepStatus.COMPLETED, StepStatus.SKIPPED) for s in result.steps)
             result.final_output = self._extract_final_output(context, result.steps)
+            # 自进化 M0：成败入册（旁路钩子，任何异常不影响主流程）
+            self._record_pipeline_outcome(result, context)
 
         except (ValueError, KeyError, TypeError, OSError, RuntimeError, AttributeError) as exc:
             logger.exception("Pipeline execution failed: %s", exc)
@@ -397,6 +416,7 @@ class AgentOrchestrator:
         self,
         pipeline_type: str,
         input_data: dict[str, Any],
+        pipeline_id: str = "",
     ) -> tuple[list[tuple[str, dict[str, Any]]], dict[str, Any]]:
         """CONDITIONAL 模式：LLM 规划器在安全约束内选择步骤子集。
 
@@ -404,7 +424,9 @@ class AgentOrchestrator:
         - 候选集 = 该管线类型的静态步骤表；
         - 不可剔除步骤（gcode_generate / validate_safety 等）强制保留——
           这是规划器的安全不变量，LLM 无权绕过校验；
-        - LLM 不可用/输出非法 → 回退静态步骤表（planning_source=llm_fallback）；
+        - LLM 不可用/超时 → 回退静态步骤表（环境信号，planning_source
+          可观测，不入案例库）；LLM 应答但输出非法 → 除回退外另入册
+          ``llm_planning`` 失败案例（模型质量信号，供提示词迭代）；
         - 提供了 dxf 特征的输入可跳过 dxf_parse（规则短路，不耗 LLM）。
         """
         base_steps = self._get_pipeline_steps(pipeline_type, input_data)
@@ -442,16 +464,16 @@ class AgentOrchestrator:
                 ("validate_safety", "安全校验（必需，不可跳过）"),
             ]
         ]
-        prompt = (
-            "你是数控编程管线的规划器。根据任务输入，从候选步骤中选择本次需要执行的"
-            "步骤子集。约束：必需步骤（droppable=false）必须保留。"
-            '输出严格 JSON：{"include": ["步骤名", ...], "rationale": "一句话理由"}。\n'
-            f"候选步骤: {json.dumps(catalog, ensure_ascii=False)}\n"
-            f"任务输入摘要: {json.dumps(summary, ensure_ascii=False)}"
-        )
         try:
             from app.ai.llm_client import get_llm_client
 
+            # 提示词走注册表（自进化 M0）：版本随 planning_meta 入 trace
+            planning_system, _ = get_prompt_registry().render(ORCHESTRATOR_PLANNING_SYSTEM_ID)
+            prompt, planning_tpl = get_prompt_registry().render(
+                ORCHESTRATOR_PLANNING_USER_ID,
+                catalog_json=json.dumps(catalog, ensure_ascii=False),
+                summary_json=json.dumps(summary, ensure_ascii=False),
+            )
             client = await get_llm_client()
             # P2-4：锦上添花调用不陪葬——短超时（默认 15s），超时回退静态表，
             # 不等韧性层 60s×3 次满配
@@ -459,7 +481,7 @@ class AgentOrchestrator:
             response = await asyncio.wait_for(
                 client.chat_completion(
                     [
-                        {"role": "system", "content": "你是严格的 JSON 输出规划器，无 markdown 围栏。"},
+                        {"role": "system", "content": planning_system},
                         {"role": "user", "content": prompt},
                     ],
                     max_tokens=256,
@@ -474,9 +496,17 @@ class AgentOrchestrator:
             logger.info("CONDITIONAL 规划 LLM 不可用（回退静态步骤表）: %s", type(e).__name__)
             return base_steps, {"source": "llm_fallback", "rationale": "LLM 不可用"}
 
-        data = KnowledgeAugmenter._extract_json(response.get("content", ""))
+        raw_content = response.get("content", "")
+        data = KnowledgeAugmenter._extract_json(raw_content)
         include = data.get("include") if isinstance(data, dict) else None
         if not isinstance(include, list) or not include:
+            # LLM 应答了但输出非法：模型质量信号，入册（口径见 failure_recorder）
+            record_agent_failure(
+                task_id=pipeline_id or "orchestrator",
+                source="llm_planning",
+                error_codes=["LLM_INVALID_OUTPUT"],
+                error_messages=[f"规划器原始输出(截断): {str(raw_content)[:400]}"],
+            )
             return base_steps, {"source": "llm_fallback", "rationale": "规划输出非法"}
 
         name_set = {n for n, _ in base_steps}
@@ -512,7 +542,12 @@ class AgentOrchestrator:
                 ordered.append((name, cfg))
         rationale = str(data.get("rationale", ""))[:200]
         logger.info("CONDITIONAL 规划：include=%s rationale=%s", sorted(chosen), rationale)
-        return ordered, {"source": "llm", "rationale": rationale}
+        return ordered, {
+            "source": "llm",
+            "rationale": rationale,
+            "prompt_id": planning_tpl.prompt_id,
+            "prompt_version": planning_tpl.version,
+        }
 
     def _recall_memory(self, pipeline_type: str, input_data: dict[str, Any]) -> list[dict[str, Any]]:
         """按管线类型/材料检索长期记忆，注入执行上下文。"""
@@ -546,6 +581,57 @@ class AgentOrchestrator:
                 )
         except (RuntimeError, ValueError, TypeError, KeyError) as e:
             logger.debug("记忆写入失败（跳过）: %s", e)
+
+    # ------------------------------------------------------------------
+    # 自进化 M0：成败入册（执行留痕）
+    # ------------------------------------------------------------------
+
+    def _record_pipeline_outcome(self, result: PipelineResult, context: dict[str, Any]) -> None:
+        """把含安全校验的管线成败写入失败案例库（一次通过口径，旁路钩子）。
+
+        口径（与 gcode_generation/pipeline 的入册语义对齐）：
+        - 任一 validate_safety 步骤 FAILED（修复预算耗尽 / 不可修复 /
+          修复后重新生成失败等全部升级路径汇聚点）→ failure(source=safety_validator)；
+        - 一次通过（首次校验即过且 repair_count==0）→ success；
+        - 经修复后通过 → 不入册（介于成败之间，避免拉高一次通过率；
+          修复过程已在 repair_history 完整可追溯）；
+        - 无 validate_safety 步骤的管线（如 process_plan）不入册。
+        本方法任何异常只 debug 记录，绝不影响主流程。
+        """
+        try:
+            validate_steps = [s for s in result.steps if s.step_name.startswith("validate_safety")]
+            if not validate_steps:
+                return
+
+            gen_output = context.get("gcode_generate")
+            gen_output = gen_output if isinstance(gen_output, dict) else {}
+            gcode = str(gen_output.get("gcode", "") or "")
+            controller = str(gen_output.get("controller_type", "") or "")
+            pipeline_input = context.get("input") if isinstance(context.get("input"), dict) else {}
+            material = str(pipeline_input.get("material_name") or pipeline_input.get("material") or "")
+
+            failed = [s for s in validate_steps if s.status == StepStatus.FAILED]
+            if failed:
+                codes: list[str] = []
+                for s in failed:
+                    codes.extend(str(c) for c in (s.output.get("error_codes") or []))
+                record_agent_failure(
+                    task_id=result.pipeline_id,
+                    source="safety_validator",
+                    error_codes=codes or ["SAFETY_ESCALATED"],
+                    error_messages=[s.error or "安全校验未通过" for s in failed],
+                    gcode_text=gcode,
+                    controller_type=controller,
+                    material_name=material,
+                )
+            elif result.success and result.repair_count == 0:
+                record_agent_success(
+                    task_id=result.pipeline_id,
+                    controller_type=controller,
+                    material_name=material,
+                )
+        except Exception as e:  # noqa: BLE001 - 防御性兜底，入册永不击穿主流程
+            logger.debug("管线成败入册跳过: %s", e)
 
     # W1.1 校验修复闭环
 
@@ -603,6 +689,8 @@ class AgentOrchestrator:
             llm_repaired = await self._llm_repair_gcode(report, context)
             if llm_repaired is not None:
                 attempt = repair_attempt + 1
+                # 自进化 M0：修复所用提示词版本入 repair_history（可追溯）
+                repair_tpl = get_prompt_registry().get(ORCHESTRATOR_GCODE_REPAIR_SYSTEM_ID)
                 # P2-9：新 dict 替换而非原地改写——原 dict 已被 append 进
                 # result.steps，原地改写会让 trace 中上一步显示修复后文本，
                 # 原始失败产物不可追溯
@@ -619,6 +707,8 @@ class AgentOrchestrator:
                         "actions": ["llm_diagnose_repair"],
                         "source": "llm",
                         "applied": ["LLM 诊断修复已应用（待重验）"],
+                        "prompt_id": repair_tpl.prompt_id,
+                        "prompt_version": repair_tpl.version,
                     }
                 )
                 logger.info("Pipeline %s 修复第 %d 轮完成（LLM 诊断修复）", pipeline_id, attempt)
@@ -838,6 +928,8 @@ class AgentOrchestrator:
         try:
             from app.ai.llm_client import get_llm_client
 
+            # 提示词走注册表（自进化 M0）：版本随 repair_history 入 trace
+            repair_system, _ = get_prompt_registry().render(ORCHESTRATOR_GCODE_REPAIR_SYSTEM_ID)
             client = await get_llm_client()
             payload = {
                 "issues": report.get("issues", []),
@@ -847,12 +939,7 @@ class AgentOrchestrator:
                 [
                     {
                         "role": "system",
-                        "content": (
-                            "你是数控安全修复助手。给出的 G 代码未通过安全校验，"
-                            "请只修复报告列出的问题，严禁改动任何其他行、严禁增删功能。"
-                            "直接输出修复后的完整 G 代码纯文本（无 markdown 围栏、无解释）。"
-                            "若无法在不改动其他内容的前提下修复，输出原样代码。"
-                        ),
+                        "content": repair_system,
                     },
                     {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
                 ],
@@ -865,6 +952,14 @@ class AgentOrchestrator:
         repaired = re.sub(r"```[a-z]*", "", response.get("content", "")).strip()
         # 基本合法性守卫：非空、仍是多行 G 代码形态、未膨胀超过 1.5 倍（防幻觉重写）
         if not repaired or "\n" not in repaired or len(repaired) > len(gcode) * 1.5 + 64:
+            # LLM 应答了但输出非法：模型质量信号，入册（口径见 failure_recorder）
+            record_agent_failure(
+                task_id=str(context.get("pipeline_id", "") or "orchestrator"),
+                source="gcode_repair",
+                error_codes=["LLM_INVALID_OUTPUT"],
+                error_messages=[f"修复提案原始输出(截断): {repaired[:400]}"],
+                gcode_text=gcode,
+            )
             logger.info("LLM 诊断修复输出不合法（转人工）")
             return None
         return repaired
@@ -908,6 +1003,9 @@ class AgentOrchestrator:
                         "ai_rejected_adjustments",
                         "knowledge_refs",
                         "memory_refs",
+                        # 自进化 M0：提示词版本随步骤可追溯
+                        "prompt_id",
+                        "prompt_version",
                     )
                     if output.get(k)
                 }

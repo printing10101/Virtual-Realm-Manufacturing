@@ -35,6 +35,8 @@ import os
 import re
 from typing import Any
 
+from app.agent.failure_recorder import record_llm_invalid_output
+from app.ai.prompts import AUGMENTER_PARAM_PROPOSAL_SYSTEM_ID, get_prompt_registry
 from app.gcode_generation.safety_validator import DEFAULT_MACHINE_CONFIG
 
 logger = logging.getLogger(__name__)
@@ -202,16 +204,8 @@ class KnowledgeAugmenter:
         knowledge_refs: list[dict[str, Any]],
         memory_refs: list[dict[str, Any]],
     ) -> list[dict[str, str]]:
-        system = (
-            "你是资深数控工艺工程师助手。系统已用规则引擎产出初始切削参数，"
-            "并检索到知识库中同材料同特征的历史工艺方案。请判断规则参数是否需要调整："
-            "只在有明确工艺理由时调整，避免无依据的改动。"
-            "必须输出严格 JSON（无 markdown 围栏），格式："
-            '{"adjustments": {"参数名": 数值, ...}, "rationale": "简要理由"}。'
-            "adjustments 为空对象表示认可规则参数。可调参数：spindle_rpm（主轴转速）、"
-            "feed_rate_mm_per_min（进给）、depth_of_cut_mm（切深）、width_of_cut_mm（切宽）、"
-            "stepover_pct（行距百分比）。"
-        )
+        # 提示词走注册表（自进化 M0）：版本由调用方写入输出可追溯
+        system, _ = get_prompt_registry().render(AUGMENTER_PARAM_PROPOSAL_SYSTEM_ID)
         user_payload = {
             "material": material,
             "features": feature_types,
@@ -247,8 +241,13 @@ class KnowledgeAugmenter:
         rule_parameters: dict[str, Any],
         knowledge_refs: list[dict[str, Any]],
         memory_refs: list[dict[str, Any]],
+        task_id: str = "",
     ) -> dict[str, Any] | None:
-        """调用 LLM 产出调整提案；任何失败返回 None（调用方回退规则值）。"""
+        """调用 LLM 产出调整提案；任何失败返回 None（调用方回退规则值）。
+
+        LLM 不可用/超时属环境信号（不入案例库）；应答但 JSON 解析失败
+        属模型质量信号 → 入册 ``llm_param_aug`` 失败案例（自进化 M0）。
+        """
         try:
             if self._llm_client is None:
                 from app.ai.llm_client import get_llm_client
@@ -270,7 +269,15 @@ class KnowledgeAugmenter:
         except Exception as e:  # LLMError/AppException 等一律降级
             logger.info("参数增强 LLM 提案不可用（回退纯规则）: %s", type(e).__name__)
             return None
-        return self._extract_json(response.get("content", ""))
+        raw_content = response.get("content", "")
+        data = self._extract_json(raw_content)
+        if data is None:
+            record_llm_invalid_output(
+                task_id=task_id or "orchestrator",
+                source="llm_param_aug",
+                raw_output=raw_content,
+            )
+        return data
 
     # ------------------------------------------------------------------
     # 物理钳制
@@ -365,9 +372,20 @@ class KnowledgeAugmenter:
         if not knowledge_refs and not memory_refs:
             return enriched
 
-        proposal = await self._llm_propose(material, feature_types, rule_parameters, knowledge_refs, memory_refs)
+        proposal = await self._llm_propose(
+            material,
+            feature_types,
+            rule_parameters,
+            knowledge_refs,
+            memory_refs,
+            task_id=str((context or {}).get("pipeline_id", "") or ""),
+        )
         if proposal is None:
             return enriched
+
+        # 自进化 M0：所用提示词版本随输出可追溯（orchestrator 会镜像进
+        # StepResult.ai_metadata）
+        prompt_tpl = get_prompt_registry().get(AUGMENTER_PARAM_PROPOSAL_SYSTEM_ID)
 
         adjustments_raw = proposal.get("adjustments")
         if not isinstance(adjustments_raw, dict):
@@ -391,6 +409,8 @@ class KnowledgeAugmenter:
         enriched["ai_explanation"] = str(proposal.get("rationale", ""))[:500]
         enriched["ai_adjustments"] = applied
         enriched["ai_rejected_adjustments"] = rejected
+        enriched["prompt_id"] = prompt_tpl.prompt_id
+        enriched["prompt_version"] = prompt_tpl.version
         enriched["decision_source"] = "ai" if applied else "ai_confirmed_rule"
         logger.info(
             "参数知识增强：material=%s adjustments=%s rejected=%d",

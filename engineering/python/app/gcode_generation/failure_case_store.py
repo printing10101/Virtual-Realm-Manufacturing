@@ -1,18 +1,23 @@
 """失败案例库（Phase 0 自进化第一性管道 · 持久层）。
 
-记录 G 代码生成任务的成败结果，沉淀「输入 → 错误输出 → 失败原因分类」
-结构化案例，供提示词/检索迭代与回归门控使用：
+记录 G 代码生成任务与 Agent 编排器 LLM 提案位的成败结果，沉淀
+「输入 → 错误输出 → 失败原因分类」结构化案例，供提示词/检索迭代
+与回归门控使用：
 
-- ``failure``：校验失败（safety_validator / unstable_features）或
-  流水线异常（pipeline_exception），保留完整 G 代码文本与错误分类；
+- ``failure``：校验失败（safety_validator / unstable_features）、
+  流水线异常（pipeline_exception）或 LLM 提案位失败
+  （llm_planning / llm_param_aug / gcode_repair / nl2cad_extract，
+  见 app/agent/failure_recorder.py 的口径约定），保留完整输出与
+  错误分类；
 - ``success``：一次通过 GENERATED 的运行，仅记计数要素（不存 G 代码，
   控制库体积；成功案例进 RAG 工艺库是另一条管道，见阶段规划 M4）。
 
 统计口径（M3 基线报表）：
 - ``one_pass_rate``：success / (success + failure)，即「一次通过率」；
-  同一 task 重跑计为多次运行。
+  同一 task 重跑计为多次运行。gcode 管线与编排器两条入口成败成对
+  入册，口径合并统计；按 source 的失败分布见 ``by_source``。
 - ``by_code``：按 error_code 聚合的失败分布（L1-L6 安全门禁码、
-  UNSTABLE_FEATURES、异常类名）。
+  UNSTABLE_FEATURES、LLM_INVALID_OUTPUT、异常类名）。
 
 存储约定：SQLite（WAL），默认 ``python/data/failure_cases.db``，
 环境变量 ``FAILURE_CASES_DB`` 覆盖（与 llm_providers.db 约定一致）。
@@ -43,9 +48,20 @@ __all__ = [
     "reset_failure_case_store",
 ]
 
-# 合法 outcome / source 值（校验用）
+# 合法 outcome / source 值（校验用）。
+# llm_* / nl2cad_* 五类为自进化 M0 新增的 LLM 提案位失败来源
+# （写入方与口径约定见 app/agent/failure_recorder.py）。
 VALID_OUTCOMES = ("failure", "success")
-VALID_SOURCES = ("safety_validator", "unstable_features", "pipeline_exception", "")
+VALID_SOURCES = (
+    "safety_validator",
+    "unstable_features",
+    "pipeline_exception",
+    "llm_planning",
+    "llm_param_aug",
+    "gcode_repair",
+    "nl2cad_extract",
+    "",
+)
 
 
 def generate_case_id() -> str:
@@ -161,14 +177,8 @@ class FailureCaseStore:
                         created_at REAL NOT NULL DEFAULT 0
                     )
                 """)
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_failure_cases_outcome "
-                    "ON failure_cases(outcome)"
-                )
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_failure_cases_created "
-                    "ON failure_cases(created_at)"
-                )
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_failure_cases_outcome ON failure_cases(outcome)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_failure_cases_created ON failure_cases(created_at)")
                 conn.commit()
             finally:
                 conn.close()
@@ -255,9 +265,7 @@ class FailureCaseStore:
         conn = self._get_conn()
         try:
             total = conn.execute("SELECT COUNT(*) FROM failure_cases").fetchone()[0]
-            failures = conn.execute(
-                "SELECT COUNT(*) FROM failure_cases WHERE outcome = 'failure'"
-            ).fetchone()[0]
+            failures = conn.execute("SELECT COUNT(*) FROM failure_cases WHERE outcome = 'failure'").fetchone()[0]
             successes = total - failures
 
             by_source = {
@@ -271,9 +279,7 @@ class FailureCaseStore:
             # error_codes 是 JSON 数组，展开聚合（SQLite 无 JSON_TABLE 时的
             # 兼容做法：取出后在 Python 侧聚合；案例量级 ~千级，可接受）
             by_code: dict[str, int] = {}
-            for row in conn.execute(
-                "SELECT error_codes FROM failure_cases WHERE outcome = 'failure'"
-            ).fetchall():
+            for row in conn.execute("SELECT error_codes FROM failure_cases WHERE outcome = 'failure'").fetchall():
                 try:
                     codes = json.loads(row["error_codes"])
                 except (json.JSONDecodeError, TypeError):
