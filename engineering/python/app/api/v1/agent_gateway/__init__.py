@@ -27,6 +27,7 @@ from app.api.v1.agent_gateway import (
     gcode_jobs,
     inference,
     process_planning_api,
+    runtime_api,
     sse_stream,
     training,
 )
@@ -42,6 +43,7 @@ router.include_router(cam.router)
 router.include_router(gcode_jobs.router)
 router.include_router(dxf.router)
 router.include_router(process_planning_api.router)
+router.include_router(runtime_api.router)
 
 
 __all__ = ["router"]
