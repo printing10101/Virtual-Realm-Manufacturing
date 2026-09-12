@@ -329,7 +329,7 @@ Content-Type: application/json
 | `GET` | `/api/v1/dnc/machines` | 列出已连接机床 |
 | `POST` | `/api/v1/dnc/machines` | 添加机床连接 |
 | `DELETE` | `/api/v1/dnc/machines/{machine_id}` | 移除机床连接 |
-| `GET` | `/api/v1/dnc/machines/{machine_id}/alarms` | 获取机床报警 |
+| `GET` | `/api/v1/dnc/machines/{machine_id}/alarms` | 获取机床报警（仅 MTConnect；OPC UA 未接入返回 SERVICE_UNAVAILABLE 错误体） |
 | `GET` | `/api/v1/dnc/machines/{machine_id}/status` | 获取机床状态 |
 | `POST` | `/api/v1/dnc/nc-program/send` | 发送 NC 程序到机床 |
 | `GET` | `/api/v1/dnc/status` | 获取所有机床状态 |
@@ -389,8 +389,16 @@ Content-Type: application/json
 | `GET` | `/api/v1/feature_extraction/tasks/{task_id}/result` | 获取已提取的特征列表 |
 | `POST` | `/api/v1/feature_extraction/tasks/{task_id}/review` | 工程师审核单个特征（人工介入核心端点） |
 | `POST` | `/api/v1/feature_extraction/tasks/{task_id}/run` | 异步触发特征提取执行 |
+| `POST` | `/api/v1/evolution/loop/run` | 手动触发一次演化循环（统计→提示词补丁提案→报告；提案制不自动发布，需 governance:write） |
+| `GET` | `/api/v1/evolution/proposals` | 列出提示词候选/应用版本记录（proposed/applied/rejected/rolled_back） |
+| `POST` | `/api/v1/evolution/proposals/{prompt_id}/{version}/promote` | 候选版本门控发布：热更新上线 → replay 回归门控 → FAIL 自动回滚 |
+| `POST` | `/api/v1/evolution/proposals/{prompt_id}/{version}/reject` | 拒绝提案（候选不进线上注册表，仅留痕） |
+| `POST` | `/api/v1/evolution/proposals/{prompt_id}/{version}/rollback` | 回滚已应用的提示词版本（线上立即回到剩余最高版本） |
+| `GET` | `/api/v1/evolution/reports` | 最近一份进化报告内容与报告文件列表 |
+| `GET` | `/api/v1/evolution/stats` | 失败案例库统计、失败 TOP 类别与提示词版本总览 |
 | `GET` | `/api/v1/flywheel/definitions` | 获取指标定义说明 |
 | `GET` | `/api/v1/flywheel/deployments` | 获取模型热更新部署记录 |
+| `POST` | `/api/v1/flywheel/feedback` | 提交用户反馈到飞轮反馈数据集（annotation/adoption/correction；自进化 M0 反馈回流入口，需 dataset:write） |
 | `GET` | `/api/v1/flywheel/metrics` | 获取飞轮指标详情（含历史数据） |
 | `GET` | `/api/v1/flywheel/report/weekly` | 生成每周飞轮报告 |
 | `GET` | `/api/v1/flywheel/status` | 获取飞轮当前状态 |
@@ -633,7 +641,7 @@ Content-Type: application/json
 | `GET` | `/api/v1/resource-cards/models/{model_id}/metrics` | 获取模型指标历史（追加式记录列表）. |
 | `POST` | `/api/v1/resource-cards/models/{model_id}/metrics` | 追加一条指标记录到模型历史（同时更新当前指标快照）. |
 | `POST` | `/api/v1/rl-agent/act` | 执行 RL 决策（不走工作流，直接调用服务层）. |
-| `POST` | `/api/v1/rl-agent/training/start` | 启动 RL 训练 Workflow. |
+| `POST` | `/api/v1/rl-agent/training/start` | 启动离线 RL 训练（PPO + 真实轨迹回放；数据缺失时拒绝）. |
 | `GET` | `/api/v1/rl-agent/training/status` | 查询当前 RL 训练状态. |
 | `POST` | `/api/v1/rl-agent/training/stop` | 停止当前 RL 训练. |
 | `GET` | `/api/v1/rl-agent/versions` | 分页列出 RL 策略版本. |
