@@ -90,6 +90,11 @@ def register_all_domain_routers(
     # 5. 治理域（skills / cost / governance / goal）
     governance.register(app)
 
+    # 5b. 自进化域（演化循环：统计/提案/门控发布，自进化 M1）
+    from app.api.routers import evolution as evolution_domain
+
+    evolution_domain.register(app)
+
     # 6. 制造域（materials / equipment / quality / production / process / documents）
     manufacturing.register(app)
 

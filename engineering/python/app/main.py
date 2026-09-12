@@ -286,6 +286,45 @@ async def startup_event():
         )
     logger.info("[startup] Plugin system step done")
 
+    # 自进化 M1：演化任务类型注册（workflow 模板 evolution_loop 依赖；
+    # 失败仅告警——演化是旁路增强，不影响主业务）。
+    logger.info("[startup] Registering evolution task handler ...")
+    try:
+        from app.evolution.task_handler import register_evolution_task_handler
+        from app.evolution.workflow_adapter import EvolutionLoopHandler
+
+        if not register_evolution_task_handler(EvolutionLoopHandler()):
+            logger.warning("[startup] evolution_loop 任务类型注册未成功，演化 workflow 模板不可用")
+    except Exception as evo_err:
+        logger.error("[startup] 演化任务处理器注册失败（演化 workflow 模板不可用）: %s", evo_err, exc_info=True)
+    logger.info("[startup] Evolution task handler step done")
+
+    # 自进化 M1：心跳调度器启动（env LNN_HEARTBEAT_ENABLED，默认关；
+    # 触发回调按 task_type 分发：演化任务走演化执行，其余回落既有引擎）。
+    # 与 shutdown_event 的 get_scheduler().stop() 对称。
+    if os.getenv("LNN_HEARTBEAT_ENABLED", "0").strip().lower() in ("1", "true", "yes", "on"):
+        logger.info("[startup] Starting HeartbeatScheduler ...")
+        try:
+            from app.dependencies import get_scheduler
+            from app.evolution.task_handler import (
+                heartbeat_trigger_callback,
+                register_evolution_cron_task,
+            )
+
+            scheduler = get_scheduler()
+            scheduler.set_task_trigger_callback(heartbeat_trigger_callback)
+            await scheduler.start()
+            register_evolution_cron_task()
+            logger.info("[startup] HeartbeatScheduler started (interval=%ss)", scheduler.heartbeat_interval)
+        except Exception as hb_err:
+            logger.error(
+                "[startup] HeartbeatScheduler 启动失败（心跳调度与演化定时不可用）: %s",
+                hb_err,
+                exc_info=True,
+            )
+    else:
+        logger.info("[startup] HeartbeatScheduler 未启用（LNN_HEARTBEAT_ENABLED != 1）")
+
     # Agent 状态持久化（/agents 端点依赖）
     # 修复：set_persistence_manager 此前全仓库无调用点，导致 agent_state API
     # 一律返回 503 "State persistence not initialized"。现于启动时创建

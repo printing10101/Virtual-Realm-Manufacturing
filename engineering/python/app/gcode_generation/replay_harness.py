@@ -169,9 +169,7 @@ def _drill_op(
     geometry: dict[str, Any],
 ) -> dict[str, Any]:
     """构造钻孔工序（machining_method 含「钻」触发生成器钻孔分支）。"""
-    op = _mill_op(
-        seq, feature_name, tool_type, tool_diameter, geometry, method="钻孔", name="钻孔"
-    )
+    op = _mill_op(seq, feature_name, tool_type, tool_diameter, geometry, method="钻孔", name="钻孔")
     op["tolerance_grade"] = "IT9"
     return op
 
@@ -238,7 +236,10 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             ],
             [
                 _mill_op(
-                    1, "plane_top", "endmill_d50", 50.0,
+                    1,
+                    "plane_top",
+                    "endmill_d50",
+                    50.0,
                     {"x": 0.0, "y": 0.0, "z_depth": 1.0, "length": 100.0, "width": 80.0},
                 ),
                 _drill_op(2, "hole_d10", "drill_d10", 10.0, {"x": 30.0, "y": 30.0, "z_depth": 12.0}),
@@ -257,7 +258,10 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             ],
             [
                 _mill_op(
-                    1, "plane_top", "endmill_d50", 50.0,
+                    1,
+                    "plane_top",
+                    "endmill_d50",
+                    50.0,
                     {"x": 0.0, "y": 0.0, "z_depth": 1.0, "length": 100.0, "width": 80.0},
                 ),
                 _drill_op(2, "hole_d20", "drill_d20", 20.0, {"x": 50.0, "y": 50.0, "z_depth": 22.0}),
@@ -273,7 +277,10 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             [_stable_feature("plane_top", "plane", "steel_45", 1800.0, 1.0, 5.0)],
             [
                 _mill_op(
-                    1, "plane_top", "endmill_d50", 50.0,
+                    1,
+                    "plane_top",
+                    "endmill_d50",
+                    50.0,
                     {"x": 0.0, "y": 0.0, "z_depth": 1.0, "length": 100.0, "width": 80.0},
                 )
             ],
@@ -289,7 +296,10 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             [_stable_feature("plane_top", "plane", "aluminum_6061", 3000.0, 1.2, 6.0)],
             [
                 _mill_op(
-                    1, "plane_top", "endmill_d50", 50.0,
+                    1,
+                    "plane_top",
+                    "endmill_d50",
+                    50.0,
                     {"x": 0.0, "y": 0.0, "z_depth": 1.2, "length": 120.0, "width": 90.0},
                 )
             ],
@@ -310,9 +320,13 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             [_stable_feature("cyl_od", "cylinder", "steel_45", 1600.0, 1.5, 5.0)],
             [
                 _mill_op(
-                    1, "cyl_od", "endmill_d20", 20.0,
+                    1,
+                    "cyl_od",
+                    "endmill_d20",
+                    20.0,
                     {"x": 0.0, "y": 0.0, "z_depth": 1.5, "length": 80.0, "width": 80.0},
-                    method="外圆铣削", name="外圆铣",
+                    method="外圆铣削",
+                    name="外圆铣",
                 )
             ],
         )
@@ -324,7 +338,10 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             [_stable_feature("plane_top", "plane", "titanium_ti6al4v", 800.0, 0.5, 3.0, 0.8)],
             [
                 _mill_op(
-                    1, "plane_top", "endmill_d40", 40.0,
+                    1,
+                    "plane_top",
+                    "endmill_d40",
+                    40.0,
                     {"x": 0.0, "y": 0.0, "z_depth": 0.5, "length": 60.0, "width": 60.0},
                 )
             ],
@@ -340,7 +357,10 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             ],
             [
                 _mill_op(
-                    1, "plane_top", "endmill_d50", 50.0,
+                    1,
+                    "plane_top",
+                    "endmill_d50",
+                    50.0,
                     {"x": 0.0, "y": 0.0, "z_depth": 1.5, "length": 110.0, "width": 85.0},
                 ),
                 _drill_op(2, "hole_d12", "drill_d12", 12.0, {"x": 40.0, "y": 25.0, "z_depth": 15.0}),
@@ -354,9 +374,13 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             [_stable_feature("cyl_od", "cylinder", "aluminum_6061", 2800.0, 2.0, 8.0)],
             [
                 _mill_op(
-                    1, "cyl_od", "endmill_d16", 16.0,
+                    1,
+                    "cyl_od",
+                    "endmill_d16",
+                    16.0,
                     {"x": 0.0, "y": 0.0, "z_depth": 2.0, "length": 70.0, "width": 70.0},
-                    method="外圆铣削", name="外圆铣",
+                    method="外圆铣削",
+                    name="外圆铣",
                 )
             ],
         )
@@ -368,9 +392,13 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
             [_stable_feature("boss_1", "boss", "steel_45", 1500.0, 1.0, 4.0)],
             [
                 _mill_op(
-                    1, "boss_1", "endmill_d12", 12.0,
+                    1,
+                    "boss_1",
+                    "endmill_d12",
+                    12.0,
                     {"x": 35.0, "y": 35.0, "z_depth": 1.0, "length": 30.0, "width": 30.0},
-                    method="凸台铣削", name="凸台铣",
+                    method="凸台铣削",
+                    name="凸台铣",
                 )
             ],
         )
@@ -382,8 +410,6 @@ def write_seed_input_set(target_dir: Path) -> list[ReplayCase]:
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
 
 
 # ----------------------------------------------------------------------
@@ -409,9 +435,7 @@ def run_replay(
     """
     input_dir = Path(input_dir)
     replay_db = Path(replay_db)
-    work_dir = Path(work_dir) if work_dir else Path(
-        os.path.join(os.path.expanduser("~"), ".lnn_replay_workspace")
-    )
+    work_dir = Path(work_dir) if work_dir else Path(os.path.join(os.path.expanduser("~"), ".lnn_replay_workspace"))
     work_dir.mkdir(parents=True, exist_ok=True)
 
     # 发现输入集（按目录名排序保证确定性）
@@ -473,6 +497,74 @@ def gate_from_dbs(
     base_stats = FailureCaseStore(db_path=Path(baseline_db)).stats()
     cur_stats = FailureCaseStore(db_path=Path(candidate_db)).stats()
     return evaluate_regression(base_stats, cur_stats, thresholds)
+
+
+def gate_replay_for_evolution(work_root: Path | None = None) -> dict[str, Any]:
+    """自进化 M1 演化门控：种子输入集重放 + 与持久化基线对比。
+
+    机制说明（诚实边界，与模块 docstring 一致）：当前生成链路为模板化
+    生成，提示词候选尚未接入重放路径——本门控当前验证的是机制贯通与
+    基线样本积累：首次调用建立基线（inconclusive 放行），此后每次调用
+    与基线对比，通过后滚动更新基线。候选提示词对生成质量的真实影响
+    待统一 AgentRuntime（M2）接线后由同一门控度量。
+
+    注意：本函数内部 ``asyncio.run`` 跑真实 pipeline，**不可在运行中的
+    事件循环里直接调用**——异步调用方（REST / 心跳回调）必须经
+    ``asyncio.to_thread`` 包装。
+
+    Returns:
+        GateResult.to_dict() 形态的判定字典（含 passed / inconclusive /
+        reasons / baseline_summary / current_summary）。
+    """
+    import tempfile
+
+    from app.gcode_generation.regression_gate import evaluate_regression
+
+    root = (
+        Path(work_root)
+        if work_root
+        else Path(os.environ.get("LNN_EVOLUTION_WORK_DIR") or os.path.join(tempfile.gettempdir(), "lnn_evolution_gate"))
+    )
+    input_dir = root / "seed_inputs"
+    if not any(input_dir.glob("case_*")):
+        write_seed_input_set(input_dir)
+
+    replay_db = root / "replay_cases.db"
+    replay = run_replay(input_dir, replay_db)
+    current_stats = replay["stats"]
+
+    baseline_path = root / "baseline_stats.json"
+    if not baseline_path.exists():
+        baseline_path.write_text(json.dumps(current_stats, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {
+            "passed": True,
+            "inconclusive": True,
+            "reasons": ["首次运行：已建立重放基线，无对比项，放行并继续观察。"],
+            "baseline_summary": {},
+            "current_summary": {
+                "total": current_stats.get("total", 0),
+                "one_pass_rate": current_stats.get("one_pass_rate"),
+            },
+        }
+
+    try:
+        baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("演化门控基线损坏，重建基线: %s", e)
+        baseline_path.write_text(json.dumps(current_stats, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {
+            "passed": True,
+            "inconclusive": True,
+            "reasons": [f"基线损坏已重建（{type(e).__name__}），本轮无对比项，放行。"],
+            "baseline_summary": {},
+            "current_summary": {},
+        }
+
+    gate = evaluate_regression(baseline, current_stats)
+    if gate.passed and not gate.inconclusive:
+        # 通过后滚动更新基线（以本轮重放为新基线）
+        baseline_path.write_text(json.dumps(current_stats, ensure_ascii=False, indent=2), encoding="utf-8")
+    return gate.to_dict()
 
 
 # ----------------------------------------------------------------------
