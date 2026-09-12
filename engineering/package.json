@@ -81,7 +81,7 @@
       "ruff format"
     ],
     "src-tauri/**/*.rs": [
-      "cargo fmt --"
+      "cargo fmt --manifest-path src-tauri/Cargo.toml --"
     ]
   },
   "directories": {
