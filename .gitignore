@@ -523,9 +523,11 @@ research/datasets/uniwear/uniwear/phm2010_bundle_high_resolution.csv
 # 会话/本地工具产物
 /.mimosa/
 /conversation_modes/
-# research 公开数据集：按原始来源获取（延续上方"大数据集不入库"策略；
-# test_model_benchmark 缺失该文件时按 README 记录的已知遗留降级）
-research/datasets/uniwear/uniwear/uniwear.csv
+# research 公开数据集：uniwear.csv 已于 2026-09-13 入库（wear_prediction.manifest
+# 声明该文件为训练数据源，2.9MB 在库以保证数据血缘可复现——评委克隆仓库即可验证）。
+# 其余大数据集仍延续"不入库、按原始来源获取"策略。
+# !research/datasets/uniwear/uniwear/uniwear.csv
+!research/datasets/uniwear/uniwear/uniwear.csv
 
 # 模板 A/B 测试与分支的运行时状态（ab_testing.db / branches.db / branches/*.json）
 engineering/python/data/templates/
