@@ -58,10 +58,7 @@ def process_planning_run(req: ProcessPlanningRequest):
     if req.controller_type not in _VALID_CONTROLLERS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"controller_type 须为 {sorted(_VALID_CONTROLLERS)} 之一，"
-                f"当前: {req.controller_type!r}"
-            ),
+            detail=(f"controller_type 须为 {sorted(_VALID_CONTROLLERS)} 之一，当前: {req.controller_type!r}"),
         )
     # 规模护栏：防资源放大
     if len(json.dumps(req.part_description, ensure_ascii=False).encode("utf-8")) > _MAX_PART_DESC_BYTES:
@@ -97,9 +94,7 @@ def process_planning_run(req: ProcessPlanningRequest):
             program_number=req.program_number,
         )
         payload = result.to_dict()
-        payload["disclaimer"] = (
-            "生成结果仅供 CAM 软件（NX/PowerMill/PyCAM）二次校验，绝不直接接口 CNC 控制器"
-        )
+        payload["disclaimer"] = "生成结果仅供 CAM 软件（NX/PowerMill/PyCAM）二次校验，绝不直接接口 CNC 控制器"
         return success(data=payload)
     except HTTPException:
         raise

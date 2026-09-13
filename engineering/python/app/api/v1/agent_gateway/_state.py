@@ -106,10 +106,7 @@ def agent_input_roots() -> list:
     import os
     from pathlib import Path
 
-    env_roots = (
-        os.environ.get("LINGJING_AGENT_INPUT_ROOTS", "")
-        or os.environ.get("LINGJING_GCODE_INPUT_ROOTS", "")
-    )
+    env_roots = os.environ.get("LINGJING_AGENT_INPUT_ROOTS", "") or os.environ.get("LINGJING_GCODE_INPUT_ROOTS", "")
     if env_roots.strip():
         raw = [r for r in env_roots.split(os.pathsep) if r.strip()]
     else:
@@ -166,6 +163,7 @@ def resolve_agent_input_path(path: str, field: str, suffix: str):
             detail=f"{field} 文件不存在: {p}",
         )
     return p
+
 
 # Use the unified service layer — do NOT instantiate LNNModelRegistry directly
 registry_service = get_model_registry_service()

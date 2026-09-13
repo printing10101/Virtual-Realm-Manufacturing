@@ -87,9 +87,7 @@ def build_quadruples_from_success(
             continue
         quad_feature = FEATURE_TYPE_TO_QUAD_FEATURE.get(fr.feature_type)
         if quad_feature is None:
-            logger.debug(
-                "跳过未知 feature_type=%s（feature_id=%s）", fr.feature_type, fr.feature_id
-            )
+            logger.debug("跳过未知 feature_type=%s（feature_id=%s）", fr.feature_type, fr.feature_id)
             continue
         parameters: dict[str, Any] = {
             "spindle_rpm": fr.spindle_rpm,

@@ -432,9 +432,7 @@ class DxfProcessService:
                 controller_type=controller,
             )
             if not process_result.success or not process_result.gcode_result:
-                errs = "; ".join(
-                    e for s in process_result.stages for e in (s.errors or [])
-                )
+                errs = "; ".join(e for s in process_result.stages for e in (s.errors or []))
                 return StageResult(
                     name="gcode",
                     success=False,

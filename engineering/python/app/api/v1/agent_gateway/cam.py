@@ -77,9 +77,7 @@ def gcode_failure_cases(
     try:
         from app.gcode_generation.failure_case_store import get_failure_case_store
 
-        cases = get_failure_case_store().list_cases(
-            limit=limit, offset=offset, outcome=outcome, source=source
-        )
+        cases = get_failure_case_store().list_cases(limit=limit, offset=offset, outcome=outcome, source=source)
         return success(
             data={
                 "count": len(cases),

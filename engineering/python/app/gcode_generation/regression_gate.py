@@ -29,6 +29,7 @@ __all__ = [
     "evaluate_regression",
 ]
 
+
 @dataclass(frozen=True)
 class GateThresholds:
     """回归门控阈值。"""
@@ -139,9 +140,7 @@ def evaluate_regression(
                 f"（降幅 {drop * 100:.2f} 个百分点，阈值 {th.one_pass_rate_min_drop * 100:.2f}）"
             )
         else:
-            reasons.append(
-                f"一次通过率 {base_rate:.4f} → {cur_rate:.4f}（未超阈值，通过）"
-            )
+            reasons.append(f"一次通过率 {base_rate:.4f} → {cur_rate:.4f}（未超阈值，通过）")
 
     # 规则 2：错误码占比恶化
     base_shares = _error_code_shares(baseline)
