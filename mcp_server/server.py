@@ -115,6 +115,7 @@ async def run_http(host: str = "127.0.0.1", port: int = 8080):
     """
     try:
         from mcp.server.fastmcp import FastMCP
+        from mcp.server.transport_security import TransportSecuritySettings
     except ImportError:
         print("Error: mcp package not installed. Run: pip install mcp", file=sys.stderr)
         sys.exit(1)
@@ -139,7 +140,18 @@ async def run_http(host: str = "127.0.0.1", port: int = 8080):
                 "token, or set LINGJING_MCP_DEV=1 only for local development." % host
             )
 
-    server = FastMCP("lingjing-mcp")
+    # 非 loopback 绑定：关闭 mcp 内建的 DNS rebinding Host 校验（它会把
+    # host.docker.internal 等网关主机名拒为 421）。真正的门是 Bearer ingress
+    # 令牌 + LNN_MCP_ALLOW_REMOTE 显式开关，二者缺一不可。
+    if is_loopback:
+        server = FastMCP("lingjing-mcp")
+    else:
+        server = FastMCP(
+            "lingjing-mcp",
+            transport_security=TransportSecuritySettings(
+                enable_dns_rebinding_protection=False
+            ),
+        )
     # 让 FastMCP 内部 settings 与实际绑定地址保持一致（供 sse_app 使用）。
     try:
         server.settings.host = host
@@ -155,6 +167,27 @@ async def run_http(host: str = "127.0.0.1", port: int = 8080):
                 "LINGJING_MCP_INGRESS_TOKEN too short "
                 f"({len(ingress_token)} chars, need >= 32)."
             )
+        # mcp 新版 sse_app 默认仅放行 localhost（DNS rebinding 防护会回 421），
+        # 远程模式放行 docker 网关主机名；Bearer ingress 鉴权仍是真正的门。
+        if host not in ("127.0.0.1", "localhost"):
+            try:
+                from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+                app = TrustedHostMiddleware(
+                    app,
+                    allowed_hosts=[
+                        "localhost",
+                        "127.0.0.1",
+                        "host.docker.internal",
+                        ".docker.internal",
+                        "*",
+                    ],
+                )
+                logger.info(
+                    "SSE host allowlist 扩展至 docker 网关（远程模式，Bearer 鉴权生效）"
+                )
+            except ImportError:
+                logger.warning("starlette TrustedHostMiddleware 不可用，跳过主机白名单调整")
         app = _IngressAuthMiddleware(app, ingress_token)
         logger.info(
             "Starting lingjing-mcp SSE on %s:%d WITH Bearer ingress auth", host, port
