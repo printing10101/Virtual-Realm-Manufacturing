@@ -54,6 +54,10 @@ class _IngressAuthMiddleware:
 
     对所有 HTTP 请求要求 ``Authorization: Bearer <token>``；校验失败返回 401。
     使用 ``hmac.compare_digest`` 比较，避免时序侧信道。
+
+    兼容性：部分 MCP 客户端（如 Nexent remote_mcp_service）把 authorization_token
+    原样写入 Authorization 头、不带 ``Bearer `` 前缀——裸 token 且值精确匹配时
+    同样放行。
     """
 
     def __init__(self, app, token: str):
@@ -70,6 +74,8 @@ class _IngressAuthMiddleware:
         provided = b""
         if auth.lower().startswith(b"bearer "):
             provided = auth[7:].strip()
+        elif auth:
+            provided = auth.strip()
         if provided and hmac.compare_digest(provided, self._token):
             await self.app(scope, receive, send)
             return
