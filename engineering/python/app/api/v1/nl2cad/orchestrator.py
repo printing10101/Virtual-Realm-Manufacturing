@@ -80,7 +80,7 @@ class NL2NCPipelineOrchestrator:
             logger.info("Stage 1: NL to CAD conversion")
             state.stage = PipelineStage.NL_TO_CAD
 
-            model_path, cad_params = await self._nl2cad_service.generate_model_from_nl(
+            model_path, cad_params, _script, _parameters = await self._nl2cad_service.generate_model_from_nl(
                 description=description,
                 output_format="stl",
             )

@@ -542,6 +542,7 @@ Content-Type: application/json
 | `POST` | `/api/v1/nl2cad/generate-nc` | 根据工艺规划生成NC代码。 |
 | `POST` | `/api/v1/nl2cad/process-planning` | 根据CAD参数生成工艺规划。 |
 | `POST` | `/api/v1/nl2cad/refine` | 根据用户指令微调3D模型。 |
+| `POST` | `/api/v1/nl2cad/regenerate-params` | 按参数覆写重新执行 CadQuery 脚本生成模型（不调用 LLM，支撑前端滑杆调参）。 |
 | `GET` | `/api/v1/notifications` | 聚合顶栏通知：进行中/失败任务 + 未处理告警 + 低库存物料 + 待处理质量异常。 |
 | `GET` | `/api/v1/parametric_geometry/precision_info` | 查询当前精度档位信息与工业硬门槛（不创建任务）。 |
 | `GET` | `/api/v1/parametric_geometry/tasks` | 列出最近任务 |

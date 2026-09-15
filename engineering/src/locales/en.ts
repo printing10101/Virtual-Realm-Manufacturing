@@ -2542,6 +2542,9 @@ export default {
     msgModelFirst: "Please generate a 3D model before starting simulation",
     msgViewReset: "Model view reset",
     msgComplete: "Process complete!",
+    sliderTitle: "Parameters",
+    sliderRegenerating: "Rebuilding…",
+    sliderRegenFailed: "Failed to rebuild model, please adjust and retry",
   },
   // ProductionReport.vue Production Report Page
   productionReport: {

@@ -2,6 +2,7 @@
 
 补上 Phase 1a 缺失的「LLM 生成路径」：
 自然语言 → LLM 生成 CadQuery 脚本 → AST 安全审计 → 执行导出 → B-rep 拓扑校验
+→ 视觉回看校验（可选，渲染三视图交 VLM 对照描述判定）
 → 校验失败时把错误反馈给 LLM 重新生成（Pointer-CAD 重生成闭环），
 最多 max_attempts 次。
 
@@ -9,6 +10,10 @@
 - ``llm_call: Callable[[str], str]`` 可注入（测试用 mock；生产用 provider 适配）；
 - 未配置任何 LLM Provider 时优雅降级：抛 :class:`Nl2CadLLMNotConfigured`，
   调用方回退到既有「CV 提参 + 参数模板」路径；
+- 视觉回看是软门禁（借鉴 agent3dify Render Verifier）：env
+  ``LNN_NL2CAD_VISUAL_CHECK=1`` 开启或显式注入 ``vision_call`` 生效；
+  mismatch 在有重试预算时反馈重生成，预算耗尽时接受拓扑合法的模型并
+  在结果中如实标注；VLM 未配置/失败一律降级，不影响主流程；
 - 代码只允许使用预注入的 ``cq``/``cadquery``（复用 _CadQueryScriptValidator
   AST 审计 + _run_cadquery_script 沙箱执行）。
 """
@@ -18,7 +23,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from collections.abc import Awaitable, Callable
 
@@ -27,6 +32,15 @@ from app.cad.cadquery_gen import (
     CadQueryError,
     CadQueryGenerator,
     CadQueryScriptError,
+)
+from app.cad.parametric_model import extract_parameters
+from app.cad.visual_verify import (
+    VisualCheckResult,
+    VisualCheckStatus,
+    VisionCall,
+    get_default_vision_call,
+    is_visual_check_enabled,
+    run_visual_check,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,8 +56,10 @@ _SYSTEM_PROMPT = (
     "`.cone(h, r1, r2)` 等基础体素，可用 `.translate((x,y,z))`、`.cut()`、`.chamfer()`、"
     "`.fillet()` 组合特征；\n"
     "3. 尺寸必须为有限正数（单位 mm），禁止 0 或负数；\n"
-    "4. 脚本最后必须把最终模型赋值给变量 `result`；\n"
-    "5. 只输出纯 Python 代码，不要 markdown 代码块标记、不要注释解释。"
+    "4. 关键尺寸先在顶层赋值给命名变量再使用（如 `length = 50.0`），便于用户后续"
+    "直接调参——模型几何通过这些变量驱动；\n"
+    "5. 脚本最后必须把最终模型赋值给变量 `result`；\n"
+    "6. 只输出纯 Python 代码，不要 markdown 代码块标记、不要注释解释。"
 )
 
 _USER_TEMPLATE = "生成以下零件的 CadQuery 脚本：\n{description}\n请只输出 Python 代码。"
@@ -66,6 +82,10 @@ class Nl2CadLLMResult:
     attempts: int
     validation_report: BrepValidationReport | None
     feedback_used: list[str] = None  # type: ignore[assignment]
+    # 视觉回看结论（未启用/未执行时为 None；mismatch 见 status 与 issues）
+    visual_check: VisualCheckResult | None = None
+    # 可调参数表（顶层命名尺寸变量；脚本内联字面量时为空——前端不展示滑杆）
+    parameters: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.feedback_used is None:
@@ -149,8 +169,9 @@ async def generate_cadquery_script(
     max_attempts: int = 3,
     output_format: str = "step",
     task_id: str | None = None,
+    vision_call: VisionCall | None = None,
 ) -> Nl2CadLLMResult:
-    """自然语言 → CadQuery 脚本 → 执行导出 → B-rep 校验 → 失败重生成。
+    """自然语言 → CadQuery 脚本 → 执行导出 → B-rep 校验 → （可选）视觉回看 → 失败重生成。
 
     Args:
         natural_language: 零件描述（中文自然语言）。
@@ -158,9 +179,11 @@ async def generate_cadquery_script(
         max_attempts: 最大生成尝试次数（含首次）。
         output_format: 导出格式（step 可全量 B-rep 校验）。
         task_id: 任务 ID（缺省自动生成）。
+        vision_call: 视觉回看调用（注入即生效；缺省时读
+            env ``LNN_NL2CAD_VISUAL_CHECK``，开启则取注册表中的视觉 Provider）。
 
     Returns:
-        Nl2CadLLMResult（script/output_path/attempts/校验报告/反馈记录）。
+        Nl2CadLLMResult（script/output_path/attempts/校验报告/反馈记录/视觉结论）。
 
     Raises:
         Nl2CadLLMNotConfigured: 未配置 Provider 且未注入 llm_call。
@@ -174,10 +197,19 @@ async def generate_cadquery_script(
     if llm_call is None:
         llm_call = _get_default_llm_call()
 
+    # 视觉回看：显式注入 > env 开关；未启用或 VLM 未配置时安静跳过
+    active_vision_call: VisionCall | None = vision_call
+    if active_vision_call is None and is_visual_check_enabled():
+        try:
+            active_vision_call = get_default_vision_call()
+        except Exception as e:  # noqa: BLE001 - 视觉 Provider 不可用不阻断生成
+            logger.info("视觉回看未启用（无可用视觉 Provider）: %s", e)
+
     generator = CadQueryGenerator()
     tid = task_id or f"nl2cad_{uuid.uuid4().hex[:8]}"
     feedback_used: list[str] = []
     last_report: BrepValidationReport | None = None
+    last_visual: VisualCheckResult | None = None
 
     for attempt in range(1, max_attempts + 1):
         prompt = build_user_prompt(natural_language, feedback=feedback_used[-1] if feedback_used else None)
@@ -213,6 +245,23 @@ async def generate_cadquery_script(
             logger.warning("NL2CAD 第 %d 次校验失败: %s", attempt, last_report.error_codes)
             continue
 
+        # 4. 视觉回看（软门禁）：mismatch 且有重试预算 → 反馈重生成；
+        #    预算耗尽时接受拓扑合法的模型，结论随结果如实带出
+        if active_vision_call is not None:
+            last_visual = await run_visual_check(natural_language, output_path, active_vision_call)
+            if last_visual.status == VisualCheckStatus.MISMATCH and attempt < max_attempts:
+                feedback = "视觉回看发现模型与描述不一致: " + "; ".join(last_visual.issues)
+                feedback_used.append(feedback)
+                logger.warning("NL2CAD 第 %d 次视觉校验不一致: %s", attempt, last_visual.issues)
+                continue
+            if last_visual.status != VisualCheckStatus.PASSED:
+                logger.warning(
+                    "NL2CAD 第 %d 次视觉校验未通过但接受模型（%s）: %s",
+                    attempt,
+                    last_visual.status.value,
+                    last_visual.summary,
+                )
+
         logger.info("NL2CAD 第 %d 次生成成功: %s", attempt, output_path)
         return Nl2CadLLMResult(
             script=script,
@@ -220,6 +269,8 @@ async def generate_cadquery_script(
             attempts=attempt,
             validation_report=last_report,
             feedback_used=feedback_used,
+            visual_check=last_visual,
+            parameters=extract_parameters(script),
         )
 
     raise Nl2CadLLMError(
@@ -244,6 +295,7 @@ def generate_from_nl_sync(
     max_attempts: int = 3,
     output_format: str = "step",
     task_id: str | None = None,
+    vision_call: VisionCall | None = None,
 ) -> Nl2CadLLMResult:
     """同步包装：无事件循环环境下调用 generate_cadquery_script。"""
     import asyncio
@@ -255,6 +307,7 @@ def generate_from_nl_sync(
             max_attempts=max_attempts,
             output_format=output_format,
             task_id=task_id,
+            vision_call=vision_call,
         )
     )
 

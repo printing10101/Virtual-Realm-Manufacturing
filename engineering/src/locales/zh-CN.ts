@@ -2493,6 +2493,9 @@ export default {
     msgModelFirst: "请先生成 3D 模型再启动仿真",
     msgViewReset: "模型视图已重置",
     msgComplete: "流程完成！",
+    sliderTitle: "参数调节",
+    sliderRegenerating: "重算中…",
+    sliderRegenFailed: "参数重算失败，请调整后重试",
   },
   // ProductionReport.vue 生产报表页面
   productionReport: {

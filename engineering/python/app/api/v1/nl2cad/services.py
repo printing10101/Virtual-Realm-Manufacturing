@@ -17,6 +17,7 @@ from app.api.v1.nl2cad.prompts import (
     REFINEMENT_PROMPT,
 )
 from app.cad.cadquery_gen import CadQueryGenerator
+from app.cad.parametric_model import extract_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +348,7 @@ class NL2CADService:
         self,
         description: str,
         output_format: str = "stl",
-    ) -> tuple[str, dict[str, Any]]:
+    ) -> tuple[str, dict[str, Any], str, dict[str, float]]:
         """Generate 3D model from natural language description.
 
         Args:
@@ -355,7 +356,11 @@ class NL2CADService:
             output_format: Output file format (stl, step, obj, gltf)
 
         Returns:
-            Tuple of (model_path, extracted_params)
+            Tuple of (model_path, extracted_params, parametric_script,
+            script_parameters)。script 是与本次模型等价的参数化模板
+            （顶层命名尺寸变量），parameters 是其可调参数表——前端渲染
+            滑杆后经 POST /regenerate-params 免 LLM 调参。带 features
+            时两者为空（模板无法表达特征，前端不展示滑杆）。
         """
         params = await self.extract_params_from_nl(description)
 
@@ -365,7 +370,17 @@ class NL2CADService:
             output_format=output_format,
         )
 
-        return model_path, params
+        # 等价参数化模板仅对纯基础形状成立：模板脚本只含 box/sphere/
+        # cylinder/cone 的构造调用，无法表达 features（chamfer/fillet/step/
+        # slot）——带特征时返回空 script 让前端不展示滑杆（诚实降级），
+        # 否则滑杆重执行会静默丢失特征。脚本执行经沙箱 + B-rep 校验。
+        script = ""
+        parameters: dict[str, float] = {}
+        if not (params.get("features") or []):
+            script = await self._cad_generator.generate_script_from_params(params)
+            parameters = extract_parameters(script)
+
+        return model_path, params, script, parameters
 
     async def refine_model(
         self,

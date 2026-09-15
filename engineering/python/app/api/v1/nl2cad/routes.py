@@ -77,6 +77,14 @@ class NL2CADResponse(BaseModel):
     model_path: str = Field(..., description="生成的模型文件路径")
     params: dict[str, Any] = Field(..., description="提取的CAD参数")
     confidence: float = Field(..., description="参数提取置信度", ge=0.0, le=1.0)
+    script: str = Field(
+        default="",
+        description="等价参数化 CadQuery 模板脚本（顶层命名尺寸变量），供滑杆调参重执行",
+    )
+    parameters: dict[str, float] = Field(
+        default_factory=dict,
+        description="脚本可调参数表（参数名 → 当前值 mm）；为空表示脚本不可参数化",
+    )
 
 
 class RefineRequest(BaseModel):
@@ -105,6 +113,30 @@ class ExtractParamsResponse(BaseModel):
 
     params: dict[str, Any] = Field(..., description="提取的CAD参数")
     confidence: float = Field(..., description="置信度", ge=0.0, le=1.0)
+
+
+class RegenerateParamsRequest(BaseModel):
+    """Request model for parameter-driven regeneration (no LLM)."""
+
+    script: str = Field(
+        ..., description="此前生成的 CadQuery 脚本（/generate 返回的 script）", min_length=1, max_length=50000
+    )
+    params: dict[str, float] = Field(..., description="要覆写的尺寸参数（键必须来自该脚本的参数表）")
+    output_format: str = Field(default="step", description="输出格式", pattern="^(stl|step|obj|gltf)$")
+    task_id: str | None = Field(default=None, description="任务 ID（缺省自动生成）")
+
+
+class RegenerateParamsResponse(BaseModel):
+    """Response model for parameter-driven regeneration."""
+
+    model_path: str = Field(..., description="重新生成的模型文件路径")
+    params: dict[str, float] = Field(..., description="覆写后的完整参数表")
+
+
+class RegenerateParamsError(BaseModel):
+    """Error detail for parameter-driven regeneration."""
+
+    detail: str = Field(..., description="失败原因（未知参数 / 非法值 / 执行失败）")
 
 
 class ProcessPlanningRequest(BaseModel):
@@ -170,7 +202,7 @@ async def generate_from_nl(request: Request, body: NL2CADRequest) -> NL2CADRespo
 
     try:
         service = get_nl2cad_service()
-        model_path, params = await service.generate_model_from_nl(
+        model_path, params, script, parameters = await service.generate_model_from_nl(
             description=body.description,
             output_format=body.output_format,
         )
@@ -179,6 +211,8 @@ async def generate_from_nl(request: Request, body: NL2CADRequest) -> NL2CADRespo
             model_path=model_path,
             params=params,
             confidence=params.get("confidence", 0.8),
+            script=script,
+            parameters=parameters,
         )
 
     except Exception as e:
@@ -214,6 +248,57 @@ async def refine_model(request: Request, body: RefineRequest) -> RefineResponse:
     except Exception as e:
         _handle_service_exception(e, "refine model")
         raise  # 不可达
+
+
+@router.post(
+    "/regenerate-params",
+    response_model=RegenerateParamsResponse,
+    responses={400: {"model": RegenerateParamsError}},
+)
+# 参数化直调不消耗 LLM 推理（仅重执行脚本），限额放宽到 60/minute，
+# 支撑前端滑杆拖动的连续调参节奏；仍限流防脚本重执行被滥用。
+@limiter.limit("60/minute")
+async def regenerate_with_params(request: Request, body: RegenerateParamsRequest) -> RegenerateParamsResponse:
+    """按参数覆写重新执行脚本生成模型（不调用 LLM）。
+
+    典型用法：/generate 生成成功后，前端把返回的 script 的参数表渲染为
+    滑杆；用户拖动滑杆调用本端点，亚秒级拿到新模型，零推理成本。
+
+    Raises:
+        400: 未知参数 / 非法值（非正数）/ 脚本审计或执行失败。
+        500: 模型文件写入失败（磁盘/权限等存储环境故障，非参数问题）。
+    """
+    from app.cad.parametric_model import ParameterError, regenerate_model
+    from app.cad.cadquery_gen import CadQueryError
+
+    logger.info("Received param regen request: params=%s", sorted(body.params))
+
+    try:
+        model_path, new_params = await regenerate_model(
+            script=body.script,
+            overrides=body.params,
+            task_id=body.task_id,
+            output_format=body.output_format,
+        )
+        return RegenerateParamsResponse(model_path=model_path, params=new_params)
+    except ParameterError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except OSError as e:
+        # 磁盘满 / 导出目录无权限等环境故障：归 500，避免被误报成
+        # "参数超出几何可行域"误导客户端重调
+        logger.error("Param regen I/O failure: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"模型文件写入失败（服务器存储异常）: {e}",
+        ) from e
+    except (CadQueryError, ValueError, TypeError, RuntimeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"脚本执行失败，参数可能超出几何可行域: {e}",
+        ) from e
+    except Exception as e:
+        _handle_service_exception(e, "regenerate model with params")
+        raise  # 不可达：_handle_service_exception 总是抛出 HTTPException
 
 
 @router.post("/extract-params", response_model=ExtractParamsResponse)

@@ -68,21 +68,20 @@ def _build_shape_params(
     shape_type: str,
     dimensions: dict[str, float],
 ) -> dict[str, Any]:
+    """box/sphere/cylinder 的 Workplane 方法名与参数（cone 走 _build_solid 特例）。"""
     length = dimensions.get("length", 50)
     width = dimensions.get("width", 30)
     height = dimensions.get("height", 20)
 
-    if shape_type == "box":
-        return {"method_name": "box", "method_args": [length, width, height]}
     if shape_type == "sphere":
         radius = max(length, width, height) / 2
         return {"method_name": "sphere", "method_args": [radius]}
     if shape_type == "cylinder":
         return {"method_name": "cylinder", "method_args": [height, width / 2]}
-    if shape_type == "cone":
-        return {"method_name": "cone", "method_args": [height, width, length]}
 
-    logger.warning("Unknown shape type '%s', falling back to box", shape_type)
+    # box 与未知形状（未知形状回退 box）
+    if shape_type != "box":
+        logger.warning("Unknown shape type '%s', falling back to box", shape_type)
     return {"method_name": "box", "method_args": [length, width, height]}
 
 
@@ -91,17 +90,67 @@ def _build_shape_script(
     dimensions: dict[str, float],
     position: dict[str, float],
 ) -> str:
-    params = _build_shape_params(shape_type, dimensions)
-    method_name = params["method_name"]
-    args_str = ", ".join(str(a) for a in params["method_args"])
-    return (
-        f"result = cq.Workplane('XY').{method_name}({args_str})"
+    """生成参数化模板脚本（顶层命名尺寸变量 → 构造调用）。
+
+    变量化是刻意的：``extract_parameters`` 从顶层赋值提取参数表暴露给
+    前端滑杆，用户调参后经 ``regenerate_model`` 免 LLM 重执行。每个形状
+    只暴露**真正驱动几何**的尺寸（sphere 只给 radius，不给无效的
+    length/width/height），数值语义与 ``_build_solid`` 逐一对齐。
+
+    注意：沙箱脚本只注入 ``cq``、无内建函数，因此 sphere 的 max(...)
+    在 Python 侧预计算为具体数值，cone 走 ``cq.Solid.makeCone``
+    （cadquery 2.x 的 Workplane 没有 .cone）。
+    """
+    spec = _SHAPE_SCRIPT_SPECS.get(shape_type)
+    if spec is None:
+        logger.warning("Unknown shape type '%s', falling back to box", shape_type)
+        spec = _SHAPE_SCRIPT_SPECS["box"]
+
+    lines = [f"{name} = {value}" for name, value in spec["vars"](dimensions)]
+    lines.append(
+        f"result = cq.Workplane('XY').{spec['call']}"
         f".translate(("
         f"{position.get('x', 0)}, "
         f"{position.get('y', 0)}, "
         f"{position.get('z', 0)}"
         f"))"
     )
+    return "\n".join(lines)
+
+
+# 每种形状的脚本规格：顶层变量（Python 侧计算）+ 构造调用表达式。
+# 与 _build_solid 的数值语义逐一对齐。
+_SHAPE_SCRIPT_SPECS: dict[str, dict[str, Any]] = {
+    "box": {
+        "vars": lambda d: [
+            ("length", d.get("length", 50)),
+            ("width", d.get("width", 30)),
+            ("height", d.get("height", 20)),
+        ],
+        "call": "box(length, width, height)",
+    },
+    "sphere": {
+        "vars": lambda d: [
+            ("radius", max(d.get("length", 50), d.get("width", 30), d.get("height", 20)) / 2),
+        ],
+        "call": "sphere(radius)",
+    },
+    "cylinder": {
+        "vars": lambda d: [
+            ("height", d.get("height", 20)),
+            ("radius", d.get("width", 30) / 2),
+        ],
+        "call": "cylinder(height, radius)",
+    },
+    "cone": {
+        "vars": lambda d: [
+            ("height", d.get("height", 20)),
+            ("bottom_radius", d.get("width", 30) / 2),
+            ("top_radius", d.get("length", 50) / 2),
+        ],
+        "call": "add(cq.Solid.makeCone(bottom_radius, top_radius, height))",
+    },
+}
 
 
 def _build_solid(
@@ -112,6 +161,17 @@ def _build_solid(
     px = position.get("x", 0)
     py = position.get("y", 0)
     pz = position.get("z", 0)
+
+    # cone 特例：cadquery 2.x 的 Workplane 没有 .cone（原实现 getattr 会
+    # AttributeError），改用 Solid.makeCone；数值语义与 _SHAPE_SCRIPT_SPECS
+    # 的 cone 脚本一致（底半径 width/2、顶半径 length/2）。
+    if shape_type == "cone":
+        solid = cq.Solid.makeCone(
+            dimensions.get("width", 30) / 2,
+            dimensions.get("length", 50) / 2,
+            dimensions.get("height", 20),
+        )
+        return cq.Workplane("XY").newObject([solid]).translate((px, py, pz))
 
     params = _build_shape_params(shape_type, dimensions)
     method_name = params["method_name"]
