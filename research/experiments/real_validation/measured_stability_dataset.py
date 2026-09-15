@@ -93,10 +93,32 @@ class MeasuredStabilityPointsDataset(Dataset):
         self.sources = [f"{r.get('source', '')} | {r.get('doi', '')}" for r in self._rows]
         self.materials = [r.get("material", "") for r in self._rows]
 
-        # 检查关键列是否全 NaN（缺数据会静默失真）
-        for name, arr in [("n_rpm", self.n_rpm), ("ap_mm", self.ap), ("ae_mm", self.ae)]:
+        # 检查特征列完整性（2026-09-15 修复：原检查只覆盖 3 列，导致 NaN 静默流入）
+        # 必填列：缺失直接拒绝——它们进入 7 维特征且物理模型必需
+        for name, arr in [
+            ("n_rpm", self.n_rpm),
+            ("ap_mm", self.ap),
+            ("ae_mm", self.ae),
+            ("hardness_hb", self.hardness),
+            ("tool_diameter_mm", self.diameter),
+            ("num_teeth", self.teeth),
+        ]:
             if np.isnan(arr).any():
-                raise ValueError(f"列 '{name}' 存在 NaN——实测数据缺切削参数，无法构造 7 维特征。请补齐或删除该行。")
+                raise ValueError(
+                    f"列 '{name}' 存在 NaN——它是 7 维特征的必需项，缺失会使物理模型输出 NaN。"
+                    "请补齐数据或删除对应行。"
+                )
+        # feed_mm_per_tooth：论文常不报告该值。缺失时下游必须走 Tlusty 的默认分支，
+        # 且【绝不能】把 NaN 传进物理模型（见下方 feed_arg 处理）。
+        self.feed_missing = bool(np.isnan(self.feed).any())
+        if self.feed_missing:
+            import warnings
+
+            warnings.warn(
+                "列 'feed_mm_per_tooth' 存在缺失：物理模型将使用其默认进给（0.25 mm/tooth）；"
+                "但 7 维特征的第 2 维会是 NaN——任何依赖该特征的模型需自行处理缺失值。",
+                stacklevel=2,
+            )
 
         # 7 维特征（与 config.input_dim=7 对齐）
         self.features = build_physics_features_7d(
@@ -115,15 +137,28 @@ class MeasuredStabilityPointsDataset(Dataset):
             modal_mass=tlusty_modal_mass,
             damping_ratio=tlusty_damping_ratio,
         )
+        # 2026-09-15 修复（根因）：feed 缺失时必须传 None，不能传 NaN。
+        # TlustyAnalyticalModel.compute_limiting_depth 对 feed_rate=None 会走默认分支
+        # （实测 feed_rate=None -> a_lim=13.469），而对 feed_rate=NaN 会把 NaN 传播出去
+        # （实测 -> a_lim=NaN），进而使判定式 (ap > NaN) 恒为 False，全部误判为"失稳"。
+        feed_arg = None if self.feed_missing else self.feed
         with np.errstate(all="ignore"):
             self.a_lim_physics = self._tlusty.compute_limiting_depth(
                 self.n_rpm,
                 hardness=self.hardness,
                 tool_diameter=self.diameter,
                 num_teeth=self.teeth,
-                feed_rate=self.feed,
+                feed_rate=feed_arg,
                 radial_depth=self.ae,
             ).astype(np.float32)
+        # 禁止 NaN 进入稳定性判定（fail-fast，避免"指标虚高"这类静默失真）
+        if np.isnan(self.a_lim_physics).any():
+            bad = np.where(np.isnan(self.a_lim_physics))[0].tolist()
+            raise ValueError(
+                "Tlusty 物理模型输出了 NaN（行索引 %s）——NaN 会使判定式恒为 False、"
+                "把全部样本误判为失稳并让 accuracy 虚高。请检查这些行的输入参数范围。"
+                % bad[:20]
+            )
 
     def __len__(self) -> int:
         return len(self._rows)
@@ -176,8 +211,11 @@ def evaluate_stability_classification(
     a_lim_pred = np.asarray(predict_a_lim(dataset.features), dtype=np.float32).reshape(-1)
     if len(a_lim_pred) != len(y_true):
         raise ValueError(f"predict_a_lim 返回长度 {len(a_lim_pred)} != 样本数 {len(y_true)}")
-    # 预测稳定性：试验切深 ap > 预测极限切深 预测为稳定
-    y_pred = (dataset.ap > a_lim_pred).astype(int)
+    # 2026-09-15 修复（判定方向）：物理上 a_lim 是【极限切深】——
+    # 切深 ap 低于极限切深 a_lim 才是稳定，超过则发生颤振。
+    # 原实现写作 (ap > a_lim) 并把结果标为"稳定"，方向与物理相反，
+    # 直接导致所有模型（含 Tlusty 基线）的 MCC 为负值。
+    y_pred = (dataset.ap < a_lim_pred).astype(int)
 
     metrics: Dict[str, float] = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
