@@ -280,6 +280,9 @@ class GCodeGenerationPipeline:
 
             # 2. 加载阶段 3 OperationPlan
             operation_plan = await asyncio.to_thread(load_operation_plan, task.source_operation_plan_path)
+            # 匹配刀具共识直径（mm）随任务落盘 → report.json → 阶段 7 体素仿真；
+            # 上游未携带时保持 None（阶段 7 回退配置默认并如实标注来源）
+            task.tool_diameter_mm = operation_plan.tool_diameter_mm
 
             # 3. 调用 GeneratorAdapter.adapt() 生成基础 G 代码 + 特征级结果
             # H10 修复：adapt 是同步 CPU 密集计算，转移到线程池。

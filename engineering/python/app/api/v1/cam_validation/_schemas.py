@@ -71,6 +71,18 @@ class TaskCreateRequest(BaseModel):
             "powermill / manual。CAM 软件不可用时自动降级到 manual。"
         ),
     )
+    tool_diameter_mm: float | None = Field(
+        default=None,
+        description=(
+            "实际装刀直径 (mm，可选)。提供时体素材料去除仿真基于该直径执行"
+            "（tool_source=actual）；缺省回退配置默认值并向任务写警告，"
+            "提示工程师对照刀具表确认。"
+        ),
+    )
+    tool_type: str = Field(
+        default="",
+        description="实际刀具类型（可选，如 end_mill / ball_end_mill），随体素仿真报告落盘。",
+    )
 
 
 class TaskCreateResponse(BaseModel):

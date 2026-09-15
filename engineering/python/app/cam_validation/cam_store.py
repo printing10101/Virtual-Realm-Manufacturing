@@ -336,6 +336,13 @@ class CamValidationTask:
     voxel_check_passed: bool | None = None
     voxel_collision_count: int = 0
     voxel_engine: str = ""
+    # 体素仿真所用刀具参数及其来源（actual=任务提供 / report=阶段6携带 /
+    # config_default=配置默认——默认值与实际装刀可能不符，需工程师确认）
+    voxel_tool_diameter_mm: float = 0.0
+    voxel_tool_source: str = ""
+    # 实际装刀参数（可选，创建任务时由工程师/刀具表显式提供）
+    tool_diameter_mm: float | None = None
+    tool_type: str = ""
     # 程序级运动学校验（行程/主轴/进给/快移扎刀/装刀；None = 未执行/旧任务）
     kinematics_check_passed: bool | None = None
     kinematics_error_count: int = 0
@@ -378,6 +385,10 @@ class CamValidationTask:
             "voxel_check_passed": self.voxel_check_passed,
             "voxel_collision_count": self.voxel_collision_count,
             "voxel_engine": self.voxel_engine,
+            "voxel_tool_diameter_mm": self.voxel_tool_diameter_mm,
+            "voxel_tool_source": self.voxel_tool_source,
+            "tool_diameter_mm": self.tool_diameter_mm,
+            "tool_type": self.tool_type,
             "kinematics_check_passed": self.kinematics_check_passed,
             "kinematics_error_count": self.kinematics_error_count,
             "cam_validation_required": self.cam_validation_required,

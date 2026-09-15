@@ -81,6 +81,10 @@ class OperationPlan:
         estimated_time_min: Total estimated machining time (minutes).
         face_change_count: Number of face changes (setup transitions).
         fixture_recommendations: Recommended fixtures for each setup.
+        tool_diameter_mm: 匹配刀具的共识直径（mm，可选）。由管线从阶段 3
+            的 MatchedTool 结果推导（全部一致取该值，混杂取最大值——
+            直径越大去除越多，对下游体素碰撞仿真越保守）；None 表示
+            上游无刀具匹配结果，随 to_dict 导出供阶段 6/7 仿真使用。
     """
 
     operations: list[Operation] = field(default_factory=list)
@@ -88,6 +92,7 @@ class OperationPlan:
     estimated_time_min: float = 0.0
     face_change_count: int = 0
     fixture_recommendations: list[FixtureRecommendation] = field(default_factory=list)
+    tool_diameter_mm: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the operation plan to a dictionary representation.
@@ -96,7 +101,7 @@ class OperationPlan:
             A dictionary containing operations, setups, estimated time,
             face change count, and fixture recommendations.
         """
-        return {
+        result: dict[str, Any] = {
             "operations": [op.to_dict() for op in self.operations],
             "setups": [
                 {
@@ -111,6 +116,9 @@ class OperationPlan:
             "face_change_count": self.face_change_count,
             "fixture_recommendations": [fr.to_dict() for fr in self.fixture_recommendations],
         }
+        if self.tool_diameter_mm is not None:
+            result["tool_diameter_mm"] = self.tool_diameter_mm
+        return result
 
 
 class OperationSequencer:

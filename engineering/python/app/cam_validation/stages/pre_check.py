@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -72,6 +73,8 @@ class PreCheckMixin:
         safe_z: float = 80.0,
         stock_top_z: float = 50.0,
         cam_backend: str = "internal_only",
+        tool_diameter_mm: float | None = None,
+        tool_type: str = "",
     ) -> CamValidationTask:
         """创建 CAM 校验任务（PENDING）。
 
@@ -86,13 +89,17 @@ class PreCheckMixin:
             stock_top_z: 毛坯顶面 Z（mm，留空则从 report.json 读取）
             cam_backend: CAM 后端（internal_only / pycam / nx_open /
                 powermill / manual）
+            tool_diameter_mm: 实际装刀直径（mm，可选）。提供时体素仿真
+                基于该直径执行；缺省回退配置默认值并向任务写警告，
+                提示工程师确认（直径与实际装刀不符时仿真结论无效）。
+            tool_type: 实际刀具类型（可选，如 end_mill / ball_end_mill）。
 
         Returns:
             CamValidationTask（状态为 PENDING）
 
         Raises:
             CamValidationPipelineError: 输入路径为空 / cam_backend 非法 /
-                workspace 创建失败
+                tool_diameter_mm 非法（非有限正数）/ workspace 创建失败
         """
         if not source_gcode_report_path:
             raise CamValidationPipelineError("source_gcode_report_path 不能为空")
@@ -100,6 +107,14 @@ class PreCheckMixin:
             raise CamValidationPipelineError(
                 f"非法 CAM 后端：{cam_backend}，合法值：internal_only / pycam / nx_open / powermill / manual"
             )
+        # bool 是 int 子类，True 直调时会伪装成 1.0mm，显式拒绝
+        if tool_diameter_mm is not None and (
+            isinstance(tool_diameter_mm, bool)
+            or not isinstance(tool_diameter_mm, (int, float))
+            or not math.isfinite(float(tool_diameter_mm))
+            or float(tool_diameter_mm) <= 0
+        ):
+            raise CamValidationPipelineError(f"非法 tool_diameter_mm：{tool_diameter_mm}，必须是有限正数（mm）")
 
         # 确定实际使用的 cam_backend（来自 config.default_cam_backend 或入参）
         # 入参优先；若入参为 internal_only 且 config 有指定，使用 config 的值
@@ -131,6 +146,8 @@ class PreCheckMixin:
             workspace_dir=str(workspace_dir),
             started_at=time.time(),  # 创建时间（list_tasks 排序依据）
             cam_validation_required=True,  # 项目记忆硬约束：始终 True
+            tool_diameter_mm=float(tool_diameter_mm) if tool_diameter_mm is not None else None,
+            tool_type=tool_type,
         )
         self._store.add_task(task)
         logger.info(

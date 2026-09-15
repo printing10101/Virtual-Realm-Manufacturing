@@ -195,6 +195,8 @@ async def create_task(body: TaskCreateRequest) -> dict[str, Any]:
             safe_z=safe_z,
             stock_top_z=stock_top_z,
             cam_backend=body.cam_backend,
+            tool_diameter_mm=body.tool_diameter_mm,
+            tool_type=body.tool_type,
         )
     except CamValidationPipelineError as e:
         return error(

@@ -252,9 +252,12 @@ class GCodeGenerationTask:
     unstable_features: int = 0  # stable == False 的特征数
     pending_calibration: bool = False  # 是否含 HRC52 待校准材料
     prediction_method: str = ""  # 阶段 5 的预测方法（analytical / neural_network / mixed）
+    # 匹配刀具共识直径（mm，继承阶段 3 OperationPlan；None = 上游未携带，
+    # 阶段 7 体素仿真回退配置默认值并如实标注 tool_source）
+    tool_diameter_mm: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "task_id": self.task_id,
             "source_chatter_report_path": self.source_chatter_report_path,
             "source_operation_plan_path": self.source_operation_plan_path,
@@ -283,6 +286,9 @@ class GCodeGenerationTask:
             "pending_calibration": self.pending_calibration,
             "prediction_method": self.prediction_method,
         }
+        if self.tool_diameter_mm is not None:
+            result["tool_diameter_mm"] = self.tool_diameter_mm
+        return result
 
 
 def generate_task_id() -> str:

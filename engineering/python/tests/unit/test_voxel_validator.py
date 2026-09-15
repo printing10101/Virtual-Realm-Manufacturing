@@ -222,3 +222,79 @@ class TestVoxelValidatorConfigContract:
         assert cfg.voxel_tool_diameter_mm == 10.0
         assert cfg.voxel_tool_type == "flat"
         assert cfg.voxel_max_segments == 50000
+
+
+class TestVoxelValidatorToolOverride:
+    """刀具实参透传：实际装刀直径覆盖配置默认值，来源如实标注。"""
+
+    @pytest.mark.unit
+    def test_actual_tool_overrides_config(self):
+        """传入实际刀具直径/类型 → 仿真使用实参，tool_source=actual。"""
+        validator = _make_validator()
+        report = validator.validate(
+            gcode_text=SAFE_GCODE,
+            controller_type="fanuc_0i",
+            **STOCK,
+            tool_diameter_mm=8.0,
+            tool_type="ball",
+        )
+        assert report.passed is True
+        assert report.tool_diameter_mm == 8.0
+        assert report.tool_type == "ball"
+        assert report.tool_source == "actual"
+        d = report.to_dict()
+        assert d["tool_diameter_mm"] == 8.0
+        assert d["tool_source"] == "actual"
+
+    @pytest.mark.unit
+    def test_declared_report_source_passthrough(self):
+        """调用方声明来源（阶段 6 携带）→ report.tool_source 原样落盘。"""
+        validator = _make_validator()
+        report = validator.validate(
+            gcode_text=SAFE_GCODE,
+            controller_type="fanuc_0i",
+            **STOCK,
+            tool_diameter_mm=6.0,
+            tool_source="report",
+        )
+        assert report.tool_diameter_mm == 6.0
+        assert report.tool_source == "report"
+
+    @pytest.mark.unit
+    def test_default_tool_source_is_config(self):
+        """未传实参 → 回退配置默认（10mm flat），tool_source=config_default。"""
+        report = _validate(SAFE_GCODE)
+        assert report.tool_diameter_mm == 10.0
+        assert report.tool_type == "flat"
+        assert report.tool_source == "config_default"
+
+    @pytest.mark.unit
+    def test_partial_override_keeps_config_tool_type(self):
+        """只传直径不传类型 → 直径用实参，类型回退配置默认。"""
+        validator = _make_validator()
+        report = validator.validate(
+            gcode_text=SAFE_GCODE,
+            controller_type="fanuc_0i",
+            **STOCK,
+            tool_diameter_mm=6.0,
+        )
+        assert report.tool_diameter_mm == 6.0
+        assert report.tool_type == "flat"
+        assert report.tool_source == "actual"
+
+    @pytest.mark.unit
+    def test_invalid_tool_type_falls_back_with_warning(self):
+        """类型不在 ToolModel 白名单 → 回退配置默认 + 警告，直径仍用实参（不炸闸门）。"""
+        validator = _make_validator()
+        report = validator.validate(
+            gcode_text=SAFE_GCODE,
+            controller_type="fanuc_0i",
+            **STOCK,
+            tool_diameter_mm=6.0,
+            tool_type="lightsaber",
+        )
+        assert report.passed is True
+        assert report.tool_diameter_mm == 6.0
+        assert report.tool_type == "flat"
+        assert report.tool_source == "actual"
+        assert any("lightsaber" in w and "回退" in w for w in report.warnings)

@@ -73,6 +73,29 @@ class _StagesMixin:
         stage.warnings = warnings
         return stage
 
+    def _consensus_tool_diameter(self, process_plans: list[HoleProcessPlan]) -> float | None:
+        """从阶段 3 的刀具匹配结果推导共识刀具直径（mm）。
+
+        规则（宁保守不乐观）：
+        - 无任何匹配刀具 → None（下游回退配置默认值并如实标注）；
+        - 全部一致（0.01mm 容差）→ 该值；
+        - 混杂 → 取最大值：直径越大材料去除越多，对体素碰撞仿真越保守。
+
+        Returns:
+            共识直径，或 None（无可信来源）。
+        """
+        diameters = [
+            float(t.tool.diameter_mm)
+            for plan in process_plans
+            for t in plan.tools
+            if t.tool.diameter_mm and float(t.tool.diameter_mm) > 0
+        ]
+        if not diameters:
+            return None
+        if max(diameters) - min(diameters) <= 0.01:
+            return round(diameters[0], 2)
+        return round(max(diameters), 2)
+
     def _build_features(
         self,
         hole_result: HoleRecognitionResult,

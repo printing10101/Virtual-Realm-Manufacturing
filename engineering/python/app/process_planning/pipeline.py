@@ -241,6 +241,9 @@ class ProcessPlanningPipeline(_StagesMixin):
             material=material_name,
             part_type=part_type,
         )
+        # 匹配刀具共识直径随 OperationPlan 序列化导出（→ 阶段 6 report.json
+        # → 阶段 7 体素仿真），替代"仿真刀具直径只能用配置默认值"的旧口径
+        operation_plan.tool_diameter_mm = self._consensus_tool_diameter(process_plans)
 
         stage4 = PipelineStage(
             name="工序规划",

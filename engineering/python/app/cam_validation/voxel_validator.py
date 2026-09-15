@@ -30,8 +30,11 @@
 已知局限（诚实告知，不掩盖）：
     - 3-axis 语义：不做刀柄/夹具干涉检测（CollisionDetector 已覆盖
       安全 Z 违规的快速预筛）；
-    - 刀具参数来自配置默认值（阶段 6 report.json 未携带刀具直径），
-      与实际装刀不符时结论无效——工程师审核界面会展示所用刀具参数；
+    - 刀具参数三级来源（tool_source，与 software_check/task 口径一致）：
+      任务显式提供（"actual"）> 阶段 6 report.json 携带（"report"）>
+      配置默认值（"config_default"）。基于配置默认值的结论在刀具来源项
+      如实标注，工程师审核界面会展示所用刀具参数，与实际装刀不符时需
+      人工确认；
     - 5-axis 刀轨按 3-axis 投影校验，结论偏保守，5-axis 完整校验
       应通过 CamAdapter 调用 NX/PowerMill。
 """
@@ -83,6 +86,11 @@ class VoxelValidationReport:
         voxel_count: 毛坯初始体素数。
         duration_seconds: 仿真耗时。
         warnings: 非致命警告（如 G 代码无运动段、未归因碰撞）。
+        tool_diameter_mm: 本次仿真实际使用的刀具直径（mm）。
+        tool_type: 本次仿真使用的刀具类型。
+        tool_source: 刀具参数来源——"actual"（任务显式提供，来自实际装刀）/
+            "report"（阶段 6 report.json 携带）/
+            "config_default"（配置默认值，与实际装刀可能不符，结论需人工确认）。
     """
 
     passed: bool
@@ -98,6 +106,9 @@ class VoxelValidationReport:
     voxel_count: int
     duration_seconds: float
     warnings: list[str] = field(default_factory=list)
+    tool_diameter_mm: float = 0.0
+    tool_type: str = ""
+    tool_source: str = "config_default"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -114,6 +125,9 @@ class VoxelValidationReport:
             "voxel_count": self.voxel_count,
             "duration_seconds": round(self.duration_seconds, 4),
             "warnings": list(self.warnings),
+            "tool_diameter_mm": self.tool_diameter_mm,
+            "tool_type": self.tool_type,
+            "tool_source": self.tool_source,
         }
 
 
@@ -143,6 +157,9 @@ class VoxelValidator:
         stock_length: float,
         stock_width: float,
         stock_height: float,
+        tool_diameter_mm: float | None = None,
+        tool_type: str = "",
+        tool_source: str = "",
     ) -> VoxelValidationReport:
         """执行体素材料去除仿真校验。
 
@@ -155,6 +172,15 @@ class VoxelValidator:
             stock_length / stock_width / stock_height: 毛坯尺寸（mm）。
                 调用方（pipeline）固定传 _DEFAULT_STOCK_* 常量，
                 与 InternalValidator 的 StockModel 对齐。
+            tool_diameter_mm: 实际装刀直径（mm）。提供时覆盖配置默认值，
+                使仿真基于真实刀具执行（直径越大去除越多，碰撞判定越保守）；
+                缺省回退 cfg.voxel_tool_diameter_mm，调用方应通过
+                report.tool_source="config_default" 向工程师如实披露。
+            tool_type: 实际刀具类型（缺省回退 cfg.voxel_tool_type）。
+            tool_source: 刀具直径来源声明（"actual"=任务提供 /
+                "report"=阶段 6 携带），随 report.tool_source 原样落盘；
+                仅在 tool_diameter_mm 提供时生效，空串按 "actual" 处理。
+                未提供直径时一律为 "config_default"。
 
         Returns:
             VoxelValidationReport
@@ -167,6 +193,17 @@ class VoxelValidator:
         cfg = self._config
         start = time.perf_counter()
         warnings: list[str] = []
+
+        # 刀具实参覆盖：任务/报告显式提供 > 配置默认；来源由调用方声明、
+        # 随报告如实落盘（本模块不自行猜测来源，口径见模块头"已知局限"）
+        if tool_diameter_mm:
+            effective_diameter = float(tool_diameter_mm)
+            effective_tool_type = tool_type or cfg.voxel_tool_type
+            tool_source = tool_source or "actual"
+        else:
+            effective_diameter = cfg.voxel_tool_diameter_mm
+            effective_tool_type = cfg.voxel_tool_type
+            tool_source = "config_default"
 
         if safe_z <= stock_top_z:
             raise VoxelValidationError(
@@ -195,13 +232,27 @@ class VoxelValidator:
         if not segments:
             warnings.append("G 代码无运动段，体素仿真未检测到碰撞（空程序视为通过）")
 
-        # 3. 切削内核与刀具
+        # 3. 切削内核与刀具（直径/类型优先用实际装刀参数）。
+        # 刀具类型走 ToolModel 白名单校验：任务/报告携带的类型不在白名单时
+        # 回退配置默认并写警告，绝不让自由字符串炸掉强制校验层（fail-open 禁止）。
         cutter = VoxelCutter(voxel_size=cfg.voxel_size_mm)
-        tool = ToolModel(
-            diameter=cfg.voxel_tool_diameter_mm,
-            cutting_length=max(stock_height + cfg.voxel_size_mm * 4, cfg.voxel_tool_diameter_mm),
-            tool_type=cfg.voxel_tool_type,
-        )
+        try:
+            tool = ToolModel(
+                diameter=effective_diameter,
+                cutting_length=max(stock_height + cfg.voxel_size_mm * 4, effective_diameter),
+                tool_type=effective_tool_type,
+            )
+        except ValueError as e:
+            warnings.append(
+                f"体素仿真刀具类型 {effective_tool_type!r} 无效（{e}），已回退配置默认 {cfg.voxel_tool_type!r}；"
+                f"直径仍使用实际值 {effective_diameter}mm。"
+            )
+            effective_tool_type = cfg.voxel_tool_type
+            tool = ToolModel(
+                diameter=effective_diameter,
+                cutting_length=max(stock_height + cfg.voxel_size_mm * 4, effective_diameter),
+                tool_type=effective_tool_type,
+            )
 
         # 4. 合成盒状毛坯体素网格（底面 Z=0，与 StockModel 语义一致）
         voxel_size = cutter._voxel_size
@@ -284,6 +335,9 @@ class VoxelValidator:
             voxel_count=voxel_count,
             duration_seconds=time.perf_counter() - start,
             warnings=warnings,
+            tool_diameter_mm=effective_diameter,
+            tool_type=effective_tool_type,
+            tool_source=tool_source,
         )
 
         logger.info(

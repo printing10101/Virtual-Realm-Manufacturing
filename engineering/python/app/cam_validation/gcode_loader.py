@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 from dataclasses import dataclass, field
 from typing import Any
@@ -97,6 +98,9 @@ class GCodeLoadResult:
         source_operation_plan_path: 阶段 3 OperationPlan 路径（追溯用）
         reviewer: 阶段 6 审核人
         exported_at: 阶段 6 导出时间戳
+        tool_diameter_mm: 阶段 6 携带的刀具直径（mm，可选；缺省 None 表示
+            report 未携带——体素仿真将回退配置默认值并如实标注来源）
+        tool_type: 阶段 6 携带的刀具类型（可选）
         load_warnings: 加载过程中的非致命警告（如 line_range 转换异常等）
     """
 
@@ -116,6 +120,8 @@ class GCodeLoadResult:
     source_operation_plan_path: str = ""
     reviewer: str = ""
     exported_at: float = 0.0
+    tool_diameter_mm: float | None = None
+    tool_type: str = ""
     load_warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -261,6 +267,20 @@ class GCodeLoader:
         gcode_file_path = report_data["gcode_file_path"]
         gcode_text = self._load_gcode_text(gcode_file_path)
 
+        # 6.5 可选刀具参数（阶段 6 新版 report.json 携带；旧版缺省 → None，
+        # 体素仿真侧回退配置默认并标注 tool_source，工程师可见）
+        tool_diameter_mm: float | None = None
+        raw_diameter = report_data.get("tool_diameter_mm")
+        if raw_diameter is not None:
+            try:
+                parsed = float(raw_diameter)
+                if math.isfinite(parsed) and parsed > 0:
+                    tool_diameter_mm = parsed
+                else:
+                    load_warnings.append(f"阶段 6 report.json tool_diameter_mm 非法（{raw_diameter}），已忽略")
+            except (TypeError, ValueError):
+                load_warnings.append(f"阶段 6 report.json tool_diameter_mm 非法（{raw_diameter}），已忽略")
+
         # 7. 构造 GCodeLoadResult
         result = GCodeLoadResult(
             task_id=str(report_data["task_id"]),
@@ -279,6 +299,8 @@ class GCodeLoader:
             source_operation_plan_path=str(report_data.get("source_operation_plan_path", "")),
             reviewer=str(report_data.get("reviewer", "")),
             exported_at=float(report_data.get("exported_at", 0.0)),
+            tool_diameter_mm=tool_diameter_mm,
+            tool_type=str(report_data.get("tool_type", "")),
             load_warnings=load_warnings,
         )
 

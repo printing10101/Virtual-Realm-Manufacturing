@@ -59,8 +59,16 @@ M30
 """
 
 
-def _build_report(tmp_path: Path, gcode: str, feature_line_ranges: list[list[int]]) -> str:
-    """构造阶段 6 report.json + G 代码文件，返回 report 路径。"""
+def _build_report(
+    tmp_path: Path,
+    gcode: str,
+    feature_line_ranges: list[list[int]],
+    tool_diameter_mm: float | None = None,
+) -> str:
+    """构造阶段 6 report.json + G 代码文件，返回 report 路径。
+
+    tool_diameter_mm 非空时写入 report.json（模拟阶段 6 新版携带实际刀具参数）。
+    """
     gcode_path = tmp_path / "part.nc"
     gcode_path.write_text(gcode, encoding="utf-8")
     data = {
@@ -79,6 +87,8 @@ def _build_report(tmp_path: Path, gcode: str, feature_line_ranges: list[list[int
             for i, lr in enumerate(feature_line_ranges)
         ],
     }
+    if tool_diameter_mm is not None:
+        data["tool_diameter_mm"] = tool_diameter_mm
     report_path = tmp_path / "report.json"
     report_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     return str(report_path)
@@ -173,3 +183,77 @@ class TestVoxelStageInPipeline:
         assert result.status == "failed"
         store_task = pipeline._store.get_task(task.task_id)
         assert store_task.voxel_check_passed is None
+
+
+class TestToolDiameterThreading:
+    """刀具实参透传：任务提供 > report 携带 > 配置默认，来源如实落盘。"""
+
+    @pytest.mark.unit
+    def test_task_tool_diameter_overrides_and_exports(self, tmp_path: Path):
+        """任务显式提供实际刀具 → tool_source=actual，导出报告含刀具信息。"""
+        report_path = _build_report(tmp_path, SAFE_GCODE, feature_line_ranges=[[5, 5], [8, 8]])
+        pipeline = _make_pipeline(tmp_path)
+        task = pipeline.create_task(
+            source_gcode_report_path=report_path,
+            cam_backend="internal_only",
+            tool_diameter_mm=8.0,
+            tool_type="flat",
+        )
+
+        asyncio.run(pipeline.run_pipeline(task.task_id))
+
+        store_task = pipeline._store.get_task(task.task_id)
+        assert store_task.voxel_tool_diameter_mm == 8.0
+        assert store_task.voxel_tool_source == "actual"
+        # 实参来源不应触发"配置默认刀具"警告
+        assert not any("配置默认刀具直径" in w for w in store_task.warnings)
+
+        # 审核 + 确认 → cam_report.json 携带刀具来源
+        for fr in store_task.feature_validation_results:
+            pipeline.review_task(task_id=task.task_id, feature_id=fr.feature_id, review_status="confirmed")
+        pipeline.confirm_task(task_id=task.task_id, reviewer="engineer_a")
+        cam_report = json.loads(Path(store_task.cam_report_path).read_text(encoding="utf-8"))
+        assert cam_report["voxel_simulation_report"]["tool_diameter_mm"] == 8.0
+        assert cam_report["voxel_simulation_report"]["tool_source"] == "actual"
+
+    @pytest.mark.unit
+    def test_report_tool_diameter_used_when_task_omits(self, tmp_path: Path):
+        """任务未提供但 report.json 携带 → tool_source=report。"""
+        report_path = _build_report(
+            tmp_path, SAFE_GCODE, feature_line_ranges=[[5, 5], [8, 8]], tool_diameter_mm=6.0
+        )
+        pipeline = _make_pipeline(tmp_path)
+        task = pipeline.create_task(source_gcode_report_path=report_path, cam_backend="internal_only")
+
+        asyncio.run(pipeline.run_pipeline(task.task_id))
+
+        store_task = pipeline._store.get_task(task.task_id)
+        assert store_task.voxel_tool_diameter_mm == 6.0
+        assert store_task.voxel_tool_source == "report"
+        assert not any("配置默认刀具直径" in w for w in store_task.warnings)
+
+    @pytest.mark.unit
+    def test_config_default_source_warns_engineer(self, tmp_path: Path):
+        """两级都未提供 → 回退配置默认，任务警告明示需人工确认。"""
+        report_path = _build_report(tmp_path, SAFE_GCODE, feature_line_ranges=[[5, 5], [8, 8]])
+        pipeline = _make_pipeline(tmp_path)
+        task = pipeline.create_task(source_gcode_report_path=report_path, cam_backend="internal_only")
+
+        asyncio.run(pipeline.run_pipeline(task.task_id))
+
+        store_task = pipeline._store.get_task(task.task_id)
+        assert store_task.voxel_tool_source == "config_default"
+        assert store_task.voxel_tool_diameter_mm == 10.0  # CamValidationConfig 默认
+        assert any("配置默认刀具直径" in w and "确认" in w for w in store_task.warnings)
+
+    @pytest.mark.unit
+    def test_create_task_rejects_invalid_tool_diameter(self, tmp_path: Path):
+        """非法刀具直径（负数/零）→ 创建即拒绝。"""
+        report_path = _build_report(tmp_path, SAFE_GCODE, feature_line_ranges=[[5, 5]])
+        pipeline = _make_pipeline(tmp_path)
+        with pytest.raises(Exception, match="tool_diameter_mm"):
+            pipeline.create_task(
+                source_gcode_report_path=report_path,
+                cam_backend="internal_only",
+                tool_diameter_mm=-2.0,
+            )

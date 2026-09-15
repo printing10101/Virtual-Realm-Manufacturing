@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from pathlib import Path
 from typing import Any
 
@@ -163,12 +164,27 @@ def load_operation_plan(json_path: str) -> OperationPlan:
                 )
             )
 
+    # 可选刀具实参（阶段 3 新版 JSON 携带；旧版缺省 → None，
+    # 阶段 7 体素仿真回退配置默认值并如实标注 tool_source）
+    tool_diameter_mm: float | None = None
+    raw_diameter = raw.get("tool_diameter_mm")
+    if raw_diameter is not None:
+        try:
+            parsed = float(raw_diameter)
+            if math.isfinite(parsed) and parsed > 0:
+                tool_diameter_mm = parsed
+            else:
+                logger.warning("OperationPlan tool_diameter_mm 非法（%s），按未提供处理", raw_diameter)
+        except (TypeError, ValueError):
+            logger.warning("OperationPlan tool_diameter_mm 非法（%s），按未提供处理", raw_diameter)
+
     return OperationPlan(
         operations=operations,
         setups=setups,
         estimated_time_min=float(raw.get("estimated_time_min", 0.0)),
         face_change_count=int(raw.get("face_change_count", 0)),
         fixture_recommendations=[],  # generate() 不使用此字段
+        tool_diameter_mm=tool_diameter_mm,
     )
 
 

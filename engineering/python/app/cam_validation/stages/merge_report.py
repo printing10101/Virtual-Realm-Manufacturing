@@ -303,11 +303,14 @@ class MergeReportMixin:
             # CAM 软件二次校验报告
             "cam_software_report": cam_software_report_dict,
             # 体素材料去除仿真摘要（闭环强制层；passed=null 表示未执行，
-            # DNC 下发闸门对 null 按"未通过"处理）
+            # DNC 下发闸门对 null 按"未通过"处理；tool_source 标注仿真
+            # 刀具来源：actual=任务提供 / report=阶段6携带 / config_default=默认）
             "voxel_simulation_report": {
                 "passed": task.voxel_check_passed,
                 "engine": task.voxel_engine,
                 "collision_count": task.voxel_collision_count,
+                "tool_diameter_mm": task.voxel_tool_diameter_mm,
+                "tool_source": task.voxel_tool_source,
             },
             # 双层校验统计
             "total_features": task.total_features,

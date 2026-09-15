@@ -239,8 +239,21 @@ class SoftwareCheckMixin:
 
         # 4. 体素材料去除仿真校验（闭环强制层，无开关——项目记忆硬约束）
         # 检测两类致命碰撞：切削段过切毛坯底面 / 快速段在安全高度下切入材料。
+        # 刀具参数三级来源：任务显式提供（actual）> 阶段 6 report.json 携带
+        # （report）> 配置默认值（config_default）；来源随任务/报告如实落盘，
+        # 基于默认值的结论向工程师明示"与实际装刀可能不符"。
         # voxel_validator 为 None 仅出现在 cfg=None 的测试注入场景。
         if self._voxel_validator is not None:
+            if task.tool_diameter_mm is not None:
+                voxel_tool_diameter = task.tool_diameter_mm
+                voxel_tool_source = "actual"
+            elif load_result.tool_diameter_mm is not None:
+                voxel_tool_diameter = load_result.tool_diameter_mm
+                voxel_tool_source = "report"
+            else:
+                voxel_tool_diameter = None
+                voxel_tool_source = "config_default"
+
             voxel_report = self._voxel_validator.validate(
                 gcode_text=load_result.gcode_text,
                 controller_type=task.controller_type,
@@ -249,10 +262,24 @@ class SoftwareCheckMixin:
                 stock_length=_DEFAULT_STOCK_LENGTH_MM,
                 stock_width=_DEFAULT_STOCK_WIDTH_MM,
                 stock_height=stock_height,
+                tool_diameter_mm=voxel_tool_diameter,
+                tool_type=task.tool_type,
+                tool_source=voxel_tool_source,
             )
             task.voxel_check_passed = voxel_report.passed
             task.voxel_collision_count = voxel_report.collision_count
             task.voxel_engine = voxel_report.engine
+            task.voxel_tool_diameter_mm = voxel_report.tool_diameter_mm
+            # 来源以 validator 回填的 report.tool_source 为准（未提供直径时
+            # 一律 config_default），任务落盘与报告口径单一事实源
+            task.voxel_tool_source = voxel_report.tool_source
+
+            if voxel_report.tool_source == "config_default":
+                task.warnings.append(
+                    f"体素仿真使用配置默认刀具直径 {voxel_report.tool_diameter_mm}mm"
+                    f"（阶段 6 未携带且任务未提供实际装刀参数），"
+                    f"与实际装刀不符时碰撞结论无效，请工程师对照刀具表确认。"
+                )
 
             # 按特征 line_range 归因碰撞 block（口径与 InternalValidator 一致：
             # 未归因的碰撞不上挂特征，由任务级判定 + 警告兜底）
