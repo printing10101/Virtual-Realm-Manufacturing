@@ -145,6 +145,8 @@ export default {
     fetchFailed: "状态获取失败",
     // Home.vue 追加键
     pageTitle: "生产总览",
+    tabOverview: "总览",
+    tabReport: "生产报表",
     greetingOperator: "，操作员",
     rangeToday: "今日",
     rangeWeek: "本周",
@@ -2021,6 +2023,7 @@ export default {
     colActions: "操作",
     // 列表行内按钮
     btnCancel: "取消",
+    btnRerun: "重跑",
     btnDetail: "详情",
     // 详情面板
     detailTitle: "任务详情",
@@ -2033,6 +2036,7 @@ export default {
     detailDuration: "运行时长",
     detailParams: "参数",
     detailResult: "结果",
+    detailMetrics: "训练指标",
     detailError: "错误信息",
     btnCancelTask: "取消任务",
     btnClose: "关闭",
@@ -2055,6 +2059,10 @@ export default {
     statusCancelled: "已取消",
     // 消息提示
     msgTaskCancelled: "任务已取消",
+    msgCannotRerun: "该任务缺少原始参数，无法重跑",
+    msgNoNewJobId: "重跑请求已发送，但未返回新任务 ID",
+    msgNewJobStarted: "新任务已启动：{jobId}，正在前往工作台",
+    msgRerunFailed: "重跑失败",
     dialogCreateTitle: "新建任务",
     fieldName: "任务名称",
     placeholderName: "请输入任务名称",
@@ -2318,6 +2326,7 @@ export default {
     tabModels: "模型热更新",
     tabMetrics: "指标历史",
     tabLearnings: "它学会了什么",
+    tabSnapshots: "实验快照",
     // 它学会了什么（W7.2 离线反思看板）
     learningsTitle: "它这周学会了什么",
     learningsSubtitle:
@@ -2734,6 +2743,14 @@ export default {
     msgMaterialRequired: "请选择物料",
   },
   // PluginLogs.vue 插件日志页面
+  // PluginCenter.vue 插件中心（市场/管理/日志合一）
+  pluginCenter: {
+    pageTitle: "插件中心",
+    pageSubtitle: "市场安装 · 已装插件管理 · 运行日志一站式查看",
+    tabInstalled: "已安装",
+    tabMarket: "插件市场",
+    tabLogs: "运行日志",
+  },
   pluginLogs: {
     pageTitle: "插件日志",
     placeholderSelectPlugin: "选择插件",
@@ -2989,6 +3006,14 @@ export default {
     msgCannotDeleteMain: "不能删除主线分支",
     msgConfirmDelete: "确定删除此分支？",
     titleConfirmDelete: "确认删除",
+  },
+  // TemplateCenter.vue 模板中心（市场/分支/更新/详情合一）
+  templateCenter: {
+    pageTitle: "模板中心",
+    pageSubtitle: "模板市场 · 分支管理 · 更新中心一站式入口",
+    tabMarket: "模板市场",
+    tabBranches: "分支管理",
+    tabUpdates: "更新中心",
   },
   templateMarket: {
     pageTitle: "模板市场",

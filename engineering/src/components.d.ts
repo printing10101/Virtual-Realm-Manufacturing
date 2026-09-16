@@ -77,7 +77,6 @@ declare module "vue" {
     ElLink: (typeof import("element-plus/es"))["ElLink"];
     ElOption: (typeof import("element-plus/es"))["ElOption"];
     ElOptionGroup: (typeof import("element-plus/es"))["ElOptionGroup"];
-    ElPageHeader: (typeof import("element-plus/es"))["ElPageHeader"];
     ElPagination: (typeof import("element-plus/es"))["ElPagination"];
     ElPopconfirm: (typeof import("element-plus/es"))["ElPopconfirm"];
     ElProgress: (typeof import("element-plus/es"))["ElProgress"];
@@ -141,6 +140,9 @@ declare module "vue" {
     ParamEditDialog: (typeof import("./components/nl_input/ParamEditDialog.vue"))["default"];
     ParamSliderPanel: (typeof import("./components/nl2cad/ParamSliderPanel.vue"))["default"];
     PluginDetailDialog: (typeof import("./components/plugin/PluginDetailDialog.vue"))["default"];
+    PluginInstalledPanel: (typeof import("./components/plugin/PluginInstalledPanel.vue"))["default"];
+    PluginLogsPanel: (typeof import("./components/plugin/PluginLogsPanel.vue"))["default"];
+    PluginMarketPanel: (typeof import("./components/plugin/PluginMarketPanel.vue"))["default"];
     PluginStats: (typeof import("./components/plugin/PluginStats.vue"))["default"];
     PluginTable: (typeof import("./components/plugin/PluginTable.vue"))["default"];
     ProcessMessageList: (typeof import("./components/process/ProcessMessageList.vue"))["default"];
@@ -150,6 +152,7 @@ declare module "vue" {
     ProcessSettings: (typeof import("./components/settings/ProcessSettings.vue"))["default"];
     ProductionProgressTable: (typeof import("./components/home/ProductionProgressTable.vue"))["default"];
     ProductionRecordsTable: (typeof import("./components/production/ProductionRecordsTable.vue"))["default"];
+    ProductionReportPanel: (typeof import("./components/production/ProductionReportPanel.vue"))["default"];
     ProductionSummaryCards: (typeof import("./components/production/ProductionSummaryCards.vue"))["default"];
     ProductionTrendChart: (typeof import("./components/production/ProductionTrendChart.vue"))["default"];
     ProductionWorkOrdersTable: (typeof import("./components/production/ProductionWorkOrdersTable.vue"))["default"];
@@ -186,6 +189,7 @@ declare module "vue" {
     SnapshotCreateDialog: (typeof import("./components/snapshot/SnapshotCreateDialog.vue"))["default"];
     SnapshotDetailPanel: (typeof import("./components/snapshot/SnapshotDetailPanel.vue"))["default"];
     SnapshotListPanel: (typeof import("./components/snapshot/SnapshotListPanel.vue"))["default"];
+    SnapshotWorkbench: (typeof import("./components/snapshot/SnapshotWorkbench.vue"))["default"];
     SplashScreen: (typeof import("./components/SplashScreen.vue"))["default"];
     StatsCards: (typeof import("./components/base/StatsCards.vue"))["default"];
     Step1DescriptionPanel: (typeof import("./components/workflow_guide/Step1DescriptionPanel.vue"))["default"];
@@ -209,6 +213,10 @@ declare module "vue" {
     TaskDetailDialog: (typeof import("./components/task/TaskDetailDialog.vue"))["default"];
     TaskFilters: (typeof import("./components/task/TaskFilters.vue"))["default"];
     TaskWizard: (typeof import("./components/goals/TaskWizard.vue"))["default"];
+    TemplateBranchPanel: (typeof import("./components/template/TemplateBranchPanel.vue"))["default"];
+    TemplateDetailDrawer: (typeof import("./components/template/TemplateDetailDrawer.vue"))["default"];
+    TemplateMarketPanel: (typeof import("./components/template/TemplateMarketPanel.vue"))["default"];
+    TemplateUpdatePanel: (typeof import("./components/template/TemplateUpdatePanel.vue"))["default"];
     TestDialog: (typeof import("./components/settings/TestDialog.vue"))["default"];
     TimeRangeFilter: (typeof import("./components/home/TimeRangeFilter.vue"))["default"];
     ToolpathCanvas: (typeof import("./components/toolpath-editor/ToolpathCanvas.vue"))["default"];

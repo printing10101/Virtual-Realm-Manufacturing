@@ -1,33 +1,29 @@
 <template>
   <transition name="slide-panel">
-    <div
-      v-if="visible"
-      class="detail-overlay"
-      @click.self="handleClose"
-    >
+    <div v-if="visible" class="detail-overlay" @click.self="handleClose">
       <div class="detail-panel">
         <div class="detail-header">
           <h3 class="detail-title">
-            {{ t('taskBoard.detailTitle') }}
+            {{ t("taskBoard.detailTitle") }}
           </h3>
-          <el-button
-            :icon="Close"
-            text
-            @click="handleClose"
-          />
+          <el-button :icon="Close" text @click="handleClose" />
         </div>
 
         <template v-if="task">
           <div class="detail-body">
             <div class="detail-field">
-              <label class="field-label">{{ t('taskBoard.detailJobId') }}</label>
+              <label class="field-label">{{
+                t("taskBoard.detailJobId")
+              }}</label>
               <div class="field-value mono">
                 {{ task.job_id }}
               </div>
             </div>
 
             <div class="detail-field">
-              <label class="field-label">{{ t('taskBoard.detailTaskType') }}</label>
+              <label class="field-label">{{
+                t("taskBoard.detailTaskType")
+              }}</label>
               <div class="field-value">
                 {{ task.task_type }}
               </div>
@@ -35,16 +31,17 @@
 
             <div class="detail-field-row">
               <div class="detail-field">
-                <label class="field-label">{{ t('taskBoard.detailStatus') }}</label>
-                <el-tag
-                  :type="statusTagType(task.status)"
-                  effect="light"
-                >
+                <label class="field-label">{{
+                  t("taskBoard.detailStatus")
+                }}</label>
+                <el-tag :type="statusTagType(task.status)" effect="light">
                   {{ statusLabel(task.status) }}
                 </el-tag>
               </div>
               <div class="detail-field">
-                <label class="field-label">{{ t('taskBoard.detailProgress') }}</label>
+                <label class="field-label">{{
+                  t("taskBoard.detailProgress")
+                }}</label>
                 <el-progress
                   :percentage="Math.round(task.progress)"
                   :stroke-width="10"
@@ -55,57 +52,72 @@
             </div>
 
             <div class="detail-field">
-              <label class="field-label">{{ t('taskBoard.detailAssignee') }}</label>
+              <label class="field-label">{{
+                t("taskBoard.detailAssignee")
+              }}</label>
               <div class="field-value">
                 <div
                   class="avatar"
                   :style="{ backgroundColor: avatarColor(task.owner_id || '') }"
                 >
-                  {{ (task.owner_id || '?').charAt(0).toUpperCase() }}
+                  {{ (task.owner_id || "?").charAt(0).toUpperCase() }}
                 </div>
-                <span style="margin-left: 8px">{{ task.owner_id || '-' }}</span>
+                <span style="margin-left: 8px">{{ task.owner_id || "-" }}</span>
               </div>
             </div>
 
             <div class="detail-field">
-              <label class="field-label">{{ t('taskBoard.detailCreatedAt') }}</label>
+              <label class="field-label">{{
+                t("taskBoard.detailCreatedAt")
+              }}</label>
               <div class="field-value">
                 {{ formatDate(task.created_at) }}
               </div>
             </div>
 
-            <div
-              v-if="task.duration_seconds != null"
-              class="detail-field"
-            >
-              <label class="field-label">{{ t('taskBoard.detailDuration') }}</label>
+            <div v-if="task.duration_seconds != null" class="detail-field">
+              <label class="field-label">{{
+                t("taskBoard.detailDuration")
+              }}</label>
               <div class="field-value">
                 {{ formatDuration(task.duration_seconds) }}
               </div>
             </div>
 
             <div class="detail-field">
-              <label class="field-label">{{ t('taskBoard.detailParams') }}</label>
+              <label class="field-label">{{
+                t("taskBoard.detailParams")
+              }}</label>
               <div class="field-value code-block">
                 <pre>{{ JSON.stringify(task.params || {}, null, 2) }}</pre>
               </div>
             </div>
 
-            <div
-              v-if="task.result"
-              class="detail-field"
-            >
-              <label class="field-label">{{ t('taskBoard.detailResult') }}</label>
+            <div v-if="task.result" class="detail-field">
+              <label class="field-label">{{
+                t("taskBoard.detailResult")
+              }}</label>
               <div class="field-value code-block">
                 <pre>{{ JSON.stringify(task.result, null, 2) }}</pre>
               </div>
             </div>
 
             <div
-              v-if="task.error"
+              v-if="task.metrics && Object.keys(task.metrics).length > 0"
               class="detail-field"
             >
-              <label class="field-label">{{ t('taskBoard.detailError') }}</label>
+              <label class="field-label">{{
+                t("taskBoard.detailMetrics")
+              }}</label>
+              <div class="field-value code-block">
+                <pre>{{ JSON.stringify(task.metrics, null, 2) }}</pre>
+              </div>
+            </div>
+
+            <div v-if="task.error" class="detail-field">
+              <label class="field-label">{{
+                t("taskBoard.detailError")
+              }}</label>
               <div class="field-value error-text">
                 {{ task.error }}
               </div>
@@ -116,21 +128,18 @@
             <el-button
               v-if="
                 task.status === 'running' ||
-                  task.status === 'queued' ||
-                  task.status === 'pending'
+                task.status === 'queued' ||
+                task.status === 'pending'
               "
               type="danger"
               text
               size="small"
               @click="handleCancel"
             >
-              {{ t('taskBoard.btnCancelTask') }}
+              {{ t("taskBoard.btnCancelTask") }}
             </el-button>
-            <el-button
-              size="small"
-              @click="handleClose"
-            >
-              {{ t('taskBoard.btnClose') }}
+            <el-button size="small" @click="handleClose">
+              {{ t("taskBoard.btnClose") }}
             </el-button>
           </div>
         </template>
@@ -140,94 +149,94 @@
 </template>
 
 <script setup lang="ts">
-import { Close } from '@element-plus/icons-vue'
-import { useI18n } from 'vue-i18n'
-import type { TaskInfo } from '@/stores/tasks'
-import type { TagType } from '@/utils/statusHelpers'
+import { Close } from "@element-plus/icons-vue";
+import { useI18n } from "vue-i18n";
+import type { TaskInfo } from "@/stores/tasks";
+import type { TagType } from "@/utils/statusHelpers";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 const props = defineProps<{
-  visible: boolean
-  task: TaskInfo | null
-}>()
+  visible: boolean;
+  task: TaskInfo | null;
+}>();
 
 const emit = defineEmits<{
-  'update:visible': [value: boolean]
-  close: []
-  cancel: [jobId: string]
-}>()
+  "update:visible": [value: boolean];
+  close: [];
+  cancel: [jobId: string];
+}>();
 
 function handleClose() {
-  emit('update:visible', false)
-  emit('close')
+  emit("update:visible", false);
+  emit("close");
 }
 
 function handleCancel() {
   if (props.task) {
-    emit('cancel', props.task.job_id)
+    emit("cancel", props.task.job_id);
   }
-  handleClose()
+  handleClose();
 }
 
 /* ------------------------------------------------------------------ */
 /*  Helpers — status / formatting                                     */
 /* ------------------------------------------------------------------ */
-function statusLabel(status: TaskInfo['status']): string {
-  const map: Record<TaskInfo['status'], string> = {
-    pending: t('taskBoard.statusPending'),
-    queued: t('taskBoard.statusQueued'),
-    running: t('taskBoard.statusRunning'),
-    completed: t('taskBoard.statusCompleted'),
-    failed: t('taskBoard.statusFailed'),
-    cancelled: t('taskBoard.statusCancelled'),
-  }
-  return map[status] || status
+function statusLabel(status: TaskInfo["status"]): string {
+  const map: Record<TaskInfo["status"], string> = {
+    pending: t("taskBoard.statusPending"),
+    queued: t("taskBoard.statusQueued"),
+    running: t("taskBoard.statusRunning"),
+    completed: t("taskBoard.statusCompleted"),
+    failed: t("taskBoard.statusFailed"),
+    cancelled: t("taskBoard.statusCancelled"),
+  };
+  return map[status] || status;
 }
 
-function statusTagType(status: TaskInfo['status']): TagType {
-  const map: Record<TaskInfo['status'], TagType> = {
-    pending: 'info',
-    queued: 'warning',
-    running: 'primary',
-    completed: 'success',
-    failed: 'danger',
-    cancelled: 'info',
-  }
-  return map[status] || 'info'
+function statusTagType(status: TaskInfo["status"]): TagType {
+  const map: Record<TaskInfo["status"], TagType> = {
+    pending: "info",
+    queued: "warning",
+    running: "primary",
+    completed: "success",
+    failed: "danger",
+    cancelled: "info",
+  };
+  return map[status] || "info";
 }
 
 function formatDate(iso: string): string {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const h = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${y}-${m}-${day} ${h}:${min}`
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day} ${h}:${min}`;
 }
 
 function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  if (m < 60) return `${m}m ${s}s`
-  const h = Math.floor(m / 60)
-  const rm = m % 60
-  return `${h}h ${rm}m`
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return `${h}h ${rm}m`;
 }
 
 const avatarColorMap: Record<string, string> = {
-  [t('taskBoard.userZhangSan')]: 'var(--brand-500)',
-  [t('taskBoard.userLiSi')]: 'var(--success)',
-  [t('taskBoard.userWangWu')]: 'var(--warning)',
-  [t('taskBoard.userZhaoLiu')]: 'var(--purple)',
-}
+  [t("taskBoard.userZhangSan")]: "var(--brand-500)",
+  [t("taskBoard.userLiSi")]: "var(--success)",
+  [t("taskBoard.userWangWu")]: "var(--warning)",
+  [t("taskBoard.userZhaoLiu")]: "var(--purple)",
+};
 
 function avatarColor(name: string): string {
-  return avatarColorMap[name] || 'var(--text-400)'
+  return avatarColorMap[name] || "var(--text-400)";
 }
 </script>
 

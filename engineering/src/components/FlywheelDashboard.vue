@@ -87,12 +87,18 @@
       <el-tab-pane :label="t('flywheel.tabLearnings')" name="learnings">
         <FlywheelLearnings />
       </el-tab-pane>
+
+      <!-- ====== Tab 6: 实验快照（原 /snapshot-panel 独立页并入） ====== -->
+      <el-tab-pane :label="t('flywheel.tabSnapshots')" name="snapshots">
+        <SnapshotWorkbench v-if="visitedTabs.snapshots" />
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, reactive, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { Refresh } from "@element-plus/icons-vue";
 import { useFlywheelStore } from "@/stores/flywheel";
@@ -102,15 +108,34 @@ import FlywheelFeedback from "./flywheel/FlywheelFeedback.vue";
 import FlywheelModels from "./flywheel/FlywheelModels.vue";
 import FlywheelMetrics from "./flywheel/FlywheelMetrics.vue";
 import FlywheelLearnings from "./flywheel/FlywheelLearnings.vue";
+import SnapshotWorkbench from "@/components/snapshot/SnapshotWorkbench.vue";
 
 const { t } = useI18n();
 const store = useFlywheelStore();
+const route = useRoute();
 
 // 本地状态
 const activeTab = ref<
-  "overview" | "feedback" | "models" | "metrics" | "learnings"
+  "overview" | "feedback" | "models" | "metrics" | "learnings" | "snapshots"
 >("overview");
 const metricsDays = ref<number>(7);
+
+// Tab 内容首次激活才挂载（不依赖 el-tabs 的 lazy，生产与测试行为一致）
+const visitedTabs = reactive<Record<string, boolean>>({ overview: true });
+watch(activeTab, (tab) => {
+  visitedTabs[tab] = true;
+});
+
+// 深链兼容：/snapshot-panel → /flywheel-dashboard?tab=snapshots
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (route.path === "/flywheel-dashboard" && tab === "snapshots") {
+      activeTab.value = "snapshots";
+    }
+  },
+  { immediate: true },
+);
 
 // 事件处理
 async function handleRefreshAll(): Promise<void> {

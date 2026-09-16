@@ -36,10 +36,9 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      // 任务历史已并入任务中心列表视图（?view=list 直达表格视图）
       path: "/task-history",
-      name: "task-history",
-      component: () => import("../views/TaskHistory.vue"),
-      meta: { requiresAuth: true },
+      redirect: { path: "/task-board", query: { view: "list" } },
     },
     {
       path: "/rule-editor",
@@ -67,46 +66,53 @@ const router = createRouter({
       meta: { title: "代理状态监控", requiresAuth: true, requiresAdmin: true },
     },
     {
+      // 独立详情页已移除，统一走智能体管理页的内嵌详情面板
       path: "/agent-detail/:id",
-      name: "agent-detail",
-      component: () => import("../views/AgentDetail.vue"),
-      meta: { title: "代理详情", requiresAuth: true },
+      redirect: (to) => ({
+        path: "/agent-dashboard",
+        query: { agent: to.params.id },
+      }),
     },
     {
-      path: "/branch-manager",
-      name: "branch-manager",
-      component: () => import("../views/BranchManager.vue"),
-      meta: { title: "分支管理", requiresAuth: true, requiresAdmin: true },
+      // 模板中心：市场/分支管理/更新中心/详情四页合一，?template=<id> 打开详情抽屉
+      path: "/template-market",
+      name: "template-center",
+      component: () => import("../views/TemplateCenter.vue"),
+      meta: { title: "模板中心", requiresAuth: true },
     },
     {
       path: "/template-detail/:id",
-      name: "template-detail",
-      component: () => import("../views/TemplateDetail.vue"),
-      meta: { title: "模板详情", requiresAuth: true },
+      redirect: (to) => ({
+        path: "/template-market",
+        query: { template: String(to.params.id) },
+      }),
     },
     {
-      path: "/template-market",
-      name: "template-market",
-      component: () => import("../views/TemplateMarket.vue"),
-      meta: { title: "模板市场", requiresAuth: true },
+      path: "/branch-manager",
+      redirect: { path: "/template-market", query: { tab: "branches" } },
     },
     {
-      path: "/plugin-market",
-      name: "plugin-market",
-      component: () => import("../views/PluginMarket.vue"),
-      meta: { title: "插件市场", requiresAuth: true },
+      path: "/update-center",
+      redirect: { path: "/template-market", query: { tab: "updates" } },
+    },
+    {
+      // 插件中心：市场/管理/日志三页合一
+      path: "/plugins",
+      name: "plugin-center",
+      component: () => import("../views/PluginCenter.vue"),
+      meta: { title: "插件中心", requiresAuth: true },
     },
     {
       path: "/plugin-manager",
-      name: "plugin-manager",
-      component: () => import("../views/PluginManager.vue"),
-      meta: { title: "插件管理", requiresAuth: true, requiresAdmin: true },
+      redirect: { path: "/plugins" },
+    },
+    {
+      path: "/plugin-market",
+      redirect: { path: "/plugins", query: { tab: "market" } },
     },
     {
       path: "/plugin-logs",
-      name: "plugin-logs",
-      component: () => import("../views/PluginLogs.vue"),
-      meta: { title: "插件日志", requiresAuth: true, requiresAdmin: true },
+      redirect: { path: "/plugins", query: { tab: "logs" } },
     },
     {
       path: "/dialect-manager",
@@ -127,10 +133,9 @@ const router = createRouter({
       meta: { title: "工作流编排", requiresAuth: true },
     },
     {
+      // 实验快照已并入数据飞轮"实验快照"Tab
       path: "/snapshot-panel",
-      name: "snapshot-panel",
-      component: () => import("../views/SnapshotPanel.vue"),
-      meta: { title: "实验快照", requiresAuth: true },
+      redirect: { path: "/flywheel-dashboard", query: { tab: "snapshots" } },
     },
     {
       path: "/flywheel-dashboard",
@@ -181,16 +186,9 @@ const router = createRouter({
       meta: { title: "物料管理", requiresAuth: true },
     },
     {
+      // 生产报表已并入首页"生产报表"Tab
       path: "/production-report",
-      name: "production-report",
-      component: () => import("../views/ProductionReport.vue"),
-      meta: { title: "生产报表", requiresAuth: true },
-    },
-    {
-      path: "/update-center",
-      name: "update-center",
-      component: () => import("../views/UpdateCenter.vue"),
-      meta: { title: "更新中心", requiresAuth: true },
+      redirect: { path: "/", query: { tab: "report" } },
     },
     {
       path: "/nl-modeling",

@@ -130,7 +130,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
 import { useAgentStore } from "@/stores/agents";
@@ -264,14 +263,6 @@ async function handleShowDetail(agent: AgentSummary) {
   }
 }
 
-/** 在独立详情页（/agent-detail/:id）打开当前 Agent。 */
-function openDetailPage() {
-  const agentId = agentStore.currentAgent?.agent_id;
-  if (!agentId) return;
-  const router = useRouter();
-  router.push(`/agent-detail/${agentId}`);
-}
-
 /* ------------------------------------------------------------------ */
 /*  Card Actions                                                        */
 /* ------------------------------------------------------------------ */
@@ -329,10 +320,8 @@ async function handleDelete(agent: AgentSummary) {
 /* ------------------------------------------------------------------ */
 /*  Detail Dialog Actions                                               */
 /* ------------------------------------------------------------------ */
-function handleDetailAction(type: "detail-page" | "resume" | "delete") {
-  if (type === "detail-page") {
-    openDetailPage();
-  } else if (type === "resume" && agentStore.currentAgent) {
+function handleDetailAction(type: "resume" | "delete") {
+  if (type === "resume" && agentStore.currentAgent) {
     handleResume(agentStore.currentAgent);
   } else if (type === "delete" && agentStore.currentAgent) {
     handleDeleteFromDetail();

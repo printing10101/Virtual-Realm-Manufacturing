@@ -15,7 +15,9 @@
             <span>{{ agent.agent_id }}</span>
           </div>
           <div class="detail-info__row">
-            <span class="detail-info__label">{{ t('agentDashboard.labelStatus') }}</span>
+            <span class="detail-info__label">{{
+              t("agentDashboard.labelStatus")
+            }}</span>
             <el-tag
               :type="agentStore.statusTagType(agent.status)"
               size="small"
@@ -26,41 +28,56 @@
             </el-tag>
           </div>
           <div class="detail-info__row">
-            <span class="detail-info__label">{{ t('agentDashboard.detailCurrentTask') }}</span>
-            <span>{{ agent.current_task_id || t('agentDashboard.none') }}</span>
+            <span class="detail-info__label">{{
+              t("agentDashboard.detailCurrentTask")
+            }}</span>
+            <span>{{ agent.current_task_id || t("agentDashboard.none") }}</span>
           </div>
           <div class="detail-info__row">
-            <span class="detail-info__label">{{ t('agentDashboard.detailLastHeartbeat') }}</span>
+            <span class="detail-info__label">{{
+              t("agentDashboard.detailLastHeartbeat")
+            }}</span>
             <span>{{ agentStore.formatTime(agent.last_heartbeat) }}</span>
           </div>
           <div class="detail-info__row">
-            <span class="detail-info__label">{{ t('agentDashboard.detailCreatedAt') }}</span>
+            <span class="detail-info__label">{{
+              t("agentDashboard.detailCreatedAt")
+            }}</span>
             <span>{{ agentStore.formatTime(agent.created_at) }}</span>
           </div>
           <div class="detail-info__row">
-            <span class="detail-info__label">{{ t('agentDashboard.detailUpdatedAt') }}</span>
+            <span class="detail-info__label">{{
+              t("agentDashboard.detailUpdatedAt")
+            }}</span>
             <span>{{ agentStore.formatTime(agent.updated_at) }}</span>
           </div>
         </div>
 
         <!-- Session Context -->
-        <div
-          v-if="agent.session_context"
-          class="detail-config"
-        >
+        <div v-if="agent.session_context" class="detail-config">
           <h4 class="detail-config__title">
-            {{ t('agentDashboard.sectionSessionContext') }}
+            {{ t("agentDashboard.sectionSessionContext") }}
           </h4>
           <div class="detail-config__row">
-            <span class="detail-config__label">{{ t('agentDashboard.detailTaskDesc') }}</span>
-            <span>{{ agent.session_context.task_description || t('agentDashboard.none') }}</span>
+            <span class="detail-config__label">{{
+              t("agentDashboard.detailTaskDesc")
+            }}</span>
+            <span>{{
+              agent.session_context.task_description || t("agentDashboard.none")
+            }}</span>
           </div>
           <div class="detail-config__row">
-            <span class="detail-config__label">{{ t('agentDashboard.detailCurrentStage') }}</span>
-            <span>{{ agent.session_context.current_stage || t('agentDashboard.none') }}</span>
+            <span class="detail-config__label">{{
+              t("agentDashboard.detailCurrentStage")
+            }}</span>
+            <span>{{
+              agent.session_context.current_stage || t("agentDashboard.none")
+            }}</span>
           </div>
           <div class="detail-config__row">
-            <span class="detail-config__label">{{ t('agentDashboard.detailInjectedSkills') }}</span>
+            <span class="detail-config__label">{{
+              t("agentDashboard.detailInjectedSkills")
+            }}</span>
             <span>
               <el-tag
                 v-for="skill in agent.session_context.injected_skills"
@@ -71,21 +88,22 @@
               >
                 {{ skill }}
               </el-tag>
-              <span v-if="!agent.session_context.injected_skills?.length">{{ t('agentDashboard.none') }}</span>
+              <span v-if="!agent.session_context.injected_skills?.length">{{
+                t("agentDashboard.none")
+              }}</span>
             </span>
           </div>
         </div>
 
         <!-- Checkpoint Info -->
-        <div
-          v-if="agent.checkpoint"
-          class="detail-config"
-        >
+        <div v-if="agent.checkpoint" class="detail-config">
           <h4 class="detail-config__title">
-            {{ t('agentDashboard.sectionCheckpoint') }}
+            {{ t("agentDashboard.sectionCheckpoint") }}
           </h4>
           <div class="detail-config__row">
-            <span class="detail-config__label">{{ t('agentDashboard.detailCheckpointId') }}</span>
+            <span class="detail-config__label">{{
+              t("agentDashboard.detailCheckpointId")
+            }}</span>
             <span>{{ agent.checkpoint.checkpoint_id }}</span>
           </div>
           <div class="detail-config__row">
@@ -97,18 +115,19 @@
             <span>{{ agent.checkpoint.step }}</span>
           </div>
           <div class="detail-config__row">
-            <span class="detail-config__label">{{ t('agentDashboard.detailBestMetric') }}</span>
-            <span>{{ agent.checkpoint.best_metric ?? '-' }}</span>
+            <span class="detail-config__label">{{
+              t("agentDashboard.detailBestMetric")
+            }}</span>
+            <span>{{ agent.checkpoint.best_metric ?? "-" }}</span>
           </div>
         </div>
 
         <!-- Memory Entries -->
-        <div
-          v-if="agent.memory?.length"
-          class="detail-config"
-        >
+        <div v-if="agent.memory?.length" class="detail-config">
           <h4 class="detail-config__title">
-            {{ t('agentDashboard.memoryEntries', { count: agent.memory.length }) }}
+            {{
+              t("agentDashboard.memoryEntries", { count: agent.memory.length })
+            }}
           </h4>
           <div class="detail-logs">
             <div
@@ -117,16 +136,19 @@
               class="detail-log-item"
             >
               <div class="detail-log-item__header">
-                <span class="detail-log-item__time">{{ agentStore.formatTime(entry.created_at) }}</span>
-                <el-tag
-                  size="small"
-                  effect="plain"
-                >
+                <span class="detail-log-item__time">{{
+                  agentStore.formatTime(entry.created_at)
+                }}</span>
+                <el-tag size="small" effect="plain">
                   {{ entry.memory_type }}
                 </el-tag>
               </div>
               <div class="detail-log-item__text">
-                {{ entry.content.length > 120 ? entry.content.slice(0, 120) + '...' : entry.content }}
+                {{
+                  entry.content.length > 120
+                    ? entry.content.slice(0, 120) + "..."
+                    : entry.content
+                }}
               </div>
             </div>
           </div>
@@ -134,11 +156,15 @@
 
         <!-- No Detail Data Fallback -->
         <div
-          v-if="!agent.session_context && !agent.checkpoint && !agent.memory?.length"
+          v-if="
+            !agent.session_context && !agent.checkpoint && !agent.memory?.length
+          "
           class="detail-config"
         >
-          <p style="margin: 0; color: var(--text-tertiary); font-size: 0.875rem;">
-            {{ t('agentDashboard.noDetailData') }}
+          <p
+            style="margin: 0; color: var(--text-tertiary); font-size: 0.875rem"
+          >
+            {{ t("agentDashboard.noDetailData") }}
           </p>
         </div>
       </template>
@@ -146,59 +172,53 @@
 
     <template #footer>
       <el-button
-        type="primary"
-        text
-        :disabled="!agent"
-        @click="$emit('action', 'detail-page')"
-      >
-        {{ t('agentDashboard.btnOpenDetailPage') }}
-      </el-button>
-      <el-button
         type="success"
         text
         :disabled="!agent || agent.status === 'stopped'"
         @click="$emit('action', 'resume')"
       >
-        {{ t('agentDashboard.btnRestart') }}
+        {{ t("agentDashboard.btnRestart") }}
       </el-button>
       <el-button
         type="danger"
         :disabled="!agent"
         @click="$emit('action', 'delete')"
       >
-        {{ t('agentDashboard.btnDelete') }}
+        {{ t("agentDashboard.btnDelete") }}
       </el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useAgentStore } from '@/stores/agents'
-import type { AgentDetail } from '@/stores/agents'
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
+import { useAgentStore } from "@/stores/agents";
+import type { AgentDetail } from "@/stores/agents";
 
 const props = defineProps<{
-  visible: boolean
-  agent: AgentDetail | null
-}>()
+  visible: boolean;
+  agent: AgentDetail | null;
+}>();
 
 defineEmits<{
-  'update:visible': [value: boolean]
-  action: [type: 'detail-page' | 'resume' | 'delete']
-}>()
+  "update:visible": [value: boolean];
+  action: [type: "resume" | "delete"];
+}>();
 
-const { t } = useI18n()
-const agentStore = useAgentStore()
+const { t } = useI18n();
+const agentStore = useAgentStore();
 
 const detailTitle = computed(() => {
-  if (!props.agent) return t('agentDashboard.detailTitle')
-  return t('agentDashboard.detailTitleWithId', { id: formatAgentId(props.agent.agent_id) })
-})
+  if (!props.agent) return t("agentDashboard.detailTitle");
+  return t("agentDashboard.detailTitleWithId", {
+    id: formatAgentId(props.agent.agent_id),
+  });
+});
 
 function formatAgentId(id: string): string {
-  if (!id) return '-'
-  return id.charAt(0).toUpperCase() + id.slice(1)
+  if (!id) return "-";
+  return id.charAt(0).toUpperCase() + id.slice(1);
 }
 </script>
 

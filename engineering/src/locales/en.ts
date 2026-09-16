@@ -241,6 +241,8 @@ export default {
     fetchFailed: "Status fetch failed",
     // Home.vue added keys
     pageTitle: "Production Overview",
+    tabOverview: "Overview",
+    tabReport: "Production Report",
     greetingOperator: ", Operator",
     rangeToday: "Today",
     rangeWeek: "This Week",
@@ -2159,6 +2161,7 @@ export default {
     colActions: "Actions",
     // List row buttons
     btnCancel: "Cancel",
+    btnRerun: "Rerun",
     btnDetail: "Detail",
     // Detail panel
     detailTitle: "Task Detail",
@@ -2171,6 +2174,7 @@ export default {
     detailDuration: "Duration",
     detailParams: "Parameters",
     detailResult: "Result",
+    detailMetrics: "Training Metrics",
     detailError: "Error",
     btnCancelTask: "Cancel Task",
     btnClose: "Close",
@@ -2193,6 +2197,10 @@ export default {
     statusCancelled: "Cancelled",
     // Messages
     msgTaskCancelled: "Task cancelled",
+    msgCannotRerun: "Original parameters missing, cannot rerun",
+    msgNoNewJobId: "Rerun request sent, but no new job ID returned",
+    msgNewJobStarted: "New job started: {jobId}, navigating to workspace",
+    msgRerunFailed: "Rerun failed",
     dialogCreateTitle: "Create Task",
     fieldName: "Task Name",
     placeholderName: "Enter task name",
@@ -2363,6 +2371,7 @@ export default {
     tabModels: "Hot Update",
     tabMetrics: "Metrics History",
     tabLearnings: "Learnings",
+    tabSnapshots: "Snapshots",
     // Learnings (W7.2 offline-reflection board)
     learningsTitle: "What it learned recently",
     learningsSubtitle:
@@ -2787,6 +2796,15 @@ export default {
     msgMaterialRequired: "Please select a material",
   },
   // PluginLogs.vue Plugin Logs page
+  // PluginCenter.vue (market/manager/logs merged)
+  pluginCenter: {
+    pageTitle: "Plugin Center",
+    pageSubtitle:
+      "Marketplace install · Installed plugin management · Runtime logs in one place",
+    tabInstalled: "Installed",
+    tabMarket: "Marketplace",
+    tabLogs: "Logs",
+  },
   pluginLogs: {
     pageTitle: "Plugin Logs",
     placeholderSelectPlugin: "Select Plugin",
@@ -3009,6 +3027,15 @@ export default {
     statusInit3dEngine: "Initializing 3D engine...",
     statusLoadingConfig: "Loading configuration data...",
     statusReady: "Ready...",
+  },
+  // TemplateCenter.vue (market/branches/updates/detail merged)
+  templateCenter: {
+    pageTitle: "Template Center",
+    pageSubtitle:
+      "Template market · Branch management · Update center in one place",
+    tabMarket: "Market",
+    tabBranches: "Branches",
+    tabUpdates: "Updates",
   },
   templateMarket: {
     pageTitle: "Template Market",
