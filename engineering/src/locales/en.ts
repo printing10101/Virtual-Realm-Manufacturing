@@ -3046,14 +3046,57 @@ export default {
     btnDelete: "Delete",
   },
 
+  // Sidebar navigation groups and items (consumed by config/navGroups.ts, reused by HeaderSearch)
+  nav: {
+    groups: {
+      core: "Core",
+      resources: "Resources",
+      intelligence: "Intelligence",
+      dataOps: "Data & Ops",
+      market: "Marketplace & Tools",
+      system: "System",
+    },
+    items: {
+      home: "Production Overview",
+      processPlanning: "Process Planning",
+      equipmentMonitor: "Equipment Monitor",
+      simulation: "Simulation",
+      qualityInspection: "Quality Inspection",
+      processUnderstanding: "Process Understanding",
+      agentDashboard: "Agent Dashboard",
+      materialManagement: "Materials",
+      taskBoard: "Task Center",
+      workflowPanel: "Workflows",
+      settings: "Settings",
+      workspace: "LNN Workspace",
+      flywheelDashboard: "Data Flywheel",
+      worldModel: "World Model",
+      rlAgent: "RL Agent",
+      explainability: "Explainability",
+      nlModeling: "NL Modeling",
+      costDashboard: "Cost Dashboard",
+      goals: "Goals",
+      approvalDashboard: "Approvals",
+      templateCenter: "Template Center",
+      plugins: "Plugins",
+      ruleEditor: "Machining Rules",
+      toolpathEditor: "Toolpath Editor",
+      dialectManager: "Post Dialects",
+      about: "About",
+    },
+  },
+
   // AppLayout.vue Application Layout
   appLayout: {
     brandName: "Lingjing Manufacturing",
-    searchPlaceholder: "Search work orders, equipment, materials...",
+    searchPlaceholder: "Search pages and quick actions…",
+    searchGroupPages: "Pages",
+    searchGroupActions: "Quick Actions",
+    searchNoResults: "No matches found",
     refresh: "Refresh",
     notifications: "Notifications",
     markAllRead: "Mark all as read",
-    viewAllNotifications: "View all notifications",
+    noNotifications: "No notifications yet",
     newProject: "New Project",
     openProject: "Open Project",
     save: "Save",
@@ -3068,6 +3111,13 @@ export default {
     guest: "Guest",
     replayTour: "Getting-started Tour",
     replayFlowTour: "Manufacturing Flow Tour",
+    // User role display names (backend role enum → label)
+    roles: {
+      admin: "Admin",
+      operator: "Operator",
+      viewer: "Viewer",
+      guest: "Guest",
+    },
   },
   // Copilot components (RecommendationCard / DecisionActions / CopilotConfidenceIndicator)
   copilot: {
@@ -3095,7 +3145,6 @@ export default {
     },
   },
 
-  // CommandPalette.vue Command Palette
   // Tour.vue Onboarding Component
   onboardingTour: {
     prev: "Previous",

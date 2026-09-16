@@ -1,15 +1,7 @@
 <template>
   <header class="layout-header">
-    <div class="header-search">
-      <el-icon :size="16">
-        <Search />
-      </el-icon>
-      <input
-        type="text"
-        :placeholder="t('appLayout.searchPlaceholder')"
-        class="search-input"
-      />
-    </div>
+    <!-- 全局快速搜索：页面导航 + 工程文件快捷操作（Ctrl/Cmd+K 聚焦） -->
+    <HeaderSearch @file-command="handleFileCommand" />
     <div class="header-actions">
       <el-tooltip :content="t('appLayout.refresh')" placement="bottom">
         <button class="header-btn" @click="emit('refresh')">
@@ -23,7 +15,8 @@
           <el-icon :size="18">
             <Bell />
           </el-icon>
-          <span class="notification-dot" />
+          <!-- 仅存在未读时亮红点，避免"永远有通知"的误导 -->
+          <span v-if="unreadCount > 0" class="notification-dot" />
         </button>
         <template #dropdown>
           <el-dropdown-menu class="notification-dropdown">
@@ -31,28 +24,35 @@
               <span class="notification-title">{{
                 t("appLayout.notifications")
               }}</span>
-              <el-button text size="small" @click="markAllRead">
+              <el-button
+                v-if="unreadCount > 0"
+                text
+                size="small"
+                @click="markAllRead"
+              >
                 {{ t("appLayout.markAllRead") }}
               </el-button>
             </div>
             <el-divider style="margin: 4px 0" />
             <div
+              v-if="notifications.length === 0"
+              class="notification-empty"
+              data-testid="notification-empty"
+            >
+              {{ t("appLayout.noNotifications") }}
+            </div>
+            <div
               v-for="n in notifications"
               :key="n.id"
               class="notification-item"
               :class="{ unread: !n.read }"
+              @click="markRead(n)"
             >
               <div class="notification-dot-indicator" :class="n.type" />
               <div class="notification-content">
                 <span class="notification-text">{{ n.text }}</span>
                 <span class="notification-time">{{ n.time }}</span>
               </div>
-            </div>
-            <el-divider style="margin: 4px 0" />
-            <div class="notification-footer">
-              <el-button text size="small">
-                {{ t("appLayout.viewAllNotifications") }}
-              </el-button>
             </div>
           </el-dropdown-menu>
         </template>
@@ -166,12 +166,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { ElMessageBox } from "element-plus";
 import {
-  Search,
   Refresh,
   Bell,
   Folder,
@@ -189,6 +188,7 @@ import {
   MapLocation,
 } from "@element-plus/icons-vue";
 import BackendStatusIndicator from "@/components/BackendStatusIndicator.vue";
+import HeaderSearch from "@/components/layout/HeaderSearch.vue";
 import { useAuthStore } from "@/stores/auth";
 import http from "@/utils/http";
 import { API_CONFIG, buildApiPath } from "@/config/api";
@@ -212,14 +212,11 @@ const avatarText = computed(() =>
   (authStore.user?.username || "?").slice(0, 1).toUpperCase(),
 );
 
+// 角色文案走 i18n；未知角色（后端新增枚举未跟上文案）回退显示原始标识
 const roleLabel = computed(() => {
-  const map: Record<string, string> = {
-    admin: "管理员",
-    operator: "操作员",
-    viewer: "访客",
-    guest: "游客",
-  };
-  return map[authStore.userRole] || authStore.userRole;
+  const key = `appLayout.roles.${authStore.userRole}`;
+  const translated = t(key);
+  return translated === key ? authStore.userRole : translated;
 });
 
 async function handleUserCommand(cmd: string) {
@@ -245,7 +242,23 @@ const notifications = ref<
   Array<{ id: number; text: string; time: string; type: string; read: boolean }>
 >([]);
 
+const unreadCount = computed(
+  () => notifications.value.filter((n) => !n.read).length,
+);
+
+function markRead(notification: { read: boolean }) {
+  notification.read = true;
+}
+
+// 通知轮询间隔：长会话也能收到新通知（页面保持挂载，轮询随组件卸载停止）
+const NOTIFICATION_POLL_INTERVAL_MS = 60_000;
+let notificationPollTimer: number | null = null;
+let notificationFetchInFlight = false;
+
 async function fetchNotifications() {
+  // 轮询触发时上一请求尚未返回则跳过本轮，避免请求堆积
+  if (notificationFetchInFlight) return;
+  notificationFetchInFlight = true;
   try {
     const resp = await http.get(buildApiPath(API_CONFIG.V1, "/notifications"));
     if (resp.data.code === 0 && resp.data.data) {
@@ -269,6 +282,8 @@ async function fetchNotifications() {
     }
   } catch (error) {
     console.warn("获取通知失败:", extractErrorMessage(error));
+  } finally {
+    notificationFetchInFlight = false;
   }
 }
 
@@ -296,6 +311,17 @@ function mapPriorityToType(priority: string): string {
 
 onMounted(() => {
   fetchNotifications();
+  notificationPollTimer = window.setInterval(
+    fetchNotifications,
+    NOTIFICATION_POLL_INTERVAL_MS,
+  );
+});
+
+onBeforeUnmount(() => {
+  if (notificationPollTimer !== null) {
+    window.clearInterval(notificationPollTimer);
+    notificationPollTimer = null;
+  }
 });
 
 function markAllRead() {
@@ -329,41 +355,6 @@ function handleHelpCommand(cmd: string) {
   z-index: 50;
   flex-shrink: 0;
   gap: 16px;
-}
-
-.header-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
-  background-color: var(--bg-200);
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast),
-    box-shadow var(--transition-fast);
-  width: 280px;
-}
-
-.header-search:focus-within {
-  border-color: var(--accent-primary);
-  background-color: var(--bg-0);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
-}
-
-.search-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  width: 100%;
-  font-family: var(--font-sans);
-}
-
-.search-input::placeholder {
-  color: var(--text-400);
 }
 
 .header-actions {
@@ -537,8 +528,10 @@ function handleHelpCommand(cmd: string) {
   margin-top: 2px;
 }
 
-.notification-footer {
-  padding: 4px 16px 8px;
+.notification-empty {
+  padding: 20px 16px;
   text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-400);
 }
 </style>

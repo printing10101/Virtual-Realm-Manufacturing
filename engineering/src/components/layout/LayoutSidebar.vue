@@ -2,35 +2,17 @@
   <aside class="layout-sidebar">
     <div class="sidebar-brand">
       <div class="brand-logo">
-        <svg
-          viewBox="0 0 32 32"
-          width="28"
-          height="28"
-          fill="none"
-        >
-          <rect
-            width="32"
-            height="32"
-            rx="8"
-            fill="var(--accent-primary)"
-          />
-          <path
-            d="M8 16 L16 8 L24 16 L16 24Z"
-            fill="white"
-            opacity="0.9"
-          />
+        <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
+          <rect width="32" height="32" rx="8" fill="var(--accent-primary)" />
+          <path d="M8 16 L16 8 L24 16 L16 24Z" fill="white" opacity="0.9" />
         </svg>
       </div>
-      <span class="brand-name">{{ t('appLayout.brandName') }}</span>
+      <span class="brand-name">{{ t("appLayout.brandName") }}</span>
     </div>
 
     <nav class="sidebar-nav">
-      <div
-        v-for="group in navGroups"
-        :key="group.label"
-        class="nav-group"
-      >
-        <span class="nav-group-label">{{ group.label }}</span>
+      <div v-for="group in navGroups" :key="group.labelKey" class="nav-group">
+        <span class="nav-group-label">{{ t(group.labelKey) }}</span>
         <router-link
           v-for="item in group.items"
           :key="item.path"
@@ -40,7 +22,7 @@
           <el-icon :size="18">
             <component :is="item.icon" />
           </el-icon>
-          <span class="nav-item-text">{{ item.label }}</span>
+          <span class="nav-item-text">{{ t(item.labelKey) }}</span>
         </router-link>
       </div>
     </nav>
@@ -48,16 +30,16 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { navGroups } from '@/config/navGroups'
+import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
+import { navGroups } from "@/config/navGroups";
 
-const { t } = useI18n()
-const route = useRoute()
+const { t } = useI18n();
+const route = useRoute();
 
 function isActive(path: string): boolean {
-  if (path === '/') return route.path === '/'
-  return route.path.startsWith(path)
+  if (path === "/") return route.path === "/";
+  return route.path.startsWith(path);
 }
 </script>
 

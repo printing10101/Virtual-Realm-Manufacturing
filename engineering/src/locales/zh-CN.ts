@@ -3012,16 +3012,57 @@ export default {
     },
   },
 
-  // CommandPalette.vue 命令面板
+  // 侧边栏导航分组与菜单项（config/navGroups.ts 消费，HeaderSearch 复用）
+  nav: {
+    groups: {
+      core: "核心功能",
+      resources: "资源管理",
+      intelligence: "智能模块",
+      dataOps: "数据与运营",
+      market: "市场与工具",
+      system: "系统与帮助",
+    },
+    items: {
+      home: "生产总览",
+      processPlanning: "工艺规划",
+      equipmentMonitor: "设备监控",
+      simulation: "仿真模拟",
+      qualityInspection: "质量检测",
+      processUnderstanding: "工艺理解",
+      agentDashboard: "智能体管理",
+      materialManagement: "物料管理",
+      taskBoard: "任务中心",
+      workflowPanel: "工作流编排",
+      settings: "系统设置",
+      workspace: "LNN 工作台",
+      flywheelDashboard: "数据飞轮",
+      worldModel: "世界模型",
+      rlAgent: "强化学习",
+      explainability: "可解释性",
+      nlModeling: "自然语言建模",
+      costDashboard: "成本看板",
+      goals: "目标对齐",
+      approvalDashboard: "审批中心",
+      templateCenter: "模板中心",
+      plugins: "插件中心",
+      ruleEditor: "工艺规则",
+      toolpathEditor: "刀具路径",
+      dialectManager: "后处理器方言",
+      about: "关于",
+    },
+  },
 
   // AppLayout.vue 应用布局
   appLayout: {
     brandName: "灵境制造",
-    searchPlaceholder: "搜索工单、设备、物料...",
+    searchPlaceholder: "搜索功能页面或快捷操作…",
+    searchGroupPages: "功能页面",
+    searchGroupActions: "快捷操作",
+    searchNoResults: "未找到匹配项",
     refresh: "刷新",
     notifications: "通知",
     markAllRead: "全部已读",
-    viewAllNotifications: "查看全部通知",
+    noNotifications: "暂无通知",
     newProject: "新建工程",
     openProject: "打开工程",
     save: "保存",
@@ -3036,6 +3077,13 @@ export default {
     guest: "访客",
     replayTour: "新手引导",
     replayFlowTour: "制造流程引导",
+    // 用户角色文案（后端角色枚举 → 显示名）
+    roles: {
+      admin: "管理员",
+      operator: "操作员",
+      viewer: "访客",
+      guest: "游客",
+    },
   },
   // Tour.vue 引导组件
   onboardingTour: {

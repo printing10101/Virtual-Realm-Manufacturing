@@ -120,6 +120,7 @@ declare module "vue" {
     GeneralSettings: (typeof import("./components/settings/GeneralSettings.vue"))["default"];
     GoalTreeView: (typeof import("./components/goals/GoalTreeView.vue"))["default"];
     GroupManagerDialog: (typeof import("./components/rule_editor/GroupManagerDialog.vue"))["default"];
+    HeaderSearch: (typeof import("./components/layout/HeaderSearch.vue"))["default"];
     HealthCheck: (typeof import("./components/HealthCheck.vue"))["default"];
     KpiCards: (typeof import("./components/home/KpiCards.vue"))["default"];
     LayoutHeader: (typeof import("./components/layout/LayoutHeader.vue"))["default"];

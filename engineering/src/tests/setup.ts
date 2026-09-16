@@ -175,6 +175,30 @@ config.global.stubs = {
     props: ["type", "effect", "closable", "size", "color"],
     emits: ["close"],
   },
+  // Dropdown/Tooltip 家族：通知面板、文件菜单等头部组件的弹层内容需渲染
+  ElTooltip: {
+    template: '<div class="el-tooltip"><slot /></div>',
+    props: ["content", "placement"],
+  },
+  ElDropdown: {
+    template: '<div class="el-dropdown"><slot /><slot name="dropdown" /></div>',
+    props: ["trigger", "placement"],
+    emits: ["command"],
+  },
+  ElDropdownMenu: {
+    template: '<div class="el-dropdown-menu"><slot /></div>',
+  },
+  ElDropdownItem: {
+    template: '<div class="el-dropdown-item"><slot /></div>',
+    props: ["command", "divided", "disabled"],
+  },
+  ElDivider: {
+    template: '<hr class="el-divider" />',
+  },
+  ElAvatar: {
+    template: '<span class="el-avatar"><slot /></span>',
+    props: ["size"],
+  },
   ElInput: {
     template:
       '<input class="el-input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @change="$emit(\'change\')" />',
