@@ -33,9 +33,7 @@
     "axios": "^1.6.2",
     "echarts": "^5.5.0",
     "element-plus": "^2.4.4",
-    "markdown-it": "^14.0.0",
     "pinia": "^2.1.7",
-    "pinia-plugin-persistedstate": "^3.2.1",
     "three": "^0.170.0",
     "vue": "^3.4.0",
     "vue-i18n": "^9.8.0",
@@ -45,11 +43,11 @@
     "@commitlint/cli": "^19.2.1",
     "@commitlint/config-conventional": "^19.1.0",
     "@tauri-apps/cli": "^2.0.0",
-    "@types/markdown-it": "^14.1.2",
     "@types/three": "^0.170.0",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",
     "@vitejs/plugin-vue": "^5.0.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "@vue/test-utils": "^2.4.3",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.22.0",
@@ -65,8 +63,7 @@
     "vite": "^6.0.0",
     "vitest": "^2.1.9",
     "vue-eslint-parser": "^10.4.0",
-    "vue-tsc": "^2.1.10",
-    "@vitest/coverage-v8": "^2.1.9"
+    "vue-tsc": "^2.1.10"
   },
   "lint-staged": {
     "src/**/*.{ts,vue}": [

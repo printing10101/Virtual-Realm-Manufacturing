@@ -61,12 +61,6 @@ const router = createRouter({
       meta: { title: "工艺规划", requiresAuth: true },
     },
     {
-      path: "/ux-demo",
-      name: "ux-demo",
-      component: () => import("../views/UXDemo.vue"),
-      meta: { title: "UX 功能演示", requiresAuth: true },
-    },
-    {
       path: "/agent-dashboard",
       name: "agent-dashboard",
       component: () => import("../views/AgentDashboard.vue"),
@@ -137,13 +131,6 @@ const router = createRouter({
       name: "snapshot-panel",
       component: () => import("../views/SnapshotPanel.vue"),
       meta: { title: "实验快照", requiresAuth: true },
-    },
-    {
-      path: "/cutting-experience",
-      name: "cutting-experience",
-      component: () =>
-        import("../components/experience/CuttingExperienceDashboard.vue"),
-      meta: { title: "切削实测数据", requiresAuth: true },
     },
     {
       path: "/flywheel-dashboard",
