@@ -1,27 +1,20 @@
 <template>
   <div class="content-card">
     <div class="content-card__header">
-      <span class="content-card__title">{{ t('simulationPage.historyTitle') }}</span>
+      <span class="content-card__title">{{
+        t("simulationPage.historyTitle")
+      }}</span>
     </div>
     <div class="content-card__body">
-      <div
-        v-if="historyLoading"
-        class="loading-wrap"
-      >
-        <el-skeleton
-          :rows="3"
-          animated
-        />
+      <div v-if="historyLoading" class="loading-wrap">
+        <el-skeleton :rows="3" animated />
       </div>
       <el-empty
         v-else-if="historyItems.length === 0"
         :description="t('simulationPage.noHistory')"
         :image-size="60"
       />
-      <div
-        v-else
-        class="history-list"
-      >
+      <div v-else class="history-list">
         <div
           v-for="item in historyItems"
           :key="item.task_id"
@@ -34,14 +27,24 @@
               effect="plain"
               class="history-status"
             >
-              {{ item.collision_collided ? t('simulationPage.historyCollision') : t('simulationPage.historyPass') }}
+              {{
+                item.collision_collided
+                  ? t("simulationPage.historyCollision")
+                  : t("simulationPage.historyPass")
+              }}
             </el-tag>
             <span class="history-id">{{ item.task_id }}</span>
           </div>
           <div class="history-item__meta">
-            <span>{{ item.duration_seconds?.toFixed(2) ?? '-' }}s</span>
-            <span>{{ t('simulationPage.historyVoxel', { size: item.voxel_size ?? '-' }) }}</span>
-            <span>{{ t('simulationPage.historySegments', { count: item.segment_count ?? 0 }) }}</span>
+            <span>{{ item.duration_seconds?.toFixed(2) ?? "-" }}s</span>
+            <span>{{
+              t("simulationPage.historyVoxel", { size: item.voxel_size ?? "-" })
+            }}</span>
+            <span>{{
+              t("simulationPage.historySegments", {
+                count: item.segment_count ?? 0,
+              })
+            }}</span>
           </div>
         </div>
       </div>
@@ -50,15 +53,15 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import type { HistoryItem } from './types'
+import { useI18n } from "vue-i18n";
+import type { HistoryItem } from "./types";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 defineProps<{
-  historyItems: HistoryItem[]
-  historyLoading: boolean
-}>()
+  historyItems: HistoryItem[];
+  historyLoading: boolean;
+}>();
 </script>
 
 <style scoped>

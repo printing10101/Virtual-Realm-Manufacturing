@@ -1,14 +1,12 @@
 <template>
   <div class="content-card">
     <div class="content-card__header">
-      <span class="content-card__title">{{ t('simulationPage.paramsTitle') }}</span>
+      <span class="content-card__title">{{
+        t("simulationPage.paramsTitle")
+      }}</span>
     </div>
     <div class="content-card__body">
-      <el-form
-        label-position="left"
-        label-width="80px"
-        size="small"
-      >
+      <el-form label-position="left" label-width="80px" size="small">
         <div class="params-grid">
           <el-form-item :label="t('simulationPage.paramVoxelSize')">
             <el-input-number
@@ -27,18 +25,9 @@
               style="width: 100%"
               @update:model-value="updateSimParam('toolType', $event)"
             >
-              <el-option
-                :label="t('simulationPage.toolFlat')"
-                value="flat"
-              />
-              <el-option
-                :label="t('simulationPage.toolBall')"
-                value="ball"
-              />
-              <el-option
-                :label="t('simulationPage.toolDrill')"
-                value="drill"
-              />
+              <el-option :label="t('simulationPage.toolFlat')" value="flat" />
+              <el-option :label="t('simulationPage.toolBall')" value="ball" />
+              <el-option :label="t('simulationPage.toolDrill')" value="drill" />
             </el-select>
           </el-form-item>
           <el-form-item :label="t('simulationPage.paramToolDiameter')">
@@ -100,22 +89,25 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import type { SimParams } from './types'
+import { useI18n } from "vue-i18n";
+import type { SimParams } from "./types";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 const props = defineProps<{
-  simParams: SimParams
-}>()
+  simParams: SimParams;
+}>();
 
 const emit = defineEmits<{
-  'update:simParams': [value: SimParams]
-}>()
+  "update:simParams": [value: SimParams];
+}>();
 
-function updateSimParam<K extends keyof SimParams>(key: K, value: SimParams[K] | undefined) {
-  if (value === undefined) return
-  emit('update:simParams', { ...props.simParams, [key]: value })
+function updateSimParam<K extends keyof SimParams>(
+  key: K,
+  value: SimParams[K] | undefined,
+) {
+  if (value === undefined) return;
+  emit("update:simParams", { ...props.simParams, [key]: value });
 }
 </script>
 

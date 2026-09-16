@@ -1,8 +1,10 @@
 <template>
   <div class="content-panel">
     <div class="panel-header">
-      <h3>{{ t('workflowGuide.step6Header') }}</h3>
-      <p class="hint">{{ t('workflowGuide.step6Hint') }}</p>
+      <h3>{{ t("workflowGuide.step6Header") }}</h3>
+      <p class="hint">
+        {{ t("workflowGuide.step6Hint") }}
+      </p>
     </div>
     <div class="panel-body">
       <div class="simulation-container">
@@ -13,31 +15,31 @@
           <el-button-group>
             <el-button type="primary" @click="$emit('startSimulation')">
               <el-icon><VideoPlay /></el-icon>
-              {{ t('workflowGuide.btnStartSim') }}
+              {{ t("workflowGuide.btnStartSim") }}
             </el-button>
             <el-button @click="$emit('pauseSimulation')">
               <el-icon><VideoPause /></el-icon>
-              {{ t('workflowGuide.btnPause') }}
+              {{ t("workflowGuide.btnPause") }}
             </el-button>
             <el-button @click="$emit('resetSimulation')">
               <el-icon><RefreshRight /></el-icon>
-              {{ t('workflowGuide.btnReset') }}
+              {{ t("workflowGuide.btnReset") }}
             </el-button>
           </el-button-group>
           <el-button type="success" @click="$emit('downloadAnimation')">
             <el-icon><Download /></el-icon>
-            {{ t('workflowGuide.btnDownloadAnimation') }}
+            {{ t("workflowGuide.btnDownloadAnimation") }}
           </el-button>
         </div>
       </div>
       <div class="panel-actions">
         <el-button @click="$emit('prev')">
           <el-icon><ArrowLeft /></el-icon>
-          {{ t('workflowGuide.btnModifyCode') }}
+          {{ t("workflowGuide.btnModifyCode") }}
         </el-button>
         <el-button type="primary" @click="$emit('complete')">
           <el-icon><CircleCheck /></el-icon>
-          {{ t('workflowGuide.btnComplete') }}
+          {{ t("workflowGuide.btnComplete") }}
         </el-button>
       </div>
     </div>
@@ -45,19 +47,26 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { ArrowLeft, CircleCheck, Download, RefreshRight, VideoPlay, VideoPause } from '@element-plus/icons-vue'
+import { useI18n } from "vue-i18n";
+import {
+  ArrowLeft,
+  CircleCheck,
+  Download,
+  RefreshRight,
+  VideoPlay,
+  VideoPause,
+} from "@element-plus/icons-vue";
 
 defineEmits<{
-  (e: 'prev'): void
-  (e: 'complete'): void
-  (e: 'startSimulation'): void
-  (e: 'pauseSimulation'): void
-  (e: 'resetSimulation'): void
-  (e: 'downloadAnimation'): void
-}>()
+  (e: "prev"): void;
+  (e: "complete"): void;
+  (e: "startSimulation"): void;
+  (e: "pauseSimulation"): void;
+  (e: "resetSimulation"): void;
+  (e: "downloadAnimation"): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 </script>
 
 <style scoped>

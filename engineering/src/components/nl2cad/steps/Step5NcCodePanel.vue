@@ -1,8 +1,10 @@
 <template>
   <div class="content-panel">
     <div class="panel-header">
-      <h3>{{ t('workflowGuide.step5Header') }}</h3>
-      <p class="hint">{{ t('workflowGuide.step5Hint') }}</p>
+      <h3>{{ t("workflowGuide.step5Header") }}</h3>
+      <p class="hint">
+        {{ t("workflowGuide.step5Hint") }}
+      </p>
     </div>
     <div class="panel-body">
       <div class="nc-code-container">
@@ -10,19 +12,19 @@
           <el-icon :size="48" class="loading-icon">
             <Loading />
           </el-icon>
-          <p>{{ t('workflowGuide.step5Loading') }}</p>
+          <p>{{ t("workflowGuide.step5Loading") }}</p>
         </div>
         <div v-else class="code-viewer">
           <div class="code-header">
-            <span class="code-title">{{ t('workflowGuide.codeTitle') }}</span>
+            <span class="code-title">{{ t("workflowGuide.codeTitle") }}</span>
             <div class="code-actions">
               <el-button size="small" @click="$emit('copyCode')">
                 <el-icon><DocumentCopy /></el-icon>
-                {{ t('workflowGuide.btnCopy') }}
+                {{ t("workflowGuide.btnCopy") }}
               </el-button>
               <el-button size="small" @click="$emit('downloadCode')">
                 <el-icon><Download /></el-icon>
-                {{ t('workflowGuide.btnDownload') }}
+                {{ t("workflowGuide.btnDownload") }}
               </el-button>
             </div>
           </div>
@@ -32,11 +34,15 @@
       <div class="panel-actions">
         <el-button @click="$emit('prev')">
           <el-icon><ArrowLeft /></el-icon>
-          {{ t('workflowGuide.btnModifyProcess') }}
+          {{ t("workflowGuide.btnModifyProcess") }}
         </el-button>
-        <el-button type="primary" :disabled="!ncCodeGenerated" @click="$emit('next')">
+        <el-button
+          type="primary"
+          :disabled="!ncCodeGenerated"
+          @click="$emit('next')"
+        >
           <el-icon><VideoPlay /></el-icon>
-          {{ t('workflowGuide.btnSimulate') }}
+          {{ t("workflowGuide.btnSimulate") }}
         </el-button>
       </div>
     </div>
@@ -44,22 +50,28 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { ArrowLeft, DocumentCopy, Download, Loading, VideoPlay } from '@element-plus/icons-vue'
+import { useI18n } from "vue-i18n";
+import {
+  ArrowLeft,
+  DocumentCopy,
+  Download,
+  Loading,
+  VideoPlay,
+} from "@element-plus/icons-vue";
 
 defineProps<{
-  ncCodeGenerated: boolean
-  ncCode: string
-}>()
+  ncCodeGenerated: boolean;
+  ncCode: string;
+}>();
 
 defineEmits<{
-  (e: 'prev'): void
-  (e: 'next'): void
-  (e: 'copyCode'): void
-  (e: 'downloadCode'): void
-}>()
+  (e: "prev"): void;
+  (e: "next"): void;
+  (e: "copyCode"): void;
+  (e: "downloadCode"): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 </script>
 
 <style scoped>
@@ -109,8 +121,12 @@ const { t } = useI18n()
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .code-viewer {
   background: var(--bg-code);

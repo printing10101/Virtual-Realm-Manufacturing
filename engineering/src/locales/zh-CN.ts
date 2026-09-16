@@ -1022,47 +1022,6 @@ export default {
     desc: "您访问的页面可能已被删除、更名或暂时不可用",
     backHome: "返回首页",
   },
-  taskHistory: {
-    title: "任务历史",
-    filterStatus: "筛选状态",
-    statusAll: "全部",
-    statusCompleted: "已完成",
-    statusTraining: "训练中",
-    statusCancelled: "已取消",
-    statusFailed: "失败",
-    statusQueued: "排队中",
-    refresh: "刷新",
-    colJobId: "任务ID",
-    colType: "任务类型",
-    colStatus: "状态",
-    colProgress: "进度",
-    colCreated: "创建时间",
-    colDuration: "耗时",
-    colActions: "操作",
-    detail: "详情",
-    rerun: "重新执行",
-    detailDialogTitle: "任务详情",
-    startTime: "开始时间",
-    completeTime: "完成时间",
-    durationSuffix: "秒",
-    errorInfo: "错误信息",
-    trainParams: "训练参数",
-    trainMetrics: "训练指标",
-    result: "结果",
-    typeMap: {
-      lnn_training: "LNN训练",
-      lnn_batch_inference: "批量推理",
-      lnn_inference: "推理",
-      data_processing: "数据处理",
-      model_export: "模型导出",
-      model_quantization: "模型量化",
-    },
-    cannotRerun: "无法重新执行此任务，缺少参数信息",
-    noNewJobId: "未获取到新任务ID",
-    newJobStarted: "新任务已启动，任务ID: {jobId}",
-    rerunFailed: "重新执行失败",
-    loadFailed: "获取任务列表失败",
-  },
   errorConflict: {
     detailTitle: "详细说明",
     solutionTitle: "解决方案建议",
@@ -2218,101 +2177,6 @@ export default {
   },
 
   // 切削实测数据采集 (CuttingExperienceDashboard)
-  experience: {
-    // 页面头部
-    pageTitle: "切削实测数据",
-    pageSubtitle: "数据飞轮闭环 · 采集 → 存储 → 分析 → 优化 → 再采集",
-
-    // 统计卡片
-    stats: {
-      totalRecords: "总记录数",
-      avgCycleTime: "平均节拍",
-      avgRoughness: "平均粗糙度",
-      avgToolWear: "平均磨损",
-      okRate: "合格率",
-      anomalyRate: "异常率",
-      machineId: "机床 ID",
-      toolId: "刀具 ID",
-    },
-
-    // 单位
-    unit: {
-      records: "条",
-      seconds: "秒",
-    },
-
-    // 列表
-    list: {
-      empty: "暂无切削实测记录，完成一次数据采集后点击刷新",
-    },
-
-    // 过滤
-    filter: {
-      machineId: "机床 ID",
-      toolId: "刀具 ID",
-      material: "材料",
-      machiningType: "加工类型",
-      result: "结果",
-      hasAnomaly: "有异常",
-    },
-
-    // 占位符
-    placeholder: {
-      enterMachineId: "请输入机床 ID",
-      enterToolId: "请输入刀具 ID",
-      enterMaterial: "请输入材料",
-      selectType: "选择加工类型",
-      selectResult: "选择结果",
-    },
-
-    // 按钮
-    btn: {
-      search: "查询",
-      reset: "重置",
-      view: "查看",
-      delete: "删除",
-      refresh: "刷新",
-      importData: "导入数据",
-      submit: "提交",
-      cancel: "取消",
-      confirm: "确认",
-    },
-
-    // 加工类型中文
-    machiningTypes: {
-      milling: "铣削",
-      turning: "车削",
-      drilling: "钻孔",
-      tapping: "攻丝",
-      boring: "镗孔",
-      grooving: "切槽",
-      threading: "螺纹加工",
-    },
-
-    // 结果中文
-    results: {
-      ok: "合格",
-      rework: "返工",
-      scrap: "报废",
-    },
-
-    // 消息
-    msg: {
-      refreshSuccess: "刷新成功",
-      refreshFailed: "刷新失败",
-      deleteSuccess: "删除成功",
-      deleteFailed: "删除失败",
-      importSuccess: "导入成功",
-      importFailed: "导入失败",
-      error: "操作失败，请稍后重试",
-    },
-
-    // 确认框
-    confirm: {
-      delete: "确定要删除该记录吗？此操作不可恢复。",
-      import: "导入数据将覆盖当前列表，确定继续？",
-    },
-  },
 
   // 数据飞轮看板（FlywheelDashboard.vue）相关国际化键
   flywheel: {
@@ -2858,110 +2722,7 @@ export default {
     featureSlot: "槽",
   },
   // UXDemo.vue UX功能演示页面
-  uxDemo: {
-    pageTitle: "UX 功能演示",
-    btnStartTour: "启动引导流程",
-    btnCommandPalette: "命令面板 (Ctrl+K)",
-    statTourSteps: "引导步骤数",
-    statExampleCount: "示例工程数",
-    statCommandCount: "注册命令数",
-    sectionFeatures: "已实现功能",
-    featureTourLabel: "引导流程",
-    featureGalleryLabel: "示例工程库",
-    featureCommandLabel: "命令面板",
-    tagCompleted: "已完成",
-    featureTourDesc: "5个步骤、进度记忆、响应式设计",
-    featureGalleryDesc: "12个示例、搜索过滤、代码预览、一键复制",
-    featureCommandDesc: "快捷键唤起、模糊搜索、智能排序、使用频率记忆",
-    sectionGalleryPreview: "示例工程库预览",
-    tourStep1Title: "欢迎使用灵境制造系统",
-    tourStep1Desc:
-      "这是一个AI驱动的3D建模与工艺规划系统。让我们通过几个简单的步骤来了解主要功能。",
-    tourStep2Title: "文件管理",
-    tourStep2Desc:
-      "在这里可以新建、打开、保存工程项目，支持导入STEP和DXF格式文件。",
-    tourStep3Title: "导航菜单",
-    tourStep3Desc:
-      "通过顶部菜单可以快速访问工作区、设置、工艺规划等核心功能模块。",
-    tourStep4Title: "命令面板",
-    tourStep4Desc:
-      "按 Ctrl+K 可以快速唤起命令面板，支持模糊搜索和智能排序，提升操作效率。",
-    tourStep5Title: "准备开始",
-    tourStep5Desc:
-      "引导已完成！您可以随时从帮助菜单重新启动引导流程。现在让我们开始探索系统的强大功能吧！",
-    cmdNewProjectName: "新建项目",
-    cmdNewProjectDesc: "创建一个新的工程项目",
-    cmdOpenProjectName: "打开项目",
-    cmdOpenProjectDesc: "打开已有的工程项目",
-    cmdSaveProjectName: "保存项目",
-    cmdSaveProjectDesc: "保存当前工程项目",
-    cmdExportGCodeName: "导出G代码",
-    cmdExportGCodeDesc: "将工具路径导出为G代码文件",
-    cmdStartSimulationName: "启动仿真",
-    cmdStartSimulationDesc: "开始加工过程仿真模拟",
-    cmdAiFeatureName: "AI特征识别",
-    cmdAiFeatureDesc: "使用AI自动识别加工特征",
-    cmdViewExamplesName: "查看示例",
-    cmdViewExamplesDesc: "浏览示例工程库",
-    cmdOpenSettingsName: "系统设置",
-    cmdOpenSettingsDesc: "打开系统设置页面",
-    categoryFile: "文件",
-    categoryToolpath: "工具路径",
-    categorySimulation: "仿真",
-    categoryAI: "AI",
-    categoryHelp: "帮助",
-    categorySystem: "系统",
-    msgNewProjectTriggered: "新建项目功能已触发",
-    msgOpenProjectTriggered: "打开项目功能已触发",
-    msgSaveProjectTriggered: "保存项目功能已触发",
-    msgExportGCodeTriggered: "导出G代码功能已触发",
-    msgStartSimulationTriggered: "启动仿真功能已触发",
-    msgAiFeatureTriggered: "AI特征识别功能已触发",
-    msgViewExamplesTriggered: "查看示例功能已触发",
-    msgOpenSettingsTriggered: "系统设置功能已触发",
-    msgTourCompleted: "引导流程已完成！",
-    msgTourSkipped: "引导流程已跳过（从第 {step} 步）",
-  },
   // ExampleGallery.vue
-  exampleGallery: {
-    placeholderSearch: "搜索示例...",
-    placeholderCategory: "分类",
-    placeholderDifficulty: "难度",
-    placeholderSort: "排序",
-    sortName: "名称",
-    sortUpdated: "更新时间",
-    sortDownloads: "下载次数",
-    sortDifficulty: "难度",
-    btnPreview: "预览",
-    btnCopy: "复制",
-    btnCopyCode: "复制代码",
-    btnClose: "关闭",
-    btnImport: "导入到项目",
-    colName: "名称",
-    colDescription: "描述",
-    colCategory: "分类",
-    colDownloads: "下载",
-    colUpdatedAt: "更新时间",
-    colActions: "操作",
-    tabDetails: "说明",
-    tabCode: "代码",
-    useCasesTitle: "应用场景",
-    downloadCount: "{count} 次下载",
-    updatedAt: "更新于 {date}",
-    previewTitle: "代码预览",
-    difficultyBeginner: "入门",
-    difficultyIntermediate: "中级",
-    difficultyAdvanced: "高级",
-    categoryBasic: "基础示例",
-    categoryModeling: "3D建模",
-    categoryToolpath: "工具路径",
-    categorySimulation: "仿真模拟",
-    categoryAi: "AI功能",
-    categoryAdvanced: "高级应用",
-    msgCopied: "代码已复制到剪贴板",
-    msgCopyFailed: "复制失败，请手动复制",
-    msgImported: "示例 {name} 已导入到项目",
-  },
   // SplashScreen.vue
   splashScreen: {
     appName: "灵境制造",
@@ -3252,16 +3013,6 @@ export default {
   },
 
   // CommandPalette.vue 命令面板
-  commandPalette: {
-    inputPlaceholder: "输入命令名称或描述...",
-    noMatchFound: "未找到匹配的命令",
-    hintSelect: "选择",
-    hintExecute: "执行",
-    hintClose: "关闭",
-    commandCount: "个命令",
-    otherCategory: "其他",
-    pluginCategory: "插件",
-  },
 
   // AppLayout.vue 应用布局
   appLayout: {

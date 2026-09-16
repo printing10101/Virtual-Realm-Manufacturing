@@ -83,127 +83,159 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
-import WorkflowGuideStepsIndicator from './WorkflowGuideStepsIndicator.vue'
-import Step1DescriptionPanel from '@/components/workflow_guide/Step1DescriptionPanel.vue'
-import Step2ParamsPanel from '@/components/workflow_guide/Step2ParamsPanel.vue'
-import Step3PreviewPanel from '@/components/workflow_guide/Step3PreviewPanel.vue'
-import Step4ProcessPanel from '@/components/workflow_guide/Step4ProcessPanel.vue'
-import Step5NcCodePanel from '@/components/workflow_guide/Step5NcCodePanel.vue'
-import Step6SimulationPanel from '@/components/workflow_guide/Step6SimulationPanel.vue'
+import { ref, reactive, computed } from "vue";
+import { useI18n } from "vue-i18n";
+import { ElMessage } from "element-plus";
+import WorkflowGuideStepsIndicator from "./WorkflowGuideStepsIndicator.vue";
+import Step1DescriptionPanel from "@/components/nl2cad/steps/Step1DescriptionPanel.vue";
+import Step2ParamsPanel from "@/components/nl2cad/steps/Step2ParamsPanel.vue";
+import Step3PreviewPanel from "@/components/nl2cad/steps/Step3PreviewPanel.vue";
+import Step4ProcessPanel from "@/components/nl2cad/steps/Step4ProcessPanel.vue";
+import Step5NcCodePanel from "@/components/nl2cad/steps/Step5NcCodePanel.vue";
+import Step6SimulationPanel from "@/components/nl2cad/steps/Step6SimulationPanel.vue";
 import {
   extractParams as apiExtractParams,
   generateModel as apiGenerateModel,
   generateProcessPlanning as apiGenerateProcessPlanning,
   generateNC as apiGenerateNC,
   exportSimulationAnimation as apiExportAnimation,
-} from '@/api/nl2cad'
-import type {
-  CADParams,
-  ProcessConfig,
-  ProcessPlan,
-} from '@/types/nl2cad'
+} from "@/api/nl2cad";
+import type { CADParams, ProcessConfig, ProcessPlan } from "@/types/nl2cad";
 
 // Props & Emits
 const props = defineProps<{
-  initialDescription?: string
-}>()
+  initialDescription?: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'step-change', step: number): void
-  (e: 'params-extracted', params: CADParams): void
-  (e: 'generate-model', params: CADParams): void
-  (e: 'generate-process', payload: ProcessConfig & { process_plan?: ProcessPlan }): void
-  (e: 'generate-nc', payload: { nc_code: string; process_plan?: ProcessPlan }): void
-  (e: 'start-simulation'): void
-  (e: 'complete'): void
-}>()
+  (e: "step-change", step: number): void;
+  (e: "params-extracted", params: CADParams): void;
+  (e: "generate-model", params: CADParams): void;
+  (
+    e: "generate-process",
+    payload: ProcessConfig & { process_plan?: ProcessPlan },
+  ): void;
+  (
+    e: "generate-nc",
+    payload: { nc_code: string; process_plan?: ProcessPlan },
+  ): void;
+  (e: "start-simulation"): void;
+  (e: "complete"): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 // Steps definition
 const steps = computed(() => [
-  { id: 'select-model', title: t('workflowGuide.step1Title'), description: t('workflowGuide.step1Desc'), clickable: true },
-  { id: 'config-params', title: t('workflowGuide.step2Title'), description: t('workflowGuide.step2Desc'), clickable: true },
-  { id: 'generate-cad', title: t('workflowGuide.step3Title'), description: t('workflowGuide.step3Desc'), clickable: false },
-  { id: 'output-nc', title: t('workflowGuide.step4Title'), description: t('workflowGuide.step4Desc'), clickable: true },
-  { id: 'validate', title: t('workflowGuide.step5Title'), description: t('workflowGuide.step5Desc'), clickable: false },
-  { id: 'review', title: t('workflowGuide.step6Title'), description: t('workflowGuide.step6Desc'), clickable: false },
-])
+  {
+    id: "select-model",
+    title: t("workflowGuide.step1Title"),
+    description: t("workflowGuide.step1Desc"),
+    clickable: true,
+  },
+  {
+    id: "config-params",
+    title: t("workflowGuide.step2Title"),
+    description: t("workflowGuide.step2Desc"),
+    clickable: true,
+  },
+  {
+    id: "generate-cad",
+    title: t("workflowGuide.step3Title"),
+    description: t("workflowGuide.step3Desc"),
+    clickable: false,
+  },
+  {
+    id: "output-nc",
+    title: t("workflowGuide.step4Title"),
+    description: t("workflowGuide.step4Desc"),
+    clickable: true,
+  },
+  {
+    id: "validate",
+    title: t("workflowGuide.step5Title"),
+    description: t("workflowGuide.step5Desc"),
+    clickable: false,
+  },
+  {
+    id: "review",
+    title: t("workflowGuide.step6Title"),
+    description: t("workflowGuide.step6Desc"),
+    clickable: false,
+  },
+]);
 
 // Examples
 const examples = computed(() => [
-  { text: t('workflowGuide.example1') },
-  { text: t('workflowGuide.example2') },
-  { text: t('workflowGuide.example3') },
-  { text: t('workflowGuide.example4') },
-])
+  { text: t("workflowGuide.example1") },
+  { text: t("workflowGuide.example2") },
+  { text: t("workflowGuide.example3") },
+  { text: t("workflowGuide.example4") },
+]);
 
 // Reactive state
-const currentStep = ref(0)
-const nlDescription = ref(props.initialDescription || '')
+const currentStep = ref(0);
+const nlDescription = ref(props.initialDescription || "");
 const extractedParams = reactive<CADParams>({
-  shape_type: 'box',
+  shape_type: "box",
   dimensions: { length: 50, width: 30, height: 20 },
-  material: 'steel',
+  material: "steel",
   confidence: 0.85,
-})
-const modelGenerated = ref(false)
+});
+const modelGenerated = ref(false);
 const processConfig = reactive<ProcessConfig>({
-  material: 'aluminum_6061',
-  machine_type: 'cnc_mill',
-  precision: 'finish',
-})
-const ncCodeGenerated = ref(false)
-const ncCode = ref('')
+  material: "aluminum_6061",
+  machine_type: "cnc_mill",
+  precision: "finish",
+});
+const ncCodeGenerated = ref(false);
+const ncCode = ref("");
 
 // Methods
 function handleStepClick(index: number) {
   if (steps.value[index].clickable && index <= currentStep.value) {
-    currentStep.value = index
-    emit('step-change', index)
+    currentStep.value = index;
+    emit("step-change", index);
   }
 }
 
 function handleUpdateDimension(key: string, value: number) {
-  const dims = extractedParams.dimensions as Record<string, number | undefined>
-  dims[key] = value
+  const dims = extractedParams.dimensions as Record<string, number | undefined>;
+  dims[key] = value;
 }
 
 function fillExample(text: string) {
-  nlDescription.value = text
+  nlDescription.value = text;
 }
 
 function handleNextStep() {
   if (currentStep.value === 0) {
     // 从NL描述提取参数
-    extractParamsFromNL()
+    extractParamsFromNL();
   } else if (currentStep.value === 2) {
-    currentStep.value = 3
-    emit('step-change', 3)
+    currentStep.value = 3;
+    emit("step-change", 3);
   } else if (currentStep.value === 4) {
-    currentStep.value = 5
-    emit('step-change', 5)
+    currentStep.value = 5;
+    emit("step-change", 5);
   } else {
-    currentStep.value++
-    emit('step-change', currentStep.value)
+    currentStep.value++;
+    emit("step-change", currentStep.value);
   }
 }
 
 async function extractParamsFromNL() {
   try {
-    const data = await apiExtractParams({ description: nlDescription.value })
-    Object.assign(extractedParams, data.params)
+    const data = await apiExtractParams({ description: nlDescription.value });
+    Object.assign(extractedParams, data.params);
 
-    currentStep.value = 1
-    emit('step-change', 1)
-    emit('params-extracted', extractedParams)
-    ElMessage.success(t('workflowGuide.msgParamsExtracted'))
+    currentStep.value = 1;
+    emit("step-change", 1);
+    emit("params-extracted", extractedParams);
+    ElMessage.success(t("workflowGuide.msgParamsExtracted"));
   } catch (error) {
-    console.error('Extract params failed:', error)
-    ElMessage.error(t('workflowGuide.msgParamsExtractFailed'))
+    console.error("Extract params failed:", error);
+    ElMessage.error(t("workflowGuide.msgParamsExtractFailed"));
   }
 }
 
@@ -211,17 +243,17 @@ async function handleGenerateModel() {
   try {
     const data = await apiGenerateModel({
       description: nlDescription.value,
-      output_format: 'stl',
-    })
-    emit('generate-model', { ...extractedParams, model_path: data.model_path })
+      output_format: "stl",
+    });
+    emit("generate-model", { ...extractedParams, model_path: data.model_path });
 
-    modelGenerated.value = true
-    currentStep.value = 2
-    emit('step-change', 2)
-    ElMessage.success(t('workflowGuide.msgModelGenerated'))
+    modelGenerated.value = true;
+    currentStep.value = 2;
+    emit("step-change", 2);
+    ElMessage.success(t("workflowGuide.msgModelGenerated"));
   } catch (error) {
-    console.error('Generate model failed:', error)
-    ElMessage.error(t('workflowGuide.msgModelGenerateFailed'))
+    console.error("Generate model failed:", error);
+    ElMessage.error(t("workflowGuide.msgModelGenerateFailed"));
   }
 }
 
@@ -232,17 +264,20 @@ async function handleGenerateProcess() {
       material: processConfig.material,
       machine_type: processConfig.machine_type,
       precision: processConfig.precision,
-    })
-    emit('generate-process', { ...processConfig, process_plan: data.process_plan })
+    });
+    emit("generate-process", {
+      ...processConfig,
+      process_plan: data.process_plan,
+    });
 
-    currentStep.value = 4
-    emit('step-change', 4)
+    currentStep.value = 4;
+    emit("step-change", 4);
 
     // 生成NC代码
-    await generateNCCode(data.process_plan)
+    await generateNCCode(data.process_plan);
   } catch (error) {
-    console.error('Generate process failed:', error)
-    ElMessage.error(t('workflowGuide.msgProcessFailed'))
+    console.error("Generate process failed:", error);
+    ElMessage.error(t("workflowGuide.msgProcessFailed"));
   }
 }
 
@@ -251,44 +286,44 @@ async function generateNCCode(processPlan?: ProcessPlan) {
     const data = await apiGenerateNC({
       process_plan: processPlan || {},
       machine_type: processConfig.machine_type,
-    })
-    ncCode.value = data.nc_code
-    ncCodeGenerated.value = true
-    emit('generate-nc', { nc_code: data.nc_code, process_plan: processPlan })
-    ElMessage.success(t('workflowGuide.msgNcGenerated'))
+    });
+    ncCode.value = data.nc_code;
+    ncCodeGenerated.value = true;
+    emit("generate-nc", { nc_code: data.nc_code, process_plan: processPlan });
+    ElMessage.success(t("workflowGuide.msgNcGenerated"));
   } catch (error) {
-    console.error('Generate NC code failed:', error)
-    ElMessage.error(t('workflowGuide.msgNcGenerateFailed'))
+    console.error("Generate NC code failed:", error);
+    ElMessage.error(t("workflowGuide.msgNcGenerateFailed"));
   }
 }
 
 function handleCopyCode() {
-  navigator.clipboard.writeText(ncCode.value)
-  ElMessage.success(t('workflowGuide.msgCodeCopied'))
+  navigator.clipboard.writeText(ncCode.value);
+  ElMessage.success(t("workflowGuide.msgCodeCopied"));
 }
 
 function handleDownloadCode() {
-  const blob = new Blob([ncCode.value], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'part_program.gcode'
-  a.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success(t('workflowGuide.msgCodeDownloaded'))
+  const blob = new Blob([ncCode.value], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "part_program.gcode";
+  a.click();
+  URL.revokeObjectURL(url);
+  ElMessage.success(t("workflowGuide.msgCodeDownloaded"));
 }
 
 function handleStartSimulation() {
-  emit('start-simulation')
-  ElMessage.info(t('workflowGuide.msgSimStarted'))
+  emit("start-simulation");
+  ElMessage.info(t("workflowGuide.msgSimStarted"));
 }
 
 function handlePauseSimulation() {
-  ElMessage.info(t('workflowGuide.msgSimPaused'))
+  ElMessage.info(t("workflowGuide.msgSimPaused"));
 }
 
 function handleResetSimulation() {
-  ElMessage.info(t('workflowGuide.msgSimReset'))
+  ElMessage.info(t("workflowGuide.msgSimReset"));
 }
 
 async function handleDownloadAnimation() {
@@ -296,25 +331,25 @@ async function handleDownloadAnimation() {
     // 通过统一 http 客户端调用后端仿真动画导出接口（返回 Blob）
     const blob = await apiExportAnimation({
       nc_code: ncCode.value,
-      format: 'gif',
-    })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'simulation_animation.gif'
-    a.click()
-    URL.revokeObjectURL(url)
+      format: "gif",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "simulation_animation.gif";
+    a.click();
+    URL.revokeObjectURL(url);
 
-    ElMessage.success(t('workflowGuide.msgAnimationDownloaded'))
+    ElMessage.success(t("workflowGuide.msgAnimationDownloaded"));
   } catch (error) {
-    console.error('Download animation failed:', error)
-    ElMessage.error(t('workflowGuide.msgAnimationDownloadFailed'))
+    console.error("Download animation failed:", error);
+    ElMessage.error(t("workflowGuide.msgAnimationDownloadFailed"));
   }
 }
 
 function handleComplete() {
-  emit('complete')
-  ElMessage.success(t('workflowGuide.msgWorkflowCompleted'))
+  emit("complete");
+  ElMessage.success(t("workflowGuide.msgWorkflowCompleted"));
 }
 </script>
 

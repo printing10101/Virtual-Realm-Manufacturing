@@ -1,8 +1,10 @@
 <template>
   <div class="content-panel">
     <div class="panel-header">
-      <h3>{{ t('workflowGuide.step1Header') }}</h3>
-      <p class="hint">{{ t('workflowGuide.step1Hint') }}</p>
+      <h3>{{ t("workflowGuide.step1Header") }}</h3>
+      <p class="hint">
+        {{ t("workflowGuide.step1Hint") }}
+      </p>
     </div>
     <div class="panel-body">
       <div class="example-cards">
@@ -15,7 +17,9 @@
           <div class="example-icon">
             <el-icon><Document /></el-icon>
           </div>
-          <div class="example-text">{{ example.text }}</div>
+          <div class="example-text">
+            {{ example.text }}
+          </div>
         </div>
       </div>
       <div class="input-section">
@@ -34,7 +38,7 @@
             @click="$emit('next')"
           >
             <el-icon><ArrowRight /></el-icon>
-            {{ t('workflowGuide.btnNext') }}
+            {{ t("workflowGuide.btnNext") }}
           </el-button>
         </div>
       </div>
@@ -43,25 +47,25 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { ArrowRight, Document } from '@element-plus/icons-vue'
+import { useI18n } from "vue-i18n";
+import { ArrowRight, Document } from "@element-plus/icons-vue";
 
 export interface ExampleItem {
-  text: string
+  text: string;
 }
 
 defineProps<{
-  examples: ExampleItem[]
-  modelValue?: string
-}>()
+  examples: ExampleItem[];
+  modelValue?: string;
+}>();
 
 defineEmits<{
-  (e: 'update:modelValue', value: string): void
-  (e: 'fillExample', text: string): void
-  (e: 'next'): void
-}>()
+  (e: "update:modelValue", value: string): void;
+  (e: "fillExample", text: string): void;
+  (e: "next"): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 </script>
 
 <style scoped>

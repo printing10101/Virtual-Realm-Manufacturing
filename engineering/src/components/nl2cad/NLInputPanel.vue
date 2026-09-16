@@ -63,10 +63,10 @@ import {
   generateModel as apiGenerateModel,
 } from "@/api/nl2cad";
 import type { CADParams } from "@/types/nl2cad";
-import type { Message } from "@/components/nl_input/types";
-import ChatMessage from "@/components/nl_input/ChatMessage.vue";
-import ChatInputArea from "@/components/nl_input/ChatInputArea.vue";
-import ParamEditDialog from "@/components/nl_input/ParamEditDialog.vue";
+import type { Message } from "@/components/nl2cad/chat/types";
+import ChatMessage from "@/components/nl2cad/chat/ChatMessage.vue";
+import ChatInputArea from "@/components/nl2cad/chat/ChatInputArea.vue";
+import ParamEditDialog from "@/components/nl2cad/chat/ParamEditDialog.vue";
 
 const { t } = useI18n();
 

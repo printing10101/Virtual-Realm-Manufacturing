@@ -1,8 +1,10 @@
 <template>
   <div class="content-panel">
     <div class="panel-header">
-      <h3>{{ t('workflowGuide.step3Header') }}</h3>
-      <p class="hint">{{ t('workflowGuide.step3Hint') }}</p>
+      <h3>{{ t("workflowGuide.step3Header") }}</h3>
+      <p class="hint">
+        {{ t("workflowGuide.step3Hint") }}
+      </p>
     </div>
     <div class="panel-body">
       <div class="model-preview">
@@ -10,7 +12,7 @@
           <el-icon :size="64" class="loading-icon">
             <Loading />
           </el-icon>
-          <p>{{ t('workflowGuide.step3Loading') }}</p>
+          <p>{{ t("workflowGuide.step3Loading") }}</p>
         </div>
         <div v-else class="preview-container">
           <div class="preview-viewport">
@@ -18,15 +20,17 @@
           </div>
           <div class="preview-info">
             <div class="info-item">
-              <span class="label">{{ t('workflowGuide.infoShape') }}</span>
+              <span class="label">{{ t("workflowGuide.infoShape") }}</span>
               <span class="value">{{ getShapeLabel(params.shape_type) }}</span>
             </div>
             <div class="info-item">
-              <span class="label">{{ t('workflowGuide.infoDimensions') }}</span>
-              <span class="value">{{ formatDimensions(params.dimensions) }}</span>
+              <span class="label">{{ t("workflowGuide.infoDimensions") }}</span>
+              <span class="value">{{
+                formatDimensions(params.dimensions)
+              }}</span>
             </div>
             <div v-if="params.material" class="info-item">
-              <span class="label">{{ t('workflowGuide.infoMaterial') }}</span>
+              <span class="label">{{ t("workflowGuide.infoMaterial") }}</span>
               <span class="value">{{ params.material }}</span>
             </div>
           </div>
@@ -35,11 +39,15 @@
       <div class="panel-actions">
         <el-button @click="$emit('prev')">
           <el-icon><ArrowLeft /></el-icon>
-          {{ t('workflowGuide.btnModifyParams') }}
+          {{ t("workflowGuide.btnModifyParams") }}
         </el-button>
-        <el-button type="primary" :disabled="!modelGenerated" @click="$emit('next')">
+        <el-button
+          type="primary"
+          :disabled="!modelGenerated"
+          @click="$emit('next')"
+        >
           <el-icon><ArrowRight /></el-icon>
-          {{ t('workflowGuide.btnProcessPlanning') }}
+          {{ t("workflowGuide.btnProcessPlanning") }}
         </el-button>
       </div>
     </div>
@@ -47,40 +55,44 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { ArrowLeft, ArrowRight, Loading } from '@element-plus/icons-vue'
-import type { CADParams, CADDimensions } from '@/types/nl2cad'
+import { useI18n } from "vue-i18n";
+import { ArrowLeft, ArrowRight, Loading } from "@element-plus/icons-vue";
+import type { CADParams, CADDimensions } from "@/types/nl2cad";
 
 defineProps<{
-  modelGenerated: boolean
-  params: CADParams
-}>()
+  modelGenerated: boolean;
+  params: CADParams;
+}>();
 
 defineEmits<{
-  (e: 'prev'): void
-  (e: 'next'): void
-}>()
+  (e: "prev"): void;
+  (e: "next"): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 function getShapeLabel(shapeType: string): string {
   const labels: Record<string, string> = {
-    box: t('workflowGuide.shapeBox'),
-    cylinder: t('workflowGuide.shapeCylinder'),
-    sphere: t('workflowGuide.shapeSphere'),
-    cone: t('workflowGuide.shapeCone'),
-  }
-  return labels[shapeType] || shapeType
+    box: t("workflowGuide.shapeBox"),
+    cylinder: t("workflowGuide.shapeCylinder"),
+    sphere: t("workflowGuide.shapeSphere"),
+    cone: t("workflowGuide.shapeCone"),
+  };
+  return labels[shapeType] || shapeType;
 }
 
 function formatDimensions(dimensions: CADDimensions | undefined): string {
-  if (!dimensions) return '-'
-  const parts: string[] = []
-  if (dimensions.length) parts.push(`${t('workflowGuide.dimLength')}${dimensions.length}mm`)
-  if (dimensions.width) parts.push(`${t('workflowGuide.dimWidth')}${dimensions.width}mm`)
-  if (dimensions.height) parts.push(`${t('workflowGuide.dimHeight')}${dimensions.height}mm`)
-  if (dimensions.radius) parts.push(`${t('workflowGuide.dimRadius')}${dimensions.radius}mm`)
-  return parts.join(' × ') || '-'
+  if (!dimensions) return "-";
+  const parts: string[] = [];
+  if (dimensions.length)
+    parts.push(`${t("workflowGuide.dimLength")}${dimensions.length}mm`);
+  if (dimensions.width)
+    parts.push(`${t("workflowGuide.dimWidth")}${dimensions.width}mm`);
+  if (dimensions.height)
+    parts.push(`${t("workflowGuide.dimHeight")}${dimensions.height}mm`);
+  if (dimensions.radius)
+    parts.push(`${t("workflowGuide.dimRadius")}${dimensions.radius}mm`);
+  return parts.join(" × ") || "-";
 }
 </script>
 
@@ -131,8 +143,12 @@ function formatDimensions(dimensions: CADDimensions | undefined): string {
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .preview-container {
   display: flex;

@@ -2,26 +2,24 @@
   <!-- 图表区域 -->
   <div class="content-card">
     <div class="content-card__header">
-      <span class="content-card__title">{{ t('productionReport.chartTitle') }}</span>
+      <span class="content-card__title">{{
+        t("productionReport.chartTitle")
+      }}</span>
       <el-radio-group
         :model-value="chartType"
         size="small"
         @change="onChartTypeChange"
       >
         <el-radio-button value="bar">
-          {{ t('productionReport.chartTypeBar') }}
+          {{ t("productionReport.chartTypeBar") }}
         </el-radio-button>
         <el-radio-button value="line">
-          {{ t('productionReport.chartTypeLine') }}
+          {{ t("productionReport.chartTypeLine") }}
         </el-radio-button>
       </el-radio-group>
     </div>
-    <div style="padding: 20px;">
-      <div
-        ref="chartEl"
-        class="trend-chart"
-        v-loading="statsLoading"
-      />
+    <div style="padding: 20px">
+      <div ref="chartEl" v-loading="statsLoading" class="trend-chart" />
       <el-empty
         v-if="!statsLoading && trendData.length === 0"
         :description="t('productionReport.emptyTrendData')"
@@ -33,7 +31,9 @@
   <!-- 生产趋势明细表 -->
   <div class="content-card">
     <div class="content-card__header">
-      <span class="content-card__title">{{ t('productionReport.trendDetailTitle') }}</span>
+      <span class="content-card__title">{{
+        t("productionReport.trendDetailTitle")
+      }}</span>
     </div>
     <div class="content-card__body">
       <el-table
@@ -59,7 +59,9 @@
           width="120"
         >
           <template #default="{ row }">
-            <span :class="{ 'text-warning': row.actualOutput < row.planOutput }">
+            <span
+              :class="{ 'text-warning': row.actualOutput < row.planOutput }"
+            >
               {{ row.actualOutput }}
             </span>
           </template>
@@ -88,7 +90,13 @@
             <el-progress
               :percentage="Math.min(row.achievementRate, 100)"
               :stroke-width="8"
-              :color="row.achievementRate >= 95 ? 'var(--success)' : row.achievementRate >= 85 ? 'var(--warning)' : 'var(--error)'"
+              :color="
+                row.achievementRate >= 95
+                  ? 'var(--success)'
+                  : row.achievementRate >= 85
+                    ? 'var(--warning)'
+                    : 'var(--error)'
+              "
             />
           </template>
         </el-table-column>
@@ -98,105 +106,128 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import * as echarts from 'echarts'
+import { watch } from "vue";
+import { useI18n } from "vue-i18n";
+import { useEChart } from "@/composables/useEChart";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 interface TrendRow {
-  date: string
-  planOutput: number
-  actualOutput: number
-  yieldRate: string
-  utilization: string
-  achievementRate: number
+  date: string;
+  planOutput: number;
+  actualOutput: number;
+  yieldRate: string;
+  utilization: string;
+  achievementRate: number;
 }
 
 const props = defineProps<{
-  chartType: string
-  statsLoading: boolean
-  trendData: TrendRow[]
-}>()
+  chartType: string;
+  statsLoading: boolean;
+  trendData: TrendRow[];
+}>();
 
 const emit = defineEmits<{
-  'update:chart-type': [value: string]
-}>()
+  "update:chart-type": [value: string];
+}>();
 
 function onChartTypeChange(value: string | number | boolean | undefined) {
-  emit('update:chart-type', String(value || 'bar'))
+  emit("update:chart-type", String(value || "bar"));
 }
 
-// 趋势图表
-const chartEl = ref<HTMLElement | null>(null)
-let chartInstance: echarts.ECharts | null = null
+// 趋势图表（统一走 useEChart：init/resize/dispose 样板由 composable 承担）
+const { chartRef: chartEl, getChart } = useEChart(() => renderChart());
 
 /** 渲染生产趋势图表。 */
 function renderChart() {
-  if (!chartEl.value) return
-  if (!chartInstance) {
-    chartInstance = echarts.init(chartEl.value)
-  }
-  const dates = props.trendData.map((r) => r.date)
-  const planOutputs = props.trendData.map((r) => r.planOutput)
-  const actualOutputs = props.trendData.map((r) => r.actualOutput)
-  const yieldRates = props.trendData.map((r) => parseFloat(r.yieldRate))
-  const utilizations = props.trendData.map((r) => parseFloat(r.utilization))
+  const chart = getChart();
+  if (!chart) return;
+  const dates = props.trendData.map((r) => r.date);
+  const planOutputs = props.trendData.map((r) => r.planOutput);
+  const actualOutputs = props.trendData.map((r) => r.actualOutput);
+  const yieldRates = props.trendData.map((r) => parseFloat(r.yieldRate));
+  const utilizations = props.trendData.map((r) => parseFloat(r.utilization));
 
-  const isBar = props.chartType === 'bar'
+  const isBar = props.chartType === "bar";
   const series = isBar
     ? [
-        { name: t('productionReport.colPlanOutput'), type: 'bar', barGap: '10%', data: planOutputs, itemStyle: { color: '#a69c84' } },
-        { name: t('productionReport.colActualOutput'), type: 'bar', data: actualOutputs, itemStyle: { color: '#007aff' } },
+        {
+          name: t("productionReport.colPlanOutput"),
+          type: "bar",
+          barGap: "10%",
+          data: planOutputs,
+          itemStyle: { color: "#a69c84" },
+        },
+        {
+          name: t("productionReport.colActualOutput"),
+          type: "bar",
+          data: actualOutputs,
+          itemStyle: { color: "#007aff" },
+        },
       ]
     : [
-        { name: t('productionReport.colPlanOutput'), type: 'line', smooth: true, data: planOutputs, itemStyle: { color: '#a69c84' } },
-        { name: t('productionReport.colActualOutput'), type: 'line', smooth: true, data: actualOutputs, itemStyle: { color: '#007aff' } },
-      ]
+        {
+          name: t("productionReport.colPlanOutput"),
+          type: "line",
+          smooth: true,
+          data: planOutputs,
+          itemStyle: { color: "#a69c84" },
+        },
+        {
+          name: t("productionReport.colActualOutput"),
+          type: "line",
+          smooth: true,
+          data: actualOutputs,
+          itemStyle: { color: "#007aff" },
+        },
+      ];
 
-  chartInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: { data: [t('productionReport.colPlanOutput'), t('productionReport.colActualOutput'), t('productionReport.colYieldRate'), t('productionReport.colUtilization')] },
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: {
+      data: [
+        t("productionReport.colPlanOutput"),
+        t("productionReport.colActualOutput"),
+        t("productionReport.colYieldRate"),
+        t("productionReport.colUtilization"),
+      ],
+    },
     grid: { left: 50, right: 50, top: 40, bottom: 40 },
-    xAxis: { type: 'category', data: dates },
+    xAxis: { type: "category", data: dates },
     yAxis: [
-      { type: 'value', name: t('productionReport.colQtyShort') },
-      { type: 'value', name: '%', max: 100, splitLine: { show: false } },
+      { type: "value", name: t("productionReport.colQtyShort") },
+      { type: "value", name: "%", max: 100, splitLine: { show: false } },
     ],
     series: [
       ...series,
-      { name: t('productionReport.colYieldRate'), type: 'line', smooth: true, yAxisIndex: 1, data: yieldRates, itemStyle: { color: '#34c759' } },
-      { name: t('productionReport.colUtilization'), type: 'line', smooth: true, yAxisIndex: 1, data: utilizations, itemStyle: { color: '#ff9500' } },
+      {
+        name: t("productionReport.colYieldRate"),
+        type: "line",
+        smooth: true,
+        yAxisIndex: 1,
+        data: yieldRates,
+        itemStyle: { color: "#34c759" },
+      },
+      {
+        name: t("productionReport.colUtilization"),
+        type: "line",
+        smooth: true,
+        yAxisIndex: 1,
+        data: utilizations,
+        itemStyle: { color: "#ff9500" },
+      },
     ],
-  })
-}
-
-/** 图表自适应容器宽度。 */
-function resizeChart() {
-  chartInstance?.resize()
+  });
 }
 
 // 趋势数据或图表类型变化时重新渲染
 watch(
   () => [props.trendData, props.chartType],
   () => {
-    renderChart()
+    renderChart();
   },
-  { deep: true }
-)
-
-onMounted(() => {
-  setTimeout(() => renderChart(), 0)
-  window.addEventListener('resize', resizeChart)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', resizeChart)
-  if (chartInstance) {
-    chartInstance.dispose()
-    chartInstance = null
-  }
-})
+  { deep: true },
+);
 </script>
 
 <style scoped>

@@ -24,46 +24,46 @@
         type="info"
         @click="fillExample(t('nlInputPanel.exampleBoxPrompt'))"
       >
-        {{ t('nlInputPanel.exampleBox') }}
+        {{ t("nlInputPanel.exampleBox") }}
       </el-tag>
       <el-tag
         size="small"
         type="info"
         @click="fillExample(t('nlInputPanel.exampleCylinderPrompt'))"
       >
-        {{ t('nlInputPanel.exampleCylinder') }}
+        {{ t("nlInputPanel.exampleCylinder") }}
       </el-tag>
       <el-tag
         size="small"
         type="info"
         @click="fillExample(t('nlInputPanel.exampleSpherePrompt'))"
       >
-        {{ t('nlInputPanel.exampleSphere') }}
+        {{ t("nlInputPanel.exampleSphere") }}
       </el-tag>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { Promotion } from '@element-plus/icons-vue'
+import { useI18n } from "vue-i18n";
+import { Promotion } from "@element-plus/icons-vue";
 
-defineOptions({ name: 'ChatInputArea' })
+defineOptions({ name: "ChatInputArea" });
 
 defineProps<{
-  modelValue: string
-  disabled: boolean
-}>()
+  modelValue: string;
+  disabled: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
-  (e: 'send'): void
-}>()
+  (e: "update:modelValue", value: string): void;
+  (e: "send"): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 function fillExample(text: string) {
-  emit('update:modelValue', text)
+  emit("update:modelValue", text);
 }
 </script>
 

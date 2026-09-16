@@ -25,10 +25,7 @@
             :disabled="!gcode.trim()"
             @click="emit('run')"
           >
-            <el-icon
-              v-if="simState !== 'running'"
-              class="btn-icon"
-            >
+            <el-icon v-if="simState !== 'running'" class="btn-icon">
               <VideoPlay />
             </el-icon>
             <span>{{ runButtonText }}</span>
@@ -39,7 +36,7 @@
             class="btn-rerun"
             @click="emit('run')"
           >
-            {{ t('simulationPage.rerunSim') }}
+            {{ t("simulationPage.rerunSim") }}
           </el-button>
         </div>
 
@@ -48,7 +45,9 @@
           :sim-result="simResult"
           :sim-state="simState"
           @download-stl="emit('download-stl')"
-          @update:show-collision-detail="emit('update:showCollisionDetail', $event)"
+          @update:show-collision-detail="
+            emit('update:showCollisionDetail', $event)
+          "
         />
 
         <!-- Simulation History -->
@@ -80,57 +79,65 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { VideoPlay } from '@element-plus/icons-vue'
-import SimulationViewer from '@/components/simulation/SimulationViewer.vue'
-import NcCodeEditor from '@/components/simulation_nc/NcCodeEditor.vue'
-import SimulationParams from '@/components/simulation_nc/SimulationParams.vue'
-import SimulationResult from '@/components/simulation_nc/SimulationResult.vue'
-import SimulationHistory from '@/components/simulation_nc/SimulationHistory.vue'
-import ViewportOverlay from '@/components/simulation_nc/ViewportOverlay.vue'
-import type { SimParams, SimResultData, HistoryItem, SimState } from '@/components/simulation_nc/types'
+import { ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
+import { VideoPlay } from "@element-plus/icons-vue";
+import SimulationViewer from "@/components/simulation/SimulationViewer.vue";
+import NcCodeEditor from "@/components/simulation/nc/NcCodeEditor.vue";
+import SimulationParams from "@/components/simulation/nc/SimulationParams.vue";
+import SimulationResult from "@/components/simulation/nc/SimulationResult.vue";
+import SimulationHistory from "@/components/simulation/nc/SimulationHistory.vue";
+import ViewportOverlay from "@/components/simulation/nc/ViewportOverlay.vue";
+import type {
+  SimParams,
+  SimResultData,
+  HistoryItem,
+  SimState,
+} from "@/components/simulation/nc/types";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 // ─── Props ──────────────────────────────────────────────
 
 const props = defineProps<{
-  gcode: string
-  simParams: SimParams
-  simState: SimState
-  simResult: SimResultData | null
-  historyItems: HistoryItem[]
-  historyLoading: boolean
-  currentTaskId: string
-}>()
+  gcode: string;
+  simParams: SimParams;
+  simState: SimState;
+  simResult: SimResultData | null;
+  historyItems: HistoryItem[];
+  historyLoading: boolean;
+  currentTaskId: string;
+}>();
 
 const emit = defineEmits<{
-  'update:gcode': [value: string]
-  'update:simParams': [value: SimParams]
-  'run': []
-  'download-stl': []
-  'update:showCollisionDetail': [value: boolean]
-  'locate-collision': [index: number]
-  'dismiss-collision': [index: number]
-  'dismiss-all-collisions': []
-}>()
+  "update:gcode": [value: string];
+  "update:simParams": [value: SimParams];
+  run: [];
+  "download-stl": [];
+  "update:showCollisionDetail": [value: boolean];
+  "locate-collision": [index: number];
+  "dismiss-collision": [index: number];
+  "dismiss-all-collisions": [];
+}>();
 
 // ─── Template refs ─────────────────────────────────────
 
-const viewerRef = ref<InstanceType<typeof SimulationViewer> | null>(null)
+const viewerRef = ref<InstanceType<typeof SimulationViewer> | null>(null);
 
-defineExpose({ viewerRef })
+defineExpose({ viewerRef });
 
 // ─── Run Button Text ─────────────────────────────────────
 
 const runButtonText = computed(() => {
   switch (props.simState) {
-    case 'running': return t('simulationPage.simRunning')
-    case 'completed': return t('simulationPage.rerunSim')
-    default: return t('simulationPage.runSim')
+    case "running":
+      return t("simulationPage.simRunning");
+    case "completed":
+      return t("simulationPage.rerunSim");
+    default:
+      return t("simulationPage.runSim");
   }
-})
+});
 
 // ─── Viewer Ready ────────────────────────────────────────
 
@@ -146,8 +153,14 @@ function onViewerReady() {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Simulation Layout ──────────────────────────────── */

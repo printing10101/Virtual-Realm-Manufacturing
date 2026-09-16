@@ -97,103 +97,6 @@ export default {
     inputPlaceholder: "Please input",
   },
   // Experience (Data Flywheel)
-  experience: {
-    // Page Header
-    pageTitle: "Machining Measurements",
-    pageSubtitle:
-      "Data Flywheel · Capture → Store → Analyze → Optimize → Recapture",
-
-    // Stats Cards
-    stats: {
-      totalRecords: "Total Records",
-      avgCycleTime: "Avg Cycle Time",
-      avgRoughness: "Avg Roughness",
-      avgToolWear: "Avg Tool Wear",
-      okRate: "Yield Rate",
-      anomalyRate: "Anomaly Rate",
-      machineId: "Machine ID",
-      toolId: "Tool ID",
-    },
-
-    // Units
-    unit: {
-      records: "records",
-      seconds: "seconds",
-    },
-
-    // Filter
-    filter: {
-      machineId: "Machine ID",
-      toolId: "Tool ID",
-      material: "Material",
-      machiningType: "Machining Type",
-      result: "Result",
-      hasAnomaly: "Has Anomaly",
-    },
-
-    // Placeholders
-    placeholder: {
-      enterMachineId: "Enter machine ID",
-      enterToolId: "Enter tool ID",
-      enterMaterial: "Enter material",
-      selectType: "Select machining type",
-      selectResult: "Select result",
-    },
-
-    // Buttons
-    btn: {
-      search: "Search",
-      reset: "Reset",
-      view: "View",
-      delete: "Delete",
-      refresh: "Refresh",
-      importData: "Import Data",
-      submit: "Submit",
-      cancel: "Cancel",
-      confirm: "Confirm",
-    },
-
-    // Machining Types (English)
-    machiningTypes: {
-      milling: "Milling",
-      turning: "Turning",
-      drilling: "Drilling",
-      tapping: "Tapping",
-      boring: "Boring",
-      grooving: "Grooving",
-      threading: "Threading",
-    },
-
-    // Results (English)
-    results: {
-      ok: "OK",
-      rework: "Rework",
-      scrap: "Scrap",
-    },
-
-    // Messages
-    msg: {
-      refreshSuccess: "Refresh successful",
-      refreshFailed: "Refresh failed",
-      deleteSuccess: "Delete successful",
-      deleteFailed: "Delete failed",
-    },
-
-    // List
-    list: {
-      empty: "No machining measurement records found",
-    },
-
-    // Anomaly Types
-    anomalyTypes: {
-      chatter: "Chatter",
-      toolWear: "Tool Wear",
-      dimensionalError: "Dimensional Error",
-      surfaceRoughness: "Surface Roughness",
-      temperature: "Temperature",
-      vibration: "Vibration",
-    },
-  },
   app: {
     title: "Lingjing Manufacturing V4",
     defaultProjectName: "Untitled Project",
@@ -1140,47 +1043,6 @@ export default {
     title: "Page Not Found",
     desc: "The page you are looking for may have been removed, renamed, or is temporarily unavailable.",
     backHome: "Back to Home",
-  },
-  taskHistory: {
-    title: "Task History",
-    filterStatus: "Filter Status",
-    statusAll: "All",
-    statusCompleted: "Completed",
-    statusTraining: "Training",
-    statusCancelled: "Cancelled",
-    statusFailed: "Failed",
-    statusQueued: "Queued",
-    refresh: "Refresh",
-    colJobId: "Job ID",
-    colType: "Task Type",
-    colStatus: "Status",
-    colProgress: "Progress",
-    colCreated: "Created At",
-    colDuration: "Duration",
-    colActions: "Actions",
-    detail: "Details",
-    rerun: "Rerun",
-    detailDialogTitle: "Task Details",
-    startTime: "Started At",
-    completeTime: "Completed At",
-    durationSuffix: "s",
-    errorInfo: "Error Info",
-    trainParams: "Training Parameters",
-    trainMetrics: "Training Metrics",
-    result: "Result",
-    typeMap: {
-      lnn_training: "LNN Training",
-      lnn_batch_inference: "Batch Inference",
-      lnn_inference: "Inference",
-      data_processing: "Data Processing",
-      model_export: "Model Export",
-      model_quantization: "Model Quantization",
-    },
-    cannotRerun: "Cannot rerun this task: missing parameters",
-    noNewJobId: "No new job ID returned",
-    newJobStarted: "New job started: {jobId}",
-    rerunFailed: "Rerun failed",
-    loadFailed: "Failed to load task list",
   },
   errorConflict: {
     detailTitle: "Details",
@@ -2912,112 +2774,7 @@ export default {
     featureSlot: "Slot",
   },
   // UXDemo.vue UX demo page
-  uxDemo: {
-    pageTitle: "UX Feature Demo",
-    btnStartTour: "Start Tour Guide",
-    btnCommandPalette: "Command Palette (Ctrl+K)",
-    statTourSteps: "Tour Steps",
-    statExampleCount: "Example Projects",
-    statCommandCount: "Registered Commands",
-    sectionFeatures: "Implemented Features",
-    featureTourLabel: "Tour Guide",
-    featureGalleryLabel: "Example Projects",
-    featureCommandLabel: "Command Palette",
-    tagCompleted: "Completed",
-    featureTourDesc: "5 steps, progress memory, responsive design",
-    featureGalleryDesc:
-      "12 examples, search filter, code preview, one-click copy",
-    featureCommandDesc:
-      "Shortcut activation, fuzzy search, smart sorting, usage frequency memory",
-    sectionGalleryPreview: "Example Projects Preview",
-    tourStep1Title: "Welcome to Lingjing Manufacturing System",
-    tourStep1Desc:
-      "This is an AI-driven 3D modeling and process planning system. Let us explore the main features through a few simple steps.",
-    tourStep2Title: "File Management",
-    tourStep2Desc:
-      "Here you can create, open, and save project files, and import STEP and DXF format files.",
-    tourStep3Title: "Navigation Menu",
-    tourStep3Desc:
-      "Through the top menu, you can quickly access core functional modules such as workspace, settings, and process planning.",
-    tourStep4Title: "Command Palette",
-    tourStep4Desc:
-      "Press Ctrl+K to quickly activate the command palette, supporting fuzzy search and smart sorting to improve efficiency.",
-    tourStep5Title: "Ready to Start",
-    tourStep5Desc:
-      "The tour is complete! You can restart it from the Help menu at any time. Now let us start exploring the powerful features of the system!",
-    cmdNewProjectName: "New Project",
-    cmdNewProjectDesc: "Create a new project",
-    cmdOpenProjectName: "Open Project",
-    cmdOpenProjectDesc: "Open an existing project",
-    cmdSaveProjectName: "Save Project",
-    cmdSaveProjectDesc: "Save the current project",
-    cmdExportGCodeName: "Export G-Code",
-    cmdExportGCodeDesc: "Export toolpath as G-Code file",
-    cmdStartSimulationName: "Start Simulation",
-    cmdStartSimulationDesc: "Begin machining process simulation",
-    cmdAiFeatureName: "AI Feature Recognition",
-    cmdAiFeatureDesc: "Use AI to auto-recognize machining features",
-    cmdViewExamplesName: "View Examples",
-    cmdViewExamplesDesc: "Browse the example project library",
-    cmdOpenSettingsName: "System Settings",
-    cmdOpenSettingsDesc: "Open the system settings page",
-    categoryFile: "File",
-    categoryToolpath: "Toolpath",
-    categorySimulation: "Simulation",
-    categoryAI: "AI",
-    categoryHelp: "Help",
-    categorySystem: "System",
-    msgNewProjectTriggered: "New Project function triggered",
-    msgOpenProjectTriggered: "Open Project function triggered",
-    msgSaveProjectTriggered: "Save Project function triggered",
-    msgExportGCodeTriggered: "Export G-Code function triggered",
-    msgStartSimulationTriggered: "Start Simulation function triggered",
-    msgAiFeatureTriggered: "AI Feature Recognition function triggered",
-    msgViewExamplesTriggered: "View Examples function triggered",
-    msgOpenSettingsTriggered: "System Settings function triggered",
-    msgTourCompleted: "Tour completed!",
-    msgTourSkipped: "Tour skipped (from step {step})",
-  },
   // ExampleGallery.vue
-  exampleGallery: {
-    placeholderSearch: "Search examples...",
-    placeholderCategory: "Category",
-    placeholderDifficulty: "Difficulty",
-    placeholderSort: "Sort by",
-    sortName: "Name",
-    sortUpdated: "Updated",
-    sortDownloads: "Downloads",
-    sortDifficulty: "Difficulty",
-    btnPreview: "Preview",
-    btnCopy: "Copy",
-    btnCopyCode: "Copy Code",
-    btnClose: "Close",
-    btnImport: "Import to Project",
-    colName: "Name",
-    colDescription: "Description",
-    colCategory: "Category",
-    colDownloads: "Downloads",
-    colUpdatedAt: "Updated",
-    colActions: "Actions",
-    tabDetails: "Details",
-    tabCode: "Code",
-    useCasesTitle: "Use Cases",
-    downloadCount: "{count} downloads",
-    updatedAt: "Updated {date}",
-    previewTitle: "Code Preview",
-    difficultyBeginner: "Beginner",
-    difficultyIntermediate: "Intermediate",
-    difficultyAdvanced: "Advanced",
-    categoryBasic: "Basic Examples",
-    categoryModeling: "3D Modeling",
-    categoryToolpath: "Toolpath",
-    categorySimulation: "Simulation",
-    categoryAi: "AI Features",
-    categoryAdvanced: "Advanced",
-    msgCopied: "Code copied to clipboard",
-    msgCopyFailed: "Copy failed, please copy manually",
-    msgImported: "Example {name} imported to project",
-  },
   // SplashScreen.vue
   splashScreen: {
     appName: "Lingjing Manufacturing",
@@ -3339,16 +3096,6 @@ export default {
   },
 
   // CommandPalette.vue Command Palette
-  commandPalette: {
-    inputPlaceholder: "Enter command name or description...",
-    noMatchFound: "No matching commands found",
-    hintSelect: "Select",
-    hintExecute: "Execute",
-    hintClose: "Close",
-    commandCount: "commands",
-    otherCategory: "Other",
-    pluginCategory: "Plugins",
-  },
   // Tour.vue Onboarding Component
   onboardingTour: {
     prev: "Previous",

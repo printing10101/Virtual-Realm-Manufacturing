@@ -1,8 +1,5 @@
 <template>
-  <div
-    v-if="message.role === 'user'"
-    class="message user-message"
-  >
+  <div v-if="message.role === 'user'" class="message user-message">
     <div class="message-content">
       <div class="message-bubble user-bubble">
         {{ message.content }}
@@ -16,68 +13,75 @@
     </div>
   </div>
 
-  <div
-    v-else
-    class="message assistant-message"
-  >
+  <div v-else class="message assistant-message">
     <div class="message-avatar">
       <el-icon><ChatDotRound /></el-icon>
     </div>
     <div class="message-content">
       <!-- 参数提取结果 -->
-      <div
-        v-if="message.type === 'params'"
-        class="message-bubble"
-      >
-        <p>{{ t('nlInputPanel.paramsExtracted') }}</p>
+      <div v-if="message.type === 'params'" class="message-bubble">
+        <p>{{ t("nlInputPanel.paramsExtracted") }}</p>
         <div class="params-card">
           <div class="param-row">
-            <span class="param-label">{{ t('nlInputPanel.shapeTypeLabel') }}</span>
-            <span class="param-value">{{ getShapeLabel(message.params?.shape_type) }}</span>
+            <span class="param-label">{{
+              t("nlInputPanel.shapeTypeLabel")
+            }}</span>
+            <span class="param-value">{{
+              getShapeLabel(message.params?.shape_type)
+            }}</span>
           </div>
-          <div
-            v-if="message.params?.dimensions"
-            class="param-row"
-          >
-            <span class="param-label">{{ t('nlInputPanel.dimensionsLabel') }}</span>
+          <div v-if="message.params?.dimensions" class="param-row">
+            <span class="param-label">{{
+              t("nlInputPanel.dimensionsLabel")
+            }}</span>
             <span class="param-value">
               <template v-if="message.params.dimensions.length">
-                {{ t('nlInputPanel.dimLength') }} {{ message.params.dimensions.length }}mm
+                {{ t("nlInputPanel.dimLength") }}
+                {{ message.params.dimensions.length }}mm
               </template>
               <template v-if="message.params.dimensions.width">
-                × {{ t('nlInputPanel.dimWidth') }} {{ message.params.dimensions.width }}mm
+                × {{ t("nlInputPanel.dimWidth") }}
+                {{ message.params.dimensions.width }}mm
               </template>
               <template v-if="message.params.dimensions.height">
-                × {{ t('nlInputPanel.dimHeight') }} {{ message.params.dimensions.height }}mm
+                × {{ t("nlInputPanel.dimHeight") }}
+                {{ message.params.dimensions.height }}mm
               </template>
               <template v-if="message.params.dimensions.radius">
-                {{ t('nlInputPanel.dimRadius') }} {{ message.params.dimensions.radius }}mm
+                {{ t("nlInputPanel.dimRadius") }}
+                {{ message.params.dimensions.radius }}mm
               </template>
             </span>
           </div>
-          <div
-            v-if="message.params?.features?.length"
-            class="param-row"
-          >
-            <span class="param-label">{{ t('nlInputPanel.featuresLabel') }}</span>
+          <div v-if="message.params?.features?.length" class="param-row">
+            <span class="param-label">{{
+              t("nlInputPanel.featuresLabel")
+            }}</span>
             <span class="param-value">
-              {{ message.params.features.map((f) => getFeatureLabel(f.type)).join(', ') }}
+              {{
+                message.params.features
+                  .map((f) => getFeatureLabel(f.type))
+                  .join(", ")
+              }}
             </span>
           </div>
-          <div
-            v-if="message.params?.material"
-            class="param-row"
-          >
-            <span class="param-label">{{ t('nlInputPanel.materialLabel') }}</span>
+          <div v-if="message.params?.material" class="param-row">
+            <span class="param-label">{{
+              t("nlInputPanel.materialLabel")
+            }}</span>
             <span class="param-value">{{ message.params.material }}</span>
           </div>
           <div class="param-row confidence-row">
-            <span class="param-label">{{ t('nlInputPanel.confidenceLabel') }}</span>
+            <span class="param-label">{{
+              t("nlInputPanel.confidenceLabel")
+            }}</span>
             <el-progress
-              :percentage="Math.round((message.params?.confidence || 0.8) * 100)"
+              :percentage="
+                Math.round((message.params?.confidence || 0.8) * 100)
+              "
               :color="getConfidenceColor(message.params?.confidence || 0.8)"
               :stroke-width="8"
-              style="flex: 1; margin-left: 8px;"
+              style="flex: 1; margin-left: 8px"
             />
           </div>
         </div>
@@ -87,23 +91,17 @@
             size="small"
             @click="emit('confirm-params', message.params)"
           >
-            <el-icon><Check /></el-icon>{{ t('nlInputPanel.confirmGenerate') }}
+            <el-icon><Check /></el-icon>{{ t("nlInputPanel.confirmGenerate") }}
           </el-button>
-          <el-button
-            size="small"
-            @click="emit('edit-params', message.params)"
-          >
-            <el-icon><Edit /></el-icon>{{ t('nlInputPanel.editParams') }}
+          <el-button size="small" @click="emit('edit-params', message.params)">
+            <el-icon><Edit /></el-icon>{{ t("nlInputPanel.editParams") }}
           </el-button>
         </div>
       </div>
 
       <!-- 模型生成结果 -->
-      <div
-        v-else-if="message.type === 'model'"
-        class="message-bubble"
-      >
-        <p>{{ t('nlInputPanel.modelGenerated') }}</p>
+      <div v-else-if="message.type === 'model'" class="message-bubble">
+        <p>{{ t("nlInputPanel.modelGenerated") }}</p>
         <div class="model-card">
           <div class="model-preview">
             <el-icon :size="32">
@@ -112,7 +110,7 @@
           </div>
           <div class="model-info">
             <div class="model-name">
-              {{ message.modelName || t('nlInputPanel.defaultModelName') }}
+              {{ message.modelName || t("nlInputPanel.defaultModelName") }}
             </div>
             <div class="model-format">
               {{ message.format?.toUpperCase() }}
@@ -125,22 +123,16 @@
             size="small"
             @click="emit('view-3d', message.modelPath)"
           >
-            <el-icon><View /></el-icon>{{ t('nlInputPanel.viewIn3D') }}
+            <el-icon><View /></el-icon>{{ t("nlInputPanel.viewIn3D") }}
           </el-button>
-          <el-button
-            size="small"
-            @click="emit('download', message.modelPath)"
-          >
-            <el-icon><Download /></el-icon>{{ t('nlInputPanel.download') }}
+          <el-button size="small" @click="emit('download', message.modelPath)">
+            <el-icon><Download /></el-icon>{{ t("nlInputPanel.download") }}
           </el-button>
         </div>
       </div>
 
       <!-- 普通文本消息 -->
-      <div
-        v-else
-        class="message-bubble"
-      >
+      <div v-else class="message-bubble">
         {{ message.content }}
       </div>
       <div class="message-time">
@@ -151,7 +143,7 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
+import { useI18n } from "vue-i18n";
 import {
   ChatDotRound,
   User,
@@ -160,53 +152,56 @@ import {
   View,
   Download,
   Box,
-} from '@element-plus/icons-vue'
-import type { Message } from './types'
+} from "@element-plus/icons-vue";
+import type { Message } from "./types";
 
-defineOptions({ name: 'ChatMessage' })
+defineOptions({ name: "ChatMessage" });
 
 defineProps<{
-  message: Message
-}>()
+  message: Message;
+}>();
 
 const emit = defineEmits<{
-  (e: 'confirm-params', params: Message['params']): void
-  (e: 'edit-params', params: Message['params']): void
-  (e: 'view-3d', modelPath: string | undefined): void
-  (e: 'download', modelPath: string | undefined): void
-}>()
+  (e: "confirm-params", params: Message["params"]): void;
+  (e: "edit-params", params: Message["params"]): void;
+  (e: "view-3d", modelPath: string | undefined): void;
+  (e: "download", modelPath: string | undefined): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function getShapeLabel(type: string | undefined): string {
-  if (!type) return ''
+  if (!type) return "";
   const map: Record<string, string> = {
-    box: t('nlInputPanel.shapeBox'),
-    cylinder: t('nlInputPanel.shapeCylinder'),
-    sphere: t('nlInputPanel.shapeSphere'),
-    cone: t('nlInputPanel.shapeCone'),
-  }
-  return map[type] || type
+    box: t("nlInputPanel.shapeBox"),
+    cylinder: t("nlInputPanel.shapeCylinder"),
+    sphere: t("nlInputPanel.shapeSphere"),
+    cone: t("nlInputPanel.shapeCone"),
+  };
+  return map[type] || type;
 }
 
 function getFeatureLabel(type: string): string {
   const map: Record<string, string> = {
-    chamfer: t('nlInputPanel.featureChamfer'),
-    fillet: t('nlInputPanel.featureFillet'),
-    hole: t('nlInputPanel.featureHole'),
-    slot: t('nlInputPanel.featureSlot'),
-  }
-  return map[type] || type
+    chamfer: t("nlInputPanel.featureChamfer"),
+    fillet: t("nlInputPanel.featureFillet"),
+    hole: t("nlInputPanel.featureHole"),
+    slot: t("nlInputPanel.featureSlot"),
+  };
+  return map[type] || type;
 }
 
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) return 'var(--success)'
-  if (confidence >= 0.6) return 'var(--warning)'
-  return 'var(--error)'
+  if (confidence >= 0.8) return "var(--success)";
+  if (confidence >= 0.6) return "var(--warning)";
+  return "var(--error)";
 }
 </script>
 
@@ -234,7 +229,11 @@ function getConfidenceColor(confidence: number): string {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--brand-500) 0%,
+    var(--brand-600) 100%
+  );
   color: white;
   font-size: 18px;
 }
@@ -260,7 +259,11 @@ function getConfidenceColor(confidence: number): string {
 }
 
 .user-bubble {
-  background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--brand-500) 0%,
+    var(--brand-600) 100%
+  );
   color: white;
 }
 
@@ -324,7 +327,11 @@ function getConfidenceColor(confidence: number): string {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--brand-500) 0%,
+    var(--brand-600) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;

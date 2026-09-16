@@ -1,8 +1,10 @@
 <template>
   <div class="content-panel">
     <div class="panel-header">
-      <h3>{{ t('workflowGuide.step2Header') }}</h3>
-      <p class="hint">{{ t('workflowGuide.step2Hint') }}</p>
+      <h3>{{ t("workflowGuide.step2Header") }}</h3>
+      <p class="hint">
+        {{ t("workflowGuide.step2Hint") }}
+      </p>
     </div>
     <div class="panel-body">
       <div class="params-preview">
@@ -14,8 +16,14 @@
               @update:model-value="$emit('update:shapeType', $event)"
             >
               <el-option :label="t('workflowGuide.shapeBox')" value="box" />
-              <el-option :label="t('workflowGuide.shapeCylinder')" value="cylinder" />
-              <el-option :label="t('workflowGuide.shapeSphere')" value="sphere" />
+              <el-option
+                :label="t('workflowGuide.shapeCylinder')"
+                value="cylinder"
+              />
+              <el-option
+                :label="t('workflowGuide.shapeSphere')"
+                value="sphere"
+              />
               <el-option :label="t('workflowGuide.shapeCone')" value="cone" />
             </el-select>
           </el-form-item>
@@ -30,7 +38,9 @@
                 :min="0.1"
                 :step="1"
                 controls-position="right"
-                @update:model-value="$emit('update:dimension', 'length', $event!)"
+                @update:model-value="
+                  $emit('update:dimension', 'length', $event!)
+                "
               />
               <span class="unit">mm</span>
             </el-form-item>
@@ -44,7 +54,9 @@
                 :min="0.1"
                 :step="1"
                 controls-position="right"
-                @update:model-value="$emit('update:dimension', 'width', $event!)"
+                @update:model-value="
+                  $emit('update:dimension', 'width', $event!)
+                "
               />
               <span class="unit">mm</span>
             </el-form-item>
@@ -58,7 +70,9 @@
                 :min="0.1"
                 :step="1"
                 controls-position="right"
-                @update:model-value="$emit('update:dimension', 'height', $event!)"
+                @update:model-value="
+                  $emit('update:dimension', 'height', $event!)
+                "
               />
               <span class="unit">mm</span>
             </el-form-item>
@@ -72,7 +86,9 @@
                 :min="0.1"
                 :step="1"
                 controls-position="right"
-                @update:model-value="$emit('update:dimension', 'radius', $event!)"
+                @update:model-value="
+                  $emit('update:dimension', 'radius', $event!)
+                "
               />
               <span class="unit">mm</span>
             </el-form-item>
@@ -100,11 +116,11 @@
       <div class="panel-actions">
         <el-button @click="$emit('prev')">
           <el-icon><ArrowLeft /></el-icon>
-          {{ t('workflowGuide.btnPrev') }}
+          {{ t("workflowGuide.btnPrev") }}
         </el-button>
         <el-button type="primary" @click="$emit('generate')">
           <el-icon><Box /></el-icon>
-          {{ t('workflowGuide.btnGenerateModel') }}
+          {{ t("workflowGuide.btnGenerateModel") }}
         </el-button>
       </div>
     </div>
@@ -112,29 +128,29 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Box } from '@element-plus/icons-vue'
-import type { CADParams, ShapeType } from '@/types/nl2cad'
+import { useI18n } from "vue-i18n";
+import { ArrowLeft, Box } from "@element-plus/icons-vue";
+import type { CADParams, ShapeType } from "@/types/nl2cad";
 
 defineProps<{
-  params: CADParams
-}>()
+  params: CADParams;
+}>();
 
 defineEmits<{
-  (e: 'prev'): void
-  (e: 'generate'): void
-  (e: 'update:shapeType', value: ShapeType): void
-  (e: 'update:dimension', key: string, value: number): void
-  (e: 'update:material', value: string): void
-}>()
+  (e: "prev"): void;
+  (e: "generate"): void;
+  (e: "update:shapeType", value: ShapeType): void;
+  (e: "update:dimension", key: string, value: number): void;
+  (e: "update:material", value: string): void;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 function getConfidenceColor(confidence: number | undefined): string {
-  const c = confidence ?? 0.8
-  if (c >= 0.8) return 'var(--success)'
-  if (c >= 0.6) return 'var(--warning)'
-  return 'var(--error)'
+  const c = confidence ?? 0.8;
+  if (c >= 0.8) return "var(--success)";
+  if (c >= 0.6) return "var(--warning)";
+  return "var(--error)";
 }
 </script>
 

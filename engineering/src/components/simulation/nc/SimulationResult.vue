@@ -4,52 +4,74 @@
     class="content-card result-card"
   >
     <div class="content-card__header">
-      <span class="content-card__title">{{ t('simulationPage.resultTitle') }}</span>
+      <span class="content-card__title">{{
+        t("simulationPage.resultTitle")
+      }}</span>
       <el-tag
         :type="simResult.collision_detected ? 'danger' : 'success'"
         effect="dark"
         size="small"
       >
-        {{ simResult.collision_detected ? t('simulationPage.collisionDetected') : t('simulationPage.simPassed') }}
+        {{
+          simResult.collision_detected
+            ? t("simulationPage.collisionDetected")
+            : t("simulationPage.simPassed")
+        }}
       </el-tag>
     </div>
     <div class="content-card__body">
       <div class="result-stats">
         <div class="result-stat">
-          <span class="stat-label">{{ t('simulationPage.statDuration') }}</span>
-          <span class="stat-value">{{ (simResult.duration_seconds ?? 0).toFixed(2) }}s</span>
+          <span class="stat-label">{{ t("simulationPage.statDuration") }}</span>
+          <span class="stat-value"
+            >{{ (simResult.duration_seconds ?? 0).toFixed(2) }}s</span
+          >
         </div>
         <div class="result-stat">
-          <span class="stat-label">{{ t('simulationPage.statVoxelCount') }}</span>
-          <span class="stat-value">{{ formatNumber(simResult.voxel_count ?? 0) }}</span>
+          <span class="stat-label">{{
+            t("simulationPage.statVoxelCount")
+          }}</span>
+          <span class="stat-value">{{
+            formatNumber(simResult.voxel_count ?? 0)
+          }}</span>
         </div>
         <div class="result-stat">
-          <span class="stat-label">{{ t('simulationPage.statRemovedVoxel') }}</span>
-          <span class="stat-value">{{ formatNumber(simResult.removed_voxel_count ?? 0) }}</span>
+          <span class="stat-label">{{
+            t("simulationPage.statRemovedVoxel")
+          }}</span>
+          <span class="stat-value">{{
+            formatNumber(simResult.removed_voxel_count ?? 0)
+          }}</span>
         </div>
         <div class="result-stat">
-          <span class="stat-label">{{ t('simulationPage.statToolpathSegments') }}</span>
-          <span class="stat-value">{{ simResult.toolpath_segment_count ?? 0 }}</span>
+          <span class="stat-label">{{
+            t("simulationPage.statToolpathSegments")
+          }}</span>
+          <span class="stat-value">{{
+            simResult.toolpath_segment_count ?? 0
+          }}</span>
         </div>
       </div>
 
       <!-- Collision Alert -->
-      <div
-        v-if="simResult.collision_detected"
-        class="collision-warning"
-      >
-        <el-icon
-          :size="20"
-          color="var(--state-error)"
-        >
+      <div v-if="simResult.collision_detected" class="collision-warning">
+        <el-icon :size="20" color="var(--state-error)">
           <WarningFilled />
         </el-icon>
         <div class="collision-warning__content">
           <span class="collision-warning__title">
-            {{ t('simulationPage.collisionCount', { count: simResult.collision_details?.count ?? 0 }) }}
+            {{
+              t("simulationPage.collisionCount", {
+                count: simResult.collision_details?.count ?? 0,
+              })
+            }}
           </span>
           <span class="collision-warning__desc">
-            {{ t('simulationPage.collisionSeverity', { severity: simResult.collision_details?.severity ?? '-' }) }}
+            {{
+              t("simulationPage.collisionSeverity", {
+                severity: simResult.collision_details?.severity ?? "-",
+              })
+            }}
           </span>
         </div>
         <el-button
@@ -58,50 +80,36 @@
           plain
           @click="emit('update:showCollisionDetail', true)"
         >
-          {{ t('simulationPage.viewDetail') }}
+          {{ t("simulationPage.viewDetail") }}
         </el-button>
       </div>
 
       <!-- Pass/Fail Action -->
-      <div
-        v-if="simResult.collision_detected"
-        class="fail-actions"
-      >
-        <el-alert
-          type="error"
-          :closable="false"
-          show-icon
-        >
+      <div v-if="simResult.collision_detected" class="fail-actions">
+        <el-alert type="error" :closable="false" show-icon>
           <template #title>
-            <span>{{ t('simulationPage.failAlertTitle') }}</span>
+            <span>{{ t("simulationPage.failAlertTitle") }}</span>
           </template>
           <template #default>
             <div class="fail-suggestions">
-              <p>{{ t('simulationPage.suggestTitle') }}</p>
+              <p>{{ t("simulationPage.suggestTitle") }}</p>
               <ul>
-                <li>{{ t('simulationPage.suggest1') }}</li>
-                <li>{{ t('simulationPage.suggest2') }}</li>
-                <li>{{ t('simulationPage.suggest3') }}</li>
-                <li>{{ t('simulationPage.suggest4') }}</li>
+                <li>{{ t("simulationPage.suggest1") }}</li>
+                <li>{{ t("simulationPage.suggest2") }}</li>
+                <li>{{ t("simulationPage.suggest3") }}</li>
+                <li>{{ t("simulationPage.suggest4") }}</li>
               </ul>
             </div>
           </template>
         </el-alert>
       </div>
-      <div
-        v-else
-        class="pass-info"
-      >
-        <el-alert
-          type="success"
-          :closable="false"
-          show-icon
-        >
+      <div v-else class="pass-info">
+        <el-alert type="success" :closable="false" show-icon>
           <template #title>
-            <span>{{ t('simulationPage.passAlertTitle') }}</span>
+            <span>{{ t("simulationPage.passAlertTitle") }}</span>
           </template>
           <template #default>
-            <span>{{ t('simulationPage.passAlertDesc') }}</span>
+            <span>{{ t("simulationPage.passAlertDesc") }}</span>
           </template>
         </el-alert>
       </div>
@@ -114,13 +122,17 @@
           :disabled="!simResult?.simulation_result?.workpiece_stl_path"
           @click="emit('download-stl')"
         >
-          {{ t('simulationPage.downloadStl') }}
+          {{ t("simulationPage.downloadStl") }}
         </el-button>
         <el-button
           size="small"
           @click="emit('update:showCollisionDetail', true)"
         >
-          {{ simResult.collision_detected ? t('simulationPage.collisionDetail') : t('simulationPage.viewReport') }}
+          {{
+            simResult.collision_detected
+              ? t("simulationPage.collisionDetail")
+              : t("simulationPage.viewReport")
+          }}
         </el-button>
       </div>
     </div>
@@ -128,26 +140,26 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { Download, WarningFilled } from '@element-plus/icons-vue'
-import type { SimResultData, SimState } from './types'
+import { useI18n } from "vue-i18n";
+import { Download, WarningFilled } from "@element-plus/icons-vue";
+import type { SimResultData, SimState } from "./types";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 defineProps<{
-  simResult: SimResultData | null
-  simState: SimState
-}>()
+  simResult: SimResultData | null;
+  simState: SimState;
+}>();
 
 const emit = defineEmits<{
-  'download-stl': []
-  'update:showCollisionDetail': [value: boolean]
-}>()
+  "download-stl": [];
+  "update:showCollisionDetail": [value: boolean];
+}>();
 
 function formatNumber(n: number): string {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
-  return String(n)
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+  return String(n);
 }
 </script>
 
