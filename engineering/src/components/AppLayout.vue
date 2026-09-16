@@ -11,10 +11,10 @@
         @refresh="emit('refresh')"
       />
 
-      <!-- Page Content -->
+      <!-- Page Content：仅缓存白名单交互页，仪表盘/监控页每次进入重新挂载拉新数据 -->
       <main class="layout-content">
         <router-view v-slot="{ Component }">
-          <keep-alive>
+          <keep-alive :include="keepAliveNames">
             <component :is="Component" />
           </keep-alive>
         </router-view>
@@ -24,18 +24,21 @@
 </template>
 
 <script setup lang="ts">
-import LayoutSidebar from '@/components/layout/LayoutSidebar.vue'
-import LayoutHeader from '@/components/layout/LayoutHeader.vue'
+import LayoutSidebar from "@/components/layout/LayoutSidebar.vue";
+import LayoutHeader from "@/components/layout/LayoutHeader.vue";
+import { KEEP_ALIVE_PAGE_NAMES } from "@/config/keepAlivePages";
+
+const keepAliveNames = KEEP_ALIVE_PAGE_NAMES;
 
 const emit = defineEmits<{
-  (e: 'file-command', cmd: string): void
-  (e: 'refresh'): void
-}>()
+  (e: "file-command", cmd: string): void;
+  (e: "refresh"): void;
+}>();
 
 defineProps<{
-  projectName?: string
-  isModified?: boolean
-}>()
+  projectName?: string;
+  isModified?: boolean;
+}>();
 </script>
 
 <style scoped>
