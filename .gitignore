@@ -511,6 +511,11 @@ data/traces/
 
 # 大数据集不入库（2026-08-30 仓库整理）：按原始来源获取
 research/datasets/uniwear/uniwear/nuaa_orthogonal_bundle_high_resolution.csv
+
+# 期刊论文全文 PDF（作者自存档合法获取，但公开仓再分发有版权风险）：
+# 本地保留用于图形数字化，入库的只有数字化数据与来源记录
+# （literature_pdfs/README_获取记录.md 注明每篇的自存档 URL）
+research/datasets/measured_stability/literature_pdfs/*.pdf
 research/datasets/uniwear/uniwear/phm2010_bundle_high_resolution.csv
 
 # 天才少年计划申请材料（个人材料不入库）
