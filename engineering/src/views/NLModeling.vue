@@ -129,6 +129,7 @@ import type {
 } from "@/types/nl2cad";
 
 const { t } = useI18n();
+const router = useRouter();
 
 const viewMode = ref<"guide" | "chat">("guide");
 const currentModelPath = ref<string>("");
@@ -136,6 +137,8 @@ const currentParams = ref<CADParams | null>(null);
 // 参数化直调：generate 返回的等价脚本 + 参数表（空脚本时滑杆面板不渲染）
 const currentScript = ref<string>("");
 const currentScriptParams = ref<Record<string, number>>({});
+// 最近一次生成的 NC 代码（跳转仿真页时交接给切削仿真预填）
+const currentNcCode = ref<string>("");
 
 function toggleViewMode() {
   viewMode.value = viewMode.value === "guide" ? "chat" : "guide";
@@ -227,10 +230,11 @@ async function handleGenerateNC(payload: {
   process_plan?: ProcessPlan;
 }) {
   try {
-    await apiGenerateNC({
+    const data = await apiGenerateNC({
       process_plan: payload.process_plan || {},
       machine_type: "cnc_mill",
     });
+    currentNcCode.value = data.nc_code || "";
     ElMessage.success(t("nlModeling.msgNcSuccess"));
   } catch (error) {
     console.error("Generate NC failed:", error);
@@ -240,11 +244,23 @@ async function handleGenerateNC(payload: {
 
 function handleStartSimulation() {
   // 跳转到仿真模拟页对当前模型/G代码执行切削仿真
-  if (!currentModelPath.value && !currentParams.value) {
+  if (!currentModelPath.value && !currentNcCode.value) {
     ElMessage.warning(t("nlModeling.msgModelFirst"));
     return;
   }
-  const router = useRouter();
+  // 模型/G代码经 sessionStorage 交接（G代码可能超 URL 长度限制），
+  // 仿真页 onMounted 消费后即清除
+  try {
+    sessionStorage.setItem(
+      "nl2cad_simulation_handoff",
+      JSON.stringify({
+        model_path: currentModelPath.value,
+        gcode: currentNcCode.value,
+      }),
+    );
+  } catch {
+    // sessionStorage 不可用时静默降级：仅跳转，不预填
+  }
   router.push("/simulation");
 }
 

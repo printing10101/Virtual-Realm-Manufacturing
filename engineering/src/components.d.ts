@@ -18,7 +18,6 @@ declare module "vue" {
     AgentSaveCheckpointDialog: (typeof import("./components/agent/AgentSaveCheckpointDialog.vue"))["default"];
     AISettings: (typeof import("./components/settings/AISettings.vue"))["default"];
     AISovereigntyPanel: (typeof import("./components/settings/ai/AISovereigntyPanel.vue"))["default"];
-    AlignmentChecker: (typeof import("./components/goals/AlignmentChecker.vue"))["default"];
     AppFileDialogs: (typeof import("./components/AppFileDialogs.vue"))["default"];
     AppLayout: (typeof import("./components/AppLayout.vue"))["default"];
     ApprovalDetailDialog: (typeof import("./components/approval/ApprovalDetailDialog.vue"))["default"];
@@ -119,7 +118,6 @@ declare module "vue" {
     FlywheelOverview: (typeof import("./components/flywheel/FlywheelOverview.vue"))["default"];
     GCodeExportDialog: (typeof import("./components/toolpath-editor/GCodeExportDialog.vue"))["default"];
     GeneralSettings: (typeof import("./components/settings/GeneralSettings.vue"))["default"];
-    GoalDetail: (typeof import("./components/goals/GoalDetail.vue"))["default"];
     GoalTreeView: (typeof import("./components/goals/GoalTreeView.vue"))["default"];
     GroupManagerDialog: (typeof import("./components/rule_editor/GroupManagerDialog.vue"))["default"];
     HealthCheck: (typeof import("./components/HealthCheck.vue"))["default"];
@@ -212,7 +210,6 @@ declare module "vue" {
     TaskCard: (typeof import("./components/task/TaskCard.vue"))["default"];
     TaskDetailDialog: (typeof import("./components/task/TaskDetailDialog.vue"))["default"];
     TaskFilters: (typeof import("./components/task/TaskFilters.vue"))["default"];
-    TaskWizard: (typeof import("./components/goals/TaskWizard.vue"))["default"];
     TemplateBranchPanel: (typeof import("./components/template/TemplateBranchPanel.vue"))["default"];
     TemplateDetailDrawer: (typeof import("./components/template/TemplateDetailDrawer.vue"))["default"];
     TemplateMarketPanel: (typeof import("./components/template/TemplateMarketPanel.vue"))["default"];

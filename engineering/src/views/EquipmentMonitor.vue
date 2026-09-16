@@ -4,10 +4,10 @@
     <div class="page-header">
       <div class="page-header__title">
         <h1 class="page-title">
-          {{ t('equipmentMonitor.pageTitle') }}
+          {{ t("equipmentMonitor.pageTitle") }}
         </h1>
         <p class="page-subtitle">
-          {{ t('equipmentMonitor.pageSubtitle') }}
+          {{ t("equipmentMonitor.pageSubtitle") }}
         </p>
       </div>
       <div class="page-header__actions">
@@ -17,15 +17,7 @@
           :loading="refreshing"
           @click="handleRefresh"
         >
-          {{ t('equipmentMonitor.btnRefresh') }}
-        </el-button>
-        <el-button
-          type="primary"
-          size="small"
-          :icon="Setting"
-          @click="handleSettings"
-        >
-          {{ t('equipmentMonitor.btnSettings') }}
+          {{ t("equipmentMonitor.btnRefresh") }}
         </el-button>
       </div>
     </div>
@@ -38,6 +30,7 @@
       :devices="devices"
       :loading="loading"
       @view-detail="handleViewDetail"
+      @settings="handleSettings"
       @stop="handleStop"
       @repair="handleRepair"
     />
@@ -61,170 +54,174 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, type Component } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Setting, Monitor, VideoPlay, Clock, WarningFilled } from '@element-plus/icons-vue'
-import http from '@/utils/http'
-import { API_CONFIG } from '@/config/api'
-import EquipmentStatsCards from '@/components/equipment/EquipmentStatsCards.vue'
-import EquipmentDeviceTable from '@/components/equipment/EquipmentDeviceTable.vue'
-import EquipmentSettingsDialog from '@/components/equipment/EquipmentSettingsDialog.vue'
-import EquipmentDetailDialog from '@/components/equipment/EquipmentDetailDialog.vue'
+import { ref, computed, onMounted, type Component } from "vue";
+import { useI18n } from "vue-i18n";
+import { ElMessage, ElMessageBox } from "element-plus";
+import {
+  Refresh,
+  Monitor,
+  VideoPlay,
+  Clock,
+  WarningFilled,
+} from "@element-plus/icons-vue";
+import http from "@/utils/http";
+import { API_CONFIG } from "@/config/api";
+import EquipmentStatsCards from "@/components/equipment/EquipmentStatsCards.vue";
+import EquipmentDeviceTable from "@/components/equipment/EquipmentDeviceTable.vue";
+import EquipmentSettingsDialog from "@/components/equipment/EquipmentSettingsDialog.vue";
+import EquipmentDetailDialog from "@/components/equipment/EquipmentDetailDialog.vue";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 // 类型定义
 interface Device {
-  id: number
-  name: string
-  model: string
-  location: string
-  status: string
-  temperature: number | null
-  vibration: number | null
-  rpm: number | null
-  power: number | null
-  created_at: string
-  updated_at: string
+  id: number;
+  name: string;
+  model: string;
+  location: string;
+  status: string;
+  temperature: number | null;
+  vibration: number | null;
+  rpm: number | null;
+  power: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface EquipmentStats {
-  total: number
-  running: number
-  standby: number
-  maintenance: number
-  fault: number
-}
-
-interface Alarm {
-  id: number
-  equipment_id: number
-  alarm_type: string
-  severity: string
-  message: string
-  status: string
-  created_at: string
-}
-
-interface MaintenancePlan {
-  id: number
-  equipment_id: number
-  title: string
-  type: string
-  frequency: string
-  last_date: string
-  next_date: string
-  status: string
+  total: number;
+  running: number;
+  standby: number;
+  maintenance: number;
+  fault: number;
 }
 
 interface StatsCard {
-  label: string
-  value: number
-  icon: Component
-  type: string
+  label: string;
+  value: number;
+  icon: Component;
+  type: string;
 }
 
 // 状态
-const loading = ref(false)
-const refreshing = ref(false)
+const loading = ref(false);
+const refreshing = ref(false);
 
-const devices = ref<Device[]>([])
-const stats = ref<EquipmentStats>({ total: 0, running: 0, standby: 0, maintenance: 0, fault: 0 })
-const alarms = ref<Alarm[]>([])
-const maintenancePlans = ref<MaintenancePlan[]>([])
+const devices = ref<Device[]>([]);
+const stats = ref<EquipmentStats>({
+  total: 0,
+  running: 0,
+  standby: 0,
+  maintenance: 0,
+  fault: 0,
+});
 
 // 计算属性
 const statsCards = computed<StatsCard[]>(() => {
-  const s = stats.value
+  const s = stats.value;
   return [
-    { label: t('equipmentMonitor.statTotal'), value: s.total, icon: Monitor, type: 'default' },
-    { label: t('equipmentMonitor.statRunning'), value: s.running, icon: VideoPlay, type: 'success' },
-    { label: t('equipmentMonitor.statStandby'), value: s.standby, icon: Clock, type: 'info' },
-    { label: t('equipmentMonitor.statFault'), value: s.fault, icon: WarningFilled, type: 'danger' },
-  ]
-})
+    {
+      label: t("equipmentMonitor.statTotal"),
+      value: s.total,
+      icon: Monitor,
+      type: "default",
+    },
+    {
+      label: t("equipmentMonitor.statRunning"),
+      value: s.running,
+      icon: VideoPlay,
+      type: "success",
+    },
+    {
+      label: t("equipmentMonitor.statStandby"),
+      value: s.standby,
+      icon: Clock,
+      type: "info",
+    },
+    {
+      label: t("equipmentMonitor.statFault"),
+      value: s.fault,
+      icon: WarningFilled,
+      type: "danger",
+    },
+  ];
+});
 
 // 数据获取
 async function fetchDevices() {
-  loading.value = true
+  loading.value = true;
   try {
-    const [deviceRes, statsRes, alarmsRes, maintenanceRes] = await Promise.all([
+    const [deviceRes, statsRes] = await Promise.all([
       http.get(API_CONFIG.EQUIPMENT),
-      http.get(API_CONFIG.EQUIPMENT + '/stats/'),
-      http.get(API_CONFIG.EQUIPMENT + '/alarms/'),
-      http.get(API_CONFIG.EQUIPMENT + '/maintenance/'),
-    ])
+      http.get(API_CONFIG.EQUIPMENT + "/stats/"),
+    ]);
 
     if (deviceRes.data?.code === 0) {
-      devices.value = deviceRes.data.data?.items || []
+      devices.value = deviceRes.data.data?.items || [];
     } else {
-      devices.value = []
+      devices.value = [];
     }
 
     if (statsRes.data?.code === 0) {
-      stats.value = statsRes.data.data || { total: 0, running: 0, standby: 0, maintenance: 0, fault: 0 }
-    }
-
-    if (alarmsRes.data?.code === 0) {
-      alarms.value = alarmsRes.data.data || []
-    }
-
-    if (maintenanceRes.data?.code === 0) {
-      maintenancePlans.value = maintenanceRes.data.data || []
+      stats.value = statsRes.data.data || {
+        total: 0,
+        running: 0,
+        standby: 0,
+        maintenance: 0,
+        fault: 0,
+      };
     }
   } catch {
-    devices.value = []
-    stats.value = { total: 0, running: 0, standby: 0, maintenance: 0, fault: 0 }
-    alarms.value = []
-    maintenancePlans.value = []
-    ElMessage.error(t('equipmentMonitor.msgLoadFailed'))
+    devices.value = [];
+    stats.value = {
+      total: 0,
+      running: 0,
+      standby: 0,
+      maintenance: 0,
+      fault: 0,
+    };
+    ElMessage.error(t("equipmentMonitor.msgLoadFailed"));
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 async function handleRefresh() {
-  refreshing.value = true
-  await fetchDevices()
-  refreshing.value = false
-  ElMessage.success(t('equipmentMonitor.msgRefreshed'))
+  refreshing.value = true;
+  await fetchDevices();
+  refreshing.value = false;
+  ElMessage.success(t("equipmentMonitor.msgRefreshed"));
 }
 
 // 设备参数设置弹窗
-const settingsDialogVisible = ref(false)
-const settingsSubmitting = ref(false)
+const settingsDialogVisible = ref(false);
+const settingsSubmitting = ref(false);
 const settingsForm = ref({
   id: 0,
-  name: '',
-  status: '',
+  name: "",
+  status: "",
   temperature: null as number | null,
   vibration: null as number | null,
   rpm: null as number | null,
   power: null as number | null,
-})
+});
 
-function handleSettings() {
-  const first = devices.value[0]
-  if (!first) {
-    ElMessage.warning(t('equipmentMonitor.emptyData'))
-    return
-  }
+function handleSettings(device: Device) {
   settingsForm.value = {
-    id: first.id,
-    name: first.name,
-    status: first.status,
-    temperature: first.temperature,
-    vibration: first.vibration,
-    rpm: first.rpm,
-    power: first.power,
-  }
-  settingsDialogVisible.value = true
+    id: device.id,
+    name: device.name,
+    status: device.status,
+    temperature: device.temperature,
+    vibration: device.vibration,
+    rpm: device.rpm,
+    power: device.power,
+  };
+  settingsDialogVisible.value = true;
 }
 
 async function submitSettings() {
-  if (!settingsForm.value.id) return
-  settingsSubmitting.value = true
+  if (!settingsForm.value.id) return;
+  settingsSubmitting.value = true;
   try {
     const res = await http.put(
       API_CONFIG.EQUIPMENT + `/${settingsForm.value.id}`,
@@ -235,43 +232,45 @@ async function submitSettings() {
         rpm: settingsForm.value.rpm,
         power: settingsForm.value.power,
       },
-    )
+    );
     if (res.data.code === 0) {
-      ElMessage.success(t('equipmentMonitor.msgSettingsSaved'))
-      settingsDialogVisible.value = false
-      fetchDevices()
+      ElMessage.success(t("equipmentMonitor.msgSettingsSaved"));
+      settingsDialogVisible.value = false;
+      fetchDevices();
     } else {
-      ElMessage.error(res.data.message || t('equipmentMonitor.msgSettingsFailed'))
+      ElMessage.error(
+        res.data.message || t("equipmentMonitor.msgSettingsFailed"),
+      );
     }
   } catch (e: unknown) {
-    console.warn('[EquipmentMonitor] save settings failed:', e)
-    ElMessage.error(t('equipmentMonitor.msgSettingsFailed'))
+    console.warn("[EquipmentMonitor] save settings failed:", e);
+    ElMessage.error(t("equipmentMonitor.msgSettingsFailed"));
   } finally {
-    settingsSubmitting.value = false
+    settingsSubmitting.value = false;
   }
 }
 
 // 设备详情弹窗
-const detailDialogVisible = ref(false)
-const detailLoading = ref(false)
-const detailData = ref<Device | null>(null)
+const detailDialogVisible = ref(false);
+const detailLoading = ref(false);
+const detailData = ref<Device | null>(null);
 
 async function handleViewDetail(row: Device) {
-  detailDialogVisible.value = true
-  detailLoading.value = true
-  detailData.value = null
+  detailDialogVisible.value = true;
+  detailLoading.value = true;
+  detailData.value = null;
   try {
-    const res = await http.get(API_CONFIG.EQUIPMENT + `/${row.id}`)
+    const res = await http.get(API_CONFIG.EQUIPMENT + `/${row.id}`);
     if (res.data.code === 0 && res.data.data) {
-      detailData.value = res.data.data
+      detailData.value = res.data.data;
     } else {
-      ElMessage.error(res.data.message || t('equipmentMonitor.msgOpFailed'))
+      ElMessage.error(res.data.message || t("equipmentMonitor.msgOpFailed"));
     }
   } catch (e: unknown) {
-    console.warn('[EquipmentMonitor] fetch detail failed:', e)
-    ElMessage.error(t('equipmentMonitor.msgOpFailed'))
+    console.warn("[EquipmentMonitor] fetch detail failed:", e);
+    ElMessage.error(t("equipmentMonitor.msgOpFailed"));
   } finally {
-    detailLoading.value = false
+    detailLoading.value = false;
   }
 }
 
@@ -279,59 +278,67 @@ async function handleViewDetail(row: Device) {
 async function handleStop(row: Device) {
   try {
     await ElMessageBox.confirm(
-      t('equipmentMonitor.msgStopConfirm', { name: row.name }),
-      t('equipmentMonitor.btnStop'),
-      { type: 'warning', confirmButtonText: t('equipmentMonitor.btnSubmit'), cancelButtonText: t('equipmentMonitor.btnCancel') },
-    )
+      t("equipmentMonitor.msgStopConfirm", { name: row.name }),
+      t("equipmentMonitor.btnStop"),
+      {
+        type: "warning",
+        confirmButtonText: t("equipmentMonitor.btnSubmit"),
+        cancelButtonText: t("equipmentMonitor.btnCancel"),
+      },
+    );
   } catch {
-    return
+    return;
   }
   try {
     const res = await http.put(API_CONFIG.EQUIPMENT + `/${row.id}`, {
-      status: t('equipmentMonitor.labelStatusStandby'),
-    })
+      status: t("equipmentMonitor.labelStatusStandby"),
+    });
     if (res.data.code === 0) {
-      ElMessage.success(t('equipmentMonitor.msgStopSuccess'))
-      fetchDevices()
+      ElMessage.success(t("equipmentMonitor.msgStopSuccess"));
+      fetchDevices();
     } else {
-      ElMessage.error(res.data.message || t('equipmentMonitor.msgOpFailed'))
+      ElMessage.error(res.data.message || t("equipmentMonitor.msgOpFailed"));
     }
   } catch (e: unknown) {
-    console.warn('[EquipmentMonitor] stop failed:', e)
-    ElMessage.error(t('equipmentMonitor.msgOpFailed'))
+    console.warn("[EquipmentMonitor] stop failed:", e);
+    ElMessage.error(t("equipmentMonitor.msgOpFailed"));
   }
 }
 
 async function handleRepair(row: Device) {
   try {
     await ElMessageBox.confirm(
-      t('equipmentMonitor.msgRepairConfirm', { name: row.name }),
-      t('equipmentMonitor.btnRepair'),
-      { type: 'warning', confirmButtonText: t('equipmentMonitor.btnSubmit'), cancelButtonText: t('equipmentMonitor.btnCancel') },
-    )
+      t("equipmentMonitor.msgRepairConfirm", { name: row.name }),
+      t("equipmentMonitor.btnRepair"),
+      {
+        type: "warning",
+        confirmButtonText: t("equipmentMonitor.btnSubmit"),
+        cancelButtonText: t("equipmentMonitor.btnCancel"),
+      },
+    );
   } catch {
-    return
+    return;
   }
   try {
     const res = await http.put(API_CONFIG.EQUIPMENT + `/${row.id}`, {
-      status: t('equipmentMonitor.labelStatusMaintenance'),
-    })
+      status: t("equipmentMonitor.labelStatusMaintenance"),
+    });
     if (res.data.code === 0) {
-      ElMessage.success(t('equipmentMonitor.msgRepairSuccess'))
-      fetchDevices()
+      ElMessage.success(t("equipmentMonitor.msgRepairSuccess"));
+      fetchDevices();
     } else {
-      ElMessage.error(res.data.message || t('equipmentMonitor.msgOpFailed'))
+      ElMessage.error(res.data.message || t("equipmentMonitor.msgOpFailed"));
     }
   } catch (e: unknown) {
-    console.warn('[EquipmentMonitor] repair failed:', e)
-    ElMessage.error(t('equipmentMonitor.msgOpFailed'))
+    console.warn("[EquipmentMonitor] repair failed:", e);
+    ElMessage.error(t("equipmentMonitor.msgOpFailed"));
   }
 }
 
 // 生命周期
 onMounted(() => {
-  fetchDevices()
-})
+  fetchDevices();
+});
 </script>
 
 <style scoped>

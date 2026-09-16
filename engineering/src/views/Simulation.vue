@@ -71,24 +71,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
+import { ElMessage } from "element-plus";
 import {
   useAnimationExport,
   useCollisionHandling,
   useFemSolver,
   useSimulationHistory,
   useSimulationRunner,
-} from '@/composables/simulation'
-import SimulationPageHeader from '@/components/simulation/SimulationPageHeader.vue'
-import SimulationStatsRow from '@/components/simulation/SimulationStatsRow.vue'
-import SimulationTabSwitcher from '@/components/simulation/SimulationTabSwitcher.vue'
-import SimulationNcTab from '@/components/simulation/SimulationNcTab.vue'
-import SimulationFemTab from '@/components/simulation/SimulationFemTab.vue'
-import SimulationExportTab from '@/components/simulation/SimulationExportTab.vue'
-import CollisionAlertModal from '@/components/simulation/CollisionAlertModal.vue'
+} from "@/composables/simulation";
+import SimulationPageHeader from "@/components/simulation/SimulationPageHeader.vue";
+import SimulationStatsRow from "@/components/simulation/SimulationStatsRow.vue";
+import SimulationTabSwitcher from "@/components/simulation/SimulationTabSwitcher.vue";
+import SimulationNcTab from "@/components/simulation/SimulationNcTab.vue";
+import SimulationFemTab from "@/components/simulation/SimulationFemTab.vue";
+import SimulationExportTab from "@/components/simulation/SimulationExportTab.vue";
+import CollisionAlertModal from "@/components/simulation/CollisionAlertModal.vue";
 
-const ncTabRef = ref<InstanceType<typeof SimulationNcTab> | null>(null)
-const activeTab = ref<string>('simulation')
+const ncTabRef = ref<InstanceType<typeof SimulationNcTab> | null>(null);
+const activeTab = ref<string>("simulation");
+const { t } = useI18n();
 
 // 历史与统计
 const {
@@ -98,7 +101,7 @@ const {
   passCount,
   failCount,
   avgDuration,
-} = useSimulationHistory()
+} = useSimulationHistory();
 
 // 仿真运行核心
 const {
@@ -113,10 +116,10 @@ const {
   resetRun,
 } = useSimulationRunner({
   onTaskCompleted: () => {
-    void fetchHistory()
+    void fetchHistory();
   },
   getViewer: () => ncTabRef.value?.viewerRef ?? null,
-})
+});
 
 // 碰撞处理
 const {
@@ -124,16 +127,11 @@ const {
   handleLocateCollision,
   handleDismissCollision,
   handleDismissAllCollisions,
-} = useCollisionHandling(simResult)
+} = useCollisionHandling(simResult);
 
 // FEM 求解
-const {
-  femParams,
-  femResult,
-  femSolving,
-  resetFemParams,
-  handleStartSolve,
-} = useFemSolver()
+const { femParams, femResult, femSolving, resetFemParams, handleStartSolve } =
+  useFemSolver();
 
 // 动画导出与 STL 下载
 const {
@@ -143,20 +141,41 @@ const {
   handleExportGif,
   handleExportMp4,
   handleDownloadStl,
-} = useAnimationExport({ gcode, simParams, simResult })
+} = useAnimationExport({ gcode, simParams, simResult });
 
 function handleNewSimulation() {
-  resetRun()
-  activeTab.value = 'simulation'
+  resetRun();
+  activeTab.value = "simulation";
+}
+
+/**
+ * 消费自然语言建模页的交接数据（sessionStorage: nl2cad_simulation_handoff）：
+ * 有生成的 G 代码则预填并切到仿真 Tab，实现"建模→仿真"链路贯通。
+ */
+function consumeNl2cadHandoff() {
+  try {
+    const raw = sessionStorage.getItem("nl2cad_simulation_handoff");
+    if (!raw) return;
+    sessionStorage.removeItem("nl2cad_simulation_handoff");
+    const handoff = JSON.parse(raw) as { model_path?: string; gcode?: string };
+    if (handoff.gcode) {
+      gcode.value = handoff.gcode;
+      activeTab.value = "simulation";
+      ElMessage.success(t("simulationPage.msgNl2cadHandoff"));
+    }
+  } catch {
+    // 交接数据损坏时静默忽略，不影响正常仿真流程
+  }
 }
 
 onMounted(() => {
-  void fetchHistory()
-})
+  void fetchHistory();
+  consumeNl2cadHandoff();
+});
 
 onUnmounted(() => {
-  stopPolling()
-})
+  stopPolling();
+});
 </script>
 
 <style scoped>

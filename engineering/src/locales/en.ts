@@ -1461,6 +1461,7 @@ export default {
   simulationPage: {
     pageTitle: "Simulation",
     pageSubtitle: "NC Code Simulation & Collision Detection",
+    msgNl2cadHandoff: "G-code loaded from NL modeling",
     refreshHistory: "Refresh History",
     newSimulation: "New Simulation",
     statTotalSim: "Total Simulations",

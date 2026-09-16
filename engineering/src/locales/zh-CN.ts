@@ -1334,6 +1334,7 @@ export default {
   simulationPage: {
     pageTitle: "仿真模拟",
     pageSubtitle: "NC 代码仿真验证与碰撞检测",
+    msgNl2cadHandoff: "已从自然语言建模载入 G 代码",
     refreshHistory: "刷新记录",
     newSimulation: "新建仿真",
     statTotalSim: "仿真总数",

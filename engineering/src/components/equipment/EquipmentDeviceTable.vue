@@ -1,7 +1,9 @@
 <template>
   <div class="content-card">
     <div class="content-card__header">
-      <span class="content-card__title">{{ t('equipmentMonitor.sectionDeviceList') }}</span>
+      <span class="content-card__title">{{
+        t("equipmentMonitor.sectionDeviceList")
+      }}</span>
       <div class="filter-bar">
         <el-select
           v-model="statusFilter"
@@ -67,10 +69,7 @@
           min-width="140"
           show-overflow-tooltip
         />
-        <el-table-column
-          :label="t('equipmentMonitor.colStatus')"
-          width="100"
-        >
+        <el-table-column :label="t('equipmentMonitor.colStatus')" width="100">
           <template #default="{ row }">
             <el-tag
               :type="statusTagType(row.status)"
@@ -113,7 +112,14 @@
               size="small"
               @click="emit('viewDetail', row as Device)"
             >
-              {{ t('equipmentMonitor.btnDetail') }}
+              {{ t("equipmentMonitor.btnDetail") }}
+            </el-button>
+            <el-button
+              text
+              size="small"
+              @click="emit('settings', row as Device)"
+            >
+              {{ t("equipmentMonitor.btnSettings") }}
             </el-button>
             <el-button
               v-if="row.status === t('equipmentMonitor.labelStatusRunning')"
@@ -122,7 +128,7 @@
               size="small"
               @click="emit('stop', row as Device)"
             >
-              {{ t('equipmentMonitor.btnStop') }}
+              {{ t("equipmentMonitor.btnStop") }}
             </el-button>
             <el-button
               v-if="row.status === t('equipmentMonitor.labelStatusFault')"
@@ -131,7 +137,7 @@
               size="small"
               @click="emit('repair', row as Device)"
             >
-              {{ t('equipmentMonitor.btnRepair') }}
+              {{ t("equipmentMonitor.btnRepair") }}
             </el-button>
           </template>
         </el-table-column>
@@ -141,64 +147,74 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 export interface Device {
-  id: number
-  name: string
-  model: string
-  location: string
-  status: string
-  temperature: number | null
-  vibration: number | null
-  rpm: number | null
-  power: number | null
-  created_at: string
-  updated_at: string
+  id: number;
+  name: string;
+  model: string;
+  location: string;
+  status: string;
+  temperature: number | null;
+  vibration: number | null;
+  rpm: number | null;
+  power: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const props = defineProps<{
-  devices: Device[]
-  loading: boolean
-}>()
+  devices: Device[];
+  loading: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'viewDetail', device: Device): void
-  (e: 'stop', device: Device): void
-  (e: 'repair', device: Device): void
-}>()
+  (e: "viewDetail", device: Device): void;
+  (e: "settings", device: Device): void;
+  (e: "stop", device: Device): void;
+  (e: "repair", device: Device): void;
+}>();
 
 // 内部筛选状态
-const statusFilter = ref('all')
-const searchKeyword = ref('')
+const statusFilter = ref("all");
+const searchKeyword = ref("");
 
 // 状态映射
-const STATUS_TO_TAG_TYPE: Record<string, 'success' | 'info' | 'danger' | 'warning'> = {
-  [t('equipmentMonitor.labelStatusRunning')]: 'success',
-  [t('equipmentMonitor.labelStatusStandby')]: 'info',
-  [t('equipmentMonitor.labelStatusFault')]: 'danger',
-  [t('equipmentMonitor.labelStatusMaintenance')]: 'warning',
-}
+const STATUS_TO_TAG_TYPE: Record<
+  string,
+  "success" | "info" | "danger" | "warning"
+> = {
+  [t("equipmentMonitor.labelStatusRunning")]: "success",
+  [t("equipmentMonitor.labelStatusStandby")]: "info",
+  [t("equipmentMonitor.labelStatusFault")]: "danger",
+  [t("equipmentMonitor.labelStatusMaintenance")]: "warning",
+};
 
 // 计算属性
 const filteredDevices = computed(() => {
-  return props.devices.filter(d => {
-    const keyword = searchKeyword.value.trim().toLowerCase()
-    if (keyword && !String(d.id).includes(keyword) && !d.name.toLowerCase().includes(keyword)) {
-      return false
+  return props.devices.filter((d) => {
+    const keyword = searchKeyword.value.trim().toLowerCase();
+    if (
+      keyword &&
+      !String(d.id).includes(keyword) &&
+      !d.name.toLowerCase().includes(keyword)
+    ) {
+      return false;
     }
-    if (statusFilter.value !== 'all' && d.status !== statusFilter.value) {
-      return false
+    if (statusFilter.value !== "all" && d.status !== statusFilter.value) {
+      return false;
     }
-    return true
-  })
-})
+    return true;
+  });
+});
 
 // 方法
-function statusTagType(status: string): 'success' | 'info' | 'danger' | 'warning' {
-  return STATUS_TO_TAG_TYPE[status] || 'info'
+function statusTagType(
+  status: string,
+): "success" | "info" | "danger" | "warning" {
+  return STATUS_TO_TAG_TYPE[status] || "info";
 }
 </script>
