@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { ElMessage } from "element-plus";
 import { useAuthStore } from "@/stores/auth";
+import { buildDocumentTitle } from "./title";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -9,7 +10,7 @@ const router = createRouter({
       path: "/",
       name: "home",
       component: () => import("../views/Home.vue"),
-      meta: { public: true },
+      meta: { public: true, title: "生产总览" },
     },
     {
       path: "/login",
@@ -21,7 +22,7 @@ const router = createRouter({
       path: "/workspace",
       name: "workspace",
       component: () => import("../views/Workspace.vue"),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, title: "LNN 工作台" },
     },
     {
       path: "/settings",
@@ -33,7 +34,7 @@ const router = createRouter({
       path: "/about",
       name: "about",
       component: () => import("../views/About.vue"),
-      meta: { public: true },
+      meta: { public: true, title: "关于" },
     },
     {
       // 任务历史已并入任务中心列表视图（?view=list 直达表格视图）
@@ -44,14 +45,14 @@ const router = createRouter({
       path: "/rule-editor",
       name: "rule-editor",
       component: () => import("../views/RuleEditor.vue"),
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, title: "工艺规则" },
     },
     {
       path: "/toolpath-editor",
       name: "toolpath-editor",
       component: () =>
         import("../components/toolpath-editor/ToolpathEditor.vue"),
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true, title: "刀具路径" },
     },
     {
       path: "/process-planning",
@@ -226,6 +227,11 @@ const router = createRouter({
       component: () => import("@/views/NotFound.vue"),
     },
   ],
+});
+
+// 导航后同步浏览器标签页标题（与 createAppRouter 的口径一致：「页面名 - 灵境制造」）
+router.afterEach((to) => {
+  document.title = buildDocumentTitle(to.meta.title);
 });
 
 // 路由守卫：认证与权限检查（安全默认：非公开路由均要求登录）
