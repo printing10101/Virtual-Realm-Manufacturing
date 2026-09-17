@@ -13,6 +13,7 @@ Tests for:
 import pytest
 import numpy as np
 import json
+from pathlib import Path
 from unittest.mock import MagicMock
 
 try:
@@ -316,8 +317,12 @@ class TestLNNModelRegistry:
 
     def test_validate_model_file_exists(self):
         """权重文件真实存在且可加载的模型应判定有效。"""
+        # 注册表模板里的 model_path 是 CWD 相对路径（"models/lnn/..."），只有
+        # 打包流程在仓库根生成过 dist 副本时才能按默认路径命中；测试显式传
+        # 入仓库内真实权重路径，消除对 CWD/打包产物的依赖
+        repo_weights = Path(__file__).resolve().parents[2] / "models" / "lnn" / "cutting_force.npz"
         registry = LNNModelRegistry()
-        result = registry.validate_model("cutting_force")
+        result = registry.validate_model("cutting_force", model_path=str(repo_weights))
         assert result["file_exists"] is True
         assert result["valid"] is True
         assert result["model_name"] == "cutting_force"
