@@ -185,27 +185,21 @@ def main() -> int:
         # 注意：不复制宿主 venv（2026-08-03 曾因 venv 混入 torch/casadi 等
         # 训练向包污染运行时 → NSIS/WiX 打包失败），requirements.txt 才是真源。
         req = PROJECT_ROOT / "requirements.txt"
-        # 先装 CPU 版 torch 占位：requirements 经 sentence-transformers 间接依赖
-        # torch，直接从 PyPI 装会连带拉下整套 CUDA 轮子（nvidia-cudnn/nccl/cublas
-        # 等 ~3GB+，实测 CI 此步 >1.5h，且运行时体积爆炸）。CPU 轮子先进入
-        # site-packages 后，requirements 安装时 torch 已满足，不再触发 CUDA 依赖。
+        # torch 必须取 CPU 轮子：PyPI 的 torch 默认捆绑整套 CUDA 依赖
+        # （nvidia-cudnn/nccl/cublas 等 ~3GB，实测 CI 下载 >1.5h）。做法是把
+        # pytorch CPU 索引设为主源、常规镜像设为 extra：PEP 440 本地版本号
+        # `2.14.0+cpu` 优先级高于 `2.14.0`，pip 解析 sentence-transformers 的
+        # torch 依赖时自然选中 +cpu 轮子，其余包仍来自常规镜像。
+        # 注意 pip 的 --target 不会把已装进目标的包视为"已满足"，因此不能用
+        # "先预装再装 requirements"的方式实现（2026-09-17 CI 实测无效）。
         # 工程侧 torch 仅用于 RAG 嵌入（见 requirements.txt 头注释），CPU 版即够。
-        log("预装 CPU 版 torch（避开 CUDA 轮子，见 requirements.txt 头注释）...")
-        r = subprocess.run(
-            [str(py_exe), "-m", "pip", "install", "--no-cache-dir",
-             "--break-system-packages",
-             "--target", str(sp_dst), "torch",
-             "--index-url", "https://download.pytorch.org/whl/cpu"],
-        )
-        if r.returncode != 0:
-            log("ERROR: CPU 版 torch 预安装失败")
-            return r.returncode
-        log(f"安装依赖到运行时（requirements.txt 真源，镜像: {args.pip_index}）...")
+        log(f"安装依赖到运行时（torch 取 CPU 轮子，其余来自 {args.pip_index}）...")
         r = subprocess.run(
             [str(py_exe), "-m", "pip", "install", "--no-cache-dir",
              "--break-system-packages",  # python-build-standalone 带 PEP668 标记
              "--target", str(sp_dst), "-r", str(req),
-             "--index-url", args.pip_index],
+             "--index-url", "https://download.pytorch.org/whl/cpu",
+             "--extra-index-url", args.pip_index],
         )
         if r.returncode != 0:
             log("ERROR: 依赖安装失败")

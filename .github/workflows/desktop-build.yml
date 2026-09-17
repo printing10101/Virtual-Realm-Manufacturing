@@ -96,10 +96,13 @@ jobs:
 
       - name: 构建嵌入式 Python 运行时
         # 探测 uv 安装的 python-build-standalone → 组装自包含运行时（含依赖与后端代码）
+        # 2026-09-18：pip 源改 pypi.org——runner 在境外，走 aliyun 镜像是跨洋
+        # 慢源（实测 nvidia 轮子单个拖 10 分钟）；torch 本身固定走 CPU 轮子
+        # 索引（见 build_desktop_runtime.py），不依赖本参数
         shell: bash
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          python engineering/python/scripts/build_desktop_runtime.py --install-deps
+          python engineering/python/scripts/build_desktop_runtime.py --install-deps --pip-index https://pypi.org/simple
 
       - name: 安装 Rust 工具链（Linux/macOS）
         if: runner.os != 'Windows'
