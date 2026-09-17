@@ -94,7 +94,7 @@
 
 **数据建设缺口（P0-C 剩余项，非测试问题）**：切参库 12 条（目标 ≥200）、失败案例库 47 行（目标 ≥500）、cutting_force 仍为 100 行合成数据训练（重训排期 10 月）。uniwear.csv 已于本轮入库（cf4b22c0），数据血缘恢复可复现。
 
-**新增已知问题（本轮发现，下一批处置）**：飞轮 E2E（`tests/e2e/test_flywheel_closed_loop.py`）每次运行向**已入库**的 `data/training_data/training_data_20260913.jsonl` 追加合成反馈记录——既污染数据文件又违反"训练数据禁止合成"政策；应改为写入 tmp_path 隔离目录。
+**新增已知问题（本轮发现）**：飞轮 E2E（`tests/e2e/test_flywheel_closed_loop.py`）每次运行向**已入库**的 `data/training_data/training_data_20260913.jsonl` 追加合成反馈记录——既污染数据文件又违反"训练数据禁止合成"政策。**已处置（2026-09-17）**：单例用例改经 `isolated_singleton_pipeline` 夹具指向 tmp 数据湖 + 新增 autouse 快照守卫（默认目录任何增长即失败）；核查发现 20260908/0912/0913 三份入库文件 100% 为测试记录，已全部删除（仅保留干净的 20260615）。
 
 ---
 

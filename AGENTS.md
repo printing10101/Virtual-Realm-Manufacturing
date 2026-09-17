@@ -1,6 +1,6 @@
 # 灵境制造（上线版）— Agent 协作指南
 
-AI 驱动的制造智能桌面应用：**图纸 → 3D 模型 → 工艺规划 → NC 代码** 全流程智能化。
+制造物理 AI 桌面应用（Desktop Physical AI for Machining）：**图纸 → 3D 模型 → 工艺规划 → NC 代码** 全流程智能化；体素仿真强制校验 + DNC 下发硬闸兜底，AI 产出必经物理校验才可上机（叙事口径见 `docs/产品叙事与战略对标-2026-09.md` §1.7 对照表）。
 Tauri(Rust) + Vue3 + Python/FastAPI 全栈 monorepo。当前分支为 `main`（2026-08-19 分支收敛：refactor 已并入 main，旧 main 存档于 tag `backup/main-2026-08-03`）。
 
 ## 仓库地图

@@ -2,8 +2,8 @@
 layout: home
 hero:
   name: 灵境制造
-  text: 自适应工艺孪生平台
-  tagline: 数据驱动的智能加工优化系统
+  text: 桌面级制造物理 AI
+  tagline: 图纸进，代码出——每行 G 代码经物理校验才上机，数据全程留在你自己的电脑里
   actions:
     - theme: brand
       text: 快速开始
