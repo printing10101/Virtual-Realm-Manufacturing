@@ -90,7 +90,7 @@
 | Response Model Coverage | 新端点未声明 + 检查器 bug | 已修（本地复验 exit 0） |
 | Frontend Tests | 测试 mock 未随组件演进 | 已修（本地 vitest 全绿） |
 | Performance Benchmarks | 回归检查步骤读空 JSON | **未处置**——perf-benchmark 独立工作流同口径为 success，疑似 ci.yml 内联步骤与 DB 状态相关，需单独排查 |
-| 桌面端构建 | 历史全败（81 次 0 成功） | 未处置，属独立专项 |
+| 桌面端构建 | 历史全败（81 次 0 成功） | **已修复（2026-09-18，run 35280667180 三平台全绿）**：①运行时依赖连带拉 CUDA torch 全家桶（~3GB，实测拖 2h）——改从 pytorch CPU 索引解析（PEP 440 +cpu 本地版本号优先）+ CI 常规包源切 pypi.org；②AppImage 打包失败——linuxdeploy 为 AppDir 内所有 ELF 解析依赖，捆绑运行时的 _tkinter 引用 libtcl9tk9.0.so 无法解析，裁剪 tkinter/tcl-tk 后又轮到 wheel 私有库 libaec，本质是 linuxdeploy 遍历含科学计算轮子的 Python 发行版不可行——Linux 改交 deb，AppImage 留待引入排除机制再评估；③Linux 产品名 ASCII 化；④新增 pnpm/uv/Rust 三处缓存。终态：Linux 9m15s / macOS 10m14s / Windows 20m40s 三平台 artifact 齐备 |
 
 **数据建设缺口（P0-C 剩余项，非测试问题）**：切参库 12 条（目标 ≥200）、失败案例库 47 行（目标 ≥500）、cutting_force 仍为 100 行合成数据训练（重训排期 10 月）。uniwear.csv 已于本轮入库（cf4b22c0），数据血缘恢复可复现。
 
@@ -106,7 +106,7 @@
 - [x] 文档口径统一（白盒化任务状态单一事实源）
 - [ ] CI Pipeline 推送后核对一轮（本轮修复全部就位）
 - [ ] Performance Benchmarks 内联 job 排查
-- [ ] 桌面端构建专项
+- [x] 桌面端构建专项（2026-09-18：run 35280667180 三平台全绿，21 分钟出齐 Windows NSIS / macOS DMG / Linux deb）
 - [ ] P0-C 数据建设（切参扩容 / 案例库灌数 / 真实数据重训）
 
 ---
