@@ -188,12 +188,12 @@ pytest app/ai/lnn/tests/test_bayesian.py -v
 ```
 
 测试覆盖：
-- ✅ 模型创建和初始化
-- ✅ MC Dropout 推理机制
-- ✅ 权重加载兼容性
-- ✅ 均值和标准差输出验证
-- ✅ 性能基准测试（<=5x 原模型）
-- ✅ BayesianPredictor 接口
+- 模型创建和初始化
+- MC Dropout 推理机制
+- 权重加载兼容性
+- 均值和标准差输出验证
+- 性能基准测试（<=5x 原模型）
+- BayesianPredictor 接口
 
 ### 功能验证
 
@@ -206,7 +206,7 @@ predictor = BayesianPredictor(model_path='models/cfc_v1.pt')
 mean, std = predictor.predict_with_uncertainty(torch.randn(1, 8), n_samples=50)
 print(f'mean: {mean.shape}, std: {std.shape}')
 assert std.abs().max() > 0, 'std should be > 0'
-print('✅ 功能验证通过')
+print('功能验证通过')
 "
 ```
 
@@ -244,7 +244,7 @@ print(f'原模型: {original_time:.2f}ms')
 print(f'贝叶斯模型: {bayesian_time:.2f}ms')
 print(f'性能比: {bayesian_time/original_time:.2f}x')
 assert bayesian_time <= original_time * 5, '性能超出5倍限制'
-print('✅ 性能验证通过')
+print('性能验证通过')
 "
 ```
 
@@ -255,10 +255,10 @@ print('✅ 性能验证通过')
 | 特性 | LNNPredictor | BayesianPredictor |
 |------|--------------|-------------------|
 | 预测输出 | 单一预测值 | 均值 + 标准差 |
-| 不确定性量化 | ❌ | ✅ |
-| 权重加载 | ✅ | ✅（兼容原权重） |
-| 批量推理 | ✅ | ✅ |
-| 流式推理 | ✅ | ❌（可扩展） |
+| 不确定性量化 | | |
+| 权重加载 | | （兼容原权重） |
+| 批量推理 | | |
+| 流式推理 | | （可扩展） |
 
 ### 迁移指南
 

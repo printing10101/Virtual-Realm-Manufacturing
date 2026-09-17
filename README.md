@@ -7,7 +7,7 @@ AI 驱动的制造智能桌面应用：**图纸 → 3D 模型 → 工艺规划 �
 
 ---
 
-## 🚀 快速开始
+## 快速开始
 
 > 支持三种安装方式，按你的场景任选其一。
 
@@ -58,7 +58,7 @@ docker compose --profile full up -d
 
 ---
 
-## 📁 平台支持
+## 平台支持
 
 | 平台 | 推荐方式 | 说明 |
 |---|---|---|
@@ -69,7 +69,7 @@ docker compose --profile full up -d
 
 ---
 
-## 🧩 核心能力
+## 核心能力
 
 - **图纸解析**：DXF / STEP 导入 → 三维重建
 - **工艺规划**：自动识别孔/槽/面特征，生成加工工艺
@@ -78,7 +78,7 @@ docker compose --profile full up -d
 - **智能交互**：NL2CAD 自然语言建模、RAG 工艺知识库问答
 - **车间集成**：OPC UA 机床数据采集、MES/ERP 对接（可选）
 
-## 📚 文档
+## 文档
 
 - [安装指南](docs/user-guide/安装指南.md)
 - [国内部署指南](docs/国内部署指南.md)
@@ -86,7 +86,7 @@ docker compose --profile full up -d
 - [安全须知](docs/user-guide/安全须知.md)
 - [项目概览](PROJECT_OVERVIEW.md)
 
-## 🤝 参与贡献
+## 参与贡献
 
 见 [贡献指南](CONTRIBUTING.md)。版本一致性由 `scripts/version_sync.py` 保障（CI 门禁）。
 

@@ -76,7 +76,7 @@
 <li>强化 <code>tests/architecture/test_import_directions.py</code>：新增三条禁令（见各 DoD），纳入 CI（workflow 中 pytest 强制）。</li>
 <li>新增 <code>scripts/openapi_diff.py</code>：导出前后 OpenAPI 契约 diff，路由重构零回归门禁。</li>
 </ol>
-<div class="gate">✅ 门禁：5 条 E2E 全绿；architecture 测试全绿；OpenAPI diff 脚本可运行。</div>
+<div class="gate">门禁：5 条 E2E 全绿；architecture 测试全绿；OpenAPI diff 脚本可运行。</div>
 </div>
 
 <!-- ================= D1 ================= -->
@@ -106,8 +106,8 @@ async def list_models(
     reg: LLMRegistry = Depends(get_llm_registry),
 ):
     ...                              # 测试可注入 mock</pre>
-<div class="risk">⚠ 风险：批次 C 改变调用语义（单例→每次请求解析）。缓解：工厂本身已单例化（_LazySingleton），行为不变；逐文件验证。</div>
-<div class="dod">✅ DoD：216 消费点归零；architecture 测试新增禁令——<b>禁止 <code>from app.* import get_</code>（白名单仅 app.dependencies）</b>；pytest 全绿。</div>
+<div class="risk">风险：批次 C 改变调用语义（单例→每次请求解析）。缓解：工厂本身已单例化（_LazySingleton），行为不变；逐文件验证。</div>
+<div class="dod">DoD：216 消费点归零；architecture 测试新增禁令——<b>禁止 <code>from app.* import get_</code>（白名单仅 app.dependencies）</b>；pytest 全绿。</div>
 </div>
 </div>
 </div>
@@ -125,8 +125,8 @@ async def list_models(
 <li>业务规则（校验、计算）留在 services/domain 或 API 编排层，不随 SQL 下沉。</li>
 <li>每个 Repository 补 ≥3 条单测（CRUD + 边界）。</li>
 </ol>
-<div class="gate">✅ 门禁：api/v1 下无直接 <code>db.execute / session / Session()</code> 调用；Repository 单测通过。</div>
-<div class="dod">✅ DoD：C 类 9 文件清零；architecture 测试新增禁令——<b>api/ 不得 import app.database（白名单 app.models.schemas 除外）</b>。</div>
+<div class="gate">门禁：api/v1 下无直接 <code>db.execute / session / Session()</code> 调用；Repository 单测通过。</div>
+<div class="dod">DoD：C 类 9 文件清零；architecture 测试新增禁令——<b>api/ 不得 import app.database（白名单 app.models.schemas 除外）</b>。</div>
 </div>
 </div>
 
@@ -146,8 +146,8 @@ async def list_models(
 <li>11 个非 API 包 router（dxf/api.py、rag/routes.py、simulation/api.py、projects/project_api.py、step_import/api.py、integrations/mes/api.py、knowledge_graph/extractor/review.py、cad/process_router.py、ai/ollama_routes.py、ai/process_understanding/routes.py、middleware/metrics_middleware.py）→ 全部改由 <code>app/router_registry.py</code> 统一挂载，删除 main.py 中散落 include_router。</li>
 <li>跑 <code>scripts/openapi_diff.py</code> 对比端点集，diff 必须为零（路径、方法、响应码）。</li>
 </ol>
-<div class="gate">✅ 门禁：OpenAPI diff 为零；architecture 测试——<b>main.py 禁止 @app.xxx</b>。</div>
-<div class="dod">✅ DoD：main.py 无路由装饰器；router_registry 为唯一挂载点；端点集零回归。</div>
+<div class="gate">门禁：OpenAPI diff 为零；architecture 测试——<b>main.py 禁止 @app.xxx</b>。</div>
+<div class="dod">DoD：main.py 无路由装饰器；router_registry 为唯一挂载点；端点集零回归。</div>
 </div>
 </div>
 
@@ -171,8 +171,8 @@ async def list_models(
 <tr><td><code>contracts/project_package.py</code></td><td class="num">1063</td><td>拆 schema/validator/builder 子模块</td></tr>
 <tr><td><code>services/project_package_service.py</code></td><td class="num">1061</td><td>拆 stage/assembler 子模块</td></tr>
 </table>
-<div class="risk">⚠ 风险：拆分时 import 路径改动可能引发循环依赖。缓解：每次只拆 1 个文件，拆完立即 <code>py_compile</code> + 该模块测试 + 全量 pytest。</div>
-<div class="dod">✅ DoD：无 &gt;800 行生产文件；architecture 测试新增——<b>扫描文件行数上限 800</b>。</div>
+<div class="risk">风险：拆分时 import 路径改动可能引发循环依赖。缓解：每次只拆 1 个文件，拆完立即 <code>py_compile</code> + 该模块测试 + 全量 pytest。</div>
+<div class="dod">DoD：无 &gt;800 行生产文件；architecture 测试新增——<b>扫描文件行数上限 800</b>。</div>
 </div>
 </div>
 
@@ -186,7 +186,7 @@ async def list_models(
 <li>按文件密度分批清理（先 dxf_parser、notifications、registry、sharp/service）：逐条判断——真误报则删注释；真类型问题则修复类型或显式 <code>cast</code>。</li>
 <li>每清一个文件跑 <code>mypy</code> + 该模块测试。</li>
 </ol>
-<div class="dod">✅ DoD：存量减半（type:ignore ≤60）；CI 禁止新增；mypy 零新增错误。</div>
+<div class="dod">DoD：存量减半（type:ignore ≤60）；CI 禁止新增；mypy 零新增错误。</div>
 </div>
 
 <!-- ================= D7 ================= -->
@@ -202,8 +202,8 @@ async def list_models(
 <li><b>统一日志（2 天）</b>：新建 <code>utils/logger.ts</code>（分级 + 脱敏），批量替换 122 处 console.*。</li>
 <li><b>收尾</b>：删除 <code>api/</code> 目录中与 features 重复的封装（收敛为单入口），或标记 deprecated 后按引用清零删除。</li>
 </ol>
-<div class="gate">✅ 门禁：vue-tsc --noEmit 零错误；Vitest 全绿。</div>
-<div class="dod">✅ DoD：视图 <code>import http</code> 归零；<code>features/</code> 为唯一 API 入口；无 &gt;800 行 .vue；console.* 仅存于 logger.ts。</div>
+<div class="gate">门禁：vue-tsc --noEmit 零错误；Vitest 全绿。</div>
+<div class="dod">DoD：视图 <code>import http</code> 归零；<code>features/</code> 为唯一 API 入口；无 &gt;800 行 .vue；console.* 仅存于 logger.ts。</div>
 </div>
 </div>
 

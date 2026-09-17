@@ -198,7 +198,7 @@ if c:
 时序子表，由 `app/integrations/mtconnect/adapter.py::DEFAULT_TABLE_DDL` 定义。
 关键列：`ts TIMESTAMP, spindle_speed DOUBLE, spindle_load DOUBLE, feedrate DOUBLE, execution BINARY(32)`。
 
-> ⚠️ 本任务**不**修改上述结构。如需新增字段请在 M0.6+ 任务中协调。
+> 本任务**不**修改上述结构。如需新增字段请在 M0.6+ 任务中协调。
 
 ---
 
@@ -302,13 +302,13 @@ collector = MachiningCollector(config=cfg, adapter=MyAdapter())
 
 | 验收项 | 实现位置 | 状态 |
 | ------ | -------- | ---- |
-| 后台采集任务可正常启动并运行 | `start_collector()` / `MachiningCollector.start()` | ✅ |
-| 模拟数据可流经整个管道 | `__init__.py` + 单元测试 | ✅ |
-| 数据准确写入 PostgreSQL / TDengine | `postgres_sink()` / `tdengine_sink()` | ✅ |
-| 支持任务状态查询 | `get_collector()` / `get_stats()` / `dump_state()` | ✅ |
-| 支持正常停止 | `stop_collector()` / `MachiningCollector.stop()` | ✅ |
-| 完善的异常处理 | 重试 / 隔离 / 入队 | ✅ |
-| 单元测试全部通过 | `pytest app/pipelines/tests/test_collector.py -v` | ✅ |
+| 后台采集任务可正常启动并运行 | `start_collector()` / `MachiningCollector.start()` | |
+| 模拟数据可流经整个管道 | `__init__.py` + 单元测试 | |
+| 数据准确写入 PostgreSQL / TDengine | `postgres_sink()` / `tdengine_sink()` | |
+| 支持任务状态查询 | `get_collector()` / `get_stats()` / `dump_state()` | |
+| 支持正常停止 | `stop_collector()` / `MachiningCollector.stop()` | |
+| 完善的异常处理 | 重试 / 隔离 / 入队 | |
+| 单元测试全部通过 | `pytest app/pipelines/tests/test_collector.py -v` | |
 
 ---
 

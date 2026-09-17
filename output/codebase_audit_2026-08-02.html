@@ -92,7 +92,7 @@ tr:hover { background: rgba(99,102,241,0.05); }
 <div class="issue-header">
 <span class="issue-title p0-t">#1 硬编码个人用户名路径（Rust sidecar）</span>
 </div>
-<div class="issue-path">📁 engineering/src-tauri/src/sidecar.rs:667</div>
+<div class="issue-path">engineering/src-tauri/src/sidecar.rs:667</div>
 <div class="issue-desc">
 <code>resolve_python_path()</code> 中硬编码了 <code>C:\Users\<user>\anaconda3\python.exe</code> 等多个含用户名的路径。
 当应用分发给其他用户时，Python 解释器查找将失败，导致整个桌面应用无法启动。
@@ -104,14 +104,14 @@ tr:hover { background: rgba(99,102,241,0.05); }
     r"C:\Python313\python.exe",
     r"C:\Users\<user>\AppData\Local\Programs\Python\Python313\python.exe",  // ← 同上
 ];</pre>
-<div class="issue-action">🔧 <strong>修复方案：</strong>移除所有含 <code>C:\Users\<user></code> 的路径，保留通用路径（ProgramData、C:\Python3xx、%LOCALAPPDATA%）。使用 <code>std::env::var("LOCALAPPDATA")</code> 动态获取用户 AppData 目录。</div>
+<div class="issue-action"><strong>修复方案：</strong>移除所有含 <code>C:\Users\<user></code> 的路径，保留通用路径（ProgramData、C:\Python3xx、%LOCALAPPDATA%）。使用 <code>std::env::var("LOCALAPPDATA")</code> 动态获取用户 AppData 目录。</div>
 </div>
 
 <div class="issue">
 <div class="issue-header">
 <span class="issue-title p0-t">#2 services/ 与 service/ 双重维护陷阱</span>
 </div>
-<div class="issue-path">📁 engineering/python/app/services/ + service/</div>
+<div class="issue-path">engineering/python/app/services/ + service/</div>
 <div class="issue-desc">
 两个同名包共存。虽然 <code>service/__init__.py</code> 已声明为向后兼容 shim（委托给 <code>services.domain</code>），但 service/ 下仍有 7 个完整业务文件（equipment_service.py 527行、production_service.py 409行 等），与 services/domain/ 下的文件功能重叠，实际形成双重维护风险。
 </div>
@@ -120,14 +120,14 @@ from app.services.domain import (  # noqa: F401
     materials_service, equipment_service, process_routes_service,
     tools_service, quality_service, documents_service, production_service,
 )</pre>
-<div class="issue-action">🔧 <strong>修复方案：</strong>完成 V3.0 重构的最后一公里——确认 services/domain/ 已完全覆盖所有 service/*.py 的业务逻辑后，删除 service/ 下的 7 个冗余文件，仅保留 __init__.py shim。</div>
+<div class="issue-action"><strong>修复方案：</strong>完成 V3.0 重构的最后一公里——确认 services/domain/ 已完全覆盖所有 service/*.py 的业务逻辑后，删除 service/ 下的 7 个冗余文件，仅保留 __init__.py shim。</div>
 </div>
 
 <div class="issue">
 <div class="issue-header">
 <span class="issue-title p0-t">#3 engineering 直接导入 research（13处，含 type:ignore）</span>
 </div>
-<div class="issue-path">📁 engineering/python/app/ (13个文件)</div>
+<div class="issue-path">engineering/python/app/ (13个文件)</div>
 <div class="issue-desc">
 违反了"阶段2解耦"目标。生产容器只需 onnxruntime，但 13 处 <code>from research.xxx import</code> 引入了 PyTorch 依赖链。这些导入被 <code>type: ignore</code> 标记，在 mypy 严格模式下会被忽略，但运行时实际加载。
 </div>
@@ -144,28 +144,28 @@ from app.services.domain import (  # noqa: F401
 <tr><td>dreaming/session_extractor.py:190</td><td>HAS_MLFLOW</td></tr>
 <tr><td>dxf/process_service.py:185</td><td>multimodal_jepa</td></tr>
 </table>
-<div class="issue-action">🔧 <strong>修复方案：</strong>引入 <code>engineering/python/app/ai/lnn/contracts.py</code>（Protocol/ABC），让 research/ 的 Torch 模型实现这些契约。engineering 侧所有对 research 的 import 替换为 import contracts + 运行时动态加载（plugin pattern）。参考已完成的 LNN inference predictor 的延迟导入模式。</div>
+<div class="issue-action"><strong>修复方案：</strong>引入 <code>engineering/python/app/ai/lnn/contracts.py</code>（Protocol/ABC），让 research/ 的 Torch 模型实现这些契约。engineering 侧所有对 research 的 import 替换为 import contracts + 运行时动态加载（plugin pattern）。参考已完成的 LNN inference predictor 的延迟导入模式。</div>
 </div>
 
 <div class="issue">
 <div class="issue-header">
 <span class="issue-title p0-t">#4 state/manager.py 静默吞异常——数据库故障无感知</span>
 </div>
-<div class="issue-path">📁 engineering/python/app/state/manager.py</div>
+<div class="issue-path">engineering/python/app/state/manager.py</div>
 <div class="issue-desc">
 状态管理器中有 3 处 <code>except Exception: pass</code>，当数据库写入失败（磁盘满、锁冲突等）时静默丢弃数据，且没有任何日志或告警。这是典型的数据完整性隐患。
 </div>
 <pre># P0: 数据库写入失败静默丢弃
 except Exception:
     pass  # ← 数据可能永久丢失，无日志</pre>
-<div class="issue-action">🔧 <strong>修复方案：</strong>至少记录 ERROR 级别日志 + 递增 <code>consecutive_failures</code> 计数器。超过阈值时触发健康检查告警。考虑引入死信队列（dead-letter queue）暂存失败数据。</div>
+<div class="issue-action"><strong>修复方案：</strong>至少记录 ERROR 级别日志 + 递增 <code>consecutive_failures</code> 计数器。超过阈值时触发健康检查告警。考虑引入死信队列（dead-letter queue）暂存失败数据。</div>
 </div>
 
 <div class="issue">
 <div class="issue-header">
 <span class="issue-title p0-t">#5 exec() 动态代码执行（2处独立入口）</span>
 </div>
-<div class="issue-path">📁 cadquery_gen.py:591 + skill_compiler.py:95,125 + sandbox_executor.py:66</div>
+<div class="issue-path">cadquery_gen.py:591 + skill_compiler.py:95,125 + sandbox_executor.py:66</div>
 <div class="issue-desc">
 代码中存在 4 处 <code>exec()</code> 调用用于执行用户提交的 CadQuery 脚本和 Skill 代码。虽然已实施 AST 审计、受限 globals、超时控制等多层防护，但 <code>exec()</code> 本质上是不可完全安全的操作。两个入口（CadQuery 和 Skill Loader）各自实现了独立的安全沙箱，且 skill_compiler.py 还有降级路径 <code>_compile_code_in_process</code>（无 RestrictedPython 时的 fallback）。
 </div>
@@ -177,7 +177,7 @@ exec(byte_code, restricted_globals)
 
 # skill_compiler.py:125 — 降级路径（安全防护较弱）
 exec(compiled, namespace)</pre>
-<div class="issue-action">🔧 <strong>修复方案：</strong>（1）统一两个 exec() 入口的安全审计逻辑为同一个模块；（2）skill_compiler 降级路径添加定期安全审计 + 降级时记录 WARNING 并建议安装 RestrictedPython；（3）考虑 WASM 沙箱替代 exec()（长期方案）；（4）确保 RestrictedPython 列为生产强制依赖，不允许降级。</div>
+<div class="issue-action"><strong>修复方案：</strong>（1）统一两个 exec() 入口的安全审计逻辑为同一个模块；（2）skill_compiler 降级路径添加定期安全审计 + 降级时记录 WARNING 并建议安装 RestrictedPython；（3）考虑 WASM 沙箱替代 exec()（长期方案）；（4）确保 RestrictedPython 列为生产强制依赖，不允许降级。</div>
 </div>
 </section>
 
@@ -187,32 +187,32 @@ exec(compiled, namespace)</pre>
 
 <div class="issue">
 <div class="issue-title p1-t">#6 CSP 策略使用 'unsafe-inline'（违反 Tauri 安全规范）</div>
-<div class="issue-path">📁 engineering/index.html:31, splashscreen.html:25</div>
+<div class="issue-path">engineering/index.html:31, splashscreen.html:25</div>
 <div class="issue-desc">script-src 和 style-src 均包含 <code>'unsafe-inline'</code>。项目记忆已明确要求移除 unsafe-inline，但至今未实现 nonce 机制替代。这是 XSS 防护的关键缺口。</div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>Vue3+Vite 可将内联脚本提取为外部 .js 文件；Element Plus 主题覆盖可改用 CSS Module 或提取为 .css 文件。实现 nonce 机制（Vite 插件自动注入）。</div>
+<div class="issue-action"><strong>修复方案：</strong>Vue3+Vite 可将内联脚本提取为外部 .js 文件；Element Plus 主题覆盖可改用 CSS Module 或提取为 .css 文件。实现 nonce 机制（Vite 插件自动注入）。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#7 145+ 全局单例 get_xxx() 模式——测试困难</div>
-<div class="issue-path">📁 engineering/python/app/ (全项目)</div>
+<div class="issue-path">engineering/python/app/ (全项目)</div>
 <div class="issue-desc">
 项目中存在 145+ 个 <code>get_xxx()</code> 风格的全局单例工厂函数（get_db, get_redis, get_tdengine, get_budget_enforcer, get_cost_tracker, get_plugin_manager...）。这些函数虽被标记为 "FastAPI Depends 兼容"，但实际是隐藏的运行时耦合——测试时需要 monkey-patch 全局状态才能隔离。
 </div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>逐个模块迁移到真正的 FastAPI <code>Depends()</code> 依赖注入模式。创建一个统一的 <code>app/dependencies.py</code> 集中注册所有依赖，确保每个依赖在测试中可以通过 <code>app.dependency_overrides</code> 替换。</div>
+<div class="issue-action"><strong>修复方案：</strong>逐个模块迁移到真正的 FastAPI <code>Depends()</code> 依赖注入模式。创建一个统一的 <code>app/dependencies.py</code> 集中注册所有依赖，确保每个依赖在测试中可以通过 <code>app.dependency_overrides</code> 替换。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#8 API 层越过服务层直接访问数据库（21处）</div>
-<div class="issue-path">📁 api/v1/ (21个文件)</div>
+<div class="issue-path">api/v1/ (21个文件)</div>
 <div class="issue-desc">
 19处 API 路由直接导入 <code>app.models/</code>，4处直接导入 <code>app.database/</code>，绕过服务层。涉及 auth, users, cost_budget, health, lnn, governance, goal_alignment 等核心模块。
 </div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>为每个域引入 Repository 模式（参考已有的 <code>database/repository/machining_record_repo.py</code>），API 层通过 Depends 注入 Service → Repository 链，禁止直接访问 models/database。</div>
+<div class="issue-action"><strong>修复方案：</strong>为每个域引入 Repository 模式（参考已有的 <code>database/repository/machining_record_repo.py</code>），API 层通过 Depends 注入 Service → Repository 链，禁止直接访问 models/database。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#9 非 API 包直接定义 FastAPI 路由（10+处）——架构污染</div>
-<div class="issue-path">📁 simulation/api.py, dxf/api.py, rag/routes.py, cad/process_router.py, sharp/service.py, 等</div>
+<div class="issue-path">simulation/api.py, dxf/api.py, rag/routes.py, cad/process_router.py, sharp/service.py, 等</div>
 <div class="issue-desc">
 大量非 API 层包（simulation, chatter, cutting_force, dxf, rag, cad, step_import, rules, knowledge_graph）直接定义 <code>APIRouter</code>。sharp/service.py 甚至反向依赖 API 层（架构污染）。这导致循环依赖风险：API 层导入服务层 → 服务层导入 API 路由。
 </div>
@@ -229,61 +229,61 @@ exec(compiled, namespace)</pre>
 <tr><td>ai/ollama_routes.py</td><td>ollama_routes.py</td><td>/api/ollama</td></tr>
 <tr><td>ai/process_understanding/</td><td>routes.py</td><td>/api/process-understanding</td></tr>
 </table>
-<div class="issue-action">🔧 <strong>修复方案：</strong>将所有 <code>APIRouter</code> 定义迁移到 <code>api/v1/</code> 下，各业务包仅暴露 Service 层接口。knowledge_graph 的独立 FastAPI app 合并到主应用或明确为独立微服务。</div>
+<div class="issue-action"><strong>修复方案：</strong>将所有 <code>APIRouter</code> 定义迁移到 <code>api/v1/</code> 下，各业务包仅暴露 Service 层接口。knowledge_graph 的独立 FastAPI app 合并到主应用或明确为独立微服务。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#10 MCP SSE 0.0.0.0 无鉴权（已知问题未修复）</div>
-<div class="issue-path">📁 mcp_server/ (已记录未解决)</div>
+<div class="issue-path">mcp_server/ (已记录未解决)</div>
 <div class="issue-desc">项目记忆中标记为"安全高危"但未修复。MCP SSE 服务器绑定 0.0.0.0 且无认证机制。</div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>绑定 127.0.0.1；添加 Bearer Token 认证（复用 AGENT_TOKEN）；添加速率限制。</div>
+<div class="issue-action"><strong>修复方案：</strong>绑定 127.0.0.1；添加 Bearer Token 认证（复用 AGENT_TOKEN）；添加速率限制。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#11 TDengine SQL f-string 拼接（4处）</div>
-<div class="issue-path">📁 services/tdengine_client.py</div>
+<div class="issue-path">services/tdengine_client.py</div>
 <div class="issue-desc">
 存在 4 处 f-string 拼接 SQL 语句。虽然已有 <code>_validate_identifier()</code> 白名单校验，但 UPDATE 语句中仍有 3 处动态列名拼接。一旦校验函数有遗漏或绕过，即是 SQL 注入入口。
 </div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>将 UPDATE 动态列名也纳入参数化查询；为所有 SQL 拼接增加编译期检查（lint rule: 禁止 f-string 出现在 SQL 执行上下文）；增加 <code>app/budget/sql_safety.py</code> 统一 SQL 安全入口。</div>
+<div class="issue-action"><strong>修复方案：</strong>将 UPDATE 动态列名也纳入参数化查询；为所有 SQL 拼接增加编译期检查（lint rule: 禁止 f-string 出现在 SQL 执行上下文）；增加 <code>app/budget/sql_safety.py</code> 统一 SQL 安全入口。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#12 6个模块重复定义 get_task_store()</div>
-<div class="issue-path">📁 tasks/, api/v1/, models/ 等</div>
+<div class="issue-path">tasks/, api/v1/, models/ 等</div>
 <div class="issue-desc">
 同名函数 <code>get_task_store()</code> 在 6 个不同模块中独立定义，各自维护自己的单例。当多个调用点获取到不同实例时，状态不一致。
 </div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>统一由 <code>app/dependencies.py</code> 提供单一 <code>get_task_store()</code> 实现。</div>
+<div class="issue-action"><strong>修复方案：</strong>统一由 <code>app/dependencies.py</code> 提供单一 <code>get_task_store()</code> 实现。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#13 14个文件重复 _get_session() 模式</div>
-<div class="issue-path">📁 api/v1/ (14个文件)</div>
+<div class="issue-path">api/v1/ (14个文件)</div>
 <div class="issue-desc">14 个 API 路由文件各自实现了 <code>_get_session()</code> 或类似的数据库会话获取逻辑，代码高度重复。</div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>统一使用 <code>app/database/connection.py</code> 的 <code>get_db()</code> + FastAPI Depends。</div>
+<div class="issue-action"><strong>修复方案：</strong>统一使用 <code>app/database/connection.py</code> 的 <code>get_db()</code> + FastAPI Depends。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#14 LM Studio 默认硬编码 API Key</div>
-<div class="issue-path">📁 ai/llm/providers/lmstudio.py:43-44</div>
+<div class="issue-path">ai/llm/providers/lmstudio.py:43-44</div>
 <pre>if not config.api_key:
     config.api_key = self.DEFAULT_API_KEY  // ← 硬编码默认值</pre>
-<div class="issue-action">🔧 <strong>修复方案：</strong>默认 API Key 移入环境变量；若本地 LM Studio 不需要 key，则应设计为显式标志而非硬编码字符串。</div>
+<div class="issue-action"><strong>修复方案：</strong>默认 API Key 移入环境变量；若本地 LM Studio 不需要 key，则应设计为显式标志而非硬编码字符串。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#15 8处不同的配置加载函数——碎片化</div>
-<div class="issue-path">📁 config_contract_adapter.py, settings/, 多模块</div>
+<div class="issue-path">config_contract_adapter.py, settings/, 多模块</div>
 <div class="issue-desc">项目中有 8 种不同的配置加载方式（YAML、环境变量、.env、pydantic BaseSettings、硬编码默认值），缺乏统一的配置中心。</div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>以 <code>app/core/config.py</code> 为唯一配置入口，统一加载 YAML + 环境变量 + .env，所有模块从此处获取配置。</div>
+<div class="issue-action"><strong>修复方案：</strong>以 <code>app/core/config.py</code> 为唯一配置入口，统一加载 YAML + 环境变量 + .env，所有模块从此处获取配置。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p1-t">#17 前端 views 中直接 import http</div>
-<div class="issue-path">📁 components/AppLayout.vue:225, components/workspace/WorkspacePredictTab.vue:52</div>
+<div class="issue-path">components/AppLayout.vue:225, components/workspace/WorkspacePredictTab.vue:52</div>
 <div class="issue-desc">2 个视图组件直接导入 <code>@/utils/http</code>，绕过 Store/API 封装层。其他视图已通过 composable 或 store 间接使用。</div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>AppLayout.vue 的 HTTP 调用迁移到对应的 composable；WorkspacePredictTab 使用 workspace feature 的 API 模块。</div>
+<div class="issue-action"><strong>修复方案：</strong>AppLayout.vue 的 HTTP 调用迁移到对应的 composable；WorkspacePredictTab 使用 workspace feature 的 API 模块。</div>
 </div>
 </section>
 
@@ -307,20 +307,20 @@ exec(compiled, namespace)</pre>
 <tr><td>services/resource_card_service.py</td><td>1084</td><td>业务服务</td></tr>
 <tr><td>services/project_package_service.py</td><td>1061</td><td>业务服务</td></tr>
 </table>
-<div class="issue-action">🔧 <strong>修复方案：</strong>超大服务按职责拆分子模块；超大路由拆分为独立路由器文件（如 LNN 模块的模式）。</div>
+<div class="issue-action"><strong>修复方案：</strong>超大服务按职责拆分子模块；超大路由拆分为独立路由器文件（如 LNN 模块的模式）。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p2-t">#19 18处 :key="index" 反模式（Vue）</div>
-<div class="issue-path">📁 15个 .vue 文件</div>
+<div class="issue-path">15个 .vue 文件</div>
 <div class="issue-desc">使用 <code>:key="i"</code> 或 <code>:key="idx"</code> 作为 v-for 的 key。当列表项增删时会导致 DOM 错位和状态混乱。</div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>全部替换为稳定唯一 ID（如 item.id 或 nanoid 生成的标识符）。</div>
+<div class="issue-action"><strong>修复方案：</strong>全部替换为稳定唯一 ID（如 item.id 或 nanoid 生成的标识符）。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p2-t">#20 100+ 处 type: ignore 注解——掩盖真实类型错误</div>
 <div class="issue-desc">大量 <code>type: ignore</code> 用于绕过 mypy 检查。特别严重的是 production code 中的延迟导入模式（如 LNN training executor 有 12 行连续 type:ignore）。</div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>清理测试文件的 type:ignore（保留有意为之的测试用例）；生产代码中的 type:ignore 逐个审查，能用 Protocol/ABC 解决的优先重构。</div>
+<div class="issue-action"><strong>修复方案：</strong>清理测试文件的 type:ignore（保留有意为之的测试用例）；生产代码中的 type:ignore 逐个审查，能用 Protocol/ABC 解决的优先重构。</div>
 </div>
 
 <div class="issue">
@@ -341,12 +341,12 @@ exec(compiled, namespace)</pre>
 <div class="issue">
 <div class="issue-title p2-t">#24 api/v1/lnn/ 下 training executor 和 services 重复导入（14行 type:ignore）</div>
 <div class="issue-desc">_training_executor.py 和 services.py 有几乎相同的延迟导入块（14行 type:ignore 重复出现）。</div>
-<div class="issue-action">🔧 <strong>修复方案：</strong>抽取为独立模块 <code>_torch_imports.py</code>，两处统一引用。</div>
+<div class="issue-action"><strong>修复方案：</strong>抽取为独立模块 <code>_torch_imports.py</code>，两处统一引用。</div>
 </div>
 
 <div class="issue">
 <div class="issue-title p2-t">#25 多个 catch 块仅 console.warn 无错误处理</div>
-<div class="issue-path">📁 engineering/src/ (100+ catch 块)</div>
+<div class="issue-path">engineering/src/ (100+ catch 块)</div>
 <div class="issue-desc">useWorkflowSubmit.ts 等有 catch 仅 <code>console.warn</code> 的情况。虽非静默吞异常，但无用户提示。</div>
 </div>
 

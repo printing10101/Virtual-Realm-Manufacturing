@@ -3,7 +3,7 @@
 > 状态：**已落地（2026-09-17）** ｜ 日期：2026-09-16 ｜ 范围：`engineering/src/`
 > 目标一句话：把 37 条路由收敛为约 20 个有真实入口的页面，删除约 1 万行死代码与克隆代码，统一"列表页骨架 / 统计卡 / 图表 / 详情抽屉"四套基础设施。
 
-## ✅ 落地结果（2026-09-17，4 个 commit：3cef54a6 / 16d28fdf / 4a0e5e77 / d5d6f197）
+## 落地结果（2026-09-17，4 个 commit：3cef54a6 / 16d28fdf / 4a0e5e77 / d5d6f197）
 
 - **体量**：源码 76,784 → 70,215 行（净删 ~6,600 行；Phase 0 单次提交删除 7,125 行）
 - **路由**：38 条实路由 → 25 条（其余为兼容 redirect）；侧边栏 30 → 25 项
@@ -165,16 +165,16 @@
 
 ### Phase 0：纯删除（半天，零功能风险）
 删 UXDemo+路由、CommandPalette 目录、examples/、4 个死 store、3 个死依赖（`pnpm remove markdown-it @types/markdown-it pinia-plugin-persistedstate`）。
-✅ 验证：`pnpm build`（含 vue-tsc）+ `pnpm test` + 手测登录/首页/设置。
-⚠️ 决策点：`cutting-experience`（孤儿但关联科研方向）——建议保留代码、暂不给入口，等实测数据功能就绪后挂到数据飞轮域。
+验证：`pnpm build`（含 vue-tsc）+ `pnpm test` + 手测登录/首页/设置。
+决策点：`cutting-experience`（孤儿但关联科研方向）——建议保留代码、暂不给入口，等实测数据功能就绪后挂到数据飞轮域。
 
 ### Phase 1：页面合并与导航重组（1-2 天）
 按"任务中心 → 插件中心 → Home 报表 Tab → 模板中心 → AgentDetail 抽屉化"顺序逐个合并；每合并一个就在 navGroups 删对应入口、加 redirect。
-✅ 验证：每步 build+test；合并完成后手测清单走一遍 17 个入口。
+验证：每步 build+test；合并完成后手测清单走一遍 17 个入口。
 
 ### Phase 2：组件归一（2-3 天）
 StatsCards 收编 → ListPageTemplate + useDataTable 逐页迁移 → useEChart 归一 → 模型实验室共享组件 → 目录改名。
-✅ 验证：类型检查 + 既有组件测试迁移 + 每页手测。
+验证：类型检查 + 既有组件测试迁移 + 每页手测。
 
 ### Phase 3：半成品治理（1-2 天）
 按上表逐项修复/砍除，每项一个 commit（含复现说明）。

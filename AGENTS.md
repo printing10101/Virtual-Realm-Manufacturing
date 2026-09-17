@@ -40,9 +40,9 @@ pytest 配置见 `pytest.ini`：testpaths=engineering/python/tests，`--import-m
 
 ## 运行后端服务
 
-### 🔥 后端启动（必须用 desktop_runtime Python）
+### 后端启动（必须用 desktop_runtime Python）
 ```bash
-# ✅ 推荐方式
+# 推荐方式
 engineering/python/desktop_runtime/runtime/python.exe start_server.py
 
 # 开发模式
@@ -59,9 +59,9 @@ pnpm dev  # http://127.0.0.1:1420，proxy /api→8765
 ## 工程稳定性增强（2026-08-25）
 
 ### 异常处理体系
-- ✅ **分级异常**：`app/core/exceptions.py` 提供完整的异常等级（INFO/WARNING/ERROR/CRITICAL）
-- ✅ **熔断器模式**：`app/core/circuit_breaker.py` 防止服务级联故障
-- ✅ **全局中间件**：`app/core/middleware.py` 统一错误响应格式
+- **分级异常**：`app/core/exceptions.py` 提供完整的异常等级（INFO/WARNING/ERROR/CRITICAL）
+- **熔断器模式**：`app/core/circuit_breaker.py` 防止服务级联故障
+- **全局中间件**：`app/core/middleware.py` 统一错误响应格式
 
 ### 错误响应格式
 ```json

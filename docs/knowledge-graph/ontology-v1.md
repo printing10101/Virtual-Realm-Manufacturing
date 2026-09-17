@@ -25,14 +25,14 @@
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | str | ✅ | — | 材料唯一标识，对应 `materials.json` 的 `id` |
-| `name` | str | ✅ | — | 材料名称（如 45#钢 / 铝合金6061） |
-| `category` | str | ❌ | `""` | 材料类别（如 `carbon_steel` / `aluminum` / `stainless_steel` / `alloy_steel`） |
-| `density_gcm3` | float \| None | ❌ | `None` | 密度，单位 g/cm³ |
-| `hardness_hb` | float \| None | ❌ | `None` | 布氏硬度 HB |
-| `tensile_strength_mpa` | float \| None | ❌ | `None` | 抗拉强度，单位 MPa |
-| `cutting_performance` | str | ❌ | `""` | 切削加工性能评价（`excellent` / `good` / `fair` / `poor`） |
-| `description` | str | ❌ | `""` | 材料描述 |
+| `id` | str | | — | 材料唯一标识，对应 `materials.json` 的 `id` |
+| `name` | str | | — | 材料名称（如 45#钢 / 铝合金6061） |
+| `category` | str | | `""` | 材料类别（如 `carbon_steel` / `aluminum` / `stainless_steel` / `alloy_steel`） |
+| `density_gcm3` | float \| None | | `None` | 密度，单位 g/cm³ |
+| `hardness_hb` | float \| None | | `None` | 布氏硬度 HB |
+| `tensile_strength_mpa` | float \| None | | `None` | 抗拉强度，单位 MPa |
+| `cutting_performance` | str | | `""` | 切削加工性能评价（`excellent` / `good` / `fair` / `poor`） |
+| `description` | str | | `""` | 材料描述 |
 
 ### 2.2 Tool（工具）
 
@@ -40,13 +40,13 @@
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | str | ✅ | — | 刀具唯一标识，对应 `tools.json` 的 `id` |
-| `name` | str | ✅ | — | 刀具名称（如 麻花钻 φ3mm / 立铣刀 φ6mm） |
-| `series` | str | ❌ | `""` | 刀具系列（`twist_drill` / `endmill` / `face_mill` / `center_drill`） |
-| `diameter_mm` | float \| None | ❌ | `None` | 刀具直径，单位 mm |
-| `material` | str | ❌ | `""` | 刀具材料（如 HSS / 硬质合金） |
-| `application` | str | ❌ | `""` | 典型应用场景（如 钻孔 / 型腔加工 / 平面加工） |
-| `description` | str | ❌ | `""` | 刀具描述 |
+| `id` | str | | — | 刀具唯一标识，对应 `tools.json` 的 `id` |
+| `name` | str | | — | 刀具名称（如 麻花钻 φ3mm / 立铣刀 φ6mm） |
+| `series` | str | | `""` | 刀具系列（`twist_drill` / `endmill` / `face_mill` / `center_drill`） |
+| `diameter_mm` | float \| None | | `None` | 刀具直径，单位 mm |
+| `material` | str | | `""` | 刀具材料（如 HSS / 硬质合金） |
+| `application` | str | | `""` | 典型应用场景（如 钻孔 / 型腔加工 / 平面加工） |
+| `description` | str | | `""` | 刀具描述 |
 
 ### 2.3 Feature（特征）
 
@@ -54,12 +54,12 @@
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | str | ✅ | — | 特征唯一标识 |
-| `name` | str | ✅ | — | 特征名称（如 孔 / 型腔 / 平面 / 轮廓 / 槽 / 螺纹） |
-| `feature_type` | str | ❌ | `""` | 特征类型（`hole` / `pocket` / `face` / `contour` / `slot` / `thread`） |
-| `tolerance_mm` | float \| None | ❌ | `None` | 尺寸公差，单位 mm |
-| `surface_roughness_ra` | float \| None | ❌ | `None` | 表面粗糙度 Ra，单位 μm |
-| `description` | str | ❌ | `""` | 特征描述 |
+| `id` | str | | — | 特征唯一标识 |
+| `name` | str | | — | 特征名称（如 孔 / 型腔 / 平面 / 轮廓 / 槽 / 螺纹） |
+| `feature_type` | str | | `""` | 特征类型（`hole` / `pocket` / `face` / `contour` / `slot` / `thread`） |
+| `tolerance_mm` | float \| None | | `None` | 尺寸公差，单位 mm |
+| `surface_roughness_ra` | float \| None | | `None` | 表面粗糙度 Ra，单位 μm |
+| `description` | str | | `""` | 特征描述 |
 
 ### 2.4 Process（工艺）
 
@@ -67,11 +67,11 @@
 
 | 字段名 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | str | ✅ | — | 工艺唯一标识，对应 `process_rules.json` 的 `id` |
-| `name` | str | ✅ | — | 工艺名称（如 先粗后精 / 先面后孔） |
-| `category` | str | ❌ | `""` | 工艺类别（`sequence` / `parameter` / `fixture`） |
-| `description` | str | ❌ | `""` | 工艺描述 |
-| `details` | dict | ❌ | `{}` | 工艺细节参数（如余量范围、依据等结构化字段） |
+| `id` | str | | — | 工艺唯一标识，对应 `process_rules.json` 的 `id` |
+| `name` | str | | — | 工艺名称（如 先粗后精 / 先面后孔） |
+| `category` | str | | `""` | 工艺类别（`sequence` / `parameter` / `fixture`） |
+| `description` | str | | `""` | 工艺描述 |
+| `details` | dict | | `{}` | 工艺细节参数（如余量范围、依据等结构化字段） |
 
 ---
 

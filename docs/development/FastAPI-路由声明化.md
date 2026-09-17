@@ -1,17 +1,17 @@
 # P4-1 FastAPI 路由声明化
 
 **创建日期**: 2026-08-21  
-**状态**: 🟡 白盒声明模块 + 测试已落地；engineering.py 委托接线待文件锁解除
+**状态**: 白盒声明模块 + 测试已落地；engineering.py 委托接线待文件锁解除
 
 ---
 
-## 🎯 目标
+## 目标
 
 将 `app/api/routers/engineering.py` 的手写 `app.include_router(...)` 序列
 改为**声明式路由表**（P1-1 方法论复用），集中管理路由注册，
 并内置冲突/重复注册校验。
 
-## 📦 已交付
+## 已交付
 
 ### 白盒声明模块
 `app/api/routers/_route_registry.py`（纯 stdlib，不 import FastAPI）：
@@ -29,7 +29,7 @@
 `engineering/python/tests/unit/test_route_registry.py`（~17 用例）：
 单条校验 / 整表冲突 / 幂等 / 注册顺序 / 分组。
 
-## 🔧 待接线（文件锁解除后执行）
+## 待接线（文件锁解除后执行）
 
 ### engineering.py 委托
 ```python
@@ -62,7 +62,7 @@ RouterSpec("optimizer", optimizer_routes.router, "engineering", "参数优化"),
 RouterSpec("monitor_ws", monitor_ws.router, "engineering", "实时监控 WS"),
 ```
 
-## ✅ 验收标准（门禁）
+## 验收标准（门禁）
 
 1. ruff check app/api/routers/ 全绿
 2. mypy 0 错误
@@ -70,7 +70,7 @@ RouterSpec("monitor_ws", monitor_ws.router, "engineering", "实时监控 WS"),
 4. 既有 engineering API 测试（委托后行为不变）全绿
 5. 冲突/重复注册检测用例覆盖
 
-## 📝 变更日志
+## 变更日志
 
 ### v1.0 (2026-08-21)
 - 白盒声明模块 `_route_registry.py` 落地

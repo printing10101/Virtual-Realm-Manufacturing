@@ -113,23 +113,23 @@ GUSH3R 的统一表示思想启示：可以用统一 embedding 空间同时编�
 
 **已知局限（字段错配，不做 adapter 伪造）**：
 
-> ⚠ 本节为 2026-07-15 service 层通电后追加的诚实性声明。记录 UnifiedState 字段集与
+> 本节为 2026-07-15 service 层通电后追加的诚实性声明。记录 UnifiedState 字段集与
 > ADR-007/ADR-013 既有产出之间的真实错配，避免后续误以为"造一个 adapter 就能跑通全链路"。
 
 思路 1 的 `UnifiedState` 在 `unified_state.py` 中定义了 10 个字段（GeometryFeatures 4 + DynamicsState 6），但当前 ADR-007 几何特征提取与 ADR-013 颤振预测接入的实际产出并未完整覆盖这 10 个字段：
 
 | 字段类别 | UnifiedState 定义字段 | ADR-007/013 实际产出 | 错配说明 |
 |---------|----------------------|---------------------|---------|
-| Geometry | `bbox_dimensions` (3维) | ADR-007 未输出 bbox | ❌ 完全缺失 |
-| Geometry | `feature_vector` (feature_dim维) | ADR-007 输出平面/圆柱/孔统计向量 | ✅ 对齐 |
-| Geometry | `symmetry_score` | ADR-007 未输出对称性评分 | ❌ 完全缺失 |
-| Geometry | `complexity_score` | ADR-007 未输出复杂度评分 | ❌ 完全缺失 |
-| Dynamics | `spindle_speed` | ADR-013 输出（切削参数） | ✅ 对齐 |
-| Dynamics | `depth_of_cut` | ADR-013 输出（切削参数） | ✅ 对齐 |
-| Dynamics | `feed_rate` | ADR-013 输出（切削参数） | ❌ 实际由 ADR-008 参数化几何下游产出，非 ADR-013 直接输出 |
-| Dynamics | `tool_wear` | ADR-013 颤振预测未直接输出磨损值 | ❌ 完全缺失 |
-| Dynamics | `vibration_rms` | ADR-013 信号特征可派生 | ⚠ 需从振动信号 RMS 计算，非直接字段 |
-| Dynamics | `temperature` | ADR-013 未采集温度通道 | ❌ 完全缺失 |
+| Geometry | `bbox_dimensions` (3维) | ADR-007 未输出 bbox | 完全缺失 |
+| Geometry | `feature_vector` (feature_dim维) | ADR-007 输出平面/圆柱/孔统计向量 | 对齐 |
+| Geometry | `symmetry_score` | ADR-007 未输出对称性评分 | 完全缺失 |
+| Geometry | `complexity_score` | ADR-007 未输出复杂度评分 | 完全缺失 |
+| Dynamics | `spindle_speed` | ADR-013 输出（切削参数） | 对齐 |
+| Dynamics | `depth_of_cut` | ADR-013 输出（切削参数） | 对齐 |
+| Dynamics | `feed_rate` | ADR-013 输出（切削参数） | 实际由 ADR-008 参数化几何下游产出，非 ADR-013 直接输出 |
+| Dynamics | `tool_wear` | ADR-013 颤振预测未直接输出磨损值 | 完全缺失 |
+| Dynamics | `vibration_rms` | ADR-013 信号特征可派生 | 需从振动信号 RMS 计算，非直接字段 |
+| Dynamics | `temperature` | ADR-013 未采集温度通道 | 完全缺失 |
 
 **决策：不实现 UnifiedStateAdapter 伪造数据流。** 理由：
 1. 伪造 bbox/symmetry/complexity/tool_wear/temperature 5 个字段会让融合 embedding 学到虚假相关性，违背 project_memory「真实工程生产环境优先于学术价值」硬约束
@@ -138,7 +138,7 @@ GUSH3R 的统一表示思想启示：可以用统一 embedding 空间同时编�
 
 **四重阻塞分析（2026-07-15 service 层通电后追加）**：
 
-> ⚠ 本节记录融合架构在生产路径上的四重阻塞全貌，以及 DynamicsState 桥接解锁路径.
+> 本节记录融合架构在生产路径上的四重阻塞全貌，以及 DynamicsState 桥接解锁路径.
 > 前序"字段错配表"记录的是 ADR-013 颤振预测接入的**原始产出**缺失情况，
 > 本节则进一步分析 legacy `current_state` 字典（`StateField` 8 字段）作为
 > 替代数据源的可行性——结论是 **DynamicsState 6 字段可从 legacy 100% 映射**.
@@ -147,23 +147,23 @@ GUSH3R 的统一表示思想启示：可以用统一 embedding 空间同时编�
 
 | 阻塞层级 | 阻塞点 | 当前状态 | 影响 |
 |---------|--------|---------|------|
-| L1 配置阻塞 | `WorldModelConfig.use_fusion` 默认 `False` | ✅ P3 已解除（默认 True） | 融合路径默认触发，legacy 调用因路由基于输入类型仍走原始路径 |
-| L2 数据阻塞 | UnifiedState 10 字段中 5 字段缺失 | ✅ P0-1/P0-2 已解除（10/10 可桥接） | 调用方可通过 Bridge+Deriver 自动构造完整 UnifiedState |
-| L3 权重阻塞 | `_resolve_weights_path` 返回 `None` | ✅ P1 已解除（约定式解析） | 训练产出的 checkpoint 可被 plugin 层无需注册即可加载 |
-| L4 环境阻塞 | 融合模式强制要求 `torch` | ⚠ 待用户执行 SOP（P2 就绪） | torch 不可用时通过分层降级兜底保证生产路径不崩溃（预测无意义但不崩溃） |
+| L1 配置阻塞 | `WorldModelConfig.use_fusion` 默认 `False` | P3 已解除（默认 True） | 融合路径默认触发，legacy 调用因路由基于输入类型仍走原始路径 |
+| L2 数据阻塞 | UnifiedState 10 字段中 5 字段缺失 | P0-1/P0-2 已解除（10/10 可桥接） | 调用方可通过 Bridge+Deriver 自动构造完整 UnifiedState |
+| L3 权重阻塞 | `_resolve_weights_path` 返回 `None` | P1 已解除（约定式解析） | 训练产出的 checkpoint 可被 plugin 层无需注册即可加载 |
+| L4 环境阻塞 | 融合模式强制要求 `torch` | 待用户执行 SOP（P2 就绪） | torch 不可用时通过分层降级兜底保证生产路径不崩溃（预测无意义但不崩溃） |
 
 **关键发现：DynamicsState 6 字段可从 legacy `current_state` 100% 映射（非伪造）**
 
-前序字段错配表中 Dynamics 部分的"❌ 完全缺失"判断，针对的是 ADR-013 颤振预测接入的**原始产出**。但 ADR-017 的 legacy `current_state` 字典（`StateField` 8 字段常量）中，DynamicsState 所需的 6 个字段**全部存在且语义一致**：
+前序字段错配表中 Dynamics 部分的"完全缺失"判断，针对的是 ADR-013 颤振预测接入的**原始产出**。但 ADR-017 的 legacy `current_state` 字典（`StateField` 8 字段常量）中，DynamicsState 所需的 6 个字段**全部存在且语义一致**：
 
 | DynamicsState 字段 | StateField (legacy) | 单位 | legacy 可用性 |
 |--------------------|---------------------|------|--------------|
-| `spindle_speed` | `SPINDLE_SPEED` | rpm | ✅ 直接映射 |
-| `feed_rate` | `FEED_RATE` | mm/min | ✅ 直接映射 |
-| `depth_of_cut` | `DEPTH_OF_CUT` | mm | ✅ 直接映射 |
-| `tool_wear` | `TOOL_WEAR` | mm | ✅ 直接映射 |
-| `vibration_rms` | `VIBRATION_RMS` | g | ✅ 直接映射 |
-| `temperature` | `TEMPERATURE` | °C | ✅ 直接映射 |
+| `spindle_speed` | `SPINDLE_SPEED` | rpm | 直接映射 |
+| `feed_rate` | `FEED_RATE` | mm/min | 直接映射 |
+| `depth_of_cut` | `DEPTH_OF_CUT` | mm | 直接映射 |
+| `tool_wear` | `TOOL_WEAR` | mm | 直接映射 |
+| `vibration_rms` | `VIBRATION_RMS` | g | 直接映射 |
+| `temperature` | `TEMPERATURE` | °C | 直接映射 |
 
 注意：`StateField.WIDTH_OF_CUT` 与 `StateField.CHATTER_PROBABILITY` 不在映射中——前者在 DynamicsState v1 设计中未包含（简化），后者是预测输出而非动力学输入.
 
@@ -187,10 +187,10 @@ GeometryFeatures 4 字段全部可从 ADR-007 RANSAC 几何特征 + mesh vertice
 
 | GeometryFeatures 字段 | ADR-007 派生源 | 派生方式 | 状态 |
 |----------------------|---------------|---------|------|
-| `bbox_dimensions` | mesh vertices | per-axis max - min | ✅ 已实现 |
-| `symmetry_score` | plane normals | 法向夹角对称对占比（\|cos θ\| > 0.95） | ✅ 已实现 |
-| `complexity_score` | plane/cyl/hole/boss 计数 | min(total/60, 1.0) 归一化 | ✅ 已实现 |
-| `feature_vector` | plane/cyl/hole params | 分桶 top-K + 物理归一化 (32维) | ✅ 已实现 |
+| `bbox_dimensions` | mesh vertices | per-axis max - min | 已实现 |
+| `symmetry_score` | plane normals | 法向夹角对称对占比（\|cos θ\| > 0.95） | 已实现 |
+| `complexity_score` | plane/cyl/hole/boss 计数 | min(total/60, 1.0) 归一化 | 已实现 |
+| `feature_vector` | plane/cyl/hole params | 分桶 top-K + 物理归一化 (32维) | 已实现 |
 
 `GeometryFeaturesDeriver` 已实现于 `geometry_features_deriver.py`，采用分桶 + top-K + zero-pad 策略对齐 `GeometryEncoder.feature_dim=32`：
 - plane 桶 8×2=16维（area_mm2_norm, confidence）
@@ -1429,4 +1429,4 @@ GUSH3R 厘米级精度可接受（视觉任务），但灵境制造配合面公�
 | 2026-07-15 | 思路 1 P0 数据解锁第三步 — UnifiedStateAssembler 组装桥接 + WorldModelPlugin 自动组装路径：① 新增 `unified_state_assembler.py`（AssemblerResult dataclass + UnifiedStateAssembler 三方法：`assemble` 纯组装 / `assemble_from_results` 从 BridgeResult+DerivationResult 组装 / `assemble_from_sources` 端到端从 ExtractedFeature+vertices+current_state 组装；should_degrade / is_complete / completeness_ratio 聚合诊断）；② `plugin.py::execute` 插入自动组装路径 — `_try_load_unified_state` 返回 None 但 `config.use_fusion=True` 且 metadata 含半成品 dict 时调用 `_try_assemble_unified_state`，input_mode 三态（fusion / fusion_assembled / legacy），metrics.assembly_diagnostics 透出诊断，降级时 logger.warning 提示融合 embedding 质量可能下降；③ 新增 `test_unified_state_assembler.py`（5 测试类 18 用例：诊断聚合 / 纯组装 / 端到端组装 / plugin 自动组装 / execute 端到端）；④ 修复 `tuple("not_a_list")` 逐字符拆分不抛异常的隐患 — bbox_dimensions 严格校验为长度 3 的 list/tuple，feature_vector 严格校验为 list/tuple，拒绝 str 等可迭代但语义错误的类型；⑤ 设计权衡：plugin 层不反序列化完整 ExtractedFeature（无 from_dict，且 plugin 不应承担 ADR-007 特征重建职责），只接受已派生的半成品 dict，完整端到端组装留给 service 层；⑥ ruff check 2 文件全通过；run_pytest.py（WinSock 绕过）+ `--confcutdir` + `-o addopts=""` 后 pytest 17 passed/1 skipped（execute 前向推理用例经 importorskip 跳过，待 torch 环境），关联测试 100 passed/3 skipped 无回归；⑦ §1.3 路线图插入 P0-3（已完成），"当前可用路径"更新为"工作流编排路径（plugin 层）融合自动组装已通电"。至此 P0-1/P0-2 真实数据源产出现在能真正流入 plugin 层融合路径，此前生产代码中 UnifiedState 零实例化、Deriver/Bridge 产出无人消费的"组装 gap"完全闭合 | 项目负责人 |
 | 2026-07-15 | 思路 1 P1 融合权重训练与持久化 — 解锁 L3 权重阻塞：① 新增 `training/fusion_trainer.py`（FusionWorldModelTrainer 训练器：优化器 adam/adamw/sgd/rmsprop + LR 调度器 cosine/step/reduce_on_plateau/exponential/none + AMP + 早停 patience + 梯度裁剪 + MLflow tracking + checkpoint 持久化，复用 `app.ai.lnn.training` 约定但适配 `WorldModelNet.forward(unified_states=(geo, dyn))` 融合契约，MSE 损失，`_extract_version_from_uri` URI→version 逐字符过滤）；② 新增 `training/fusion_dataset.py`（FusionTrajectoryDataset + fusion_collate_fn：geometry_seq + dynamics_seq + actions + target_trajectory 四元组，类型安全 + 有限值校验 + horizon 一致性保证）；③ 新增 `training/weights_resolver.py`（torch-free URI→path 约定式解析：`build_canonical_weights_path` 写入侧 + `resolve_world_model_weights_path` 读取侧，路径穿越防护 `^[A-Za-z0-9_.-]+$` + 显式拒绝 `.`/`..`，`WeightsResolutionError` 异常类，`DEFAULT_MODELS_DIR` 环境变量可覆盖）；④ 新增 `training/__init__.py`（torch 安全导出，HAS_TORCH 守卫）；⑤ `plugin.py::_resolve_weights_path` 改为两级解析 — 先查 `LNNModelRegistry`，未命中走 `resolve_world_model_weights_path` 约定式解析，`WeightsResolutionError` 降级为 None + warning（保持 "None = random init" 既有契约，不引入新失败路径）；⑥ torch 安全导入 + 延迟导入 — fusion_trainer 模块级 `try: import torch` 守卫 + 4 个 `app.ai.lnn.training.*` import 延迟到 `train()` 方法内（避免无 torch 环境下模块级 import 触发 `dataset.py` 硬 torch 依赖导致整个模块不可导入，让 `FusionTrainerError` / `_extract_version_from_uri` 等 torch-free 符号可被测试验证）；⑦ 新增 3 个测试文件 34 用例：`test_fusion_trainer.py`（17 用例：torch-free 构造校验 + 版本提取 + 训练闭环 + checkpoint 往返 + 早停）+ `test_weights_resolver.py`（12 用例：写入侧 + 读取侧 + 路径穿越防护 + 安全字符集）+ `test_plugin_weights_resolution.py`（5 用例：plugin 层闭环 + 降级 + 端到端 train→save→resolve）；⑧ ruff check 全通过（修复 4 处 F841：`torch = pytest.importorskip` → `pytest.importorskip`）；run_pytest.py（WinSock 绕过）+ `--noconftest`（绕过 slowapi 未安装）+ `-o addopts=""`（清空 cov 配置）后 pytest 21 passed/12 skipped（importorskip 自然跳过 torch-dependent 用例，符合 D-2 学术诚信约束）；⑨ §1.3 路线图 P1 标记已完成，"当前可用路径"新增 L3 权重阻塞解除条目。L3 权重阻塞完全解除：训练产出的 checkpoint 能被 plugin 层无需手动注册到 ModelRegistry 即可解析加载，形成「训练 → 推理」闭环。剩余阻塞：L4 环境阻塞（生产无 torch，P2 任务）+ L1 配置阻塞（use_fusion 默认 False，P3 任务） | 项目负责人 |
 | 2026-07-15 | 思路 1 P2 环境部署准备（纯代码侧，L4 阻塞未解除但 SOP + 验证脚本就绪）：① 环境探查确认 L4 阻塞根因 — WinSock 目录损坏（WinError 10038「在一个非套接字上尝试了一个操作」），pip/conda 网络均不可用（urllib → socket → _create_connection 失败），本地无 torch wheel 缓存、无 conda pkgs 缓存，run_pytest.py 的 _overlapped stub + os.pipe() socketpair 绕过仅覆盖 asyncio 测试路径无法让 pip 联网；② 新增 `python/scripts/verify_torch_ready.py`（torch 就绪一键验证脚本：torch 不可用时退出码 1 + SOP 提示；torch 可用时调用 run_pytest.py 跑全 8 个 torch 依赖测试文件复用 WinSock 绕过补丁；覆盖 ADR-020 思路 1-3 全部 importorskip("torch") 用例）；③ ruff check 全通过；本会话验证 torch 不可用路径正确退出码 1 + SOP 提示输出；④ §1.3 P2 段落补充执行 SOP（5 步：管理员 netsh winsock reset → 重启 → 验证网络 → pip install torch CPU 版 → 一键验证）+ 阻塞诊断 + 待跑全测试清单（8 文件累计 skipped 期望降为 0）；⑤ checklist 新增 P2 验证脚本 + SOP 两个完成项。设计权衡：本会话不自动执行系统级修复（netsh winsock reset 需管理员 + 重启，影响系统全局），SOP + 验证脚本让用户能按序自助解锁 L4，torch 就绪后一键验证全部 torch 依赖代码路径。剩余阻塞：L4 环境阻塞（待用户执行 SOP）+ L1 配置阻塞（use_fusion 默认 False，P3 任务） | 项目负责人 |
-| 2026-07-15 | 思路 1 P3 默认启用融合路径 + 降级兜底完备 — 解锁 L1 配置阻塞（四重阻塞中最后一重代码侧阻塞）：① 三处默认值修改 — `net.py` `WorldModelConfig.use_fusion: bool = True` + `manifest.py` config_schema `"use_fusion": {"default": True}` + `world_model_service.py` `_env_bool("WORLD_MODEL_USE_FUSION", True)`，融合路径从「opt-in 显式开启」升级为「生产默认」；② 三处降级兜底实现（关键：先兜底再改默认的硬约束，避免 L4 阻塞未解除时改默认导致生产路径前向推理崩溃）：a) `net.py` NumPy 回退版 `__init__` — torch 不可用时不再 `raise RuntimeError`，改为 `logger.warning` 降级为 NumPy 随机权重路径（融合 embedding 无法计算但构造不崩溃，让上层 `predict()` 路由到原始路径）；b) `predictor.py::predict` 路由重构为基于输入类型判定（`has_unified_input`：仅当传入 `unified_state` 或 `current_state` 为 `UnifiedState/dict` 时走融合路径，legacy 调用 `np.ndarray` 仍走原始路径，避免 `use_fusion=True` 默认开启后 legacy 调用被错误路由到融合路径）+ torch 不可用降级到零向量 NumPy 路径（UnifiedState 无法直接转为 state_dim 维向量，构造零向量兜底仅满足接口契约，预测无意义）；c) `plugin.py::execute` 融合路径 `try-except RuntimeError` 降级到 legacy 路径 + metrics 添加 `degraded_to_legacy` 标志（UnifiedState 输入无法降级为 np.ndarray 时构造零向量兜底）；③ input_mode 从三态扩展为四态 — `fusion`（metadata 含预组装 unified_state）/ `fusion_assembled`（metadata 含组装原料，自动组装）/ `legacy`（np.ndarray 原始路径）/ `legacy_degraded`（融合路径 RuntimeError 降级到 legacy）；④ 设计权衡 — a) 「先兜底再改默认」硬约束：若先改默认再补兜底，L4 阻塞未解除时 `use_fusion=True` 会让 `WorldModelNet.__init__`（NumPy 回退）直接 raise，生产路径崩溃；b) 分层降级：predictor 层主动降级（torch 不可用时路由到零向量 NumPy 路径）+ plugin 层兜底降级（融合路径 RuntimeError 时回退到 legacy 路径），两层独立工作互不依赖；c) 路由基于输入类型而非仅 config — `has_unified_input=True` 当且仅当传入 `unified_state` 或 `current_state` 是 `UnifiedState/dict`（非 np.ndarray），这样 `use_fusion=True` 默认开启后 legacy 调用仍走原始路径，避免「默认开启融合」破坏向后兼容；⑤ 测试验证 — run_pytest.py（WinSock 绕过）+ `--noconftest`（绕过 slowapi 未安装）+ `-o addopts=""`（清空 cov 配置）后 pytest **260 passed, 31 skipped, 0 failed**（31 skipped 为 torch 依赖测试，importorskip 自然跳过，符合 D-2 学术诚信约束，无虚假通过）；⑥ §1.3 路线图 P3 标记已完成，四重阻塞分析表 L1/L2/L3 标记 ✅ 已解除、L4 标记 ⚠ 待用户执行 SOP，"当前可用路径"更新为「`WORLD_MODEL_USE_FUSION=true` 成为生产默认；融合路径在 torch 可用时自动生效，torch 不可用时自动降级到传统路径」。至此 ADR-020 思路 1 融合架构从「接线完成」推进到「真实发挥效用」：融合路径成为生产默认，torch 可用时自动端到端跑通（geometry 37维 + dynamics 6维 → GeometryEncoder/DynamicsEncoder/FusionLayer → fused_embedding → LSTM → LTC），torch 不可用时分层降级保证生产路径不崩溃。剩余阻塞：L4 环境阻塞（待用户执行 P2 SOP），torch 就绪后 PHM2010 全链路 + MLflow tracking 可推进 | 项目负责人 |
+| 2026-07-15 | 思路 1 P3 默认启用融合路径 + 降级兜底完备 — 解锁 L1 配置阻塞（四重阻塞中最后一重代码侧阻塞）：① 三处默认值修改 — `net.py` `WorldModelConfig.use_fusion: bool = True` + `manifest.py` config_schema `"use_fusion": {"default": True}` + `world_model_service.py` `_env_bool("WORLD_MODEL_USE_FUSION", True)`，融合路径从「opt-in 显式开启」升级为「生产默认」；② 三处降级兜底实现（关键：先兜底再改默认的硬约束，避免 L4 阻塞未解除时改默认导致生产路径前向推理崩溃）：a) `net.py` NumPy 回退版 `__init__` — torch 不可用时不再 `raise RuntimeError`，改为 `logger.warning` 降级为 NumPy 随机权重路径（融合 embedding 无法计算但构造不崩溃，让上层 `predict()` 路由到原始路径）；b) `predictor.py::predict` 路由重构为基于输入类型判定（`has_unified_input`：仅当传入 `unified_state` 或 `current_state` 为 `UnifiedState/dict` 时走融合路径，legacy 调用 `np.ndarray` 仍走原始路径，避免 `use_fusion=True` 默认开启后 legacy 调用被错误路由到融合路径）+ torch 不可用降级到零向量 NumPy 路径（UnifiedState 无法直接转为 state_dim 维向量，构造零向量兜底仅满足接口契约，预测无意义）；c) `plugin.py::execute` 融合路径 `try-except RuntimeError` 降级到 legacy 路径 + metrics 添加 `degraded_to_legacy` 标志（UnifiedState 输入无法降级为 np.ndarray 时构造零向量兜底）；③ input_mode 从三态扩展为四态 — `fusion`（metadata 含预组装 unified_state）/ `fusion_assembled`（metadata 含组装原料，自动组装）/ `legacy`（np.ndarray 原始路径）/ `legacy_degraded`（融合路径 RuntimeError 降级到 legacy）；④ 设计权衡 — a) 「先兜底再改默认」硬约束：若先改默认再补兜底，L4 阻塞未解除时 `use_fusion=True` 会让 `WorldModelNet.__init__`（NumPy 回退）直接 raise，生产路径崩溃；b) 分层降级：predictor 层主动降级（torch 不可用时路由到零向量 NumPy 路径）+ plugin 层兜底降级（融合路径 RuntimeError 时回退到 legacy 路径），两层独立工作互不依赖；c) 路由基于输入类型而非仅 config — `has_unified_input=True` 当且仅当传入 `unified_state` 或 `current_state` 是 `UnifiedState/dict`（非 np.ndarray），这样 `use_fusion=True` 默认开启后 legacy 调用仍走原始路径，避免「默认开启融合」破坏向后兼容；⑤ 测试验证 — run_pytest.py（WinSock 绕过）+ `--noconftest`（绕过 slowapi 未安装）+ `-o addopts=""`（清空 cov 配置）后 pytest **260 passed, 31 skipped, 0 failed**（31 skipped 为 torch 依赖测试，importorskip 自然跳过，符合 D-2 学术诚信约束，无虚假通过）；⑥ §1.3 路线图 P3 标记已完成，四重阻塞分析表 L1/L2/L3 标记 已解除、L4 标记 待用户执行 SOP，"当前可用路径"更新为「`WORLD_MODEL_USE_FUSION=true` 成为生产默认；融合路径在 torch 可用时自动生效，torch 不可用时自动降级到传统路径」。至此 ADR-020 思路 1 融合架构从「接线完成」推进到「真实发挥效用」：融合路径成为生产默认，torch 可用时自动端到端跑通（geometry 37维 + dynamics 6维 → GeometryEncoder/DynamicsEncoder/FusionLayer → fused_embedding → LSTM → LTC），torch 不可用时分层降级保证生产路径不崩溃。剩余阻塞：L4 环境阻塞（待用户执行 P2 SOP），torch 就绪后 PHM2010 全链路 + MLflow tracking 可推进 | 项目负责人 |

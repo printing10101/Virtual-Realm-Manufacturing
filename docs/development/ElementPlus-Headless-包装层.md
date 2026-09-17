@@ -1,11 +1,11 @@
 # P3-1 Element Plus Headless 包装层
 
 **创建日期**: 2026-08-21  
-**状态**: 🟡 首个 Headless composable（useDataTable）落地；更多组件待接线
+**状态**: 首个 Headless composable（useDataTable）落地；更多组件待接线
 
 ---
 
-## 🎯 目标
+## 目标
 
 将 Element Plus 常用组件的「交互逻辑」抽为纯逻辑 composable（Headless），
 组件层只做模板绑定。收益：
@@ -13,7 +13,7 @@
 2. **可独立单测**：纯逻辑不依赖组件挂载/Element Plus 环境
 3. **UI 解耦**：未来可换 UI 库或写自定义组件复用同一逻辑
 
-## 📦 已交付
+## 已交付
 
 ### `src/composables/headless/useDataTable.ts`（首个 Headless 包装）
 
@@ -41,7 +41,7 @@
 钳制边界 / 方向轮转 / 分页幂等 / 排序轮转 / 多选去重 / 全选 / 失败降级 /
 页码回退 / 额外查询透传。
 
-## 🔧 待接线（后续轮次）
+## 待接线（后续轮次）
 
 1. 更多 Headless composable（建议按需追加）：
    - `useHeadlessForm`（校验/提交状态，el-form）
@@ -50,14 +50,14 @@
 2. 迁移既有组件使用（如 ExperienceCapture / 各表格视图）——需文件锁解除后
 3. composables/index.ts 导出（需文件锁解除后追加）
 
-## ✅ 验收标准（门禁）
+## 验收标准（门禁）
 
 1. vue-tsc 类型检查通过
 2. vitest 用例全绿（纯逻辑零挂载）
 3. eslint 干净
 4. 迁移组件后行为等价（回归）
 
-## 📝 变更日志
+## 变更日志
 
 ### v1.0 (2026-08-21)
 - `useDataTable.ts` Headless composable 落地

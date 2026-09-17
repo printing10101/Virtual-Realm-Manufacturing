@@ -16,22 +16,22 @@ hero:
       link: /api/README
 
 features:
-  - icon: 🤖
+  - icon: 
     title: AI 驱动推理
     details: 基于贝叶斯 LNN 的智能工艺参数推荐，支持不确定性量化和主动学习
-  - icon: 📊
+  - icon: 
     title: 数字孪生仿真
     details: 切削力、振动、温度场、刀具磨损等多物理场实时仿真预测
-  - icon: 🔄
+  - icon: 
     title: 自进化飞轮
     details: 每次加工后自动学习，系统越用越智能，形成数据壁垒
-  - icon: 🎯
+  - icon: 
     title: 工艺师协作
     details: 透明决策机制，一键采纳/修改/拒绝，沉淀专家经验
-  - icon: 🔌
+  - icon: 
     title: 开放集成
     details: 支持 OPC UA、MTConnect 等工业标准协议，无缝对接车间设备
-  - icon: 📈
+  - icon: 
     title: 知识图谱
     details: 工艺知识本体建模，支持经验沉淀和智能检索
 ---

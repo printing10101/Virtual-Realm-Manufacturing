@@ -58,7 +58,7 @@
 | `docs/`、`docs-site/` | 文档体系（20+ 子目录）、VitePress 文档站 |
 | `tests/`、`engineering/python/app/benchmarks/` | Vitest 前端测试 + pytest 全套 + 性能基准 |
 
-> ⚠️ **README 与实际布局的差异（重要）**：README 中的 `python/app/...` 与 `src/` 是旧描述，实际路径为 `engineering/python/app/...` 与 `engineering/src/`。V2.7 重构把前端与后端统一收纳到 `engineering/`，并新增 `rust/compute`、`mcp_server/`、`config/`（`shared/` 共享库已在后续重构中移除，其内容并入 engineering 侧）。阅读源码请以磁盘实际结构为准。
+> **README 与实际布局的差异（重要）**：README 中的 `python/app/...` 与 `src/` 是旧描述，实际路径为 `engineering/python/app/...` 与 `engineering/src/`。V2.7 重构把前端与后端统一收纳到 `engineering/`，并新增 `rust/compute`、`mcp_server/`、`config/`（`shared/` 共享库已在后续重构中移除，其内容并入 engineering 侧）。阅读源码请以磁盘实际结构为准。
 
 ### 3.2 后端模块（`engineering/python/app/`）核心职责
 
@@ -95,7 +95,7 @@
 
 ### 3.5 MCP Agent Gateway（`mcp_server/`）
 
-- `server.py`：`FastMCP` 服务，stdio（本地，Cursor/Claude Code）或 SSE（远程）双模式；默认绑定 `127.0.0.1`；远程暴露需 `LNN_MCP_ALLOW_REMOTE=1` + 强入站令牌 `LINGJING_MCP_INGRESS_TOKEN`（fail-closed，无令牌即拒绝）。
+- `server.py`：`FastMCP` 服务，stdio（本地 MCP 客户端）或 SSE（远程）双模式；默认绑定 `127.0.0.1`；远程暴露需 `LNN_MCP_ALLOW_REMOTE=1` + 强入站令牌 `LINGJING_MCP_INGRESS_TOKEN`（fail-closed，无令牌即拒绝）。
 - `tools.py`：通过 HTTP + Bearer Token 调用后端，提供 **LNN 模型管理/预测/训练** 等工具；强制 `LINGJING_AGENT_TOKEN ≥ 32` 字符；非回环暴露时要求入站 `LINGJING_MCP_INGRESS_TOKEN` Bearer 鉴权（纯 ASGI 中间件，`hmac.compare_digest` 防时序），生产环境建议经 HTTPS 反向代理暴露。
 
 ---
@@ -150,14 +150,14 @@
 ## 6. 当前开发状态（Status）
 
 - **版本与分支**：V2.8.0（2026-09-05 发布），当前分支 `main`（2026-08-19 分支收敛：refactor 分支已并入 main，旧 main 存档于 tag `backup/main-2026-08-03`；历史合并点 `592aedb` V2.7.0 解耦重构、`27b9c2a` V2.6.0 架构重构与契约层建设）。版本演进见根 `CHANGELOG.md`。
-- **成熟度**：功能面已较完整（Roadmap 中 LNN、11 后处理器、DNC 适配、RAG、知识图谱、Tauri 打包均已 ✅）；代码质量处于持续改进中（V2.7 静态审查评定 C 级，核心架构项——单例→DI 迁移、分层整理、前端 API 层激活——仍在分阶段推进中，详见 `output/AI代码质量综合评价.html`）。
+- **成熟度**：功能面已较完整（Roadmap 中 LNN、11 后处理器、DNC 适配、RAG、知识图谱、Tauri 打包均已交付）；代码质量处于持续改进中（V2.7 静态审查评定 C 级，核心架构项——单例→DI 迁移、分层整理、前端 API 层激活——仍在分阶段推进中）。
 - **进行中的重构（REFACTOR_PLAN_V2.6.1，2026-07-20；V2.8.0 已消化大半）**：
-  - ✅ 已修：XSS（`ExampleGallery.vue` 三层防御）、`skill_compiler` 降级路径补 AST 审计、`logging_config` 自测守卫、UTC 时区统一。
-  - ✅ V2.8.0 已拆分：前端巨型组件（Simulation/TaskBoard/Workspace 等，当前最大视图约 18KB）；>40KB Python 巨型文件已拆 4 个（仅剩 `agent/orchestrator.py` 约 65KB，仍在活跃演进）。
-  - ⏸ 剩余：`agent/orchestrator.py` 拆分、30–40KB 档约 24 个文件的分层整理、29 处裸 `except...pass` 补日志（AST 审查确认原 ~533 处静默 catch 中绝大多数为正确的 asyncio/logging 惯用法）。
+  - 已修：XSS（`ExampleGallery.vue` 三层防御）、`skill_compiler` 降级路径补 AST 审计、`logging_config` 自测守卫、UTC 时区统一。
+  - V2.8.0 已拆分：前端巨型组件（Simulation/TaskBoard/Workspace 等，当前最大视图约 18KB）；>40KB Python 巨型文件已拆 4 个（仅剩 `agent/orchestrator.py` 约 65KB，仍在活跃演进）。
+  - 剩余：`agent/orchestrator.py` 拆分、30–40KB 档约 24 个文件的分层整理、29 处裸 `except...pass` 补日志（AST 审查确认原 ~533 处静默 catch 中绝大多数为正确的 asyncio/logging 惯用法）。
 - **安全加固**：CORS 启动期强制校验（通配符+凭据即非零退出）、Bearer 鉴权 + RBAC 4 级、MCP Token 强度校验与入站 Bearer 鉴权（`LINGJING_MCP_INGRESS_TOKEN`，`hmac` 防时序攻击）、OPC UA 缺省拒绝匿名（需 `LNN_OPCUA_ALLOW_ANON=1` 显式允许）+ 安全策略强制（默认 `Basic256Sha256`，需 `LNN_OPCUA_ALLOW_NOSECURITY=1` 才降级）、生产环境关闭 `/docs`/`/redoc`/`/openapi`、空闲自动关机、sidecar 优雅关闭。
 - **测试与基准**：pytest 全套（`.coverage` 覆盖率数据在）、Vitest 前端、7 类性能基准（api/business/concurrency/database/drawing_parse/lnn_inference/nc_generation）。
-- **待办（Roadmap ⬜）**：实时颤振在线监测插件、工艺数字孪生、多语言 UI（英/日/德）、移动端工艺看板。
+- **待办（Roadmap）**：实时颤振在线监测插件、工艺数字孪生、多语言 UI（英/日/德）、移动端工艺看板。
 
 ---
 

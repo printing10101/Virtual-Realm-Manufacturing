@@ -1,7 +1,7 @@
 # LNN 权重训练与分发接线方案（①「把真智能装进包里」）
 
 > 定位：把「合成/实测数据 → research 训练 → 权重导出 → 随包分发 → 工程侧加载验证 → 精度基准」全链打通，产出**首个随包分发的真实 LNN 权重**。
-> 上位文档：《产品叙事与战略对标-2026-09》W4.1（合成数据先行）/ W4 训练侧消费验证（⬜）/ W9 信任证据工程；《自主化与护城河路线图》P2/P5。
+> 上位文档：《产品叙事与战略对标-2026-09》W4.1（合成数据先行）/ W4 训练侧消费验证（）/ W9 信任证据工程；《自主化与护城河路线图》P2/P5。
 > 盘点日期：2026-09-08。所有路径均已在仓库实测核实。
 
 ---
@@ -12,9 +12,9 @@
 
 | 数据源 | 位置 | 现状 |
 |---|---|---|
-| 合成数据生成器 | `app/pipelines/synthetic_data_gen.py` | ✅ 已落地（W4.1）：参数扫描（rpm×feed×depth，默认 27 组合，上限 200）→ 每样本含参数 + 合成 G 代码 + 体素校验结果 + 切削力（PINN→Kienzle 降级链），经 `DatasetStore.commit_version()` 提交为不可变数据集版本（带 `LineageRecord` 血缘），数据集名 `synthetic_machining_params_v1` |
-| 训练数据湖 | `app/training/data_lake.py` → `engineering/python/data/training_data/training_data_YYYYMMDD.jsonl` | ✅ 管道可用；现有内容为 feedback_loop E2E 测试数据（`REC-E2E-001` 等），schema：`features{machine_id, tool_id, workpiece_material, spindle_speed, feed_rate, depth_of_cut}` + `labels{first_pass_acceptance, actual_dimensions, surface_roughness}` |
-| 科研侧数据集 | `research/datasets/`（force_vibration_567 / measured_stability / piecuch_2025 / uniwear / synthetic_chatter.py）+ Bosch 装载器（两侧各有） | ✅ 在库；**从未被工程侧注册表模型消费过** |
+| 合成数据生成器 | `app/pipelines/synthetic_data_gen.py` | 已落地（W4.1）：参数扫描（rpm×feed×depth，默认 27 组合，上限 200）→ 每样本含参数 + 合成 G 代码 + 体素校验结果 + 切削力（PINN→Kienzle 降级链），经 `DatasetStore.commit_version()` 提交为不可变数据集版本（带 `LineageRecord` 血缘），数据集名 `synthetic_machining_params_v1` |
+| 训练数据湖 | `app/training/data_lake.py` → `engineering/python/data/training_data/training_data_YYYYMMDD.jsonl` | 管道可用；现有内容为 feedback_loop E2E 测试数据（`REC-E2E-001` 等），schema：`features{machine_id, tool_id, workpiece_material, spindle_speed, feed_rate, depth_of_cut}` + `labels{first_pass_acceptance, actual_dimensions, surface_roughness}` |
+| 科研侧数据集 | `research/datasets/`（force_vibration_567 / measured_stability / piecuch_2025 / uniwear / synthetic_chatter.py）+ Bosch 装载器（两侧各有） | 在库；**从未被工程侧注册表模型消费过** |
 
 ### 1.2 训练侧（research/ 齐备，断在导出）
 
@@ -22,7 +22,7 @@
 - `research/training/dataset.py`：`LNNDataset`（`(n_samples, features)` 矩阵 + 标签）、`TrainingDataPreprocessor`、`FeatureExtractor`、`BoschCNCDataset`、`DataAugmentation`。
 - `research/models/`：`torch_ltc_model` / `torch_cfc_model` / `torch_hybrid_lnn` / `torch_mamba_lnn`（LNNConfig 统一配置）。
 - **已有成功先例（SSM 链，升级④）**：`research/scripts/export_ssm_onnx.py` 把 `TorchMambaLNN` 单步接口 `forward(x, dt烘焙, h)` 导出 ONNX 并用 onnxruntime 做数值验证 → 工程侧 `app/ai/lnn/ssm_inference.py` `SsmOnnxPredictor`（onnxruntime，无 torch）→ `register_ssm_predictor` 挂到 `HybridInferenceEngine`。测试锚点：`research/tests/test_ssm_onnx_export.py`。依赖版本两侧对齐（onnx 1.17.0 + onnxruntime 1.20.1）。
-- ⬜ **缺口**：ONNX 导出脚本只有 SSM 有；LTC/CFC/HybridLNN 无导出路径。
+- **缺口**：ONNX 导出脚本只有 SSM 有；LTC/CFC/HybridLNN 无导出路径。
 
 ### 1.3 推理侧（app/ai/lnn/ 消费端，三处硬伤）
 

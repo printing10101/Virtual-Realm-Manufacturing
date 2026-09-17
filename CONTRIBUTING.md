@@ -369,10 +369,10 @@ PR 标题必须遵循 Conventional Commits 格式（与 commit message 相同）
 ```
 
 **示例**：
-- `feat(simulation): 实现NC代码刀具路径碰撞检测系统` ✅
-- `fix(postprocessor): 修复Fanuc圆弧插补R值计算` ✅
-- `docs(contributing): 新增贡献指南` ✅
-- `更新了一些代码` ❌ （缺少 type 和 scope）
+- `feat(simulation): 实现NC代码刀具路径碰撞检测系统` 
+- `fix(postprocessor): 修复Fanuc圆弧插补R值计算` 
+- `docs(contributing): 新增贡献指南` 
+- `更新了一些代码` （缺少 type 和 scope）
 
 ### PR 描述模板
 
@@ -411,11 +411,11 @@ Fixes #123 或 Resolves #123
 
 ### 合并要求
 
-- ✅ PR 标题符合 Conventional Commits 格式
-- ✅ 所有 CI 检查通过（lint + test + type-check）
-- ✅ 至少一位指定 Reviewer 审批通过
-- ✅ 与 `main` 分支无冲突
-- ❌ 禁止直接推送到 `main` 分支
+- PR 标题符合 Conventional Commits 格式
+- 所有 CI 检查通过（lint + test + type-check）
+- 至少一位指定 Reviewer 审批通过
+- 与 `main` 分支无冲突
+- 禁止直接推送到 `main` 分支
 
 ---
 
@@ -465,10 +465,10 @@ Fixes #123 或 Resolves #123
 
 ### Bug 报告建议
 
-- 🔍 **先搜索**：检查是否已有相同 Issue
-- 📷 **附截图**：截图比文字描述更直观
-- 📋 **贴日志**：`logs/` 目录下的相关日志文件
-- 🔄 **可复现**：提供最小复现步骤，帮助开发者快速定位
+- **先搜索**：检查是否已有相同 Issue
+- **附截图**：截图比文字描述更直观
+- **贴日志**：`logs/` 目录下的相关日志文件
+- **可复现**：提供最小复现步骤，帮助开发者快速定位
 
 ---
 

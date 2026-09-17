@@ -16,9 +16,9 @@
 
 | 检查项 | 状态 | 详情 |
 |--------|------|------|
-| 工作目录 | ✅ 通过 | `C:\Users\<user>\Desktop\灵境制造（上线版）` |
-| Python版本 | ✅ 通过 | Python 3.11.0rc2 (>=3.8) |
-| 依赖安装 | ✅ 通过 | fastapi, uvicorn, pydantic, chromadb, httpx 均可正常导入 |
+| 工作目录 | 通过 | `C:\Users\<user>\Desktop\灵境制造（上线版）` |
+| Python版本 | 通过 | Python 3.11.0rc2 (>=3.8) |
+| 依赖安装 | 通过 | fastapi, uvicorn, pydantic, chromadb, httpx 均可正常导入 |
 
 ---
 
@@ -26,8 +26,8 @@
 
 | 检查项 | 状态 | 详情 |
 |--------|------|------|
-| 服务启动 | ✅ 通过 | uvicorn 成功启动在 `127.0.0.1:8765` |
-| 健康检查 | ✅ 通过 | HTTP 200, 响应: `{"status":"healthy","version":"1.2.0","ai_status":{"mode":"local","available":true,"model":"qwen2.5-coder:7b"}}` |
+| 服务启动 | 通过 | uvicorn 成功启动在 `127.0.0.1:8765` |
+| 健康检查 | 通过 | HTTP 200, 响应: `{"status":"healthy","version":"1.2.0","ai_status":{"mode":"local","available":true,"model":"qwen2.5-coder:7b"}}` |
 
 ---
 
@@ -35,8 +35,8 @@
 
 | 检查项 | 状态 | 详情 |
 |--------|------|------|
-| 脚本创建 | ✅ 通过 | 测试文件已创建: `tests/e2e_integration.py` |
-| 脚本结构 | ✅ 通过 | 包含4个独立测试函数，符合规范要求 |
+| 脚本创建 | 通过 | 测试文件已创建: `tests/e2e_integration.py` |
+| 脚本结构 | 通过 | 包含4个独立测试函数，符合规范要求 |
 
 ---
 
@@ -46,10 +46,10 @@
 
 | 测试项 | 状态 | 详情 |
 |--------|------|------|
-| 健康检查接口 | ✅ PASS | 返回 HTTP 200 |
-| Ollama服务状态 | ✅ PASS | 返回 HTTP 200, 状态: running |
-| 知识库状态 | ✅ PASS | 返回 HTTP 200, `/api/knowledge/health` 端点可正常访问 |
-| 工作流生命周期 | ✅ PASS | 理解阶段成功完成，总阶段数5，已完成3 |
+| 健康检查接口 | PASS | 返回 HTTP 200 |
+| Ollama服务状态 | PASS | 返回 HTTP 200, 状态: running |
+| 知识库状态 | PASS | 返回 HTTP 200, `/api/knowledge/health` 端点可正常访问 |
+| 工作流生命周期 | PASS | 理解阶段成功完成，总阶段数5，已完成3 |
 
 **总计: 4/4 通过 (100%)**
 
@@ -57,10 +57,10 @@
 
 | 阶段 | 状态 |
 |------|------|
-| understanding | completed ✅ |
-| knowledge_fetch | completed ✅ (并行执行) |
-| planning | completed ✅ |
-| parameter | completed ✅ |
+| understanding | completed |
+| knowledge_fetch | completed (并行执行) |
+| planning | completed |
+| parameter | completed |
 | nc_generation | 未执行（planning→parameter依赖链完成） |
 
 ---
@@ -69,7 +69,7 @@
 
 | 检查项 | 状态 | 详情 |
 |--------|------|------|
-| 进程终止 | ✅ 通过 | uvicorn 进程已成功终止 |
+| 进程终止 | 通过 | uvicorn 进程已成功终止 |
 
 ---
 

@@ -51,7 +51,7 @@
 | 校验/限幅已就绪 | `_validator.ConfigValidator`（完整性校验）、`_limiter.ConfigLimiter`（主轴/进给限幅） |
 | 插件系统存在但未接电 | `init_plugin_system()` 全仓库无调用点；`/api/v1/plugins` 吞异常返回空列表（见 .dsh-memory 审计） |
 
-> ⚠️ 本设计不解决插件系统整体接线问题（那是独立工作项），只保证方言声明化不依赖插件系统即可独立落地，同时**预留**接入插件系统的挂载点。
+> 本设计不解决插件系统整体接线问题（那是独立工作项），只保证方言声明化不依赖插件系统即可独立落地，同时**预留**接入插件系统的挂载点。
 
 ---
 
@@ -66,11 +66,11 @@
 
 ### 2.2 非目标（本设计明确不做）
 
-- ❌ 不把 9 个方言类"搬进 plugins/ 目录"了事（那只是移动硬编码，不是声明化）。
-- ❌ 不做远程插件市场/在线分发（本地目录先行）。
-- ❌ 不重构 `ConfigLoader/Validator/Limiter` 的现有行为（它们是核心资产，只扩展）。
-- ❌ 不解决插件系统全局接线（init_plugin_system 等，独立工作项）。
-- ❌ 不引入完整工作流/任务系统改造。
+- 不把 9 个方言类"搬进 plugins/ 目录"了事（那只是移动硬编码，不是声明化）。
+- 不做远程插件市场/在线分发（本地目录先行）。
+- 不重构 `ConfigLoader/Validator/Limiter` 的现有行为（它们是核心资产，只扩展）。
+- 不解决插件系统全局接线（init_plugin_system 等，独立工作项）。
+- 不引入完整工作流/任务系统改造。
 
 ---
 
@@ -84,7 +84,7 @@
 ├─────────────────────────────────────────────────────────────────┤
 │  API 层：/api/v1/postprocessor/dialects（CRUD + preview，P3）    │
 ├─────────────────────────────────────────────────────────────────┤
-│  方言声明编译层（✅ P1 已实现：app/postprocessor/dialect/）       │
+│  方言声明编译层（P1 已实现：app/postprocessor/dialect/）       │
 │  ├─ declaration.py  DialectDeclaration + YAML 加载校验           │
 │  ├─ compiler.py     DialectCompiler：extends 解析 + Jinja2 模板  │
 │  │                  → 动态子类（模板方法替换，签名与基类一致）    │
@@ -255,11 +255,11 @@ tests/postprocessor/golden/
 
 | 阶段 | 内容 | 产出 | 验收标准 |
 |------|------|------|----------|
-| **P0 黄金基线** | ✅ 已完成（2026-08-19）：扩展现有黄金框架，补齐方法覆盖（tapping/boring/threading/groove/subprogram/高精度/RTCP）+ 边界/错误路径（51 用例） | `tests/regression/test_postprocessor_golden.py` + `tests/golden/postprocessor/*_extended.nc` ×9 + `tests/unit/test_postprocessor_boundary.py` | 172 测试全绿；覆盖正常/边界/错误路径 |
-| **P1 引擎扩展** | ✅ 已完成（2026-08-19）：`app/postprocessor/dialect/` 包（declaration/compiler/registry）+ 首个声明镜像 KND（4 模板方法） | `app/postprocessor/dialect/` + `postprocessor-plugins/knd_1000_2000_3000/` + `tests/unit/test_postprocessor_dialect.py`（20 用例） | 声明式 KND 输出与内置 KND 逐字符一致（标准序列 + 扩展序列 + golden 文件三重验证）；`load_dialects()` 注册后 `load_from_config` 调用方零改动 |
-| **P2 内置方言迁移** | ✅ 核心完成（2026-08-19）：6 个 Fanuc 兼容方言中 5 个已声明化（KND/GSK/HNC/Mitsubishi/Fagor），各带完整模板 + 三重黄金一致验证；**hooks 模式完成（遗留项③）**——代码钩子表达模板难表达的复杂逻辑（方法优先级 hooks > 模板 > 基类） | `postprocessor-plugins/<id>/*`（5 方言 × 6-8 模板）+ `tests/unit/test_postprocessor_dialect.py`（37 用例） | 5 个声明镜像输出与内置逐字符一致；hooks 方言可混合模板+hooks+继承（含扩展方法）；fanuc_0i 保留为引擎基类 |
-| **P3 前端** | ✅ 已完成（2026-08-19）：后端 API（列表/详情/模板读取/NC 预览 + **新建/保存模板/删除写路径**）+ 前端方言管理页 + 实时预览器 + **新建向导 + 模板编辑器** | `app/api/v1/postprocessor_dialects.py` + `src/api/postprocessorDialects.ts` + `src/views/DialectManager.vue` + `tests/api/test_postprocessor_dialects.py`（23 用例）+ `src/views/__tests__/DialectManager.test.ts`（10 用例） | **工艺员零代码加方言完整闭环**：新建（选继承 → 生成参数化骨架模板）→ 编辑模板 → 实时预览 → 删除；后端 92 测试 + 前端 10 测试全绿 |
-| **P4 插件接线** | ✅ 核心完成（2026-08-19）：方言插件暴露到统一插件市场（plugin_type=postprocessor，id 前缀 `dialect:`）+ **init_plugin_system 安全接线（遗留项②）**——main.py startup Step 5 无参初始化（0 插件，不触发 torch 依赖），shutdown 5.5 清理；`get_plugin_manager()` 不再抛 RuntimeError，插件 API 返回真实数据 | `app/api/v1/plugins.py`（`_scan_dialect_plugins`）+ `app/main.py` + `tests/api/test_dialect_plugins_market.py`（3 用例）+ `tests/unit/test_plugin_system_wiring.py`（4 用例） | `/api/v1/plugins/marketplace` 显示 5 个方言插件真实条目；插件系统接线后市场 API code=0 返回真实数据（修复审计发现的"吞异常返回空"） |
+| **P0 黄金基线** | 已完成（2026-08-19）：扩展现有黄金框架，补齐方法覆盖（tapping/boring/threading/groove/subprogram/高精度/RTCP）+ 边界/错误路径（51 用例） | `tests/regression/test_postprocessor_golden.py` + `tests/golden/postprocessor/*_extended.nc` ×9 + `tests/unit/test_postprocessor_boundary.py` | 172 测试全绿；覆盖正常/边界/错误路径 |
+| **P1 引擎扩展** | 已完成（2026-08-19）：`app/postprocessor/dialect/` 包（declaration/compiler/registry）+ 首个声明镜像 KND（4 模板方法） | `app/postprocessor/dialect/` + `postprocessor-plugins/knd_1000_2000_3000/` + `tests/unit/test_postprocessor_dialect.py`（20 用例） | 声明式 KND 输出与内置 KND 逐字符一致（标准序列 + 扩展序列 + golden 文件三重验证）；`load_dialects()` 注册后 `load_from_config` 调用方零改动 |
+| **P2 内置方言迁移** | 核心完成（2026-08-19）：6 个 Fanuc 兼容方言中 5 个已声明化（KND/GSK/HNC/Mitsubishi/Fagor），各带完整模板 + 三重黄金一致验证；**hooks 模式完成（遗留项③）**——代码钩子表达模板难表达的复杂逻辑（方法优先级 hooks > 模板 > 基类） | `postprocessor-plugins/<id>/*`（5 方言 × 6-8 模板）+ `tests/unit/test_postprocessor_dialect.py`（37 用例） | 5 个声明镜像输出与内置逐字符一致；hooks 方言可混合模板+hooks+继承（含扩展方法）；fanuc_0i 保留为引擎基类 |
+| **P3 前端** | 已完成（2026-08-19）：后端 API（列表/详情/模板读取/NC 预览 + **新建/保存模板/删除写路径**）+ 前端方言管理页 + 实时预览器 + **新建向导 + 模板编辑器** | `app/api/v1/postprocessor_dialects.py` + `src/api/postprocessorDialects.ts` + `src/views/DialectManager.vue` + `tests/api/test_postprocessor_dialects.py`（23 用例）+ `src/views/__tests__/DialectManager.test.ts`（10 用例） | **工艺员零代码加方言完整闭环**：新建（选继承 → 生成参数化骨架模板）→ 编辑模板 → 实时预览 → 删除；后端 92 测试 + 前端 10 测试全绿 |
+| **P4 插件接线** | 核心完成（2026-08-19）：方言插件暴露到统一插件市场（plugin_type=postprocessor，id 前缀 `dialect:`）+ **init_plugin_system 安全接线（遗留项②）**——main.py startup Step 5 无参初始化（0 插件，不触发 torch 依赖），shutdown 5.5 清理；`get_plugin_manager()` 不再抛 RuntimeError，插件 API 返回真实数据 | `app/api/v1/plugins.py`（`_scan_dialect_plugins`）+ `app/main.py` + `tests/api/test_dialect_plugins_market.py`（3 用例）+ `tests/unit/test_plugin_system_wiring.py`（4 用例） | `/api/v1/plugins/marketplace` 显示 5 个方言插件真实条目；插件系统接线后市场 API code=0 返回真实数据（修复审计发现的"吞异常返回空"） |
 
 > P0 是**不可跳过的前提**（契约即负债，迁移前必须有行为基线）。P1-P2 每步独立 PR，符合仓库"完整实现、测试同步、不留 TODO"纪律。
 

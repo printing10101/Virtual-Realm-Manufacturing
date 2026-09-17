@@ -16,13 +16,13 @@
 
 | 编号 | 问题类别 | 严重级别 | 状态 |
 |------|---------|---------|------|
-| AR-01 | 损失权重三处不一致（config.py / losses.py / experiment_design.md） | Critical | ✅ 已修复 |
-| AR-02 | 真实实验出现负 R²（DL-LNN R²=-0.416 vs 论文占位 0.987） | Critical | ✅ 已修复 + MLflow + 完整 100+200 epoch 重训 + Optuna 超参搜索 + GP 修复 + 论文真实数据替换 |
-| AR-03 | 未实现连续时间 ODE 求解器（用 Euler 替代 torchdiffeq） | Critical | ✅ 已修复 |
-| AR-04 | 基线方法不匹配（论文声明 4 种传统 ML，代码缺失） | Major | ✅ 已修复 |
-| AR-05 | PCC 梯度层被简化（数值差分替代 autograd.grad） | Major | ✅ 已修复 |
-| AR-06 | 输入维度不匹配（2 维 vs 论文声明的 7 维物理特征） | Major | ✅ 已修复 |
-| AR-07 | 命名不统一（PI-LNN vs DL-LNN） | Minor | ✅ 已修复 |
+| AR-01 | 损失权重三处不一致（config.py / losses.py / experiment_design.md） | Critical | 已修复 |
+| AR-02 | 真实实验出现负 R²（DL-LNN R²=-0.416 vs 论文占位 0.987） | Critical | 已修复 + MLflow + 完整 100+200 epoch 重训 + Optuna 超参搜索 + GP 修复 + 论文真实数据替换 |
+| AR-03 | 未实现连续时间 ODE 求解器（用 Euler 替代 torchdiffeq） | Critical | 已修复 |
+| AR-04 | 基线方法不匹配（论文声明 4 种传统 ML，代码缺失） | Major | 已修复 |
+| AR-05 | PCC 梯度层被简化（数值差分替代 autograd.grad） | Major | 已修复 |
+| AR-06 | 输入维度不匹配（2 维 vs 论文声明的 7 维物理特征） | Major | 已修复 |
+| AR-07 | 命名不统一（PI-LNN vs DL-LNN） | Minor | 已修复 |
 
 **v0.4 最终结论（2026-07-12）**：7 项问题全部在代码层与论文层完成修复。v0.3 → v0.4 的关键变更：(1) 修复 Target 归一化机制（trainer 计算并保存 y_true 的 mean/std，训练时归一化、评估时 denormalize y_pred），消除评估期指标失真；(2) 修正 Tlusty 解析模型的切屑变薄系数（`compute_limiting_depth` 中 f 系数从 0.05 提升至 0.15），使 7 维特征均具物理相关性且方向正确（f 相关性从 -0.0183 改善至 -0.0528，提升 2.3 倍）；(3) 接入 PHM2010 真实数据集（208 样本，7 维信号统计量输入，Tlusty 派生标签）。
 
@@ -325,14 +325,14 @@ import torch  # 此时可正常导入
 
 | 文件 | 验证结果 |
 |------|---------|
-| `python/experiments/models.py` | ✅ OK |
-| `python/experiments/trainer.py` | ✅ OK |
-| `python/experiments/run_experiment.py` | ✅ OK |
-| `python/experiments/generate_comprehensive_report.py` | ✅ OK |
-| `python/experiments/config.py` | ✅ OK |
-| `python/experiments/losses.py` | ✅ OK |
-| `python/experiments/data_generator.py` | ✅ OK |
-| `python/experiments/exp20_*.py` 至 `exp34_*.py` | ✅ OK |
+| `python/experiments/models.py` | OK |
+| `python/experiments/trainer.py` | OK |
+| `python/experiments/run_experiment.py` | OK |
+| `python/experiments/generate_comprehensive_report.py` | OK |
+| `python/experiments/config.py` | OK |
+| `python/experiments/losses.py` | OK |
+| `python/experiments/data_generator.py` | OK |
+| `python/experiments/exp20_*.py` 至 `exp34_*.py` | OK |
 
 ---
 
@@ -340,7 +340,7 @@ import torch  # 此时可正常导入
 
 ### 4.1 已闭环（2026-07-12 v0.4）
 
-**重训实验并替换占位数值** —— ✅ 已完成：
+**重训实验并替换占位数值** —— 已完成：
 - 原阻塞原因：本机 Python 3.11 + Windows `_overlapped` 模块缺陷（WinError 10038），torch 无法加载
 - 解决方案：在 `run_experiment.py` 顶部注入空实现 `_overlapped` 模块绕过 WinSock 损坏（详见第 2.2 节）
 - 执行结果：3 数据集（Synthetic + Industrial + PHM2010）× 9 模型，退出码 0
@@ -349,24 +349,24 @@ import torch  # 此时可正常导入
   - MLflow 追踪：`data/mlruns/`
 - 论文更新：表 2 已用真实 MAE 数据替换占位值，第 5 节状态说明已更新，结论已诚实重写
 
-**完整轮数训练验证精度优势** —— ✅ 已完成（v0.4 质变）：
+**完整轮数训练验证精度优势** —— 已完成（v0.4 质变）：
 - 训练轮数：阶段一 100 epoch + 阶段二 200 epoch（与论文第 4.4 节声明完全一致）
 - v0.3 结果：DL-LNN 测试 MAE 非最优（Synthetic 落后 PINN 8.89%，Industrial 落后 PINN 1.60%）
 - v0.4 结果：Target 归一化修复后，DL-LNN 在 Synthetic（MAE=0.3222, R²=0.9968）和 Industrial（MAE=0.9289, R²=0.9680）两数据集 MAE 排名均跃居 **1/9**
 - 结论：v0.3 → v0.4 发生质变，精度优势声明得以恢复。DL-LNN 的核心差异化竞争力为**精度 + 物理一致性双重优势**（在物理富集数据集上）
 - 论文影响：第 6.1 节结论需再次重写，恢复"DL-LNN 在物理富集数据集上显著优于基线"的精度优势声明
 
-**Target 归一化机制修复** —— ✅ 已完成（v0.4 新增闭环）：
+**Target 归一化机制修复** —— 已完成（v0.4 新增闭环）：
 - 根因：`trainer.py` 在评估期未对 y_pred 反归一化，导致 MAE/R² 指标在原始量纲空间失真（v0.3 的负 R² 即源于此）
 - 修复：trainer 计算 y_true 的 mean/std，训练时归一化 y_true/y_physics，评估时通过 `denormalize()` 反归一化 y_pred
 - 验证：Synthetic DL-LNN R² 从 -0.2107 跃升至 0.9968；Industrial DL-LNN R² 从 -0.0157 跃升至 0.9680
 
-**Tlusty 切屑变薄系数修正** —— ✅ 已完成（v0.4 新增闭环）：
+**Tlusty 切屑变薄系数修正** —— 已完成（v0.4 新增闭环）：
 - 根因：`compute_limiting_depth` 中 f 系数 0.05 过小，导致进给率 f 对 a_lim 的影响被低估（f 相关性仅 -0.0183）
 - 修复：f 系数从 0.05 提升至 0.15（体现高进给时切屑变薄显著）
 - 验证：f 相关性从 -0.0183 改善至 -0.0528（提升 2.3 倍），7 维特征均具物理相关性且方向正确，R²≈0.9976
 
-**PHM2010 真实数据集接入** —— ✅ 已完成（v0.4 新增闭环）：
+**PHM2010 真实数据集接入** —— 已完成（v0.4 新增闭环）：
 - 数据源：PHM Society 2010 刀具磨损竞赛数据（`python/data/uniwear/`）
 - 样本量：208 个窗口样本
 - 输入特征：7 维信号统计量（force_x/y/z, vibration_x/y/z, ae_rms 的均值/方差/峰值等）
@@ -375,14 +375,14 @@ import torch  # 此时可正常导入
 - C 扩展冲突修复：`run_phm2010_only.py` 采用 InMemoryPHM2010Dataset 模式，在导入重型 C 扩展前预加载数据
 - losses.py 维度修复：PCC_Loss 降级路径兼容 1D y_physics 张量（PHM2010 标量标签）
 
-**GP 基线超参调优** —— ✅ 已完成（v0.3）：
+**GP 基线超参调优** —— 已完成（v0.3）：
 - 原问题：GP 基线因 `GaussianProcessRegressor` 内部 L-BFGS 优化器覆盖 Optuna 超参而完全发散（MAE≈20）
 - 修复：`models.py` 添加 `optimizer=None`；`create_model()` 注入 Optuna 超参；`run_experiment.py` 挂载 `best_hyperparams.json`
 - Optuna 搜索：GP 30 trials → length_scale=4.209, constant_value=0.739, alpha=0.051 → 搜索 MAE=0.3148
 - 修复后结果：Synthetic MAE=2.6367，Industrial MAE=2.4488，PHM2010 MAE=0.0790（已并入主实验结果表）
 - 验证脚本：`python/experiments/verify_gp_fix.py`
 
-**DL-LNN 超参搜索** —— ✅ 已完成（v0.3）：
+**DL-LNN 超参搜索** —— 已完成（v0.3）：
 - Optuna TPE 采样器，5 trials（因算力限制采用 10+15 epoch 缩减版搜索）
 - 最佳超参：lr=0.00462, weight_decay=2.66e-05, dropout=0.155 → 搜索 MAE=0.3774
 - 搜索耗时 30.98 分钟
@@ -391,11 +391,11 @@ import torch  # 此时可正常导入
 ### 4.2 必须在投稿前完成
 
 **剩余 3 个公开 benchmark + 跨工况协议 + 消融实验**（v0.4 状态更新）：
-- ✅ PHM2010 已接入（208 样本，7 维信号统计量输入，Tlusty 派生标签），见第 2.2 节 PHM2010 结果表
-- ⬜ 剩余 3 个公开 benchmark（NUAA / NIST / ACADEMIC）尚未接入 `data_generator.py`，表 2 对应列暂为「—」
-- ⬜ LOMO / LOCO 跨工况协议实验脚本已实现（`论文相关/脚本/lomo_loco_experiment.py` v2，复用主实验 Trainer 体系），待运行；表 3 数值仍为占位值
-- ⬜ 消融实验脚本已实现（`论文相关/脚本/ablation_experiment.py` v2，覆盖 7 个配置变体：Full/A1-A7），待运行；表 4 数值仍为占位值
-- ⬜ 工业案例定量指标（预警提前量/误报率/漏报率/推理延迟）未采集，表 5 数值为占位值
+- PHM2010 已接入（208 样本，7 维信号统计量输入，Tlusty 派生标签），见第 2.2 节 PHM2010 结果表
+- 剩余 3 个公开 benchmark（NUAA / NIST / ACADEMIC）尚未接入 `data_generator.py`，表 2 对应列暂为「—」
+- LOMO / LOCO 跨工况协议实验脚本已实现（`论文相关/脚本/lomo_loco_experiment.py` v2，复用主实验 Trainer 体系），待运行；表 3 数值仍为占位值
+- 消融实验脚本已实现（`论文相关/脚本/ablation_experiment.py` v2，覆盖 7 个配置变体：Full/A1-A7），待运行；表 4 数值仍为占位值
+- 工业案例定量指标（预警提前量/误报率/漏报率/推理延迟）未采集，表 5 数值为占位值
 - 解决方案：在具备 GPU 的工作站上接入剩余 3 个 benchmark 数据 + 运行 LOMO/LOCO + 运行 3 个关键消融实验后，重新生成所有表格
 
 **LOMO/LOCO 脚本就绪状态**（v0.4 验证）：

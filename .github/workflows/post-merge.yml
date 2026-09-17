@@ -342,7 +342,7 @@ jobs:
             sleep 10
           done
           
-          echo "❌ 健康检查失败"
+          echo " 健康检查失败"
           exit 1
 
   # ============================================
@@ -463,13 +463,13 @@ jobs:
       - name: 部署成功通知
         if: needs.deploy-staging.result == 'success' && needs.post-deploy-verification.result == 'success'
         run: |
-          echo "✅ Staging 环境部署成功！"
+          echo " Staging 环境部署成功！"
           echo "版本: ${{ needs.build.outputs.version }}"
           echo "URL: ${{ needs.deploy-staging.outputs.staging_url }}"
 
       - name: 部署失败通知
         if: needs.deploy-staging.result != 'success' || needs.post-deploy-verification.result != 'success'
         run: |
-          echo "❌ Staging 环境部署失败！"
+          echo " Staging 环境部署失败！"
           echo "请检查日志以获取详细信息。"
           exit 1

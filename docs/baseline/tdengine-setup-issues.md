@@ -19,11 +19,11 @@
 
 | 项目 | 状态 | 备注 |
 |------|------|------|
-| Docker CLI | ✅ 已安装（v29.5.2） | `docker --version` 通过 |
-| Docker Compose 插件 | ✅ 已安装（v5.1.4） | `docker compose config` 通过 |
-| Docker Desktop Daemon | ❌ **未运行** | 当前沙箱环境未启动 Docker Desktop 服务 |
-| `tdengine/tdengine:3.0.7.5` 镜像 | ⏳ 未拉取 | 需要 daemon 运行后执行 `docker compose pull lnn-tdengine` |
-| `taospy` Python 驱动 | ✅ 已安装（v2.8.9） | `pip install taospy` 成功 |
+| Docker CLI | 已安装（v29.5.2） | `docker --version` 通过 |
+| Docker Compose 插件 | 已安装（v5.1.4） | `docker compose config` 通过 |
+| Docker Desktop Daemon | **未运行** | 当前沙箱环境未启动 Docker Desktop 服务 |
+| `tdengine/tdengine:3.0.7.5` 镜像 | 未拉取 | 需要 daemon 运行后执行 `docker compose pull lnn-tdengine` |
+| `taospy` Python 驱动 | 已安装（v2.8.9） | `pip install taospy` 成功 |
 
 ### 2.1 实际错误信息
 
@@ -139,10 +139,10 @@ python -c "from app.services.tdengine_client import get_tdengine; c = get_tdengi
 
 ## 6. 状态
 
-- ✅ Docker Compose 文件结构正确（`docker compose config` 通过）。
-- ✅ Python 客户端代码可正常导入、调用、异常安全降级（smoke test 通过）。
-- ✅ 单元测试套件就绪，预期容器启动后全部通过。
-- ⏳ 容器实际启动需在开发机（Docker Desktop 运行中）执行。
+- Docker Compose 文件结构正确（`docker compose config` 通过）。
+- Python 客户端代码可正常导入、调用、异常安全降级（smoke test 通过）。
+- 单元测试套件就绪，预期容器启动后全部通过。
+- 容器实际启动需在开发机（Docker Desktop 运行中）执行。
 
 ## 7. 验收执行结果（沙箱环境，2026-06-11）
 

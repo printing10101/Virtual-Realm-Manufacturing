@@ -39,23 +39,23 @@
 ### 备份范围
 
 **必须备份**：
-- ✅ SQLite 数据库文件（`data/app.db`）
-- ✅ WAL 日志文件（`data/app.db-wal`）
-- ✅ 配置文件（`config/`）
-- ✅ 环境变量（`.env`）
-- ✅ AI 模型文件（`models/`）
-- ✅ 用户上传文件（`uploads/`）
+- SQLite 数据库文件（`data/app.db`）
+- WAL 日志文件（`data/app.db-wal`）
+- 配置文件（`config/`）
+- 环境变量（`.env`）
+- AI 模型文件（`models/`）
+- 用户上传文件（`uploads/`）
 
 **可选备份**：
-- ⚠️ 应用日志（`logs/`）
-- ⚠️ 临时文件（`tmp/`）
-- ⚠️ 缓存文件（`cache/`）
+- 应用日志（`logs/`）
+- 临时文件（`tmp/`）
+- 缓存文件（`cache/`）
 
 **不需要备份**：
-- ❌ `node_modules/`
-- ❌ `__pycache__/`
-- ❌ `.venv/`
-- ❌ 构建产物（`dist/`、`build/`）
+- `node_modules/`
+- `__pycache__/`
+- `.venv/`
+- 构建产物（`dist/`、`build/`）
 
 ---
 
@@ -428,7 +428,7 @@ gunzip -c $LATEST_BACKUP > /tmp/verify.db
 # 完整性检查
 RESULT=$(sqlite3 /tmp/verify.db "PRAGMA integrity_check;")
 if [ "$RESULT" != "ok" ]; then
-  echo "❌ 备份完整性检查失败！"
+  echo "备份完整性检查失败！"
   exit 1
 fi
 
@@ -438,7 +438,7 @@ REQUIRED_TABLES="users tasks logs"
 
 for table in $REQUIRED_TABLES; do
   if ! echo "$TABLES" | grep -q "$table"; then
-    echo "❌ 缺少关键表: $table"
+    echo "缺少关键表: $table"
     exit 1
   fi
 done
@@ -446,10 +446,10 @@ done
 # 检查数据量
 USER_COUNT=$(sqlite3 /tmp/verify.db "SELECT COUNT(*) FROM users;")
 if [ "$USER_COUNT" -eq 0 ]; then
-  echo "⚠️ 警告: users 表为空"
+  echo "警告: users 表为空"
 fi
 
-echo "✅ 备份验证通过"
+echo "备份验证通过"
 echo "  用户数: $USER_COUNT"
 echo "  备份大小: $(du -h $LATEST_BACKUP | cut -f1)"
 
@@ -646,10 +646,10 @@ openssl enc -aes-256-cbc -d \
 
 ## 演练结果
 
-- ✅ 备份完整性验证通过
-- ✅ 数据恢复成功
-- ✅ 核心功能正常
-- ⚠️ 性能略有下降
+- 备份完整性验证通过
+- 数据恢复成功
+- 核心功能正常
+- 性能略有下降
 
 ## 改进措施
 

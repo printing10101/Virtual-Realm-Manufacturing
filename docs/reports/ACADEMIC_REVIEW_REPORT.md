@@ -174,18 +174,18 @@ class LTCCell(nn.Module):
 
 | 模型 | 论文提及 | 代码实现 | 状态 |
 |------|---------|---------|------|
-| BPNN | ✓ | ✓ | 一致 |
-| LSTM | ✓ | ✓ | 一致 |
-| Transformer | ✓ | ✓ | 一致 |
-| PINN | ✓ | ✓ | 一致 |
-| SVR | ✓ | ✗ | **论文有，代码无** |
-| RandomForest | ✓ | ✗ | **论文有，代码无** |
-| XGBoost | ✓ | ✗ | **论文有，代码无** |
-| GaussianProcess | ✓ | ✗ | **论文有，代码无** |
-| GRU | ✗ | ✓ | **代码有，论文无** |
-| CNN | ✗ | ✓ | **代码有，论文无** |
-| gPINN | ✗ | ✓ | **代码有，论文无** |
-| PeRCNN | ✗ | ✓ | **代码有，论文无** |
+| BPNN | | | 一致 |
+| LSTM | | | 一致 |
+| Transformer | | | 一致 |
+| PINN | | | 一致 |
+| SVR | | | **论文有，代码无** |
+| RandomForest | | | **论文有，代码无** |
+| XGBoost | | | **论文有，代码无** |
+| GaussianProcess | | | **论文有，代码无** |
+| GRU | | | **代码有，论文无** |
+| CNN | | | **代码有，论文无** |
+| gPINN | | | **代码有，论文无** |
+| PeRCNN | | | **代码有，论文无** |
 
 **证据来源**：
 - 论文基线列表：`pi-lnn-mssp-draft-v0.1.md` 第 4 节
@@ -361,18 +361,18 @@ class ModelConfig:
 
 ### 已具备的可复现性基础设施
 
-✅ `trainer.py` 已集成随机种子设置（`set_global_seed`）
-✅ 已集成 MLflow 实验追踪（`log_params`, `log_metrics`, `log_model`）
-✅ 使用 AdamW + CosineAnnealingLR 标准优化器配置
-✅ 两阶段训练策略实现完整（解析预训练 + 物理残差微调）
+`trainer.py` 已集成随机种子设置（`set_global_seed`）
+已集成 MLflow 实验追踪（`log_params`, `log_metrics`, `log_model`）
+使用 AdamW + CosineAnnealingLR 标准优化器配置
+两阶段训练策略实现完整（解析预训练 + 物理残差微调）
 
 ### 仍欠缺的可复现性要素
 
-❌ **R² 监控缺失**：`trainer.py` 训练循环仅打印 MAE 和 PCC，未监控 R²，导致 R² 全负的问题未被训练过程发现
-❌ **学习率日志缺失**：未记录学习率变化曲线
-❌ **梯度范数日志缺失**：未记录梯度范数，无法诊断梯度爆炸/消失
-❌ **验证集早停缺失**：`train_stage1` 无早停机制，可能过拟合
-❌ **数据归一化参数持久化未验证**：需确认 scaler 是否保存并在推理时使用 `transform` 而非 `fit_transform`
+**R² 监控缺失**：`trainer.py` 训练循环仅打印 MAE 和 PCC，未监控 R²，导致 R² 全负的问题未被训练过程发现
+**学习率日志缺失**：未记录学习率变化曲线
+**梯度范数日志缺失**：未记录梯度范数，无法诊断梯度爆炸/消失
+**验证集早停缺失**：`train_stage1` 无早停机制，可能过拟合
+**数据归一化参数持久化未验证**：需确认 scaler 是否保存并在推理时使用 `transform` 而非 `fit_transform`
 
 ---
 

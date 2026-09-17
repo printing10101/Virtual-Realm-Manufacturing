@@ -33,4 +33,4 @@ cp placeholder.png icons/icon.ico
 cp placeholder.png icons/icon.icns
 ```
 
-⚠️ 正式发布前请替换为真实的应用图标。
+正式发布前请替换为真实的应用图标。

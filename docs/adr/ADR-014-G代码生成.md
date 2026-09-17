@@ -57,12 +57,12 @@
 
 | 阶段 | 模块 | ADR | 输入 | 输出 | 状态 |
 |------|------|-----|------|------|------|
-| 1 | image_to_3d | ADR-006 | 照片 | 点云 / mesh | ✅ 已完成 |
-| 2 | feature_extraction | ADR-007 | mesh | 几何特征 JSON | ✅ 已完成 |
-| 3 | parametric_geometry | ADR-008 | 特征 JSON | STEP + OperationPlan 草案 | ✅ 已完成 |
-| 4 | cutting_parameters | ADR-009 | 特征 + 材料 | ChatterParams JSON | ✅ 已完成 |
-| 5 | chatter_prediction | ADR-013 | ChatterParams | ChatterReport JSON | ✅ 已完成 |
-| **6** | **gcode_generation** | **ADR-014** | **ChatterReport + OperationPlan** | **G 代码 + 审核记录** | **✅ 本 ADR** |
+| 1 | image_to_3d | ADR-006 | 照片 | 点云 / mesh | 已完成 |
+| 2 | feature_extraction | ADR-007 | mesh | 几何特征 JSON | 已完成 |
+| 3 | parametric_geometry | ADR-008 | 特征 JSON | STEP + OperationPlan 草案 | 已完成 |
+| 4 | cutting_parameters | ADR-009 | 特征 + 材料 | ChatterParams JSON | 已完成 |
+| 5 | chatter_prediction | ADR-013 | ChatterParams | ChatterReport JSON | 已完成 |
+| **6** | **gcode_generation** | **ADR-014** | **ChatterReport + OperationPlan** | **G 代码 + 审核记录** | **本 ADR** |
 | 7 | cam_validation | ADR-015 | G 代码 | CAM 校验报告 | 待启动 |
 
 ### 实现要点

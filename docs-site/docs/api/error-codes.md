@@ -25,16 +25,16 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `code` | int | ✅ | 数值错误码（去掉 E 前缀），如 `3001` |
-| `error_code` | string | ✅ | 字符串错误码，如 `"E3001"` |
-| `message` | string | ✅ | 人类可读的错误描述 |
-| `severity` | string | ✅ | `critical` / `error` / `warning` |
-| `detail` | string | ❌ | 详细错误上下文 |
-| `suggestion` | string | ❌ | 修复建议 |
-| `recoverable` | bool | ❌ | 客户端是否可重试 |
-| `adjusted_values` | object | ❌ | 系统自动调整后的参数值 |
-| `request_id` | string | ✅ | 唯一请求 ID，用于日志关联 |
-| `timestamp` | string | ❌ | 错误发生时间（ISO 8601） |
+| `code` | int | | 数值错误码（去掉 E 前缀），如 `3001` |
+| `error_code` | string | | 字符串错误码，如 `"E3001"` |
+| `message` | string | | 人类可读的错误描述 |
+| `severity` | string | | `critical` / `error` / `warning` |
+| `detail` | string | | 详细错误上下文 |
+| `suggestion` | string | | 修复建议 |
+| `recoverable` | bool | | 客户端是否可重试 |
+| `adjusted_values` | object | | 系统自动调整后的参数值 |
+| `request_id` | string | | 唯一请求 ID，用于日志关联 |
+| `timestamp` | string | | 错误发生时间（ISO 8601） |
 
 ---
 

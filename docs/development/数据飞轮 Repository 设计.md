@@ -3,7 +3,7 @@
 > **版本**: 1.0.0  
 > **创建日期**: 2026-08-25  
 > **完成日期**: 2026-08-25  
-> **状态**: ✅ 已完成并通过所有门禁
+> **状态**: 已完成并通过所有门禁
 
 ---
 
@@ -20,13 +20,13 @@
 
 ### 1.2 范围
 
-**✅ 包含**：
+**包含**：
 - 写入操作（`create_cutting_experience` / `create_many_cutting_experiences`）
 - 查询操作（`list_cutting_experiences` / `get_cutting_experience`）
 - 聚合统计（`aggregate_experience_stats`）
 - 删除操作（`delete_cutting_experience`）
 
-**❌ 不包含**：
+**不包含**：
 - API 层（/api/v1/experience，P2-3，见 `app/api/v1/cutting_experience/routes.py`）
 - 数据飞轮训练 pipeline（P3-P5）
 - 传感器接入层（MTConnect）
@@ -39,12 +39,12 @@
 
 | 函数 | 功能 | 返回值 | 异步 |
 |------|------|--------|------|
-| `create_cutting_experience()` | 写入单条记录 | `dict`（持久化后） | ✅ |
-| `create_many_cutting_experiences()` | 批量写入 | `int`（条数） | ✅ |
-| `list_cutting_experiences()` | 分页查询 | `dict`（records/total/limit/offset） | ✅ |
-| `get_cutting_experience()` | 按 ID 查询 | `dict` \| `None` | ✅ |
-| `aggregate_experience_stats()` | 聚合统计 | `ExperienceStats` | ✅ |
-| `delete_cutting_experience()` | 删除记录 | `bool` | ✅ |
+| `create_cutting_experience()` | 写入单条记录 | `dict`（持久化后） | |
+| `create_many_cutting_experiences()` | 批量写入 | `int`（条数） | |
+| `list_cutting_experiences()` | 分页查询 | `dict`（records/total/limit/offset） | |
+| `get_cutting_experience()` | 按 ID 查询 | `dict` \| `None` | |
+| `aggregate_experience_stats()` | 聚合统计 | `ExperienceStats` | |
+| `delete_cutting_experience()` | 删除记录 | `bool` | |
 
 ### 2.2 查询条件（`ExperienceQuery`）
 
@@ -326,21 +326,21 @@ async def test_aggregate_stats(self):
 
 ```bash
 $ ruff check app/services/domain/cutting_experience_repository.py
-# ✅ 0 违规
+# 0 违规
 ```
 
 ### 6.2 类型检查（Q2）
 
 ```bash
 $ mypy --config-file mypy.ini app/services/domain/cutting_experience_repository.py
-# ✅ 0 错误
+# 0 错误
 ```
 
 ### 6.3 功能测试（T5）
 
 ```bash
 $ pytest engineering/python/tests/unit/test_cutting_experience_repository.py -v
-# ✅ 13 用例全过（96 秒）
+# 13 用例全过（96 秒）
 ```
 
 ### 6.4 错误处理验证

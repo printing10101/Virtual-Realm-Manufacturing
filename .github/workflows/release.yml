@@ -153,7 +153,7 @@ jobs:
           
           # 验证版本格式
           if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
-            echo "❌ 无效的版本号格式: ${VERSION}"
+            echo " 无效的版本号格式: ${VERSION}"
             echo "版本号必须符合语义化版本规范 (例如: 1.2.3, 1.2.3-beta.1)"
             exit 1
           fi
@@ -521,7 +521,7 @@ jobs:
             sleep 15
           done
 
-          echo "❌ 生产环境健康检查失败"
+          echo " 生产环境健康检查失败"
           exit 1
 
       - name: Kubernetes 回滚 (健康检查失败时)
@@ -532,7 +532,7 @@ jobs:
           KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE_PRODUCTION || 'production' }}
         run: |
           echo "=== 执行 Kubernetes 回滚 ==="
-          echo "❌ 健康检查失败，开始回滚 deployment/lnn-api"
+          echo " 健康检查失败，开始回滚 deployment/lnn-api"
           kubectl rollout undo deployment/lnn-api -n "$KUBE_NAMESPACE"
           kubectl rollout status deployment/lnn-api -n "$KUBE_NAMESPACE" --timeout=300s
           echo "✓ 已回滚到上一个稳定版本"
@@ -621,7 +621,7 @@ jobs:
     steps:
       - name: 生成发布汇总
         run: |
-          echo "## 🚀 发布汇总 - v${{ needs.prepare-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "##  发布汇总 - v${{ needs.prepare-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 任务 | 状态 |" >> $GITHUB_STEP_SUMMARY
           echo "|------|------|" >> $GITHUB_STEP_SUMMARY
@@ -645,7 +645,7 @@ jobs:
       - name: 发布成功通知
         if: needs.deploy-production.result == 'success' && needs.create-release.result == 'success'
         run: |
-          echo "✅ 发布成功！"
+          echo " 发布成功！"
           echo "版本: v${{ needs.prepare-release.outputs.version }}"
           echo "生产环境: ${{ needs.deploy-production.outputs.production_url }}"
           echo "GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare-release.outputs.version }}"
@@ -653,6 +653,6 @@ jobs:
       - name: 发布失败通知
         if: needs.deploy-production.result != 'success' || needs.create-release.result != 'success'
         run: |
-          echo "❌ 发布失败！"
+          echo " 发布失败！"
           echo "请检查日志以获取详细信息。"
           exit 1

@@ -251,7 +251,7 @@ def _create_connection(self) -> sqlite3.Connection:
 
 ## 五、已知问题验证
 
-### 5.1 全项目零 Sentry/APM 集成 ✅ 已确认
+### 5.1 全项目零 Sentry/APM 集成 已确认
 
 **排查结果**: 通过 `grep` 搜索 `sentry`、`datadog`、`newrelic`、`opentelemetry` 等关键词，未发现任何 APM 集成代码。
 
@@ -277,7 +277,7 @@ sentry_sdk.init(
 
 ---
 
-### 5.2 约 12-14 处 global 单例无锁 ✅ 已确认
+### 5.2 约 12-14 处 global 单例无锁 已确认
 
 **排查结果**: 通过 `grep "global _"` 发现以下无锁单例：
 
@@ -298,7 +298,7 @@ sentry_sdk.init(
 
 ---
 
-### 5.3 健康检查只探测 Ollama ✅ 已确认
+### 5.3 健康检查只探测 Ollama 已确认
 
 **排查结果**: `app\api\v1\health.py` 中仅包含 `_get_ollama_status()` 函数，未检查 PostgreSQL、Redis、TDengine 等关键依赖。
 
@@ -334,7 +334,7 @@ async def _get_redis_status() -> dict[str, Any]:
 
 ---
 
-### 5.4 asyncio.run() 在业务逻辑中被调用 ✅ 已确认
+### 5.4 asyncio.run() 在业务逻辑中被调用 已确认
 
 **排查结果**: 通过 `grep "asyncio.run("` 发现 33 处调用，其中以下 3 处在业务逻辑（非测试/CLI）中：
 

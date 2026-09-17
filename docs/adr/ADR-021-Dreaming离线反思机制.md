@@ -8,26 +8,13 @@
 
 ## 背景
 
-Anthropic 于 2026 年 5 月 Code with Claude 大会发布了 Claude Managed Agents 的 **Dreaming** 功能，基于神经科学"记忆巩固"理论：
+Dreaming（离线反思）机制借鉴神经科学"记忆巩固"理论：
 
 - **Memory**：Agent 在工作中学习到的知识，存储在 Memory Store
 - **Dreaming**：Agent 在 Session 间隙离线审查 Memory Store，执行去重合并、过时更新、跨 Session 洞察浮现
 - **Outcomes**：Dream 浮现的洞察反馈到下一轮工作，形成闭环
 
-原版 API：
-```python
-dream = client.beta.dreams.create(
-    memory_store=memory_store_id,
-    sessions=session_ids[:100],  # 最多 100 个
-    instructions="...",
-)
-# 输出：全新 Memory Store（不可变）
-```
-
-限制：
-- 仅支持 `claude-opus-4-7` / `sonnet-4-6`
-- 需要 Beta headers：`managed-agents-2026-04-01` + `dreaming-2026-04-21`
-- 依赖云端 Memory Store + Session 存储
+若依赖外部托管服务实现，则需要云端 Memory Store 与 Session 存储，模型与调用协议均由服务方绑定，无法满足本项目"数据完全本地化"与离线运行的硬约束。
 
 "灵境制造"项目需要离线反思能力以：
 1. 从历史实验（MLflow）+ CAM 验证 + 审计日志中沉淀工艺知识
@@ -37,7 +24,7 @@ dream = client.beta.dreams.create(
 
 但项目硬约束：
 - 数据完全本地化（无云端依赖）
-- 本地 LLM（Ollama/LM Studio）替代云端 Opus
+- 本地 LLM（Ollama/LM Studio）替代云端模型
 - CAM 二次验证始终 True、SUCCEEDED 任务禁删、HRC52 pending_calibration 强制降低置信度
 - 学术诚信（D-2）：AR-02 修复前数据排除出论文
 
@@ -45,13 +32,13 @@ dream = client.beta.dreams.create(
 
 ## 决策
 
-在 `python/app/dreaming/` 目录下构建本地化 Dreaming 模块，将 Anthropic 原版组件 1:1 映射到项目已有基础设施：
+在 `python/app/dreaming/` 目录下构建本地化 Dreaming 模块，将各概念组件映射到项目已有基础设施：
 
-| Anthropic 原版 | 本地化实现 |
+| 概念组件 | 本地实现 |
 |---------------|-----------|
-| Memory Store（`/mnt/memory/`） | `LocalMemoryStore` → GraphStore + Git 版本管理 |
-| Sessions（云端对话历史） | `SessionExtractor` → MLflow runs + CAM report + audit_log + cutting_store |
-| Opus 4.7 反思 | `DreamReflector` → `ProviderRouter` → 本地 LLM（Ollama/LM Studio） |
+| Memory Store（工作区级记忆文档） | `LocalMemoryStore` → GraphStore + Git 版本管理 |
+| Sessions（工作会话历史） | `SessionExtractor` → MLflow runs + CAM report + audit_log + cutting_store |
+| LLM 反思 | `DreamReflector` → `ProviderRouter` → 本地 LLM（Ollama/LM Studio） |
 | 异步 Dream Job | 后续 `HeartbeatScheduler` cron 调度（P1 阶段） |
 | Dream 输出（新 Memory Store） | Git commit hash 作为 `MemoryVersion`（不可变快照） |
 | Outcomes 反馈 | `RuleSynthesizer` → 规则草稿 → 沙箱验证 → 灰度应用（P2 阶段） |
@@ -85,7 +72,7 @@ python/app/dreaming/
 - `allow_delete_succeeded` 始终 False
 - `k_s_direct_passthrough` 始终 True
 
-### 反思三阶段（对齐 Anthropic 原版）
+### 反思三阶段
 
 1. **去重（deduplicate）**：按 entity 分组，合并 content 相同的 memory 条目，保留 `validation_count` 最高的节点，其余标记 `deprecated`
 2. **过时更新（update stale）**：用失败 Session 修正旧 memory，降低置信度；HRC52 pending_calibration 强制降低至 ≤0.3；CAM 验证失败标记 `requires_revalidation`
@@ -110,9 +97,9 @@ python -m app.dreaming.cli report --reflection reflection.json
 
 ### 考虑的方案
 
-1. **方案 A**：直接调用 Anthropic Dreams API
+1. **方案 A**：接入外部托管的 Dreaming 云服务
    - 优点：功能完整，无需自行实现反思逻辑
-   - 缺点：违反"数据完全本地化"硬约束；依赖云端 Opus 4.7；无法离线运行
+   - 缺点：违反"数据完全本地化"硬约束；依赖云端模型；无法离线运行
 
 2. **方案 B**：不引入 Dreaming，仅依赖 RAG 检索
    - 优点：零新增代码
@@ -120,7 +107,7 @@ python -m app.dreaming.cli report --reflection reflection.json
 
 3. **方案 C（采纳）**：本地化映射，复用项目已有基础设施
    - 优点：数据完全本地化；复用 GraphStore + ProviderRouter + MLflow；硬约束可强制嵌入；LLM 不可用时可降级为规则统计
-   - 缺点：本地 LLM 反思质量低于 Opus 4.7；需要 P1/P2 阶段完成调度和闭环
+   - 缺点：本地 LLM 反思质量低于云端旗舰模型；需要 P1/P2 阶段完成调度和闭环
 
 ### 选择方案 C 的原因
 
@@ -143,7 +130,7 @@ python -m app.dreaming.cli report --reflection reflection.json
 
 ### 消极影响
 
-- 本地 LLM 反思质量低于 Anthropic Opus 4.7（通过规则统计降级缓解）
+- 本地 LLM 反思质量低于云端旗舰模型（通过规则统计降级缓解）
 - ~~需要定期手动触发反思（P1 阶段接入 HeartbeatScheduler 后可自动化）~~ → 已由 `scheduler_adapter.py` 解决
 - ~~规则草稿需经过沙箱验证才能应用（P2 阶段实现 RuleValidator）~~ → 已由 `rule_validator.py` 解决
 - Git 操作在无 Git 环境的项目中不可用（降级为内存版本，不持久化）
@@ -240,7 +227,6 @@ python -m app.dreaming.cli report --reflection reflection.json
 
 - [ADR-TEMPLATE](./ADR-TEMPLATE.md)：ADR 编写模板
 - [ADR-020](./ADR-020-GUSH3R借鉴思路落地实践方案.md)：GUSH3R 借鉴思路（与本 ADR 同期）
-- Anthropic Claude Managed Agents Dreaming 官方文档
 - 项目记忆 `project_memory.md`：硬约束清单
 - D-2 学术诚信约束：论文实验数据收集模板
 

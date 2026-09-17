@@ -1,17 +1,17 @@
 # P1-3 dxf pipeline 六阶段声明化
 
 **创建日期**: 2026-08-20  
-**状态**: ✅ 已完成（模块 2026-08-22 cbd087c4；委托接线 2026-08-23 f3ee1e07——pipeline.py:31 导入，193–341 行 8 处调用。2026-09-13 复核统一口径；原"🟡 待接线"状态过期）
+**状态**: 已完成（模块 2026-08-22 cbd087c4；委托接线 2026-08-23 f3ee1e07——pipeline.py:31 导入，193–341 行 8 处调用。2026-09-13 复核统一口径；原"待接线"状态过期）
 
 ---
 
-## 🎯 目标
+## 目标
 
 将 `app/dxf/pipeline.py` 的「六阶段编排判定」抽取为纯 Python 白盒声明
 （P1-1 方法论复用），使阶段定义/致命性/进度/摘要逻辑零框架依赖、
 CI 可独立跑全量覆盖。
 
-## 📦 已交付
+## 已交付
 
 ### 白盒声明模块
 `app/dxf/_pipeline_stages.py`（纯 stdlib，零框架依赖）：
@@ -30,7 +30,7 @@ CI 可独立跑全量覆盖。
 `engineering/python/tests/unit/test_dxf_pipeline_stages.py`（~25 用例）：
 阶段对齐 / 致命性 / 中止判定 / 进度计算 / 摘要生成。
 
-## 🔧 待接线（文件锁解除后执行，委托路径保留框架调用）
+## 待接线（文件锁解除后执行，委托路径保留框架调用）
 
 ### pipeline.py 委托（3 处）
 
@@ -62,7 +62,7 @@ from app.dxf._pipeline_stages import (
 )
 ```
 
-## ✅ 验收标准（门禁）
+## 验收标准（门禁）
 
 1. ruff check app/dxf/ 全绿
 2. mypy 0 错误（白盒模块无 torch）
@@ -70,7 +70,7 @@ from app.dxf._pipeline_stages import (
 4. 既有 dxf pipeline 测试（委托后行为不变）全绿
 5. 阶段名与 pipeline.py 逐字对齐（测试已锁定）
 
-## 📝 变更日志
+## 变更日志
 
 ### v1.0 (2026-08-20)
 - 白盒声明模块 `_pipeline_stages.py` 落地

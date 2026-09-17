@@ -73,13 +73,13 @@
 
 | 阶段 | 模块 | ADR | 输入 | 输出 | 状态 |
 |------|------|-----|------|------|------|
-| 1 | image_to_3d | ADR-006 | 照片 | 点云 / mesh | ✅ 已完成 |
-| 2 | feature_extraction | ADR-007 | mesh | 几何特征 JSON | ✅ 已完成 |
-| 3 | parametric_geometry | ADR-008 | 特征 JSON | STEP + OperationPlan 草案 | ✅ 已完成 |
-| 4 | cutting_parameters | ADR-009 | 特征 + 材料 | ChatterParams JSON | ✅ 已完成 |
-| 5 | chatter_prediction | ADR-013 | ChatterParams | ChatterReport JSON | ✅ 已完成 |
-| 6 | gcode_generation | ADR-014 | ChatterReport + OperationPlan | G 代码 + 审核记录 | ✅ 已完成 |
-| **7** | **cam_validation** | **ADR-018** | **G 代码 + 审核记录** | **CAM 校验报告 JSON** | **✅ 本 ADR** |
+| 1 | image_to_3d | ADR-006 | 照片 | 点云 / mesh | 已完成 |
+| 2 | feature_extraction | ADR-007 | mesh | 几何特征 JSON | 已完成 |
+| 3 | parametric_geometry | ADR-008 | 特征 JSON | STEP + OperationPlan 草案 | 已完成 |
+| 4 | cutting_parameters | ADR-009 | 特征 + 材料 | ChatterParams JSON | 已完成 |
+| 5 | chatter_prediction | ADR-013 | ChatterParams | ChatterReport JSON | 已完成 |
+| 6 | gcode_generation | ADR-014 | ChatterReport + OperationPlan | G 代码 + 审核记录 | 已完成 |
+| **7** | **cam_validation** | **ADR-018** | **G 代码 + 审核记录** | **CAM 校验报告 JSON** | **本 ADR** |
 
 ### 实现要点
 
@@ -552,20 +552,20 @@ PyCAM 是开源 Python 库但功能有限（仅刀轨可视化，无完整碰撞
 
 | 阶段 | 任务 | 状态 | 验证方式 |
 |------|------|------|----------|
-| s7-1 | ADR-018 设计规范 | ✅ 完成 | 本文件（596 行设计规范） |
-| s7-2 | CamValidationConfig 12 字段 | ✅ 完成 | config 运行时访问通过 |
-| s7-3 | CamValidationConfig 接入 config | ✅ 完成 | s7-12 验证 3 通过 |
-| s7-4 | cam_store.py 任务存储 + 状态机 | ✅ 完成 | 单元测试通过 |
-| s7-5 | cam_disclaimer.py 校验告知 | ✅ 完成 | 单元测试通过 |
-| s7-6 | gcode_loader.py G 代码加载 | ✅ 完成 | 10/10 独立验证通过 |
-| s7-7 | internal_validator.py 内部预校验 | ✅ 完成 | 22/22 独立验证通过 |
-| s7-8 | cam_adapter.py CAM 软件适配层 | ✅ 完成 | 100/100 独立验证通过 |
-| s7-9-impl | pipeline.py 编排器实现 | ✅ 完成 | 1176 行实现 |
-| s7-9-init | __init__.py 符号导出 | ✅ 完成 | 模块导入通过 |
-| s7-9-verify | pipeline 完整验证 | ✅ 完成 | 端到端验证通过 |
-| s7-10 | routes.py 11 端点实现 | ✅ 完成 | 1523 行实现 |
-| s7-11 | main.py 集成（权限种子 + 路由注册） | ✅ 完成 | AST 静态解析 4/4 通过 |
-| s7-12 | 独立验证脚本 + ADR-018 定稿 | ✅ 完成 | 运行时集成 3/3 通过 |
+| s7-1 | ADR-018 设计规范 | 完成 | 本文件（596 行设计规范） |
+| s7-2 | CamValidationConfig 12 字段 | 完成 | config 运行时访问通过 |
+| s7-3 | CamValidationConfig 接入 config | 完成 | s7-12 验证 3 通过 |
+| s7-4 | cam_store.py 任务存储 + 状态机 | 完成 | 单元测试通过 |
+| s7-5 | cam_disclaimer.py 校验告知 | 完成 | 单元测试通过 |
+| s7-6 | gcode_loader.py G 代码加载 | 完成 | 10/10 独立验证通过 |
+| s7-7 | internal_validator.py 内部预校验 | 完成 | 22/22 独立验证通过 |
+| s7-8 | cam_adapter.py CAM 软件适配层 | 完成 | 100/100 独立验证通过 |
+| s7-9-impl | pipeline.py 编排器实现 | 完成 | 1176 行实现 |
+| s7-9-init | __init__.py 符号导出 | 完成 | 模块导入通过 |
+| s7-9-verify | pipeline 完整验证 | 完成 | 端到端验证通过 |
+| s7-10 | routes.py 11 端点实现 | 完成 | 1523 行实现 |
+| s7-11 | main.py 集成（权限种子 + 路由注册） | 完成 | AST 静态解析 4/4 通过 |
+| s7-12 | 独立验证脚本 + ADR-018 定稿 | 完成 | 运行时集成 3/3 通过 |
 
 ### s7-11 验证记录（AST 静态解析方式）
 

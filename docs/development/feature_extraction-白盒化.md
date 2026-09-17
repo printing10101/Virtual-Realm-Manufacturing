@@ -1,7 +1,7 @@
 # feature_extraction 白盒化设计（P1-1）
 
 > **路线图**：《自主化与护城河路线图.md》 Phase 1 P1-1
-> **状态**：✅ 目标达成（2026-08-20）
+> **状态**：目标达成（2026-08-20）
 > **原则**：只白盒「业务判定/状态流转逻辑」，保留 RANSAC 拟合对 numpy/sklearn/pyransac3d 的框架调用。
 
 ## 1. 动机
@@ -17,8 +17,8 @@
 
 ```
 app/feature_extraction/
-├── _feature_classifier.py        ★ 新增：特征分类判定规则（纯 Python，零框架依赖）
-├── _review_state_machine.py      ★ 新增：审核状态机（纯 Python，零框架依赖）
+├── _feature_classifier.py        新增：特征分类判定规则（纯 Python，零框架依赖）
+├── _review_state_machine.py      新增：审核状态机（纯 Python，零框架依赖）
 ├── hole_detector.py              （保留 numpy RANSAC 内核；分类决策委托 classifier）
 ├── pipeline.py                   （保留编排/IO；状态流转决策委托 state machine）
 ├── plane_extractor.py            （未改：RANSAC 内核）

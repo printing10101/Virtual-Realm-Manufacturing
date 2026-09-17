@@ -29,9 +29,9 @@
 | 源 | 可达性 | 结论 |
 |---|---|---|
 | Zenodo（i-CNC 15308467） | DNS 被污染（解析为 0.0.0.0），curl --resolve 可绕过，但速度仅 ~24 KB/s | 2.85GB 需 34 小时，**暂不可行**；结构为 2×4GB 原始振动 CSV（218 通道 + spindlespeed），无 ap/ae/硬度，颤振标注为 AI 检测生成 |
-| GitHub / codeload | ✅ 可达 | 搜到真实小数据集：`datasets/force_vibration_567/`（精密铣削铝，力+振动特征，207 行，CC BY 4.0，已入库） |
-| UCI / 国内平台（魔搭、和鲸、百度 AI Studio） | UCI ✅；魔搭 API 500 | NASA milling 为**磨损数据**（非颤振），不适用于 SLD 验证 |
-| **文献实测点（通道 B）** | **知网/百度学术/校图书馆 ✅** | **主通道**——见 `LITERATURE_POINTS_CHECKLIST.md` |
+| GitHub / codeload | 可达 | 搜到真实小数据集：`datasets/force_vibration_567/`（精密铣削铝，力+振动特征，207 行，CC BY 4.0，已入库） |
+| UCI / 国内平台（魔搭、和鲸、百度 AI Studio） | UCI ；魔搭 API 500 | NASA milling 为**磨损数据**（非颤振），不适用于 SLD 验证 |
+| **文献实测点（通道 B）** | **知网/百度学术/校图书馆 ** | **主通道**——见 `LITERATURE_POINTS_CHECKLIST.md` |
 
 **结论：实测稳定性数据的主通道 = 文献实测点录入（无需下载大文件）。**
 

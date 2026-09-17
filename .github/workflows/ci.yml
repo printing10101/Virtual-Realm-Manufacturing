@@ -1129,7 +1129,7 @@ jobs:
           print(f'| {total} | {with_rm} | {without_rm} | {pct:.1f}% |')
             " >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ 报告文件未生成" >> $GITHUB_STEP_SUMMARY
+            echo "⚠ 报告文件未生成" >> $GITHUB_STEP_SUMMARY
           fi
 
   # ============================================

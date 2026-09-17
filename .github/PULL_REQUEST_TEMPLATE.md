@@ -16,15 +16,15 @@ Closes #
 
 请勾选适用的项(可多选):
 
-- [ ] ✨ 新功能 (feat)
-- [ ] 🐛 Bug 修复 (fix)
-- [ ] 📚 文档更新 (docs)
-- [ ] ♻️ 代码重构 (refactor,不改变功能)
-- [ ] ⚡ 性能优化 (perf)
-- [ ] 🧪 测试补充 (test)
-- [ ] 🔧 构建/工具/CI (chore/build/ci)
-- [ ] 🎨 UI/UX 改进 (style)
-- [ ] 🔒 安全相关修复 (security)
+- [ ] 新功能 (feat)
+- [ ] Bug 修复 (fix)
+- [ ] 文档更新 (docs)
+- [ ] 代码重构 (refactor,不改变功能)
+- [ ] 性能优化 (perf)
+- [ ] 测试补充 (test)
+- [ ] 构建/工具/CI (chore/build/ci)
+- [ ] UI/UX 改进 (style)
+- [ ] 安全相关修复 (security)
 
 ## 涉及模块
 
@@ -99,4 +99,4 @@ Closes #
 
 ---
 
-🙏 感谢您的贡献!提交后请关注 CI 状态,如有失败请及时修复。
+感谢您的贡献!提交后请关注 CI 状态,如有失败请及时修复。

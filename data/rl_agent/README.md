@@ -17,9 +17,9 @@
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
-| `state` | ✅ | 状态向量，8 维，字段顺序与 `StateField.all()` 对齐：spindle_speed, feed_rate, depth_of_cut, width_of_cut, tool_wear, vibration_rms, temperature, chatter_probability |
-| `action` | ✅ | 动作向量，4 维（相对调整量，[-1,1]），顺序与 `ActionField.all()` 对齐：spindle_speed_delta, feed_rate_delta, depth_of_cut_delta, width_of_cut_delta |
-| `next_state` | ✅ | 该转移后的状态向量（同 `state` 布局） |
+| `state` | | 状态向量，8 维，字段顺序与 `StateField.all()` 对齐：spindle_speed, feed_rate, depth_of_cut, width_of_cut, tool_wear, vibration_rms, temperature, chatter_probability |
+| `action` | | 动作向量，4 维（相对调整量，[-1,1]），顺序与 `ActionField.all()` 对齐：spindle_speed_delta, feed_rate_delta, depth_of_cut_delta, width_of_cut_delta |
+| `next_state` | | 该转移后的状态向量（同 `state` 布局） |
 | `episode` | 可选 | 轨迹分组键；同一 `episode` 值的连续行视为同一条轨迹 |
 
 未提供 `episode` 时按连续性分组：相邻两行的 `next_state[i] ≈ state[i+1]`

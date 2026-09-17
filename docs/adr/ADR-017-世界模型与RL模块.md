@@ -366,7 +366,7 @@ POST   /api/v1/rl-agent/training/stop            停止训练
 
 | # | 交付物 | 文件 | 状态 |
 |---|--------|------|------|
-| 1 | ADR-017 决策文档 | `docs/adr/ADR-017-世界模型与RL模块.md` | ✅ 本文件 |
+| 1 | ADR-017 决策文档 | `docs/adr/ADR-017-世界模型与RL模块.md` | 本文件 |
 | 2 | 世界模型插件骨架 | `python/app/plugins/world_model/`（manifest + plugin + net + predictor） | 待办 |
 | 3 | RL agent 插件骨架 | `python/app/plugins/rl_agent/`（manifest + plugin + policy + value + safety_shield） | 待办 |
 | 4 | 闭环工作流模板 | `python/app/plugins/workflow_templates/closed_loop_machining_optimization.yaml` | 待办 |

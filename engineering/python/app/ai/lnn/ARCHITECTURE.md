@@ -6,13 +6,13 @@
 >
 > | 组件 | 文件 | 状态 |
 > |------|------|------|
-> | 核心数据模型（TaskInput/RoutingDecision/InferenceResult/FusionResult） | `core.py` | ✅ 完整实现 |
-> | LNN 模型（CFC/LTC/Hybrid） | `models/` | ✅ 完整实现 |
-> | 训练与推理 | `training/`、`inference/` | ✅ 完整实现 |
-> | `TaskRouter` | `router/task_router.py` | ✅ 完整实现（混合规则 + 在线 ML 评分 + 贝叶斯收缩） |
-> | `DempsterShaferFusion` | `fusion.py` | ✅ 完整实现（Dempster 组合规则 + 冲突阈值回退 + 70/30 DS 加权混合） |
-> | `HybridInferenceEngine` | `engine.py` | ✅ 完整实现（真实多模型编排 + DS 融合 + 在线 outcome 反馈 + 流式扩展） |
-> | 流式长时序扩展（借鉴 lingbot-map GCT） | `inference/streaming.py` | ✅ 完整实现（分页隐状态 + 关键帧策略 + 锚点上下文 + 轨迹记忆 + 窗口化推理） |
+> | 核心数据模型（TaskInput/RoutingDecision/InferenceResult/FusionResult） | `core.py` | 完整实现 |
+> | LNN 模型（CFC/LTC/Hybrid） | `models/` | 完整实现 |
+> | 训练与推理 | `training/`、`inference/` | 完整实现 |
+> | `TaskRouter` | `router/task_router.py` | 完整实现（混合规则 + 在线 ML 评分 + 贝叶斯收缩） |
+> | `DempsterShaferFusion` | `fusion.py` | 完整实现（Dempster 组合规则 + 冲突阈值回退 + 70/30 DS 加权混合） |
+> | `HybridInferenceEngine` | `engine.py` | 完整实现（真实多模型编排 + DS 融合 + 在线 outcome 反馈 + 流式扩展） |
+> | 流式长时序扩展（借鉴 lingbot-map GCT） | `inference/streaming.py` | 完整实现（分页隐状态 + 关键帧策略 + 锚点上下文 + 轨迹记忆 + 窗口化推理） |
 >
 > 所有组件的公共 API 与本文档契约一致，可在下游代码中安全导入；决策结果不再带
 > `"stub": True` 标记（`HybridInferenceEngine.get_engine_stats()` 显式输出

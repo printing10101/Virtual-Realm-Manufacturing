@@ -3,11 +3,11 @@
 **文档版本**: 2.0  
 **创建日期**: 2026-08-20  
 **完成日期**: 2026-08-25  
-**状态**: ✅ P2-1 契约 + ORM+ 测试全部完成并通过所有门禁
+**状态**: P2-1 契约 + ORM+ 测试全部完成并通过所有门禁
 
 ---
 
-## 🎯 目标
+## 目标
 
 打通"实测数据 → 参数优化 → 再实测"的数据飞轮闭环：
 
@@ -17,7 +17,7 @@
 优化参数 ◄── LNN 推荐 ── 统计/训练数据 ────────┘
 ```
 
-## 📦 契约层（P2-1，已完成）
+## 契约层（P2-1，已完成）
 
 `app/contracts/cutting_experience.py`：
 
@@ -35,7 +35,7 @@
 - 枚举（MachiningType/Result/CoolantMode）约束取值
 - `tags: dict[str, Any]` 兼容未来传感器扩展（MTConnect 振动/功率）
 
-## 🗄️ 存储层（P2-2，已完成）
+## 存储层（P2-2，已完成）
 
 `app/database/models/cutting_experience.py` → 表 `cutting_experiences`：
 
@@ -54,7 +54,7 @@
 | `aggregate_experience_stats` | 仪表盘统计 |
 | `delete_cutting_experience` | 管理删除 |
 
-## 🔌 采集 API（P2-3，下一步）
+## 采集 API（P2-3，下一步）
 
 ```http
 POST /api/v1/experience/capture        # 单条采集（权限 experience:write）
@@ -65,19 +65,19 @@ GET  /api/v1/experience/{id}           # 详情
 DELETE /api/v1/experience/{id}         # 删除（管理）
 ```
 
-## 📐 与既有模型的关系
+## 与既有模型的关系
 
 - **`MachiningRecord`**（既有）：实时高频数据（转速/进给/振动时序），TDengine 引用
 - **`CuttingExperience`**（新增）：**工艺参数 + 结果**全要素，飞轮优化信号源
 - 关系：一次加工 = 1 条 MachiningRecord（时序）+ 1 条 CuttingExperience（要素）
 
-## 🧪 测试计划
+## 测试计划
 
 - 契约：字段校验/枚举/默认值/extra=forbid（15 用例）
 - ORM 转换：from_contract/to_contract_dict 往返一致（10 用例）
 - 服务层：SQLite 内存库 CRUD + 聚合统计（15 用例）
 
-## 📈 飞轮闭环（Phase D 联动）
+## 飞轮闭环（Phase D 联动）
 
 1. 采集 N 条 CuttingExperience
 2. `aggregate_experience_stats` 体检数据质量
@@ -85,7 +85,7 @@ DELETE /api/v1/experience/{id}         # 删除（管理）
 4. 推荐参数 → 新加工 → 新 CuttingExperience（带推荐标记 tag）
 5. 统计对比：推荐组 vs 基线组节拍/粗糙度提升
 
-## 📝 变更日志
+## 变更日志
 
 ### v1.0 (2026-08-20)
 - 契约层落地 `app/contracts/cutting_experience.py`

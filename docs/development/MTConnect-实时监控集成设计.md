@@ -2,11 +2,11 @@
 
 **文档版本**: 1.0  
 **创建日期**: 2026-08-20  
-**状态**: 🟡 设计中 (Phase A, 3 周实施)
+**状态**: 设计中 (Phase A, 3 周实施)
 
 ---
 
-## 🎯 目标与范围
+## 目标与范围
 
 ### 核心目标
 1. **实时数据采集**: 从支持 MTConnect 的机床实时读取加工状态
@@ -14,15 +14,15 @@
 3. **控制闭环**: 采集数据→优化参数→验证效果
 
 ### 范围界定
-- ✅ **集成**: MTConnect 协议适配器 (polling + streaming)
-- ✅ **可视化**: WebSocket 实时数据推送 + 波形图
-- ✅ **预警**: 颤振检测阈值配置 + 视觉提示
-- ❌ **控制**: 不实现机床反向控制 (仅监控)
-- ❌ **协议**: 暂不支持 OPC UA/Modbus (后续扩展)
+- **集成**: MTConnect 协议适配器 (polling + streaming)
+- **可视化**: WebSocket 实时数据推送 + 波形图
+- **预警**: 颤振检测阈值配置 + 视觉提示
+- **控制**: 不实现机床反向控制 (仅监控)
+- **协议**: 暂不支持 OPC UA/Modbus (后续扩展)
 
 ---
 
-## 📐 架构设计
+## 架构设计
 
 ### 整体架构
 
@@ -52,7 +52,7 @@ engineering/python/app/integrations/mtconnect/
 
 ---
 
-## 🔧 核心 API 设计
+## 核心 API 设计
 
 ### MTConnectClient 类
 
@@ -135,7 +135,7 @@ class MachineStatus:
 
 ---
 
-## 📡 数据流程
+## 数据流程
 
 ### 1. Polling 模式 (传统方式)
 
@@ -231,7 +231,7 @@ class ConditionChecker:
 
 ---
 
-## 🗄️ 数据库集成
+## 数据库集成
 
 ### 新增表结构
 
@@ -269,7 +269,7 @@ CREATE INDEX idx_job_id ON cutting_experiments(job_id);
 
 ---
 
-## 🔐 安全与可靠性
+## 安全与可靠性
 
 ### 防护措施
 
@@ -317,7 +317,7 @@ except TimeoutError as e:
 
 ---
 
-## 🧪 测试策略
+## 测试策略
 
 ### 单元测试 (mock 模式)
 
@@ -391,7 +391,7 @@ class TestMTConnectIntegration:
 
 ---
 
-## 📊 前端展示设计
+## 前端展示设计
 
 ### 实时监测面板组件
 
@@ -426,7 +426,7 @@ class TestMTConnectIntegration:
     
     <div v-if="alerts.length > 0" class="alerts">
       <div v-for="alert in alerts" :class="alert.type">
-        ⚠️ {{ alert.message }}
+        {{ alert.message }}
       </div>
     </div>
   </div>
@@ -472,7 +472,7 @@ watchEffect(() => {
 
 ---
 
-## 🚀 实施计划
+## 实施计划
 
 ### Week 1: 基础框架
 - [ ] `client.py` HTTP polling 实现
@@ -494,23 +494,23 @@ watchEffect(() => {
 
 ---
 
-## 🔍 兼容性说明
+## 兼容性说明
 
 ### 支持的 MTConnect 版本
-- ✅ MTConnect 1.2
-- ✅ MTConnect 1.3
-- ⚠️ MTConnect 2.0 (实验性，需要额外测试)
+- MTConnect 1.2
+- MTConnect 1.3
+- MTConnect 2.0 (实验性，需要额外测试)
 
 ### 常见 Agent 列表
-- ✅ Haas Direct Connect
-- ✅ EMCO WinNC
-- ✅ FANUC Focas (需中间件)
-- ⚠️ Siemens Sinumerik (需 MTConnect Connector)
-- ⚠️ Heidenhain TNC640 (需第三方 Bridge)
+- Haas Direct Connect
+- EMCO WinNC
+- FANUC Focas (需中间件)
+- Siemens Sinumerik (需 MTConnect Connector)
+- Heidenhain TNC640 (需第三方 Bridge)
 
 ---
 
-## 📈 扩展性设计
+## 扩展性设计
 
 ### 未来扩展点
 
@@ -531,7 +531,7 @@ watchEffect(() => {
 
 ---
 
-## 📝 变更日志
+## 变更日志
 
 ### v1.0 (2026-08-20)
 - 初始设计版本

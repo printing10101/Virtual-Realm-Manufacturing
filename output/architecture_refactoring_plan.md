@@ -199,14 +199,14 @@ mcp_server/      ← HTTP 网关 ──(HTTP)──> engineering
 **目标**：修复已发现的 36 项代码质量问题（三轮审查已完成），为后续重构清理跑道。
 
 **已完成的修复**（三轮代码审查）：
-- ✅ `@safe_endpoint` 装饰器：消除 ~500 行重复错误处理
-- ✅ SQL 列名白名单校验模块
-- ✅ MCP 输入验证（5 函数）
-- ✅ TypeScript 严格模式配置
-- ✅ CSP 加固（Web + Tauri 两端）
-- ✅ K8s NetworkPolicy 最小权限
-- ✅ 5 处 `:key="index"` 反模式修复
-- ✅ 部署配置安全修复（Nginx/TDengine/CI/GitHub Actions）
+- `@safe_endpoint` 装饰器：消除 ~500 行重复错误处理
+- SQL 列名白名单校验模块
+- MCP 输入验证（5 函数）
+- TypeScript 严格模式配置
+- CSP 加固（Web + Tauri 两端）
+- K8s NetworkPolicy 最小权限
+- 5 处 `:key="index"` 反模式修复
+- 部署配置安全修复（Nginx/TDengine/CI/GitHub Actions）
 
 **本阶段额外行动**：
 - [ ] 确认所有 `.pyc` 文件被 `.gitignore` 排除

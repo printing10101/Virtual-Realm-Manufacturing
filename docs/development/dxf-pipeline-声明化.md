@@ -3,7 +3,7 @@
 > **版本**: 1.0.0  
 > **创建日期**: 2026-08-25  
 > **完成日期**: 2026-08-25  
-> **状态**: ✅ 已完成并通过所有门禁
+> **状态**: 已完成并通过所有门禁
 
 ---
 
@@ -20,13 +20,13 @@
 
 ### 1.2 范围
 
-**✅ 包含**：
+**包含**：
 - 六阶段声明（`STAGES` 元组）
 - 编排函数（`should_abort_after` / `progress_of` / `summarize_pipeline`）
 - 辅助函数（`stage_name` / `stage_index` / `is_fatal_stage`）
 - `StageKey` / `StageStatus` 枚举
 
-**❌ 不包含**：
+**不包含**：
 - 阶段实现细节（`DxfParser` / `FeatureExtractor` 等）
 - 参数化几何/工艺规划流水线
 - 数据库持久化逻辑
@@ -39,12 +39,12 @@
 
 | 序号 | Key | 名称 | 致命性 | 说明 |
 |------|-----|------|--------|------|
-| 0 | `PARSE` | "DXF 解析" | ✅ 致命 | 文件解析失败立即中止 |
-| 1 | `FEATURES` | "特征提取" | ✅ 致命 | 特征提取失败无法继续 |
-| 2 | `MODEL_CONVERT` | "3D 模型转换" | ⬜ 降级 | 模型转换失败仍可工艺规划 |
-| 3 | `DATA_ASSEMBLY` | "数据组装" | ✅ 致命 | 组装失败无法工艺规划 |
-| 4 | `PROCESS_PLANNING` | "工艺规划" | ✅ 致命 | 工艺规划失败无 G 代码 |
-| 5 | `VALIDATION` | "结果验证" | ✅ 致命 | 验证失败输出不可信 |
+| 0 | `PARSE` | "DXF 解析" | 致命 | 文件解析失败立即中止 |
+| 1 | `FEATURES` | "特征提取" | 致命 | 特征提取失败无法继续 |
+| 2 | `MODEL_CONVERT` | "3D 模型转换" | 降级 | 模型转换失败仍可工艺规划 |
+| 3 | `DATA_ASSEMBLY` | "数据组装" | 致命 | 组装失败无法工艺规划 |
+| 4 | `PROCESS_PLANNING` | "工艺规划" | 致命 | 工艺规划失败无 G 代码 |
+| 5 | `VALIDATION` | "结果验证" | 致命 | 验证失败输出不可信 |
 
 ### 2.2 致命性规则
 
@@ -126,7 +126,7 @@ assert summarize_pipeline({"features": "failed"}, success=False) == "流水线�
 ### 4.1 枚举对齐与测试锁定
 
 ```python
-# ✅ 与 pipeline.py 中文名逐字对齐
+# 与 pipeline.py 中文名逐字对齐
 stage_name(StageKey.PARSE) == "DXF 解析"
 stage_name(StageKey.FEATURES) == "特征提取"
 # ...
@@ -204,29 +204,29 @@ def test_failed_counts_as_done():
 
 ```bash
 $ ruff check engineering/python/app/dxf/_pipeline_stages.py
-# ✅ 0 违规
+# 0 违规
 ```
 
 ### 6.2 类型检查（Q2）
 
 ```bash
 $ mypy --config-file mypy.ini engineering/python/app/dxf/_pipeline_stages.py
-# ✅ 0 错误
+# 0 错误
 ```
 
 ### 6.3 覆盖率（T1-T2）
 
 ```bash
 $ pytest --cov=app.dxf._pipeline_stages --cov-report=term-missing
-# ✅ 行覆盖 100%（161 行全有测试）
-# ✅ 分支覆盖 100%（所有条件分支）
+# 行覆盖 100%（161 行全有测试）
+# 分支覆盖 100%（所有条件分支）
 ```
 
 ### 6.4 功能测试（T5）
 
 ```bash
 $ pytest engineering/python/tests/unit/test_dxf_pipeline_stages.py
-# ✅ 25 用例全过（82 秒）
+# 25 用例全过（82 秒）
 ```
 
 ### 6.5 编排语义验证
@@ -245,10 +245,10 @@ assert should_abort_after(StageKey.PARSE, failed=True) is True
 
 ### 7.1 当前版本（v1.0.0）
 
-- ✅ 六阶段声明实现
-- ✅ 9 个纯函数暴露
-- ✅ 测试覆盖 100%
-- ✅ 文档齐全
+- 六阶段声明实现
+- 9 个纯函数暴露
+- 测试覆盖 100%
+- 文档齐全
 
 ### 7.2 待扩展功能（可选）
 

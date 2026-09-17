@@ -112,17 +112,17 @@
 
 | 里程碑 | 内容 | 关键文件 | 状态 |
 |--------|------|----------|------|
-| M1 | Schema 基础 | `sharp/schema/{domain_schema,schema_constraints,strategic_planner}.py` | ✅ |
-| M2 | Hybrid Knowledge Toolset | `sharp/tools/{base,kg_tools,text_tools,llm_tools,reranker,tool_registry}.py` | ✅ |
-| M3 | ReAct 增强循环 | `sharp/react/{react_loop,trajectory_recorder,stopping_criteria,prompt_templates}.py` | ✅ |
-| M4 | Memory-Augmented 机制 | `sharp/memory/{trajectory_store,similarity_retriever,memory_augmentor}.py` | ✅ |
-| M5.1 | Pydantic 请求/响应模型 | `sharp/schemas.py` | ✅ |
-| M5.2 | SharpService 单例 | `sharp/service.py` | ✅ |
-| M5.3 | FastAPI 路由（8 端点） | `api/v1/sharp.py` | ✅ |
-| M5.4 | main.py 注册路由 | `app/main.py` | ✅ |
-| M5.5 | import 与端到端验证 | 8 路由全部注册，6 项本地测试通过 | ✅ |
-| M6.1 | SharpConfig 配置块 | `app/config.py` | ✅ |
-| M6.2 | ADR 文档 | `docs/adr/ADR-004-SHARP三元组验证智能体.md` | ✅ |
+| M1 | Schema 基础 | `sharp/schema/{domain_schema,schema_constraints,strategic_planner}.py` | |
+| M2 | Hybrid Knowledge Toolset | `sharp/tools/{base,kg_tools,text_tools,llm_tools,reranker,tool_registry}.py` | |
+| M3 | ReAct 增强循环 | `sharp/react/{react_loop,trajectory_recorder,stopping_criteria,prompt_templates}.py` | |
+| M4 | Memory-Augmented 机制 | `sharp/memory/{trajectory_store,similarity_retriever,memory_augmentor}.py` | |
+| M5.1 | Pydantic 请求/响应模型 | `sharp/schemas.py` | |
+| M5.2 | SharpService 单例 | `sharp/service.py` | |
+| M5.3 | FastAPI 路由（8 端点） | `api/v1/sharp.py` | |
+| M5.4 | main.py 注册路由 | `app/main.py` | |
+| M5.5 | import 与端到端验证 | 8 路由全部注册，6 项本地测试通过 | |
+| M6.1 | SharpConfig 配置块 | `app/config.py` | |
+| M6.2 | ADR 文档 | `docs/adr/ADR-004-SHARP三元组验证智能体.md` | |
 
 ### 后续运维任务（非阻塞）
 
@@ -150,11 +150,11 @@ SHARP 新代码**必须直接复用**现有基础设施的接口，禁止绕开�
 
 | 模式 | Schema 规划器 | Memory 增强 | Hybrid Toolset | ReAct 循环 |
 |------|---------------|-------------|----------------|------------|
-| `None` | ✅ | ✅ | ✅ | ✅ |
-| `no_schema` | ❌（统一策略） | ✅ | ✅ | ✅ |
-| `no_memory` | ✅ | ❌ | ✅ | ✅ |
-| `no_react` | ✅ | ✅（仅查询） | ✅ | ❌（单次 LLM 推理） |
-| `no_toolset` | ✅ | ✅ | ❌（仅 LLM 推理工具） | ✅ |
+| `None` | | | | |
+| `no_schema` | （统一策略） | | | |
+| `no_memory` | | | | |
+| `no_react` | | （仅查询） | | （单次 LLM 推理） |
+| `no_toolset` | | | （仅 LLM 推理工具） | |
 
 ### 证据来源加权
 

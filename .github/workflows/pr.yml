@@ -455,10 +455,10 @@ jobs:
           needs.frontend-tests.result != 'success' ||
           needs.version-check.result != 'success'
         run: |
-          echo "❌ 部分测试失败，请查看详细结果。"
+          echo " 部分测试失败，请查看详细结果。"
           exit 1
 
       - name: 测试通过确认
         if: success()
         run: |
-          echo "✅ 所有测试通过！PR 可以合并。"
+          echo " 所有测试通过！PR 可以合并。"

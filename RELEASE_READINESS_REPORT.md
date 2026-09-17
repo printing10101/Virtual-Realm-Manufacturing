@@ -10,13 +10,13 @@
 
 | 维度 | 结论 |
 |---|---|
-| 全量测试（Python 3.14.4，`-n 6`） | ✅ **通过：7,923 passed / 0 failed / 115 skipped / 1 xfailed**（连续两轮结果一致，5 分 59 秒/轮） |
-| 测试稳定性 | ✅ 修复确定性失败 14 项（含 2 个真代码 bug）；并行敏感用例加"独占运行"守卫并注明原因 |
-| 静态质量门（ruff CI 口径） | ✅ 唯一 F401 已修复（gcode_jobs.py 未使用 os） |
-| Response Model 覆盖 | ✅ 13 个新增端点补齐；检查器判定 bug 已修（responses= 按注释承诺计入） |
-| 前端（vue-tsc + vitest） | ✅ 类型检查 0 错误；测试 1,923 项全绿（修复 AgentDashboard mock 缺失 + llama provider 常量） |
-| CI 门禁 | 🟡 本轮治理 6 类失败根因并推送；**待推送后核对一轮**（见 §3） |
-| **综合判定** | 🟢 **测试证据链已恢复完整；CI 以最近一次推送的实跑结果为准** |
+| 全量测试（Python 3.14.4，`-n 6`） | **通过：7,923 passed / 0 failed / 115 skipped / 1 xfailed**（连续两轮结果一致，5 分 59 秒/轮） |
+| 测试稳定性 | 修复确定性失败 14 项（含 2 个真代码 bug）；并行敏感用例加"独占运行"守卫并注明原因 |
+| 静态质量门（ruff CI 口径） | 唯一 F401 已修复（gcode_jobs.py 未使用 os） |
+| Response Model 覆盖 | 13 个新增端点补齐；检查器判定 bug 已修（responses= 按注释承诺计入） |
+| 前端（vue-tsc + vitest） | 类型检查 0 错误；测试 1,923 项全绿（修复 AgentDashboard mock 缺失 + llama provider 常量） |
+| CI 门禁 | 本轮治理 6 类失败根因并推送；**待推送后核对一轮**（见 §3） |
+| **综合判定** | **测试证据链已恢复完整；CI 以最近一次推送的实跑结果为准** |
 
 **一句话结论**：8 月 23 日以来测试基线从 3,441 项增长到 8,039 项（收集口径），期间累积的 14 个失败用例已全部归因处置——其中 2 个是**真代码缺陷**（多模态管道期望维度表过时、注意力融合对变长输入崩溃），5 个是测试自身过期/污染，其余为并行执行下读数失真（已加独占守卫并注明原因）。**"评委现场跑一遍测试"这一答辩硬指标恢复成立。**
 
@@ -74,7 +74,7 @@
 
 ### 2.5 文档口径收敛（A7）
 
-白盒化任务状态在 7 处文档存在互相矛盾的口径（✅/🟡/⬜/「唯一阻塞」并存）。已全部以 git 证据（`git log -S "can_execute"` → f3ee1e07，2026-08-23 接线完成）统一：MEMORY.md、自主化与护城河路线图 §5、交付总览 §3/§5、dxf-pipeline-六阶段声明化、最终验收报告。
+白盒化任务状态在 7 处文档存在互相矛盾的口径（///「唯一阻塞」并存）。已全部以 git 证据（`git log -S "can_execute"` → f3ee1e07，2026-08-23 接线完成）统一：MEMORY.md、自主化与护城河路线图 §5、交付总览 §3/§5、dxf-pipeline-六阶段声明化、最终验收报告。
 
 ---
 
@@ -84,13 +84,13 @@
 
 | Job | 根因 | 处置 |
 |---|---|---|
-| Python Full/Integration/Regression | 同批本地测试失败 | ✅ 本轮修复，随推送生效 |
-| Python Torch Integrity | tests/e2e 未入库 + 管道真 bug | ✅ 已修 |
-| Lint & Type Check | gcode_jobs.py F401 | ✅ 已修 |
-| Response Model Coverage | 新端点未声明 + 检查器 bug | ✅ 已修（本地复验 exit 0） |
-| Frontend Tests | 测试 mock 未随组件演进 | ✅ 已修（本地 vitest 全绿） |
-| Performance Benchmarks | 回归检查步骤读空 JSON | ⚠️ **未处置**——perf-benchmark 独立工作流同口径为 success，疑似 ci.yml 内联步骤与 DB 状态相关，需单独排查 |
-| 桌面端构建 | 历史全败（81 次 0 成功） | ⚠️ 未处置，属独立专项 |
+| Python Full/Integration/Regression | 同批本地测试失败 | 本轮修复，随推送生效 |
+| Python Torch Integrity | tests/e2e 未入库 + 管道真 bug | 已修 |
+| Lint & Type Check | gcode_jobs.py F401 | 已修 |
+| Response Model Coverage | 新端点未声明 + 检查器 bug | 已修（本地复验 exit 0） |
+| Frontend Tests | 测试 mock 未随组件演进 | 已修（本地 vitest 全绿） |
+| Performance Benchmarks | 回归检查步骤读空 JSON | **未处置**——perf-benchmark 独立工作流同口径为 success，疑似 ci.yml 内联步骤与 DB 状态相关，需单独排查 |
+| 桌面端构建 | 历史全败（81 次 0 成功） | 未处置，属独立专项 |
 
 **数据建设缺口（P0-C 剩余项，非测试问题）**：切参库 12 条（目标 ≥200）、失败案例库 47 行（目标 ≥500）、cutting_force 仍为 100 行合成数据训练（重训排期 10 月）。uniwear.csv 已于本轮入库（cf4b22c0），数据血缘恢复可复现。
 

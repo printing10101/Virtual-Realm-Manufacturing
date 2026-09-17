@@ -1,4 +1,4 @@
-name: 🐛 Bug 报告
+name:  Bug 报告
 description: 报告系统缺陷或异常行为
 title: "[Bug] "
 labels: ["bug", "triage"]
@@ -54,10 +54,10 @@ body:
       label: 严重程度
       description: Bug 对使用的影响程度
       options:
-        - 🟦 轻微 — 不影响主流程,有 workaround
-        - 🟨 中等 — 影响部分功能,可继续使用
-        - 🟧 较严重 — 影响核心功能,有数据风险
-        - 🟥 严重 — 系统崩溃 / 数据丢失 / 安全漏洞
+        -  轻微 — 不影响主流程,有 workaround
+        -  中等 — 影响部分功能,可继续使用
+        -  较严重 — 影响核心功能,有数据风险
+        -  严重 — 系统崩溃 / 数据丢失 / 安全漏洞
     validations:
       required: true
 

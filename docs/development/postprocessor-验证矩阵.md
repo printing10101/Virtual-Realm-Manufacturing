@@ -24,17 +24,17 @@
 
 | 控制器 | 标识符 | L1 语法 | L2 黄金 | L3 编程站 | L4 实机 | 备注 |
 |---|---|---|---|---|---|---|
-| Fanuc 0i-MF | `fanuc_0i` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | 国内主流三轴铣，优先争取实机 |
-| Siemens 840D | `siemens_840d` | ✅ strict | ✅ 标准+扩展 | ⬜ SinuTrain | ⬜ | |
-| Siemens 840D（声明式） | `siemens_840d_declared` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | 2026-09 修复 hooks 加载后激活 |
-| Heidenhain TNC | `heidenhain_tnc` | ✅ strict | ✅ 标准+扩展 | ⬜ 编程站 | ⬜ | 2026-09 修复 G00/G01 泄漏 |
-| Heidenhain TNC640（声明式） | `heidenhain_tnc640_declared` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | 同上 |
-| Fagor 8055 | `fagor_8055` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | |
-| GSK 980/25i | `gsk_980_25i` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | **二手教学机优先候选** |
-| 华中 HNC-848/22 | `hnc_848_22` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | **二手教学机优先候选** |
-| KND 1000/2000/3000 | `knd_1000_2000_3000` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | |
-| Mitsubishi M70/M80 | `mitsubishi_m70_m80` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | |
-| xMachine XM100 | `xmachine_xm100` | ✅ strict | ✅ 标准+扩展 | ⬜ | ⬜ | 自研桌面五轴，M101/M201 为厂商自定义 |
+| Fanuc 0i-MF | `fanuc_0i` | strict | 标准+扩展 | | | 国内主流三轴铣，优先争取实机 |
+| Siemens 840D | `siemens_840d` | strict | 标准+扩展 | SinuTrain | | |
+| Siemens 840D（声明式） | `siemens_840d_declared` | strict | 标准+扩展 | | | 2026-09 修复 hooks 加载后激活 |
+| Heidenhain TNC | `heidenhain_tnc` | strict | 标准+扩展 | 编程站 | | 2026-09 修复 G00/G01 泄漏 |
+| Heidenhain TNC640（声明式） | `heidenhain_tnc640_declared` | strict | 标准+扩展 | | | 同上 |
+| Fagor 8055 | `fagor_8055` | strict | 标准+扩展 | | | |
+| GSK 980/25i | `gsk_980_25i` | strict | 标准+扩展 | | | **二手教学机优先候选** |
+| 华中 HNC-848/22 | `hnc_848_22` | strict | 标准+扩展 | | | **二手教学机优先候选** |
+| KND 1000/2000/3000 | `knd_1000_2000_3000` | strict | 标准+扩展 | | | |
+| Mitsubishi M70/M80 | `mitsubishi_m70_m80` | strict | 标准+扩展 | | | |
+| xMachine XM100 | `xmachine_xm100` | strict | 标准+扩展 | | | 自研桌面五轴，M101/M201 为厂商自定义 |
 
 扩展序列（`*_extended.nc`）只做 structural 级合规（结构 + 词法），不做型号白名单判定：
 扩展序列是**能力探针**（攻丝/镗孔/五轴/RTCP/探针等），可能包含超出该型号手册的

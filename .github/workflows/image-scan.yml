@@ -126,11 +126,11 @@ jobs:
             echo "| HIGH | ${HIGH_COUNT} |" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             if [ "${CRITICAL_COUNT}" -gt 0 ]; then
-              echo "❌ 发现 ${CRITICAL_COUNT} 个 CRITICAL 漏洞，部署已阻断" >> $GITHUB_STEP_SUMMARY
+              echo " 发现 ${CRITICAL_COUNT} 个 CRITICAL 漏洞，部署已阻断" >> $GITHUB_STEP_SUMMARY
               echo "请在 [Security 标签页](https://github.com/${{ github.repository }}/security/code-scanning) 查看详情" >> $GITHUB_STEP_SUMMARY
             else
-              echo "✅ 未发现 CRITICAL 漏洞，镜像可以安全部署" >> $GITHUB_STEP_SUMMARY
+              echo " 未发现 CRITICAL 漏洞，镜像可以安全部署" >> $GITHUB_STEP_SUMMARY
             fi
           else
-            echo "⚠️ 扫描报告未生成" >> $GITHUB_STEP_SUMMARY
+            echo "⚠ 扫描报告未生成" >> $GITHUB_STEP_SUMMARY
           fi
