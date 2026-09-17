@@ -9,6 +9,12 @@
   是跨测试/跨进程共享的，局部实例读不到数据）；
 - 单例入口用唯一 record_id（进程内去重表跨测试共享）；
 - 指标历史改用 ``get_historical_metrics_async``（同步版已废弃恒返空列表）。
+
+防污染（2026-09-17）：单例入口的默认数据湖指向仓库内
+``engineering/python/data/training_data``，此前 ``test_duplicate_record_handling``
+等用例直呼单例函数，曾把 20260908/0912/0913 三份入库文件全部写成测试记录
+（违反"训练数据禁止合成"政策）。现单例用例一律经 ``isolated_singleton_pipeline``
+夹具指向 tmp 数据湖，并加 autouse 守卫逐用例比对默认目录快照。
 """
 
 from __future__ import annotations
@@ -31,6 +37,26 @@ def _unique_id(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 
+@pytest.fixture(autouse=True)
+def _guard_default_training_data():
+    """防污染守卫：逐用例比对默认数据湖目录快照，测试期任何增长立即失败。
+
+    默认目录在仓库内且含入库文件，合成记录一旦写入即污染训练语料；
+    守卫保证此类回归在单测阶段爆掉，而不是等数据审查时发现。
+    """
+
+    def snapshot() -> dict[str, int]:
+        default_dir = TrainingDataLake().storage_dir
+        return {p.name: p.stat().st_size for p in default_dir.glob("training_data_*.jsonl")}
+
+    before = snapshot()
+    yield
+    after = snapshot()
+    assert after == before, (
+        f"E2E 测试污染了默认训练数据目录：{before} -> {after}。测试必须注入 tmp_path 数据湖，禁止写默认目录。"
+    )
+
+
 class TestFlywheelE2E:
     """飞轮端到端测试套件"""
 
@@ -47,20 +73,11 @@ class TestFlywheelE2E:
                 "spindle_speed": 1200,
                 "feed_rate": 0.2,
                 "depth_of_cut": 1.5,
-                "steps": [
-                    {
-                        "process_id": "PROC-001",
-                        "name": "粗车外圆",
-                        "feature_id": "FEAT-001"
-                    }
-                ]
+                "steps": [{"process_id": "PROC-001", "name": "粗车外圆", "feature_id": "FEAT-001"}],
             },
             "first_pass_acceptance": True,
-            "actual_dimensions": {
-                "diameter": 100.05,
-                "length": 150.02
-            },
-            "surface_roughness": 1.6
+            "actual_dimensions": {"diameter": 100.05, "length": 150.02},
+            "surface_roughness": 1.6,
         }
 
     @pytest.fixture
@@ -74,6 +91,25 @@ class TestFlywheelE2E:
         return FeedbackLoopPipeline(
             feedback_updater=FeedbackUpdater(),
             training_data_lake=TrainingDataLake(storage_dir=temp_storage_dir),
+        )
+
+    @pytest.fixture
+    def isolated_singleton_pipeline(self, temp_storage_dir, monkeypatch):
+        """把单例入口指向临时数据湖。
+
+        需要验证单例进程内去重行为的用例必须走模块级 ``ingest_machining_record``，
+        但单例默认数据湖在仓库内——不换指向就会把测试记录写进入库文件。
+        monkeypatch 会在用例结束后恢复原值，不影响其他测试。
+        """
+        from app.pipelines import feedback_loop as feedback_loop_module
+
+        monkeypatch.setattr(
+            feedback_loop_module,
+            "_pipeline_instance",
+            FeedbackLoopPipeline(
+                feedback_updater=FeedbackUpdater(),
+                training_data_lake=TrainingDataLake(storage_dir=temp_storage_dir),
+            ),
         )
 
     @pytest.mark.asyncio
@@ -109,9 +145,9 @@ class TestFlywheelE2E:
 
         # 验证至少有一个节点或关系被更新
         total_updates = (
-            kg_stats["process_nodes_updated"] +
-            kg_stats["tool_material_edges_updated"] +
-            kg_stats["process_feature_edges_updated"]
+            kg_stats["process_nodes_updated"]
+            + kg_stats["tool_material_edges_updated"]
+            + kg_stats["process_feature_edges_updated"]
         )
         assert total_updates > 0
 
@@ -130,7 +166,7 @@ class TestFlywheelE2E:
         assert queue_status["processed_count"] > 0
 
     @pytest.mark.asyncio
-    async def test_duplicate_record_handling(self, sample_machining_record):
+    async def test_duplicate_record_handling(self, sample_machining_record, isolated_singleton_pipeline):
         """测试重复记录处理（单例入口的进程内去重）"""
         # 第一次摄入
         result1 = await ingest_machining_record(sample_machining_record)
@@ -144,7 +180,7 @@ class TestFlywheelE2E:
         assert result2.get("stats", {}).get("skipped") is True
 
     @pytest.mark.asyncio
-    async def test_flywheel_metrics_collection(self, sample_machining_record):
+    async def test_flywheel_metrics_collection(self, sample_machining_record, isolated_singleton_pipeline):
         """测试飞轮指标采集"""
         # 先摄入一些数据
         await ingest_machining_record(sample_machining_record)
@@ -195,8 +231,7 @@ class TestFlywheelE2E:
 
         # 2. 工艺出：验证知识图谱已更新工艺参数
         kg_stats = ingest_result.get("stats", {}).get("kg_update", {})
-        assert kg_stats.get("process_nodes_updated", 0) > 0 or \
-               kg_stats.get("tool_material_edges_updated", 0) > 0
+        assert kg_stats.get("process_nodes_updated", 0) > 0 or kg_stats.get("tool_material_edges_updated", 0) > 0
 
         # 3. 加工回：验证训练样本已写入数据湖
         assert ingest_result.get("stats", {}).get("sample_written") is True
@@ -214,13 +249,9 @@ class TestFlywheelE2E:
                 "machine_id": "CNC-001",
                 "tool_id": f"TOOL-{i:03d}",
                 "workpiece_material": "45号钢",
-                "process_plan": {
-                    "spindle_speed": 1200,
-                    "feed_rate": 0.2,
-                    "depth_of_cut": 1.5
-                },
+                "process_plan": {"spindle_speed": 1200, "feed_rate": 0.2, "depth_of_cut": 1.5},
                 "first_pass_acceptance": i % 2 == 0,
-                "surface_roughness": 1.6 + i * 0.1
+                "surface_roughness": 1.6 + i * 0.1,
             }
             for i in range(5)
         ]
@@ -244,7 +275,7 @@ class TestFlywheelE2E:
         """测试错误恢复：缺少 record_id 的记录必须被拒绝"""
         invalid_record = {
             "timestamp": datetime.now().isoformat(),
-            "machine_id": "CNC-001"
+            "machine_id": "CNC-001",
             # 缺少 record_id
         }
 
@@ -270,7 +301,7 @@ class TestFlywheelE2E:
                 "workpiece_material": "45号钢",
                 "process_plan": {"spindle_speed": 1200},
                 "first_pass_acceptance": True,
-                "surface_roughness": 1.5
+                "surface_roughness": 1.5,
             }
             result = await pipeline.ingest_machining_record(record)
             assert result["success"] is True
