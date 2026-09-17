@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: '灵境制造',
-  description: '自适应工艺孪生平台 - 专业文档中心',
+  description: '桌面级制造物理 AI - 专业文档中心',
   lang: 'zh-CN',
   
   head: [
@@ -10,7 +10,7 @@ export default defineConfig({
     ['meta', { name: 'theme-color', content: '#3eaf7c' }],
     ['meta', { name: 'og:type', content: 'website' }],
     ['meta', { name: 'og:title', content: '灵境制造文档' }],
-    ['meta', { name: 'og:description', content: '自适应工艺孪生平台专业文档' }]
+    ['meta', { name: 'og:description', content: '桌面级制造物理 AI 专业文档' }]
   ],
 
   themeConfig: {
