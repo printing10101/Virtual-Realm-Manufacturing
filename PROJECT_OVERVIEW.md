@@ -96,7 +96,7 @@
 ### 3.5 MCP Agent Gateway（`mcp_server/`）
 
 - `server.py`：`FastMCP` 服务，stdio（本地 MCP 客户端）或 SSE（远程）双模式；默认绑定 `127.0.0.1`；远程暴露需 `LNN_MCP_ALLOW_REMOTE=1` + 强入站令牌 `LINGJING_MCP_INGRESS_TOKEN`（fail-closed，无令牌即拒绝）。
-- `tools.py`：通过 HTTP + Bearer Token 调用后端，提供 **LNN 模型管理/预测/训练** 等工具；强制 `LINGJING_AGENT_TOKEN ≥ 32` 字符；非回环暴露时要求入站 `LINGJING_MCP_INGRESS_TOKEN` Bearer 鉴权（纯 ASGI 中间件，`hmac.compare_digest` 防时序），生产环境建议经 HTTPS 反向代理暴露。
+- `tools.py`：通过 HTTP + Bearer Token 调用后端，聚合注册 **26 个工具**（LNN 推理训练 / G 代码任务 / 设备 / 仿真工厂 / CAM 推荐 / DXF 解析 / 工艺规划，分组独立开关）；完整清单与接入示例见 `docs/integrations/mcp-usage.md`；强制 `LINGJING_AGENT_TOKEN ≥ 32` 字符；非回环暴露时要求入站 `LINGJING_MCP_INGRESS_TOKEN` Bearer 鉴权（纯 ASGI 中间件，`hmac.compare_digest` 防时序），生产环境建议经 HTTPS 反向代理暴露。
 
 ---
 
