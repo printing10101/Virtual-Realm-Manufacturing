@@ -53,6 +53,15 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
         shell: bash
 
+      - name: 缓存 uv Python（python-build-standalone）
+        # 2026-09-17：命中缓存时跳过 ~200MB 解释器下载
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/AppData/Roaming/uv/python
+            ~/.local/share/uv/python
+          key: uv-python-${{ runner.os }}-${{ env.PYTHON_VERSION }}
+
       - name: 安装 Python ${{ env.PYTHON_VERSION }}（python-build-standalone）
         # [2026-09-05 修复] Windows runner 默认 shell 是 pwsh，不识别 export，
         # 原 step 未声明 bash 导致三平台矩阵在 Windows 上第一步即挂。
@@ -69,14 +78,17 @@ jobs:
           fi
           uv python install ${{ env.PYTHON_VERSION }}
 
-      - name: 设置 Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
       - name: 配置 pnpm
         # 版本取自根 package.json 的 packageManager 字段（pnpm@9.15.9）
         uses: pnpm/action-setup@v4
+
+      - name: 设置 Node.js ${{ env.NODE_VERSION }}
+        # setup-node 的 pnpm 缓存依赖 pnpm 先就位，故置于 pnpm/action-setup 之后
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: engineering/pnpm-lock.yaml
 
       - name: 安装前端依赖
         working-directory: engineering
@@ -109,6 +121,12 @@ jobs:
             build-essential \
             libfuse2 \
             curl wget file
+
+      - name: 缓存 Rust 编译产物
+        # 2026-09-17：三平台 cargo release 全量冷编译 10-25 分钟，缓存后增量
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engineering/src-tauri
 
       - name: 构建桌面安装包
         working-directory: engineering
