@@ -3,6 +3,8 @@ DL-LNN 模型实现
 包含连续时间液态时间常数网络及其变体
 """
 
+import warnings
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,8 +20,6 @@ try:
     _HAS_TORCHDIFFEQ = True
 except ImportError:  # pragma: no cover - 降级路径
     _HAS_TORCHDIFFEQ = False
-    import warnings
-
     warnings.warn(
         "torchdiffeq 未安装，LTCCell 将降级为一阶 Euler 方法。"
         "论文声称的连续时间 ODE 优势无法体现，请执行：pip install torchdiffeq==0.2.3 "
@@ -84,15 +84,25 @@ class LTCCell(nn.Module):
     求解策略：
         - 优先使用 torchdiffeq.odeint 的自适应求解器（dopri5）
           实现真正的连续时间 ODE 积分（论文方法描述）
-        - torchdiffeq 不可用时降级为一阶 Euler 方法
-          （仅用于开发调试，不应在生产/论文实验中使用）
+        - 数值发散时（真实数据上 dopri5 会因刚性段报 "underflow in dt"，
+          或"成功"返回含 NaN 的解，见《真实数据验证现状》§五）自动降级为
+          一阶 Euler 完成当前步——训练不中断，且发一级 warning 提示
     """
+
+    # Euler 降级告警只发一次，避免长序列训练刷屏
+    _degrade_warned = False
+
+    # 同一单元累计失败达此次数后锁定 Euler：刚性数据上每步 dopri5
+    # 抛异常再捕获的开销远超求解本身（实测数倍减速），锁存后直接走
+    # Euler；数据良性时永远不会触发，dopri5 精度照常保留
+    _max_ode_failures = 3
 
     def __init__(self, input_size: int, hidden_size: int, solver: str = "dopri5"):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.solver = solver
+        self._ode_failures = 0
 
         # ODE 右端函数（封装 W/U/bias/tau 参数）
         self.ode_func = LTCODEFunc(input_size, hidden_size)
@@ -129,7 +139,7 @@ class LTCCell(nn.Module):
         Returns:
             新的隐藏状态
         """
-        if _HAS_TORCHDIFFEQ:
+        if _HAS_TORCHDIFFEQ and self._ode_failures < self._max_ode_failures:
             # 连续时间 ODE 积分：在 [0, dt] 区间内求解 dh/dt = f(h, x)
             # dopri5 为自适应步长 Runge-Kutta 求解器，精度优于定步长 Euler
             self.ode_func.set_input(x)
@@ -138,15 +148,36 @@ class LTCCell(nn.Module):
                 device=h.device,
                 dtype=h.dtype,
             )
-            # odeint 返回 [2, batch, hidden]，取终点状态
-            h_new = _torchdiffeq_odeint(self.ode_func, h, t_span, method=self.solver)[-1]
-            return h_new
+            degrade_reason = ""
+            try:
+                # odeint 返回 [2, batch, hidden]，取终点状态
+                h_new = _torchdiffeq_odeint(self.ode_func, h, t_span, method=self.solver)[-1]
+            except Exception as exc:  # 数值发散（如 underflow in dt nan）→ 降级
+                degrade_reason = f"求解器异常: {exc}"
+            else:
+                if not torch.isfinite(h_new).all():
+                    # 求解器"成功"但产出 NaN/Inf（stage-2 NaN 的直接病灶）
+                    degrade_reason = "输出含非有限值"
+            if not degrade_reason:
+                return h_new
+            self._ode_failures += 1
+            if not LTCCell._degrade_warned:
+                warnings.warn(
+                    f"odeint({self.solver}) 数值求解失败（{degrade_reason}），"
+                    f"当前步降级为一阶 Euler；累计 {self._max_ode_failures} 次后"
+                    "锁定 Euler。训练可继续，但应排查输入刚性/学习率。",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                LTCCell._degrade_warned = True
 
-        # 降级路径：一阶 Euler 方法（仅当 torchdiffeq 不可用）
+        return self._euler_step(x, h, dt)
+
+    def _euler_step(self, x: torch.Tensor, h: torch.Tensor, dt: float) -> torch.Tensor:
+        """一阶 Euler 降级求解（torchdiffeq 缺失或数值发散时使用）。"""
         tau = torch.clamp(self.ode_func.tau, min=0.01)
         dh = torch.tanh(torch.mm(x, self.ode_func.W.t()) + torch.mm(h, self.ode_func.U.t()) + self.ode_func.bias)
-        h_new = h + dt * (dh - h) / tau.unsqueeze(0)
-        return h_new
+        return h + dt * (dh - h) / tau.unsqueeze(0)
 
 
 class DLLNNModel(nn.Module):
@@ -314,6 +345,17 @@ class DifferentiableTlustyPhysics(nn.Module):
         H = x[:, 4:5] * self.H_scale  # [B, 1]
         D = x[:, 5:6] * self.D_scale  # [B, 1]
         z = x[:, 6:7] * self.z_scale  # [B, 1]
+
+        # 输入域钳制：真实数据（PHM2010）在缺失特征上取 0，而 (H/200)**0.8
+        # 在 0 处 backward 为 inf，0×inf=NaN 污染全图（stage-2 NaN 的最终
+        # 病灶，见《真实数据验证现状》§五）。钳到物理域下界：前向语义不变
+        # （0 硬度≈最软材料），梯度处处有限。
+        n_rpm = torch.clamp(n_rpm, min=1.0)  # 转速 ≥1 rpm
+        f_rate = torch.clamp(f_rate, min=1e-4)  # 每齿进给 ≥1e-4 mm
+        ae = torch.clamp(ae, min=1e-3)  # 径向切宽 ≥1 µm
+        H = torch.clamp(H, min=1.0)  # 硬度 ≥1 HB
+        D = torch.clamp(D, min=0.1)  # 刀具直径 ≥0.1 mm
+        z = torch.clamp(z, min=1.0)  # 齿数 ≥1
 
         # 多物理参数耦合（向量化，与 compute_limiting_depth 一致）
         # 1. 硬度 H Ks

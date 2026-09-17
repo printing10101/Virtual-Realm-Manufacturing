@@ -18,6 +18,14 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
+# experiments 自身目录必须保持在 research 之前：research/models 是同名包，
+# 会遮蔽 experiments/models.py（create_model 所在模块），导致 trainer 及
+# 依赖它的复现脚本（如 run_realdata_quick.py）ImportError
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _THIS_DIR in sys.path:
+    sys.path.remove(_THIS_DIR)
+sys.path.insert(0, _THIS_DIR)
+
 from training.reproducibility import set_global_seed, get_worker_init_fn
 from training.experiment_tracker import (
     start_run, log_params, log_metric, log_metrics, log_model, is_enabled,
@@ -67,7 +75,11 @@ class DLLNNTrainer:
             lr=config.model.learning_rate,
             weight_decay=config.model.weight_decay
         )
-        
+
+        # 梯度裁剪：真实数据刚性段会让 dopri5 数值发散进而梯度爆炸
+        # （《真实数据验证现状》§五），裁剪是该问题的第二道防线
+        self.grad_clip_norm = float(getattr(config, "grad_clip_norm", 1.0))
+
         # 学习率调度器
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             self.optimizer,
@@ -317,6 +329,8 @@ class DLLNNTrainer:
             
             # 反向传播
             loss.backward()
+            if self.grad_clip_norm > 0:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_norm)
             self.optimizer.step()
             
             # 记录指标
@@ -569,7 +583,10 @@ class BaselineTrainer:
             self.model.parameters(),
             lr=config.model.learning_rate
         )
-        
+
+        # 与 DLLNNTrainer 一致的梯度裁剪（基线模型同样受益）
+        self.grad_clip_norm = float(getattr(config, "grad_clip_norm", 1.0))
+
         # 训练历史
         self.history = {
             'train_loss': [],
@@ -650,6 +667,8 @@ class BaselineTrainer:
                 y_pred = self.model(x)
                 loss = self.criterion(y_pred, y_true)
                 loss.backward()
+                if self.grad_clip_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_norm)
                 self.optimizer.step()
                 
                 train_loss += loss.item()
