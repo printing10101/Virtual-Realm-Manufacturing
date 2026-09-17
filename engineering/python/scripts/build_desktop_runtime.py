@@ -166,6 +166,40 @@ def main() -> int:
                   ignore=("__pycache__", "include", "libs", "tcl"))
     log(f"复制 Python 文件 {n} 个")
 
+    # 2.5 裁剪 Tk/Tcl：后端为 headless FastAPI（UI 由 Tauri WebView 承载），
+    # tkinter 纯属死重；且 linuxdeploy 会为 AppDir 内所有 ELF 解析依赖，
+    # _tkinter 引用的 libtcl9tk9.0.so 在 runner 上无法解析，直接导致
+    # AppImage 打包失败（run 35275632884 --verbose 日志实锤）
+    log("裁剪 tkinter / tcl-tk 运行库...")
+    prune_patterns = [
+        # Python 扩展与包（Windows: DLLs + Lib；Linux: lib-dynload + stdlib）
+        "DLLs/_tkinter*",
+        "lib/python3*/lib-dynload/_tkinter*",
+        "Lib/tkinter",
+        "lib/python3*/tkinter",
+        # Tcl/Tk 运行库与脚本（Windows: tcl/；Linux: lib/ 下散件与子目录）
+        # 数字锚定防止 Windows 大小写不敏感 glob 误伤 Lib/threading.py
+        "tcl",
+        "lib/tcl[0-9]*",
+        "lib/tk[0-9]*",
+        "lib/itcl[0-9]*",
+        "lib/thread[0-9]*",
+        "DLLs/tcl*.dll",
+        "DLLs/tk*.dll",
+    ]
+    pruned = 0
+    for pat in prune_patterns:
+        for p in runtime_py.glob(pat):
+            if p.is_dir():
+                shutil.rmtree(p, ignore_errors=True)
+            else:
+                try:
+                    p.unlink()
+                except OSError:
+                    continue
+            pruned += 1
+    log(f"裁剪 {pruned} 项 tkinter/tcl-tk 组件")
+
     # 3. 依赖
     py_exe = runtime_py / ("python.exe" if sys.platform == "win32" else "bin/python3")
     if sys.platform == "win32":
