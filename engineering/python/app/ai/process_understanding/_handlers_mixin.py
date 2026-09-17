@@ -345,7 +345,7 @@ class _HandlersMixin:
             lines.append("")
             lines.append("### 风险提示")
             for risk in solution.risk_warnings:
-                icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(risk.severity, "⚪")
+                icon = {"high": "[高]", "medium": "[中]", "low": "[低]"}.get(risk.severity, "[?]")
                 lines.append(f"- {icon} **{risk.risk}**")
                 if risk.mitigation:
                     lines.append(f"  - 应对措施: {risk.mitigation}")
@@ -371,7 +371,7 @@ class _HandlersMixin:
         ]
 
         for section in explanation.sections:
-            icon = {"high": "🔴", "normal": "🟡", "low": "🟢"}.get(section.priority, "⚪")
+            icon = {"high": "[高]", "normal": "[中]", "low": "[低]"}.get(section.priority, "[?]")
             lines.append("")
             lines.append(f"### {icon} {section.title}")
             lines.append(section.content)

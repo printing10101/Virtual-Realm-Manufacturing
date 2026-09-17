@@ -1,6 +1,6 @@
 """规则回滚管理器（Rollback Manager）。
 
-对应 Anthropic Dreaming 的 "Auto-rollback on anomaly" 机制：
+异常自动回滚机制：
     - 灰度发布中的规则触发异常指标时，自动回滚
     - 异常检测：连续 N 次效果指标低于阈值、硬约束违反、生产异常率超限
     - 回滚动作：降级灰度阶段 → 标记 DEPRECATED → 知识图谱回滚

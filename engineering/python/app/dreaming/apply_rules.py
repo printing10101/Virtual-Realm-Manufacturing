@@ -1,6 +1,6 @@
 """规则应用入口。
 
-对应 Anthropic Dreaming 的 "Validated rules are applied to the system"：
+规则经沙箱验证后方可应用到系统：
     - 通过 RuleValidator 验证的规则草稿可应用
     - 应用 = 将规则持久化到知识图谱（GraphStore）+ 写入审计日志
     - 应用后规则状态从 validated 转为 applied

@@ -27,7 +27,7 @@ def check_modelscope_installed():
 
         return True
     except ImportError:
-        print("❌ 未安装 modelscope，请先执行：pip install modelscope")
+        print("未安装 modelscope，请先执行：pip install modelscope")
         print("   或使用国内镜像：pip install modelscope -i https://mirrors.aliyun.com/pypi/simple/")
         return False
 
@@ -37,8 +37,8 @@ def download_from_modelscope(model_name: str, output_dir: str):
     if not check_modelscope_installed():
         return False
 
-    print(f"📥 从魔搭社区下载模型: {model_name}")
-    print(f"📁 保存到目录: {output_dir}")
+    print(f"从魔搭社区下载模型: {model_name}")
+    print(f"保存到目录: {output_dir}")
 
     try:
         from modelscope import snapshot_download
@@ -56,17 +56,17 @@ def download_from_modelscope(model_name: str, output_dir: str):
         # 下载模型
         model_dir = snapshot_download(model_id, cache_dir=output_dir, revision="master")
 
-        print(f"✅ 模型下载成功: {model_dir}")
+        print(f"模型下载成功: {model_dir}")
         return True
 
     except Exception as e:
-        print(f"❌ 下载失败: {e}")
+        print(f"下载失败: {e}")
         return False
 
 
 def download_from_hf_mirror(model_name: str, output_dir: str):
     """从 HuggingFace 镜像站下载"""
-    print(f"📥 从 HuggingFace 镜像站下载模型: {model_name}")
+    print(f"从 HuggingFace 镜像站下载模型: {model_name}")
 
     # 设置 HuggingFace 镜像
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
@@ -88,14 +88,14 @@ def download_from_hf_mirror(model_name: str, output_dir: str):
             local_dir=output_dir,
         )
 
-        print(f"✅ 模型下载成功: {model_dir}")
+        print(f"模型下载成功: {model_dir}")
         return True
 
     except ImportError:
-        print("❌ 未安装 huggingface_hub，请先执行：pip install huggingface_hub")
+        print("未安装 huggingface_hub，请先执行：pip install huggingface_hub")
         return False
     except Exception as e:
-        print(f"❌ 下载失败: {e}")
+        print(f"下载失败: {e}")
         return False
 
 
@@ -116,7 +116,7 @@ def download_all_models(output_dir: str):
             success_count += 1
 
     print(f"\n{'=' * 60}")
-    print(f"✅ 下载完成: {success_count}/{len(models)} 个模型成功")
+    print(f"下载完成: {success_count}/{len(models)} 个模型成功")
     print(f"{'=' * 60}")
 
     return success_count == len(models)

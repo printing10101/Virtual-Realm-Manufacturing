@@ -296,7 +296,7 @@ def generate_report(results: List[Dict[str, Any]]) -> str:
     lines.append("| 模型 | MAE | RMSE | R² | MAPE (%) | 通过 |")
     lines.append("|------|-----|------|----|---------|------|")
     for r in results:
-        status = "✅ 通过" if r["passed"] else f"❌ 未通过 (R²={r['r2']:.4f})"
+        status = "通过" if r["passed"] else f"未通过 (R²={r['r2']:.4f})"
         lines.append(
             f"| {r['model_name']} | {r['mae']:.6f} | {r['rmse']:.6f} | {r['r2']:.6f} | {r['mape']:.4f} | {status} |"
         )

@@ -1,7 +1,7 @@
 """Dreaming 离线反思模块（ADR-021）。
 
-本模块将 Anthropic Claude Managed Agents 的 Dreaming 机制本地化集成到
-"灵境制造" 项目中，仿生神经科学的"记忆巩固"理论：
+本模块为"灵境制造"项目实现离线反思（Dreaming）机制，
+仿生神经科学的"记忆巩固"理论：
 
     Memory（工作中学习） + Dreaming（休息时反思） + Outcomes（自检）
     => 完整的自我改进闭环

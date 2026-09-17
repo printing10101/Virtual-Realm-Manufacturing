@@ -1,6 +1,6 @@
 """规则合成器：将洞察转化为可执行规则草稿。
 
-对应 Anthropic Dreaming 的 "Outcomes 反馈" 机制：
+Outcomes 反馈链路：
     Dream 浮现的洞察 → 规则候选 → 沙箱验证 → 灰度应用 → 持久化
 
 本地化实现：

@@ -619,4 +619,4 @@ for fig_file in sorted(figures_dir.glob("*.png")):
                               'lomo_heatmap.png', 'main_results_industrial.png',
                               'main_results_synthetic.png', 'model_radar_chart.png',
                               'prediction_scatter_residual.png', 'time_constant_distribution.png']:
-        print(f"  ✨ {fig_file.name}")
+        print(f"  {fig_file.name}")

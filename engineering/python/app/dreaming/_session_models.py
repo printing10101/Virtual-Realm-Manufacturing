@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-# Anthropic 限制：单次 Dream 最多 100 个 Sessions
+# 单次 Dream 最多 100 个 Sessions
 MAX_SESSIONS_PER_DREAM = 100
 
 
@@ -13,7 +13,7 @@ MAX_SESSIONS_PER_DREAM = 100
 class ProjectSession:
     """项目级 Session：一次实验/验证/审核的完整上下文。
 
-    对应 Anthropic 的 Session 概念，但数据源不同。
+    数据源为本项目本地数据（MLflow / CAM / 审计 / 切削参数库）。
     """
 
     session_id: str  # 唯一标识

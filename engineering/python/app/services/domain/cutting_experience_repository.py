@@ -6,7 +6,7 @@
 - 使用 `get_sessionmaker()` 获取异步 session
 - 数据库未配置时抛 RuntimeError（由上层 API 捕获转 503）
 
-⚠️ 与 `cutting_experience_service.py` 的关系：
+与 `cutting_experience_service.py` 的关系：
 本文件是 service 的仓库层形态，直接子模块导入 ORM 模型，不依赖
 `app.database.models.__init__` 的导出（该文件因环境锁暂未更新）。
 API 层（P2-3）应导入本模块。待锁解除后两个文件可合并或其一废弃。

@@ -2,7 +2,7 @@
 
 环境变量前缀：LNN_DREAM_*
 
-对应 Anthropic Claude Managed Agents 的 Dreaming 机制本地化集成。
+离线反思（Dreaming）机制的本地化集成。
 仿生神经科学「记忆巩固」理论：Agent 在 Session 间隙离线审查 Memory Store，
 执行去重合并、过时更新、跨 Session 洞察浮现，并将洞察转化为可执行规则。
 

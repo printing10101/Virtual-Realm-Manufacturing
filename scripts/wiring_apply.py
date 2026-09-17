@@ -26,7 +26,7 @@ DSH 沙箱内已存在文件 write/edit 全部被拒（ReplaceFileW EACCES），
 
 幂等性
 ------
-已应用的改动会检测到并跳过（✅ 已应用/⏭️ 跳过），重复运行安全。
+已应用的改动会检测到并跳过（已应用/跳过），重复运行安全。
 """
 
 from __future__ import annotations
@@ -49,16 +49,7 @@ _warnings: list[str] = []
 
 
 def log(msg: str) -> None:
-    # 将 Unicode 字符转换为 ASCII 替代，避免 GBK 编码错误
-    msg = (
-        msg.replace("✅", "[OK]")
-        .replace("❌", "[ERR]")
-        .replace("⏭️", "[SKIP]")
-        .replace("📋", "[NOTE]")
-        .replace("🚀", "[INFO]")
-        .replace("🔧", "[FIX]")
-        .replace("⚠️", "[WARN]")
-    )
+    # 输出统一用 ASCII 标记（[OK]/[ERR]/[SKIP]...），避免 GBK 控制台编码错误
     print(msg)
 
 
@@ -86,27 +77,27 @@ def patch_file(rel_path: str, old: str, new: str, desc: str, dry_run: bool) -> b
     global _applied, _skipped, _errors
     path = PY_DIR / rel_path
     if not path.exists():
-        _errors.append(f"S 文件不存在: {rel_path}")
-        log(f"  ❌ 文件不存在: {rel_path}")
+        _errors.append(f"文件不存在: {rel_path}")
+        log(f"  [ERR] 文件不存在: {rel_path}")
         return False
     text = read_text(path)
     if new in text:
         _skipped += 1
-        log(f"  ⏭️  已应用（跳过）: {desc}")
+        log(f"  [SKIP] 已应用（跳过）: {desc}")
         return True
     count = text.count(old)
     if count != 1:
         _errors.append(f"{rel_path} 匹配 {count} 次（需恰好 1 次）: {desc}")
-        log(f"  ❌ 匹配 {count} 次（需恰好 1 次）: {desc}")
+        log(f"  [ERR] 匹配 {count} 次（需恰好 1 次）: {desc}")
         log(f"     old 前 100 字符: {old[:100]!r}")
         return False
     if dry_run:
         _applied += 1
-        log(f"  ✅ [dry-run] {desc}")
+        log(f"  [OK] [dry-run] {desc}")
         return True
     write_text(path, text.replace(old, new), dry_run=False)
     _applied += 1
-    log(f"  ✅ {desc}")
+    log(f"  [OK] {desc}")
     return True
 
 
@@ -116,21 +107,21 @@ def append_block(rel_path: str, marker: str, block: str, desc: str, dry_run: boo
     path = PY_DIR / rel_path
     if not path.exists():
         _errors.append(f"文件不存在: {rel_path}")
-        log(f"  ❌ 文件不存在: {rel_path}")
+        log(f"  [ERR] 文件不存在: {rel_path}")
         return False
     text = read_text(path)
     if marker in text:
         _skipped += 1
-        log(f"  ⏭️  已包含（跳过）: {desc}")
+        log(f"  [SKIP] 已包含（跳过）: {desc}")
         return True
     new_text = text.rstrip() + "\n\n" + block + "\n"
     if dry_run:
         _applied += 1
-        log(f"  ✅ [dry-run] {desc}")
+        log(f"  [OK] [dry-run] {desc}")
         return True
     write_text(path, new_text, dry_run=False)
     _applied += 1
-    log(f"  ✅ {desc}")
+    log(f"  [OK] {desc}")
     return True
 
 
@@ -154,10 +145,10 @@ def extend_all(rel_path: str, names: list[str], dry_run: bool) -> None:
         new_inner = inner + "\n    " + joined + "\n"
     new_text = text[: m.start()] + head + new_inner + tail + text[m.end() :]
     if dry_run:
-        log(f"  ✅ [dry-run] 更新 __all__（+{len(missing)} 名）: {rel_path}")
+        log(f"  [OK] [dry-run] 更新 __all__（+{len(missing)} 名）: {rel_path}")
         return
     write_text(path, new_text, dry_run=False)
-    log(f"  ✅ 更新 __all__（+{len(missing)} 名）: {rel_path}")
+    log(f"  [OK] 更新 __all__（+{len(missing)} 名）: {rel_path}")
 
 
 def remove_file(rel_path: str, dry_run: bool) -> None:
@@ -165,15 +156,15 @@ def remove_file(rel_path: str, dry_run: bool) -> None:
     path = PY_DIR / rel_path
     if not path.exists():
         _skipped += 1
-        log(f"  ⏭️  不存在（跳过）: {rel_path}")
+        log(f"  [SKIP] 不存在（跳过）: {rel_path}")
         return
     if dry_run:
         _applied += 1
-        log(f"  ✅ [dry-run] 删除: {rel_path}")
+        log(f"  [OK] [dry-run] 删除: {rel_path}")
         return
     path.unlink()
     _applied += 1
-    log(f"  ✅ 删除: {rel_path}")
+    log(f"  [OK] 删除: {rel_path}")
 
 
 # 步骤实现
@@ -486,7 +477,7 @@ def step4_delegation(dry_run: bool) -> None:
         dry_run,
     )
     log(
-        "  📋 需按 docs/development/parametric_geometry-白盒化.md 委托 3 处：\n"
+        "  [NOTE] 需按 docs/development/parametric_geometry-白盒化.md 委托 3 处：\n"
         "     1) run_pipeline():           开头 `if not can_execute(task.status): raise ...`\n"
         "     2) review_step_feature():    开头 `if not can_review(task.status): raise ...`；\n"
         "        审核完成判定改用 all_features_reviewed([...]) + next_status_after_review(...)\n"
@@ -505,7 +496,7 @@ def step4_delegation(dry_run: bool) -> None:
         dry_run,
     )
     log(
-        "  📋 需按 docs/development/dxf-pipeline-六阶段声明化.md 委托 3 处：\n"
+        "  [NOTE] 需按 docs/development/dxf-pipeline-六阶段声明化.md 委托 3 处：\n"
         "     1) 阶段名输出改用 stage_name(StageKey.X)\n"
         "     2) Stage3 失败降级判定改用 should_abort_after(StageKey.MODEL_CONVERT, failed=True)\n"
         "     3) 结果摘要改用 summarize_pipeline(statuses, success)"
@@ -597,21 +588,21 @@ def main() -> int:
     step6_print_gate_commands()
 
     section("结果汇总")
-    log(f"  ✅ 应用/将应用: {_applied}")
-    log(f"  ⏭️  已存在跳过: {_skipped}")
+    log(f"  [OK] 应用/将应用: {_applied}")
+    log(f"  [SKIP] 已存在跳过: {_skipped}")
     if _errors:
-        log(f"  ❌ 错误: {len(_errors)}")
+        log(f"  [ERR] 错误: {len(_errors)}")
         for err in _errors:
             log(f"     - {err}")
     else:
-        log("  ✅ 无错误")
+        log("  [OK] 无错误")
     if _warnings:
-        log(f"  ⚠️  警告: {len(_warnings)}")
+        log(f"  [WARN] 警告: {len(_warnings)}")
 
     if dry_run and _applied:
         log("\n预览完成：运行 `py -3.11 scripts/wiring_apply.py --apply` 实际执行接线。")
     if _errors:
-        log("\n存在未应用的改动（见上方 ❌），修复后重新运行。")
+        log("\n存在未应用的改动（见上方 [ERR]），修复后重新运行。")
         return 1
     return 0
 

@@ -1,6 +1,6 @@
 """本地化 Memory Store。
 
-对应 Anthropic Claude Managed Agents 的 Memory Store 概念：
+Memory Store 核心概念：
     - 工作区级文本文档集合
     - 支持读写和只读两种模式
     - 每次修改生成不可变 Memory Version
@@ -11,7 +11,7 @@
     - **审计追溯**：所有写入带 source=dream_cycle + validation_count 标记
     - **安全隔离**：只读 Store 用于参考材料，读写 Store 用于运行时记忆
 
-关键差异（vs Anthropic 原版）：
+与通用云端方案的差异：
     - 不依赖云端 /mnt/memory/ 目录，改用本地 GraphStore
     - Memory Version 不是 30 天审计记录，而是 Git 永久快照
     - 单 Memory 100KB 限制 → 本地无限制（磁盘存储）
@@ -64,7 +64,7 @@ class MemoryEntry:
 
 @dataclass
 class MemoryVersion:
-    """不可变 Memory 版本快照（对应 Anthropic Memory Version）。"""
+    """不可变 Memory 版本快照。"""
 
     version_id: str  # Git commit hash
     timestamp: str
@@ -108,10 +108,7 @@ class LocalMemoryStore:
     # 读取
 
     def read_all(self) -> list[dict[str, Any]]:
-        """读取全部 Dreaming memory 条目。
-
-        对应 Anthropic 的 /mnt/memory/ 目录读取。
-        """
+        """读取全部 Dreaming memory 条目。"""
         nodes = self.graph.list_nodes_by_type(DREAMING_NODE_TYPE)
         return [
             {
@@ -204,10 +201,7 @@ class LocalMemoryStore:
         confidence: float | None = None,
         increment_validation: bool = False,
     ) -> bool:
-        """更新已有 memory 条目。
-
-        对应 Anthropic 的 "过时更新" 操作。
-        """
+        """更新已有 memory 条目。"""
         node = self.graph.get_node(node_id)
         if node is None:
             return False
@@ -231,7 +225,7 @@ class LocalMemoryStore:
     ) -> MemoryVersion:
         """生成不可变版本快照。
 
-        对应 Anthropic 的 Memory Version：
+        版本快照要点：
             - Git commit hash 作为 version_id
             - 永久保留（非 30 天）
             - 可通过 diff_versions 对比
@@ -326,8 +320,6 @@ class LocalMemoryStore:
     def diff_versions(self, v1: str, v2: str) -> str:
         """对比两个版本的差异。
 
-        对应 Anthropic Console 的 Diff 审查功能。
-
         Args:
             v1: 旧版本 hash
             v2: 新版本 hash
@@ -365,7 +357,7 @@ class LocalMemoryStore:
             pass
         return None
 
-    # 清理（对应 Anthropic 的 "直接丢弃" 选项）
+    # 清理（直接丢弃，不保留版本历史）
 
     def discard_version(self, version: str) -> bool:
         """丢弃指定版本（git revert，不删除历史）。

@@ -28,7 +28,7 @@ class RepositoryError(AppException):
 class RecordNotFoundError(RepositoryError):
     """数据记录未找到（404）。
 
-    ⚠️ 2026-08-19 修复：此前未传 status_code=404，实际继承 RepositoryError
+    2026-08-19 修复：此前未传 status_code=404，实际继承 RepositoryError
     默认的 500（与注释声称的 404 不符）。补传 status_code=404 使行为与文档一致。
     """
 

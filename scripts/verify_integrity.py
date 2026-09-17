@@ -111,31 +111,31 @@ def main():
     print("\n[1/2] 检查缺失的 __init__.py ...")
     missing_inits = check_missing_inits(app_dir)
     if missing_inits:
-        print("  ❌ 发现以下目录包含 .py 文件但缺少 __init__.py:")
+        print("  发现以下目录包含 .py 文件但缺少 __init__.py:")
         for m in missing_inits:
             print(f"     - {m}")
         print("  建议: 使用 `touch <dir>/__init__.py` 修复")
     else:
-        print("  ✅ 所有包目录均包含 __init__.py")
+        print("  所有包目录均包含 __init__.py")
 
     # 2. 检查导入链
     print("\n[2/2] 扫描并尝试导入所有模块 ...")
     errors = check_imports()
 
     if errors:
-        print(f"  ❌ 发现 {len(errors)} 个导入/属性错误:")
+        print(f"  发现 {len(errors)} 个导入/属性错误:")
         for err in errors:
             print(f"     - {err}")
     else:
-        print("  ✅ 所有模块导入成功，属性引用正确")
+        print("  所有模块导入成功，属性引用正确")
 
     # 总结
     print("\n" + "=" * 60)
     if missing_inits or errors:
-        print("⚠️ 验证失败: 存在结构性问题，请修复后重试。")
+        print("验证失败: 存在结构性问题，请修复后重试。")
         sys.exit(1)
     else:
-        print("✅ 验证通过: 导入链完整，类名匹配，无缺失文件。")
+        print("验证通过: 导入链完整，类名匹配，无缺失文件。")
         sys.exit(0)
 
 

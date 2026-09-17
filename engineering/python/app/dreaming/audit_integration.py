@@ -1,6 +1,6 @@
 """Dreaming 反思决策审计集成。
 
-对应 Anthropic Dreaming 的 "Decisions are written to the audit log"：
+反思决策统一写入审计日志：
     - 每次反思完成时，将关键决策写入 audit_log 哈希链
     - 记录 Memory Version、去重/更新/洞察/规则统计
     - 标记 LLM 使用情况（学术诚信 D-2）

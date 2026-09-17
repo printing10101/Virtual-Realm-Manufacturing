@@ -1,6 +1,6 @@
 """Outcomes 反馈闭环：将规则真实效果反馈到置信度与灰度阶段。
 
-对应 Anthropic Dreaming 的 "Outcomes" 机制：
+Outcomes 反馈机制：
     - 工作中规则触发后产生 Outcome 样本（成功/失败/异常）
     - 闭环收集多源证据，通过 Dempster-Shafer 融合得到聚合置信度
     - 基于 FusionResult 的 confidence + conflict + ds_mass 决策晋级/降级

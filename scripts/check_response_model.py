@@ -359,7 +359,7 @@ def main() -> int:
         new_findings = compare_with_baseline(report, args.baseline)
         if new_findings:
             print()
-            print(f"⚠️  发现 {len(new_findings)} 条新增未声明路由（相对基准）：")
+            print(f"发现 {len(new_findings)} 条新增未声明路由（相对基准）：")
             for f in new_findings:
                 print(f"  {_normalize_path(f.file)}:{f.line}  {f.method} {f.path}  ({f.function_name})")
             print()
@@ -368,7 +368,7 @@ def main() -> int:
             return 1
         else:
             print()
-            print("✅ 未发现新增未声明路由（相对基准）")
+            print("未发现新增未声明路由（相对基准）")
             return 0
 
     if args.strict and report.without_response_model > 0:

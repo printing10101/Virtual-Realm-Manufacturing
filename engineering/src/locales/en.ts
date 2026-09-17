@@ -699,7 +699,7 @@ export default {
     createToken: "Create Token",
     agentTokenInfo: "About Agent Tokens",
     agentTokenDesc1:
-      "Agent Tokens allow external AI tools (Cursor, Claude Code, Codex) to access LNN capabilities.",
+      "Agent Tokens allow external agent tools to access LNN capabilities.",
     agentTokenDesc2:
       "Permission levels: R (Read) / W (Write) / B (Train) / N (Notify) / C (Manage) / T (Execute)",
     agentTokenDesc3:

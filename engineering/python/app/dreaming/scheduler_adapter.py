@@ -1,6 +1,6 @@
 """Dreaming 与 HeartbeatScheduler 的集成适配器。
 
-对应 Anthropic Dreaming 的 "Asynchronous Dream Jobs"：
+异步定时反思任务（Asynchronous Dream Jobs）：
     - 在 Session 间隙（凌晨低负载时段）自动触发反思
     - 基于 HeartbeatScheduler + CronParser 实现定时调度
     - 任务合并（coalescing）防止并发反思
@@ -82,7 +82,7 @@ class DreamingSchedulerAdapter:
             cron_expression: cron 表达式（5 字段：分 时 日 月 星期）。
                 默认 "0 3 * * *"（每天 03:00）。
             lookback_days: 反思回溯天数。默认 1（只看前一天）。
-            max_sessions: 最大 Session 数（对齐 Anthropic 100 上限）。
+            max_sessions: 最大 Session 数（上限 100）。
             include_ar_02_pre_fix: 是否包含 AR-02 修复前数据。默认 False（排除）。
             enable_llm: 是否启用 LLM 反思。True 优先用 LLM，不可用时降级。
         """

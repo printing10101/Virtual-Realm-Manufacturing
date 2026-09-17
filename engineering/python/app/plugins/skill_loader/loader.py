@@ -193,9 +193,9 @@ class SkillLoader(
                 lines.append(f"**标签**: {', '.join(meta.tags)}")
 
             level_labels = {
-                SkillLevel.GLOBAL: "🌐 全局",
-                SkillLevel.PROJECT: "📁 项目",
-                SkillLevel.AGENT: "🤖 代理",
+                SkillLevel.GLOBAL: "全局",
+                SkillLevel.PROJECT: "项目",
+                SkillLevel.AGENT: "代理",
             }
             lines.append(f"**级别**: {level_labels.get(meta.level, meta.level.value)}")
 

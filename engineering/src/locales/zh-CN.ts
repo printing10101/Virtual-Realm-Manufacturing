@@ -685,8 +685,7 @@ export default {
     revokeAllT: "撤销所有T类Token",
     createToken: "创建Token",
     agentTokenInfo: "Agent Token 说明",
-    agentTokenDesc1:
-      "Agent Token 供外部 AI 工具（Cursor、Claude Code、Codex）调用 LNN 能力使用。",
+    agentTokenDesc1: "Agent Token 供外部 Agent 工具调用 LNN 能力使用。",
     agentTokenDesc2:
       "权限级别：R（读取）/ W（写入）/ B（训练）/ N（通知）/ C（管理）/ T（执行）",
     agentTokenDesc3:
@@ -3094,7 +3093,7 @@ export default {
     // [U-P0-1] 首次启动引导步骤内容
     step1Title: "欢迎使用灵境制造",
     step1Desc:
-      "这是一款面向机械加工的 AI 驱动 CAM 工具。让我们用 1 分钟快速了解主要功能。",
+      "这是一款面向机械加工的 AI 驱动 CAM 工具。用 1 分钟快速了解主要功能。",
     step2Title: "导航菜单",
     step2Desc:
       "左侧导航栏按功能分组：工艺规划、AI 预测、数据管理、系统设置。点击任意菜单项进入对应模块。",

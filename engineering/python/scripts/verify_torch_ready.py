@@ -128,7 +128,7 @@ def main() -> int:
     print("\n" + "=" * 70, file=sys.stderr)
     if exit_code == 0:
         print(
-            "[verify] ✅ 全部 torch 依赖测试通过 — ADR-020 P2 L4 环境阻塞已解除\n"
+            "[verify] 全部 torch 依赖测试通过 — ADR-020 P2 L4 环境阻塞已解除\n"
             "   下一步可推进：\n"
             "   - PHM2010 全链路跑通（思路 1 验收）\n"
             "   - MLflow 记录 fusion_layer 参数（D-2 学术诚信）\n"
@@ -138,7 +138,7 @@ def main() -> int:
         )
         return 0
     print(
-        "[verify] ❌ 存在失败或仍被 skip 的用例 — 请排查上方 pytest 输出\n"
+        "[verify] 存在失败或仍被 skip 的用例 — 请排查上方 pytest 输出\n"
         "   常见原因：\n"
         "   - torch 版本不兼容（建议 torch>=2.0）\n"
         "   - 依赖包缺失（numpy/scipy 版本冲突）\n"

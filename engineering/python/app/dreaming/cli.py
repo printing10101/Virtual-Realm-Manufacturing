@@ -278,7 +278,7 @@ def cmd_version(args: argparse.Namespace) -> int:
 
     print(f"灵境制造 Dreaming 模块 v{__version__}")
     print("对应 ADR-021：Dreaming 离线反思机制")
-    print("本地化 Anthropic Claude Managed Agents Dreaming 功能")
+    print("离线反思（Dreaming）：记忆巩固与规则反馈闭环")
     return 0
 
 
@@ -305,7 +305,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-sessions",
         type=int,
         default=100,
-        help="最大 Session 数（对齐 Anthropic 100 上限）",
+        help="最大 Session 数（上限 100）",
     )
     reflect_parser.add_argument(
         "--instructions",

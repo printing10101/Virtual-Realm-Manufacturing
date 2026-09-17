@@ -71,7 +71,7 @@ def test_safety_window_cap():
 
 
 def test_evidence_level_annotated():
-    """每种材料必须带证据级别标注（✅⚠️🔶），防止未核实数据冒充锚点。"""
+    """每种材料必须带证据级别标注（），防止未核实数据冒充锚点。"""
     for mat in mm.MATERIALS:
         assert any(tag in mat.evidence for tag in ("✅", "⚠️", "🔶")), \
             f"{mat.name} 缺证据级别标注"

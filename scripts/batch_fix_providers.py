@@ -29,10 +29,10 @@ PROVIDER_FILES = [
 def fix_provider_exceptions(file_path: Path) -> bool:
     """修复单个 provider 文件"""
     if not file_path.exists():
-        print(f"⚠️  Skipping (not found): {file_path.name}")
+        print(f"Skipping (not found): {file_path.name}")
         return False
 
-    print(f"🔧  Processing: {file_path.relative_to(Path.cwd())}")
+    print(f"Processing: {file_path.relative_to(Path.cwd())}")
 
     try:
         content = file_path.read_text(encoding="utf-8")
@@ -139,19 +139,19 @@ def fix_provider_exceptions(file_path: Path) -> bool:
             changes.append(f"异常处理改进 + 熔断器集成")
             return True
         else:
-            print(f"  ⏭️  No changes needed")
+            print(f"  No changes needed")
             return False
 
     except Exception as e:
-        print(f"  ❌ Failed: {e}")
+        print(f"  Failed: {e}")
         return False
 
 
 def main():
     """主函数"""
     print("=" * 80)
-    print("🚀  批量修复 LLM Provider 异常处理")
-    print(f"📅  Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("批量修复 LLM Provider 异常处理")
+    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 80)
 
     cwd = Path.cwd()
@@ -165,9 +165,9 @@ def main():
         files_processed += 1
 
     print("=" * 80)
-    print(f"✅  Completed: {files_modified}/{files_processed} files modified")
+    print(f"Completed: {files_modified}/{files_processed} files modified")
     print()
-    print("📝  Next steps:")
+    print("Next steps:")
     print("   1. Review modified files for correctness")
     print("   2. Run tests: unset PYTHONPATH && py -3.14 -m pytest")
     print("   3. Fix any breakages")
@@ -175,7 +175,7 @@ def main():
 
 
 if __name__ == "__main__":
-    print("⚠️  This script modifies multiple provider files.")
+    print("This script modifies multiple provider files.")
     print("   Backup created automatically.\n")
 
     input("PressEnter to continue, Ctrl+C to cancel: ")

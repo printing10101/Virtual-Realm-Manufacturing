@@ -288,11 +288,11 @@ def generate_markdown_report(
 
     # 整体状态徽章
     if summary["failed"] == 0 and summary["error"] == 0:
-        status_badge = "✅ **状态: 全部通过**"
+        status_badge = "**状态: 全部通过**"
     elif summary["failed"] == 0 and summary["error"] == 0 and summary["xfail"] > 0:
-        status_badge = "⚠️ **状态: 通过（含已知 xfail）**"
+        status_badge = "**状态: 通过（含已知 xfail）**"
     else:
-        status_badge = "❌ **状态: 有失败项，需修复**"
+        status_badge = "**状态: 有失败项，需修复**"
     lines.append(status_badge)
     lines.append("")
 
@@ -315,7 +315,7 @@ def generate_markdown_report(
                 metric_improvements.append(c)
 
     if regressions:
-        lines.append(f"### ❌ 失败回归（{len(regressions)} 项）")
+        lines.append(f"### 失败回归（{len(regressions)} 项）")
         lines.append("")
         lines.append("以下测试在基线中通过，但本次失败：")
         lines.append("")
@@ -323,13 +323,13 @@ def generate_markdown_report(
             lines.append(f"- `{r}`")
         lines.append("")
     else:
-        lines.append("### ✅ 无失败回归")
+        lines.append("### 无失败回归")
         lines.append("")
         lines.append("所有基线中通过的测试，本次仍然通过。")
         lines.append("")
 
     if metric_regressions:
-        lines.append(f"### ⚠️ 数值回归（{len(metric_regressions)} 项，≥ +{REGRESSION_THRESHOLD_PCT:.0f}%）")
+        lines.append(f"### 数值回归（{len(metric_regressions)} 项，≥ +{REGRESSION_THRESHOLD_PCT:.0f}%）")
         lines.append("")
         lines.append("| 测试 | 指标 | 基线 | 实际 | 回归 |")
         lines.append("|------|------|------|------|------|")
@@ -351,7 +351,7 @@ def generate_markdown_report(
         lines.append("")
 
     if improvements:
-        lines.append(f"### 🎉 xfail 转通过（{len(improvements)} 项）")
+        lines.append(f"### xfail 转通过（{len(improvements)} 项）")
         lines.append("")
         lines.append("以下测试在基线中标记为 xfail，但本次通过：")
         lines.append("")
@@ -360,7 +360,7 @@ def generate_markdown_report(
         lines.append("")
 
     if metric_improvements:
-        lines.append(f"### 🎉 数值改进（{len(metric_improvements)} 项，≤ -{REGRESSION_THRESHOLD_PCT:.0f}%）")
+        lines.append(f"### 数值改进（{len(metric_improvements)} 项，≤ -{REGRESSION_THRESHOLD_PCT:.0f}%）")
         lines.append("")
         lines.append("| 测试 | 指标 | 基线 | 实际 | 变化 |")
         lines.append("|------|------|------|------|------|")
@@ -379,7 +379,7 @@ def generate_markdown_report(
         lines.append("")
 
     if new_tests:
-        lines.append(f"### 🆕 新增测试（{len(new_tests)} 项）")
+        lines.append(f"### 新增测试（{len(new_tests)} 项）")
         lines.append("")
         lines.append("以下测试未在基线中记录（建议更新 BASELINE.json）：")
         lines.append("")
@@ -390,7 +390,7 @@ def generate_markdown_report(
         lines.append("")
 
     if removed_tests:
-        lines.append(f"### 🗑️ 移除测试（{len(removed_tests)} 项）")
+        lines.append(f"### 移除测试（{len(removed_tests)} 项）")
         lines.append("")
         lines.append("以下测试在基线中存在，但本次未运行（可能已删除或重命名）：")
         lines.append("")
@@ -470,8 +470,8 @@ def generate_markdown_report(
         miss_count = metric_comparison.get("missing_actual_count", 0)
 
         lines.append(
-            f"**统计**: ✅ {matched} matched, ⚠️ {reg_count} regressions, "
-            f"🎉 {imp_count} improvements, ❓ {miss_count} missing"
+            f"**统计**: {matched} matched, {reg_count} regressions, "
+            f"{imp_count} improvements, {miss_count} missing"
         )
         lines.append("")
 
@@ -510,7 +510,7 @@ def generate_markdown_report(
                     f"{base_str} | {actual_str} | {reg_str} | {direction} | {notes} |"
                 )
             lines.append("")
-            lines.append("> 状态图标: ✅ 正常 / ⚠️ 回归 / 🎉 改进 / ❓ 未提取到数值 / ⏭️ 跳过")
+            lines.append("> 状态标记: OK 正常 / WARN 回归 / ++ 改进 / ? 未提取到数值 / skip 跳过")
             lines.append("")
 
     # 失败项详情
@@ -519,7 +519,7 @@ def generate_markdown_report(
         lines.append("## 失败项详情")
         lines.append("")
         for t in failed_tests:
-            lines.append(f"### ❌ `{t['test_name']}`")
+            lines.append(f"### `{t['test_name']}`")
             lines.append(f"- **文件**: `{t['file']}`")
             lines.append(f"- **类**: `{t['class_name']}`")
             if t.get("failure_excerpt"):
@@ -600,12 +600,12 @@ def generate_markdown_report(
 def _status_icon(status: str) -> str:
     """状态对应的图标。"""
     return {
-        "PASSED": "✅",
-        "FAILED": "❌",
-        "SKIPPED": "⏭️",
-        "XFAIL": "⚠️",
-        "ERROR": "💥",
-    }.get(status, "❓")
+        "PASSED": "OK",
+        "FAILED": "X",
+        "SKIPPED": "skip",
+        "XFAIL": "xfail",
+        "ERROR": "!!",
+    }.get(status, "?")
 
 
 def _format_value(value: Any, unit: str) -> str:
@@ -640,14 +640,14 @@ def _format_value(value: Any, unit: str) -> str:
 def _regression_icon(c: Dict[str, Any]) -> str:
     """根据对比结果返回状态图标。"""
     if c.get("is_regression"):
-        return "⚠️"
+        return "WARN"
     if c.get("is_improvement"):
-        return "🎉"
+        return "++"
     if c.get("status") == "matched":
-        return "✅"
+        return "OK"
     if c.get("status") == "missing_actual":
-        return "❓"
-    return "⏭️"
+        return "?"
+    return "skip"
 
 
 # 主入口

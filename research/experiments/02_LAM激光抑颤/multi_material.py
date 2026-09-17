@@ -3,11 +3,11 @@
 全仿真路线"普适性"模块。三种材料的热-力标定参数与增益窗口，
 **逐项标注证据级别**（审稿人视角的诚实性要求）：
 
-  ✅ 锚点：Ti-6Al-4V κ=0.000736（9 组 J-C 均值，calibrate_kappa_delta.py）
+  锚点：Ti-6Al-4V κ=0.000736（9 组 J-C 均值，calibrate_kappa_delta.py）
           δ=0.000517（Karpat 2009 E(T) 拟合）——已核实
-  ⚠️ 推导：δ 由材料弹性模量温度系数 E(T) 公开数据计算
+  推导：δ 由材料弹性模量温度系数 E(T) 公开数据计算
           （ASM 材料手册级别，可复核）
-  🔶 区间：κ 为文献综述区间估计（García et al. 2013 IJMTM 报道 Inconel 718
+  区间：κ 为文献综述区间估计（García et al. 2013 IJMTM 报道 Inconel 718
           LAM 显著改善可加工性；力降定量 30~60% 为综述量级，**需实验确认**）
 
 核心物理论证（论文 discussion 用）：
@@ -33,14 +33,14 @@ TI64_KAPPA, TI64_DELTA = 0.000736, 0.000517
 # Inconel 718: E0=200 GPa @20°C, E(500°C)≈170 GPa δ=(200-170)/200/500
 IN718_E0_GPA, IN718_E500_GPA = 200.0, 170.0
 IN718_DELTA = (IN718_E0_GPA - IN718_E500_GPA) / IN718_E0_GPA / 500.0  # ≈0.0003
-IN718_KAPPA_RANGE = (0.0006, 0.0012)  # 🔶 文献综述区间（García 2013 等）
+IN718_KAPPA_RANGE = (0.0006, 0.0012)  # 文献综述区间（García 2013 等）
 
-TI5553_KAPPA_RANGE = (0.000527, 0.001267)  # ⚠️ 同族保守：与 Ti-6Al-4V J-C 区间一致
-TI5553_DELTA = TI64_DELTA  # ⚠️ E(T) 同族近似
+TI5553_KAPPA_RANGE = (0.000527, 0.001267)  # 同族保守：与 Ti-6Al-4V J-C 区间一致
+TI5553_DELTA = TI64_DELTA  # E(T) 同族近似
 
-XI_LO, XI_HI = 733.0, 1107.0  # ✅ Springer OA 实测（Ti-6Al-4V）
-XI_TI5553_SCALE = 1.0  # ⚠️ 近 β 钛热导率相近，xi 保守取同族
-XI_IN718_SCALE = 0.9  # 🔶 镍基热导率更高(11.4 W/mK)，加热效率略低
+XI_LO, XI_HI = 733.0, 1107.0  # Springer OA 实测（Ti-6Al-4V）
+XI_TI5553_SCALE = 1.0  # 近 β 钛热导率相近，xi 保守取同族
+XI_IN718_SCALE = 0.9  # 镍基热导率更高(11.4 W/mK)，加热效率略低
 
 
 @dataclass

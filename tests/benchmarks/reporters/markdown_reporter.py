@@ -84,7 +84,7 @@ def generate_markdown_report(
             change_pct = r.get("change_pct", 0)
             change_str = f"{change_pct:+.1f}%" if isinstance(change_pct, (int, float)) else "-"
             status = r.get("status", "")
-            status_icon = {"PASS": "✓", "WARNING": "⚠", "CRITICAL": "✗", "NEW": "🆕", "IMPROVED": "↑"}.get(status, "?")
+            status_icon = {"PASS": "✓", "WARNING": "⚠", "CRITICAL": "✗", "NEW": "+", "IMPROVED": "↑"}.get(status, "?")
             lines.append(
                 f"| {r.get('metric', '')} | {r.get('current', '')} | "
                 f"{r.get('previous', '')} | {change_str} | {status_icon} {status} |"

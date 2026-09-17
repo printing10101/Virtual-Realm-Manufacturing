@@ -1,6 +1,6 @@
 """规则效果度量收集器（Effectiveness Metrics Collector）。
 
-对应 Anthropic Dreaming 的 "Outcomes are tracked" 闭环：
+规则真实效果需要被度量并反馈（Outcomes 闭环）：
     - 规则在灰度发布期间触发的真实效果需要被度量
     - 度量结果反馈给 ProgressivePublisher 决定晋级/降级
     - 度量结果反馈给 ClosedLoop 决定规则置信度调整

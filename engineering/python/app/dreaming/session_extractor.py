@@ -1,6 +1,6 @@
 """Session 提取器：从项目历史数据中提取 Dreaming 的"Session"输入。
 
-对应 Anthropic Claude Managed Agents 的 Sessions 概念：
+Session 概念约定：
     - 最多 100 个 Sessions 作为 Dream 的输入
     - 每个 Session 包含完整的对话/工作历史
 
@@ -77,7 +77,7 @@ class SessionExtractor(_SourcesMixin):
 
         Args:
             lookback_days: 回溯天数
-            max_sessions: 最大 Session 数（对齐 Anthropic 100 上限）
+            max_sessions: 最大 Session 数（上限 100）
             include_ar_02_pre_fix: 是否包含 AR-02 修复前数据
                 （默认 False，论文数据集应排除）
 

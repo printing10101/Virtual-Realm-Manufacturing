@@ -1,6 +1,6 @@
 """反思报告生成器：输出 Markdown 格式的反思报告。
 
-对应 Anthropic Dreaming 的 Reflection Report：
+反思报告（Reflection Report）输出约定：
     - 人类可读的 Markdown 文档
     - 包含去重/更新/洞察/规则候选的完整说明
     - 记录 LLM 模型和置信度（学术诚信 D-2）

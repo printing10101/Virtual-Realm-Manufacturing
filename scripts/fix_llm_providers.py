@@ -157,8 +157,8 @@ from app.core.exceptions import (
 def main():
     """主函数"""
     print("=" * 80)
-    print("🔧 智能修复 LLM Providers 异常处理")
-    print(f"📅 Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("智能修复 LLM Providers 异常处理")
+    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 80)
 
     # 定义 provider 文件列表 (按优先级排序)
@@ -184,7 +184,7 @@ def main():
     # 过滤存在的文件
     provider_files = [f for f in provider_files if f.exists()]
 
-    print(f"📁 Found {len(provider_files)} provider files to process")
+    print(f"Found {len(provider_files)} provider files to process")
     print("=" * 80)
 
     results = []
@@ -207,24 +207,24 @@ def main():
 
         if result["status"] == "fixed":
             total_changes += result["changes"]
-            print(f"   ✅ Fixed: {result['messages']}")
+            print(f"   Fixed: {result['messages']}")
         elif result["status"] == "unchanged":
-            print(f"   ⏭️  {result['messages']}")
+            print(f"   {result['messages']}")
         elif result["status"] == "error":
             total_errors += 1
-            print(f"   ❌ Error: {', '.join(result['errors'])}")
+            print(f"   Error: {', '.join(result['errors'])}")
         else:
-            print(f"   ⏭️  Skipped")
+            print(f"   Skipped")
 
     # 生成报告
     print("\n" + "=" * 80)
-    print("📊 修复结果汇总")
+    print("修复结果汇总")
     print("=" * 80)
-    print(f"📁 总文件数: {len(provider_files)}")
-    print(f"✅ 已修复:   {sum(1 for r in results if r['status'] == 'fixed')}")
-    print(f"⏭️  未修改：{sum(1 for r in results if r['status'] == 'unchanged')}")
-    print(f"❌ 错误：   {total_errors}")
-    print(f"🔧 修改次数：{total_changes}")
+    print(f"总文件数: {len(provider_files)}")
+    print(f"已修复:   {sum(1 for r in results if r['status'] == 'fixed')}")
+    print(f"未修改：{sum(1 for r in results if r['status'] == 'unchanged')}")
+    print(f"错误：   {total_errors}")
+    print(f"修改次数：{total_changes}")
 
     # 保存报告
     report = {
@@ -239,10 +239,10 @@ def main():
 
     report_path = Path("scripts/provider_fix_report.json")
     report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False))
-    print(f"\n📄 详细报告已保存到：{report_path}")
+    print(f"\n详细报告已保存到：{report_path}")
 
     # 后续步骤建议
-    print("\n📝 后续步骤:")
+    print("\n后续步骤:")
     print("   1. 检查修改后的文件：git diff engineering/python/app/ai/llm/providers/")
     print("   2. 运行相关测试：pytest engineering/python/tests/unit/test_ai*")
     print("   3. 恢复失败的 provider 备份文件")
@@ -250,7 +250,7 @@ def main():
 
 
 if __name__ == "__main__":
-    print("⚠️  This script will modify multiple provider files.")
+    print("This script will modify multiple provider files.")
     print("   Backup files will be created automatically.\n")
 
     user_input = input("Continue? (y/N): ").strip().lower()

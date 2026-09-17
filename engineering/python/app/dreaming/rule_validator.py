@@ -1,6 +1,6 @@
 """规则草稿沙箱验证器。
 
-对应 Anthropic Dreaming 的 "Rules are tested in a sandbox before applying"：
+规则在应用前必须先经沙箱验证：
     - 在应用规则前，对规则进行沙箱验证
     - 验证内容包括：硬约束合规性、语法可解析性、边界情况、模拟执行
     - 验证失败的规则标记为 rejected，不可应用

@@ -1,16 +1,15 @@
 """Dreaming 反思核心：去重 / 过时更新 / 洞察浮现。
 
-对应 Anthropic Claude Managed Agents 的 Dream Job：
+反思任务（Dream Job）的输入输出约定：
     输入：Memory Store + 最多 100 个 Sessions
     输出：全新 Memory Store（不可变） + Reflection Report
 
 本地化实现：
-    - LLM 反思通过 ProviderRouter 路由到本地 LLM（Ollama/LM Studio），
-      替代 Anthropic 的 claude-opus-4-7
+    - LLM 反思通过 ProviderRouter 路由到本地 LLM（Ollama/LM Studio）
     - 反思决策写入 GraphStore + Git 不可变版本
     - 硬约束：CAM 二次验证始终 True、SUCCEEDED 禁删、HRC52 降置信
 
-反思三阶段（对齐 Anthropic 原版）：
+反思三阶段：
     1. 去重（deduplicate）：合并重复 memory 条目
     2. 过时更新（update stale）：用新 Session 修正旧 memory
     3. 洞察浮现（surface insights）：跨 Session 发现潜在规律
