@@ -1494,6 +1494,10 @@ jobs:
       - openapi-consistency-check
       - shell-lint
       - install-smoke
+      # 必须列入 needs：Check overall status 的条件引用了 python-torch-integrity，
+      # needs 上下文只含本列表内的 job，缺失时取 null，"null != 'success'" 恒真，
+      # 导致本聚合 job 在所有测试全绿的情况下仍然失败
+      - python-torch-integrity
     if: always()
 
     steps:
