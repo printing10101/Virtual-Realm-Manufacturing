@@ -787,12 +787,20 @@ class TestJwtPath:
         assert response.status_code == 401
 
     def test_jwt_valid_token_passes(self, app_factory):
+        import os
+
+        from app.auth import security as security_module
         from app.auth.security import create_access_token
 
         token = create_access_token({"sub": "u1", "role": "user"})
         client = TestClient(app_factory(lnn_auth_enabled=False, jwt_auth_enabled=True))
         response = client.get("/protected", headers={"Authorization": f"Bearer {token}"})
-        assert response.status_code == 200
+        # 失败时打印 401 分支报文与密钥指纹（前 8 位），用于定位 CI-only 的解码失败
+        assert response.status_code == 200, (
+            f"JWT 有效 token 被拒: status={response.status_code} body={response.text!r} "
+            f"module_secret_prefix={str(security_module.SECRET_KEY)[:8]} "
+            f"env_secret_prefix={str(os.environ.get('LNN_JWT_SECRET', ''))[:8]}"
+        )
 
     def test_jwt_with_banned_token_returns_401(self, app_factory):
         from app.auth.security import create_access_token, get_token_ban_list
