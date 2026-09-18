@@ -338,7 +338,8 @@ jobs:
           if pct < 24:
               # 单套件 job 只做信息展示，不做门禁：integration 单独运行覆盖不了
               # 为全量套件校准的 24%，硬门禁在此必然失败（实测 10.23%）。
-              # 24% 门禁由全量套件 job 的 "Check overall coverage threshold" 把关。
+              # 24% 门禁由全量套件 job 的 overall coverage threshold 步骤把关。
+              # 注意：本 python 块处于 shell 双引号内，注释与字符串不得再含双引号。
               print(f'  >>> WARNING: coverage {pct:.2f}% < 24% (informational; gate enforced by full-suite job)')
               print('')
 
