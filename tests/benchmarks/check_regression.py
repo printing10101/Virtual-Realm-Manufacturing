@@ -52,7 +52,9 @@ def check_latest(args: argparse.Namespace) -> int:
 
     prev_results = repo.get_runs(limit=2, branch=latest.git_branch)
     if len(prev_results) < 2:
-        print("信息: 数据库中仅有一条记录，无法进行回归对比。")
+        # 提示走 stderr：--json 模式下 stdout 必须是纯 JSON，
+        # 否则 CI 端 json.load 会因前缀文本解析失败
+        print("信息: 数据库中仅有一条记录，无法进行回归对比。", file=sys.stderr)
         if args.json:
             print(json.dumps({"status": "insufficient_data", "message": "仅有一条记录"}, indent=2))
         else:
