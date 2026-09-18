@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import json
+import hashlib
 import logging
 import secrets
 import threading
@@ -354,19 +355,29 @@ class TokenBanList:
         # 只保留在 _expiry 中出现的 jti，删除已过期但残留在 banned 的条目
         self._banned = {t for t in self._banned if t in self._expiry}
 
+    def _ban_key(self, token: str, payload: dict[str, Any] | None) -> str:
+        # 兜底键必须唯一标识 token 本身。历史缺陷：jti 缺失时用 token[:32]，
+        # 而 JWT 前 32 字符是同算法共享的 Base64 头部——封禁任意一个 token
+        # 会连带封禁同进程内之后签发的所有同算法 token（CI 串行全量下表现为
+        # "Token已被撤销"误拒；生产等价于"封一个用户 = 全站锁死"）。
+        # 改为整 token 的 sha256，对可解码/不可解码 token 一致且可持久化。
+        if payload and payload.get("jti"):
+            return str(payload["jti"])
+        return hashlib.sha256(token.encode("utf-8", "ignore")).hexdigest()
+
     def ban(self, token: str):
         # 修复 [并发安全]：ban/is_banned/ban 都需持锁，否则在多线程下
         # _save() 与 _banned 修改可能产生不一致。
         with self._lock:
             payload = decode_token(token)
             if payload is None:
-                jti = token[:32]
+                jti = self._ban_key(token, None)
                 self._banned.add(jti)
                 self._save()
                 logger.info("Token banned (undecodable): jti=%s", jti)
                 return
             if payload.get("exp"):
-                jti = payload.get("jti", token[:32])
+                jti = self._ban_key(token, payload)
                 self._banned.add(jti)
                 exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc).isoformat()
                 self._expiry[jti] = exp_time
@@ -378,10 +389,7 @@ class TokenBanList:
         # 集合中途状态被读到的风险（Python set 本身非线程安全）。
         with self._lock:
             payload = decode_token(token)
-            if payload is None:
-                return token[:32] in self._banned
-            jti = payload.get("jti", token[:32])
-            return jti in self._banned
+            return self._ban_key(token, payload) in self._banned
 
 
 class _TokenBanListHolder:
