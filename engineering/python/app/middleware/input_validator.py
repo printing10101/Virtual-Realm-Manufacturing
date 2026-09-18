@@ -177,7 +177,9 @@ def validate_file_path(
 
     try:
         resolved = Path(path).expanduser().resolve(strict=False)
-    except (OSError, RuntimeError) as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
+        # ValueError：Linux 下 Path.resolve 对含 NUL 字节的路径抛
+        # "embedded null character"，必须当作非法路径拒绝而非向上抛 500
         errors.append(f"文件路径无法解析: {exc}")
         return errors
 
