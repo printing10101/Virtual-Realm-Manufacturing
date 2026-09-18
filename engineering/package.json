@@ -20,7 +20,7 @@
     "test": "vitest run",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:ci": "vitest run --coverage --reporter=junit --outputFile=junit-frontend.xml --coverage.reporter=json --coverage.reporter=text --coverage.reporter=html --coverage.reportsDirectory=coverage",
+    "test:ci": "vitest run --coverage --reporter=default --reporter=junit --outputFile=junit-frontend.xml --coverage.reporter=json --coverage.reporter=text --coverage.reporter=html --coverage.reportsDirectory=coverage",
     "test:watch": "vitest",
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint src/**/*.{ts,vue}",
