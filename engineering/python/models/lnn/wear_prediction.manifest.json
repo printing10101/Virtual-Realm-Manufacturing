@@ -14,8 +14,8 @@
   "npz_format_version": 2,
   "source": {
     "kind": "csv",
-    "path": "..\\..\\research\\datasets\\uniwear\\uniwear\\uniwear.csv",
-    "sha256": "abc5076751fd2729",
+    "path": "../../../../research/datasets/uniwear/uniwear/uniwear.csv",
+    "sha256": "abc5076751fd2729e901978ab9a61e47cbacc82f92258571082fc1f4ead0bde5",
     "feature_columns": [
       "force_z",
       "vibration_x",
@@ -79,7 +79,7 @@
       "max_abs_error": 0.16882125884591298
     }
   },
-  "notes": "LTC memory_weights 为结构占位（未参与本批量回归任务训练）；权重为标准化折叠后产物，服务端无需任何预处理；ONNX 工件因环境缺 onnx 包暂缓导出（onnxruntime 消费路径见 WP1 适配器）。",
+  "notes": "LTC memory_weights 为结构占位（未参与本批量回归任务训练）；权重为标准化折叠后产物，服务端无需任何预处理；ONNX 工件因环境缺 onnx 包暂缓导出（onnxruntime 消费路径见 WP1 适配器）。source.path 相对 manifest 所在目录解析（2026-09-18 修复：原断裂相对路径与 16 位截断哈希，C1 数据血缘收尾）。",
   "created_at": "2026-09-08T16:20:39.928012+00:00",
   "artifacts": {
     "npz": {
