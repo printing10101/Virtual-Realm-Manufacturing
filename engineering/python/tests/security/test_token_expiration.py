@@ -106,8 +106,14 @@ class TestTokenIssuance:
 
     def test_decode_token_tampered_returns_none(self):
         token = create_access_token({"sub": "u1"})
-        # 篡改 payload 末位
-        tampered = token[:-1] + ("a" if token[-1] != "a" else "b")
+        # 篡改 payload 段字符串：payload 变了，重算的 HMAC 必然与原签名不匹配。
+        # 不能翻签名末位字符——base64 末位含 2 个填充位，末字符恰为 Y(011000) 时
+        # 换成 a(011010) 只动填充位，解码字节不变、签名依旧有效（约 1/15 概率漏检，
+        # 2026-09-18 CI run 35367561384 实测触发）。
+        header, payload, sig = token.split(".")
+        tampered_payload = payload[:-1] + ("a" if payload[-1] != "a" else "b")
+        tampered = f"{header}.{tampered_payload}.{sig}"
+        assert tampered != token
         assert decode_token(tampered) is None
 
     def test_decode_token_garbage_returns_none(self):
