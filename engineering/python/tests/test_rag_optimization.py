@@ -13,6 +13,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from tests.utils.perf_thresholds import perf_threshold  # noqa: E402
+
 # Skip the entire module if any of the implementation pieces is unavailable.
 pytest.importorskip("app.rag.document_importer")
 pytest.importorskip("app.rag.evaluation")
@@ -112,7 +114,7 @@ def test_reranker():
     for i, result in enumerate(reranked):
         print(f"  {i + 1}. {result['doc_id']} (得分: {result['rerank_score']:.4f})")
 
-    assert elapsed_ms < 200, f"重排序响应时间超时: {elapsed_ms:.2f}ms > 200ms"
+    assert elapsed_ms < perf_threshold(200), f"重排序响应时间超时: {elapsed_ms:.2f}ms > 200ms"
     assert len(reranked) == 3, "重排序结果数量不匹配"
     print("✓ 重排序功能测试通过")
     print()

@@ -17,6 +17,8 @@ from app.rules.conflict_detector import (
 )
 from app.database.rule_db import ProcessRule, RuleCondition, RuleResult
 
+from tests.utils.perf_thresholds import perf_threshold
+
 
 def make_rule(
     rule_id: int,
@@ -449,7 +451,7 @@ class TestDetectConflictsIntegration:
         detect_conflicts(rules)
         elapsed = time.time() - start
 
-        assert elapsed < 1.0, f"100条规则检测耗时 {elapsed:.3f}s，超过1秒限制"
+        assert elapsed < perf_threshold(1.0), f"100条规则检测耗时 {elapsed:.3f}s，超过1秒限制"
 
     def test_conflict_report_structure(self):
         """冲突报告应包含所有必要字段"""

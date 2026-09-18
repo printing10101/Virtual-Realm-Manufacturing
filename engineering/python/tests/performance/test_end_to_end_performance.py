@@ -23,6 +23,8 @@ from typing import List
 
 import pytest
 from fastapi import FastAPI, HTTPException
+
+from tests.utils.perf_thresholds import perf_threshold
 from fastapi.testclient import TestClient
 
 from app.auth.security_headers_asgi import SecurityHeadersMiddleware
@@ -393,7 +395,7 @@ class TestAsyncConcurrencyPerformance:
 
         # 200 个并发 ASGI 调用应在 500ms 内完成
         # 阈值依据：纯事件循环调度 + 中间件链路 + 路由匹配
-        assert elapsed_ms < 500.0, f"并发 ASGI 调用过慢: {count}次 in {elapsed_ms:.3f}ms"
+        assert elapsed_ms < perf_threshold(500.0), f"并发 ASGI 调用过慢: {count}次 in {elapsed_ms:.3f}ms"
 
         qps = count / (elapsed_ms / 1000)
         print(f"\n异步并发 ASGI 吞吐量 ({count}次):")

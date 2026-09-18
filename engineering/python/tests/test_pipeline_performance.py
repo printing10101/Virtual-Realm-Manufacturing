@@ -20,6 +20,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from tests.utils.perf_thresholds import perf_threshold  # noqa: E402
+
 # 端到端管道延迟断言（P95 < 500ms）对 CPU 调度敏感：xdist 并行时其他 worker
 # 抢占 CPU，P95 必然超标（2026-09-13 实测 -n 6 下 P95 784ms；串行独占通过）。
 pytestmark = pytest.mark.skipif(
@@ -73,7 +75,7 @@ class TestImagePerformance:
 
         print(f"\n图像处理延迟: mean={mean:.2f}ms, P50={p50:.2f}ms, P95={p95:.2f}ms, P99={p99:.2f}ms")
 
-        assert p95 < 100.0, f"P95延迟 {p95:.2f}ms 超过目标 50ms (放宽至100ms)"
+        assert p95 < perf_threshold(100.0), f"P95延迟 {p95:.2f}ms 超过目标 50ms (放宽至100ms)"
 
     @pytest.mark.unit
     @pytest.mark.slow
@@ -124,7 +126,7 @@ class TestTimeSeriesPerformance:
 
         print(f"\n时序数据处理延迟: mean={mean:.2f}ms, P50={p50:.2f}ms, P95={p95:.2f}ms")
 
-        assert p95 < 50.0, f"P95延迟 {p95:.2f}ms 超过目标 10ms (放宽至50ms)"
+        assert p95 < perf_threshold(50.0), f"P95延迟 {p95:.2f}ms 超过目标 10ms (放宽至50ms)"
 
     @pytest.mark.unit
     @pytest.mark.slow
@@ -209,7 +211,7 @@ class TestFullPipelinePerformance:
 
         # CI 共享跑机（2 核）串行全量实测 P95 845ms，本机独占约 500ms：
         # 门禁按环境放宽，本地保持 500ms 严格口径，性能回归主战场是 perf-benchmark 工作流
-        threshold = 500.0 * (3.0 if os.environ.get("CI") else 1.0)
+        threshold = perf_threshold(500.0)
         assert p95 < threshold, f"全管道P95延迟 {p95:.2f}ms 过高（阈值 {threshold:.0f}ms）"
 
     @pytest.mark.unit
@@ -240,7 +242,7 @@ class TestFullPipelinePerformance:
 
         print(f"\n单模态管道延迟: mean={mean:.2f}ms, P50={p50:.2f}ms, P95={p95:.2f}ms")
 
-        assert p95 < 200.0, f"单模态P95延迟 {p95:.2f}ms 过高"
+        assert p95 < perf_threshold(200.0), f"单模态P95延迟 {p95:.2f}ms 过高"
 
 
 class TestMemoryUsage:

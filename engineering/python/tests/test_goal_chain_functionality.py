@@ -20,6 +20,8 @@ import shutil
 import pytest
 import tempfile
 
+from tests.utils.perf_thresholds import perf_threshold
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.models.goals import (  # noqa: E402
@@ -952,7 +954,7 @@ class TestFrontendGoalTreeView:
         tree = store.get_goal_tree()
         elapsed = time.time() - start_time
 
-        assert elapsed < 1.0, f"Tree generation took {elapsed:.3f}s, expected < 1.0s"
+        assert elapsed < perf_threshold(1.0), f"Tree generation took {elapsed:.3f}s, expected < 1.0s"
 
         mission_node = tree[0]
         strategic_node = [
