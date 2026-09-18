@@ -439,9 +439,12 @@ jobs:
       - name: Run regression tests
         working-directory: engineering/python
         run: |
+          # 覆盖率门禁只属于全量套件 job：回归 job 仅跑 tests/regression/（69 用例），
+          # 对全 app 统计覆盖率必然远低于 24%（实测 4.44%），这里显式关闭该门禁
           pytest tests/regression/ -v \
             --cov=app \
             --cov-config=../../.coveragerc \
+            --cov-fail-under=0 \
             --cov-report=xml:coverage-regression.xml \
             --cov-report=json:coverage-regression.json \
             --cov-report=term-missing \
