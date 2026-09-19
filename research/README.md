@@ -1,5 +1,9 @@
 # research/ — 科研侧代码库与成果总索引
 
+> **科研端主研究方向（2026-09-19 确立）**：**面向自由曲面的 LLM CAD 代码生成方法**（API 检索接地 + 惯用法技能库 + 分类错误反馈，免训练）。
+> 规划与数据：`docs/paper_and_competition/F0`（v2 行动路径）～ `F5`（多条件对比）。
+> 实现与实验入口：`engineering/python/app/benchmarks/machinability_pilot/`（曲面基准、五级评估漏斗、grounding 三件套、生成/物理运行器）。
+
 独立科研环境（torch 训练/模型/量化），与 engineering/ 物理解耦。运行：`cd research && pytest tests/`。
 
 ## 目录速查（名称即内容）
