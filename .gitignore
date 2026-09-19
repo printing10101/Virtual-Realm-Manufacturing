@@ -587,3 +587,11 @@ outputs/
 .git.corrupt-20260910/
 _local-backup/
 engineering/python/_wheels/
+
+# ---- 科研 pilot 真值数据（2026-09-18，F 系列 Paper A）----
+# machinability_pilot 生成的 STL/STEP 真值可由生成器复现，不入库；manifest 记录再生成命令
+pilot/
+# 手动试跑产生的草稿 CAD（engineering/python 根目录散落的 .step 均为调参产物）
+engineering/python/*.step
+# 本地 AI 助手工作状态
+.workbuddy-ai/
